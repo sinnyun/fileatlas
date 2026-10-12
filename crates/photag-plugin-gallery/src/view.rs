@@ -175,17 +175,45 @@ impl Render for GalleryView {
 }
 
 fn render_media_card(media: &photag_plugin_database::db::queries::MediaItem) -> Div {
-    div()
+    let mut card = div()
         .v_flex()
         .w_48()
-        .h(px(160.))
+        .h(px(190.))
         .justify_between()
         .rounded_md()
         .border_1()
         .border_color(rgb(0x343943))
         .bg(rgb(0x20232b))
-        .p_3()
-        .child(div().text_sm().font_medium().child(media.filename.clone()))
+        .p_2();
+    if let Some(path) = media.thumb_path.as_ref() {
+        card = card.child(
+            img(std::path::PathBuf::from(path))
+                .w_full()
+                .h(px(125.))
+                .object_fit(ObjectFit::Cover)
+                .with_fallback(|| {
+                    div()
+                        .w_full()
+                        .h(px(125.))
+                        .bg(rgb(0x181a20))
+                        .into_any_element()
+                }),
+        );
+    } else {
+        card = card.child(
+            div()
+                .w_full()
+                .h(px(125.))
+                .rounded_sm()
+                .bg(rgb(0x181a20))
+                .items_center()
+                .justify_center()
+                .text_xs()
+                .text_color(rgb(0x696f7c))
+                .child(media.media_type.to_uppercase()),
+        );
+    }
+    card.child(div().text_sm().font_medium().child(media.filename.clone()))
         .child(
             div()
                 .text_xs()
