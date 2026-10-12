@@ -351,8 +351,8 @@ impl SidebarView {
         cx.notify();
     }
 
-    fn use_tag_as_parent(&self, id: i64, cx: &mut Context<Self>) {
-        self.tag_parent.update(cx, |state, window, cx| {
+    fn use_tag_as_parent(&self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
+        self.tag_parent.update(cx, |state, cx| {
             state.set_value(&id.to_string(), window, cx);
         });
     }
@@ -584,16 +584,16 @@ fn render_tag(
     let edit_id = tag.id;
     let edit = Button::new(format!("navigation-tag-edit-{edit_id}"))
         .label("Edit fields")
-        .on_click(cx.listener(move |this, _, _, cx| {
+        .on_click(cx.listener(move |this, _, window, cx| {
             let name = edit_name.clone();
             let color = edit_color.clone();
             let icon = edit_icon.clone();
             this.tag_edit_name
-                .update(cx, |state, window, cx| state.set_value(&name, window, cx));
+                .update(cx, |state, cx| state.set_value(&name, window, cx));
             this.tag_color
-                .update(cx, |state, window, cx| state.set_value(&color, window, cx));
+                .update(cx, |state, cx| state.set_value(&color, window, cx));
             this.tag_icon
-                .update(cx, |state, window, cx| state.set_value(&icon, window, cx));
+                .update(cx, |state, cx| state.set_value(&icon, window, cx));
         }));
     let rename = Button::new(format!("navigation-tag-rename-{edit_id}"))
         .label("Rename")
@@ -624,8 +624,8 @@ fn render_tag(
     let parent_id = tag.id;
     let use_parent = Button::new(format!("navigation-tag-parent-{parent_id}"))
         .label("Use as parent")
-        .on_click(cx.listener(move |this, _, _, cx| {
-            this.use_tag_as_parent(parent_id, cx);
+        .on_click(cx.listener(move |this, _, window, cx| {
+            this.use_tag_as_parent(parent_id, window, cx);
             cx.notify();
         }));
     let children = tag

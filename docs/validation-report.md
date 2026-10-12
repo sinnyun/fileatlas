@@ -32,6 +32,10 @@ scope. Those compiler findings are fixed. Run 33 on
 borrowed settings section label; it now requires a static string. A fresh
 check is pending. The run also reported a pre-existing ignored publication
 guard, now bound explicitly.
+Run 34 on `e7376885c903b511a328620f127f63219ddf80d6` passed formatting; the
+compiler found that GPUI input mutations require the render window outside the
+entity-update closure. The tag editor and parent selector now forward that
+window and use the current two-argument update API. A fresh check is pending.
 
 | Check | Result | Notes |
 |---|---|---|
