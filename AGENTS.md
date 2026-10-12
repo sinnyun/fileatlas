@@ -32,10 +32,12 @@ explicitly incomplete.
   native event delivery and filesystem race behavior still need Windows tests.
 - `photag-plugin-gallery` ports the source skeleton/window data model, paints
   cached image thumbnails, pages records in 200-row batches, supports
-  plain/Ctrl/Shift card selection and batch 0–5 ratings, and reloads on
-  Cordis folder/tag/path/index events. Automatic viewport paging, host keyboard
-  binding, date grouping, rubber-band selection, preview/actions, source search
-  scope controls, remaining filters and settings persistence are incomplete.
+  plain/Ctrl/Shift card selection, batch and keyboard 0–5 ratings, basic
+  arrow/Home/End/Ctrl+A/Escape selection keys, and reloads on Cordis
+  folder/tag/path/index events. Automatic viewport paging, scrolling to
+  keyboard targets, Enter/preview and Delete confirmation, date grouping,
+  rubber-band selection, source search scopes, remaining filters and settings
+  persistence are incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, accepts folder paths, coordinates folder add/rescan/
   remove, scanner cancellation and watcher registration, and emits Cordis

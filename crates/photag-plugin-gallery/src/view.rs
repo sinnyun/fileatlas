@@ -14,7 +14,7 @@ use photag_ui_bridge::UiViewContribution;
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
     filter::GalleryFilter,
-    selection::{GallerySelection, Modifiers as SelectionModifiers},
+    selection::{GalleryKey, GallerySelection, Modifiers as SelectionModifiers, SelectionEffect},
 };
 
 pub(super) fn gallery(
@@ -59,6 +59,7 @@ struct GalleryView {
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
     search: Entity<InputState>,
+    focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
     snapshot: Result<GallerySnapshot, String>,
@@ -76,6 +77,7 @@ impl GalleryView {
         cx: &mut Context<Self>,
     ) -> Self {
         let filter = GalleryFilter::default();
+        let focus_handle = cx.focus_handle();
         let _subscriptions = vec![cx.subscribe(&search, |this, _, event, cx| {
             if matches!(event, InputEvent::Change) {
                 this.filter.search = this.search.read(cx).value().to_string();
@@ -158,6 +160,7 @@ impl GalleryView {
             selected_path,
             index_revision,
             search,
+            focus_handle,
             filter,
             selection: GallerySelection::default(),
             snapshot,
@@ -173,7 +176,14 @@ impl GalleryView {
         self.selection = GallerySelection::default();
     }
 
-    fn select_media(&mut self, media_id: i64, modifiers: Modifiers, cx: &mut Context<Self>) {
+    fn select_media(
+        &mut self,
+        media_id: i64,
+        modifiers: Modifiers,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        window.focus(&self.focus_handle, cx);
         let Ok(snapshot) = &self.snapshot else {
             return;
         };
@@ -186,6 +196,53 @@ impl GalleryView {
                 shift: modifiers.shift,
             },
         );
+        cx.notify();
+    }
+
+    fn handle_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        let key = match event.keystroke.key.as_str() {
+            "left" => GalleryKey::Left,
+            "right" => GalleryKey::Right,
+            "up" => GalleryKey::Up,
+            "down" => GalleryKey::Down,
+            "home" => GalleryKey::Home,
+            "end" => GalleryKey::End,
+            "escape" => GalleryKey::Escape,
+            "a" if event.keystroke.modifiers.control => GalleryKey::SelectAll,
+            "0" => GalleryKey::Rating(0),
+            "1" => GalleryKey::Rating(1),
+            "2" => GalleryKey::Rating(2),
+            "3" => GalleryKey::Rating(3),
+            "4" => GalleryKey::Rating(4),
+            "5" => GalleryKey::Rating(5),
+            _ => return,
+        };
+        let skeletons = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.skeletons.as_slice())
+            .unwrap_or_default();
+        let effect = self.selection.handle_key(
+            skeletons,
+            6,
+            key,
+            SelectionModifiers {
+                ctrl: event.keystroke.modifiers.control,
+                alt: event.keystroke.modifiers.alt,
+                shift: event.keystroke.modifiers.shift,
+            },
+        );
+        match effect {
+            SelectionEffect::ApplyRating { media_ids, rating } => {
+                if let Err(error) = self.service.apply_rating(&media_ids, rating) {
+                    self.snapshot = Err(error.to_string());
+                } else {
+                    self.reload();
+                }
+            }
+            SelectionEffect::None | SelectionEffect::ScrollTo { .. } => {}
+            SelectionEffect::ConfirmDelete { .. } | SelectionEffect::OpenPreview { .. } => {}
+        }
         cx.notify();
     }
 
@@ -229,6 +286,9 @@ impl Render for GalleryView {
                     media_cards.push(render_media_card(media, selected, cx));
                 }
                 let mut grid = div()
+                    .id("gallery-grid-root")
+                    .track_focus(&self.focus_handle)
+                    .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
                     .v_flex()
                     .size_full()
                     .gap_3()
@@ -320,14 +380,15 @@ impl Render for GalleryView {
                             })),
                     );
                 }
-                grid
+                grid.into_any_element()
             }
             Err(error) => div()
                 .size_full()
                 .bg(rgb(0x181a20))
                 .p_4()
                 .text_color(rgb(0xef7777))
-                .child(format!("Could not load media: {error}")),
+                .child(format!("Could not load media: {error}"))
+                .into_any_element(),
         }
     }
 }
@@ -385,8 +446,8 @@ fn render_media_card(
         );
     }
     card.id(format!("gallery-media-{media_id}"))
-        .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
-            this.select_media(media_id, event.modifiers(), cx)
+        .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
+            this.select_media(media_id, event.modifiers(), window, cx)
         }))
         .child(div().text_sm().font_medium().child(media.filename.clone()))
         .child(
