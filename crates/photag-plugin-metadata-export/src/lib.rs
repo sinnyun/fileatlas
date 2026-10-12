@@ -8,7 +8,6 @@ use std::sync::{Arc, Mutex};
 
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
-use gpui_kit::prelude::FluentBuilder;
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaExport};
 use photag_ui_bridge::{

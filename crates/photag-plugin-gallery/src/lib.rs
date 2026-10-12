@@ -19,6 +19,7 @@ use photag_contracts::{
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_preview::PreviewService;
 use photag_plugin_session::SessionService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
@@ -229,6 +230,9 @@ impl Plugin for GalleryPlugin {
         let file_operations = context
             .try_service::<FileOperationsService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let preview = context
+            .try_service::<PreviewService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
@@ -348,6 +352,7 @@ impl Plugin for GalleryPlugin {
             [view::gallery(
                 service,
                 file_operations,
+                preview,
                 runtime,
                 selected_folder,
                 selected_tag,

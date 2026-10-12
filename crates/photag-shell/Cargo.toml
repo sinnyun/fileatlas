@@ -21,4 +21,9 @@ photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
+photag-plugin-preview = { path = "../photag-plugin-preview" }
+photag-plugin-history = { path = "../photag-plugin-history" }
+photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
+photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 gpui-kit.workspace = true
+raw-window-handle = "0.6.2"

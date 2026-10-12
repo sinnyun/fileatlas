@@ -5,7 +5,9 @@ use std::sync::{Arc, RwLock};
 
 use cordis::{Event, Service};
 
+pub mod theme;
 mod views;
+pub mod winfx;
 pub use views::{
     OwnedUiView, UiViewCatalog, UiViewContribution, UiViewFactory, register_views_for_plugin,
 };

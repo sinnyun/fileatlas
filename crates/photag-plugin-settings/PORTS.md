@@ -1,6 +1,6 @@
 # Settings plugin ports / 设置面板对接
 
-Status: the source-compatible settings model and JSON persistence are active. This plugin now contributes a GPUI Settings panel owned by Cordis. Controls write immediately through `SettingsService::update`, so UI state and the canonical `%LOCALAPPDATA%/PhoTag/settings.json` stay synchronized. This pass intentionally did not run plugin tests or a cloud Rust build; local Windows UI verification is pending.
+Status: the source-compatible settings model and JSON persistence are active. This plugin now contributes a GPUI Settings panel owned by Cordis. Controls write immediately through `SettingsService::update`, so UI state and the canonical `%LOCALAPPDATA%/PhoTag/settings.json` stay synchronized. Accent selection updates the shared UI bridge theme state at startup and after edits. The shell dependency graph compiles; plugin tests were deferred and local Windows UI verification is pending.
 
 ## Cordis and UI lifecycle
 
@@ -15,8 +15,8 @@ The panel has Appearance, Toolbar, Shortcuts, Tags, AI and Updates sections. Dir
 
 ## Remaining UI ports
 
-- Appearance: saved accent selection is rendered, but applying its color to app-wide GPUI theme tokens (including live Windows system accent) needs a shared theme service and consumers. Original egui swatch styling has not been visually replicated.
-- Shortcuts: `open_key` is displayed read-only; original key-capture interaction is pending. F1–F9 assignments are displayed read-only; editing needs the navigation tag tree/picker and hotkey dispatch integration. Rating shortcut behavior is owned by the gallery/preview interaction layer.
+- Appearance: saved accent selection is applied to the shared `photag-ui-bridge::theme` accent state on plugin startup and every settings edit. Existing feature views still need to consume shared tokens, and original egui swatch styling has not been visually replicated.
+- Shortcuts: `open_key` has the source-style capture interaction: click Change key, press a supported single key to persist it, or press Escape to cancel. The persisted value is still not consumed by the gallery's key handler, which currently opens preview on Enter; that runtime wiring remains incomplete. F1–F9 assignments are displayed read-only; editing needs the navigation tag tree/picker and hotkey dispatch integration. Rating shortcut behavior is owned by the gallery/preview interaction layer.
 - AI mandatory groups can be added/removed. Editing group names, picking/removing individual tags and wiring those groups into AI requests need the tag picker and AI provider contracts.
 - Updates: the preference is editable. Live check, status, staged download, checksum verification and install controls need updater service integration.
 - `toolbar_pos.offset_x/offset_y` remain displayed read-only; drag persistence belongs to the preview toolbar view.

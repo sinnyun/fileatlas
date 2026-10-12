@@ -4976,6 +4976,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-drag-drop"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "photag-plugin-file-operations"
 version = "0.1.0"
 dependencies = [
@@ -4999,11 +5007,23 @@ dependencies = [
  "photag-contracts",
  "photag-plugin-database",
  "photag-plugin-file-operations",
+ "photag-plugin-preview",
  "photag-plugin-session",
  "photag-ui-bridge",
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+]
+
+[[package]]
+name = "photag-plugin-history"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "photag-plugin-database",
+ "photag-plugin-file-operations",
+ "photag-plugin-tagging",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -5017,6 +5037,18 @@ dependencies = [
  "rusqlite",
  "thiserror 2.0.21",
  "walkdir",
+]
+
+[[package]]
+name = "photag-plugin-media-playback"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "image",
+ "photag-ui-bridge",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -5047,6 +5079,17 @@ dependencies = [
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+]
+
+[[package]]
+name = "photag-plugin-preview"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "image",
+ "photag-ui-bridge",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -5122,19 +5165,24 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "photag-plugin-file-operations",
+ "photag-plugin-drag-drop",
  "gpui-kit",
  "photag-contracts",
  "photag-plugin-database",
  "photag-plugin-gallery",
+ "photag-plugin-history",
  "photag-plugin-indexing",
+ "photag-plugin-media-playback",
  "photag-plugin-metadata-export",
  "photag-plugin-navigation",
+ "photag-plugin-preview",
  "photag-plugin-settings",
  "photag-plugin-session",
  "photag-plugin-tagging",
  "photag-plugin-thumbnails",
  "photag-plugin-watcher",
  "photag-ui-bridge",
+ "raw-window-handle",
  "tokio",
 ]
 

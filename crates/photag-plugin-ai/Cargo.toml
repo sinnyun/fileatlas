@@ -1,0 +1,19 @@
+[package]
+name = "photag-plugin-ai"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+dirs.workspace = true
+image = "0.25"
+ndarray = "0.16"
+photag-plugin-settings = { path = "../photag-plugin-settings" }
+thiserror.workspace = true
+tract-onnx = "0.21"
+ureq = "2"
+
+[lints]
+workspace = true

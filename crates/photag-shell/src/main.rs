@@ -21,6 +21,9 @@ fn dev_plugin_config() -> String {
         "indexing",
         "watcher",
         "tagging",
+        "history",
+        "media-playback",
+        "drag-drop",
     ];
     for plugin in config
         .split(',')
@@ -202,7 +205,9 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
 fn main() {
     let plugin_config = dev_plugin_config();
     let enable_all = dev_plugin_enabled(&plugin_config, "all");
-    let enable_gallery = enable_all || dev_plugin_enabled(&plugin_config, "gallery");
+    let enable_history = enable_all || dev_plugin_enabled(&plugin_config, "history");
+    let enable_gallery =
+        enable_all || enable_history || dev_plugin_enabled(&plugin_config, "gallery");
     let enable_navigation = enable_all || dev_plugin_enabled(&plugin_config, "navigation");
     let enable_metadata_export =
         enable_all || dev_plugin_enabled(&plugin_config, "metadata-export");
@@ -219,7 +224,13 @@ fn main() {
         || dev_plugin_enabled(&plugin_config, "watcher");
     let enable_watcher =
         enable_all || enable_navigation || dev_plugin_enabled(&plugin_config, "watcher");
-    let enable_tagging = enable_all || dev_plugin_enabled(&plugin_config, "tagging");
+    let enable_tagging =
+        enable_all || enable_history || dev_plugin_enabled(&plugin_config, "tagging");
+    let enable_history = enable_history || (enable_gallery && enable_tagging);
+    let enable_media_playback =
+        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "media-playback");
+    let enable_drag_drop =
+        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "drag-drop");
     eprintln!("Starting development plugins: {plugin_config}");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -262,6 +273,32 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start file operations plugin"),
+        )
+    } else {
+        None
+    };
+    let drag_drop_fiber = if enable_drag_drop {
+        let plugin = photag_plugin_drag_drop::DragDropPlugin;
+        let input = plugin
+            .prepare(photag_plugin_drag_drop::DragDropConfig)
+            .expect("prepare drag-drop plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start drag-drop plugin"),
+        )
+    } else {
+        None
+    };
+    let preview_fiber = if enable_gallery {
+        let plugin = photag_plugin_preview::PreviewPlugin;
+        let input = plugin
+            .prepare(photag_plugin_preview::PreviewConfig::default())
+            .expect("prepare image preview plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start image preview plugin"),
         )
     } else {
         None
@@ -357,6 +394,32 @@ fn main() {
     } else {
         None
     };
+    let history_fiber = if enable_history {
+        let plugin = photag_plugin_history::HistoryPlugin;
+        let input = plugin
+            .prepare(photag_plugin_history::HistoryConfig)
+            .expect("prepare history plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start history plugin"),
+        )
+    } else {
+        None
+    };
+    let media_playback_fiber = if enable_media_playback {
+        let plugin = photag_plugin_media_playback::MediaPlaybackPlugin;
+        let input = plugin
+            .prepare(photag_plugin_media_playback::MediaPlaybackConfig::default())
+            .expect("prepare media playback plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start media playback plugin"),
+        )
+    } else {
+        None
+    };
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -366,6 +429,23 @@ fn main() {
         let cordis = cordis.clone();
         let executor = executor.clone();
         gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
+            #[cfg(target_os = "windows")]
+            {
+                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                let backdrop = window
+                    .window_handle()
+                    .ok()
+                    .and_then(|handle| match handle.as_raw() {
+                        RawWindowHandle::Win32(handle) => Some(
+                            photag_ui_bridge::winfx::apply_backdrop(handle.hwnd.get() as isize),
+                        ),
+                        _ => None,
+                    })
+                    .unwrap_or(photag_ui_bridge::winfx::Backdrop::None);
+                photag_ui_bridge::theme::set_backdrop_active(backdrop.is_translucent());
+            }
+            #[cfg(not(target_os = "windows"))]
+            photag_ui_bridge::theme::set_backdrop_active(false);
             let mounted_views = views
                 .snapshot()
                 .unwrap_or_default()
@@ -386,6 +466,16 @@ fn main() {
         .expect("open PhoTag window");
     });
 
+    if let Some(fiber) = history_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop history plugin");
+    }
+    if let Some(fiber) = media_playback_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop media playback plugin");
+    }
     if let Some(fiber) = tagging_fiber {
         runtime
             .block_on(fiber.dispose())
@@ -425,6 +515,16 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop file operations plugin");
+    }
+    if let Some(fiber) = drag_drop_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop drag-drop plugin");
+    }
+    if let Some(fiber) = preview_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop image preview plugin");
     }
     runtime
         .block_on(database_fiber.dispose())

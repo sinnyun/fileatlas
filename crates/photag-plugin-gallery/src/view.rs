@@ -1,5 +1,6 @@
 //! Native GPUI rendering for the windowed media gallery.
 
+mod bulk_actions;
 mod card;
 mod controls;
 mod filter_actions;
@@ -17,9 +18,11 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_preview::PreviewService;
 use photag_plugin_session::{MediaTypeFilter as SavedMediaType, SessionService};
 use photag_ui_bridge::UiViewContribution;
 
+use bulk_actions::{BulkActionKind, BulkActionSource};
 use card::{render_media_card, render_media_details};
 
 use crate::{
@@ -31,6 +34,7 @@ use crate::{
 pub(super) fn gallery(
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
+    preview: Arc<PreviewService>,
     runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
@@ -45,6 +49,7 @@ pub(super) fn gallery(
         move |window, app| {
             let view_service = Arc::clone(&service);
             let view_file_operations = Arc::clone(&file_operations);
+            let view_preview = Arc::clone(&preview);
             let view_runtime = runtime.clone();
             let view_selection = Arc::clone(&selected_folder);
             let view_tag_selection = Arc::clone(&selected_tag);
@@ -70,10 +75,26 @@ pub(super) fn gallery(
                 app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
             let destination_input =
                 app.new(|cx| InputState::new(window, cx).placeholder("Destination folder path"));
+            let bulk_inputs = [
+                "From YYYY-MM-DD",
+                "To YYYY-MM-DD",
+                "Older than days",
+                "Newer than days",
+                "Rating min 0-5",
+                "Rating max 0-5",
+                "Name contains",
+                "Extension",
+                "Size min MB",
+                "Size max MB",
+            ]
+            .into_iter()
+            .map(|placeholder| app.new(|cx| InputState::new(window, cx).placeholder(placeholder)))
+            .collect();
             app.new(|cx| {
                 GalleryView::new(
                     view_service,
                     view_file_operations,
+                    view_preview,
                     view_runtime,
                     view_selection,
                     view_tag_selection,
@@ -85,6 +106,7 @@ pub(super) fn gallery(
                     date_to,
                     rename_input,
                     destination_input,
+                    bulk_inputs,
                     cx,
                 )
             })
@@ -96,6 +118,7 @@ pub(super) fn gallery(
 struct GalleryView {
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
+    preview: Arc<PreviewService>,
     runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
@@ -107,6 +130,10 @@ struct GalleryView {
     date_to: Entity<InputState>,
     rename_input: Entity<InputState>,
     destination_input: Entity<InputState>,
+    bulk_inputs: Vec<Entity<InputState>>,
+    bulk_action: Option<BulkActionKind>,
+    bulk_source: BulkActionSource,
+    confirm_bulk_action: bool,
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
@@ -122,6 +149,7 @@ impl GalleryView {
     fn new(
         service: Arc<GalleryService>,
         file_operations: Arc<FileOperationsService>,
+        preview: Arc<PreviewService>,
         runtime: tokio::runtime::Handle,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
@@ -133,6 +161,7 @@ impl GalleryView {
         date_to: Entity<InputState>,
         rename_input: Entity<InputState>,
         destination_input: Entity<InputState>,
+        bulk_inputs: Vec<Entity<InputState>>,
         cx: &mut Context<Self>,
     ) -> Self {
         let saved = session.snapshot().unwrap_or_default();
@@ -162,7 +191,7 @@ impl GalleryView {
         filter.selected_tag_ids = saved.selected_tag_ids.clone();
         filter.excluded_tag_ids = saved.excluded_tag_ids.clone();
         let focus_handle = cx.focus_handle();
-        let _subscriptions = vec![
+        let mut _subscriptions = vec![
             cx.subscribe(&search, |this, _, event, cx| {
                 if matches!(event, InputEvent::Change) {
                     this.filter.search = this.search.read(cx).value().to_string();
@@ -191,6 +220,18 @@ impl GalleryView {
                 }
             }),
         ];
+        _subscriptions.extend(bulk_inputs.iter().map(|input| {
+            cx.subscribe(input, |_, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    cx.notify();
+                }
+            })
+        }));
+        _subscriptions.push(cx.subscribe(&destination_input, |_, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                cx.notify();
+            }
+        }));
         let selected = selected_folder
             .0
             .lock()
@@ -263,6 +304,7 @@ impl GalleryView {
         Self {
             service,
             file_operations,
+            preview,
             runtime,
             selected_folder,
             selected_tag,
@@ -274,6 +316,10 @@ impl GalleryView {
             date_to,
             rename_input,
             destination_input,
+            bulk_inputs,
+            bulk_action: None,
+            bulk_source: BulkActionSource::WholeLibrary,
+            confirm_bulk_action: false,
             focus_handle,
             filter,
             selection: GallerySelection::default(),
@@ -429,6 +475,26 @@ impl GalleryView {
             false,
             cx,
         );
+    }
+
+    fn preview_selected(&mut self, cx: &mut Context<Self>) {
+        let Some(&media_id) = self.selection.selected_media_ids.first() else {
+            return;
+        };
+        match self.service.media_by_id(media_id) {
+            Ok(Some(media)) if media.media_type == "image" => {
+                match self.preview.open(media.full_path) {
+                    Ok(()) => self.operation_status = Some("Image preview opened.".into()),
+                    Err(error) => self.operation_status = Some(error.to_string()),
+                }
+            }
+            Ok(Some(_)) => {
+                self.operation_status = Some("Preview currently supports images only.".into())
+            }
+            Ok(None) => self.operation_status = Some("Selected media is no longer indexed.".into()),
+            Err(error) => self.operation_status = Some(error.to_string()),
+        }
+        cx.notify();
     }
 
     fn rename_selected(&mut self, cx: &mut Context<Self>) {
@@ -710,6 +776,7 @@ impl Render for GalleryView {
                     &snapshot.available_extensions,
                     cx,
                 ));
+                grid = grid.child(bulk_actions::render(self, cx));
                 grid = grid.child(div().h_1().w_full().bg(rgb(0x343943)));
                 grid = grid.child(
                     div()
@@ -771,6 +838,13 @@ impl Render for GalleryView {
                             div()
                                 .h_flex()
                                 .gap_2()
+                                .child(
+                                    Button::new("gallery-preview-selected")
+                                        .label("Preview")
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| this.preview_selected(cx)),
+                                        ),
+                                )
                                 .child(Button::new("gallery-open-selected").label("Open").on_click(
                                     cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
                                 ))

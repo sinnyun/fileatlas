@@ -128,6 +128,10 @@ impl Plugin for SettingsPlugin {
             Some(path) => SettingsService::open_at(path.clone()),
             None => SettingsService::open_default(),
         });
+        let settings = service
+            .snapshot()
+            .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
         let publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;

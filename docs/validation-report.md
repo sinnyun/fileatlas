@@ -1,5 +1,41 @@
 # Validation report
 
+## Preview, theme, and navigation integration pass (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo fmt --all -- --check` | Passed with Rust 1.97.1 | Invoked as `cargo +1.97.1 fmt --all -- --check`; the default toolchain is older than the workspace MSRV. |
+| `cargo check -p photag-shell --locked` | Passed with Rust 1.97.1 | Invoked as `cargo +1.97.1 check -p photag-shell --locked`, with `CARGO_INCREMENTAL=1` and `CARGO_BUILD_JOBS=2`; shell dependency graph compiled after adding the preview crate to workspace and lockfile. |
+| Default-toolchain `cargo check -p photag-shell --locked` | Blocked before compilation | Active rustc 1.94.1 is below workspace MSRV 1.95. |
+| Plugin/workspace tests | Not run | Reserved for the user's second-round concentrated debugging as directed by `AGENTS.md`. |
+| Windows appearance and media UI | Unverified | Linux/host compilation does not validate HWND effects, Windows shell behavior, real media decoding, or visual parity. |
+
+This pass adds a Cordis image preview service and GPUI surface, wires Gallery
+Preview/Enter to selected images, applies saved accent state, adds Windows
+appearance APIs and shell HWND integration, and persists navigation
+folder/path changes. Zoom controls currently update preview state but do not
+scale the rendered image. AI engine code exists in an unregistered crate draft;
+its new ONNX/HTTP dependencies are not in the locked workspace and no runtime
+integration is claimed.
+
+## Parallel feature migration pass (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo fmt --all -- --check` | Passed with Rust 1.97.1 | Invoked as `cargo +1.97.1 fmt --all -- --check` after formatting all workspace Rust sources. |
+| `cargo check -p photag-shell --locked` | Passed with Rust 1.97.1 | Invoked as `cargo +1.97.1 check -p photag-shell --locked`, `CARGO_INCREMENTAL=1`, `CARGO_BUILD_JOBS=2`; includes the registered history, media-playback, and drag-drop crates and Gallery bulk actions/settings key capture. |
+| Plugin/workspace tests | Not run | Reserved for the user's second-round concentrated debugging as directed by `AGENTS.md`. |
+| Windows runtime behavior | Unverified | OLE drag-out, playback process behavior, native dialogs, visual parity, and filesystem interactions still need real Windows validation. |
+
+This pass adds source-derived filter-driven bulk actions, a persisted settings
+open-key capture control, a Cordis undo/redo handler service, an FFmpeg video
+playback service/view, and a Windows CF_HDROP drag-out service. History mutation
+callers and keyboard dispatch, the configured open-key consumer, Gallery video
+handoff, and the Gallery drag gesture remain unwired. Audio output is not
+migrated. The AI and updater crate drafts remain outside the workspace because
+their new external dependencies are not represented in the pinned lockfile;
+they are not shell features yet.
+
 ## Session restore migration pass (2026-10-12)
 
 | Check | Result | Notes |

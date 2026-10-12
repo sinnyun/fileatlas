@@ -238,6 +238,13 @@ impl SidebarView {
     }
 
     fn select_folder(&self, folder_id: Option<i64>, cx: &mut Context<Self>) {
+        if let Ok(mut session) = self.session.snapshot() {
+            session.selected_folder_id = folder_id;
+            session.selected_path = None;
+            if let Err(error) = self.session.replace(session) {
+                eprintln!("folder selection session save failed: {error}");
+            }
+        }
         let cordis = self.cordis.clone();
         cx.spawn(async move |_, _| {
             if let Err(error) = cordis
@@ -277,6 +284,13 @@ impl SidebarView {
     }
 
     fn select_path(&self, path: String, cx: &mut Context<Self>) {
+        if let Ok(mut session) = self.session.snapshot() {
+            session.selected_folder_id = None;
+            session.selected_path = Some(path.clone());
+            if let Err(error) = self.session.replace(session) {
+                eprintln!("path selection session save failed: {error}");
+            }
+        }
         let cordis = self.cordis.clone();
         cx.spawn(async move |_, _| {
             if let Err(error) = cordis

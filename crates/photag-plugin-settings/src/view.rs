@@ -24,10 +24,12 @@ pub(super) fn settings(service: Arc<SettingsService>) -> UiViewContribution {
         "workspace.settings",
         0,
         move |_, app| {
-            app.new(|_| SettingsView {
+            app.new(|cx| SettingsView {
                 service: Arc::clone(&service),
                 tab: Tab::Appearance,
                 error: None,
+                capturing_open_key: false,
+                focus_handle: cx.focus_handle(),
             })
             .into()
         },
@@ -37,11 +39,75 @@ struct SettingsView {
     service: Arc<SettingsService>,
     tab: Tab,
     error: Option<String>,
+    capturing_open_key: bool,
+    focus_handle: FocusHandle,
 }
 impl SettingsView {
+    fn capture_open_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        if !self.capturing_open_key {
+            return;
+        }
+
+        let key = match event.keystroke.key.to_ascii_lowercase().as_str() {
+            "escape" => {
+                self.capturing_open_key = false;
+                cx.notify();
+                return;
+            }
+            "space" | " " => "Space".to_owned(),
+            "enter" => "Enter".to_owned(),
+            "tab" => "Tab".to_owned(),
+            "backspace" => "Backspace".to_owned(),
+            "delete" => "Delete".to_owned(),
+            "insert" => "Insert".to_owned(),
+            "home" => "Home".to_owned(),
+            "end" => "End".to_owned(),
+            "pageup" => "PageUp".to_owned(),
+            "pagedown" => "PageDown".to_owned(),
+            "left" => "ArrowLeft".to_owned(),
+            "right" => "ArrowRight".to_owned(),
+            "up" => "ArrowUp".to_owned(),
+            "down" => "ArrowDown".to_owned(),
+            key if key.len() == 1 && key.as_bytes()[0].is_ascii_alphanumeric() => {
+                key.to_ascii_uppercase()
+            }
+            key if key.len() >= 2 && key.starts_with('f') && key[1..].parse::<u8>().is_ok() => {
+                key.to_ascii_uppercase()
+            }
+            _ => {
+                self.error = Some("That key cannot be saved as a PhoTag shortcut.".into());
+                self.capturing_open_key = false;
+                cx.notify();
+                return;
+            }
+        };
+
+        self.edit(|settings| settings.open_key = key.clone(), cx);
+        self.capturing_open_key = false;
+        cx.notify();
+    }
+
+    fn open_key_capture_button(&self, cx: &mut Context<Self>) -> Button {
+        Button::new("settings-open-key-capture")
+            .label(if self.capturing_open_key {
+                "Press a key… (Escape cancels)".to_owned()
+            } else {
+                "Change key".to_owned()
+            })
+            .on_click(cx.listener(|this, _, window, cx| {
+                this.capturing_open_key = !this.capturing_open_key;
+                this.error = None;
+                window.focus(&this.focus_handle, cx);
+                cx.notify();
+            }))
+    }
+
     fn edit(&mut self, f: impl Fn(&mut Settings), cx: &mut Context<Self>) {
         match self.service.update(f) {
-            Ok(_) => self.error = None,
+            Ok(settings) => {
+                photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+                self.error = None;
+            }
             Err(e) => self.error = Some(e.to_string()),
         }
         cx.notify();
@@ -230,7 +296,14 @@ impl SettingsView {
                     ));
                 }
                 b = b
-                    .child(div().child(format!("Open selected media: {}", s.open_key)))
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap_2()
+                            .child(format!("Open selected media: {}", s.open_key))
+                            .child(self.open_key_capture_button(cx)),
+                    )
                     .child(div().child(
                         "Ratings 0–5 use number-row keys; preview stars set rating by mouse.",
                     ));
@@ -244,7 +317,7 @@ impl SettingsView {
                         .unwrap_or_else(|| "None".into());
                     b = b.child(div().child(format!("{key}: {val}")));
                 }
-                b=b.child(div().child("Key capture and tag picker need tag tree and keybinding integration; stored assignments are preserved."));
+                b=b.child(div().child("Tag hotkey editing needs the navigation tag picker and hotkey dispatch integration."));
             }
             Tab::Tags => {
                 b = b.child(self.section("Global search scope"));
@@ -328,6 +401,8 @@ impl Render for SettingsView {
             .p_3()
             .bg(rgb(0x20232b))
             .text_color(rgb(0xe7e9ee))
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(|this, event, _, cx| this.capture_open_key(event, cx)))
             .child(div().text_lg().font_semibold().child("Settings"))
             .child(self.tabs(cx));
         match self.service.snapshot() {

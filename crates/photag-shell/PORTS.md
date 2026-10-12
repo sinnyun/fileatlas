@@ -4,7 +4,7 @@
 
 ## Current runtime dependency order
 
-Database → Gallery; Database → Thumbnails → Indexing → Watcher; Navigation depends on Database/Indexing and optionally Watcher; Tagging depends on Database. Preserve service availability before dependent plugin startup.
+Database → Preview → Gallery; Database → FileOperations → DragDrop → Gallery; Database → Thumbnails → Indexing → Watcher; Navigation depends on Database/Indexing and optionally Watcher; Tagging depends on Database; History starts after Database, FileOperations, and Tagging. MediaPlayback is independent. Preserve service availability before dependent plugin startup. Preview is started with Gallery and its UI opens selected images from the gallery; media playback and drag-drop services are registered but their Gallery gestures are not yet connected.
 
 ## Boundaries
 

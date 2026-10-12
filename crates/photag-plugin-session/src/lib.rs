@@ -101,7 +101,7 @@ impl Plugin for SessionPlugin {
             Some(path) => SessionService::open_at(path.clone()),
             None => SessionService::open_default(),
         });
-        context
+        let _publication = context
             .provide(service)
             .map_err(|error| SessionPluginError::Publish(error.to_string()))?;
         Ok(())

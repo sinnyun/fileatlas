@@ -7,6 +7,16 @@ use crate::selection::{GalleryKey, Modifiers as SelectionModifiers, SelectionEff
 
 impl GalleryView {
     pub(super) fn handle_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        if event.keystroke.key.eq_ignore_ascii_case("d")
+            && event.keystroke.modifiers.control
+            && event.keystroke.modifiers.shift
+        {
+            self.bulk_action = Some(super::BulkActionKind::Delete);
+            self.bulk_source = super::BulkActionSource::WholeLibrary;
+            self.confirm_bulk_action = false;
+            cx.notify();
+            return;
+        }
         let key = match event.keystroke.key.as_str() {
             "left" => GalleryKey::Left,
             "right" => GalleryKey::Right,
@@ -50,7 +60,7 @@ impl GalleryView {
                 }
             }
             SelectionEffect::ConfirmDelete { .. } => self.delete_selected(cx),
-            SelectionEffect::OpenPreview { .. } => self.open_selected(false, cx),
+            SelectionEffect::OpenPreview { .. } => self.preview_selected(cx),
             SelectionEffect::None | SelectionEffect::ScrollTo { .. } => {}
         }
         cx.notify();

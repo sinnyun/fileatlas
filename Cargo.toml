@@ -15,6 +15,10 @@ members = [
     "crates/photag-plugin-session",
     "crates/photag-plugin-metadata-export",
     "crates/photag-plugin-file-operations",
+    "crates/photag-plugin-preview",
+    "crates/photag-plugin-history",
+    "crates/photag-plugin-media-playback",
+    "crates/photag-plugin-drag-drop",
 ]
 default-members = ["crates/photag-shell"]
 
