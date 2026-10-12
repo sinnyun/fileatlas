@@ -10,9 +10,9 @@ use std::path::Path;
 pub fn write_metadata(photo_path: &str, tag_paths: &[String]) -> std::io::Result<()> {
     let path = Path::new(photo_path);
     // Snapshot the original times so we can restore them after the write.
-    let original_times = std::fs::metadata(path).ok().map(|m| {
-        (m.accessed().ok(), m.modified().ok())
-    });
+    let original_times = std::fs::metadata(path)
+        .ok()
+        .map(|m| (m.accessed().ok(), m.modified().ok()));
 
     let ext = path
         .extension()
@@ -28,11 +28,7 @@ pub fn write_metadata(photo_path: &str, tag_paths: &[String]) -> std::io::Result
     if let Some((accessed, modified)) = original_times {
         if let (Some(a), Some(m)) = (accessed, modified) {
             if let Ok(file) = std::fs::OpenOptions::new().write(true).open(path) {
-                let _ = file.set_times(
-                    std::fs::FileTimes::new()
-                        .set_accessed(a)
-                        .set_modified(m),
-                );
+                let _ = file.set_times(std::fs::FileTimes::new().set_accessed(a).set_modified(m));
             }
         }
     }
@@ -141,23 +137,41 @@ fn parse_jpeg_segments(data: &[u8]) -> Vec<Seg> {
 
         // SOS: treat everything from here to EOF as one blob
         if marker == 0xDA {
-            segs.push(Seg { marker, start: seg_start, end: data.len() });
+            segs.push(Seg {
+                marker,
+                start: seg_start,
+                end: data.len(),
+            });
             break;
         }
 
         // EOI and restart markers: 2 bytes, no length field
         if marker == 0xD9 || (0xD0..=0xD7).contains(&marker) {
-            segs.push(Seg { marker, start: seg_start, end: pos + 2 });
+            segs.push(Seg {
+                marker,
+                start: seg_start,
+                end: pos + 2,
+            });
             pos += 2;
-            if marker == 0xD9 { break; }
+            if marker == 0xD9 {
+                break;
+            }
             continue;
         }
 
         // Regular segments: 2-byte length field (includes the 2 length bytes)
-        if pos + 3 >= data.len() { break; }
+        if pos + 3 >= data.len() {
+            break;
+        }
         let seg_len = u16::from_be_bytes([data[pos + 2], data[pos + 3]]) as usize;
-        if seg_len < 2 || pos + 2 + seg_len > data.len() { break; }
-        segs.push(Seg { marker, start: seg_start, end: pos + 2 + seg_len });
+        if seg_len < 2 || pos + 2 + seg_len > data.len() {
+            break;
+        }
+        segs.push(Seg {
+            marker,
+            start: seg_start,
+            end: pos + 2 + seg_len,
+        });
         pos += 2 + seg_len;
     }
 
@@ -195,7 +209,9 @@ fn build_iptc_keywords(tag_paths: &[String]) -> Vec<u8> {
     let mut iptc = Vec::new();
     for fp in tag_paths {
         let keyword = fp.rsplit('>').next().unwrap_or(fp.as_str()).trim();
-        if keyword.is_empty() { continue; }
+        if keyword.is_empty() {
+            continue;
+        }
         let kw = keyword.as_bytes();
         iptc.push(0x1C); // tag marker
         iptc.push(0x02); // record 2

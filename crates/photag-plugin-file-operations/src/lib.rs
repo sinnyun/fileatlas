@@ -2,14 +2,14 @@
 //! DB follow-through, cross-volume moves, and Recycle Bin deletion.
 
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 #[cfg(any(target_os = "windows", target_os = "macos"))]
 use std::process::Command;
+use std::sync::Arc;
 
 use cordis::{Context, Plugin, Routing, Service};
 use photag_contracts::MediaIndexChanged;
-use photag_plugin_database::db::queries::{self, Folder, MediaItem};
 use photag_plugin_database::DatabaseService;
+use photag_plugin_database::db::queries::{self, Folder, MediaItem};
 
 pub struct FileOperationsService {
     database: Arc<DatabaseService>,
@@ -32,10 +32,53 @@ impl FileOperationsService {
     ) -> Result<u64, FileOperationError> {
         let service = Arc::clone(self);
         Ok(tokio::task::spawn_blocking(move || {
-            let item = service.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
+            let item = service
+                .media(media_id)?
+                .ok_or(FileOperationError::MissingMedia(media_id))?;
             Ok::<_, FileOperationError>(std::fs::copy(item.full_path, destination)?)
         })
         .await??)
+    }
+
+    /// Copy many items into a chosen directory. The source PhoTag bulk-copy
+    /// action leaves indexing of in-library destinations to the watcher.
+    pub async fn bulk_copy_to_folder(
+        self: &Arc<Self>,
+        media_ids: Vec<i64>,
+        destination_dir: PathBuf,
+    ) -> Result<Vec<BulkCopyOutcome>, FileOperationError> {
+        let service = Arc::clone(self);
+        tokio::task::spawn_blocking(move || {
+            media_ids
+                .into_iter()
+                .map(|media_id| {
+                    let result = (|| {
+                        let item = service
+                            .media(media_id)?
+                            .ok_or(FileOperationError::MissingMedia(media_id))?;
+                        std::fs::copy(
+                            &item.full_path,
+                            destination_dir.join(&item.filename),
+                        )?;
+                        Ok::<_, FileOperationError>(())
+                    })();
+                    match result {
+                        Ok(()) => BulkCopyOutcome {
+                            media_id,
+                            copied: true,
+                            error: None,
+                        },
+                        Err(error) => BulkCopyOutcome {
+                            media_id,
+                            copied: false,
+                            error: Some(error.to_string()),
+                        },
+                    }
+                })
+                .collect()
+        })
+        .await
+        .map_err(FileOperationError::from)
     }
 
     /// Move a file to an arbitrary save-dialog destination. Like PhoTag, an
@@ -46,10 +89,9 @@ impl FileOperationsService {
         destination: PathBuf,
     ) -> Result<(), FileOperationError> {
         let service = Arc::clone(self);
-        let changed = tokio::task::spawn_blocking(move || {
-            service.move_to_blocking(media_id, destination)
-        })
-        .await??;
+        let changed =
+            tokio::task::spawn_blocking(move || service.move_to_blocking(media_id, destination))
+                .await??;
         if changed {
             self.emit_index_changed().await?;
         }
@@ -87,11 +129,24 @@ impl FileOperationsService {
             media_ids
                 .into_iter()
                 .map(|media_id| {
-                    let result = service.move_into_folder_blocking(media_id, destination_dir.clone());
+                    let result =
+                        service.move_into_folder_blocking(media_id, destination_dir.clone());
                     match result {
-                        Ok(true) => BulkMoveOutcome { media_id, moved: true, error: None },
-                        Ok(false) => BulkMoveOutcome { media_id, moved: false, error: None },
-                        Err(error) => BulkMoveOutcome { media_id, moved: false, error: Some(error.to_string()) },
+                        Ok(true) => BulkMoveOutcome {
+                            media_id,
+                            moved: true,
+                            error: None,
+                        },
+                        Ok(false) => BulkMoveOutcome {
+                            media_id,
+                            moved: false,
+                            error: None,
+                        },
+                        Err(error) => BulkMoveOutcome {
+                            media_id,
+                            moved: false,
+                            error: Some(error.to_string()),
+                        },
                     }
                 })
                 .collect::<Vec<_>>()
@@ -109,10 +164,9 @@ impl FileOperationsService {
         new_filename: String,
     ) -> Result<(), FileOperationError> {
         let service = Arc::clone(self);
-        let changed = tokio::task::spawn_blocking(move || {
-            service.rename_blocking(media_id, new_filename)
-        })
-        .await??;
+        let changed =
+            tokio::task::spawn_blocking(move || service.rename_blocking(media_id, new_filename))
+                .await??;
         if changed {
             self.emit_index_changed().await?;
         }
@@ -146,7 +200,8 @@ impl FileOperationsService {
         media_id: i64,
     ) -> Result<DeleteResult, FileOperationError> {
         let service = Arc::clone(self);
-        let result = tokio::task::spawn_blocking(move || service.delete_blocking(media_id)).await??;
+        let result =
+            tokio::task::spawn_blocking(move || service.delete_blocking(media_id)).await??;
         if result.removed_from_database {
             self.emit_index_changed().await?;
         }
@@ -170,17 +225,44 @@ impl FileOperationsService {
             let mut changed = false;
             for (media_id, item_result) in items {
                 let outcome = match item_result {
-                    Err(error) => BulkDeleteOutcome { media_id, removed_from_database: false, recycled: false, error: Some(error.to_string()) },
-                    Ok(None) => BulkDeleteOutcome { media_id, removed_from_database: false, recycled: false, error: None },
+                    Err(error) => BulkDeleteOutcome {
+                        media_id,
+                        removed_from_database: false,
+                        recycled: false,
+                        error: Some(error.to_string()),
+                    },
+                    Ok(None) => BulkDeleteOutcome {
+                        media_id,
+                        removed_from_database: false,
+                        recycled: false,
+                        error: None,
+                    },
                     Ok(Some(item)) => {
-                        let recycle_error = trash::delete(&item.full_path).err().map(|error| error.to_string());
-                        if let Some(path) = &item.thumb_path { std::fs::remove_file(path).ok(); }
-                        match service.database.with_writer(|connection| queries::delete_media(connection, media_id)) {
+                        let recycle_error = trash::delete(&item.full_path)
+                            .err()
+                            .map(|error| error.to_string());
+                        if let Some(path) = &item.thumb_path {
+                            std::fs::remove_file(path).ok();
+                        }
+                        match service
+                            .database
+                            .with_writer(|connection| queries::delete_media(connection, media_id))
+                        {
                             Ok(()) => {
                                 changed = true;
-                                BulkDeleteOutcome { media_id, removed_from_database: true, recycled: recycle_error.is_none(), error: recycle_error }
+                                BulkDeleteOutcome {
+                                    media_id,
+                                    removed_from_database: true,
+                                    recycled: recycle_error.is_none(),
+                                    error: recycle_error,
+                                }
                             }
-                            Err(error) => BulkDeleteOutcome { media_id, removed_from_database: false, recycled: recycle_error.is_none(), error: Some(error.to_string()) },
+                            Err(error) => BulkDeleteOutcome {
+                                media_id,
+                                removed_from_database: false,
+                                recycled: recycle_error.is_none(),
+                                error: Some(error.to_string()),
+                            },
                         }
                     }
                 };
@@ -195,14 +277,14 @@ impl FileOperationsService {
         Ok(outcomes.0)
     }
 
-    pub async fn open_external(
-        self: &Arc<Self>,
-        media_id: i64,
-    ) -> Result<(), FileOperationError> {
+    pub async fn open_external(self: &Arc<Self>, media_id: i64) -> Result<(), FileOperationError> {
         let service = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
-            let item = service.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
-            open::that(item.full_path).map_err(|error| FileOperationError::Open(error.to_string()))?;
+            let item = service
+                .media(media_id)?
+                .ok_or(FileOperationError::MissingMedia(media_id))?;
+            open::that(item.full_path)
+                .map_err(|error| FileOperationError::Open(error.to_string()))?;
             Ok(())
         })
         .await??;
@@ -215,7 +297,9 @@ impl FileOperationsService {
     ) -> Result<(), FileOperationError> {
         let service = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
-            let item = service.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
+            let item = service
+                .media(media_id)?
+                .ok_or(FileOperationError::MissingMedia(media_id))?;
             reveal_path(&item.full_path)
         })
         .await??;
@@ -227,7 +311,9 @@ impl FileOperationsService {
         media_id: i64,
         destination: PathBuf,
     ) -> Result<bool, FileOperationError> {
-        let item = self.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
+        let item = self
+            .media(media_id)?
+            .ok_or(FileOperationError::MissingMedia(media_id))?;
         if !move_file(&item.full_path, &destination) {
             return Ok(false);
         }
@@ -252,7 +338,9 @@ impl FileOperationsService {
         media_id: i64,
         destination_dir: PathBuf,
     ) -> Result<bool, FileOperationError> {
-        let item = self.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
+        let item = self
+            .media(media_id)?
+            .ok_or(FileOperationError::MissingMedia(media_id))?;
         let destination = destination_dir.join(&item.filename);
         if destination.exists() {
             return Ok(false);
@@ -277,7 +365,9 @@ impl FileOperationsService {
         if new_filename.is_empty() {
             return Ok(false);
         }
-        let item = self.media(media_id)?.ok_or(FileOperationError::MissingMedia(media_id))?;
+        let item = self
+            .media(media_id)?
+            .ok_or(FileOperationError::MissingMedia(media_id))?;
         if new_filename == item.filename {
             return Ok(false);
         }
@@ -300,7 +390,9 @@ impl FileOperationsService {
         let Some(item) = self.media(media_id)? else {
             return Ok(DeleteResult::not_found());
         };
-        let recycle_error = trash::delete(&item.full_path).err().map(|error| error.to_string());
+        let recycle_error = trash::delete(&item.full_path)
+            .err()
+            .map(|error| error.to_string());
         if let Some(path) = &item.thumb_path {
             std::fs::remove_file(path).ok();
         }
@@ -320,9 +412,7 @@ impl FileOperationsService {
     }
 
     fn folder_for_path(&self, path: &str) -> Result<Option<i64>, FileOperationError> {
-        let folders = self
-            .database
-            .with_reader(queries::list_folders)?;
+        let folders = self.database.with_reader(queries::list_folders)?;
         Ok(registered_folder_for_path(&folders, path))
     }
 
@@ -366,7 +456,9 @@ fn reveal_path(path: &str) -> Result<(), FileOperationError> {
     }
     #[cfg(target_os = "linux")]
     {
-        let parent = Path::new(path).parent().ok_or(FileOperationError::InvalidParent)?;
+        let parent = Path::new(path)
+            .parent()
+            .ok_or(FileOperationError::InvalidParent)?;
         open::that(parent)?;
     }
     #[cfg(target_os = "macos")]
@@ -374,6 +466,13 @@ fn reveal_path(path: &str) -> Result<(), FileOperationError> {
         Command::new("open").args(["-R", path]).spawn()?;
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BulkCopyOutcome {
+    pub media_id: i64,
+    pub copied: bool,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -450,7 +549,10 @@ impl Plugin for FileOperationsPlugin {
             .try_service::<DatabaseService>()
             .map_err(|error| FileOperationsPluginError::Dependency(error.to_string()))?;
         context
-            .provide(Arc::new(FileOperationsService::new(database, context.clone())))
+            .provide(Arc::new(FileOperationsService::new(
+                database,
+                context.clone(),
+            )))
             .map_err(|error| FileOperationsPluginError::Publish(error.to_string()))?;
         Ok(())
     }

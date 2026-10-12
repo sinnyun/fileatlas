@@ -8,8 +8,9 @@ The active interactive tool environment has no `rustc`, `cargo`, or `rustfmt`
 on `PATH`. After publication, GitHub Actions on commit
 `0940e41024d021f7883be387f9400469d20bff7d` completed the base Shell check
 successfully. The settings/session, metadata-export, file-operation, and XMP
-writeback changes generated in this pass have not been validated by CI.
-Earlier validation below records prior runs and does not validate these changes.
+writeback changes generated in this pass have not passed CI: the formatting
+step failed and therefore skipped compilation. Earlier validation below records
+prior runs and does not validate these changes.
 
 | Check | Result | Notes |
 |---|---|---|
@@ -18,6 +19,7 @@ Earlier validation below records prior runs and does not validate these changes.
 | Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
+| GitHub Actions: file-operation/XMP migration check | Failed at formatting step | Commit `4f893eb2dbce0768eb4ade07aaca4a539fb04313`; rustfmt reported formatting in file operations, tagging, and reused XMP source, plus three settings field attributes. Base shell compilation was skipped. Corrections are being applied from the logged rustfmt diff; the next push will rerun formatting and the base shell compile. |
 | `git diff --check` | Passed | No whitespace errors in the current uncommitted migration changes. |
 | Cargo lock dependency-reference audit | Passed | TOML parsed; workspace dependency references resolve uniquely in the edited lockfile. |
 | Prior GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; validates only that earlier tree. |

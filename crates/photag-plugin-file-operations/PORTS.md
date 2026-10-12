@@ -1,6 +1,6 @@
 # File operations plugin ports / 文件操作对接
 
-Status: source-compatible single-item and bulk move/delete, copy, rename,
+Status: source-compatible single-item and bulk copy/move/delete, rename,
 create-folder, Recycle Bin delete, open, reveal, and database follow-through
 are available. PhoTag's destination dialogs, bulk-action console, preview
 advance, selection updates, and success/error UI are not connected. This
@@ -19,6 +19,10 @@ migration slice has not been compiled or tested in this cloud pass.
 
 - `copy_to(media_id, destination)` copies to the caller-selected full path and
   leaves the source row untouched.
+- `bulk_copy_to_folder(media_ids, destination_dir)` copies each indexed file
+  with its current filename, continues after per-item errors, and returns one
+  `BulkCopyOutcome` per input ID. It does not alter rows; the folder watcher
+  discovers successful copies under registered roots.
 - `move_to(media_id, destination)` uses rename then copy/delete fallback for
   cross-volume moves. It updates the row when the destination string begins
   with a registered root, otherwise removes the row, matching PhoTag's logic.

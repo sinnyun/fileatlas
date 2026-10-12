@@ -73,9 +73,9 @@ impl TaggingService {
         target_id: i64,
         reparent_children: bool,
     ) -> Result<(), TaggingError> {
-        let affected = self.database.with_reader(|connection| {
-            queries::get_media_ids_with_tag(connection, source_id)
-        })?;
+        let affected = self
+            .database
+            .with_reader(|connection| queries::get_media_ids_with_tag(connection, source_id))?;
         self.database.with_writer(|connection| {
             queries::merge_tag(connection, source_id, target_id, reparent_children)
         })?;
@@ -90,9 +90,9 @@ impl TaggingService {
         source_id: i64,
         drop_position: queries::TagDropPos,
     ) -> Result<Vec<i64>, TaggingError> {
-        let affected = self.database.with_writer(|connection| {
-            queries::move_tag(connection, source_id, drop_position)
-        })?;
+        let affected = self
+            .database
+            .with_writer(|connection| queries::move_tag(connection, source_id, drop_position))?;
         self.schedule_xmp_sync(&affected);
         Ok(affected)
     }
@@ -103,9 +103,10 @@ impl TaggingService {
         if media_ids.is_empty() {
             return;
         }
-        let Ok(entries) = self.database.with_reader(|connection| {
-            queries::get_paths_and_current_tags(connection, media_ids)
-        }) else {
+        let Ok(entries) = self
+            .database
+            .with_reader(|connection| queries::get_paths_and_current_tags(connection, media_ids))
+        else {
             return;
         };
         if entries.is_empty() {

@@ -142,9 +142,12 @@ impl TagMergeChildren {
 /// so a fresh launch behaves like "search everywhere".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SearchScopes {
-    #[serde(default = "default_true")] pub filenames: bool,
-    #[serde(default = "default_true")] pub paths: bool,
-    #[serde(default = "default_true")] pub tags: bool,
+    #[serde(default = "default_true")]
+    pub filenames: bool,
+    #[serde(default = "default_true")]
+    pub paths: bool,
+    #[serde(default = "default_true")]
+    pub tags: bool,
 }
 
 impl Default for SearchScopes {
@@ -219,26 +222,41 @@ pub struct Settings {
 /// the window is resized between launches.
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq)]
 pub struct ToolbarPosition {
-    #[serde(default)] pub offset_x: f32,
-    #[serde(default)] pub offset_y: f32,
-    #[serde(default)] pub locked: bool,
+    #[serde(default)]
+    pub offset_x: f32,
+    #[serde(default)]
+    pub offset_y: f32,
+    #[serde(default)]
+    pub locked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolbarSettings {
-    #[serde(default = "default_true")] pub zoom_mode_button: bool,
-    #[serde(default = "default_true")] pub zoom_reset_button: bool,
-    #[serde(default = "default_true")] pub zoom_presets: bool,
-    #[serde(default = "default_true")] pub rotate_buttons: bool,
-    #[serde(default = "default_true")] pub flip_buttons: bool,
-    #[serde(default = "default_true")] pub tags_button: bool,
-    #[serde(default = "default_true")] pub delete_button: bool,
-    #[serde(default = "default_true")] pub copy_button: bool,
-    #[serde(default = "default_true")] pub move_button: bool,
+    #[serde(default = "default_true")]
+    pub zoom_mode_button: bool,
+    #[serde(default = "default_true")]
+    pub zoom_reset_button: bool,
+    #[serde(default = "default_true")]
+    pub zoom_presets: bool,
+    #[serde(default = "default_true")]
+    pub rotate_buttons: bool,
+    #[serde(default = "default_true")]
+    pub flip_buttons: bool,
+    #[serde(default = "default_true")]
+    pub tags_button: bool,
+    #[serde(default = "default_true")]
+    pub delete_button: bool,
+    #[serde(default = "default_true")]
+    pub copy_button: bool,
+    #[serde(default = "default_true")]
+    pub move_button: bool,
     /// Filmstrip toggle button (shown/hidden in the floating preview toolbar).
-    #[serde(default = "default_true")] pub filmstrip_toggle: bool,
-    #[serde(default = "default_true")] pub explorer_button: bool,
-    #[serde(default = "default_true")] pub open_external_button: bool,
+    #[serde(default = "default_true")]
+    pub filmstrip_toggle: bool,
+    #[serde(default = "default_true")]
+    pub explorer_button: bool,
+    #[serde(default = "default_true")]
+    pub open_external_button: bool,
 }
 
 impl Default for Settings {
