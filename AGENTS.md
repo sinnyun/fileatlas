@@ -37,11 +37,12 @@ explicitly incomplete.
   all eight source sort orders, inclusive 0–5 rating-range controls,
   include/exclude/clear extension filters, filename/path/tag search scopes,
   typed date filters and clear-all filters, and reloads on Cordis
-  folder/tag/path/index events.
+  folder/tag/path/index events. A selected-item details panel shows indexed
+  path, type, file size, dimensions, capture date, rating and tags.
   Automatic viewport paging, scrolling to
   keyboard targets, Enter/preview and Delete confirmation, date grouping,
   rubber-band selection, native date-picker controls, per-filter source pills,
-  and settings persistence are incomplete.
+  tag filter pills and settings persistence are incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, accepts folder paths, coordinates folder add/rescan/
   remove, scanner cancellation and watcher registration, and emits Cordis

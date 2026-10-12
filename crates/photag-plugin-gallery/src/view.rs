@@ -3,6 +3,7 @@
 mod card;
 mod controls;
 mod filter_actions;
+mod keyboard;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -16,12 +17,12 @@ use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
 use photag_ui_bridge::UiViewContribution;
 
-use card::render_media_card;
+use card::{render_media_card, render_media_details};
 
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
     filter::{GalleryFilter, MediaTypeFilter, SearchScope, parse_date_input},
-    selection::{GalleryKey, GallerySelection, Modifiers as SelectionModifiers, SelectionEffect},
+    selection::{GallerySelection, Modifiers as SelectionModifiers},
 };
 
 pub(super) fn gallery(
@@ -239,53 +240,6 @@ impl GalleryView {
         cx.notify();
     }
 
-    fn handle_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        let key = match event.keystroke.key.as_str() {
-            "left" => GalleryKey::Left,
-            "right" => GalleryKey::Right,
-            "up" => GalleryKey::Up,
-            "down" => GalleryKey::Down,
-            "home" => GalleryKey::Home,
-            "end" => GalleryKey::End,
-            "escape" => GalleryKey::Escape,
-            "a" if event.keystroke.modifiers.control => GalleryKey::SelectAll,
-            "0" => GalleryKey::Rating(0),
-            "1" => GalleryKey::Rating(1),
-            "2" => GalleryKey::Rating(2),
-            "3" => GalleryKey::Rating(3),
-            "4" => GalleryKey::Rating(4),
-            "5" => GalleryKey::Rating(5),
-            _ => return,
-        };
-        let skeletons = self
-            .snapshot
-            .as_ref()
-            .map(|snapshot| snapshot.skeletons.as_slice())
-            .unwrap_or_default();
-        let effect = self.selection.handle_key(
-            skeletons,
-            6,
-            key,
-            SelectionModifiers {
-                ctrl: event.keystroke.modifiers.control,
-                alt: event.keystroke.modifiers.alt,
-                shift: event.keystroke.modifiers.shift,
-            },
-        );
-        match effect {
-            SelectionEffect::ApplyRating { media_ids, rating } => {
-                if let Err(error) = self.service.apply_rating(&media_ids, rating) {
-                    self.snapshot = Err(error.to_string());
-                } else {
-                    self.reload();
-                }
-            }
-            SelectionEffect::None | SelectionEffect::ScrollTo { .. } => {}
-            SelectionEffect::ConfirmDelete { .. } | SelectionEffect::OpenPreview { .. } => {}
-        }
-        cx.notify();
-    }
-
     fn apply_rating(&mut self, rating: u8, cx: &mut Context<Self>) {
         match self
             .service
@@ -461,6 +415,18 @@ impl Render for GalleryView {
                                     })),
                             ),
                     );
+                }
+                if self.selection.selected_media_ids.len() == 1 {
+                    let selected_id = self.selection.selected_media_ids[0];
+                    if let Some(media) = snapshot.media.iter().find(|media| media.id == selected_id)
+                    {
+                        let tags = snapshot
+                            .media_tags
+                            .get(&selected_id)
+                            .map(Vec::as_slice)
+                            .unwrap_or_default();
+                        grid = grid.child(render_media_details(media, tags));
+                    }
                 }
                 if (snapshot.media.len() as i64) < snapshot.media_count {
                     grid = grid.child(

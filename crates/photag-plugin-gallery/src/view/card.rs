@@ -69,3 +69,53 @@ pub(super) fn render_media_card(
                 .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
         )
 }
+
+pub(super) fn render_media_details(
+    media: &photag_plugin_database::db::queries::MediaItem,
+    tags: &[photag_plugin_database::db::queries::Tag],
+) -> impl IntoElement {
+    let mut details = div()
+        .v_flex()
+        .gap_1()
+        .rounded_md()
+        .bg(rgb(0x20232b))
+        .p_3()
+        .child(
+            div()
+                .text_lg()
+                .font_semibold()
+                .child(media.filename.clone()),
+        )
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(0x9aa0ad))
+                .child(media.full_path.clone()),
+        )
+        .child(div().text_sm().child(format!(
+            "{}  ·  {} bytes  ·  ★ {}",
+            media.media_type, media.file_size, media.rating
+        )));
+    if let (Some(width), Some(height)) = (media.width, media.height) {
+        details = details.child(div().text_sm().child(format!("{width} × {height}")));
+    }
+    if let Some(timestamp) = media.date_taken {
+        if let Some(date) = chrono::DateTime::from_timestamp(timestamp, 0) {
+            details = details.child(
+                div()
+                    .text_sm()
+                    .child(format!("Captured {} UTC", date.format("%Y-%m-%d %H:%M"))),
+            );
+        }
+    }
+    if !tags.is_empty() {
+        details = details.child(div().text_sm().child(format!(
+            "Tags: {}",
+            tags.iter()
+                .map(|tag| tag.full_path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )));
+    }
+    details
+}
