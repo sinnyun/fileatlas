@@ -40,7 +40,7 @@ explicitly incomplete.
   reloads on Cordis folder/tag/path/index
   events. Automatic viewport paging, scrolling to
   keyboard targets, Enter/preview and Delete confirmation, date grouping,
-  rubber-band selection, source search scopes, date filters
+  rubber-band selection, source search scopes, native date-picker controls
   and settings persistence are incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, accepts folder paths, coordinates folder add/rescan/

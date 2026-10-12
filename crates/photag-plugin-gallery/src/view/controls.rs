@@ -2,12 +2,24 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
 
 use super::GalleryView;
 use crate::filter::{GalleryFilter, MediaTypeFilter};
+
+pub(super) fn date_row(from: &Entity<InputState>, to: &Entity<InputState>) -> Div {
+    div()
+        .h_flex()
+        .items_center()
+        .gap_1()
+        .child(div().text_sm().child("Date"))
+        .child(Input::new(from).w(px(150.0)))
+        .child(div().text_sm().child("to"))
+        .child(Input::new(to).w(px(150.0)))
+}
 
 pub(super) fn media_type_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {
     div().h_flex().gap_1().children([

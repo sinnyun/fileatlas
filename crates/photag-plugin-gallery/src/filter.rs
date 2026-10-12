@@ -35,6 +35,17 @@ pub struct SearchScopes {
     pub tags: bool,
 }
 
+/// Parse a date edit; `None` means temporarily invalid, while `Some(None)` clears it.
+pub fn parse_date_input(value: &str) -> Option<Option<NaiveDate>> {
+    if value.trim().is_empty() {
+        Some(None)
+    } else {
+        NaiveDate::parse_from_str(value.trim(), "%Y-%m-%d")
+            .ok()
+            .map(Some)
+    }
+}
+
 impl Default for SearchScopes {
     fn default() -> Self {
         Self {
@@ -258,5 +269,16 @@ mod tests {
         filter.cycle_extension("gif");
         filter.clear_extensions();
         assert!(filter.extensions.is_empty() && filter.excluded_extensions.is_empty());
+    }
+
+    #[test]
+    fn date_input_distinguishes_valid_empty_and_partial_values() {
+        assert_eq!(
+            parse_date_input("2025-03-04"),
+            Some(Some(NaiveDate::from_ymd_opt(2025, 3, 4).unwrap()))
+        );
+        assert_eq!(parse_date_input(""), Some(None));
+        assert_eq!(parse_date_input("2025-03-"), None);
+        assert_eq!(parse_date_input("not a date"), None);
     }
 }

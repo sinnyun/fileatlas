@@ -19,7 +19,7 @@ use card::render_media_card;
 
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
-    filter::{GalleryFilter, MediaTypeFilter},
+    filter::{GalleryFilter, MediaTypeFilter, parse_date_input},
     selection::{GalleryKey, GallerySelection, Modifiers as SelectionModifiers, SelectionEffect},
 };
 
@@ -42,6 +42,9 @@ pub(super) fn gallery(
             let view_index_revision = Arc::clone(&index_revision);
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
+            let date_from =
+                app.new(|cx| InputState::new(window, cx).placeholder("From YYYY-MM-DD"));
+            let date_to = app.new(|cx| InputState::new(window, cx).placeholder("To YYYY-MM-DD"));
             app.new(|cx| {
                 GalleryView::new(
                     view_service,
@@ -50,6 +53,8 @@ pub(super) fn gallery(
                     view_path_selection,
                     view_index_revision,
                     search,
+                    date_from,
+                    date_to,
                     cx,
                 )
             })
@@ -65,6 +70,8 @@ struct GalleryView {
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
     search: Entity<InputState>,
+    date_from: Entity<InputState>,
+    date_to: Entity<InputState>,
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
@@ -80,17 +87,41 @@ impl GalleryView {
         selected_path: Arc<SelectedPath>,
         index_revision: Arc<IndexRevision>,
         search: Entity<InputState>,
+        date_from: Entity<InputState>,
+        date_to: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
         let filter = GalleryFilter::default();
         let focus_handle = cx.focus_handle();
-        let _subscriptions = vec![cx.subscribe(&search, |this, _, event, cx| {
-            if matches!(event, InputEvent::Change) {
-                this.filter.search = this.search.read(cx).value().to_string();
-                this.reload();
-                cx.notify();
-            }
-        })];
+        let _subscriptions = vec![
+            cx.subscribe(&search, |this, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    this.filter.search = this.search.read(cx).value().to_string();
+                    this.reload();
+                    cx.notify();
+                }
+            }),
+            cx.subscribe(&date_from, |this, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let input = this.date_from.read(cx).value().to_string();
+                    if let Some(date) = parse_date_input(&input) {
+                        this.filter.date_from = date;
+                        this.reload();
+                        cx.notify();
+                    }
+                }
+            }),
+            cx.subscribe(&date_to, |this, _, event, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let input = this.date_to.read(cx).value().to_string();
+                    if let Some(date) = parse_date_input(&input) {
+                        this.filter.date_to = date;
+                        this.reload();
+                        cx.notify();
+                    }
+                }
+            }),
+        ];
         let selected = selected_folder
             .0
             .lock()
@@ -166,6 +197,8 @@ impl GalleryView {
             selected_path,
             index_revision,
             search,
+            date_from,
+            date_to,
             focus_handle,
             filter,
             selection: GallerySelection::default(),
@@ -363,6 +396,7 @@ impl Render for GalleryView {
                     .child(controls::media_type_row(&self.filter, cx))
                     .child(controls::sort_row(&self.filter, cx))
                     .child(controls::rating_row(&self.filter, cx))
+                    .child(controls::date_row(&self.date_from, &self.date_to))
                     .child(controls::extension_row(
                         &self.filter,
                         &snapshot.available_extensions,
