@@ -4,7 +4,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use cordis::{Context, Plugin, Service};
-use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin};
+use photag_ui_bridge::{
+    ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
+};
 
 pub mod settings;
 pub use settings::*;
@@ -136,12 +138,39 @@ impl Plugin for SettingsPlugin {
             &context,
             "photag.settings",
             [
-                UiContribution::new("settings/layout", ContributionKind::Layout { label: "Settings".into(), order: 90 }),
-                UiContribution::new("settings/slot", ContributionKind::Slot { label: "workspace.settings".into(), order: 0 }),
-                UiContribution::new("settings/panel", ContributionKind::Panel { label: "Settings".into(), slot: "workspace.settings".into(), order: 0 }),
-                UiContribution::new("settings/view", ContributionKind::Widget { label: "PhoTag Settings".into(), slot: "workspace.settings".into(), order: 0 }),
+                UiContribution::new(
+                    "settings/layout",
+                    ContributionKind::Layout {
+                        label: "Settings".into(),
+                        order: 90,
+                    },
+                ),
+                UiContribution::new(
+                    "settings/slot",
+                    ContributionKind::Slot {
+                        label: "workspace.settings".into(),
+                        order: 0,
+                    },
+                ),
+                UiContribution::new(
+                    "settings/panel",
+                    ContributionKind::Panel {
+                        label: "Settings".into(),
+                        slot: "workspace.settings".into(),
+                        order: 0,
+                    },
+                ),
+                UiContribution::new(
+                    "settings/view",
+                    ContributionKind::Widget {
+                        label: "PhoTag Settings".into(),
+                        slot: "workspace.settings".into(),
+                        order: 0,
+                    },
+                ),
             ],
-        ).map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
+        )
+        .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         register_views_for_plugin(&context, "photag.settings", [view::settings(service)])
             .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         Ok(())

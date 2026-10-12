@@ -53,7 +53,8 @@ pub(super) fn gallery(
             let date_from =
                 app.new(|cx| InputState::new(window, cx).placeholder("From YYYY-MM-DD"));
             let date_to = app.new(|cx| InputState::new(window, cx).placeholder("To YYYY-MM-DD"));
-            let rename_input = app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
+            let rename_input =
+                app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
             let destination_input =
                 app.new(|cx| InputState::new(window, cx).placeholder("Destination folder path"));
             app.new(|cx| {
@@ -371,7 +372,9 @@ impl GalleryView {
                         Ok(Some(media)) if media.filename == new_filename => {
                             format!("Renamed to {}.", media.filename)
                         }
-                        Ok(_) => "Rename was not applied; check the filename and collisions.".into(),
+                        Ok(_) => {
+                            "Rename was not applied; check the filename and collisions.".into()
+                        }
                         Err(error) => format!("Rename completed, but refresh failed: {error}"),
                     },
                 }
@@ -400,15 +403,13 @@ impl GalleryView {
                     Ok(outcomes) => format_bulk_outcome(
                         "Copied",
                         ids.len(),
-                        outcomes
-                            .iter()
-                            .filter(|outcome| outcome.copied)
-                            .count(),
-                        outcomes
-                            .iter()
-                            .filter_map(|outcome| {
-                                outcome.error.as_ref().map(|error| (outcome.media_id, error))
-                            }),
+                        outcomes.iter().filter(|outcome| outcome.copied).count(),
+                        outcomes.iter().filter_map(|outcome| {
+                            outcome
+                                .error
+                                .as_ref()
+                                .map(|error| (outcome.media_id, error))
+                        }),
                     ),
                 }
             },
@@ -438,7 +439,10 @@ impl GalleryView {
                         ids.len(),
                         outcomes.iter().filter(|outcome| outcome.moved).count(),
                         outcomes.iter().filter_map(|outcome| {
-                            outcome.error.as_ref().map(|error| (outcome.media_id, error))
+                            outcome
+                                .error
+                                .as_ref()
+                                .map(|error| (outcome.media_id, error))
                         }),
                     ),
                 }
@@ -451,7 +455,8 @@ impl GalleryView {
     fn delete_selected(&mut self, cx: &mut Context<Self>) {
         if !self.confirm_delete {
             self.confirm_delete = true;
-            self.operation_status = Some("Click Delete again to send selected files to Recycle Bin.".into());
+            self.operation_status =
+                Some("Click Delete again to send selected files to Recycle Bin.".into());
             cx.notify();
             return;
         }
@@ -470,7 +475,10 @@ impl GalleryView {
                             .filter(|outcome| outcome.removed_from_database)
                             .count();
                         let failures = outcomes.iter().filter_map(|outcome| {
-                            outcome.error.as_ref().map(|error| (outcome.media_id, error))
+                            outcome
+                                .error
+                                .as_ref()
+                                .map(|error| (outcome.media_id, error))
                         });
                         format_bulk_outcome("Removed", ids.len(), deleted, failures)
                     }
@@ -682,21 +690,15 @@ impl Render for GalleryView {
                         .rounded_md()
                         .bg(rgb(0x20232b))
                         .p_3()
-                        .child(
-                            div().text_sm().font_semibold().child("File actions"),
-                        );
+                        .child(div().text_sm().font_semibold().child("File actions"));
                     if self.selection.selected_media_ids.len() == 1 {
                         actions = actions.child(
                             div()
                                 .h_flex()
                                 .gap_2()
-                                .child(
-                                    Button::new("gallery-open-selected")
-                                        .label("Open")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.open_selected(false, cx)
-                                        })),
-                                )
+                                .child(Button::new("gallery-open-selected").label("Open").on_click(
+                                    cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
+                                ))
                                 .child(
                                     Button::new("gallery-reveal-selected")
                                         .label("Reveal")
@@ -713,9 +715,9 @@ impl Render for GalleryView {
                                 .child(
                                     Button::new("gallery-rename-selected")
                                         .label("Rename")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.rename_selected(cx)
-                                        })),
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| this.rename_selected(cx)),
+                                        ),
                                 ),
                         );
                     }
@@ -727,16 +729,12 @@ impl Render for GalleryView {
                             .child(
                                 Button::new("gallery-copy-selected")
                                     .label("Copy to folder")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.copy_selected(cx)
-                                    })),
+                                    .on_click(cx.listener(|this, _, _, cx| this.copy_selected(cx))),
                             )
                             .child(
                                 Button::new("gallery-move-selected")
                                     .label("Move to folder")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.move_selected(cx)
-                                    })),
+                                    .on_click(cx.listener(|this, _, _, cx| this.move_selected(cx))),
                             )
                             .child(
                                 Button::new("gallery-delete-selected")
@@ -745,9 +743,9 @@ impl Render for GalleryView {
                                     } else {
                                         "Delete selected"
                                     })
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.delete_selected(cx)
-                                    })),
+                                    .on_click(
+                                        cx.listener(|this, _, _, cx| this.delete_selected(cx)),
+                                    ),
                             ),
                     );
                     if let Some(status) = &self.operation_status {
@@ -758,12 +756,9 @@ impl Render for GalleryView {
                                 .child(status.clone()),
                         );
                     }
-                    actions = actions.child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(0x747b89))
-                            .child("Enter a destination folder path; native folder dialogs are still pending."),
-                    );
+                    actions = actions.child(div().text_xs().text_color(rgb(0x747b89)).child(
+                        "Enter a destination folder path; native folder dialogs are still pending.",
+                    ));
                     grid = grid.child(actions);
                 }
                 if self.selection.selected_media_ids.len() == 1 {

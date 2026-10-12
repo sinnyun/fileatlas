@@ -99,7 +99,9 @@ impl ExportPanel {
 impl Render for ExportPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let status = match self.service.status() {
-            Ok(MetadataExportStatus::Idle) => "Choose a JSON destination and export all indexed media metadata.".into(),
+            Ok(MetadataExportStatus::Idle) => {
+                "Choose a JSON destination and export all indexed media metadata.".into()
+            }
             Ok(MetadataExportStatus::Exporting) => "Exporting metadata…".into(),
             Ok(MetadataExportStatus::Succeeded { path, records }) => {
                 format!("Exported {records} records to {}", path.display())
@@ -129,12 +131,7 @@ impl Render for ExportPanel {
             )
             .child(div().text_xs().text_color(rgb(0x9aa0ad)).child(status));
         if let Some(message) = error {
-            panel.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(0xef7777))
-                        .child(message),
-                )
+            panel.child(div().text_xs().text_color(rgb(0xef7777)).child(message))
         } else {
             panel
         }

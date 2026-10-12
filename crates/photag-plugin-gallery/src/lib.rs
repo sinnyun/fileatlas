@@ -494,7 +494,10 @@ mod tests {
         let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
         let _database = context.provide(Arc::clone(&database)).unwrap();
         let _file_operations = context
-            .provide(Arc::new(FileOperationsService::new(database, context.clone())))
+            .provide(Arc::new(FileOperationsService::new(
+                database,
+                context.clone(),
+            )))
             .unwrap();
         let plugin = GalleryPlugin;
         let input = plugin.prepare(GalleryConfig).unwrap();

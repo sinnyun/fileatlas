@@ -184,7 +184,12 @@ pub(super) fn render_media_details(
                     }
                 }
                 Some(Err(message)) => {
-                    details = details.child(div().text_sm().text_color(rgb(0x9aa0ad)).child(message.as_str()));
+                    details = details.child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0x9aa0ad))
+                            .child(message.as_str()),
+                    );
                 }
                 None => {
                     details = details.child(

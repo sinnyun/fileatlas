@@ -18,6 +18,11 @@ and lazy field display have now passed formatting and `cargo check -p
 photag-shell --locked` in run 27. Plugin tests remain deferred; Windows runtime
 behavior, ffprobe video details and the preview info toggle remain unfinished.
 
+The navigation/settings/export and selected-file action batch was committed as
+`0a0f32d7367e311de7b84003d57c74597e435df8`. GitHub Actions run 30 stopped at
+formatting before compiling; its rustfmt output has been applied to the Rust
+sources. The formatting-correction commit is awaiting a fresh base-shell check.
+
 | Check | Result | Notes |
 |---|---|---|
 | Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |

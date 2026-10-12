@@ -29,7 +29,10 @@ pub enum MetadataExportStatus {
     #[default]
     Idle,
     Exporting,
-    Succeeded { path: PathBuf, records: usize },
+    Succeeded {
+        path: PathBuf,
+        records: usize,
+    },
     Failed(String),
 }
 
@@ -67,8 +70,10 @@ impl MetadataExportService {
 
     /// Set the path used by the lifecycle-registered export command.
     pub fn set_destination(&self, path: impl Into<PathBuf>) -> Result<(), MetadataExportError> {
-        *self.destination.lock().map_err(|_| MetadataExportError::StatePoisoned)? =
-            Some(path.into());
+        *self
+            .destination
+            .lock()
+            .map_err(|_| MetadataExportError::StatePoisoned)? = Some(path.into());
         Ok(())
     }
 
@@ -87,20 +92,20 @@ impl MetadataExportService {
             .map_err(|_| MetadataExportError::StatePoisoned)?
             .clone()
             .ok_or(MetadataExportError::DestinationMissing)?;
-        *self.status.lock().map_err(|_| MetadataExportError::StatePoisoned)? =
-            MetadataExportStatus::Exporting;
+        *self
+            .status
+            .lock()
+            .map_err(|_| MetadataExportError::StatePoisoned)? = MetadataExportStatus::Exporting;
         let service = Arc::clone(self);
         std::thread::Builder::new()
             .name("photag-metadata-export".into())
             .spawn(move || {
-                let result = service
-                    .records()
-                    .and_then(|records| {
-                        let count = records.len();
-                        let json = serde_json::to_string_pretty(&records)?;
-                        std::fs::write(&path, json)?;
-                        Ok(count)
-                    });
+                let result = service.records().and_then(|records| {
+                    let count = records.len();
+                    let json = serde_json::to_string_pretty(&records)?;
+                    std::fs::write(&path, json)?;
+                    Ok(count)
+                });
                 let status = match result {
                     Ok(records) => MetadataExportStatus::Succeeded { path, records },
                     Err(error) => MetadataExportStatus::Failed(error.to_string()),
