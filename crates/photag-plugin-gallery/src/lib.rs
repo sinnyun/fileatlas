@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 
+pub mod selection;
+
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};

@@ -14,7 +14,7 @@ capturing behavioral regression cases before each port.
 |---|---|---|---|
 | App lifecycle, dialogs, pending action dispatch, undo/redo, selection state | `src/main.rs`, `src/app.rs` | shell + app-state/history plugins | Not migrated |
 | Folder and tag navigation, tree editing, folder actions | `src/ui/sidebar.rs`, `src/db/queries.rs` | library-navigation + tagging plugins | Not migrated |
-| Virtualized gallery data window, selection, grid, month groups | `src/ui/gallery.rs`, `src/app.rs::load_media/ensure_media_window` | `photag-plugin-gallery` + GPUI shell | Data layer preserves compact ordered skeletons, 200-item rich-row window, tag batching, available extensions and folder counts. Viewport shift regression test passes and plugin registers lifecycle-owned layout/slot/widget metadata. Actual GPUI gallery rendering, selection, date grouping, drag/context interactions, thumbnails and keyboard behavior remain unmigrated. |
+| Virtualized gallery data window, selection, grid, month groups | `src/ui/gallery.rs`, `src/app.rs::load_media/ensure_media_window` | `photag-plugin-gallery` + GPUI shell | Data layer preserves compact ordered skeletons, 200-item rich-row window, tag batching, available extensions and folder counts. Viewport shift regression test passes. Keyboard selection rules for arrows/Home/End, shift ranges, Ctrl+A, ratings 0–5, Escape, Enter and Delete are migrated to a host-neutral state machine with tests. The plugin registers lifecycle-owned layout/slot/widget metadata. Actual GPUI rendering, date grouping, pointer/rubber-band selection, drag/context interactions, and dispatching host actions remain incomplete. |
 | Progressive image thumbnail decode, EXIF orientation, DCT-scaled JPEG decode, 8×8 micro-thumbnails, path-hash cache | `src/thumbs.rs` | `photag-plugin-thumbnails` | Original image pipeline copied without algorithm changes, wrapped as a Cordis service and tested for generation/cache reuse. Windows/UI integration is pending. |
 | Search, sort, date/rating/type/extension/folder filters | `src/ui/filterbar.rs`, `src/db/queries.rs` | search-filter plugin | Not migrated |
 | Image preview, progressive decoding, zoom/pan/rotate/flip, toolbar and filmstrip | `src/ui/preview.rs`, `src/thumbs.rs` | preview plugin | Not migrated |
@@ -62,7 +62,7 @@ behavioral seams during migration without dropping behavior.
 | `src/app.rs` | 1,975 | state, pending actions, undo/redo, operations | Audited inventory; not ported |
 | `src/db/queries.rs` | 1,317 | all query and domain persistence operations | Copied into database plugin and split across five modules, all below 500 lines; broad regression coverage pending |
 | `src/ui/preview.rs` | 2,748 | preview and interactions | Audited inventory; not ported |
-| `src/ui/gallery.rs` | 2,176 | gallery and interaction | Gallery data window logic partially migrated; native GPUI view and interactions are not yet ported. |
+| `src/ui/gallery.rs` | 2,176 | gallery and interaction | Gallery data window and keyboard selection rules partially migrated; native GPUI view and pointer interactions remain unported. |
 | `src/ui/sidebar.rs` | 838 | folder/tag sidebar | Audited inventory; not ported |
 | `src/ui/filterbar.rs` | 822 | search/filter/sort controls | Audited inventory; not ported |
 | `src/ui/info.rs` | 350 | metadata info panel | Audited inventory; not ported |
@@ -86,9 +86,7 @@ behavioral seams during migration without dropping behavior.
 Gallery keys: configurable open key (default Space), arrows/Home/End navigation,
 Ctrl+A select all, 0–5 ratings, F1–F9 tag hotkeys, Delete/Backspace, Ctrl+Z,
 Ctrl+Y, Ctrl+Shift+D bulk console. Preview keys: arrows, I info toggle, F2 rename,
-Delete/Backspace delete-and-advance, Escape return. Additional click/drag/context
-menu behaviors must be enumerated from the source during UI port; this list is
-not a substitute for that review.
+Delete/Backspace delete-and-advance, Escape return. Arrow/Home/End selection, Ctrl+A, ratings, Delete/Backspace and Escape/Enter selection handling are migrated as a host-neutral interaction model; GPUI key event binding and F1–F9 tag hotkeys remain pending. Additional click/drag/context menu behaviors must be enumerated from the source during UI port; this list is not a substitute for that review.
 
 ## Original persistent data contract
 
