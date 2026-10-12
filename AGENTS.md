@@ -35,10 +35,11 @@ explicitly incomplete.
   plain/Ctrl/Shift card selection, batch and keyboard 0–5 ratings, basic
   arrow/Home/End/Ctrl+A/Escape selection keys, media-type segmented controls,
   and reloads on Cordis
-  all eight source sort orders, and reloads on Cordis folder/tag/path/index
+  all eight source sort orders and inclusive 0–5 rating-range controls, and
+  reloads on Cordis folder/tag/path/index
   events. Automatic viewport paging, scrolling to
   keyboard targets, Enter/preview and Delete confirmation, date grouping,
-  rubber-band selection, source search scopes, date/rating/extension filters
+  rubber-band selection, source search scopes, date/extension filters
   and settings persistence are incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, accepts folder paths, coordinates folder add/rescan/

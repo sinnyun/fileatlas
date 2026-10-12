@@ -88,6 +88,22 @@ impl Default for GalleryFilter {
 }
 
 impl GalleryFilter {
+    /// Set one end of the inclusive rating range while preserving a valid interval.
+    pub fn set_rating_bound(&mut self, minimum: bool, value: i32) {
+        let value = value.clamp(0, 5);
+        if minimum {
+            self.rating_min = value;
+            if self.rating_min > self.rating_max {
+                self.rating_max = value;
+            }
+        } else {
+            self.rating_max = value;
+            if self.rating_max < self.rating_min {
+                self.rating_min = value;
+            }
+        }
+    }
+
     /// Convert UI state into the exact query semantics used by PhoTag's source AppState.
     pub fn to_query(&self) -> MediaQuery {
         let tags_tab = self.tab == GalleryTab::Tags;
@@ -192,5 +208,17 @@ mod tests {
         assert_eq!(query.excluded_extensions, None);
         assert_eq!(query.rating_min, None);
         assert_eq!(query.rating_max, None);
+    }
+
+    #[test]
+    fn rating_range_bounds_clamp_and_remain_ordered() {
+        let mut filter = GalleryFilter::default();
+        filter.set_rating_bound(true, 9);
+        assert_eq!((filter.rating_min, filter.rating_max), (5, 5));
+        filter.set_rating_bound(false, -1);
+        assert_eq!((filter.rating_min, filter.rating_max), (0, 0));
+        filter.set_rating_bound(true, 3);
+        filter.set_rating_bound(false, 4);
+        assert_eq!((filter.rating_min, filter.rating_max), (3, 4));
     }
 }

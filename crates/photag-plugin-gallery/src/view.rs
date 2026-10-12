@@ -1,6 +1,7 @@
 //! Native GPUI rendering for the windowed media gallery.
 
 mod card;
+mod controls;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -280,6 +281,16 @@ impl GalleryView {
         }
     }
 
+    fn set_rating_bound(&mut self, minimum: bool, value: i32, cx: &mut Context<Self>) {
+        let old_range = (self.filter.rating_min, self.filter.rating_max);
+        self.filter.set_rating_bound(minimum, value);
+        if old_range == (self.filter.rating_min, self.filter.rating_max) {
+            return;
+        }
+        self.reload();
+        cx.notify();
+    }
+
     fn load_more(&mut self) {
         let offset = match &self.snapshot {
             Ok(snapshot) => snapshot.media.len(),
@@ -337,51 +348,9 @@ impl Render for GalleryView {
                             ),
                     )
                     .child(Input::new(&self.search).w_full())
-                    .child(div().h_flex().gap_1().children([
-                        media_type_button(
-                            "all",
-                            "All",
-                            MediaTypeFilter::All,
-                            self.filter.media_type,
-                            cx,
-                        ),
-                        media_type_button(
-                            "photos",
-                            "Photos",
-                            MediaTypeFilter::Photos,
-                            self.filter.media_type,
-                            cx,
-                        ),
-                        media_type_button(
-                            "videos",
-                            "Videos",
-                            MediaTypeFilter::Videos,
-                            self.filter.media_type,
-                            cx,
-                        ),
-                        media_type_button(
-                            "audio",
-                            "Audio",
-                            MediaTypeFilter::Audio,
-                            self.filter.media_type,
-                            cx,
-                        ),
-                    ]))
-                    .child(div().h_flex().gap_1().overflow_x_scrollbar().children([
-                        sort_button("newest", SortOrder::NewestFirst, self.filter.sort, cx),
-                        sort_button("oldest", SortOrder::OldestFirst, self.filter.sort, cx),
-                        sort_button("largest", SortOrder::BiggestFirst, self.filter.sort, cx),
-                        sort_button("smallest", SortOrder::SmallestFirst, self.filter.sort, cx),
-                        sort_button("name-asc", SortOrder::NameAsc, self.filter.sort, cx),
-                        sort_button("name-desc", SortOrder::NameDesc, self.filter.sort, cx),
-                        sort_button(
-                            "highest-rated",
-                            SortOrder::HighestRated,
-                            self.filter.sort,
-                            cx,
-                        ),
-                        sort_button("lowest-rated", SortOrder::LowestRated, self.filter.sort, cx),
-                    ]))
+                    .child(controls::media_type_row(&self.filter, cx))
+                    .child(controls::sort_row(&self.filter, cx))
+                    .child(controls::rating_row(&self.filter, cx))
                     .child(div().h_1().w_full().bg(rgb(0x343943)))
                     .child(
                         div()
@@ -457,37 +426,4 @@ impl Render for GalleryView {
                 .into_any_element(),
         }
     }
-}
-
-fn media_type_button(
-    id: &str,
-    label: &str,
-    media_type: MediaTypeFilter,
-    active: MediaTypeFilter,
-    cx: &mut Context<GalleryView>,
-) -> Button {
-    let selected_label = if media_type == active {
-        format!("• {label}")
-    } else {
-        label.to_owned()
-    };
-    Button::new(format!("gallery-media-type-{id}"))
-        .label(selected_label)
-        .on_click(cx.listener(move |this, _, _, cx| this.set_media_type(media_type, cx)))
-}
-
-fn sort_button(
-    id: &str,
-    sort: SortOrder,
-    active: SortOrder,
-    cx: &mut Context<GalleryView>,
-) -> Button {
-    let label = if sort == active {
-        format!("• {}", sort.label())
-    } else {
-        sort.label().to_owned()
-    };
-    Button::new(format!("gallery-sort-{id}"))
-        .label(label)
-        .on_click(cx.listener(move |this, _, _, cx| this.set_sort(sort, cx)))
 }
