@@ -1,5 +1,6 @@
 //! Native GPUI sidebar rendering for the navigation plugin.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,11 +9,13 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::*;
-use photag_contracts::{FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged};
+use photag_contracts::{
+    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
+};
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_ui_bridge::UiViewContribution;
 
-use crate::{NavigationService, NavigationSnapshot};
+use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
 pub(super) fn sidebar(
     service: Arc<NavigationService>,
@@ -39,6 +42,7 @@ struct SidebarView {
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
+    expanded_directories: HashMap<String, Vec<SubdirectoryNode>>,
 }
 
 impl SidebarView {
@@ -54,6 +58,7 @@ impl SidebarView {
             snapshot: service.snapshot().map_err(|error| error.to_string()),
             active_scan: None,
             scan_progress: None,
+            expanded_directories: HashMap::new(),
         }
     }
 
@@ -183,6 +188,26 @@ impl SidebarView {
         })
         .detach();
     }
+
+    fn toggle_directory(&mut self, path: &str) {
+        if self.expanded_directories.remove(path).is_none() {
+            self.expanded_directories
+                .insert(path.to_owned(), self.service.subdirectories(path));
+        }
+    }
+
+    fn select_path(&self, path: String, cx: &mut Context<Self>) {
+        let cordis = self.cordis.clone();
+        cx.spawn(async move |_, _| {
+            if let Err(error) = cordis
+                .emit::<DirectoryPathSelected>(Routing::Unscoped, Some(path))
+                .await
+            {
+                eprintln!("directory selection dispatch failed: {error}");
+            }
+        })
+        .detach();
+    }
 }
 
 impl Render for SidebarView {
@@ -226,6 +251,7 @@ impl Render for SidebarView {
                         .on_click(cx.listener(|this, _, _, cx| this.select_folder(None, cx))),
                 );
                 for node in &snapshot.folders {
+                    let expanded = self.expanded_directories.get(&node.folder.path);
                     panel =
                         panel.child(
                             div()
@@ -240,6 +266,24 @@ impl Render for SidebarView {
                                     div()
                                         .h_flex()
                                         .gap_1()
+                                        .child(
+                                            Button::new(format!(
+                                                "navigation-expand-root-{}",
+                                                node.folder.id
+                                            ))
+                                            .label(if expanded.is_some() {
+                                                "Collapse"
+                                            } else {
+                                                "Expand"
+                                            })
+                                            .on_click(cx.listener({
+                                                let path = node.folder.path.clone();
+                                                move |this, _, _, cx| {
+                                                    this.toggle_directory(&path);
+                                                    cx.notify();
+                                                }
+                                            })),
+                                        )
                                         .child(
                                             Button::new(format!(
                                                 "navigation-select-{}",
@@ -283,6 +327,11 @@ impl Render for SidebarView {
                                         ),
                                 ),
                         );
+                    if let Some(children) = expanded {
+                        panel = panel.children(children.iter().map(|child| {
+                            render_subdirectory(child, &self.expanded_directories, cx)
+                        }));
+                    }
                 }
                 if let Some(progress) = &self.scan_progress {
                     panel = panel.child(div().text_xs().text_color(rgb(0x9aa0ad)).child(format!(
@@ -345,4 +394,54 @@ fn render_tag(
                 .child(select),
         )
         .children(children)
+}
+
+fn render_subdirectory(
+    node: &SubdirectoryNode,
+    expanded: &HashMap<String, Vec<SubdirectoryNode>>,
+    cx: &mut Context<SidebarView>,
+) -> Div {
+    let children = expanded
+        .get(&node.path)
+        .map(|children| {
+            children
+                .iter()
+                .map(|child| render_subdirectory(child, expanded, cx))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let selected_path = node.path.clone();
+    let mut row = div()
+        .h_flex()
+        .pl_3()
+        .gap_1()
+        .child(
+            div()
+                .flex_1()
+                .text_xs()
+                .child(format!("{}  {}", node.name, node.media_count)),
+        )
+        .child(
+            Button::new(format!("navigation-open-dir-{}", node.path))
+                .label("Open")
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
+                ),
+        );
+    if node.has_children {
+        let directory_path = node.path.clone();
+        row = row.child(
+            Button::new(format!("navigation-expand-dir-{}", node.path))
+                .label(if expanded.contains_key(&node.path) {
+                    "−"
+                } else {
+                    "+"
+                })
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.toggle_directory(&directory_path);
+                    cx.notify();
+                })),
+        );
+    }
+    row.children(children)
 }

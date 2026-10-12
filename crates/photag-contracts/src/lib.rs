@@ -32,3 +32,12 @@ impl Event for MediaIndexChanged {
     type Args = ();
     type Output = ();
 }
+
+/// Select a nested directory by source path prefix; `None` clears the filter.
+pub struct DirectoryPathSelected;
+
+impl Event for DirectoryPathSelected {
+    const NAME: &'static str = "photag/navigation/directory-path-selected";
+    type Args = Option<String>;
+    type Output = ();
+}

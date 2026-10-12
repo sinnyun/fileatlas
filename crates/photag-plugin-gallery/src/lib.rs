@@ -13,7 +13,9 @@ pub mod selection;
 
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
-use photag_contracts::{FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged};
+use photag_contracts::{
+    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
+};
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
 use photag_ui_bridge::{
@@ -58,6 +60,13 @@ struct SelectedTag(Mutex<Option<i64>>);
 
 impl Service for SelectedTag {
     const NAME: &'static str = "photag/gallery-selected-tag";
+}
+
+#[derive(Default)]
+struct SelectedPath(Mutex<Option<String>>);
+
+impl Service for SelectedPath {
+    const NAME: &'static str = "photag/gallery-selected-path";
 }
 
 #[derive(Default)]
@@ -209,6 +218,7 @@ impl Plugin for GalleryPlugin {
         let service = Arc::new(GalleryService::new(database));
         let selected_folder = Arc::new(SelectedFolder::default());
         let selected_tag = Arc::new(SelectedTag::default());
+        let selected_path = Arc::new(SelectedPath::default());
         let index_revision = Arc::new(IndexRevision::default());
         let _selection_publication = context
             .provide(Arc::clone(&selected_folder))
@@ -216,11 +226,15 @@ impl Plugin for GalleryPlugin {
         let _tag_selection_publication = context
             .provide(Arc::clone(&selected_tag))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+        let _path_selection_publication = context
+            .provide(Arc::clone(&selected_path))
+            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let _index_revision_publication = context
             .provide(Arc::clone(&index_revision))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let selection_state = Arc::clone(&selected_folder);
         let selection_tag_state = Arc::clone(&selected_tag);
+        let selection_path_state = Arc::clone(&selected_path);
         let _selection_listener = context
             .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
                 if let Ok(mut selected) = selection_state.0.lock() {
@@ -229,11 +243,15 @@ impl Plugin for GalleryPlugin {
                 if let Ok(mut selected) = selection_tag_state.0.lock() {
                     *selected = None;
                 }
+                if let Ok(mut selected) = selection_path_state.0.lock() {
+                    *selected = None;
+                }
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let tag_state = Arc::clone(&selected_tag);
         let tag_folder_state = Arc::clone(&selected_folder);
+        let tag_path_state = Arc::clone(&selected_path);
         let _tag_selection_listener = context
             .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id| {
                 if let Ok(mut selected) = tag_state.0.lock() {
@@ -243,6 +261,26 @@ impl Plugin for GalleryPlugin {
                     if let Ok(mut selected) = tag_folder_state.0.lock() {
                         *selected = None;
                     }
+                    if let Ok(mut selected) = tag_path_state.0.lock() {
+                        *selected = None;
+                    }
+                }
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
+        let path_state = Arc::clone(&selected_path);
+        let path_folder_state = Arc::clone(&selected_folder);
+        let path_tag_state = Arc::clone(&selected_tag);
+        let _path_selection_listener = context
+            .on::<DirectoryPathSelected, _>(observer_sync(move |_, path| {
+                if let Ok(mut selected) = path_state.0.lock() {
+                    *selected = path;
+                }
+                if let Ok(mut selected) = path_folder_state.0.lock() {
+                    *selected = None;
+                }
+                if let Ok(mut selected) = path_tag_state.0.lock() {
+                    *selected = None;
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -293,6 +331,7 @@ impl Plugin for GalleryPlugin {
                 service,
                 selected_folder,
                 selected_tag,
+                selected_path,
                 index_revision,
             )],
         )
@@ -418,7 +457,9 @@ mod tests {
     #[tokio::test]
     async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
         use cordis::{Context, Plugin, PreparedPlugin, Routing};
-        use photag_contracts::FolderSelectionChanged;
+        use photag_contracts::{
+            DirectoryPathSelected, FolderSelectionChanged, TagSelectionChanged,
+        };
         use photag_ui_bridge::{UiBridgeService, UiCatalog};
 
         let root = std::env::temp_dir().join(format!(
@@ -467,6 +508,20 @@ mod tests {
                 .lock()
                 .unwrap(),
             None
+        );
+        context
+            .emit::<DirectoryPathSelected>(Routing::Unscoped, Some("/library/trips".into()))
+            .await
+            .unwrap();
+        assert_eq!(
+            context
+                .try_service::<SelectedPath>()
+                .unwrap()
+                .0
+                .lock()
+                .unwrap()
+                .as_deref(),
+            Some("/library/trips")
         );
         context
             .emit::<MediaIndexChanged>(Routing::Unscoped, ())

@@ -12,7 +12,7 @@ use gpui_kit::*;
 use photag_ui_bridge::UiViewContribution;
 
 use crate::{
-    GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedTag,
+    GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
     filter::GalleryFilter,
 };
 
@@ -20,6 +20,7 @@ pub(super) fn gallery(
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
+    selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
 ) -> UiViewContribution {
     UiViewContribution::new(
@@ -30,6 +31,7 @@ pub(super) fn gallery(
             let view_service = Arc::clone(&service);
             let view_selection = Arc::clone(&selected_folder);
             let view_tag_selection = Arc::clone(&selected_tag);
+            let view_path_selection = Arc::clone(&selected_path);
             let view_index_revision = Arc::clone(&index_revision);
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
@@ -38,6 +40,7 @@ pub(super) fn gallery(
                     view_service,
                     view_selection,
                     view_tag_selection,
+                    view_path_selection,
                     view_index_revision,
                     search,
                     cx,
@@ -52,6 +55,7 @@ struct GalleryView {
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
+    selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
     search: Entity<InputState>,
     filter: GalleryFilter,
@@ -64,6 +68,7 @@ impl GalleryView {
         service: Arc<GalleryService>,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
+        selected_path: Arc<SelectedPath>,
         index_revision: Arc<IndexRevision>,
         search: Entity<InputState>,
         cx: &mut Context<Self>,
@@ -88,6 +93,11 @@ impl GalleryView {
             .lock()
             .map(|selected| selected.iter().copied().collect())
             .unwrap_or_default();
+        filter.path_prefix = selected_path
+            .0
+            .lock()
+            .map(|selected| selected.clone())
+            .unwrap_or(None);
         let mut observed_revision = index_revision.0.load(Ordering::Acquire);
         let snapshot = service
             .load(filter.to_query())
@@ -111,14 +121,22 @@ impl GalleryView {
                             .lock()
                             .map(|selected| selected.iter().copied().collect::<Vec<_>>())
                             .unwrap_or_default();
+                        let selected_path = view
+                            .selected_path
+                            .0
+                            .lock()
+                            .map(|selected| selected.clone())
+                            .unwrap_or(None);
                         let changed = view.filter.folder_id != selected
-                            || view.filter.selected_tag_ids != selected_tag;
+                            || view.filter.selected_tag_ids != selected_tag
+                            || view.filter.path_prefix != selected_path;
                         let revision = view.index_revision.0.load(Ordering::Acquire);
                         let index_changed = revision != observed_revision;
                         observed_revision = revision;
                         if changed || index_changed {
                             view.filter.folder_id = selected;
                             view.filter.selected_tag_ids = selected_tag;
+                            view.filter.path_prefix = selected_path;
                             view.reload();
                             cx.notify();
                         }
@@ -135,6 +153,7 @@ impl GalleryView {
             service,
             selected_folder,
             selected_tag,
+            selected_path,
             index_revision,
             search,
             filter,
