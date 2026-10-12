@@ -1,11 +1,15 @@
 //! PhoTag library sidebar data and tag tree operations, owned by Cordis.
 
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
 
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Folder, Tag, TagDropPos};
-use photag_plugin_indexing::IndexingService;
+use photag_plugin_indexing::{IndexingService, scan::ScanProgress};
+use photag_plugin_watcher::WatcherService;
 use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
 
 #[derive(Debug, Clone)]
@@ -31,6 +35,8 @@ pub struct SubdirectoryNode {
 pub struct NavigationService {
     database: Arc<DatabaseService>,
     indexing: Arc<IndexingService>,
+    watcher: Option<Arc<WatcherService>>,
+    scans: Mutex<HashMap<i64, Arc<AtomicBool>>>,
 }
 
 impl Service for NavigationService {
@@ -39,7 +45,105 @@ impl Service for NavigationService {
 
 impl NavigationService {
     pub fn new(database: Arc<DatabaseService>, indexing: Arc<IndexingService>) -> Self {
-        Self { database, indexing }
+        Self {
+            database,
+            indexing,
+            watcher: None,
+            scans: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn with_watcher(mut self, watcher: Arc<WatcherService>) -> Self {
+        self.watcher = Some(watcher);
+        self
+    }
+
+    fn start_scan(
+        self: &Arc<Self>,
+        folder: &Folder,
+    ) -> Result<mpsc::Receiver<Option<ScanProgress>>, NavigationError> {
+        self.cancel_scan(folder.id)?;
+        let cancel = Arc::new(AtomicBool::new(false));
+        self.scans
+            .lock()
+            .map_err(|_| NavigationError::Poisoned)?
+            .insert(folder.id, Arc::clone(&cancel));
+        Ok(self
+            .indexing
+            .scan_folder(folder.id, folder.path.clone(), cancel))
+    }
+
+    fn cancel_scan(&self, folder_id: i64) -> Result<(), NavigationError> {
+        if let Some(cancel) = self
+            .scans
+            .lock()
+            .map_err(|_| NavigationError::Poisoned)?
+            .remove(&folder_id)
+        {
+            cancel.store(true, Ordering::Release);
+        }
+        Ok(())
+    }
+
+    /// Register a local folder, begin recursive indexing and watch it for later changes.
+    pub fn add_folder(
+        self: &Arc<Self>,
+        path: impl AsRef<Path>,
+    ) -> Result<(Folder, mpsc::Receiver<Option<ScanProgress>>), NavigationError> {
+        let path = path.as_ref();
+        if !path.is_dir() {
+            return Err(NavigationError::NotDirectory(
+                path.to_string_lossy().into_owned(),
+            ));
+        }
+        let path = path.to_string_lossy().into_owned();
+        let folder = self
+            .database
+            .with_writer(|connection| queries::add_folder(connection, &path))?;
+        if let Some(watcher) = &self.watcher {
+            watcher.watch(&folder.path);
+        }
+        let progress = self.start_scan(&folder)?;
+        Ok((folder, progress))
+    }
+
+    /// Cancel any active scan, clear this folder's indexed rows and start a fresh scan.
+    pub fn rescan(
+        self: &Arc<Self>,
+        folder_id: i64,
+    ) -> Result<mpsc::Receiver<Option<ScanProgress>>, NavigationError> {
+        self.cancel_scan(folder_id)?;
+        let folder = self.database.with_reader(|connection| {
+            queries::list_folders(connection)?
+                .into_iter()
+                .find(|folder| folder.id == folder_id)
+                .ok_or(rusqlite::Error::QueryReturnedNoRows)
+        })?;
+        self.database.with_writer(|connection| {
+            connection.execute(
+                "DELETE FROM media WHERE folder_id = ?1",
+                rusqlite::params![folder_id],
+            )?;
+            Ok(())
+        })?;
+        self.start_scan(&folder)
+    }
+
+    /// Stop indexing and monitoring a folder, then remove its library rows.
+    pub fn remove_folder(&self, folder_id: i64) -> Result<Folder, NavigationError> {
+        self.cancel_scan(folder_id)?;
+        let folder = self.database.with_reader(|connection| {
+            queries::list_folders(connection)?
+                .into_iter()
+                .find(|folder| folder.id == folder_id)
+                .ok_or(rusqlite::Error::QueryReturnedNoRows)
+        })?;
+        self.database
+            .with_writer(|connection| queries::remove_folder(connection, folder_id))?;
+        if let Some(watcher) = &self.watcher {
+            watcher.unwatch(&folder.path);
+        }
+        Ok(folder)
     }
 
     pub fn snapshot(&self) -> Result<NavigationSnapshot, NavigationError> {
@@ -113,6 +217,16 @@ impl NavigationService {
     }
 }
 
+impl Drop for NavigationService {
+    fn drop(&mut self) {
+        if let Ok(scans) = self.scans.get_mut() {
+            for cancel in scans.values() {
+                cancel.store(true, Ordering::Release);
+            }
+        }
+    }
+}
+
 pub fn parse_hex_color(value: &str) -> Option<[u8; 3]> {
     let value = value.trim().trim_start_matches('#');
     if value.len() != 6 {
@@ -133,6 +247,10 @@ pub fn format_hex_color(rgb: [u8; 3]) -> String {
 pub enum NavigationError {
     #[error(transparent)]
     DatabaseAccess(#[from] photag_plugin_database::DatabaseAccessError),
+    #[error("folder path is not a directory: {0}")]
+    NotDirectory(String),
+    #[error("folder scan registry lock is poisoned")]
+    Poisoned,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -158,8 +276,12 @@ impl Plugin for NavigationPlugin {
         let indexing = context
             .try_service::<IndexingService>()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
+        let watcher = context
+            .try_service::<WatcherService>()
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
+        let service = NavigationService::new(database, indexing).with_watcher(watcher);
         let _publication = context
-            .provide(Arc::new(NavigationService::new(database, indexing)))
+            .provide(Arc::new(service))
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,
@@ -257,7 +379,7 @@ mod tests {
             .unwrap();
         let thumbnails = Arc::new(ThumbnailService::open_at(root.join("thumbs")).unwrap());
         let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
-        let service = NavigationService::new(database, indexing);
+        let service = Arc::new(NavigationService::new(database, indexing));
         let parent = service.create_tag("Events", None).unwrap();
         let child = service.create_tag("Summer", Some(parent.id)).unwrap();
         service.set_tag_display(child.id, false).unwrap();
@@ -283,6 +405,48 @@ mod tests {
     }
 
     #[test]
+    fn folder_add_rescan_and_remove_keep_database_and_scan_lifecycle_in_sync() {
+        let root = temp_root();
+        let library = root.join("library");
+        std::fs::create_dir_all(&library).unwrap();
+        std::fs::write(library.join("sample.jpg"), b"invalid thumbnail fixture").unwrap();
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let thumbnails = Arc::new(ThumbnailService::open_at(root.join("thumbs")).unwrap());
+        let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
+        let navigation = Arc::new(NavigationService::new(Arc::clone(&database), indexing));
+
+        let (folder, progress) = navigation.add_folder(&library).unwrap();
+        wait_for_scan(progress);
+        assert_eq!(count_media(&database), 1);
+
+        wait_for_scan(navigation.rescan(folder.id).unwrap());
+        assert_eq!(count_media(&database), 1);
+        assert_eq!(navigation.remove_folder(folder.id).unwrap().id, folder.id);
+        assert_eq!(count_media(&database), 0);
+        assert!(navigation.snapshot().unwrap().folders.is_empty());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    fn wait_for_scan(progress: mpsc::Receiver<Option<ScanProgress>>) {
+        let mut completed = false;
+        while let Ok(update) = progress.recv() {
+            if update.is_none() {
+                completed = true;
+                break;
+            }
+        }
+        assert!(completed, "scanner closes with a completion signal");
+    }
+
+    fn count_media(database: &DatabaseService) -> i64 {
+        database
+            .with_reader(|connection| {
+                connection.query_row("SELECT COUNT(*) FROM media", [], |row| row.get(0))
+            })
+            .unwrap()
+    }
+
+    #[test]
     fn source_color_format_round_trips_and_rejects_invalid_input() {
         assert_eq!(parse_hex_color(" #1a2b3C "), Some([26, 43, 60]));
         assert_eq!(format_hex_color([26, 43, 60]), "#1A2B3C");
@@ -293,9 +457,11 @@ mod tests {
     #[tokio::test]
     async fn navigation_plugin_registers_and_cleans_sidebar_contributions() {
         use cordis::{Context, Plugin, PreparedPlugin};
+        use photag_plugin_watcher::{WatcherConfig, WatcherPlugin};
         use photag_ui_bridge::{UiBridgeService, UiCatalog};
 
         let root = temp_root();
+        std::fs::create_dir_all(&root).unwrap();
         let context = Context::new();
         let catalog = Arc::new(UiCatalog::default());
         let _ui = context
@@ -307,16 +473,24 @@ mod tests {
         let _db = context.provide(database).unwrap();
         let _index = context.provide(indexing).unwrap();
 
-        let plugin = NavigationPlugin;
-        let input = plugin.prepare(NavigationConfig).unwrap();
-        let fiber = context
-            .spawn(PreparedPlugin::from_input(plugin, input))
+        let watcher = WatcherPlugin;
+        let watcher_input = watcher.prepare(WatcherConfig).unwrap();
+        let watcher_fiber = context
+            .spawn(PreparedPlugin::from_input(watcher, watcher_input))
             .await
             .unwrap();
-        fiber.ready().await.unwrap();
+        watcher_fiber.ready().await.unwrap();
+        let navigation = NavigationPlugin;
+        let navigation_input = navigation.prepare(NavigationConfig).unwrap();
+        let navigation_fiber = context
+            .spawn(PreparedPlugin::from_input(navigation, navigation_input))
+            .await
+            .unwrap();
+        navigation_fiber.ready().await.unwrap();
         assert_eq!(catalog.snapshot().unwrap().len(), 3);
-        fiber.dispose().await.unwrap();
+        navigation_fiber.dispose().await.unwrap();
         assert!(catalog.snapshot().unwrap().is_empty());
+        watcher_fiber.dispose().await.unwrap();
         let _ = std::fs::remove_dir_all(root);
     }
 }
