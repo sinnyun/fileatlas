@@ -17,8 +17,8 @@ filesystem attributes/timestamps, formatted size, image dimensions/aspect,
 capture date, tags, rating and database open count. It has not yet passed
 compilation; run 21 caught three rustfmt diffs, now corrected. Run 22 passed
 formatting but caught a missing `Ok(...)` wrapper in the open-count reader
-closure. That compile fix is applied locally and awaits a fresh CI run. Plugin
-tests remain deferred as requested.
+closure. Run 23 caught rustfmt formatting for the newly added wrapper; that is
+corrected locally and awaits a fresh CI run. Plugin tests remain deferred.
 
 | Check | Result | Notes |
 |---|---|---|
@@ -28,6 +28,7 @@ tests remain deferred as requested.
 | GitHub Actions: latest base shell check | Passed | Commit `49771e11c9cd5f9cd056284cf5266fbd7eaf8d39`, run 20; formatting and `cargo check -p photag-shell --locked` both passed. Plugins are compiled as dependencies, not tested. |
 | GitHub Actions: selected-media detail migration | Formatting failed; compile skipped | Commit `976851250f7d276141bb4db87583c38564a252a9`, run 21; three rustfmt diffs in `view/card.rs` were corrected locally. A fresh CI run is pending. |
 | GitHub Actions: selected-media detail formatting correction | Formatting passed; compile failed | Commit `050328d1be3e4c4528c0c29fec3c813815886e7f`, run 22; `open_count` reader closure needed an `Ok(...)` wrapper. The compiler-reported fix is applied locally; rerun pending. |
+| GitHub Actions: open-count reader fix | Formatting failed; compile skipped | Commit `3bae0c2005d9cc700a636dee9b5569217099b9c0`, run 23; rustfmt requested line wrapping for the new `Ok(...)`. Corrected locally; rerun pending. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
 | GitHub Actions: file-operation/XMP migration check | Failed at formatting step | Commit `4f893eb2dbce0768eb4ade07aaca4a539fb04313`; rustfmt reported formatting in file operations, tagging, and reused XMP source, plus three settings field attributes. Base shell compilation was skipped. Corrections are being applied from the logged rustfmt diff; the next push will rerun formatting and the base shell compile. |

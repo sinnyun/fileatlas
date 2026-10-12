@@ -181,7 +181,9 @@ impl GalleryService {
     /// Read the informational open counter stored by PhoTag's original schema.
     pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
         Ok(self.database.with_reader(|connection| {
-            Ok(photag_plugin_database::db::get_open_count(connection, media_id))
+            Ok(photag_plugin_database::db::get_open_count(
+                connection, media_id,
+            ))
         })?)
     }
 
