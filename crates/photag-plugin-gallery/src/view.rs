@@ -291,6 +291,18 @@ impl GalleryView {
         cx.notify();
     }
 
+    fn cycle_extension(&mut self, extension: String, cx: &mut Context<Self>) {
+        self.filter.cycle_extension(&extension);
+        self.reload();
+        cx.notify();
+    }
+
+    fn clear_extensions(&mut self, cx: &mut Context<Self>) {
+        self.filter.clear_extensions();
+        self.reload();
+        cx.notify();
+    }
+
     fn load_more(&mut self) {
         let offset = match &self.snapshot {
             Ok(snapshot) => snapshot.media.len(),
@@ -351,6 +363,11 @@ impl Render for GalleryView {
                     .child(controls::media_type_row(&self.filter, cx))
                     .child(controls::sort_row(&self.filter, cx))
                     .child(controls::rating_row(&self.filter, cx))
+                    .child(controls::extension_row(
+                        &self.filter,
+                        &snapshot.available_extensions,
+                        cx,
+                    ))
                     .child(div().h_1().w_full().bg(rgb(0x343943)))
                     .child(
                         div()

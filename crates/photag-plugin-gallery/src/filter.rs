@@ -104,6 +104,27 @@ impl GalleryFilter {
         }
     }
 
+    /// Cycle one extension through included, excluded, and neutral query states.
+    pub fn cycle_extension(&mut self, extension: &str) {
+        if let Some(index) = self.extensions.iter().position(|item| item == extension) {
+            self.extensions.remove(index);
+            self.excluded_extensions.push(extension.to_owned());
+        } else if let Some(index) = self
+            .excluded_extensions
+            .iter()
+            .position(|item| item == extension)
+        {
+            self.excluded_extensions.remove(index);
+        } else {
+            self.extensions.push(extension.to_owned());
+        }
+    }
+
+    pub fn clear_extensions(&mut self) {
+        self.extensions.clear();
+        self.excluded_extensions.clear();
+    }
+
     /// Convert UI state into the exact query semantics used by PhoTag's source AppState.
     pub fn to_query(&self) -> MediaQuery {
         let tags_tab = self.tab == GalleryTab::Tags;
@@ -220,5 +241,22 @@ mod tests {
         filter.set_rating_bound(true, 3);
         filter.set_rating_bound(false, 4);
         assert_eq!((filter.rating_min, filter.rating_max), (3, 4));
+    }
+
+    #[test]
+    fn extension_click_cycles_include_exclude_and_neutral() {
+        let mut filter = GalleryFilter::default();
+        filter.cycle_extension("jpg");
+        assert_eq!(filter.extensions, ["jpg"]);
+        filter.cycle_extension("jpg");
+        assert!(filter.extensions.is_empty());
+        assert_eq!(filter.excluded_extensions, ["jpg"]);
+        filter.cycle_extension("jpg");
+        assert!(filter.extensions.is_empty());
+        assert!(filter.excluded_extensions.is_empty());
+        filter.cycle_extension("png");
+        filter.cycle_extension("gif");
+        filter.clear_extensions();
+        assert!(filter.extensions.is_empty() && filter.excluded_extensions.is_empty());
     }
 }

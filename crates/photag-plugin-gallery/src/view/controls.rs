@@ -101,6 +101,46 @@ pub(super) fn rating_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) 
         )
 }
 
+pub(super) fn extension_row(
+    filter: &GalleryFilter,
+    extensions: &[String],
+    cx: &mut Context<GalleryView>,
+) -> impl IntoElement {
+    let mut row = div()
+        .h_flex()
+        .items_center()
+        .gap_1()
+        .overflow_x_scrollbar()
+        .child(div().text_sm().child("Extensions"));
+    for extension in extensions {
+        let selected = filter.extensions.contains(extension);
+        let excluded = filter.excluded_extensions.contains(extension);
+        let label = if selected {
+            format!("• .{extension}")
+        } else if excluded {
+            format!("− .{extension}")
+        } else {
+            format!(".{extension}")
+        };
+        let extension = extension.clone();
+        row = row.child(
+            Button::new(format!("gallery-extension-{}", extension))
+                .label(label)
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.cycle_extension(extension.clone(), cx)),
+                ),
+        );
+    }
+    if !filter.extensions.is_empty() || !filter.excluded_extensions.is_empty() {
+        row = row.child(
+            Button::new("gallery-extension-clear")
+                .label("Clear")
+                .on_click(cx.listener(|this, _, _, cx| this.clear_extensions(cx))),
+        );
+    }
+    row
+}
+
 fn media_type_button(
     id: &str,
     label: &str,
