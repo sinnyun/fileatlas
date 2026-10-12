@@ -21,7 +21,7 @@
 | `cargo test -p photag-plugin-thumbnails --offline` | Passed, 1 test | Original image pipeline creates and reuses a cached thumbnail |
 | `cargo test -p photag-plugin-indexing --offline` | Passed, 1 test | Recursive folder scan indexes a still image, ignores a hidden file, pairs a video poster and writes thumbnail cache output |
 | `cargo test -p photag-plugin-watcher --offline` | Passed, 2 tests | Extension classification and Linux filesystem create/remove events reconcile to SQLite; Windows-specific notification behavior remains untested |
-| `cargo test -p photag-plugin-gallery --offline` | Passed, 7 tests | Confirms window paging, UI lifecycle cleanup, source-equivalent filter mapping, shift range navigation, select-all, rating/delete effects and persisted rating clamping |
+| `cargo test -p photag-plugin-gallery --offline` | Passed, 7 tests | Confirms window paging, UI lifecycle cleanup including Cordis folder-selection event delivery, source-equivalent filter mapping, shift range navigation, select-all, rating/delete effects and persisted rating clamping |
 | `cargo test -p photag-plugin-navigation --offline` | Passed, 4 tests | Folder/tag counts, source tag mutations, folder add/rescan/remove scan lifecycle, and sidebar contribution cleanup; dot-directory filtering and tag color format covered |
 | `cargo test -p photag-plugin-tagging --offline` | Passed, 1 test | Assignment expands associations and ancestors with source manual/automatic flags; remove and clear paths covered |
 | Git bundle clone | Passed | Cloned delivery bundle to a clean directory and inspected its root commit |

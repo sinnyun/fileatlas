@@ -1,6 +1,7 @@
 //! Native GPUI rendering for the windowed media gallery.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
@@ -8,18 +9,22 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_ui_bridge::UiViewContribution;
 
-use crate::{GalleryService, GallerySnapshot, filter::GalleryFilter};
+use crate::{GalleryService, GallerySnapshot, SelectedFolder, filter::GalleryFilter};
 
-pub(super) fn gallery(service: Arc<GalleryService>) -> UiViewContribution {
+pub(super) fn gallery(
+    service: Arc<GalleryService>,
+    selected_folder: Arc<SelectedFolder>,
+) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
         "gallery.content",
         0,
         move |window, app| {
             let view_service = Arc::clone(&service);
+            let view_selection = Arc::clone(&selected_folder);
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
-            app.new(|cx| GalleryView::new(view_service, search, cx))
+            app.new(|cx| GalleryView::new(view_service, view_selection, search, cx))
                 .into()
         },
     )
@@ -27,6 +32,7 @@ pub(super) fn gallery(service: Arc<GalleryService>) -> UiViewContribution {
 
 struct GalleryView {
     service: Arc<GalleryService>,
+    selected_folder: Arc<SelectedFolder>,
     search: Entity<InputState>,
     filter: GalleryFilter,
     snapshot: Result<GallerySnapshot, String>,
@@ -36,13 +42,11 @@ struct GalleryView {
 impl GalleryView {
     fn new(
         service: Arc<GalleryService>,
+        selected_folder: Arc<SelectedFolder>,
         search: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
         let filter = GalleryFilter::default();
-        let snapshot = service
-            .load(filter.to_query())
-            .map_err(|error| error.to_string());
         let _subscriptions = vec![cx.subscribe(&search, |this, _, event, cx| {
             if matches!(event, InputEvent::Change) {
                 this.filter.search = this.search.read(cx).value().to_string();
@@ -50,8 +54,46 @@ impl GalleryView {
                 cx.notify();
             }
         })];
+        let selected = selected_folder
+            .0
+            .lock()
+            .map(|selected| *selected)
+            .unwrap_or(None);
+        let mut filter = filter;
+        filter.folder_id = selected;
+        let snapshot = service
+            .load(filter.to_query())
+            .map_err(|error| error.to_string());
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(200))
+                    .await;
+                let changed = this
+                    .update(cx, |view, cx| {
+                        let selected = view
+                            .selected_folder
+                            .0
+                            .lock()
+                            .map(|selected| *selected)
+                            .unwrap_or(None);
+                        if view.filter.folder_id != selected {
+                            view.filter.folder_id = selected;
+                            view.reload();
+                            cx.notify();
+                        }
+                        true
+                    })
+                    .unwrap_or(false);
+                if !changed {
+                    break;
+                }
+            }
+        })
+        .detach();
         Self {
             service,
+            selected_folder,
             search,
             filter,
             snapshot,
@@ -82,7 +124,13 @@ impl Render for GalleryView {
                             .h_flex()
                             .items_center()
                             .justify_between()
-                            .child(div().text_lg().font_semibold().child("All Media"))
+                            .child(div().text_lg().font_semibold().child(
+                                if self.filter.folder_id.is_some() {
+                                    "Selected Folder"
+                                } else {
+                                    "All Media"
+                                },
+                            ))
                             .child(
                                 div()
                                     .text_sm()

@@ -3,3 +3,14 @@
 //! This crate deliberately contains no file-management behavior yet. The
 //! contracts are introduced as migrations land, so their semantics can be
 //! matched against the pinned source rather than guessed in advance.
+
+use cordis::Event;
+
+/// Change the active library folder in the gallery; `None` selects all media.
+pub struct FolderSelectionChanged;
+
+impl Event for FolderSelectionChanged {
+    const NAME: &'static str = "photag/navigation/folder-selection-changed";
+    type Args = Option<i64>;
+    type Output = ();
+}

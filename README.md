@@ -22,8 +22,8 @@ migration; the gallery, preview, file operations, and many other product feature
   cache pipeline exposed as a Cordis service.
 - `crates/photag-plugin-indexing`: recursive scanning, database indexing, poster pairing, thumbnail backfill and directory listing exposed through a Cordis service.
 - `crates/photag-plugin-watcher`: registered-folder filesystem notifications and debounced SQLite reconciliation.
-- `crates/photag-plugin-gallery`: compact query results, windowed media loading, filter/selection models, an initial GPUI media-card view and live search input; thumbnails, advanced filtering controls and grid interactions remain pending.
-- `crates/photag-plugin-navigation`: folder/tag snapshots, lazy subdirectory counts, database-backed tag commands, scan/watch-coordinated folder actions, and a GPUI folder/tag tree with rescan/remove and scan progress; native folder picking and selection coupling remain pending.
+- `crates/photag-plugin-gallery`: compact query results, windowed media loading, filter/selection models, an initial GPUI media-card view, live search and Cordis-driven folder selection; thumbnails, advanced filtering controls and grid interactions remain pending.
+- `crates/photag-plugin-navigation`: folder/tag snapshots, lazy subdirectory counts, database-backed tag commands, scan/watch-coordinated folder actions, and a GPUI folder/tag tree with rescan/remove, scan progress and Cordis-driven folder selection; native folder picking remains pending.
 - `crates/photag-plugin-tagging`: source-compatible media tag assignment, associated tags, automatic ancestor links, removal, clearing, and tag merge behind a Cordis service; assignment UI and XMP metadata writeback remain pending.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.

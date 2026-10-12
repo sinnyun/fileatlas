@@ -10,6 +10,7 @@ cordis.workspace = true
 gpui-kit.workspace = true
 tokio.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"

@@ -317,8 +317,12 @@ impl Plugin for NavigationPlugin {
             ],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
-        register_views_for_plugin(&context, "photag.navigation", [view::sidebar(service)])
-            .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(
+            &context,
+            "photag.navigation",
+            [view::sidebar(service, context.clone())],
+        )
+        .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }

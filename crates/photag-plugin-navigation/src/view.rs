@@ -3,37 +3,46 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
+use photag_contracts::FolderSelectionChanged;
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_ui_bridge::UiViewContribution;
 
 use crate::{NavigationService, NavigationSnapshot};
 
-pub(super) fn sidebar(service: Arc<NavigationService>) -> UiViewContribution {
+pub(super) fn sidebar(
+    service: Arc<NavigationService>,
+    cordis: CordisContext,
+) -> UiViewContribution {
     UiViewContribution::new(
         "navigation/sidebar-view",
         "workspace.sidebar",
         0,
         move |_, app| {
             let view_service = Arc::clone(&service);
-            app.new(|_| SidebarView::new(view_service)).into()
+            let view_cordis = cordis.clone();
+            app.new(|_| SidebarView::new(view_service, view_cordis))
+                .into()
         },
     )
 }
 
 struct SidebarView {
     service: Arc<NavigationService>,
+    cordis: CordisContext,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
 }
 
 impl SidebarView {
-    fn new(service: Arc<NavigationService>) -> Self {
+    fn new(service: Arc<NavigationService>, cordis: CordisContext) -> Self {
         Self {
             service: Arc::clone(&service),
+            cordis,
             snapshot: service.snapshot().map_err(|error| error.to_string()),
             active_scan: None,
             scan_progress: None,
@@ -105,6 +114,19 @@ impl SidebarView {
             Err(error) => self.snapshot = Err(error.to_string()),
         }
     }
+
+    fn select_folder(&self, folder_id: Option<i64>, cx: &mut Context<Self>) {
+        let cordis = self.cordis.clone();
+        cx.spawn(async move |_, _| {
+            if let Err(error) = cordis
+                .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
+                .await
+            {
+                eprintln!("folder selection dispatch failed: {error}");
+            }
+        })
+        .detach();
+    }
 }
 
 impl Render for SidebarView {
@@ -131,6 +153,11 @@ impl Render for SidebarView {
                             }),
                         )),
                 );
+                panel = panel.child(
+                    Button::new("navigation-all-media")
+                        .label("All Media")
+                        .on_click(cx.listener(|this, _, _, cx| this.select_folder(None, cx))),
+                );
                 for node in &snapshot.folders {
                     panel =
                         panel.child(
@@ -146,6 +173,19 @@ impl Render for SidebarView {
                                     div()
                                         .h_flex()
                                         .gap_1()
+                                        .child(
+                                            Button::new(format!(
+                                                "navigation-select-{}",
+                                                node.folder.id
+                                            ))
+                                            .label("Open")
+                                            .on_click(cx.listener({
+                                                let folder_id = node.folder.id;
+                                                move |this, _, _, cx| {
+                                                    this.select_folder(Some(folder_id), cx)
+                                                }
+                                            })),
+                                        )
                                         .child(
                                             Button::new(format!(
                                                 "navigation-rescan-{}",

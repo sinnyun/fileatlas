@@ -5,11 +5,14 @@ mod view;
 use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 pub mod filter;
 pub mod selection;
 
+use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
+use photag_contracts::FolderSelectionChanged;
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
 use photag_ui_bridge::{
@@ -40,6 +43,13 @@ pub struct GalleryWindow {
 
 pub struct GalleryService {
     database: Arc<DatabaseService>,
+}
+
+#[derive(Default)]
+struct SelectedFolder(Mutex<Option<i64>>);
+
+impl Service for SelectedFolder {
+    const NAME: &'static str = "photag/gallery-selected-folder";
 }
 
 impl Service for GalleryService {
@@ -162,6 +172,19 @@ impl Plugin for GalleryPlugin {
             .try_service::<DatabaseService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let service = Arc::new(GalleryService::new(database));
+        let selected_folder = Arc::new(SelectedFolder::default());
+        let _selection_publication = context
+            .provide(Arc::clone(&selected_folder))
+            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+        let selection_state = Arc::clone(&selected_folder);
+        let _selection_listener = context
+            .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
+                if let Ok(mut selected) = selection_state.0.lock() {
+                    *selected = folder_id;
+                }
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
@@ -194,8 +217,12 @@ impl Plugin for GalleryPlugin {
             ],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
-        register_views_for_plugin(&context, "photag.gallery", [view::gallery(service)])
-            .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(
+            &context,
+            "photag.gallery",
+            [view::gallery(service, selected_folder)],
+        )
+        .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }
@@ -208,6 +235,8 @@ pub enum GalleryPluginError {
     Publish(String),
     #[error("gallery UI contribution registration failed: {0}")]
     UiRegistration(String),
+    #[error("gallery event registration failed: {0}")]
+    EventRegistration(String),
 }
 
 #[cfg(test)]
@@ -308,7 +337,8 @@ mod tests {
 
     #[tokio::test]
     async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
-        use cordis::{Context, Plugin, PreparedPlugin};
+        use cordis::{Context, Plugin, PreparedPlugin, Routing};
+        use photag_contracts::FolderSelectionChanged;
         use photag_ui_bridge::{UiBridgeService, UiCatalog};
 
         let root = std::env::temp_dir().join(format!(
@@ -337,6 +367,12 @@ mod tests {
             .unwrap();
         fiber.ready().await.unwrap();
         assert_eq!(catalog.snapshot().unwrap().len(), 3);
+        context
+            .emit::<FolderSelectionChanged>(Routing::Unscoped, Some(42))
+            .await
+            .unwrap();
+        let selection = context.try_service::<SelectedFolder>().unwrap();
+        assert_eq!(*selection.0.lock().unwrap(), Some(42));
         fiber.dispose().await.unwrap();
         assert!(catalog.snapshot().unwrap().is_empty());
         let _ = std::fs::remove_dir_all(root);
