@@ -183,12 +183,8 @@ pub(super) fn render_media_details(
                     }
                 }
                 Err(message) => {
-                    details = details.child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(0x9aa0ad))
-                            .child(message),
-                    );
+                    details =
+                        details.child(div().text_sm().text_color(rgb(0x9aa0ad)).child(message));
                 }
             }
         }
