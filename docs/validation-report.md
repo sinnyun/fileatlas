@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 2416)
-Total output lines: 105
-
 # Validation report
 
 ## Current cloud task pass (2026-10-12)
@@ -56,7 +53,24 @@ stabilized in Rust 1.95, so the workspace MSRV is declared as 1.95 and both
 the shell check and plugin tests pass on that toolchain; see the
 [official Rust release notes](https://doc.rust-lang.org/stable/releases.html).
 Initial Linux linking also identified missing `libfontconfig1-dev` and
-`libxkbcommon-x11-dev`; both w…216 tokens truncated…ge tests |
+`libxkbcommon-x11-dev`; both were installed for this validation run and added
+to the cloud environment guide.
+
+## Environment
+
+- Cloud host: Linux x86_64, 2026-10-12.
+- Rust stable: `rustc 1.99.0`.
+- The target application is Windows-only in material areas (native shell,
+  drag-out, Recycle Bin, Mica/Acrylic); no Windows GUI is available here.
+
+## Results
+
+| Check | Result | Notes |
+|---|---|---|
+| PhoTag clone and pinned revision | Passed | `36cee242a78c0a8cd9ac6b0d63b64265aa0add90` |
+| `cargo check -p photag-shell --offline` | Passed | Linux x86_64; compiles the GPUI Kit host and Cordis runtime composition |
+| `cargo fmt --all` | Passed | Stable toolchain with rustfmt |
+| `cargo test --workspace --exclude photag-shell --offline` | Passed, 22 tests | 3 database, 7 gallery data/filter/selection/lifecycle, 4 navigation, 1 tagging, 1 indexing, 1 thumbnails, 2 watcher, and 3 UI bridge tests |
 | `cargo check -p photag-shell --offline` | Passed | Includes GPUI view factories, slot mounting, and all registered runtime plugins |
 | `cargo check -p photag-plugin-gallery --offline` | Passed | Includes GPUI cached-thumbnail image element integration |
 | `cargo test --workspace --offline` | Failed at GPUI archive creation | Rust reports `failed to map object file: memory map must have a non-zero length` when creating a `gpui_component` rlib after the thumbnail dependency was added; package tests and shell check pass separately |
