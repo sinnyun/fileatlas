@@ -11,6 +11,7 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
+use photag_plugin_database::db::queries::SortOrder;
 use photag_ui_bridge::UiViewContribution;
 
 use card::render_media_card;
@@ -271,6 +272,14 @@ impl GalleryView {
         }
     }
 
+    fn set_sort(&mut self, sort: SortOrder, cx: &mut Context<Self>) {
+        if self.filter.sort != sort {
+            self.filter.sort = sort;
+            self.reload();
+            cx.notify();
+        }
+    }
+
     fn load_more(&mut self) {
         let offset = match &self.snapshot {
             Ok(snapshot) => snapshot.media.len(),
@@ -357,6 +366,21 @@ impl Render for GalleryView {
                             self.filter.media_type,
                             cx,
                         ),
+                    ]))
+                    .child(div().h_flex().gap_1().overflow_x_scrollbar().children([
+                        sort_button("newest", SortOrder::NewestFirst, self.filter.sort, cx),
+                        sort_button("oldest", SortOrder::OldestFirst, self.filter.sort, cx),
+                        sort_button("largest", SortOrder::BiggestFirst, self.filter.sort, cx),
+                        sort_button("smallest", SortOrder::SmallestFirst, self.filter.sort, cx),
+                        sort_button("name-asc", SortOrder::NameAsc, self.filter.sort, cx),
+                        sort_button("name-desc", SortOrder::NameDesc, self.filter.sort, cx),
+                        sort_button(
+                            "highest-rated",
+                            SortOrder::HighestRated,
+                            self.filter.sort,
+                            cx,
+                        ),
+                        sort_button("lowest-rated", SortOrder::LowestRated, self.filter.sort, cx),
                     ]))
                     .child(div().h_1().w_full().bg(rgb(0x343943)))
                     .child(
@@ -450,4 +474,20 @@ fn media_type_button(
     Button::new(format!("gallery-media-type-{id}"))
         .label(selected_label)
         .on_click(cx.listener(move |this, _, _, cx| this.set_media_type(media_type, cx)))
+}
+
+fn sort_button(
+    id: &str,
+    sort: SortOrder,
+    active: SortOrder,
+    cx: &mut Context<GalleryView>,
+) -> Button {
+    let label = if sort == active {
+        format!("• {}", sort.label())
+    } else {
+        sort.label().to_owned()
+    };
+    Button::new(format!("gallery-sort-{id}"))
+        .label(label)
+        .on_click(cx.listener(move |this, _, _, cx| this.set_sort(sort, cx)))
 }
