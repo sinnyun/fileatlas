@@ -128,11 +128,8 @@ impl Plugin for SettingsPlugin {
             Some(path) => SettingsService::open_at(path.clone()),
             None => SettingsService::open_default(),
         });
-        context
-            .provide(service)
-            .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
-        let service = context
-            .try_service::<SettingsService>()
+        let publication = context
+            .provide(Arc::clone(&service))
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,
@@ -173,6 +170,7 @@ impl Plugin for SettingsPlugin {
         .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         register_views_for_plugin(&context, "photag.settings", [view::settings(service)])
             .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
+        drop(publication);
         Ok(())
     }
 }

@@ -5,9 +5,10 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 ## Lifecycle and dependencies
 
 - Cordis plugin name: `photag.navigation`; published service: `photag/navigation` (`NavigationService`).
-- Requires `DatabaseService` and `IndexingService`; attaches `WatcherService` when available.
+- Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
 - UI emits `FolderSelectionChanged(Option<i64>)`, `TagSelectionChanged(Option<i64>)`, `DirectoryPathSelected(Option<String>)`; emits `MediaIndexChanged(())` after operations that alter indexed membership.
+- On sidebar startup, restores only `selected_folder_id`, `selected_path`, and `expanded_subdirs` from `SessionService`. Folder IDs must still exist; selected paths must still resolve inside a registered folder; expanded paths are rebuilt through the live subdirectory listing. Startup emits folder and path selection events in order so Gallery receives the restored scope. Expanding or collapsing a directory updates only `expanded_subdirs`, preserving fields owned by other consumers.
 
 ## Service input/output
 

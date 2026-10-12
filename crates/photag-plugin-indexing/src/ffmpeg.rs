@@ -32,7 +32,7 @@ fn find_binary(name: &str) -> String {
 
 fn ffmpeg_cmd(program: &str) -> Command {
     let binary = find_binary(program);
-    let cmd = Command::new(binary);
+    let mut cmd = Command::new(binary);
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
     cmd

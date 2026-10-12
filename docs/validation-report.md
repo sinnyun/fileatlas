@@ -1,5 +1,19 @@
 # Validation report
 
+## Session restore migration pass (2026-10-12)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo fmt --all -- --check` | Passed | Workspace formatting check after gallery and navigation session wiring. |
+| Initial `cargo check -p photag-shell --locked -j 2` | Failed before compilation | Cargo required lockfile updates for the new local gallery/navigation dependencies; their workspace package edges were added to `Cargo.lock`. |
+| `cargo check -p photag-shell --locked -j 2` after lock update | Blocked by toolchain | Active `rustc 1.94.1` is below workspace MSRV 1.95. |
+| `cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows x86_64 MSVC host; compiled shell dependency graph. The first compile exposed and fixed the Windows `Command::creation_flags` mutable binding in indexing. Existing warnings remain in session/settings publication handling and metadata-export import. |
+| Plugin/workspace tests | Deferred | Per repository verification instructions, tests remain reserved for the user's second-round concentrated debugging. |
+
+The session migration restores/persists gallery query filters and restores
+validated navigation selection and directory expansion. This compile does not
+verify behavior in a running Windows GUI or against an actual PhoTag library.
+
 ## Current cloud task pass (2026-10-12)
 
 This pass is in code-generation/documentation mode. Per the current task scope,
@@ -180,3 +194,20 @@ windows@0.62.2 -p photag-shell --locked` traces the Windows API feature set to
 the GPUI Windows backend and GPUI Kit dependency path. Application-level
 feature trimming is not established as safe; validate upstream feature
 requirements and Windows UI coverage before attempting it.
+
+## Windows development launcher and staged plugin startup (2026-10-13)
+
+`start-dev.bat [plugin-list]` checks `photag-shell`, then runs the native GPUI development window. It takes no port argument because this desktop application has no development HTTP port.
+
+The shell enables `settings`, `session`, and `database` by default, with the UI bridge published by the host. `PHOTAG_DEV_PLUGINS` defaults to `core`. Pass a comma-separated plugin name as the optional argument (or set the environment variable) to enable plugins incrementally. `gallery` brings in file operations; `navigation` brings in thumbnails, indexing, and watcher; `indexing` brings in thumbnails; `watcher` brings in indexing and thumbnails. `all` enables all feature plugins. Supported names: `gallery`, `navigation`, `metadata-export`, `file-operations`, `thumbnails`, `indexing`, `watcher`, and `tagging`.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo fmt --all -- --check` | Passed | Windows MSVC toolchain 1.97.1. |
+| `cargo check -p photag-shell --locked -j 2` | Passed | Windows MSVC; incremental shell dependency graph. Existing warnings: session `ServicePublication` and metadata-export unused import. |
+| `start-dev.bat` | Started | No port prompt; shell compile check passed; current `photag-shell.exe` is responsive with a nonzero main-window handle. CUA did not expose native apps for visual inspection. |
+| Plugin tests | Deferred | Per repository verification instructions. |
+
+To progressively enable a feature, pass its name, for example `start-dev.bat gallery` or `start-dev.bat navigation`.
+
+Some initial runs exited with a GPUI debug panic (`Duplicate a11y node id`) during first render; this can recur and is still unresolved. Other direct and batch-file runs remained responsive with a nonzero window handle, including the current no-argument batch-file launch. Capture a full backtrace and isolate the view as plugins are enabled incrementally.

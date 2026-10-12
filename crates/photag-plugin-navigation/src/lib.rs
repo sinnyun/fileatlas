@@ -315,7 +315,36 @@ impl Plugin for NavigationPlugin {
         let watcher = context
             .try_service::<WatcherService>()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
+        let session_service = context
+            .try_service::<photag_plugin_session::SessionService>()
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
+        let session = session_service
+            .snapshot()
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
         let service = Arc::new(NavigationService::new(database, indexing).with_watcher(watcher));
+        let folders = service
+            .snapshot()
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?
+            .folders;
+        let selected_folder_id = session
+            .selected_folder_id
+            .filter(|id| folders.iter().any(|folder| folder.folder.id == *id));
+        let selected_path = session.selected_path.filter(|path| {
+            let selected = Path::new(path).canonicalize();
+            selected.is_ok_and(|selected| {
+                folders.iter().any(|folder| {
+                    Path::new(&folder.folder.path)
+                        .canonicalize()
+                        .is_ok_and(|root| selected.starts_with(root))
+                })
+            })
+        });
+        let selected_folder_id = if selected_path.is_some() {
+            None
+        } else {
+            selected_folder_id
+        };
+        let expanded_subdirs = session.expanded_subdirs;
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
@@ -352,7 +381,14 @@ impl Plugin for NavigationPlugin {
         register_views_for_plugin(
             &context,
             "photag.navigation",
-            [view::sidebar(service, context.clone())],
+            [view::sidebar(
+                service,
+                context.clone(),
+                session_service,
+                selected_folder_id,
+                selected_path,
+                expanded_subdirs,
+            )],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
         Ok(())

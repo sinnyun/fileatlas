@@ -1,6 +1,8 @@
 //! Native GPUI sidebar rendering for the navigation plugin.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,6 +15,7 @@ use photag_contracts::{
     DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
 };
 use photag_plugin_indexing::scan::ScanProgress;
+use photag_plugin_session::SessionService;
 use photag_ui_bridge::UiViewContribution;
 
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
@@ -20,6 +23,10 @@ use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 pub(super) fn sidebar(
     service: Arc<NavigationService>,
     cordis: CordisContext,
+    session: Arc<SessionService>,
+    selected_folder_id: Option<i64>,
+    selected_path: Option<String>,
+    expanded_subdirs: HashSet<String>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "navigation/sidebar-view",
@@ -28,6 +35,10 @@ pub(super) fn sidebar(
         move |window, app| {
             let view_service = Arc::clone(&service);
             let view_cordis = cordis.clone();
+            let view_session = Arc::clone(&session);
+            let view_selected_folder_id = selected_folder_id;
+            let view_selected_path = selected_path.clone();
+            let view_expanded_subdirs = expanded_subdirs.clone();
             let folder_path = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
             let tag_name = app.new(|cx| InputState::new(window, cx).placeholder("New tag name"));
             let tag_parent =
@@ -45,6 +56,10 @@ pub(super) fn sidebar(
                 SidebarView::new(
                     view_service,
                     view_cordis,
+                    view_session,
+                    view_selected_folder_id,
+                    view_selected_path,
+                    view_expanded_subdirs,
                     folder_path,
                     tag_name,
                     tag_parent,
@@ -62,6 +77,7 @@ pub(super) fn sidebar(
 struct SidebarView {
     service: Arc<NavigationService>,
     cordis: CordisContext,
+    session: Arc<SessionService>,
     folder_path: Entity<InputState>,
     tag_name: Entity<InputState>,
     tag_parent: Entity<InputState>,
@@ -73,12 +89,19 @@ struct SidebarView {
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
     expanded_directories: HashMap<String, Vec<SubdirectoryNode>>,
+    restored_folder_id: Option<i64>,
+    restored_path: Option<String>,
+    restore_selection_pending: bool,
 }
 
 impl SidebarView {
     fn new(
         service: Arc<NavigationService>,
         cordis: CordisContext,
+        session: Arc<SessionService>,
+        restored_folder_id: Option<i64>,
+        restored_path: Option<String>,
+        expanded_subdirs: HashSet<String>,
         folder_path: Entity<InputState>,
         tag_name: Entity<InputState>,
         tag_parent: Entity<InputState>,
@@ -87,9 +110,15 @@ impl SidebarView {
         tag_icon: Entity<InputState>,
         tag_move_target: Entity<InputState>,
     ) -> Self {
+        let snapshot = service.snapshot().map_err(|error| error.to_string());
+        let expanded_directories = match &snapshot {
+            Ok(snapshot) => restore_expanded_directories(&service, snapshot, &expanded_subdirs),
+            Err(_) => HashMap::new(),
+        };
         Self {
             service: Arc::clone(&service),
             cordis,
+            session,
             folder_path,
             tag_name,
             tag_parent,
@@ -97,10 +126,13 @@ impl SidebarView {
             tag_color,
             tag_icon,
             tag_move_target,
-            snapshot: service.snapshot().map_err(|error| error.to_string()),
+            snapshot,
             active_scan: None,
             scan_progress: None,
-            expanded_directories: HashMap::new(),
+            expanded_directories,
+            restored_folder_id,
+            restored_path,
+            restore_selection_pending: true,
         }
     }
 
@@ -236,6 +268,12 @@ impl SidebarView {
             self.expanded_directories
                 .insert(path.to_owned(), self.service.subdirectories(path));
         }
+        if let Ok(mut session) = self.session.snapshot() {
+            session.expanded_subdirs = self.expanded_directories.keys().cloned().collect();
+            if let Err(error) = self.session.replace(session) {
+                eprintln!("directory expansion session save failed: {error}");
+            }
+        }
     }
 
     fn select_path(&self, path: String, cx: &mut Context<Self>) {
@@ -360,6 +398,27 @@ impl SidebarView {
 
 impl Render for SidebarView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.restore_selection_pending {
+            self.restore_selection_pending = false;
+            let cordis = self.cordis.clone();
+            let folder_id = self.restored_folder_id;
+            let path = self.restored_path.clone();
+            cx.spawn(async move |_, _| {
+                if let Err(error) = cordis
+                    .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
+                    .await
+                {
+                    eprintln!("restored folder selection dispatch failed: {error}");
+                }
+                if let Err(error) = cordis
+                    .emit::<DirectoryPathSelected>(Routing::Unscoped, path)
+                    .await
+                {
+                    eprintln!("restored directory selection dispatch failed: {error}");
+                }
+            })
+            .detach();
+        }
         let mut panel = div()
             .v_flex()
             .size_full()
@@ -547,6 +606,50 @@ impl Render for SidebarView {
             ),
         }
     }
+}
+
+fn restore_expanded_directories(
+    service: &NavigationService,
+    snapshot: &NavigationSnapshot,
+    requested: &HashSet<String>,
+) -> HashMap<String, Vec<SubdirectoryNode>> {
+    let mut expanded = HashMap::new();
+    for path in requested {
+        let target = Path::new(path);
+        if !target.is_dir() {
+            continue;
+        }
+        let Some(folder) = snapshot
+            .folders
+            .iter()
+            .find(|folder| target.starts_with(Path::new(&folder.folder.path)))
+        else {
+            continue;
+        };
+        let root = Path::new(&folder.folder.path);
+        let Ok(relative) = target.strip_prefix(root) else {
+            continue;
+        };
+        let mut current = root.to_path_buf();
+        let mut reachable = true;
+        for component in relative.components() {
+            let children = service.subdirectories(&current.to_string_lossy());
+            let next = current.join(component);
+            if requested.contains(&current.to_string_lossy().into_owned()) {
+                expanded.insert(current.to_string_lossy().into_owned(), children.clone());
+            }
+            if !children.iter().any(|child| Path::new(&child.path) == next) {
+                reachable = false;
+                break;
+            }
+            current = next;
+        }
+        if reachable && requested.contains(path) {
+            let children = service.subdirectories(path);
+            expanded.insert(path.clone(), children);
+        }
+    }
+    expanded
 }
 
 fn render_tag(

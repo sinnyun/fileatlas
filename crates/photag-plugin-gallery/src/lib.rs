@@ -19,6 +19,7 @@ use photag_contracts::{
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_session::SessionService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
 };
@@ -228,6 +229,9 @@ impl Plugin for GalleryPlugin {
         let file_operations = context
             .try_service::<FileOperationsService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let session = context
+            .try_service::<SessionService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let runtime = tokio::runtime::Handle::current();
         let service = Arc::new(GalleryService::new(database));
         let selected_folder = Arc::new(SelectedFolder::default());
@@ -349,6 +353,7 @@ impl Plugin for GalleryPlugin {
                 selected_tag,
                 selected_path,
                 index_revision,
+                session,
             )],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;

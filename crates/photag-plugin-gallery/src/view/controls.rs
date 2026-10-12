@@ -158,16 +158,20 @@ pub(super) fn media_type_row(filter: &GalleryFilter, cx: &mut Context<GalleryVie
 }
 
 pub(super) fn sort_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> impl IntoElement {
-    div().h_flex().gap_1().overflow_x_scrollbar().children([
-        sort_button("newest", SortOrder::NewestFirst, filter.sort, cx),
-        sort_button("oldest", SortOrder::OldestFirst, filter.sort, cx),
-        sort_button("largest", SortOrder::BiggestFirst, filter.sort, cx),
-        sort_button("smallest", SortOrder::SmallestFirst, filter.sort, cx),
-        sort_button("name-asc", SortOrder::NameAsc, filter.sort, cx),
-        sort_button("name-desc", SortOrder::NameDesc, filter.sort, cx),
-        sort_button("highest-rated", SortOrder::HighestRated, filter.sort, cx),
-        sort_button("lowest-rated", SortOrder::LowestRated, filter.sort, cx),
-    ])
+    let mut row = div().h_flex().gap_1().overflow_x_scrollbar();
+    for (id, order) in [
+        ("newest", SortOrder::NewestFirst),
+        ("oldest", SortOrder::OldestFirst),
+        ("largest", SortOrder::BiggestFirst),
+        ("smallest", SortOrder::SmallestFirst),
+        ("name-asc", SortOrder::NameAsc),
+        ("name-desc", SortOrder::NameDesc),
+        ("highest-rated", SortOrder::HighestRated),
+        ("lowest-rated", SortOrder::LowestRated),
+    ] {
+        row = row.child(sort_button(id, order, filter.sort, cx));
+    }
+    row
 }
 
 pub(super) fn rating_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {

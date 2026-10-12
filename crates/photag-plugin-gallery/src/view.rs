@@ -17,6 +17,7 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_session::{MediaTypeFilter as SavedMediaType, SessionService};
 use photag_ui_bridge::UiViewContribution;
 
 use card::{render_media_card, render_media_details};
@@ -35,6 +36,7 @@ pub(super) fn gallery(
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
+    session: Arc<SessionService>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
@@ -48,11 +50,22 @@ pub(super) fn gallery(
             let view_tag_selection = Arc::clone(&selected_tag);
             let view_path_selection = Arc::clone(&selected_path);
             let view_index_revision = Arc::clone(&index_revision);
+            let view_session = Arc::clone(&session);
+            let saved = view_session.snapshot().unwrap_or_default();
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
             let date_from =
                 app.new(|cx| InputState::new(window, cx).placeholder("From YYYY-MM-DD"));
             let date_to = app.new(|cx| InputState::new(window, cx).placeholder("To YYYY-MM-DD"));
+            search.update(app, |input, cx| {
+                input.set_value(&saved.search_query, window, cx)
+            });
+            date_from.update(app, |input, cx| {
+                input.set_value(saved.date_from.as_deref().unwrap_or_default(), window, cx)
+            });
+            date_to.update(app, |input, cx| {
+                input.set_value(saved.date_to.as_deref().unwrap_or_default(), window, cx)
+            });
             let rename_input =
                 app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
             let destination_input =
@@ -66,6 +79,7 @@ pub(super) fn gallery(
                     view_tag_selection,
                     view_path_selection,
                     view_index_revision,
+                    view_session,
                     search,
                     date_from,
                     date_to,
@@ -87,6 +101,7 @@ struct GalleryView {
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
+    session: Arc<SessionService>,
     search: Entity<InputState>,
     date_from: Entity<InputState>,
     date_to: Entity<InputState>,
@@ -112,6 +127,7 @@ impl GalleryView {
         selected_tag: Arc<SelectedTag>,
         selected_path: Arc<SelectedPath>,
         index_revision: Arc<IndexRevision>,
+        session: Arc<SessionService>,
         search: Entity<InputState>,
         date_from: Entity<InputState>,
         date_to: Entity<InputState>,
@@ -119,7 +135,32 @@ impl GalleryView {
         destination_input: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
-        let filter = GalleryFilter::default();
+        let saved = session.snapshot().unwrap_or_default();
+        let mut filter = GalleryFilter::default();
+        filter.search = saved.search_query.clone();
+        filter.sort = saved.sort_order.unwrap_or(SortOrder::NewestFirst);
+        filter.media_type = match saved.media_type_filter.unwrap_or(SavedMediaType::All) {
+            SavedMediaType::All => MediaTypeFilter::All,
+            SavedMediaType::Photos => MediaTypeFilter::Photos,
+            SavedMediaType::Videos => MediaTypeFilter::Videos,
+            SavedMediaType::Audio => MediaTypeFilter::Audio,
+        };
+        filter.extensions = saved.selected_extensions.clone();
+        filter.excluded_extensions = saved.excluded_extensions.clone();
+        filter.date_from = saved
+            .date_from
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten();
+        filter.date_to = saved
+            .date_to
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten();
+        filter.rating_min = saved.rating_min.clamp(0, 5);
+        filter.rating_max = saved.rating_max.unwrap_or(5).clamp(filter.rating_min, 5);
+        filter.selected_tag_ids = saved.selected_tag_ids.clone();
+        filter.excluded_tag_ids = saved.excluded_tag_ids.clone();
         let focus_handle = cx.focus_handle();
         let _subscriptions = vec![
             cx.subscribe(&search, |this, _, event, cx| {
@@ -154,19 +195,20 @@ impl GalleryView {
             .0
             .lock()
             .map(|selected| *selected)
-            .unwrap_or(None);
-        let mut filter = filter;
+            .unwrap_or(None)
+            .or(saved.selected_folder_id);
         filter.folder_id = selected;
-        filter.selected_tag_ids = selected_tag
-            .0
-            .lock()
-            .map(|selected| selected.iter().copied().collect())
-            .unwrap_or_default();
+        if let Ok(selected_tag) = selected_tag.0.lock() {
+            if let Some(tag_id) = *selected_tag {
+                filter.selected_tag_ids = vec![tag_id];
+            }
+        }
         filter.path_prefix = selected_path
             .0
             .lock()
             .map(|selected| selected.clone())
-            .unwrap_or(None);
+            .unwrap_or(None)
+            .or(saved.selected_path.clone());
         let mut observed_revision = index_revision.0.load(Ordering::Acquire);
         let snapshot = service
             .load(filter.to_query())
@@ -226,6 +268,7 @@ impl GalleryView {
             selected_tag,
             selected_path,
             index_revision,
+            session,
             search,
             date_from,
             date_to,
@@ -244,6 +287,7 @@ impl GalleryView {
     }
 
     fn reload(&mut self) {
+        self.persist_filter_session();
         self.snapshot = self
             .service
             .load(self.filter.to_query())
@@ -252,6 +296,37 @@ impl GalleryView {
         self.show_exif = false;
         self.exif_cache = None;
         self.confirm_delete = false;
+    }
+
+    fn persist_filter_session(&self) {
+        let Ok(mut saved) = self.session.snapshot() else {
+            return;
+        };
+        saved.search_query = self.filter.search.clone();
+        saved.selected_folder_id = self.filter.folder_id;
+        saved.selected_path = self.filter.path_prefix.clone();
+        saved.sort_order = Some(self.filter.sort);
+        saved.media_type_filter = Some(match self.filter.media_type {
+            MediaTypeFilter::All => SavedMediaType::All,
+            MediaTypeFilter::Photos => SavedMediaType::Photos,
+            MediaTypeFilter::Videos => SavedMediaType::Videos,
+            MediaTypeFilter::Audio => SavedMediaType::Audio,
+        });
+        saved.selected_extensions = self.filter.extensions.clone();
+        saved.excluded_extensions = self.filter.excluded_extensions.clone();
+        saved.date_from = self
+            .filter
+            .date_from
+            .map(|date| date.format("%Y-%m-%d").to_string());
+        saved.date_to = self
+            .filter
+            .date_to
+            .map(|date| date.format("%Y-%m-%d").to_string());
+        saved.rating_min = self.filter.rating_min;
+        saved.rating_max = Some(self.filter.rating_max);
+        saved.selected_tag_ids = self.filter.selected_tag_ids.clone();
+        saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
+        let _ = self.session.replace(saved);
     }
 
     fn select_media(
@@ -621,31 +696,31 @@ impl Render for GalleryView {
                                     .text_color(rgb(0x9aa0ad))
                                     .child(format!("{} items", snapshot.media_count)),
                             ),
-                    )
-                    .child(Input::new(&self.search).w_full())
-                    .child(controls::search_scope_row(&self.filter, cx))
-                    .child(controls::clear_filters_button(cx))
-                    .child(controls::active_filter_row(&self.filter, cx))
-                    .child(controls::media_type_row(&self.filter, cx))
-                    .child(controls::sort_row(&self.filter, cx))
-                    .child(controls::rating_row(&self.filter, cx))
-                    .child(controls::date_row(&self.date_from, &self.date_to))
-                    .child(controls::extension_row(
-                        &self.filter,
-                        &snapshot.available_extensions,
-                        cx,
-                    ))
-                    .child(div().h_1().w_full().bg(rgb(0x343943)))
-                    .child(
-                        div()
-                            .h_flex()
-                            .flex_wrap()
-                            .flex_1()
-                            .content_start()
-                            .gap_3()
-                            .overflow_y_scrollbar()
-                            .children(media_cards),
                     );
+                grid = grid.child(Input::new(&self.search).w_full());
+                grid = grid.child(controls::search_scope_row(&self.filter, cx));
+                grid = grid.child(controls::clear_filters_button(cx));
+                grid = grid.child(controls::active_filter_row(&self.filter, cx));
+                grid = grid.child(controls::media_type_row(&self.filter, cx));
+                grid = grid.child(controls::sort_row(&self.filter, cx));
+                grid = grid.child(controls::rating_row(&self.filter, cx));
+                grid = grid.child(controls::date_row(&self.date_from, &self.date_to));
+                grid = grid.child(controls::extension_row(
+                    &self.filter,
+                    &snapshot.available_extensions,
+                    cx,
+                ));
+                grid = grid.child(div().h_1().w_full().bg(rgb(0x343943)));
+                grid = grid.child(
+                    div()
+                        .h_flex()
+                        .flex_wrap()
+                        .flex_1()
+                        .content_start()
+                        .gap_3()
+                        .overflow_y_scrollbar()
+                        .children(media_cards),
+                );
                 if snapshot.media.is_empty() {
                     grid = grid.child(
                         div()

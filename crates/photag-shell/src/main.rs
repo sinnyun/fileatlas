@@ -4,6 +4,38 @@ use gpui_kit::prelude::FluentBuilder;
 
 use std::sync::Arc;
 
+fn dev_plugin_enabled(config: &str, name: &str) -> bool {
+    config == "all" || config.split(',').any(|plugin| plugin.trim() == name)
+}
+
+fn dev_plugin_config() -> String {
+    let config = std::env::var("PHOTAG_DEV_PLUGINS").unwrap_or_else(|_| "core".to_owned());
+    let valid = [
+        "core",
+        "all",
+        "gallery",
+        "navigation",
+        "metadata-export",
+        "file-operations",
+        "thumbnails",
+        "indexing",
+        "watcher",
+        "tagging",
+    ];
+    for plugin in config
+        .split(',')
+        .map(str::trim)
+        .filter(|plugin| !plugin.is_empty())
+    {
+        if !valid.contains(&plugin) {
+            eprintln!("Unknown PHOTAG_DEV_PLUGINS entry: {plugin}");
+            eprintln!("Valid entries: {}", valid.join(", "));
+            std::process::exit(2);
+        }
+    }
+    config
+}
+
 use cordis::{Context as CordisContext, Plugin, PreparedPlugin, Routing};
 use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement;
@@ -168,6 +200,27 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
 }
 
 fn main() {
+    let plugin_config = dev_plugin_config();
+    let enable_all = dev_plugin_enabled(&plugin_config, "all");
+    let enable_gallery = enable_all || dev_plugin_enabled(&plugin_config, "gallery");
+    let enable_navigation = enable_all || dev_plugin_enabled(&plugin_config, "navigation");
+    let enable_metadata_export =
+        enable_all || dev_plugin_enabled(&plugin_config, "metadata-export");
+    let enable_file_operations =
+        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "file-operations");
+    let enable_thumbnails = enable_all
+        || enable_navigation
+        || dev_plugin_enabled(&plugin_config, "thumbnails")
+        || dev_plugin_enabled(&plugin_config, "indexing")
+        || dev_plugin_enabled(&plugin_config, "watcher");
+    let enable_indexing = enable_all
+        || enable_navigation
+        || dev_plugin_enabled(&plugin_config, "indexing")
+        || dev_plugin_enabled(&plugin_config, "watcher");
+    let enable_watcher =
+        enable_all || enable_navigation || dev_plugin_enabled(&plugin_config, "watcher");
+    let enable_tagging = enable_all || dev_plugin_enabled(&plugin_config, "tagging");
+    eprintln!("Starting development plugins: {plugin_config}");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -200,74 +253,110 @@ fn main() {
     let database_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(database_plugin, database_input)))
         .expect("start database plugin");
-    let file_operations_plugin = photag_plugin_file_operations::FileOperationsPlugin;
-    let file_operations_input = file_operations_plugin
-        .prepare(photag_plugin_file_operations::FileOperationsConfig)
-        .expect("prepare file operations plugin");
-    let file_operations_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            file_operations_plugin,
-            file_operations_input,
-        )))
-        .expect("start file operations plugin");
-    let metadata_export_plugin = photag_plugin_metadata_export::MetadataExportPlugin;
-    let metadata_export_input = metadata_export_plugin
-        .prepare(photag_plugin_metadata_export::MetadataExportConfig)
-        .expect("prepare metadata export plugin");
-    let metadata_export_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            metadata_export_plugin,
-            metadata_export_input,
-        )))
-        .expect("start metadata export plugin");
-    let gallery_plugin = photag_plugin_gallery::GalleryPlugin;
-    let gallery_input = gallery_plugin
-        .prepare(photag_plugin_gallery::GalleryConfig)
-        .expect("prepare gallery plugin");
-    let gallery_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(gallery_plugin, gallery_input)))
-        .expect("start gallery plugin");
-    let thumbnail_plugin = photag_plugin_thumbnails::ThumbnailPlugin;
-    let thumbnail_input = thumbnail_plugin
-        .prepare(photag_plugin_thumbnails::ThumbnailConfig::default())
-        .expect("prepare thumbnail plugin");
-    let thumbnail_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            thumbnail_plugin,
-            thumbnail_input,
-        )))
-        .expect("start thumbnail plugin");
-    let indexing_plugin = photag_plugin_indexing::IndexingPlugin;
-    let indexing_input = indexing_plugin
-        .prepare(photag_plugin_indexing::IndexingConfig)
-        .expect("prepare indexing plugin");
-    let indexing_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(indexing_plugin, indexing_input)))
-        .expect("start indexing plugin");
-    let watcher_plugin = photag_plugin_watcher::WatcherPlugin;
-    let watcher_input = watcher_plugin
-        .prepare(photag_plugin_watcher::WatcherConfig)
-        .expect("prepare watcher plugin");
-    let watcher_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(watcher_plugin, watcher_input)))
-        .expect("start watcher plugin");
-    let navigation_plugin = photag_plugin_navigation::NavigationPlugin;
-    let navigation_input = navigation_plugin
-        .prepare(photag_plugin_navigation::NavigationConfig)
-        .expect("prepare navigation plugin");
-    let navigation_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            navigation_plugin,
-            navigation_input,
-        )))
-        .expect("start navigation plugin");
-    let tagging_plugin = photag_plugin_tagging::TaggingPlugin;
-    let tagging_input = tagging_plugin
-        .prepare(photag_plugin_tagging::TaggingConfig)
-        .expect("prepare tagging plugin");
-    let tagging_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(tagging_plugin, tagging_input)))
-        .expect("start tagging plugin");
+    let file_operations_fiber = if enable_file_operations {
+        let plugin = photag_plugin_file_operations::FileOperationsPlugin;
+        let input = plugin
+            .prepare(photag_plugin_file_operations::FileOperationsConfig)
+            .expect("prepare file operations plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start file operations plugin"),
+        )
+    } else {
+        None
+    };
+    let metadata_export_fiber = if enable_metadata_export {
+        let plugin = photag_plugin_metadata_export::MetadataExportPlugin;
+        let input = plugin
+            .prepare(photag_plugin_metadata_export::MetadataExportConfig)
+            .expect("prepare metadata export plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start metadata export plugin"),
+        )
+    } else {
+        None
+    };
+    let gallery_fiber = if enable_gallery {
+        let plugin = photag_plugin_gallery::GalleryPlugin;
+        let input = plugin
+            .prepare(photag_plugin_gallery::GalleryConfig)
+            .expect("prepare gallery plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start gallery plugin"),
+        )
+    } else {
+        None
+    };
+    let thumbnail_fiber = if enable_thumbnails {
+        let plugin = photag_plugin_thumbnails::ThumbnailPlugin;
+        let input = plugin
+            .prepare(photag_plugin_thumbnails::ThumbnailConfig::default())
+            .expect("prepare thumbnail plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start thumbnail plugin"),
+        )
+    } else {
+        None
+    };
+    let indexing_fiber = if enable_indexing {
+        let plugin = photag_plugin_indexing::IndexingPlugin;
+        let input = plugin
+            .prepare(photag_plugin_indexing::IndexingConfig)
+            .expect("prepare indexing plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start indexing plugin"),
+        )
+    } else {
+        None
+    };
+    let watcher_fiber = if enable_watcher {
+        let plugin = photag_plugin_watcher::WatcherPlugin;
+        let input = plugin
+            .prepare(photag_plugin_watcher::WatcherConfig)
+            .expect("prepare watcher plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start watcher plugin"),
+        )
+    } else {
+        None
+    };
+    let navigation_fiber = if enable_navigation {
+        let plugin = photag_plugin_navigation::NavigationPlugin;
+        let input = plugin
+            .prepare(photag_plugin_navigation::NavigationConfig)
+            .expect("prepare navigation plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start navigation plugin"),
+        )
+    } else {
+        None
+    };
+    let tagging_fiber = if enable_tagging {
+        let plugin = photag_plugin_tagging::TaggingPlugin;
+        let input = plugin
+            .prepare(photag_plugin_tagging::TaggingConfig)
+            .expect("prepare tagging plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start tagging plugin"),
+        )
+    } else {
+        None
+    };
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -297,30 +386,46 @@ fn main() {
         .expect("open PhoTag window");
     });
 
-    runtime
-        .block_on(tagging_fiber.dispose())
-        .expect("stop tagging plugin");
-    runtime
-        .block_on(file_operations_fiber.dispose())
-        .expect("stop file operations plugin");
-    runtime
-        .block_on(metadata_export_fiber.dispose())
-        .expect("stop metadata export plugin");
-    runtime
-        .block_on(navigation_fiber.dispose())
-        .expect("stop navigation plugin");
-    runtime
-        .block_on(watcher_fiber.dispose())
-        .expect("stop watcher plugin");
-    runtime
-        .block_on(indexing_fiber.dispose())
-        .expect("stop indexing plugin");
-    runtime
-        .block_on(thumbnail_fiber.dispose())
-        .expect("stop thumbnail plugin");
-    runtime
-        .block_on(gallery_fiber.dispose())
-        .expect("stop gallery plugin");
+    if let Some(fiber) = tagging_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop tagging plugin");
+    }
+    if let Some(fiber) = gallery_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = navigation_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop navigation plugin");
+    }
+    if let Some(fiber) = watcher_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop watcher plugin");
+    }
+    if let Some(fiber) = indexing_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop indexing plugin");
+    }
+    if let Some(fiber) = thumbnail_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop thumbnail plugin");
+    }
+    if let Some(fiber) = metadata_export_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop metadata export plugin");
+    }
+    if let Some(fiber) = file_operations_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop file operations plugin");
+    }
     runtime
         .block_on(database_fiber.dispose())
         .expect("stop database plugin");
