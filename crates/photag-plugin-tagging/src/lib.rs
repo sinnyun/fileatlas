@@ -7,6 +7,8 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Tag};
 use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
 
+pub mod xmp;
+
 pub struct TaggingService {
     database: Arc<DatabaseService>,
 }
@@ -23,21 +25,24 @@ impl TaggingService {
     /// Assign source tags, their one-way associated tags, and required ancestors.
     /// The database query preserves PhoTag's manual-versus-auto-applied flags.
     pub fn assign(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
-        Ok(self
-            .database
-            .with_writer(|connection| queries::assign_tags(connection, media_ids, tag_ids))?)
+        self.database
+            .with_writer(|connection| queries::assign_tags(connection, media_ids, tag_ids))?;
+        self.schedule_xmp_sync(media_ids);
+        Ok(())
     }
 
     pub fn remove(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
-        Ok(self
-            .database
-            .with_writer(|connection| queries::remove_tags(connection, media_ids, tag_ids))?)
+        self.database
+            .with_writer(|connection| queries::remove_tags(connection, media_ids, tag_ids))?;
+        self.schedule_xmp_sync(media_ids);
+        Ok(())
     }
 
     pub fn clear(&self, media_ids: &[i64]) -> Result<(), TaggingError> {
-        Ok(self
-            .database
-            .with_writer(|connection| queries::remove_all_tags(connection, media_ids))?)
+        self.database
+            .with_writer(|connection| queries::remove_all_tags(connection, media_ids))?;
+        self.schedule_xmp_sync(media_ids);
+        Ok(())
     }
 
     pub fn for_media(&self, media_id: i64) -> Result<Vec<Tag>, TaggingError> {
@@ -68,9 +73,49 @@ impl TaggingService {
         target_id: i64,
         reparent_children: bool,
     ) -> Result<(), TaggingError> {
-        Ok(self.database.with_writer(|connection| {
+        let affected = self.database.with_reader(|connection| {
+            queries::get_media_ids_with_tag(connection, source_id)
+        })?;
+        self.database.with_writer(|connection| {
             queries::merge_tag(connection, source_id, target_id, reparent_children)
-        })?)
+        })?;
+        self.schedule_xmp_sync(&affected);
+        Ok(())
+    }
+
+    /// Reparent a tag and let the query report media whose implicit ancestor
+    /// assignments changed; those media receive a fresh metadata write.
+    pub fn move_tag(
+        &self,
+        source_id: i64,
+        drop_position: queries::TagDropPos,
+    ) -> Result<Vec<i64>, TaggingError> {
+        let affected = self.database.with_writer(|connection| {
+            queries::move_tag(connection, source_id, drop_position)
+        })?;
+        self.schedule_xmp_sync(&affected);
+        Ok(affected)
+    }
+
+    /// Rewrite IPTC or XMP tags after a tag mutation. File writes run on a
+    /// detached worker, matching PhoTag's best-effort synchronization policy.
+    pub fn schedule_xmp_sync(&self, media_ids: &[i64]) {
+        if media_ids.is_empty() {
+            return;
+        }
+        let Ok(entries) = self.database.with_reader(|connection| {
+            queries::get_paths_and_current_tags(connection, media_ids)
+        }) else {
+            return;
+        };
+        if entries.is_empty() {
+            return;
+        }
+        std::thread::spawn(move || {
+            for (path, tags) in entries {
+                let _ = xmp::write_metadata(&path, &tags);
+            }
+        });
     }
 }
 

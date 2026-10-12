@@ -200,6 +200,16 @@ fn main() {
     let database_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(database_plugin, database_input)))
         .expect("start database plugin");
+    let file_operations_plugin = photag_plugin_file_operations::FileOperationsPlugin;
+    let file_operations_input = file_operations_plugin
+        .prepare(photag_plugin_file_operations::FileOperationsConfig)
+        .expect("prepare file operations plugin");
+    let file_operations_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(
+            file_operations_plugin,
+            file_operations_input,
+        )))
+        .expect("start file operations plugin");
     let metadata_export_plugin = photag_plugin_metadata_export::MetadataExportPlugin;
     let metadata_export_input = metadata_export_plugin
         .prepare(photag_plugin_metadata_export::MetadataExportConfig)
@@ -290,6 +300,9 @@ fn main() {
     runtime
         .block_on(tagging_fiber.dispose())
         .expect("stop tagging plugin");
+    runtime
+        .block_on(file_operations_fiber.dispose())
+        .expect("stop file operations plugin");
     runtime
         .block_on(metadata_export_fiber.dispose())
         .expect("stop metadata export plugin");

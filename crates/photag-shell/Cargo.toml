@@ -20,4 +20,5 @@ photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
+photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 gpui-kit.workspace = true

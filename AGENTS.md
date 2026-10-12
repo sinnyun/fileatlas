@@ -48,15 +48,21 @@ explicitly incomplete.
   remove, scanner cancellation and watcher registration, and emits Cordis
   folder/tag/path selection events. Native folder picking, tag editing menus,
   drag/drop, expansion persistence, and full visual parity are incomplete.
-- `photag-plugin-tagging` owns media/tag assignments and association/merge
-  commands through source database queries. Keep picker/context-menu UI,
-  hotkeys, and XMP rewrite integration marked incomplete until migrated.
+- `photag-plugin-tagging` owns media/tag assignments and association/merge/
+  reparent commands through source database queries. It reuses PhoTag's XMP/
+  IPTC writer and schedules best-effort metadata rewrites after mutations.
+  Picker/context-menu UI, hotkeys, visible write errors, and validation of the
+  new writeback remain incomplete.
 - `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
   models and paths as Cordis services. Their UI adapters and applying/restoring
   state to active views remain incomplete.
 - `photag-plugin-metadata-export` wraps PhoTag's complete metadata query and
   JSON writer. The native save dialog, command event handling, and completion
   feedback remain incomplete; do not report the export UI as migrated.
+- `photag-plugin-file-operations` preserves source single/bulk file and
+  database operation order and emits `MediaIndexChanged` after row mutations.
+  Folder/save dialogs, bulk-action UI, and preview/selection follow-through
+  remain incomplete.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

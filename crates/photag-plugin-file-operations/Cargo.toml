@@ -1,0 +1,18 @@
+[package]
+name = "photag-plugin-file-operations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+open = "5"
+photag-contracts = { path = "../photag-contracts" }
+photag-plugin-database = { path = "../photag-plugin-database" }
+thiserror.workspace = true
+tokio.workspace = true
+trash = "5"
+
+[lints]
+workspace = true

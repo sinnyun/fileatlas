@@ -4,9 +4,12 @@
 
 This pass is in code-generation/documentation mode. Per the current task scope,
 plugin tests are deferred to the second-round concentrated debugging phase.
-The active interactive tool environment has no `rustc` or `cargo` on `PATH`.
-After publication, GitHub Actions on commit `0940e41024d021f7883be387f9400469d20bff7d`
-completed the base Shell check successfully. The settings/session and metadata-export changes generated in this pass have not yet been validated by CI. Earlier validation below records prior runs and does not validate these changes.
+The active interactive tool environment has no `rustc`, `cargo`, or `rustfmt`
+on `PATH`. After publication, GitHub Actions on commit
+`0940e41024d021f7883be387f9400469d20bff7d` completed the base Shell check
+successfully. The settings/session, metadata-export, file-operation, and XMP
+writeback changes generated in this pass have not been validated by CI.
+Earlier validation below records prior runs and does not validate these changes.
 
 | Check | Result | Notes |
 |---|---|---|
@@ -15,6 +18,8 @@ completed the base Shell check successfully. The settings/session and metadata-e
 | Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
+| `git diff --check` | Passed | No whitespace errors in the current uncommitted migration changes. |
+| Cargo lock dependency-reference audit | Passed | TOML parsed; workspace dependency references resolve uniquely in the edited lockfile. |
 | Prior GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; validates only that earlier tree. |
 | Plugin tests | Deferred | Per task direction, run during second-round concentrated testing. |
 | Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
