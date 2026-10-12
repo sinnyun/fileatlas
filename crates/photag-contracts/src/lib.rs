@@ -23,3 +23,12 @@ impl Event for TagSelectionChanged {
     type Args = Option<i64>;
     type Output = ();
 }
+
+/// Notify feature views that indexed media rows have changed.
+pub struct MediaIndexChanged;
+
+impl Event for MediaIndexChanged {
+    const NAME: &'static str = "photag/indexing/media-index-changed";
+    type Args = ();
+    type Output = ();
+}

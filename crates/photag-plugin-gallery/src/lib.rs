@@ -6,13 +6,14 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub mod filter;
 pub mod selection;
 
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
-use photag_contracts::{FolderSelectionChanged, TagSelectionChanged};
+use photag_contracts::{FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged};
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
 use photag_ui_bridge::{
@@ -57,6 +58,13 @@ struct SelectedTag(Mutex<Option<i64>>);
 
 impl Service for SelectedTag {
     const NAME: &'static str = "photag/gallery-selected-tag";
+}
+
+#[derive(Default)]
+struct IndexRevision(AtomicU64);
+
+impl Service for IndexRevision {
+    const NAME: &'static str = "photag/gallery-index-revision";
 }
 
 impl Service for GalleryService {
@@ -181,11 +189,15 @@ impl Plugin for GalleryPlugin {
         let service = Arc::new(GalleryService::new(database));
         let selected_folder = Arc::new(SelectedFolder::default());
         let selected_tag = Arc::new(SelectedTag::default());
+        let index_revision = Arc::new(IndexRevision::default());
         let _selection_publication = context
             .provide(Arc::clone(&selected_folder))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let _tag_selection_publication = context
             .provide(Arc::clone(&selected_tag))
+            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+        let _index_revision_publication = context
+            .provide(Arc::clone(&index_revision))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let selection_state = Arc::clone(&selected_folder);
         let selection_tag_state = Arc::clone(&selected_tag);
@@ -212,6 +224,13 @@ impl Plugin for GalleryPlugin {
                         *selected = None;
                     }
                 }
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
+        let revision = Arc::clone(&index_revision);
+        let _media_index_listener = context
+            .on::<MediaIndexChanged, _>(observer_sync(move |_, ()| {
+                revision.0.fetch_add(1, Ordering::Release);
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
@@ -250,7 +269,12 @@ impl Plugin for GalleryPlugin {
         register_views_for_plugin(
             &context,
             "photag.gallery",
-            [view::gallery(service, selected_folder, selected_tag)],
+            [view::gallery(
+                service,
+                selected_folder,
+                selected_tag,
+                index_revision,
+            )],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
         Ok(())
@@ -417,6 +441,18 @@ mod tests {
                 .lock()
                 .unwrap(),
             None
+        );
+        context
+            .emit::<MediaIndexChanged>(Routing::Unscoped, ())
+            .await
+            .unwrap();
+        assert_eq!(
+            context
+                .try_service::<IndexRevision>()
+                .unwrap()
+                .0
+                .load(Ordering::Acquire),
+            1
         );
         fiber.dispose().await.unwrap();
         assert!(catalog.snapshot().unwrap().is_empty());

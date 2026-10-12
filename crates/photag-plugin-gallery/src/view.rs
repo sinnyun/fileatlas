@@ -1,6 +1,7 @@
 //! Native GPUI rendering for the windowed media gallery.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use gpui_kit::base::StyledExt as _;
@@ -9,12 +10,16 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_ui_bridge::UiViewContribution;
 
-use crate::{GalleryService, GallerySnapshot, SelectedFolder, SelectedTag, filter::GalleryFilter};
+use crate::{
+    GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedTag,
+    filter::GalleryFilter,
+};
 
 pub(super) fn gallery(
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
+    index_revision: Arc<IndexRevision>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
@@ -24,10 +29,18 @@ pub(super) fn gallery(
             let view_service = Arc::clone(&service);
             let view_selection = Arc::clone(&selected_folder);
             let view_tag_selection = Arc::clone(&selected_tag);
+            let view_index_revision = Arc::clone(&index_revision);
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
             app.new(|cx| {
-                GalleryView::new(view_service, view_selection, view_tag_selection, search, cx)
+                GalleryView::new(
+                    view_service,
+                    view_selection,
+                    view_tag_selection,
+                    view_index_revision,
+                    search,
+                    cx,
+                )
             })
             .into()
         },
@@ -38,6 +51,7 @@ struct GalleryView {
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
+    index_revision: Arc<IndexRevision>,
     search: Entity<InputState>,
     filter: GalleryFilter,
     snapshot: Result<GallerySnapshot, String>,
@@ -49,6 +63,7 @@ impl GalleryView {
         service: Arc<GalleryService>,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
+        index_revision: Arc<IndexRevision>,
         search: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -72,6 +87,7 @@ impl GalleryView {
             .lock()
             .map(|selected| selected.iter().copied().collect())
             .unwrap_or_default();
+        let mut observed_revision = index_revision.0.load(Ordering::Acquire);
         let snapshot = service
             .load(filter.to_query())
             .map_err(|error| error.to_string());
@@ -96,7 +112,10 @@ impl GalleryView {
                             .unwrap_or_default();
                         let changed = view.filter.folder_id != selected
                             || view.filter.selected_tag_ids != selected_tag;
-                        if changed {
+                        let revision = view.index_revision.0.load(Ordering::Acquire);
+                        let index_changed = revision != observed_revision;
+                        observed_revision = revision;
+                        if changed || index_changed {
                             view.filter.folder_id = selected;
                             view.filter.selected_tag_ids = selected_tag;
                             view.reload();
@@ -115,6 +134,7 @@ impl GalleryView {
             service,
             selected_folder,
             selected_tag,
+            index_revision,
             search,
             filter,
             snapshot,

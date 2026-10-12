@@ -6,7 +6,8 @@ use std::sync::{Arc, Mutex, Weak};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
-use cordis::{Context, Plugin, Service};
+use cordis::{Context, Plugin, Routing, Service};
+use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::{DatabaseService, db::queries};
 use photag_plugin_indexing::IndexingService;
 
@@ -26,6 +27,8 @@ pub struct WatcherService {
     watcher: Mutex<watcher::FolderWatcher>,
     stop: Arc<AtomicBool>,
     poller: Mutex<Option<JoinHandle<()>>>,
+    cordis: Option<Context>,
+    runtime: Option<tokio::runtime::Handle>,
 }
 
 impl Service for WatcherService {
@@ -149,6 +152,19 @@ impl WatcherService {
                 .indexing
                 .generate_missing_thumbnails(indexed.clone(), Arc::new(AtomicBool::new(false)));
         }
+        if removed_count > 0 || !indexed.is_empty() {
+            if let (Some(cordis), Some(runtime)) = (&self.cordis, &self.runtime) {
+                let cordis = cordis.clone();
+                runtime.spawn(async move {
+                    if let Err(error) = cordis
+                        .emit::<MediaIndexChanged>(Routing::Unscoped, ())
+                        .await
+                    {
+                        eprintln!("media index change dispatch failed: {error}");
+                    }
+                });
+            }
+        }
         Ok(ReconcileSummary {
             added_or_updated: indexed.len(),
             removed: removed_count,
@@ -220,6 +236,11 @@ impl Plugin for WatcherPlugin {
             watcher: Mutex::new(watcher),
             stop: Arc::new(AtomicBool::new(false)),
             poller: Mutex::new(None),
+            cordis: Some(context.clone()),
+            runtime: Some(
+                tokio::runtime::Handle::try_current()
+                    .map_err(|_| WatcherPluginError::RuntimeUnavailable)?,
+            ),
         });
         WatcherService::start_background_reconciliation(&service)
             .map_err(WatcherPluginError::Worker)?;
@@ -236,6 +257,8 @@ pub enum WatcherPluginError {
     Dependency(String),
     #[error("native filesystem notification watcher could not be initialized")]
     Unavailable,
+    #[error("watcher plugin must be started inside a Tokio runtime")]
+    RuntimeUnavailable,
     #[error("could not load registered folder watches: {0}")]
     Database(String),
     #[error("watcher service publication failed: {0}")]
@@ -256,6 +279,7 @@ pub enum WatcherError {
 mod tests {
     use super::*;
     use photag_plugin_database::db::queries;
+    use std::sync::atomic::AtomicUsize;
     use std::time::Duration;
 
     #[test]
@@ -266,6 +290,9 @@ mod tests {
 
     #[test]
     fn native_file_create_and_remove_reconcile_database_rows() {
+        use cordis::Context;
+        use cordis::event::observer_sync;
+        use photag_contracts::MediaIndexChanged;
         let root = std::env::temp_dir().join(format!(
             "photag-watcher-{}-{}",
             std::process::id(),
@@ -287,12 +314,26 @@ mod tests {
             photag_plugin_thumbnails::ThumbnailService::open_at(root.join("thumbs")).unwrap(),
         );
         let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        let cordis = Context::new();
+        let event_count = Arc::new(AtomicUsize::new(0));
+        let observed = Arc::clone(&event_count);
+        let _listener = cordis
+            .on::<MediaIndexChanged, _>(observer_sync(move |_, ()| {
+                observed.fetch_add(1, Ordering::Release);
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .unwrap();
         let service = WatcherService {
             database: Arc::clone(&database),
             indexing,
             watcher: Mutex::new(watcher),
             stop: Arc::new(AtomicBool::new(true)),
             poller: Mutex::new(None),
+            cordis: Some(cordis),
+            runtime: Some(runtime.handle().clone()),
         };
 
         let media = root.join("arriving.png");
@@ -310,6 +351,7 @@ mod tests {
                 .unwrap_or_default()
                 == 1
         });
+        assert_media_index_events(&runtime, &event_count, 1);
 
         std::fs::remove_file(&media).unwrap();
         wait_until(|| {
@@ -325,6 +367,7 @@ mod tests {
                 .unwrap_or_default()
                 == 0
         });
+        assert_media_index_events(&runtime, &event_count, 2);
         drop(service);
         drop(database);
         let _ = std::fs::remove_dir_all(root);
@@ -341,5 +384,24 @@ mod tests {
             condition(),
             "filesystem event did not reconcile before timeout"
         );
+    }
+
+    fn assert_media_index_events(
+        runtime: &tokio::runtime::Runtime,
+        count: &AtomicUsize,
+        expected: usize,
+    ) {
+        runtime.block_on(async {
+            for _ in 0..1000 {
+                if count.load(Ordering::Acquire) >= expected {
+                    return;
+                }
+                tokio::task::yield_now().await;
+            }
+            assert!(
+                count.load(Ordering::Acquire) >= expected,
+                "watcher reconciliation should emit a media-index event"
+            );
+        });
     }
 }

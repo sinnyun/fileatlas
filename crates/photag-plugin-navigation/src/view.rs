@@ -7,7 +7,7 @@ use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
-use photag_contracts::{FolderSelectionChanged, TagSelectionChanged};
+use photag_contracts::{FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged};
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_ui_bridge::UiViewContribution;
 
@@ -70,7 +70,9 @@ impl SidebarView {
             loop {
                 let active = this
                     .update(cx, |view, cx| {
-                        view.poll_scan();
+                        if view.poll_scan() {
+                            view.notify_media_index(cx);
+                        }
                         cx.notify();
                         view.active_scan.is_some()
                     })
@@ -86,9 +88,9 @@ impl SidebarView {
         .detach();
     }
 
-    fn poll_scan(&mut self) {
+    fn poll_scan(&mut self) -> bool {
         let Some(receiver) = &self.active_scan else {
-            return;
+            return false;
         };
         let mut completed = false;
         loop {
@@ -106,13 +108,30 @@ impl SidebarView {
             self.scan_progress = None;
             self.refresh();
         }
+        completed
     }
 
-    fn remove_folder(&mut self, folder_id: i64) {
+    fn remove_folder(&mut self, folder_id: i64, cx: &mut Context<Self>) {
         match self.service.remove_folder(folder_id) {
-            Ok(_) => self.refresh(),
+            Ok(_) => {
+                self.refresh();
+                self.notify_media_index(cx);
+            }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
+    }
+
+    fn notify_media_index(&self, cx: &mut Context<Self>) {
+        let cordis = self.cordis.clone();
+        cx.spawn(async move |_, _| {
+            if let Err(error) = cordis
+                .emit::<MediaIndexChanged>(Routing::Unscoped, ())
+                .await
+            {
+                eprintln!("media index change dispatch failed: {error}");
+            }
+        })
+        .detach();
     }
 
     fn select_folder(&self, folder_id: Option<i64>, cx: &mut Context<Self>) {
@@ -222,7 +241,7 @@ impl Render for SidebarView {
                                             .on_click(cx.listener({
                                                 let folder_id = node.folder.id;
                                                 move |this, _, _, cx| {
-                                                    this.remove_folder(folder_id);
+                                                    this.remove_folder(folder_id, cx);
                                                     cx.notify();
                                                 }
                                             })),
