@@ -14,7 +14,7 @@ capturing behavioral regression cases before each port.
 |---|---|---|---|
 | App lifecycle, dialogs, pending action dispatch, undo/redo, selection state | `src/main.rs`, `src/app.rs` | shell + app-state/history plugins | Not migrated |
 | Folder and tag navigation, tree editing, folder actions | `src/ui/sidebar.rs`, `src/db/queries.rs` | library-navigation + tagging plugins | Not migrated |
-| Virtualized gallery, selection, grid, month groups | `src/ui/gallery.rs` | gallery plugin | Not migrated |
+| Virtualized gallery data window, selection, grid, month groups | `src/ui/gallery.rs`, `src/app.rs::load_media/ensure_media_window` | `photag-plugin-gallery` + GPUI shell | Data layer preserves compact ordered skeletons, 200-item rich-row window, tag batching, available extensions and folder counts. Viewport shift regression test passes and plugin registers lifecycle-owned layout/slot/widget metadata. Actual GPUI gallery rendering, selection, date grouping, drag/context interactions, thumbnails and keyboard behavior remain unmigrated. |
 | Progressive image thumbnail decode, EXIF orientation, DCT-scaled JPEG decode, 8×8 micro-thumbnails, path-hash cache | `src/thumbs.rs` | `photag-plugin-thumbnails` | Original image pipeline copied without algorithm changes, wrapped as a Cordis service and tested for generation/cache reuse. Windows/UI integration is pending. |
 | Search, sort, date/rating/type/extension/folder filters | `src/ui/filterbar.rs`, `src/db/queries.rs` | search-filter plugin | Not migrated |
 | Image preview, progressive decoding, zoom/pan/rotate/flip, toolbar and filmstrip | `src/ui/preview.rs`, `src/thumbs.rs` | preview plugin | Not migrated |
@@ -47,6 +47,7 @@ capturing behavioral regression cases before each port.
 | Original image thumbnail pipeline behind a Cordis service | `crates/photag-plugin-thumbnails/src/` | Implemented and tested on generated PNG input; shell starts and stops this plugin. Image-format and Windows integration parity remain to verify. |
 | Original folder scanning and thumbnail backfill | `crates/photag-plugin-indexing/src/{scan,maintenance,ffmpeg}.rs` | Integrated as Cordis service depending on database and thumbnail services; shell starts/stops it. Scan test checks hidden-file exclusion, same-stem video poster pairing, DB rows, cache output and completion signal. Actual library parity and FFmpeg extraction still need Windows/media-corpus tests. |
 | Original filesystem watcher and reconciliation | `crates/photag-plugin-watcher/src/` | Cordis plugin depends on database and indexing, watches persisted folders, debounces events, reconciles SQLite and triggers thumbnail backfill. Classification and local native event create/remove integration tests pass on Linux; Windows Shell behavior remains pending. |
+| Gallery query/window data service and UI contribution metadata | `crates/photag-plugin-gallery/src/lib.rs` | Cordis gallery service keeps a compact full result skeleton, a 200-row media window and associated tags/extensions/counts; window paging and plugin contribution cleanup tests pass. This is a data/service migration; original gallery GUI interactions and visual parity remain outstanding. |
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
 
 ## Source file inventory
@@ -61,7 +62,7 @@ behavioral seams during migration without dropping behavior.
 | `src/app.rs` | 1,975 | state, pending actions, undo/redo, operations | Audited inventory; not ported |
 | `src/db/queries.rs` | 1,317 | all query and domain persistence operations | Copied into database plugin and split across five modules, all below 500 lines; broad regression coverage pending |
 | `src/ui/preview.rs` | 2,748 | preview and interactions | Audited inventory; not ported |
-| `src/ui/gallery.rs` | 2,176 | gallery and interaction | Audited inventory; not ported |
+| `src/ui/gallery.rs` | 2,176 | gallery and interaction | Gallery data window logic partially migrated; native GPUI view and interactions are not yet ported. |
 | `src/ui/sidebar.rs` | 838 | folder/tag sidebar | Audited inventory; not ported |
 | `src/ui/filterbar.rs` | 822 | search/filter/sort controls | Audited inventory; not ported |
 | `src/ui/info.rs` | 350 | metadata info panel | Audited inventory; not ported |

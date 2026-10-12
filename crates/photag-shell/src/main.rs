@@ -149,6 +149,13 @@ fn main() {
     let database_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(database_plugin, database_input)))
         .expect("start database plugin");
+    let gallery_plugin = photag_plugin_gallery::GalleryPlugin;
+    let gallery_input = gallery_plugin
+        .prepare(photag_plugin_gallery::GalleryConfig)
+        .expect("prepare gallery plugin");
+    let gallery_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(gallery_plugin, gallery_input)))
+        .expect("start gallery plugin");
     let thumbnail_plugin = photag_plugin_thumbnails::ThumbnailPlugin;
     let thumbnail_input = thumbnail_plugin
         .prepare(photag_plugin_thumbnails::ThumbnailConfig::default())
@@ -199,6 +206,9 @@ fn main() {
     runtime
         .block_on(thumbnail_fiber.dispose())
         .expect("stop thumbnail plugin");
+    runtime
+        .block_on(gallery_fiber.dispose())
+        .expect("stop gallery plugin");
     runtime
         .block_on(database_fiber.dispose())
         .expect("stop database plugin");

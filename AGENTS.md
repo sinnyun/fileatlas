@@ -29,6 +29,9 @@ explicitly incomplete.
 - `photag-plugin-watcher` owns registered-folder notifications and database
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
+- `photag-plugin-gallery` ports the source skeleton/window data model and owns
+  its UI contribution metadata. Do not treat that service as completion of the
+  GPUI gallery view, selection, date grouping, or interaction migration.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 
