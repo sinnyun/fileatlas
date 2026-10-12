@@ -26,6 +26,9 @@ explicitly incomplete.
   service is the public entry point for scan progress/cancellation streams. Its
   current regression test uses a synthetic image and paired video poster; it
   does not establish Windows or full-format parity.
+- `photag-plugin-watcher` owns registered-folder notifications and database
+  reconciliation. Keep its 800 ms debounce and bounded event/path processing;
+  native event delivery and filesystem race behavior still need Windows tests.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

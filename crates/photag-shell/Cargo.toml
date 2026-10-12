@@ -13,4 +13,5 @@ photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
+photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 gpui-kit.workspace = true

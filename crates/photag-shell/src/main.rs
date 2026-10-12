@@ -166,6 +166,13 @@ fn main() {
     let indexing_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(indexing_plugin, indexing_input)))
         .expect("start indexing plugin");
+    let watcher_plugin = photag_plugin_watcher::WatcherPlugin;
+    let watcher_input = watcher_plugin
+        .prepare(photag_plugin_watcher::WatcherConfig)
+        .expect("prepare watcher plugin");
+    let watcher_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(watcher_plugin, watcher_input)))
+        .expect("start watcher plugin");
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -183,6 +190,9 @@ fn main() {
         .expect("open PhoTag window");
     });
 
+    runtime
+        .block_on(watcher_fiber.dispose())
+        .expect("stop watcher plugin");
     runtime
         .block_on(indexing_fiber.dispose())
         .expect("stop indexing plugin");

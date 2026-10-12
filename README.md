@@ -20,6 +20,7 @@ migration; the gallery, preview, file operations, and many other product feature
 - `crates/photag-plugin-thumbnails`: original image thumbnail decoding and
   cache pipeline exposed as a Cordis service.
 - `crates/photag-plugin-indexing`: recursive scanning, database indexing, poster pairing, thumbnail backfill and directory listing exposed through a Cordis service.
+- `crates/photag-plugin-watcher`: registered-folder filesystem notifications and debounced SQLite reconciliation.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.
 - `vendor/photag-source`: unmodified source mirror for the pinned PhoTag commit.

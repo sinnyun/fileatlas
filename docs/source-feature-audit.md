@@ -24,7 +24,7 @@ capturing behavioral regression cases before each port.
 | Ratings, pick/reject, keyboard shortcuts, tag hotkeys | `src/app.rs`, `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/settings.rs` | rating + command/keybinding contributions | Not migrated |
 | Search tag assignment menus and context menus | `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/ui/sidebar.rs` | menu contributions owned by feature plugins | Not migrated |
 | Recursive multi-thread scanning, hidden-file filtering, video/poster pairing, DB batches, image/video thumbnails, cancellation/progress, missing-thumbnail backfill, child directory listing | `src/scan.rs`, `src/thumbs.rs`, FFmpeg helpers from `src/video.rs` | `photag-plugin-indexing` + `photag-plugin-thumbnails` | Scanner workflow copied and adapted behind a Cordis service; synthetic folder scan regression test passes. Real media corpus, FFmpeg, Windows paths, rescan policy and watcher integration remain unverified. |
-| Filesystem watcher and reconciliation | `src/watcher.rs`, `src/scan.rs` | watcher/indexing plugins | Not migrated |
+| Filesystem watcher and reconciliation | `src/watcher.rs`, `src/scan.rs`, `src/app.rs` watcher reconciliation | `photag-plugin-watcher` + indexing plugin | Original create/remove/rename filtering, hidden-file exclusion, 800ms debounce, 4,000-event drain and 200-path reconcile budget are retained. Cordis plugin watches registered folders, runs reconciliation in a bounded background poller, triggers missing-thumbnail generation for added rows and stops the worker with the plugin. Linux integration tests cover file create/remove; native Windows delivery and DB/file race cases remain unverified. |
 | Recycle Bin delete, copy/move/rename/create folder, reveal/open, index follow-through | `src/app.rs`, `src/db/queries.rs`, `src/drag.rs` | file-operations plugin | Not migrated |
 | Drag-out to Explorer/drop targets via `CF_HDROP` | `src/drag.rs` | Windows shell integration plugin | Not migrated |
 | Bulk action console and filter-driven delete/copy/move | `src/app.rs`, `src/main.rs`, `src/db/queries.rs` | bulk-operations plugin | Not migrated |
@@ -46,6 +46,7 @@ capturing behavioral regression cases before each port.
 | Original SQLite schema and query code behind a Cordis service | `crates/photag-plugin-database/src/db/` and `src/lib.rs` | Implemented with reader/writer connections, Cordis lifecycle test, fresh schema test, and existing-library compatibility fixture. Broad query behavioral coverage remains pending. |
 | Original image thumbnail pipeline behind a Cordis service | `crates/photag-plugin-thumbnails/src/` | Implemented and tested on generated PNG input; shell starts and stops this plugin. Image-format and Windows integration parity remain to verify. |
 | Original folder scanning and thumbnail backfill | `crates/photag-plugin-indexing/src/{scan,maintenance,ffmpeg}.rs` | Integrated as Cordis service depending on database and thumbnail services; shell starts/stops it. Scan test checks hidden-file exclusion, same-stem video poster pairing, DB rows, cache output and completion signal. Actual library parity and FFmpeg extraction still need Windows/media-corpus tests. |
+| Original filesystem watcher and reconciliation | `crates/photag-plugin-watcher/src/` | Cordis plugin depends on database and indexing, watches persisted folders, debounces events, reconciles SQLite and triggers thumbnail backfill. Classification and local native event create/remove integration tests pass on Linux; Windows Shell behavior remains pending. |
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
 
 ## Source file inventory
@@ -71,7 +72,7 @@ behavioral seams during migration without dropping behavior.
 | `src/ai.rs` | 645 | AI inference and image analysis | Audited inventory; not ported |
 | `src/update.rs` | 618 | updater | Audited inventory; not ported |
 | `src/xmp.rs` | 278 | metadata write | Audited inventory; not ported |
-| `src/watcher.rs` | 182 | filesystem watcher | Audited inventory; not ported |
+| `src/watcher.rs` | 182 | filesystem watcher | Migrated to Cordis watcher plugin; Windows native behavior is unverified. |
 | `src/drag.rs` | 332 | Windows drag-out | Audited inventory; not ported |
 | `src/winfx.rs` | 288 | Windows visual effects | Audited inventory; not ported |
 | `src/settings.rs` | 306 | persisted settings and key mappings | Audited inventory; not ported |

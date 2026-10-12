@@ -23,6 +23,14 @@ impl Service for IndexingService {
 }
 
 impl IndexingService {
+    /// Construct the indexing API from the shared database and cache services.
+    pub fn new(database: Arc<DatabaseService>, thumbnails: Arc<ThumbnailService>) -> Self {
+        Self {
+            database,
+            thumbnails,
+        }
+    }
+
     /// Scan an already registered PhoTag folder and return its progress stream.
     pub fn scan_folder(
         self: &Arc<Self>,
@@ -76,10 +84,7 @@ impl Plugin for IndexingPlugin {
         let thumbnails = context
             .try_service::<ThumbnailService>()
             .map_err(|error| IndexingPluginError::Dependency(error.to_string()))?;
-        let service = Arc::new(IndexingService {
-            database,
-            thumbnails,
-        });
+        let service = Arc::new(IndexingService::new(database, thumbnails));
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| IndexingPluginError::Publish(error.to_string()))?;
@@ -136,10 +141,7 @@ mod tests {
             .with_writer(|connection| queries::add_folder(connection, &folder_path))
             .unwrap();
         let thumbnails = Arc::new(ThumbnailService::open_at(cache).unwrap());
-        let indexing = Arc::new(IndexingService {
-            database,
-            thumbnails,
-        });
+        let indexing = Arc::new(IndexingService::new(database, thumbnails));
 
         let progress =
             indexing.scan_folder(folder.id, folder_path, Arc::new(AtomicBool::new(false)));
