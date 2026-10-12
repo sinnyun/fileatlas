@@ -142,6 +142,26 @@ impl GalleryService {
         })?)
     }
 
+    /// Load the next source-ordered page of full media rows and their tags.
+    pub fn load_page(
+        &self,
+        mut query: MediaQuery,
+        offset: usize,
+    ) -> Result<GalleryWindow, GalleryError> {
+        query.offset = Some(offset as i64);
+        query.limit = Some(MEDIA_WINDOW_SIZE as i64);
+        Ok(self.database.with_reader(|connection| {
+            let media = queries::get_media(connection, &query)?;
+            let ids = media.iter().map(|item| item.id).collect::<Vec<_>>();
+            let media_tags = queries::get_tags_for_media_batch(connection, &ids)?;
+            Ok(GalleryWindow {
+                offset,
+                media,
+                media_tags,
+            })
+        })?)
+    }
+
     /// Resolve an item even when it is outside the active viewport window.
     pub fn media_by_id(&self, id: i64) -> Result<Option<MediaItem>, GalleryError> {
         Ok(self
@@ -350,6 +370,12 @@ mod tests {
         assert!(window.offset <= 220);
         assert!(window.offset + window.media.len() >= 235);
         assert_eq!(window.media[220 - window.offset].filename, "image-220.png");
+        let page = gallery
+            .load_page(MediaQuery::default(), MEDIA_WINDOW_SIZE)
+            .unwrap();
+        assert_eq!(page.offset, MEDIA_WINDOW_SIZE);
+        assert_eq!(page.media.len(), 45);
+        assert_eq!(page.media[0].filename, "image-200.png");
         let _ = std::fs::remove_dir_all(root);
     }
 

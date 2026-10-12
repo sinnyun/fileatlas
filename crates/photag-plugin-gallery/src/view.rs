@@ -5,6 +5,7 @@ use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
@@ -148,10 +149,26 @@ impl GalleryView {
             .load(self.filter.to_query())
             .map_err(|error| error.to_string());
     }
+
+    fn load_more(&mut self) {
+        let offset = match &self.snapshot {
+            Ok(snapshot) => snapshot.media.len(),
+            Err(_) => return,
+        };
+        match self.service.load_page(self.filter.to_query(), offset) {
+            Ok(page) => {
+                if let Ok(snapshot) = &mut self.snapshot {
+                    snapshot.media.extend(page.media);
+                    snapshot.media_tags.extend(page.media_tags);
+                }
+            }
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+    }
 }
 
 impl Render for GalleryView {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match &self.snapshot {
             Ok(snapshot) => {
                 let mut grid = div()
@@ -203,6 +220,20 @@ impl Render for GalleryView {
                             .text_sm()
                             .text_color(rgb(0x9aa0ad))
                             .child("No indexed media in this view."),
+                    );
+                }
+                if (snapshot.media.len() as i64) < snapshot.media_count {
+                    grid = grid.child(
+                        Button::new("gallery-load-more")
+                            .label(format!(
+                                "Load more ({} of {})",
+                                snapshot.media.len(),
+                                snapshot.media_count
+                            ))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.load_more();
+                                cx.notify();
+                            })),
                     );
                 }
                 grid
