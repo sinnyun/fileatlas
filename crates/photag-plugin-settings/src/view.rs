@@ -101,7 +101,7 @@ impl SettingsView {
                 this.edit(move |settings| action(settings), cx);
             }))
     }
-    fn section(&self, label: &str) -> Div {
+    fn section(&self, label: &'static str) -> Div {
         div().pt_2().font_semibold().child(label)
     }
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {

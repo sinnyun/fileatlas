@@ -27,7 +27,11 @@ found one remaining rustfmt difference at the end of the settings view; it has
 been applied. Run 32 on `fa1312eede8f02c701b3d647c2a16145a87a65e8` passed
 formatting but compilation found missing `StyledExt` import and a reusable
 settings callback issue, plus a borrowed EXIF error string escaping the render
-scope. All three compiler findings are fixed locally; a fresh check is pending.
+scope. Those compiler findings are fixed. Run 33 on
+`5a3bc105d1bef1f514cbb708ee3d7a6ff64c50df` passed formatting and reported one
+borrowed settings section label; it now requires a static string. A fresh
+check is pending. The run also reported a pre-existing ignored publication
+guard, now bound explicitly.
 
 | Check | Result | Notes |
 |---|---|---|

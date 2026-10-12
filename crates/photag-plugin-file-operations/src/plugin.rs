@@ -30,7 +30,7 @@ impl Plugin for FileOperationsPlugin {
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| FileOperationsPluginError::Dependency(error.to_string()))?;
-        context
+        let _publication = context
             .provide(Arc::new(FileOperationsService::new(
                 database,
                 context.clone(),
