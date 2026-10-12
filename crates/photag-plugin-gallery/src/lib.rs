@@ -178,6 +178,13 @@ impl GalleryService {
             .with_reader(|connection| queries::get_media_by_id(connection, id))?)
     }
 
+    /// Read the informational open counter stored by PhoTag's original schema.
+    pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
+        Ok(self.database.with_reader(|connection| {
+            photag_plugin_database::db::get_open_count(connection, media_id)
+        })?)
+    }
+
     /// Persist a selection rating using PhoTag's clamped bulk update query.
     pub fn apply_rating(&self, media_ids: &[i64], rating: u8) -> Result<(), GalleryError> {
         Ok(self.database.with_writer(|connection| {

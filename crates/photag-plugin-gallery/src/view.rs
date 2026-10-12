@@ -425,7 +425,8 @@ impl Render for GalleryView {
                             .get(&selected_id)
                             .map(Vec::as_slice)
                             .unwrap_or_default();
-                        grid = grid.child(render_media_details(media, tags));
+                        let open_count = self.service.open_count(selected_id).unwrap_or(0);
+                        grid = grid.child(render_media_details(media, tags, open_count));
                     }
                 }
                 if (snapshot.media.len() as i64) < snapshot.media_count {

@@ -5,18 +5,24 @@
 This pass is in code-generation/documentation mode. Per the current task scope,
 plugin tests are deferred to the second-round concentrated debugging phase.
 The active interactive tool environment has no `rustc`, `cargo`, or `rustfmt`
-on `PATH`. After publication, GitHub Actions on commit
-`0940e41024d021f7883be387f9400469d20bff7d` completed the base Shell check
-successfully. The settings/session, metadata-export, file-operation, and XMP
-writeback changes generated in this pass have not passed CI: the formatting
-step failed and therefore skipped compilation. Earlier validation below records
-prior runs and does not validate these changes.
+on `PATH`. GitHub Actions run 20 on commit
+`49771e11c9cd5f9cd056284cf5266fbd7eaf8d39` passed formatting and
+`cargo check -p photag-shell --locked`. That build compiles the configured
+Cordis plugins as Shell dependencies, including the file-operation and tagging
+crates. Plugin tests remain deferred; this Linux compile does not validate
+Windows runtime behavior or feature parity.
+
+The current uncompiled migration delta extends selected-media details with
+filesystem attributes/timestamps, formatted size, image dimensions/aspect,
+capture date, tags, rating and database open count. It has not yet passed
+formatting or compilation; plugin tests remain deferred as requested.
 
 | Check | Result | Notes |
 |---|---|---|
 | Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |
 | `cargo fmt --all -- --check` | Not run | Requires rustfmt; no Rust toolchain is installed. |
 | Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
+| GitHub Actions: latest base shell check | Passed | Commit `49771e11c9cd5f9cd056284cf5266fbd7eaf8d39`, run 20; formatting and `cargo check -p photag-shell --locked` both passed. Plugins are compiled as dependencies, not tested. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
 | GitHub Actions: file-operation/XMP migration check | Failed at formatting step | Commit `4f893eb2dbce0768eb4ade07aaca4a539fb04313`; rustfmt reported formatting in file operations, tagging, and reused XMP source, plus three settings field attributes. Base shell compilation was skipped. Corrections are being applied from the logged rustfmt diff; the next push will rerun formatting and the base shell compile. |
@@ -34,11 +40,9 @@ prior runs and does not validate these changes.
 | Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
 
 The requested cloud workflow uses incremental compilation, two build jobs, and
-no dev debug symbols. Plugin tests remain deferred. GitHub Actions run 7 on
-`54f266f99866fd351aff602d1561751106181eec` failed only in formatting; the reported
-formatting was corrected and published in `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`.
-GitHub has not created a check for the corrected commit, and there is no local
-Rust toolchain, so the current source compilation remains unverified.
+no dev debug symbols. Plugin tests remain deferred. Earlier failed CI attempts
+are retained in the table above; run 20 is the latest check and passes the
+formatting and base shell compilation steps.
 
 ---
 

@@ -73,49 +73,135 @@ pub(super) fn render_media_card(
 pub(super) fn render_media_details(
     media: &photag_plugin_database::db::queries::MediaItem,
     tags: &[photag_plugin_database::db::queries::Tag],
+    open_count: i64,
 ) -> impl IntoElement {
+    let filesystem = std::fs::metadata(&media.full_path).ok();
+    let extension = std::path::Path::new(&media.filename)
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| format!(".{}", value.to_lowercase()))
+        .unwrap_or_else(|| "—".to_string());
     let mut details = div()
         .v_flex()
         .gap_1()
         .rounded_md()
         .bg(rgb(0x20232b))
         .p_3()
-        .child(
-            div()
-                .text_lg()
-                .font_semibold()
-                .child(media.filename.clone()),
-        )
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(0x9aa0ad))
-                .child(media.full_path.clone()),
-        )
-        .child(div().text_sm().child(format!(
-            "{}  ·  {} bytes  ·  ★ {}",
-            media.media_type, media.file_size, media.rating
-        )));
-    if let (Some(width), Some(height)) = (media.width, media.height) {
-        details = details.child(div().text_sm().child(format!("{width} × {height}")));
-    }
-    if let Some(timestamp) = media.date_taken {
-        if let Some(date) = chrono::DateTime::from_timestamp(timestamp, 0) {
-            details = details.child(
-                div()
-                    .text_sm()
-                    .child(format!("Captured {} UTC", date.format("%Y-%m-%d %H:%M"))),
-            );
+        .child(div().text_lg().font_semibold().child("File"))
+        .child(div().text_sm().font_medium().child(media.filename.clone()))
+        .child(detail_line("Path", &media.full_path))
+        .child(detail_line("Type", &media.media_type))
+        .child(detail_line("Extension", &extension))
+        .child(detail_line("Size", &format_bytes(media.file_size)))
+        .child(detail_line("Rating", &format!("{} / 5", media.rating)))
+        .child(detail_line("Times opened", &open_count.to_string()));
+    if let Some(metadata) = filesystem {
+        details = details
+            .child(detail_line(
+                "Read-only",
+                if metadata.permissions().readonly() { "Yes" } else { "No" },
+            ))
+            .child(detail_line(
+                "Modified",
+                &format_system_time(metadata.modified().ok()),
+            ));
+        if let Ok(created) = metadata.created() {
+            details = details.child(detail_line("Created", &format_system_time(Some(created))));
         }
     }
+    if let (Some(width), Some(height)) = (media.width, media.height) {
+        let megapixels = width.saturating_mul(height) as f64 / 1_000_000.0;
+        details = details
+            .child(div().text_sm().font_semibold().child("Image"))
+            .child(detail_line("Dimensions", &format!("{width} × {height} px")))
+            .child(detail_line("Megapixels", &format!("{megapixels:.2} MP")))
+            .child(detail_line("Aspect", &aspect_ratio(width as u32, height as u32)));
+    }
+    if let Some(timestamp) = media.date_taken {
+        details = details
+            .child(div().text_sm().font_semibold().child("Dates"))
+            .child(detail_line("Date taken", &format_timestamp(timestamp)));
+    }
     if !tags.is_empty() {
-        details = details.child(div().text_sm().child(format!(
-            "Tags: {}",
-            tags.iter()
-                .map(|tag| tag.full_path.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        )));
+        details = details
+            .child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(format!("Tags ({})", tags.len())),
+            )
+            .child(div().text_sm().child(format!(
+                "Tags: {}",
+                tags.iter()
+                    .map(|tag| tag.full_path.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+    } else {
+        details = details.child(
+            div()
+                .text_sm()
+                .text_color(rgb(0x9aa0ad))
+                .child("No tags assigned."),
+        );
     }
     details
+}
+
+fn detail_line(key: &str, value: &str) -> Div {
+    div()
+        .h_flex()
+        .gap_2()
+        .text_sm()
+        .child(div().text_color(rgb(0x9aa0ad)).child(format!("{key}:")))
+        .child(div().flex_1().child(value.to_string()))
+}
+
+fn format_bytes(bytes: i64) -> String {
+    let value = bytes as f64;
+    if value < 1024.0 {
+        format!("{bytes} B")
+    } else if value < 1024.0_f64.powi(2) {
+        format!("{:.1} KB", value / 1024.0)
+    } else if value < 1024.0_f64.powi(3) {
+        format!("{:.2} MB", value / 1024.0_f64.powi(2))
+    } else {
+        format!("{:.2} GB", value / 1024.0_f64.powi(3))
+    }
+}
+
+fn format_system_time(time: Option<std::time::SystemTime>) -> String {
+    time.and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|duration| format_timestamp(duration.as_secs() as i64))
+        .unwrap_or_else(|| "—".to_string())
+}
+
+fn format_timestamp(timestamp: i64) -> String {
+    use chrono::TimeZone;
+    chrono::Local
+        .timestamp_opt(timestamp, 0)
+        .single()
+        .map(|date| date.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| "—".to_string())
+}
+
+fn aspect_ratio(width: u32, height: u32) -> String {
+    let divisor = gcd(width, height);
+    if divisor == 0 {
+        return "—".to_string();
+    }
+    let (width, height) = (width / divisor, height / divisor);
+    if width > 30 || height > 30 {
+        format!("{:.2}:1", width as f64 / height as f64)
+    } else {
+        format!("{width}:{height}")
+    }
+}
+
+fn gcd(a: u32, b: u32) -> u32 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
 }
