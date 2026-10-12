@@ -151,6 +151,12 @@ impl GalleryFilter {
         self.excluded_extensions.clear();
     }
 
+    /// Remove an extension from either inclusion state.
+    pub fn clear_extension(&mut self, extension: &str) {
+        self.extensions.retain(|item| item != extension);
+        self.excluded_extensions.retain(|item| item != extension);
+    }
+
     /// Convert UI state into the exact query semantics used by PhoTag's source AppState.
     pub fn to_query(&self) -> MediaQuery {
         let tags_tab = self.tab == GalleryTab::Tags;
@@ -284,6 +290,21 @@ mod tests {
         filter.cycle_extension("gif");
         filter.clear_extensions();
         assert!(filter.extensions.is_empty() && filter.excluded_extensions.is_empty());
+    }
+
+    #[test]
+    fn clearing_one_extension_removes_only_that_filter_state() {
+        let mut filter = GalleryFilter::default();
+        filter.extensions = vec!["jpg".into(), "png".into()];
+        filter.excluded_extensions = vec!["tmp".into()];
+
+        filter.clear_extension("jpg");
+        assert_eq!(filter.extensions, ["png"]);
+        assert_eq!(filter.excluded_extensions, ["tmp"]);
+
+        filter.clear_extension("tmp");
+        assert_eq!(filter.extensions, ["png"]);
+        assert!(filter.excluded_extensions.is_empty());
     }
 
     #[test]

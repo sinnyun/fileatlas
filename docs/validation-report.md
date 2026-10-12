@@ -1,5 +1,33 @@
 # Validation report
 
+## Cloud revalidation (2026-10-12)
+
+| Check | Result | Notes |
+|---|---|---|
+| Rust toolchain | Passed | Rust stable 1.99.0 and rustfmt installed for this session |
+| `cargo fmt --all -- --check` | Passed | After formatting the gallery active-filter row |
+| `git diff --check` | Passed | No whitespace errors |
+| `cargo test -p photag-plugin-gallery --locked --offline` | Passed, 13 tests | Includes per-extension clearing from both include/exclude filter states |
+| `cargo test --workspace --exclude photag-shell --locked --offline` | Passed, 28 tests | Linux x86_64; includes database, gallery, indexing, navigation, tagging, thumbnails, watcher, and UI bridge tests |
+| `cargo check -p photag-shell --locked --offline` | Passed | Includes GPUI Shell and gallery view compilation |
+| `cargo +1.95.0 check -p photag-shell --locked --offline` | Passed | Confirms declared minimum Rust toolchain compiles the shell |
+| `cargo +1.95.0 test --workspace --exclude photag-shell --locked --offline` | Passed, 28 tests | Confirms plugin tests run on the declared minimum Rust toolchain |
+
+The checked-in `Cargo.lock` at starting commit `29d3343` began with a Cargo
+truncation warning and could not be parsed. It was regenerated from the
+workspace manifests with Cargo 1.99.0 before these checks. A separate
+`cargo +1.88.0 check -p photag-shell --locked --offline` failed because the
+resolved `cosmic-text 0.19.0`, `oo7 0.6.0`, `serde-saphyr 1.3.0`, and
+`smol_str 0.3.6` require Rust 1.89 or newer (and `oo7` requires 1.92). The
+Rust 1.92 failed in `gpui-pre-util 0.3.8` on `<[T]>::as_array`; Rust 1.93
+then failed on `core::hint::cold_path` in `gpui-pre 0.3.8`. The latter API
+stabilized in Rust 1.95, so the workspace MSRV is declared as 1.95 and both
+the shell check and plugin tests pass on that toolchain; see the
+[official Rust release notes](https://doc.rust-lang.org/stable/releases.html).
+Initial Linux linking also identified missing `libfontconfig1-dev` and
+`libxkbcommon-x11-dev`; both were installed for this validation run and added
+to the cloud environment guide.
+
 ## Environment
 
 - Cloud host: Linux x86_64, 2026-10-12.

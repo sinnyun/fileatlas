@@ -29,24 +29,25 @@ git remote -v
 
 ## 2. 工具链和依赖
 
-仓库根 `Cargo.toml` 声明 Rust edition 2024、最低 Rust 版本 1.88，并使用稳定版工具链。至少准备：
+仓库根 `Cargo.toml` 声明 Rust edition 2024、最低 Rust 版本 1.95，并使用稳定版工具链。最低版本来自当前锁定的 GPUI 传递依赖；升级依赖后应重新核对 MSRV。至少准备：
 
 - Rust stable、Cargo、rustfmt（`rustup component add rustfmt`）。
 - Git。
-- Linux x86_64 系统开发包：`libxcb1-dev`、`libxkbcommon-dev`。
+- Linux x86_64 系统开发包：`libxcb1-dev`、`libxkbcommon-dev`、
+  `libxkbcommon-x11-dev`、`libfontconfig1-dev`。
 
 Ubuntu/Debian 配置命令：
 
 ```bash
 sudo apt-get update
-sudo apt-get install --yes git build-essential pkg-config libxcb1-dev libxkbcommon-dev
+sudo apt-get install --yes git build-essential pkg-config libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev
 rustup toolchain install stable --component rustfmt
 rustup default stable
 rustc --version
 cargo --version
 ```
 
-CI 已明确安装 `libxcb1-dev` 和 `libxkbcommon-dev`。如果构建明确报告其他缺失的原生库，再根据错误补装对应开发包，并把经过验证的环境变化同步到 CI；不要无依据地堆叠系统依赖。
+CI 已明确安装 `libxcb1-dev` 和 `libxkbcommon-dev`。云端实际构建还报告 `fontconfig` 与 `xkbcommon-x11` 缺失；Linux shell/test 环境需补装 `libfontconfig1-dev` 和 `libxkbcommon-x11-dev`（后者会带入 `libxcb-xkb-dev`）。如果构建报告其他缺失原生库，再根据具体错误补装并同步到 CI；不要无依据地堆叠依赖。
 
 Linux 首次解析依赖需要网络。仓库有 `Cargo.lock`，开发/CI 命令应优先使用 `--locked`。依赖已缓存时可使用 `--offline` 排查，但离线失败本身不能证明代码有问题。
 
@@ -93,7 +94,7 @@ cargo check -p photag-shell --locked
 ## 6. 本仓库当前事实（2026-10-12）
 
 - 默认分支：`main`；工作区根目录包含 10 个 Cargo 成员。
-- Rust 最低版本：1.88；依赖版本和锁文件以仓库当前内容为准。
+- Rust 最低版本：1.95；依赖版本和锁文件以仓库当前内容为准。
 - CI 使用 Linux Ubuntu、Rust stable 和 rustfmt。
 - 本地验证优先采用“非 Shell workspace 测试 + Shell check”的两阶段方式。
 - 迁移仍未达到 PhoTag 全功能等价；以最新 `README.md` 和功能审计为准，不要把该状态固定为未来事实。

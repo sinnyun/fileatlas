@@ -24,6 +24,84 @@ pub(super) fn clear_filters_button(cx: &mut Context<GalleryView>) -> Button {
         .on_click(cx.listener(|this, _, window, cx| this.clear_filters(window, cx)))
 }
 
+pub(super) fn active_filter_row(
+    filter: &GalleryFilter,
+    cx: &mut Context<GalleryView>,
+) -> impl IntoElement {
+    let mut row = div().h_flex().items_center().gap_1().overflow_x_scrollbar();
+    if !filter.search.trim().is_empty() {
+        row = row.child(
+            Button::new("gallery-clear-search-filter")
+                .label(format!("Search: {} ×", filter.search))
+                .on_click(cx.listener(|this, _, window, cx| this.clear_search_filter(window, cx))),
+        );
+    }
+    if filter.media_type != MediaTypeFilter::All {
+        let label = match filter.media_type {
+            MediaTypeFilter::All => "All",
+            MediaTypeFilter::Photos => "Photos",
+            MediaTypeFilter::Videos => "Videos",
+            MediaTypeFilter::Audio => "Audio",
+        };
+        row = row.child(
+            Button::new("gallery-clear-type-filter")
+                .label(format!("Type: {label} ×"))
+                .on_click(cx.listener(|this, _, _, cx| this.clear_type_filter(cx))),
+        );
+    }
+    if filter.rating_min > 0 || filter.rating_max < 5 {
+        row = row.child(
+            Button::new("gallery-clear-rating-filter")
+                .label(format!(
+                    "Rating: {}–{}★ ×",
+                    filter.rating_min, filter.rating_max
+                ))
+                .on_click(cx.listener(|this, _, _, cx| this.clear_rating_filter(cx))),
+        );
+    }
+    if filter.date_from.is_some() {
+        let from = filter.date_from.expect("checked above").format("%Y-%m-%d");
+        row = row.child(
+            Button::new("gallery-clear-date-from-filter")
+                .label(format!("From: {from} ×"))
+                .on_click(
+                    cx.listener(|this, _, window, cx| this.clear_date_filter(true, window, cx)),
+                ),
+        );
+    }
+    if filter.date_to.is_some() {
+        let to = filter.date_to.expect("checked above").format("%Y-%m-%d");
+        row = row.child(
+            Button::new("gallery-clear-date-to-filter")
+                .label(format!("To: {to} ×"))
+                .on_click(
+                    cx.listener(|this, _, window, cx| this.clear_date_filter(false, window, cx)),
+                ),
+        );
+    }
+    for extension in filter
+        .extensions
+        .iter()
+        .chain(filter.excluded_extensions.iter())
+    {
+        let extension = extension.clone();
+        let included = filter.extensions.contains(&extension);
+        let label = format!(
+            "{} .{} ×",
+            if included { "Include" } else { "Exclude" },
+            extension
+        );
+        row = row.child(
+            Button::new(format!("gallery-clear-extension-{extension}"))
+                .label(label)
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.clear_extension_filter(extension.clone(), cx)
+                })),
+        );
+    }
+    row
+}
+
 fn scope_button(
     id: &str,
     label: &str,
