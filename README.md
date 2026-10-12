@@ -18,6 +18,8 @@ features are not yet at parity.**
 - `crates/photag-ui-bridge`: typed UI contributions and Cordis lifecycle cleanup.
 - `crates/photag-plugin-database`: original schema/query implementation wrapped
   as a Cordis service plugin, with separate reader/writer connections.
+- `crates/photag-plugin-thumbnails`: original image thumbnail decoding and
+  cache pipeline exposed as a Cordis service.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.
 - `vendor/photag-source`: unmodified source mirror for the pinned PhoTag commit.

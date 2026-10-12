@@ -5,6 +5,7 @@ members = [
     "crates/photag-contracts",
     "crates/photag-ui-bridge",
     "crates/photag-plugin-database",
+    "crates/photag-plugin-thumbnails",
 ]
 default-members = ["crates/photag-shell"]
 

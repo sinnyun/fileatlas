@@ -11,4 +11,5 @@ tokio.workspace = true
 photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 gpui-kit.workspace = true

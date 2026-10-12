@@ -149,6 +149,16 @@ fn main() {
     let database_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(database_plugin, database_input)))
         .expect("start database plugin");
+    let thumbnail_plugin = photag_plugin_thumbnails::ThumbnailPlugin;
+    let thumbnail_input = thumbnail_plugin
+        .prepare(photag_plugin_thumbnails::ThumbnailConfig::default())
+        .expect("prepare thumbnail plugin");
+    let thumbnail_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(
+            thumbnail_plugin,
+            thumbnail_input,
+        )))
+        .expect("start thumbnail plugin");
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -166,6 +176,9 @@ fn main() {
         .expect("open PhoTag window");
     });
 
+    runtime
+        .block_on(thumbnail_fiber.dispose())
+        .expect("stop thumbnail plugin");
     runtime
         .block_on(database_fiber.dispose())
         .expect("stop database plugin");

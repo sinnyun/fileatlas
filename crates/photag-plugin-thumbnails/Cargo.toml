@@ -1,0 +1,19 @@
+[package]
+name = "photag-plugin-thumbnails"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+dirs = "5"
+image = "0.25"
+jpeg-decoder = "0.3"
+sha2 = "0.10"
+thiserror = "2"
+tokio.workspace = true
+zune-jpeg = "0.5"
+
+[lints]
+workspace = true

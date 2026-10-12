@@ -14,7 +14,8 @@ capturing behavioral regression cases before each port.
 |---|---|---|---|
 | App lifecycle, dialogs, pending action dispatch, undo/redo, selection state | `src/main.rs`, `src/app.rs` | shell + app-state/history plugins | Not migrated |
 | Folder and tag navigation, tree editing, folder actions | `src/ui/sidebar.rs`, `src/db/queries.rs` | library-navigation + tagging plugins | Not migrated |
-| Virtualized gallery, selection, grid, thumbnails, month groups | `src/ui/gallery.rs`, `src/thumbs.rs` | gallery + thumbnail plugins | Not migrated |
+| Virtualized gallery, selection, grid, month groups | `src/ui/gallery.rs` | gallery plugin | Not migrated |
+| Progressive image thumbnail decode, EXIF orientation, DCT-scaled JPEG decode, 8×8 micro-thumbnails, path-hash cache | `src/thumbs.rs` | `photag-plugin-thumbnails` | Original image pipeline copied without algorithm changes, wrapped as a Cordis service and tested for generation/cache reuse. Windows/UI integration is pending. |
 | Search, sort, date/rating/type/extension/folder filters | `src/ui/filterbar.rs`, `src/db/queries.rs` | search-filter plugin | Not migrated |
 | Image preview, progressive decoding, zoom/pan/rotate/flip, toolbar and filmstrip | `src/ui/preview.rs`, `src/thumbs.rs` | preview plugin | Not migrated |
 | Video/audio playback, synchronization, speed, rotation metadata, ffmpeg integration | `src/video.rs` | media-playback plugin | Not migrated |
@@ -43,6 +44,7 @@ capturing behavioral regression cases before each port.
 |---|---|---|
 | Cordis-owned UI contribution catalog, duplicate validation, command event, plugin-stop cleanup | `crates/photag-ui-bridge/src/lib.rs` | Implemented and unit-tested. Registration is metadata/catalog infrastructure; feature rendering for each contribution kind is not yet migrated. |
 | Original SQLite schema and query code behind a Cordis service | `crates/photag-plugin-database/src/db/` and `src/lib.rs` | Implemented with reader/writer connections, Cordis lifecycle test, fresh schema test, and existing-library compatibility fixture. Broad query behavioral coverage remains pending. |
+| Original image thumbnail pipeline behind a Cordis service | `crates/photag-plugin-thumbnails/src/` | Implemented and tested on generated PNG input; shell starts and stops this plugin. Image-format and Windows integration parity remain to verify. |
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
 
 ## Source file inventory
