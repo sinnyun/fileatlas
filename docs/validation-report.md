@@ -22,6 +22,9 @@ The navigation/settings/export and selected-file action batch was committed as
 `0a0f32d7367e311de7b84003d57c74597e435df8`. GitHub Actions run 30 stopped at
 formatting before compiling; its rustfmt output has been applied to the Rust
 sources. The formatting-correction commit is awaiting a fresh base-shell check.
+Run 31 on formatting commit `df9889e1517ce9bff4bc2311b4a483e4fc99284b`
+found one remaining rustfmt difference at the end of the settings view; it has
+been applied. The next CI run is pending.
 
 | Check | Result | Notes |
 |---|---|---|

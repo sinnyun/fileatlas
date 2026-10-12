@@ -314,5 +314,36 @@ impl SettingsView {
     }
 }
 impl Render for SettingsView {
- fn render(&mut self,_:&mut Window,cx:&mut Context<Self>)->impl IntoElement {let mut r=div().v_flex().w_full().h_full().gap_2().p_3().bg(rgb(0x20232b)).text_color(rgb(0xe7e9ee)).child(div().text_lg().font_semibold().child("Settings")).child(self.tabs(cx));match self.service.snapshot(){Ok(s)=>r=r.child(div().flex_1().min_h_0().overflow_y_scrollbar().child(self.render_tab(&s,cx))),Err(e)=>r=r.child(e.to_string())}if let Some(e)=&self.error{r=r.child(div().text_color(rgb(0xff7070)).child(format!("Could not save: {e}")));}r}
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let mut r = div()
+            .v_flex()
+            .w_full()
+            .h_full()
+            .gap_2()
+            .p_3()
+            .bg(rgb(0x20232b))
+            .text_color(rgb(0xe7e9ee))
+            .child(div().text_lg().font_semibold().child("Settings"))
+            .child(self.tabs(cx));
+        match self.service.snapshot() {
+            Ok(s) => {
+                r = r.child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scrollbar()
+                        .child(self.render_tab(&s, cx)),
+                )
+            }
+            Err(e) => r = r.child(e.to_string()),
+        }
+        if let Some(e) = &self.error {
+            r = r.child(
+                div()
+                    .text_color(rgb(0xff7070))
+                    .child(format!("Could not save: {e}")),
+            );
+        }
+        r
+    }
 }
