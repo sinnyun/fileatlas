@@ -99,7 +99,11 @@ pub(super) fn render_media_details(
         details = details
             .child(detail_line(
                 "Read-only",
-                if metadata.permissions().readonly() { "Yes" } else { "No" },
+                if metadata.permissions().readonly() {
+                    "Yes"
+                } else {
+                    "No"
+                },
             ))
             .child(detail_line(
                 "Modified",
@@ -115,7 +119,10 @@ pub(super) fn render_media_details(
             .child(div().text_sm().font_semibold().child("Image"))
             .child(detail_line("Dimensions", &format!("{width} × {height} px")))
             .child(detail_line("Megapixels", &format!("{megapixels:.2} MP")))
-            .child(detail_line("Aspect", &aspect_ratio(width as u32, height as u32)));
+            .child(detail_line(
+                "Aspect",
+                &aspect_ratio(width as u32, height as u32),
+            ));
     }
     if let Some(timestamp) = media.date_taken {
         details = details
@@ -199,9 +206,5 @@ fn aspect_ratio(width: u32, height: u32) -> String {
 }
 
 fn gcd(a: u32, b: u32) -> u32 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
+    if b == 0 { a } else { gcd(b, a % b) }
 }
