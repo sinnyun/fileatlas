@@ -25,6 +25,14 @@ cordis = { package = "cordis-rs", version = "0.11.1" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 gpui-kit = "=0.7.1"
 
+[profile.dev]
+debug = 0
+incremental = true
+
+[profile.test]
+debug = 0
+incremental = true
+
 [profile.release]
 opt-level = 3
 lto = "thin"

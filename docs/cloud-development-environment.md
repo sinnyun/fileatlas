@@ -47,30 +47,34 @@ rustc --version
 cargo --version
 ```
 
-CI 已明确安装 `libxcb1-dev` 和 `libxkbcommon-dev`。云端实际构建还报告 `fontconfig` 与 `xkbcommon-x11` 缺失；Linux shell/test 环境需补装 `libfontconfig1-dev` 和 `libxkbcommon-x11-dev`（后者会带入 `libxcb-xkb-dev`）。如果构建报告其他缺失原生库，再根据具体错误补装并同步到 CI；不要无依据地堆叠依赖。
+CI 安装 `libxcb1-dev`、`libxkbcommon-dev`、`libxkbcommon-x11-dev` 和 `libfontconfig1-dev`。如果构建报告其他缺失原生库，再根据具体错误补装并同步到 CI；不要无依据地堆叠依赖。
 
 Linux 首次解析依赖需要网络。仓库有 `Cargo.lock`，开发/CI 命令应优先使用 `--locked`。依赖已缓存时可使用 `--offline` 排查，但离线失败本身不能证明代码有问题。
 
-## 3. 推荐验证顺序
+## 3. 云端短时增量构建流程
 
-每次改动后在仓库根目录运行：
+本轮云端阶段用于一次性生成和整理迁移代码，集中插件测试与 Windows 调试留到第二轮。每次代码小批提交后只做格式检查和基础 Shell 编译，不运行 `cargo test --workspace` 或单插件测试。Shell 的 `cargo check` 会编译基础宿主及其依赖插件，但不链接/启动桌面程序，也不代表插件功能测试通过。
+
+仓库的 dev/test profile 已关闭调试符号并启用增量编译；CI 将并行编译限制为 2 个任务，并缓存 Cargo 构建产物。开发环境可使用：
 
 ```bash
+export CARGO_INCREMENTAL=1
+export CARGO_BUILD_JOBS=2
+export CARGO_PROFILE_DEV_DEBUG=0
 cargo fmt --all -- --check
+cargo check -p photag-shell --locked
+```
+
+依赖未缓存且网络不可用时才将 `--locked` 替换为 `--locked --offline`；离线解析失败应记录为缓存/网络问题。增量构建时不要清空 `target/`，不要从头重复完整工作区测试。Shell 检查失败时按错误涉及的 crate 与依赖链小范围修复，再重跑格式检查和 Shell check。
+
+集中测试阶段再运行插件测试和完整回归，具体命令包括：
+
+```bash
 cargo test --workspace --exclude photag-shell --locked
 cargo check -p photag-shell --locked
 ```
 
-如果要自动修复格式，再运行 `cargo fmt --all`，并检查差异。修改单个插件时也运行该插件的测试，例如：
-
-```bash
-cargo test -p photag-plugin-gallery --locked
-cargo check -p photag-shell --locked
-```
-
-当前 CI（`.github/workflows/rust-checks.yml`）执行格式检查、排除 Shell 的 workspace 测试和 Shell 编译。仓库验证记录还说明，完整 `cargo test --workspace` 曾在 GPUI 归档阶段遇到 Rust 的对象文件映射错误；应保留非 GUI 测试与 Shell 编译分开执行的诊断路径，只有复现并定位后才调整测试策略。
-
-不要把“编译通过”表述为“功能已完成”或“与 PhoTag 等价”。同步更新 `docs/validation-report.md`：只记录本次真实执行的命令、环境、结果和未覆盖项目。
+当前 CI 只执行格式检查与 Shell check；它不执行插件测试。`docs/validation-report.md` 必须区分云端基础编译结果、第二轮插件测试结果及 Windows 实机结果。
 
 ## 4. Windows 验证边界
 

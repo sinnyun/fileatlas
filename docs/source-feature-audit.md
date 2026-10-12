@@ -38,6 +38,14 @@ capturing behavioral regression cases before each port.
 | Theme, typography, custom fonts, icon availability, visual tokens | `src/theme.rs` | GPUI Kit theme layer + theme plugin | Not migrated |
 | SQLite schema, migrations, WAL, separate read connection, indexed queries | `src/db/mod.rs`, `src/db/queries.rs` | `photag-plugin-database` | Core schema/query source copied; Cordis service and separate connections implemented. A pre-migration database fixture verifies media rows and tag links survive opening. Broad SQL regression coverage remains incomplete. |
 
+## Plugin port documents
+
+Current crate boundary and runtime input/output details are documented next to
+each crate in `PORTS.md`: contracts, database, thumbnails, indexing, watcher,
+gallery, navigation, tagging, UI bridge, and shell. These port guides describe
+only APIs that exist in source. They do not change any `Not migrated` status in
+the feature map and should be updated with each public contract change.
+
 ## Implemented migration slices
 
 | Slice | Files | Status / limits |

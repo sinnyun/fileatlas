@@ -1,5 +1,27 @@
 # Validation report
 
+## Current cloud task pass (2026-10-12)
+
+This pass is in code-generation/documentation mode. Per the current task scope,
+plugin tests are deferred to the second-round concentrated debugging phase.
+The active tool environment has no `rustc` or `cargo` on `PATH`, so the base
+Shell check could not be run here. Do not interpret earlier validation below
+as validation of the changes in this pass.
+
+| Check | Result | Notes |
+|---|---|---|
+| Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |
+| `cargo fmt --all -- --check` | Not run | Requires rustfmt; no Rust toolchain is installed. |
+| `cargo check -p photag-shell --locked` | Not run | This is the only compilation gate for the current cloud code-generation pass; requires a Rust toolchain. |
+| Plugin tests | Deferred | Per task direction, run during second-round concentrated testing. |
+| Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
+
+The current cloud workflow uses incremental compilation, two build jobs, and
+no dev debug symbols. It runs formatting plus `cargo check -p photag-shell`; it
+does not run plugin tests.
+
+---
+
 ## Cloud revalidation (2026-10-12)
 
 | Check | Result | Notes |

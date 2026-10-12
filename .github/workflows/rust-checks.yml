@@ -15,8 +15,12 @@ concurrency:
 
 jobs:
   linux:
-    name: Format, tests, and shell compile
+    name: Format and base shell compile
     runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: 1
+      CARGO_BUILD_JOBS: 2
+      CARGO_PROFILE_DEV_DEBUG: 0
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -24,7 +28,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes libxcb1-dev libxkbcommon-dev
+          sudo apt-get install --yes libxcb1-dev libxkbcommon-dev libxkbcommon-x11-dev libfontconfig1-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -37,8 +41,5 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Test non-GUI workspace crates
-        run: cargo test --workspace --exclude photag-shell --locked
-
-      - name: Compile GPUI shell
+      - name: Compile base shell and its required plugins
         run: cargo check -p photag-shell --locked

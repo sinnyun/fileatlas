@@ -69,7 +69,18 @@ explicitly incomplete.
 
 ## Verification
 
-Record exact commands and outcomes in `docs/validation-report.md`. Rust checks
-must run on a supported toolchain. Windows-only UI, shell, drag/drop, file
-operations, and system integration require real Windows validation; mark them
-unverified until tested.
+During the cloud code-generation pass, run only `cargo fmt --all -- --check` and
+`cargo check -p photag-shell --locked` (with incremental compilation and bounded
+parallel jobs). Do not run workspace or individual plugin tests in this pass;
+reserve those for the user's second-round concentrated debugging. The shell
+check compiles the host dependency graph but does not prove plugin behavior or
+produce a tested Windows executable. Record exact commands and outcomes in
+`docs/validation-report.md`. Windows-only UI, shell, drag/drop, file operations,
+and system integration require real Windows validation; mark them unverified
+until tested.
+
+Each crate must maintain a `PORTS.md` that documents Cordis plugin/service
+identity, startup dependencies, input/output payloads, event producers and
+consumers, current limits, and where to inspect failures. Keep it aligned with
+actual public Rust signatures; it is an integration/debug guide, not a claim
+that all behavior is complete.
