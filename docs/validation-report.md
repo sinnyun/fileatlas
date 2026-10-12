@@ -35,7 +35,11 @@ guard, now bound explicitly.
 Run 34 on `e7376885c903b511a328620f127f63219ddf80d6` passed formatting; the
 compiler found that GPUI input mutations require the render window outside the
 entity-update closure. The tag editor and parent selector now forward that
-window and use the current two-argument update API. A fresh check is pending.
+window and use the current two-argument update API. Run 35 on
+`631a1fb3b0962b429ced77910f8132fbaaecf5a1` passed both formatting and
+`cargo check -p photag-shell --locked`. Plugin tests remain deferred by task
+direction; Windows UI, filesystem, Shell, drag/drop, and Recycle Bin behavior
+remain unverified.
 
 | Check | Result | Notes |
 |---|---|---|
