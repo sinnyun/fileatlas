@@ -77,6 +77,7 @@ struct GalleryView {
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
+    show_exif: bool,
     snapshot: Result<GallerySnapshot, String>,
     _subscriptions: Vec<Subscription>,
 }
@@ -204,6 +205,7 @@ impl GalleryView {
             focus_handle,
             filter,
             selection: GallerySelection::default(),
+            show_exif: false,
             snapshot,
             _subscriptions,
         }
@@ -237,6 +239,12 @@ impl GalleryView {
                 shift: modifiers.shift,
             },
         );
+        self.show_exif = false;
+        cx.notify();
+    }
+
+    fn toggle_exif(&mut self, cx: &mut Context<Self>) {
+        self.show_exif = !self.show_exif;
         cx.notify();
     }
 
@@ -426,7 +434,13 @@ impl Render for GalleryView {
                             .map(Vec::as_slice)
                             .unwrap_or_default();
                         let open_count = self.service.open_count(selected_id).unwrap_or(0);
-                        grid = grid.child(render_media_details(media, tags, open_count));
+                        grid = grid.child(render_media_details(
+                            media,
+                            tags,
+                            open_count,
+                            self.show_exif,
+                            cx,
+                        ));
                     }
                 }
                 if (snapshot.media.len() as i64) < snapshot.media_count {

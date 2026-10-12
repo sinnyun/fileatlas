@@ -12,12 +12,11 @@ Cordis plugins as Shell dependencies, including the file-operation and tagging
 crates. Plugin tests remain deferred; this Linux compile does not validate
 Windows runtime behavior or feature parity.
 
-The current migration delta extends selected-media details with filesystem
-attributes/timestamps, formatted size, image dimensions/aspect, capture date,
-tags, rating and database open count. GitHub Actions run 24 passed formatting
-and `cargo check -p photag-shell --locked` on Linux. Plugin tests remain
-deferred; Windows runtime behavior, full EXIF/video details and the preview
-info toggle remain unfinished.
+GitHub Actions run 24 passed formatting and `cargo check -p photag-shell
+--locked` for the selected-media details implementation. The new EXIF parser
+and lazy field display were added after that run and have not yet passed
+formatting or compilation. Plugin tests remain deferred; Windows runtime
+behavior, ffprobe video details and the preview info toggle remain unfinished.
 
 | Check | Result | Notes |
 |---|---|---|

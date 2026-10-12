@@ -15,6 +15,7 @@ photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
 chrono = "0.4"
+kamadak-exif = "0.6.1"
 
 [lints]
 workspace = true

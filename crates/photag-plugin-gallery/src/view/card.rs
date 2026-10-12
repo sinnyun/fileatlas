@@ -1,6 +1,7 @@
 //! GPUI media tile rendering and click selection.
 
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::button::Button;
 use gpui_kit::*;
 
 use super::GalleryView;
@@ -74,6 +75,8 @@ pub(super) fn render_media_details(
     media: &photag_plugin_database::db::queries::MediaItem,
     tags: &[photag_plugin_database::db::queries::Tag],
     open_count: i64,
+    show_exif: bool,
+    cx: &mut Context<GalleryView>,
 ) -> impl IntoElement {
     let filesystem = std::fs::metadata(&media.full_path).ok();
     let extension = std::path::Path::new(&media.filename)
@@ -152,7 +155,90 @@ pub(super) fn render_media_details(
                 .child("No tags assigned."),
         );
     }
+    if media.media_type == "image" {
+        details = details
+            .child(div().text_sm().font_semibold().child("Metadata (EXIF)"))
+            .child(
+                Button::new("gallery-toggle-exif")
+                    .label(if show_exif {
+                        "Hide EXIF fields"
+                    } else {
+                        "Show EXIF fields"
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| this.toggle_exif(cx))),
+            );
+        if show_exif {
+            match read_exif_fields(&media.full_path) {
+                Ok(fields) if fields.is_empty() => {
+                    details = details.child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0x9aa0ad))
+                            .child("No EXIF metadata."),
+                    );
+                }
+                Ok(fields) => {
+                    for (label, value) in fields {
+                        details = details.child(detail_line(&label, &value));
+                    }
+                }
+                Err(message) => {
+                    details = details.child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0x9aa0ad))
+                            .child(message),
+                    );
+                }
+            }
+        }
+    }
     details
+}
+
+fn read_exif_fields(path: &str) -> Result<Vec<(String, String)>, &'static str> {
+    let file = std::fs::File::open(path).map_err(|_| "Couldn't read file.")?;
+    let mut reader = std::io::BufReader::new(file);
+    let exif = exif::Reader::new()
+        .read_from_container(&mut reader)
+        .map_err(|_| "No EXIF metadata.")?;
+    let interesting = [
+        (exif::Tag::Make, "Camera make"),
+        (exif::Tag::Model, "Camera model"),
+        (exif::Tag::LensModel, "Lens"),
+        (exif::Tag::FocalLength, "Focal length"),
+        (exif::Tag::FNumber, "Aperture"),
+        (exif::Tag::ExposureTime, "Shutter"),
+        (exif::Tag::PhotographicSensitivity, "ISO"),
+        (exif::Tag::ExposureBiasValue, "Exposure bias"),
+        (exif::Tag::Flash, "Flash"),
+        (exif::Tag::WhiteBalance, "White balance"),
+        (exif::Tag::Orientation, "Orientation"),
+        (exif::Tag::ColorSpace, "Color space"),
+        (exif::Tag::Software, "Software"),
+        (exif::Tag::GPSLatitude, "GPS latitude"),
+        (exif::Tag::GPSLongitude, "GPS longitude"),
+        (exif::Tag::GPSAltitude, "GPS altitude"),
+    ];
+    let mut fields = Vec::new();
+    for (tag, label) in interesting {
+        for ifd in [exif::In::PRIMARY, exif::In::THUMBNAIL] {
+            if let Some(field) = exif.get_field(tag, ifd) {
+                fields.push((
+                    label.to_string(),
+                    field.display_value().with_unit(&exif).to_string(),
+                ));
+                break;
+            }
+        }
+    }
+    for field in exif.fields() {
+        fields.push((
+            field.tag.to_string(),
+            field.display_value().with_unit(&exif).to_string(),
+        ));
+    }
+    Ok(fields)
 }
 
 fn detail_line(key: &str, value: &str) -> Div {
