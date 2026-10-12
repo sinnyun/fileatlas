@@ -15,4 +15,5 @@ photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
+photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 gpui-kit.workspace = true

@@ -173,6 +173,16 @@ fn main() {
     let indexing_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(indexing_plugin, indexing_input)))
         .expect("start indexing plugin");
+    let navigation_plugin = photag_plugin_navigation::NavigationPlugin;
+    let navigation_input = navigation_plugin
+        .prepare(photag_plugin_navigation::NavigationConfig)
+        .expect("prepare navigation plugin");
+    let navigation_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(
+            navigation_plugin,
+            navigation_input,
+        )))
+        .expect("start navigation plugin");
     let watcher_plugin = photag_plugin_watcher::WatcherPlugin;
     let watcher_input = watcher_plugin
         .prepare(photag_plugin_watcher::WatcherConfig)
@@ -200,6 +210,9 @@ fn main() {
     runtime
         .block_on(watcher_fiber.dispose())
         .expect("stop watcher plugin");
+    runtime
+        .block_on(navigation_fiber.dispose())
+        .expect("stop navigation plugin");
     runtime
         .block_on(indexing_fiber.dispose())
         .expect("stop indexing plugin");

@@ -9,6 +9,7 @@ members = [
     "crates/photag-plugin-indexing",
     "crates/photag-plugin-watcher",
     "crates/photag-plugin-gallery",
+    "crates/photag-plugin-navigation",
 ]
 default-members = ["crates/photag-shell"]
 

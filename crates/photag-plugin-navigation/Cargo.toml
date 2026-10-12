@@ -1,0 +1,19 @@
+[package]
+name = "photag-plugin-navigation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+tokio.workspace = true
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+rusqlite = { version = "0.31", features = ["bundled"] }
+thiserror = "2"
+
+[lints]
+workspace = true

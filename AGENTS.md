@@ -35,6 +35,10 @@ explicitly incomplete.
   host key-event/action integration. The `filter` module maps source filter state
   into the existing database query; the original filter controls and settings
   persistence still require GPUI migration.
+- `photag-plugin-navigation` preserves sidebar folder/tag tree data and routes
+  tag mutations through the source query layer. Keep native sidebar widgets,
+  folder scan lifecycle actions, tag drag/drop, and context menus marked
+  incomplete until their GPUI event flow is implemented.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 
