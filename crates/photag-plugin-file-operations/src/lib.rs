@@ -290,7 +290,7 @@ impl FileOperationsService {
                 .ok_or(FileOperationError::MissingMedia(media_id))?;
             open::that(item.full_path)
                 .map_err(|error| FileOperationError::Open(error.to_string()))?;
-            Ok(())
+            Ok::<(), FileOperationError>(())
         })
         .await??;
         Ok(())
@@ -413,7 +413,7 @@ impl FileOperationsService {
     fn media(&self, media_id: i64) -> Result<Option<MediaItem>, FileOperationError> {
         Ok(self
             .database
-            .with_reader(|connection| queries::get_media_by_id(connection, media_id))??)
+            .with_reader(|connection| queries::get_media_by_id(connection, media_id))?)
     }
 
     fn folder_for_path(&self, path: &str) -> Result<Option<i64>, FileOperationError> {
