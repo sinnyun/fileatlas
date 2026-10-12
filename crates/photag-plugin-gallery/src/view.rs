@@ -19,7 +19,7 @@ use card::render_media_card;
 
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
-    filter::{GalleryFilter, MediaTypeFilter, parse_date_input},
+    filter::{GalleryFilter, MediaTypeFilter, SearchScope, parse_date_input},
     selection::{GalleryKey, GallerySelection, Modifiers as SelectionModifiers, SelectionEffect},
 };
 
@@ -306,6 +306,12 @@ impl GalleryView {
         }
     }
 
+    fn toggle_search_scope(&mut self, scope: SearchScope, cx: &mut Context<Self>) {
+        self.filter.toggle_search_scope(scope);
+        self.reload();
+        cx.notify();
+    }
+
     fn set_sort(&mut self, sort: SortOrder, cx: &mut Context<Self>) {
         if self.filter.sort != sort {
             self.filter.sort = sort;
@@ -393,6 +399,7 @@ impl Render for GalleryView {
                             ),
                     )
                     .child(Input::new(&self.search).w_full())
+                    .child(controls::search_scope_row(&self.filter, cx))
                     .child(controls::media_type_row(&self.filter, cx))
                     .child(controls::sort_row(&self.filter, cx))
                     .child(controls::rating_row(&self.filter, cx))

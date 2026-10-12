@@ -35,6 +35,13 @@ pub struct SearchScopes {
     pub tags: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchScope {
+    Filenames,
+    Paths,
+    Tags,
+}
+
 /// Parse a date edit; `None` means temporarily invalid, while `Some(None)` clears it.
 pub fn parse_date_input(value: &str) -> Option<Option<NaiveDate>> {
     if value.trim().is_empty() {
@@ -99,6 +106,14 @@ impl Default for GalleryFilter {
 }
 
 impl GalleryFilter {
+    pub fn toggle_search_scope(&mut self, scope: SearchScope) {
+        match scope {
+            SearchScope::Filenames => self.search_scopes.filenames = !self.search_scopes.filenames,
+            SearchScope::Paths => self.search_scopes.paths = !self.search_scopes.paths,
+            SearchScope::Tags => self.search_scopes.tags = !self.search_scopes.tags,
+        }
+    }
+
     /// Set one end of the inclusive rating range while preserving a valid interval.
     pub fn set_rating_bound(&mut self, minimum: bool, value: i32) {
         let value = value.clamp(0, 5);
@@ -280,5 +295,16 @@ mod tests {
         assert_eq!(parse_date_input(""), Some(None));
         assert_eq!(parse_date_input("2025-03-"), None);
         assert_eq!(parse_date_input("not a date"), None);
+    }
+
+    #[test]
+    fn search_scope_toggles_map_to_query_flags() {
+        let mut filter = GalleryFilter::default();
+        filter.toggle_search_scope(SearchScope::Paths);
+        assert_eq!(filter.to_query().search_in_paths, false);
+        filter.toggle_search_scope(SearchScope::Filenames);
+        filter.toggle_search_scope(SearchScope::Tags);
+        let query = filter.to_query();
+        assert!(!query.search_in_filenames && !query.search_in_paths && !query.search_in_tags);
     }
 }

@@ -8,7 +8,32 @@ use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
 
 use super::GalleryView;
-use crate::filter::{GalleryFilter, MediaTypeFilter};
+use crate::filter::{GalleryFilter, MediaTypeFilter, SearchScope};
+
+pub(super) fn search_scope_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {
+    div().h_flex().gap_1().children([
+        scope_button("filenames", "Filenames", SearchScope::Filenames, filter, cx),
+        scope_button("paths", "Paths", SearchScope::Paths, filter, cx),
+        scope_button("tags", "Tags", SearchScope::Tags, filter, cx),
+    ])
+}
+
+fn scope_button(
+    id: &str,
+    label: &str,
+    scope: SearchScope,
+    filter: &GalleryFilter,
+    cx: &mut Context<GalleryView>,
+) -> Button {
+    let active = match scope {
+        SearchScope::Filenames => filter.search_scopes.filenames,
+        SearchScope::Paths => filter.search_scopes.paths,
+        SearchScope::Tags => filter.search_scopes.tags,
+    };
+    Button::new(format!("gallery-search-scope-{id}"))
+        .label(format!("{} {label}", if active { "✓" } else { "○" }))
+        .on_click(cx.listener(move |this, _, _, cx| this.toggle_search_scope(scope, cx)))
+}
 
 pub(super) fn date_row(from: &Entity<InputState>, to: &Entity<InputState>) -> Div {
     div()
