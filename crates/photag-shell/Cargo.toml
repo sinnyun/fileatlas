@@ -12,4 +12,5 @@ photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 gpui-kit.workspace = true

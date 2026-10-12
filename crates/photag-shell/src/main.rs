@@ -159,6 +159,13 @@ fn main() {
             thumbnail_input,
         )))
         .expect("start thumbnail plugin");
+    let indexing_plugin = photag_plugin_indexing::IndexingPlugin;
+    let indexing_input = indexing_plugin
+        .prepare(photag_plugin_indexing::IndexingConfig)
+        .expect("prepare indexing plugin");
+    let indexing_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(indexing_plugin, indexing_input)))
+        .expect("start indexing plugin");
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -176,6 +183,9 @@ fn main() {
         .expect("open PhoTag window");
     });
 
+    runtime
+        .block_on(indexing_fiber.dispose())
+        .expect("stop indexing plugin");
     runtime
         .block_on(thumbnail_fiber.dispose())
         .expect("stop thumbnail plugin");

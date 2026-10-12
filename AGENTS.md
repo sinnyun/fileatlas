@@ -21,6 +21,11 @@ explicitly incomplete.
 - `photag-ui-bridge` is the shared UI registration contract and catalog.
 - `photag-plugin-database` owns the source-compatible SQLite data layer. Keep
   all DB access behind its Cordis service as migration proceeds.
+- `photag-plugin-thumbnails` retains PhoTag image thumbnail/cache generation.
+- `photag-plugin-indexing` owns recursive scanning and thumbnail backfill; its
+  service is the public entry point for scan progress/cancellation streams. Its
+  current regression test uses a synthetic image and paired video poster; it
+  does not establish Windows or full-format parity.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

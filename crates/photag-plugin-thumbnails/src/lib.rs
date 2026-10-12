@@ -17,6 +17,13 @@ impl Service for ThumbnailService {
 }
 
 impl ThumbnailService {
+    /// Create a thumbnail service with an explicit cache directory.
+    pub fn open_at(directory: impl Into<PathBuf>) -> std::io::Result<Self> {
+        let directory = directory.into();
+        std::fs::create_dir_all(&directory)?;
+        Ok(Self { directory })
+    }
+
     /// Directory holding PhoTag's path-hash named JPEG thumbnail cache.
     pub fn directory(&self) -> &Path {
         &self.directory
@@ -57,8 +64,7 @@ impl Plugin for ThumbnailPlugin {
 
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let directory = config.directory.clone().unwrap_or_else(default_thumb_dir);
-        std::fs::create_dir_all(&directory)?;
-        let service = Arc::new(ThumbnailService { directory });
+        let service = Arc::new(ThumbnailService::open_at(directory)?);
         let _publication = context
             .provide(service)
             .map_err(|error| ThumbnailPluginError::Publish(error.to_string()))?;

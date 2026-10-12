@@ -3,8 +3,7 @@
 This repository contains a staged Rust migration of PhoTag. The pinned source,
 feature audit, Cargo workspace, Cordis-managed SQLite plugin, lifecycle-owned UI
 contribution bridge, and GPUI Kit shell are present. **This is an incomplete
-migration; the gallery, preview, indexing, file operations, and other product
-features are not yet at parity.**
+migration; the gallery, preview, file operations, and many other product features are not yet at parity. Folder indexing and thumbnail backfill have an initial tested migration, but are not yet validated against real libraries and Windows media.**
 
 - [Source pins](SOURCE_PINS.md)
 - [Feature/source mapping and compatibility audit](docs/source-feature-audit.md)
@@ -20,6 +19,7 @@ features are not yet at parity.**
   as a Cordis service plugin, with separate reader/writer connections.
 - `crates/photag-plugin-thumbnails`: original image thumbnail decoding and
   cache pipeline exposed as a Cordis service.
+- `crates/photag-plugin-indexing`: recursive scanning, database indexing, poster pairing, thumbnail backfill and directory listing exposed through a Cordis service.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.
 - `vendor/photag-source`: unmodified source mirror for the pinned PhoTag commit.

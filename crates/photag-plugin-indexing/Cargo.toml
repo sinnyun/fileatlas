@@ -1,0 +1,18 @@
+[package]
+name = "photag-plugin-indexing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+image = "0.25"
+rusqlite = { version = "0.31", features = ["bundled"] }
+thiserror = "2"
+walkdir = "2"
+
+[lints]
+workspace = true

@@ -23,7 +23,7 @@ capturing behavioral regression cases before each port.
 | Hierarchical tags, ancestor auto-apply/manual distinction, associations, merge, rename, reparent, colors/icons/order/display | `src/db/queries.rs`, `src/ui/sidebar.rs`, `src/ui/preview.rs` | tagging plugin | Not migrated |
 | Ratings, pick/reject, keyboard shortcuts, tag hotkeys | `src/app.rs`, `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/settings.rs` | rating + command/keybinding contributions | Not migrated |
 | Search tag assignment menus and context menus | `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/ui/sidebar.rs` | menu contributions owned by feature plugins | Not migrated |
-| Multi-threaded scanning, bounded workers, video probing, rescan, missing thumbnails | `src/scan.rs`, `src/thumbs.rs` | indexing plugin | Not migrated |
+| Recursive multi-thread scanning, hidden-file filtering, video/poster pairing, DB batches, image/video thumbnails, cancellation/progress, missing-thumbnail backfill, child directory listing | `src/scan.rs`, `src/thumbs.rs`, FFmpeg helpers from `src/video.rs` | `photag-plugin-indexing` + `photag-plugin-thumbnails` | Scanner workflow copied and adapted behind a Cordis service; synthetic folder scan regression test passes. Real media corpus, FFmpeg, Windows paths, rescan policy and watcher integration remain unverified. |
 | Filesystem watcher and reconciliation | `src/watcher.rs`, `src/scan.rs` | watcher/indexing plugins | Not migrated |
 | Recycle Bin delete, copy/move/rename/create folder, reveal/open, index follow-through | `src/app.rs`, `src/db/queries.rs`, `src/drag.rs` | file-operations plugin | Not migrated |
 | Drag-out to Explorer/drop targets via `CF_HDROP` | `src/drag.rs` | Windows shell integration plugin | Not migrated |
@@ -45,6 +45,7 @@ capturing behavioral regression cases before each port.
 | Cordis-owned UI contribution catalog, duplicate validation, command event, plugin-stop cleanup | `crates/photag-ui-bridge/src/lib.rs` | Implemented and unit-tested. Registration is metadata/catalog infrastructure; feature rendering for each contribution kind is not yet migrated. |
 | Original SQLite schema and query code behind a Cordis service | `crates/photag-plugin-database/src/db/` and `src/lib.rs` | Implemented with reader/writer connections, Cordis lifecycle test, fresh schema test, and existing-library compatibility fixture. Broad query behavioral coverage remains pending. |
 | Original image thumbnail pipeline behind a Cordis service | `crates/photag-plugin-thumbnails/src/` | Implemented and tested on generated PNG input; shell starts and stops this plugin. Image-format and Windows integration parity remain to verify. |
+| Original folder scanning and thumbnail backfill | `crates/photag-plugin-indexing/src/{scan,maintenance,ffmpeg}.rs` | Integrated as Cordis service depending on database and thumbnail services; shell starts/stops it. Scan test checks hidden-file exclusion, same-stem video poster pairing, DB rows, cache output and completion signal. Actual library parity and FFmpeg extraction still need Windows/media-corpus tests. |
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
 
 ## Source file inventory
@@ -64,7 +65,7 @@ behavioral seams during migration without dropping behavior.
 | `src/ui/filterbar.rs` | 822 | search/filter/sort controls | Audited inventory; not ported |
 | `src/ui/info.rs` | 350 | metadata info panel | Audited inventory; not ported |
 | `src/db/mod.rs` | 190 | schema, migrations, connections | Audited inventory; not ported |
-| `src/scan.rs` | 489 | indexing and thumbnail work queue | Audited inventory; not ported |
+| `src/scan.rs` | 489 | indexing and thumbnail work queue | Migrated to indexing plugin; split into scan and maintenance modules. Behavioral coverage is partial. |
 | `src/thumbs.rs` | 420 | image/video thumbnail generation | Audited inventory; not ported |
 | `src/video.rs` | 1,037 | video/audio playback | Audited inventory; not ported |
 | `src/ai.rs` | 645 | AI inference and image analysis | Audited inventory; not ported |

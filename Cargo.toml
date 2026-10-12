@@ -6,6 +6,7 @@ members = [
     "crates/photag-ui-bridge",
     "crates/photag-plugin-database",
     "crates/photag-plugin-thumbnails",
+    "crates/photag-plugin-indexing",
 ]
 default-members = ["crates/photag-shell"]
 

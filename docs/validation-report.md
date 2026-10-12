@@ -14,11 +14,12 @@
 | PhoTag clone and pinned revision | Passed | `36cee242a78c0a8cd9ac6b0d63b64265aa0add90` |
 | `cargo check -p photag-shell --offline` | Passed | Linux x86_64; compiles the GPUI Kit host and Cordis runtime composition |
 | `cargo fmt --all` | Passed | Stable toolchain with rustfmt |
-| `cargo test --workspace --exclude photag-shell --offline` | Passed, 7 tests | Database, thumbnail, and UI bridge tests; shell has no unit tests |
+| `cargo test --workspace --exclude photag-shell --offline` | Passed, 8 tests | 3 database, 1 indexing, 1 thumbnails, and 3 UI bridge tests |
 | `cargo check -p photag-shell --offline` | Passed | Includes the GPUI Kit shell and all registered runtime plugins |
 | `cargo test --workspace --offline` | Failed at GPUI archive creation | Rust reports `failed to map object file: memory map must have a non-zero length` when creating a `gpui_component` rlib after the thumbnail dependency was added; package tests and shell check pass separately |
 | `cargo test -p photag-plugin-database -p photag-ui-bridge --offline` | Passed, 6 tests | Fresh schema, pre-migration library compatibility, Cordis database lifecycle, and UI owner cleanup tests |
 | `cargo test -p photag-plugin-thumbnails --offline` | Passed, 1 test | Original image pipeline creates and reuses a cached thumbnail |
+| `cargo test -p photag-plugin-indexing --offline` | Passed, 1 test | Recursive folder scan indexes a still image, ignores a hidden file, pairs a video poster and writes thumbnail cache output |
 | Git bundle clone | Passed | Cloned delivery bundle to a clean directory and inspected its root commit |
 | GPUI/GPUI Kit integration compile | Passed on Linux | Windows native GUI execution is not available here |
 | PhoTag regression tests | Partial | No end-to-end UI parity test suite; existing tests cover plugin lifecycle and basic DB setup |
@@ -26,8 +27,7 @@
 
 ## Outstanding validation issues
 
-- No automated PhoTag behavior parity suite exists yet beyond basic database
-  setup and Cordis lifecycle tests.
+- The new scanner test covers a synthetic fixture only. Additional regression tests are needed for cancellation, large batches, rescan behavior, supported media formats, FFmpeg video extraction, and error handling.
 - Windows GUI, Windows Shell, drag/drop, Recycle Bin, and real-file operations
   remain unverified. A synthetic pre-migration SQLite fixture passes; a copy of
   an actual PhoTag user library has not been tested.
@@ -39,8 +39,6 @@
   `cargo test --workspace --exclude photag-shell --offline` and
   `cargo check -p photag-shell --offline` both pass independently.
 
-A successful compile is not evidence of feature parity. UI bridge, shell, and
-database migration slices are present; most user-visible PhoTag behavior is
-still unmigrated. Windows GUI, Windows Shell drag/drop, and file operation
+A successful compile is not evidence of feature parity. UI bridge, shell, database, thumbnails, and a partial folder-indexing migration are present; most user-visible PhoTag behavior is still unmigrated. Windows GUI, Windows Shell drag/drop, and file operation
 behavior need testing. Real user-library compatibility still needs a test with
 an actual library copy.
