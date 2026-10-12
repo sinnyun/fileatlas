@@ -6,10 +6,18 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Arc;
 
-use cordis::{Context, Plugin, Routing, Service};
+use cordis::{Context, Routing, Service};
 use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Folder, MediaItem};
+
+mod model;
+mod plugin;
+
+pub use model::{
+    BulkCopyOutcome, BulkDeleteOutcome, BulkMoveOutcome, DeleteResult, FileOperationError,
+};
+pub use plugin::{FileOperationsConfig, FileOperationsPlugin, FileOperationsPluginError};
 
 pub struct FileOperationsService {
     database: Arc<DatabaseService>,
@@ -463,102 +471,4 @@ fn reveal_path(path: &str) -> Result<(), FileOperationError> {
         Command::new("open").args(["-R", path]).spawn()?;
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BulkCopyOutcome {
-    pub media_id: i64,
-    pub copied: bool,
-    pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BulkMoveOutcome {
-    pub media_id: i64,
-    pub moved: bool,
-    pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BulkDeleteOutcome {
-    pub media_id: i64,
-    pub removed_from_database: bool,
-    pub recycled: bool,
-    pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DeleteResult {
-    pub removed_from_database: bool,
-    pub recycled: bool,
-    pub recycle_error: Option<String>,
-}
-
-impl DeleteResult {
-    fn not_found() -> Self {
-        Self {
-            removed_from_database: false,
-            recycled: false,
-            recycle_error: None,
-        }
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum FileOperationError {
-    #[error("media item {0} is not indexed")]
-    MissingMedia(i64),
-    #[error("media path has no parent directory")]
-    InvalidParent,
-    #[error(transparent)]
-    Database(#[from] photag_plugin_database::DatabaseAccessError),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error("operating system open request failed: {0}")]
-    Open(String),
-    #[error("file operation worker failed: {0}")]
-    Worker(#[from] tokio::task::JoinError),
-    #[error("media index event failed: {0}")]
-    Event(String),
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct FileOperationsConfig;
-
-pub struct FileOperationsPlugin;
-
-impl Plugin for FileOperationsPlugin {
-    type Config = FileOperationsConfig;
-    type Input = FileOperationsConfig;
-    type PrepareError = std::convert::Infallible;
-    type ApplyError = FileOperationsPluginError;
-
-    fn name(&self) -> std::borrow::Cow<'_, str> {
-        "photag.file-operations".into()
-    }
-
-    fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
-        Ok(config)
-    }
-
-    async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
-        let database = context
-            .try_service::<DatabaseService>()
-            .map_err(|error| FileOperationsPluginError::Dependency(error.to_string()))?;
-        context
-            .provide(Arc::new(FileOperationsService::new(
-                database,
-                context.clone(),
-            )))
-            .map_err(|error| FileOperationsPluginError::Publish(error.to_string()))?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum FileOperationsPluginError {
-    #[error("required file operations dependency unavailable: {0}")]
-    Dependency(String),
-    #[error("file operations service publication failed: {0}")]
-    Publish(String),
 }

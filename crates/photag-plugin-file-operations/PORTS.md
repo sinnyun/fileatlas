@@ -10,6 +10,9 @@ migration slice has not been compiled or tested in this cloud pass.
 
 - Cordis plugin: `photag.file-operations`; service: `photag/file-operations`
   (`FileOperationsService`).
+- Code map: service and filesystem flow in `src/lib.rs`; public per-operation
+  result/error records in `src/model.rs`; service publication and plugin
+  lifecycle errors in `src/plugin.rs`.
 - Requires `photag/database` and starts after the database plugin.
 - Database-row mutations emit `MediaIndexChanged`; the gallery consumes that
   event and reloads. Copy and folder creation do not mutate indexed rows; the
