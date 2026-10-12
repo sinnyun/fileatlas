@@ -215,9 +215,39 @@ impl NavigationService {
             .with_writer(|c| queries::update_tag_appearance(c, id, color, icon))?)
     }
     pub fn set_tag_display(&self, id: i64, display: bool) -> Result<(), NavigationError> {
-        Ok(self
+        let tree = self
             .database
-            .with_writer(|c| queries::set_tag_display(c, id, display))?)
+            .with_reader(|connection| queries::get_tag_tree(connection))?;
+        fn descendants(tags: &[Tag], id: i64, output: &mut Vec<i64>) -> bool {
+            for tag in tags {
+                if tag.id == id {
+                    output.push(tag.id);
+                    fn collect(children: &[Tag], output: &mut Vec<i64>) {
+                        for child in children {
+                            output.push(child.id);
+                            collect(&child.children, output);
+                        }
+                    }
+                    collect(&tag.children, output);
+                    return true;
+                }
+                if descendants(&tag.children, id, output) {
+                    return true;
+                }
+            }
+            false
+        }
+        let mut affected = Vec::new();
+        if !descendants(&tree, id, &mut affected) {
+            return Err(NavigationError::TagNotFound(id));
+        }
+        self.database.with_writer(|connection| {
+            for tag_id in affected {
+                queries::set_tag_display(connection, tag_id, display)?;
+            }
+            Ok(())
+        })?;
+        Ok(())
     }
 }
 
@@ -253,6 +283,8 @@ pub enum NavigationError {
     DatabaseAccess(#[from] photag_plugin_database::DatabaseAccessError),
     #[error("folder path is not a directory: {0}")]
     NotDirectory(String),
+    #[error("tag does not exist: {0}")]
+    TagNotFound(i64),
     #[error("folder scan registry lock is poisoned")]
     Poisoned,
 }

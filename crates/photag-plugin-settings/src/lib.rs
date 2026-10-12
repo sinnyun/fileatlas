@@ -4,9 +4,12 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use cordis::{Context, Plugin, Service};
+use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin};
 
 pub mod settings;
 pub use settings::*;
+
+mod view;
 
 /// Shared, mutable user preferences backed by the original settings JSON file.
 pub struct SettingsService {
@@ -126,6 +129,21 @@ impl Plugin for SettingsPlugin {
         context
             .provide(service)
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        let service = context
+            .try_service::<SettingsService>()
+            .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        register_for_plugin(
+            &context,
+            "photag.settings",
+            [
+                UiContribution::new("settings/layout", ContributionKind::Layout { label: "Settings".into(), order: 90 }),
+                UiContribution::new("settings/slot", ContributionKind::Slot { label: "workspace.settings".into(), order: 0 }),
+                UiContribution::new("settings/panel", ContributionKind::Panel { label: "Settings".into(), slot: "workspace.settings".into(), order: 0 }),
+                UiContribution::new("settings/view", ContributionKind::Widget { label: "PhoTag Settings".into(), slot: "workspace.settings".into(), order: 0 }),
+            ],
+        ).map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(&context, "photag.settings", [view::settings(service)])
+            .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }
@@ -134,4 +152,6 @@ impl Plugin for SettingsPlugin {
 pub enum SettingsPluginError {
     #[error("settings service publication failed: {0}")]
     Publish(String),
+    #[error("settings UI registration failed: {0}")]
+    UiRegistration(String),
 }

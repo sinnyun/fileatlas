@@ -76,6 +76,7 @@ pub(super) fn render_media_details(
     tags: &[photag_plugin_database::db::queries::Tag],
     open_count: i64,
     show_exif: bool,
+    exif_fields: Option<&Result<Vec<(String, String)>, String>>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement {
     let filesystem = std::fs::metadata(&media.full_path).ok();
@@ -168,8 +169,8 @@ pub(super) fn render_media_details(
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_exif(cx))),
             );
         if show_exif {
-            match read_exif_fields(&media.full_path) {
-                Ok(fields) if fields.is_empty() => {
+            match exif_fields {
+                Some(Ok(fields)) if fields.is_empty() => {
                     details = details.child(
                         div()
                             .text_sm()
@@ -177,14 +178,21 @@ pub(super) fn render_media_details(
                             .child("No EXIF metadata."),
                     );
                 }
-                Ok(fields) => {
+                Some(Ok(fields)) => {
                     for (label, value) in fields {
-                        details = details.child(detail_line(&label, &value));
+                        details = details.child(detail_line(label, value));
                     }
                 }
-                Err(message) => {
-                    details =
-                        details.child(div().text_sm().text_color(rgb(0x9aa0ad)).child(message));
+                Some(Err(message)) => {
+                    details = details.child(div().text_sm().text_color(rgb(0x9aa0ad)).child(message.as_str()));
+                }
+                None => {
+                    details = details.child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0x9aa0ad))
+                            .child("Select one image to read EXIF metadata."),
+                    );
                 }
             }
         }
@@ -192,7 +200,7 @@ pub(super) fn render_media_details(
     details
 }
 
-fn read_exif_fields(path: &str) -> Result<Vec<(String, String)>, &'static str> {
+pub(super) fn read_exif_fields(path: &str) -> Result<Vec<(String, String)>, &'static str> {
     let file = std::fs::File::open(path).map_err(|_| "Couldn't read file.")?;
     let mut reader = std::io::BufReader::new(file);
     let exif = exif::Reader::new()

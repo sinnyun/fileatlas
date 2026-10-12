@@ -4998,6 +4998,7 @@ dependencies = [
  "kamadak-exif",
  "photag-contracts",
  "photag-plugin-database",
+ "photag-plugin-file-operations",
  "photag-ui-bridge",
  "rusqlite",
  "thiserror 2.0.21",
@@ -5022,7 +5023,9 @@ name = "photag-plugin-metadata-export"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "gpui-kit",
  "photag-plugin-database",
+ "photag-ui-bridge",
  "serde_json",
  "thiserror 2.0.21",
 ]
@@ -5063,6 +5066,8 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "dirs 5.0.1",
+ "gpui-kit",
+ "photag-ui-bridge",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

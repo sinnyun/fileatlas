@@ -1,19 +1,28 @@
-# Settings plugin ports / 设置数据对接
+# Settings plugin ports / 设置面板对接
 
-Status: the pinned PhoTag settings JSON model and Cordis service are migrated. GPUI settings controls and wiring each setting into its feature remain pending.
+Status: the source-compatible settings model and JSON persistence are active. This plugin now contributes a GPUI Settings panel owned by Cordis. Controls write immediately through `SettingsService::update`, so UI state and the canonical `%LOCALAPPDATA%/PhoTag/settings.json` stay synchronized. This pass intentionally did not run plugin tests or a cloud Rust build; local Windows UI verification is pending.
 
-## Lifecycle and storage
+## Cordis and UI lifecycle
 
-- Cordis plugin: `photag.settings`; service name: `photag/settings` (`SettingsService`).
-- No service dependencies. Default file is `%LOCALAPPDATA%\PhoTag\settings.json`; tests/hosts may override the path. Missing or invalid JSON loads PhoTag defaults, matching source behavior.
-- The `Settings`, toolbar, AI, search-scope, tag-search/merge, hotkey, accent and update preference fields preserve the source JSON names, serde defaults, and enum spellings.
+- Plugin: `photag.settings`; service: `photag/settings` (`SettingsService`).
+- Requires the host `photag/ui-bridge` service. It publishes the settings service, contributes `workspace.settings` layout/slot/panel/widget entries and registers `settings/panel-view` under the same plugin owner.
+- Cordis effect cleanup removes the UI contribution metadata and view factory when the plugin stops. The service is provided within the plugin generation.
+- The current Shell mounts non-sidebar/non-gallery slots as auxiliary views. To make this panel a modal opened from a Settings command, the shell must add a visibility/command host contract; current rendering displays the contributed panel as an auxiliary surface.
 
-## Data interface
+## Migrated settings controls
 
-- `snapshot()` returns a clone of current settings. `replace(settings)` replaces and persists; `update(edit)` applies one edit, persists, and returns the updated clone.
-- `ExcludeModifier::matches_modifiers(ctrl, shift, alt)` retains source matching semantics without egui types. `open_key` and hotkey key names remain strings for a GPUI adapter.
-- Persistence errors are returned to callers; load retains the source fallback-to-default behavior.
+The panel has Appearance, Toolbar, Shortcuts, Tags, AI and Updates sections. Direct toggles/options cover every `ToolbarSettings` boolean; accent preset name (System plus all seven pinned original names); date dividers; sidebar exclusion modifier; search scopes; tag search match and persistence; tag merge child behavior; AI automatic analysis; mandatory group add/remove; updater auto-check; filmstrip startup visibility; floating toolbar lock and stored offsets. Values are saved through the same serde model, including fields that are currently displayed read-only.
 
-## Debugging
+## Remaining UI ports
 
-Compare `settings.json` against the source model in `vendor/photag-source/src/settings.rs`. For a value that resets, inspect JSON validity and serde defaults; for a failed save, inspect the resolved LocalAppData path and filesystem permissions.
+- Appearance: saved accent selection is rendered, but applying its color to app-wide GPUI theme tokens (including live Windows system accent) needs a shared theme service and consumers. Original egui swatch styling has not been visually replicated.
+- Shortcuts: `open_key` is displayed read-only; original key-capture interaction is pending. F1–F9 assignments are displayed read-only; editing needs the navigation tag tree/picker and hotkey dispatch integration. Rating shortcut behavior is owned by the gallery/preview interaction layer.
+- AI mandatory groups can be added/removed. Editing group names, picking/removing individual tags and wiring those groups into AI requests need the tag picker and AI provider contracts.
+- Updates: the preference is editable. Live check, status, staged download, checksum verification and install controls need updater service integration.
+- `toolbar_pos.offset_x/offset_y` remain displayed read-only; drag persistence belongs to the preview toolbar view.
+- The original six-tab dialog dimensions, draggable modal behavior, ESC handling and exact visual styling are not represented by the current shell's auxiliary slot host.
+
+## Persistence/debugging
+
+- `snapshot()` returns a settings clone; `update` persists each interaction and reports errors in-panel. Missing/invalid JSON loads original PhoTag defaults.
+- Compare the JSON schema/defaults against pinned `vendor/photag-source/src/settings.rs`. For save errors check the LocalAppData path and permissions. UI wiring errors usually indicate the bridge service or slot host was not initialized before this plugin.

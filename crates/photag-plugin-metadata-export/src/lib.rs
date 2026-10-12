@@ -1,14 +1,36 @@
 //! PhoTag's complete metadata backup export exposed as a Cordis service.
 
-use std::path::Path;
-use std::sync::Arc;
+mod view;
 
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
+use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
+use gpui_kit::prelude::FluentBuilder;
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaExport};
+use photag_ui_bridge::{
+    ContributionKind, UiCommandInvoked, UiContribution, register_for_plugin,
+    register_views_for_plugin,
+};
+
+const EXPORT_COMMAND_ID: &str = "metadata-export/export";
 
 pub struct MetadataExportService {
     database: Arc<DatabaseService>,
+    destination: Mutex<Option<PathBuf>>,
+    status: Mutex<MetadataExportStatus>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum MetadataExportStatus {
+    #[default]
+    Idle,
+    Exporting,
+    Succeeded { path: PathBuf, records: usize },
+    Failed(String),
 }
 
 impl Service for MetadataExportService {
@@ -17,7 +39,11 @@ impl Service for MetadataExportService {
 
 impl MetadataExportService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
-        Self { database }
+        Self {
+            database,
+            destination: Mutex::new(None),
+            status: Mutex::new(MetadataExportStatus::Idle),
+        }
     }
 
     /// Return all media rows in source order with source-compatible tag paths.
@@ -38,6 +64,53 @@ impl MetadataExportService {
         std::fs::write(path, self.to_pretty_json()?)?;
         Ok(())
     }
+
+    /// Set the path used by the lifecycle-registered export command.
+    pub fn set_destination(&self, path: impl Into<PathBuf>) -> Result<(), MetadataExportError> {
+        *self.destination.lock().map_err(|_| MetadataExportError::StatePoisoned)? =
+            Some(path.into());
+        Ok(())
+    }
+
+    /// Snapshot the current command progress for the GPUI panel.
+    pub fn status(&self) -> Result<MetadataExportStatus, MetadataExportError> {
+        self.status
+            .lock()
+            .map(|status| status.clone())
+            .map_err(|_| MetadataExportError::StatePoisoned)
+    }
+
+    fn start_export(self: &Arc<Self>) -> Result<(), MetadataExportError> {
+        let path = self
+            .destination
+            .lock()
+            .map_err(|_| MetadataExportError::StatePoisoned)?
+            .clone()
+            .ok_or(MetadataExportError::DestinationMissing)?;
+        *self.status.lock().map_err(|_| MetadataExportError::StatePoisoned)? =
+            MetadataExportStatus::Exporting;
+        let service = Arc::clone(self);
+        std::thread::Builder::new()
+            .name("photag-metadata-export".into())
+            .spawn(move || {
+                let result = service
+                    .records()
+                    .and_then(|records| {
+                        let count = records.len();
+                        let json = serde_json::to_string_pretty(&records)?;
+                        std::fs::write(&path, json)?;
+                        Ok(count)
+                    });
+                let status = match result {
+                    Ok(records) => MetadataExportStatus::Succeeded { path, records },
+                    Err(error) => MetadataExportStatus::Failed(error.to_string()),
+                };
+                if let Ok(mut current) = service.status.lock() {
+                    *current = status;
+                }
+            })?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -48,6 +121,10 @@ pub enum MetadataExportError {
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error("metadata export destination has not been selected")]
+    DestinationMissing,
+    #[error("metadata export state lock is poisoned")]
+    StatePoisoned,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -73,9 +150,66 @@ impl Plugin for MetadataExportPlugin {
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| MetadataExportPluginError::Dependency(error.to_string()))?;
-        context
-            .provide(Arc::new(MetadataExportService::new(database)))
+        let service = Arc::new(MetadataExportService::new(database));
+        let _publication = context
+            .provide(Arc::clone(&service))
             .map_err(|error| MetadataExportPluginError::Publish(error.to_string()))?;
+        let command_service = Arc::clone(&service);
+        let _command_listener = context
+            .on::<UiCommandInvoked, _>(observer_sync(move |_, command_id| {
+                if command_id == EXPORT_COMMAND_ID
+                    && let Err(error) = command_service.start_export()
+                {
+                    if let Ok(mut status) = command_service.status.lock() {
+                        *status = MetadataExportStatus::Failed(error.to_string());
+                    }
+                }
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| MetadataExportPluginError::EventRegistration(error.to_string()))?;
+        register_for_plugin(
+            &context,
+            "photag.metadata-export",
+            [
+                UiContribution::new(
+                    "metadata-export/panel-slot",
+                    ContributionKind::Slot {
+                        label: "workspace.metadata-export".into(),
+                        order: 20,
+                    },
+                ),
+                UiContribution::new(
+                    "metadata-export/panel",
+                    ContributionKind::Panel {
+                        label: "Metadata Backup Export".into(),
+                        slot: "workspace.metadata-export".into(),
+                        order: 0,
+                    },
+                ),
+                UiContribution::new(
+                    EXPORT_COMMAND_ID,
+                    ContributionKind::Command {
+                        label: "Export metadata…".into(),
+                    },
+                ),
+                UiContribution::new(
+                    "metadata-export/file-menu-item",
+                    ContributionKind::MenuItem {
+                        label: "Export metadata…".into(),
+                        menu: "File".into(),
+                        command_id: EXPORT_COMMAND_ID.into(),
+                        order: 80,
+                    },
+                ),
+            ],
+        )
+        .map_err(|error| MetadataExportPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(
+            &context,
+            "photag.metadata-export",
+            [view::export_panel(service, context.clone())],
+        )
+        .map_err(|error| MetadataExportPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }
@@ -86,4 +220,8 @@ pub enum MetadataExportPluginError {
     Dependency(String),
     #[error("metadata export service publication failed: {0}")]
     Publish(String),
+    #[error("metadata export UI registration failed: {0}")]
+    UiRegistration(String),
+    #[error("metadata export command event registration failed: {0}")]
+    EventRegistration(String),
 }

@@ -29,7 +29,13 @@ pub(super) fn sidebar(
             let view_service = Arc::clone(&service);
             let view_cordis = cordis.clone();
             let folder_path = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
-            app.new(|_| SidebarView::new(view_service, view_cordis, folder_path))
+            let tag_name = app.new(|cx| InputState::new(window, cx).placeholder("New tag name"));
+            let tag_parent = app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID (optional)"));
+            let tag_edit_name = app.new(|cx| InputState::new(window, cx).placeholder("Tag name"));
+            let tag_color = app.new(|cx| InputState::new(window, cx).placeholder("Color #RRGGBB (empty = default)"));
+            let tag_icon = app.new(|cx| InputState::new(window, cx).placeholder("Icon / emoji (empty = default)"));
+            let tag_move_target = app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID"));
+            app.new(|_| SidebarView::new(view_service, view_cordis, folder_path, tag_name, tag_parent, tag_edit_name, tag_color, tag_icon, tag_move_target))
                 .into()
         },
     )
@@ -39,6 +45,12 @@ struct SidebarView {
     service: Arc<NavigationService>,
     cordis: CordisContext,
     folder_path: Entity<InputState>,
+    tag_name: Entity<InputState>,
+    tag_parent: Entity<InputState>,
+    tag_edit_name: Entity<InputState>,
+    tag_color: Entity<InputState>,
+    tag_icon: Entity<InputState>,
+    tag_move_target: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
@@ -50,11 +62,23 @@ impl SidebarView {
         service: Arc<NavigationService>,
         cordis: CordisContext,
         folder_path: Entity<InputState>,
+        tag_name: Entity<InputState>,
+        tag_parent: Entity<InputState>,
+        tag_edit_name: Entity<InputState>,
+        tag_color: Entity<InputState>,
+        tag_icon: Entity<InputState>,
+        tag_move_target: Entity<InputState>,
     ) -> Self {
         Self {
             service: Arc::clone(&service),
             cordis,
             folder_path,
+            tag_name,
+            tag_parent,
+            tag_edit_name,
+            tag_color,
+            tag_icon,
+            tag_move_target,
             snapshot: service.snapshot().map_err(|error| error.to_string()),
             active_scan: None,
             scan_progress: None,
@@ -208,6 +232,89 @@ impl SidebarView {
         })
         .detach();
     }
+
+    fn create_tag(&mut self, cx: &mut Context<Self>) {
+        let name = self.tag_name.read(cx).value().trim().to_owned();
+        if name.is_empty() { return; }
+        let parent_text = self.tag_parent.read(cx).value().trim().to_owned();
+        let parent = if parent_text.is_empty() { None } else { parent_text.parse::<i64>().ok() };
+        if !parent_text.is_empty() && parent.is_none() {
+            self.snapshot = Err("Parent tag ID must be an integer".into());
+            return;
+        }
+        match self.service.create_tag(&name, parent) {
+            Ok(_) => self.refresh(),
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn rename_tag(&mut self, id: i64, cx: &mut Context<Self>) {
+        let name = self.tag_edit_name.read(cx).value().trim().to_owned();
+        if name.is_empty() { return; }
+        match self.service.rename_tag(id, &name) {
+            Ok(()) => self.refresh(),
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn update_tag_appearance(&mut self, id: i64, cx: &mut Context<Self>) {
+        let name = self.tag_edit_name.read(cx).value().trim().to_owned();
+        let color = self.tag_color.read(cx).value().trim().to_owned();
+        let icon = self.tag_icon.read(cx).value().trim().to_owned();
+        if !color.is_empty() && crate::parse_hex_color(&color).is_none() {
+            self.snapshot = Err("Tag color must use #RRGGBB format".into());
+            cx.notify();
+            return;
+        }
+        if !name.is_empty() {
+            if let Err(error) = self.service.rename_tag(id, &name) {
+                self.snapshot = Err(error.to_string()); cx.notify(); return;
+            }
+        }
+        let color = if color.is_empty() { None } else { Some(color) };
+        let icon = if icon.is_empty() { None } else { Some(icon) };
+        match self.service.set_tag_appearance(id, color.as_deref(), icon.as_deref()) {
+            Ok(()) => self.refresh(),
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn delete_tag(&mut self, id: i64, cx: &mut Context<Self>) {
+        match self.service.delete_tag(id) {
+            Ok(()) => { self.refresh(); self.select_tag(None, cx); self.notify_media_index(cx); }
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn move_tag_into(&mut self, id: i64, cx: &mut Context<Self>) {
+        let target = self.tag_move_target.read(cx).value().trim().parse::<i64>();
+        match target {
+            Ok(target) => match self.service.move_tag(id, photag_plugin_database::db::queries::TagDropPos::Into(target)) {
+                Ok(_) => { self.refresh(); self.notify_media_index(cx); },
+                Err(error) => self.snapshot = Err(error.to_string()),
+            },
+            Err(_) => self.snapshot = Err("Parent tag ID must be an integer".into()),
+        }
+        cx.notify();
+    }
+
+    fn toggle_tag_display(&mut self, id: i64, display: bool, cx: &mut Context<Self>) {
+        match self.service.set_tag_display(id, display) {
+            Ok(()) => self.refresh(),
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+        cx.notify();
+    }
+
+    fn use_tag_as_parent(&self, id: i64, cx: &mut Context<Self>) {
+        self.tag_parent.update(cx, |state, window, cx| {
+            state.set_value(&id.to_string(), window, cx);
+        });
+    }
 }
 
 impl Render for SidebarView {
@@ -351,6 +458,10 @@ impl Render for SidebarView {
                                 .on_click(cx.listener(|this, _, _, cx| this.select_tag(None, cx))),
                         ),
                 );
+                panel = panel.child(div().text_xs().text_color(rgb(0x9aa0ad)).child("Tag management"));
+                panel = panel.child(div().h_flex().gap_1().child(Input::new(&self.tag_name).flex_1()).child(Input::new(&self.tag_parent).flex_1()).child(Button::new("navigation-create-tag").label("Create").on_click(cx.listener(|this, _, _, cx| this.create_tag(cx)))));
+                panel = panel.child(div().h_flex().gap_1().child(Input::new(&self.tag_edit_name).flex_1()).child(Input::new(&self.tag_color).flex_1()).child(Input::new(&self.tag_icon).flex_1()));
+                panel = panel.child(div().h_flex().gap_1().child(Input::new(&self.tag_move_target).flex_1()).child(div().text_xs().text_color(rgb(0x9aa0ad)).child("Set fields, then use a tag row action")));
                 panel.children(snapshot.tags.iter().map(|tag| render_tag(tag, cx)))
             }
             Err(error) => panel.child(
@@ -372,6 +483,49 @@ fn render_tag(
     let select = Button::new(format!("navigation-tag-{}", tag.id))
         .label("Filter")
         .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(tag_id), cx)));
+    let tag_name = tag.name.clone();
+    let tag_color = tag.color.clone().unwrap_or_default();
+    let tag_icon = tag.icon.clone().unwrap_or_default();
+    let [red, green, blue] = tag
+        .color
+        .as_deref()
+        .and_then(crate::parse_hex_color)
+        .unwrap_or([120, 120, 130]);
+    let select_name_id = tag.id;
+    let name = Button::new(format!("navigation-tag-name-{}", tag.id))
+        .label(format!(
+            "{indent}{} {}  {}",
+            tag.icon.as_deref().filter(|icon| !icon.is_empty()).unwrap_or("🏷"),
+            tag.name,
+            tag.media_count
+        ))
+        .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(select_name_id), cx)));
+    let edit_name = tag_name;
+    let edit_color = tag_color;
+    let edit_icon = tag_icon;
+    let edit_id = tag.id;
+    let edit = Button::new(format!("navigation-tag-edit-{edit_id}"))
+        .label("Edit fields")
+        .on_click(cx.listener(move |this, _, _, cx| {
+            let name = edit_name.clone();
+            let color = edit_color.clone();
+            let icon = edit_icon.clone();
+            this.tag_edit_name.update(cx, |state, window, cx| state.set_value(&name, window, cx));
+            this.tag_color.update(cx, |state, window, cx| state.set_value(&color, window, cx));
+            this.tag_icon.update(cx, |state, window, cx| state.set_value(&icon, window, cx));
+        }));
+    let rename = Button::new(format!("navigation-tag-rename-{edit_id}")).label("Rename").on_click(cx.listener(move |this, _, _, cx| this.rename_tag(edit_id, cx)));
+    let appearance_id = tag.id;
+    let appearance = Button::new(format!("navigation-tag-appearance-{appearance_id}")).label("Save style").on_click(cx.listener(move |this, _, _, cx| this.update_tag_appearance(appearance_id, cx)));
+    let display_id = tag.id;
+    let was_displayed = tag.display;
+    let display = Button::new(format!("navigation-tag-display-{display_id}")).label(if was_displayed { "Hide chips" } else { "Show chips" }).on_click(cx.listener(move |this, _, _, cx| this.toggle_tag_display(display_id, !was_displayed, cx)));
+    let delete_id = tag.id;
+    let delete = Button::new(format!("navigation-tag-delete-{delete_id}")).label("Delete").on_click(cx.listener(move |this, _, _, cx| this.delete_tag(delete_id, cx)));
+    let move_id = tag.id;
+    let move_into = Button::new(format!("navigation-tag-move-{move_id}")).label("Move into ID").on_click(cx.listener(move |this, _, _, cx| this.move_tag_into(move_id, cx)));
+    let parent_id = tag.id;
+    let use_parent = Button::new(format!("navigation-tag-parent-{parent_id}")).label("Use as parent").on_click(cx.listener(move |this, _, _, cx| { this.use_tag_as_parent(parent_id, cx); cx.notify(); }));
     let children = tag
         .children
         .iter()
@@ -385,14 +539,24 @@ fn render_tag(
                 .justify_between()
                 .child(
                     div()
-                        .w_full()
-                        .px_2()
-                        .py_1()
-                        .text_sm()
-                        .child(format!("{indent}{}  {}", tag.name, tag.media_count)),
+                        .h_flex()
+                        .gap_1()
+                        .child(
+                            div()
+                                .w_2()
+                                .h_2()
+                                .rounded_sm()
+                                .bg(rgb(
+                                    (u32::from(red) << 16)
+                                        | (u32::from(green) << 8)
+                                        | u32::from(blue),
+                                )),
+                        )
+                        .child(name),
                 )
                 .child(select),
         )
+        .child(div().h_flex().gap_1().child(edit).child(rename).child(appearance).child(display).child(use_parent).child(move_into).child(delete))
         .children(children)
 }
 

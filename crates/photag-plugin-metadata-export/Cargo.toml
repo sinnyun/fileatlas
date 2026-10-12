@@ -7,7 +7,9 @@ license.workspace = true
 
 [dependencies]
 cordis.workspace = true
+gpui-kit.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
 serde_json.workspace = true
 thiserror.workspace = true
 

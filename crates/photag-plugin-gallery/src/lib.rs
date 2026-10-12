@@ -18,6 +18,7 @@ use photag_contracts::{
 };
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
+use photag_plugin_file_operations::FileOperationsService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
 };
@@ -224,6 +225,10 @@ impl Plugin for GalleryPlugin {
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let file_operations = context
+            .try_service::<FileOperationsService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let runtime = tokio::runtime::Handle::current();
         let service = Arc::new(GalleryService::new(database));
         let selected_folder = Arc::new(SelectedFolder::default());
         let selected_tag = Arc::new(SelectedTag::default());
@@ -338,6 +343,8 @@ impl Plugin for GalleryPlugin {
             "photag.gallery",
             [view::gallery(
                 service,
+                file_operations,
+                runtime,
                 selected_folder,
                 selected_tag,
                 selected_path,
@@ -484,10 +491,10 @@ mod tests {
         let _ui = context
             .provide(Arc::new(UiBridgeService::new(Arc::clone(&catalog))))
             .unwrap();
-        let _database = context
-            .provide(Arc::new(
-                DatabaseService::open_at(root.join("photag.sqlite")).unwrap(),
-            ))
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let _database = context.provide(Arc::clone(&database)).unwrap();
+        let _file_operations = context
+            .provide(Arc::new(FileOperationsService::new(database, context.clone())))
             .unwrap();
         let plugin = GalleryPlugin;
         let input = plugin.prepare(GalleryConfig).unwrap();

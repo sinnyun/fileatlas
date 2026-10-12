@@ -15,6 +15,8 @@ impl GalleryView {
             "home" => GalleryKey::Home,
             "end" => GalleryKey::End,
             "escape" => GalleryKey::Escape,
+            "delete" | "backspace" => GalleryKey::Delete,
+            "enter" => GalleryKey::Enter,
             "a" if event.keystroke.modifiers.control => GalleryKey::SelectAll,
             "0" => GalleryKey::Rating(0),
             "1" => GalleryKey::Rating(1),
@@ -47,8 +49,9 @@ impl GalleryView {
                     self.reload();
                 }
             }
+            SelectionEffect::ConfirmDelete { .. } => self.delete_selected(cx),
+            SelectionEffect::OpenPreview { .. } => self.open_selected(false, cx),
             SelectionEffect::None | SelectionEffect::ScrollTo { .. } => {}
-            SelectionEffect::ConfirmDelete { .. } | SelectionEffect::OpenPreview { .. } => {}
         }
         cx.notify();
     }

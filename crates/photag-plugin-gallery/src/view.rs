@@ -8,6 +8,7 @@ mod keyboard;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
+use std::{future::Future, path::PathBuf};
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
@@ -15,6 +16,7 @@ use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_file_operations::FileOperationsService;
 use photag_ui_bridge::UiViewContribution;
 
 use card::{render_media_card, render_media_details};
@@ -27,6 +29,8 @@ use crate::{
 
 pub(super) fn gallery(
     service: Arc<GalleryService>,
+    file_operations: Arc<FileOperationsService>,
+    runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
@@ -38,6 +42,8 @@ pub(super) fn gallery(
         0,
         move |window, app| {
             let view_service = Arc::clone(&service);
+            let view_file_operations = Arc::clone(&file_operations);
+            let view_runtime = runtime.clone();
             let view_selection = Arc::clone(&selected_folder);
             let view_tag_selection = Arc::clone(&selected_tag);
             let view_path_selection = Arc::clone(&selected_path);
@@ -47,9 +53,14 @@ pub(super) fn gallery(
             let date_from =
                 app.new(|cx| InputState::new(window, cx).placeholder("From YYYY-MM-DD"));
             let date_to = app.new(|cx| InputState::new(window, cx).placeholder("To YYYY-MM-DD"));
+            let rename_input = app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
+            let destination_input =
+                app.new(|cx| InputState::new(window, cx).placeholder("Destination folder path"));
             app.new(|cx| {
                 GalleryView::new(
                     view_service,
+                    view_file_operations,
+                    view_runtime,
                     view_selection,
                     view_tag_selection,
                     view_path_selection,
@@ -57,6 +68,8 @@ pub(super) fn gallery(
                     search,
                     date_from,
                     date_to,
+                    rename_input,
+                    destination_input,
                     cx,
                 )
             })
@@ -67,6 +80,8 @@ pub(super) fn gallery(
 
 struct GalleryView {
     service: Arc<GalleryService>,
+    file_operations: Arc<FileOperationsService>,
+    runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
@@ -74,10 +89,15 @@ struct GalleryView {
     search: Entity<InputState>,
     date_from: Entity<InputState>,
     date_to: Entity<InputState>,
+    rename_input: Entity<InputState>,
+    destination_input: Entity<InputState>,
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
     show_exif: bool,
+    exif_cache: Option<(i64, Result<Vec<(String, String)>, String>)>,
+    operation_status: Option<String>,
+    confirm_delete: bool,
     snapshot: Result<GallerySnapshot, String>,
     _subscriptions: Vec<Subscription>,
 }
@@ -85,6 +105,8 @@ struct GalleryView {
 impl GalleryView {
     fn new(
         service: Arc<GalleryService>,
+        file_operations: Arc<FileOperationsService>,
+        runtime: tokio::runtime::Handle,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
         selected_path: Arc<SelectedPath>,
@@ -92,6 +114,8 @@ impl GalleryView {
         search: Entity<InputState>,
         date_from: Entity<InputState>,
         date_to: Entity<InputState>,
+        rename_input: Entity<InputState>,
+        destination_input: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
         let filter = GalleryFilter::default();
@@ -195,6 +219,8 @@ impl GalleryView {
         .detach();
         Self {
             service,
+            file_operations,
+            runtime,
             selected_folder,
             selected_tag,
             selected_path,
@@ -202,10 +228,15 @@ impl GalleryView {
             search,
             date_from,
             date_to,
+            rename_input,
+            destination_input,
             focus_handle,
             filter,
             selection: GallerySelection::default(),
             show_exif: false,
+            exif_cache: None,
+            operation_status: None,
+            confirm_delete: false,
             snapshot,
             _subscriptions,
         }
@@ -217,6 +248,9 @@ impl GalleryView {
             .load(self.filter.to_query())
             .map_err(|error| error.to_string());
         self.selection = GallerySelection::default();
+        self.show_exif = false;
+        self.exif_cache = None;
+        self.confirm_delete = false;
     }
 
     fn select_media(
@@ -240,12 +274,211 @@ impl GalleryView {
             },
         );
         self.show_exif = false;
+        self.exif_cache = None;
+        self.confirm_delete = false;
         cx.notify();
     }
 
     fn toggle_exif(&mut self, cx: &mut Context<Self>) {
         self.show_exif = !self.show_exif;
+        if self.show_exif {
+            let selected_path = self
+                .selection
+                .selected_media_ids
+                .first()
+                .and_then(|&media_id| {
+                    self.snapshot
+                        .as_ref()
+                        .ok()?
+                        .media
+                        .iter()
+                        .find(|media| media.id == media_id)
+                        .map(|media| (media_id, media.full_path.clone()))
+                });
+            if let Some((media_id, path)) = selected_path {
+                self.exif_cache = Some((
+                    media_id,
+                    card::read_exif_fields(&path).map_err(str::to_string),
+                ));
+            }
+        }
         cx.notify();
+    }
+
+    fn start_operation<F>(&mut self, operation: F, refresh: bool, cx: &mut Context<Self>)
+    where
+        F: Future<Output = String> + Send + 'static,
+    {
+        self.operation_status = Some("Working…".to_string());
+        self.confirm_delete = false;
+        let operation = self.runtime.spawn(operation);
+        cx.spawn(async move |this, cx| {
+            let status = operation
+                .await
+                .unwrap_or_else(|error| format!("Operation task failed: {error}"));
+            let _ = this.update(cx, |this, cx| {
+                if refresh {
+                    this.reload();
+                }
+                this.operation_status = Some(status);
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    fn open_selected(&mut self, reveal: bool, cx: &mut Context<Self>) {
+        let Some(&media_id) = self.selection.selected_media_ids.first() else {
+            return;
+        };
+        let operations = Arc::clone(&self.file_operations);
+        self.start_operation(
+            async move {
+                let result = if reveal {
+                    operations.reveal_in_file_manager(media_id).await
+                } else {
+                    operations.open_external(media_id).await
+                };
+                result.map_or_else(
+                    |error| format!("File action failed: {error}"),
+                    |_| {
+                        if reveal {
+                            "Opened containing folder.".to_string()
+                        } else {
+                            "Opened with the system default application.".to_string()
+                        }
+                    },
+                )
+            },
+            false,
+            cx,
+        );
+    }
+
+    fn rename_selected(&mut self, cx: &mut Context<Self>) {
+        if self.selection.selected_media_ids.len() != 1 {
+            return;
+        }
+        let media_id = self.selection.selected_media_ids[0];
+        let new_filename = self.rename_input.read(cx).value().to_string();
+        let operations = Arc::clone(&self.file_operations);
+        let gallery = Arc::clone(&self.service);
+        self.start_operation(
+            async move {
+                match operations.rename(media_id, new_filename.clone()).await {
+                    Err(error) => format!("Rename failed: {error}"),
+                    Ok(()) => match gallery.media_by_id(media_id) {
+                        Ok(Some(media)) if media.filename == new_filename => {
+                            format!("Renamed to {}.", media.filename)
+                        }
+                        Ok(_) => "Rename was not applied; check the filename and collisions.".into(),
+                        Err(error) => format!("Rename completed, but refresh failed: {error}"),
+                    },
+                }
+            },
+            true,
+            cx,
+        );
+    }
+
+    fn copy_selected(&mut self, cx: &mut Context<Self>) {
+        let ids = self.selection.selected_media_ids.clone();
+        let destination = self.destination_input.read(cx).value().to_string();
+        if ids.is_empty() || destination.trim().is_empty() {
+            self.operation_status = Some("Enter a destination folder path first.".into());
+            cx.notify();
+            return;
+        }
+        let operations = Arc::clone(&self.file_operations);
+        self.start_operation(
+            async move {
+                match operations
+                    .bulk_copy_to_folder(ids.clone(), PathBuf::from(destination))
+                    .await
+                {
+                    Err(error) => format!("Copy failed: {error}"),
+                    Ok(outcomes) => format_bulk_outcome(
+                        "Copied",
+                        ids.len(),
+                        outcomes
+                            .iter()
+                            .filter(|outcome| outcome.copied)
+                            .count(),
+                        outcomes
+                            .iter()
+                            .filter_map(|outcome| {
+                                outcome.error.as_ref().map(|error| (outcome.media_id, error))
+                            }),
+                    ),
+                }
+            },
+            false,
+            cx,
+        );
+    }
+
+    fn move_selected(&mut self, cx: &mut Context<Self>) {
+        let ids = self.selection.selected_media_ids.clone();
+        let destination = self.destination_input.read(cx).value().to_string();
+        if ids.is_empty() || destination.trim().is_empty() {
+            self.operation_status = Some("Enter a destination folder path first.".into());
+            cx.notify();
+            return;
+        }
+        let operations = Arc::clone(&self.file_operations);
+        self.start_operation(
+            async move {
+                match operations
+                    .bulk_move_into_folder(ids.clone(), PathBuf::from(destination))
+                    .await
+                {
+                    Err(error) => format!("Move failed: {error}"),
+                    Ok(outcomes) => format_bulk_outcome(
+                        "Moved",
+                        ids.len(),
+                        outcomes.iter().filter(|outcome| outcome.moved).count(),
+                        outcomes.iter().filter_map(|outcome| {
+                            outcome.error.as_ref().map(|error| (outcome.media_id, error))
+                        }),
+                    ),
+                }
+            },
+            true,
+            cx,
+        );
+    }
+
+    fn delete_selected(&mut self, cx: &mut Context<Self>) {
+        if !self.confirm_delete {
+            self.confirm_delete = true;
+            self.operation_status = Some("Click Delete again to send selected files to Recycle Bin.".into());
+            cx.notify();
+            return;
+        }
+        let ids = self.selection.selected_media_ids.clone();
+        if ids.is_empty() {
+            return;
+        }
+        let operations = Arc::clone(&self.file_operations);
+        self.start_operation(
+            async move {
+                match operations.bulk_delete_to_recycle_bin(ids.clone()).await {
+                    Err(error) => format!("Delete failed: {error}"),
+                    Ok(outcomes) => {
+                        let deleted = outcomes
+                            .iter()
+                            .filter(|outcome| outcome.removed_from_database)
+                            .count();
+                        let failures = outcomes.iter().filter_map(|outcome| {
+                            outcome.error.as_ref().map(|error| (outcome.media_id, error))
+                        });
+                        format_bulk_outcome("Removed", ids.len(), deleted, failures)
+                    }
+                }
+            },
+            true,
+            cx,
+        );
     }
 
     fn apply_rating(&mut self, rating: u8, cx: &mut Context<Self>) {
@@ -320,6 +553,26 @@ impl GalleryView {
             Err(error) => self.snapshot = Err(error.to_string()),
         }
     }
+}
+
+fn format_bulk_outcome<'a>(
+    verb: &str,
+    total: usize,
+    succeeded: usize,
+    failures: impl Iterator<Item = (i64, &'a String)>,
+) -> String {
+    let failures = failures
+        .map(|(media_id, error)| format!("{media_id}: {error}"))
+        .collect::<Vec<_>>();
+    let mut result = format!("{verb} {succeeded} of {total} selected items.");
+    if succeeded < total && failures.is_empty() {
+        result.push_str(" Some items were missing or had destination collisions.");
+    }
+    if !failures.is_empty() {
+        result.push_str(" Errors: ");
+        result.push_str(&failures.join("; "));
+    }
+    result
 }
 
 impl Render for GalleryView {
@@ -423,6 +676,95 @@ impl Render for GalleryView {
                                     })),
                             ),
                     );
+                    let mut actions = div()
+                        .v_flex()
+                        .gap_2()
+                        .rounded_md()
+                        .bg(rgb(0x20232b))
+                        .p_3()
+                        .child(
+                            div().text_sm().font_semibold().child("File actions"),
+                        );
+                    if self.selection.selected_media_ids.len() == 1 {
+                        actions = actions.child(
+                            div()
+                                .h_flex()
+                                .gap_2()
+                                .child(
+                                    Button::new("gallery-open-selected")
+                                        .label("Open")
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.open_selected(false, cx)
+                                        })),
+                                )
+                                .child(
+                                    Button::new("gallery-reveal-selected")
+                                        .label("Reveal")
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.open_selected(true, cx)
+                                        })),
+                                ),
+                        );
+                        actions = actions.child(
+                            div()
+                                .h_flex()
+                                .gap_2()
+                                .child(Input::new(&self.rename_input).w(px(240.)))
+                                .child(
+                                    Button::new("gallery-rename-selected")
+                                        .label("Rename")
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.rename_selected(cx)
+                                        })),
+                                ),
+                        );
+                    }
+                    actions = actions.child(
+                        div()
+                            .h_flex()
+                            .gap_2()
+                            .child(Input::new(&self.destination_input).w(px(320.)))
+                            .child(
+                                Button::new("gallery-copy-selected")
+                                    .label("Copy to folder")
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.copy_selected(cx)
+                                    })),
+                            )
+                            .child(
+                                Button::new("gallery-move-selected")
+                                    .label("Move to folder")
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.move_selected(cx)
+                                    })),
+                            )
+                            .child(
+                                Button::new("gallery-delete-selected")
+                                    .label(if self.confirm_delete {
+                                        "Confirm Recycle Bin delete"
+                                    } else {
+                                        "Delete selected"
+                                    })
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.delete_selected(cx)
+                                    })),
+                            ),
+                    );
+                    if let Some(status) = &self.operation_status {
+                        actions = actions.child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(0x9aa0ad))
+                                .child(status.clone()),
+                        );
+                    }
+                    actions = actions.child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(0x747b89))
+                            .child("Enter a destination folder path; native folder dialogs are still pending."),
+                    );
+                    grid = grid.child(actions);
                 }
                 if self.selection.selected_media_ids.len() == 1 {
                     let selected_id = self.selection.selected_media_ids[0];
@@ -434,11 +776,17 @@ impl Render for GalleryView {
                             .map(Vec::as_slice)
                             .unwrap_or_default();
                         let open_count = self.service.open_count(selected_id).unwrap_or(0);
+                        let exif_fields = self
+                            .exif_cache
+                            .as_ref()
+                            .filter(|(media_id, _)| *media_id == selected_id)
+                            .map(|(_, fields)| fields);
                         grid = grid.child(render_media_details(
                             media,
                             tags,
                             open_count,
                             self.show_exif,
+                            exif_fields,
                             cx,
                         ));
                     }
