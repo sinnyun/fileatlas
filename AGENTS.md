@@ -32,7 +32,9 @@ explicitly incomplete.
 - `photag-plugin-gallery` ports the source skeleton/window data model and owns
   its UI contribution metadata. Do not treat that service and its host-neutral keyboard selection model as
   completion of the GPUI gallery view, pointer selection, date grouping, or
-  host key-event/action integration.
+  host key-event/action integration. The `filter` module maps source filter state
+  into the existing database query; the original filter controls and settings
+  persistence still require GPUI migration.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

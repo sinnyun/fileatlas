@@ -12,6 +12,7 @@ photag-plugin-database = { path = "../photag-plugin-database" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
+chrono = "0.4"
 
 [lints]
 workspace = true

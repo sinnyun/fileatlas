@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
 
+pub mod filter;
 pub mod selection;
 
 use cordis::{Context, Plugin, Service};
