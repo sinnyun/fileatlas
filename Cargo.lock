@@ -7554,9 +7554,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9b93a14fcf658568eb11b3ac4cb406822e916e2c55cdebc421beeb0bd7c94d8"
 dependencies = [
  "chrono 0.4.45",
- "libc 0.2.184",
- "log 0.4.29",
- "objc2 0.6.4",
+ "libc 0.2.190",
+ "log 0.4.34",
+ "objc2 0.6.5",
  "objc2-foundation 0.3.2",
  "once_cell",
  "percent-encoding",
