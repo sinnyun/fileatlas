@@ -1,0 +1,16 @@
+[package]
+name = "photag-plugin-tagging"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+rusqlite = { version = "0.31", features = ["bundled"] }
+thiserror = "2"
+
+[lints]
+workspace = true

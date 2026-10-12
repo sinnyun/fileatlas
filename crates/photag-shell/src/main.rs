@@ -190,6 +190,13 @@ fn main() {
             navigation_input,
         )))
         .expect("start navigation plugin");
+    let tagging_plugin = photag_plugin_tagging::TaggingPlugin;
+    let tagging_input = tagging_plugin
+        .prepare(photag_plugin_tagging::TaggingConfig)
+        .expect("prepare tagging plugin");
+    let tagging_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(tagging_plugin, tagging_input)))
+        .expect("start tagging plugin");
     let executor = runtime.handle().clone();
 
     gpui_kit::application().run(move |cx| {
@@ -207,6 +214,9 @@ fn main() {
         .expect("open PhoTag window");
     });
 
+    runtime
+        .block_on(tagging_fiber.dispose())
+        .expect("stop tagging plugin");
     runtime
         .block_on(navigation_fiber.dispose())
         .expect("stop navigation plugin");

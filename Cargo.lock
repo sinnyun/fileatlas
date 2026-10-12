@@ -4999,6 +4999,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-tagging"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "photag-plugin-database",
+ "photag-ui-bridge",
+ "rusqlite",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "photag-plugin-thumbnails"
 version = "0.1.0"
 dependencies = [
@@ -5036,6 +5047,7 @@ dependencies = [
  "photag-plugin-gallery",
  "photag-plugin-indexing",
  "photag-plugin-navigation",
+ "photag-plugin-tagging",
  "photag-plugin-thumbnails",
  "photag-plugin-watcher",
  "photag-ui-bridge",

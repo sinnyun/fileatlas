@@ -40,6 +40,9 @@ explicitly incomplete.
   rescan, remove, scanner cancellation and watcher registration; keep native
   sidebar widgets/pickers, GPUI action dispatch, tag drag/drop and context menus
   marked incomplete until their GPUI event flow is implemented.
+- `photag-plugin-tagging` owns media/tag assignments and association/merge
+  commands through source database queries. Keep picker/context-menu UI,
+  hotkeys, and XMP rewrite integration marked incomplete until migrated.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 
