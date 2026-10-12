@@ -12,13 +12,12 @@ Cordis plugins as Shell dependencies, including the file-operation and tagging
 crates. Plugin tests remain deferred; this Linux compile does not validate
 Windows runtime behavior or feature parity.
 
-The current uncompiled migration delta extends selected-media details with
-filesystem attributes/timestamps, formatted size, image dimensions/aspect,
-capture date, tags, rating and database open count. It has not yet passed
-compilation; run 21 caught three rustfmt diffs, now corrected. Run 22 passed
-formatting but caught a missing `Ok(...)` wrapper in the open-count reader
-closure. Run 23 caught rustfmt formatting for the newly added wrapper; that is
-corrected locally and awaits a fresh CI run. Plugin tests remain deferred.
+The current migration delta extends selected-media details with filesystem
+attributes/timestamps, formatted size, image dimensions/aspect, capture date,
+tags, rating and database open count. GitHub Actions run 24 passed formatting
+and `cargo check -p photag-shell --locked` on Linux. Plugin tests remain
+deferred; Windows runtime behavior, full EXIF/video details and the preview
+info toggle remain unfinished.
 
 | Check | Result | Notes |
 |---|---|---|
@@ -29,6 +28,7 @@ corrected locally and awaits a fresh CI run. Plugin tests remain deferred.
 | GitHub Actions: selected-media detail migration | Formatting failed; compile skipped | Commit `976851250f7d276141bb4db87583c38564a252a9`, run 21; three rustfmt diffs in `view/card.rs` were corrected locally. A fresh CI run is pending. |
 | GitHub Actions: selected-media detail formatting correction | Formatting passed; compile failed | Commit `050328d1be3e4c4528c0c29fec3c813815886e7f`, run 22; `open_count` reader closure needed an `Ok(...)` wrapper. The compiler-reported fix is applied locally; rerun pending. |
 | GitHub Actions: open-count reader fix | Formatting failed; compile skipped | Commit `3bae0c2005d9cc700a636dee9b5569217099b9c0`, run 23; rustfmt requested line wrapping for the new `Ok(...)`. Corrected locally; rerun pending. |
+| GitHub Actions: selected-media metadata detail | Passed | Commit `34a9386ec8ee1a4a249a745987f8066a5c253451`, run 24; formatting and `cargo check -p photag-shell --locked` passed. Plugin tests were not run. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
 | GitHub Actions: file-operation/XMP migration check | Failed at formatting step | Commit `4f893eb2dbce0768eb4ade07aaca4a539fb04313`; rustfmt reported formatting in file operations, tagging, and reused XMP source, plus three settings field attributes. Base shell compilation was skipped. Corrections are being applied from the logged rustfmt diff; the next push will rerun formatting and the base shell compile. |
