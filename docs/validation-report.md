@@ -151,3 +151,32 @@ to the cloud environment guide.
 A successful compile is not evidence of feature parity. UI bridge, shell, database, thumbnails, and a partial folder-indexing migration are present; most user-visible PhoTag behavior is still unmigrated. Windows GUI, Windows Shell drag/drop, and file operation
 behavior need testing. Real user-library compatibility still needs a test with
 an actual library copy.
+
+## Windows build performance baseline (2026-10-12)
+
+This optimization pass measured the existing configuration before changing
+build behavior. No tests were run.
+
+| Command | Result | Notes |
+|---|---|---|
+| `cargo fmt --all -- --check` | Passed | Installed rustfmt; no formatting differences. |
+| `cargo check -p photag-shell --locked --timings` | Not run to compilation | Default `stable` is Rust 1.94.1; Cargo rejected all workspace crates because they declare Rust 1.95. |
+| `cargo +1.96.0 fmt --all -- --check` | Passed | Windows MSVC host toolchain. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; $env:CARGO_PROFILE_DEV_DEBUG='0'; cargo +1.96.0 check -p photag-shell --locked --timings` | Passed, 2m 54s | Windows MSVC, first complete dependency build for this toolchain; 681 dirty units, GPUI and registered Shell plugin dependency graph. Timing report: `target/cargo-timings/cargo-timing-20261012T155111622Z-0de67308caf8ada2.html`. |
+| Same `cargo +1.96.0 check` with unchanged sources | Passed, 1.26s Cargo / 1.42s wall time | Warm-check baseline; timing report also written under `target/cargo-timings/`. |
+| Final executable link timing | Not measured | This pass followed the permitted `cargo check` verification; no `cargo build` was run. |
+
+The build emitted warnings for unused `ServicePublication` values in session
+and settings, and an unused `FluentBuilder` import in metadata-export. These
+warnings did not fail the check and are recorded for follow-up in the relevant
+code changes. The measured configuration already has dev incremental
+compilation, no dev debug info, bounded parallelism, and CI artifact caching;
+the data does not yet justify changing the linker or replacing the CI cache.
+
+The longest unit in the cold timing report was `windows 0.62.2 (check)` at
+39.43 seconds, followed by `gpui-pre 0.3.8` at 9.58 seconds and
+`gpui-component 0.7.2` at 8.76 seconds. `cargo tree -e features -i
+windows@0.62.2 -p photag-shell --locked` traces the Windows API feature set to
+the GPUI Windows backend and GPUI Kit dependency path. Application-level
+feature trimming is not established as safe; validate upstream feature
+requirements and Windows UI coverage before attempting it.
