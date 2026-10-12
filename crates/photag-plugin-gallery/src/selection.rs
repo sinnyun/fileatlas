@@ -45,6 +45,46 @@ pub enum SelectionEffect {
 }
 
 impl GallerySelection {
+    /// Apply a mouse selection using the source gallery's plain/Ctrl/Shift rules.
+    pub fn select_click(
+        &mut self,
+        skeletons: &[MediaSkeleton],
+        media_id: i64,
+        modifiers: Modifiers,
+    ) {
+        let Some(target_index) = skeletons.iter().position(|media| media.id == media_id) else {
+            return;
+        };
+        if modifiers.shift {
+            let anchor = self
+                .anchor_id
+                .or_else(|| self.selected_media_ids.first().copied())
+                .unwrap_or(media_id);
+            let anchor_index = skeletons
+                .iter()
+                .position(|media| media.id == anchor)
+                .unwrap_or(target_index);
+            let low = anchor_index.min(target_index);
+            let high = anchor_index.max(target_index);
+            self.selected_media_ids = skeletons[low..=high].iter().map(|media| media.id).collect();
+            self.anchor_id = Some(anchor);
+        } else if modifiers.ctrl {
+            if let Some(index) = self
+                .selected_media_ids
+                .iter()
+                .position(|selected| *selected == media_id)
+            {
+                self.selected_media_ids.remove(index);
+            } else {
+                self.selected_media_ids.push(media_id);
+            }
+            self.anchor_id = Some(media_id);
+        } else {
+            self.selected_media_ids = vec![media_id];
+            self.anchor_id = Some(media_id);
+        }
+    }
+
     /// Handle one key using PhoTag's original range-selection and action rules.
     pub fn handle_key(
         &mut self,
@@ -214,5 +254,39 @@ mod tests {
                 media_ids: vec![100, 101, 102]
             }
         );
+    }
+
+    #[test]
+    fn pointer_selection_supports_ctrl_toggle_and_shift_ranges() {
+        let items = skeletons(5);
+        let mut state = GallerySelection::default();
+        state.select_click(&items, 100, Modifiers::default());
+        state.select_click(
+            &items,
+            102,
+            Modifiers {
+                shift: true,
+                ..Modifiers::default()
+            },
+        );
+        assert_eq!(state.selected_media_ids, vec![100, 101, 102]);
+        state.select_click(
+            &items,
+            104,
+            Modifiers {
+                ctrl: true,
+                ..Modifiers::default()
+            },
+        );
+        assert_eq!(state.selected_media_ids, vec![100, 101, 102, 104]);
+        state.select_click(
+            &items,
+            101,
+            Modifiers {
+                ctrl: true,
+                ..Modifiers::default()
+            },
+        );
+        assert_eq!(state.selected_media_ids, vec![100, 102, 104]);
     }
 }

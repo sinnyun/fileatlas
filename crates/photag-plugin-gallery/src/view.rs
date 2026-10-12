@@ -14,6 +14,7 @@ use photag_ui_bridge::UiViewContribution;
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
     filter::GalleryFilter,
+    selection::{GallerySelection, Modifiers as SelectionModifiers},
 };
 
 pub(super) fn gallery(
@@ -59,6 +60,7 @@ struct GalleryView {
     index_revision: Arc<IndexRevision>,
     search: Entity<InputState>,
     filter: GalleryFilter,
+    selection: GallerySelection,
     snapshot: Result<GallerySnapshot, String>,
     _subscriptions: Vec<Subscription>,
 }
@@ -157,6 +159,7 @@ impl GalleryView {
             index_revision,
             search,
             filter,
+            selection: GallerySelection::default(),
             snapshot,
             _subscriptions,
         }
@@ -167,6 +170,36 @@ impl GalleryView {
             .service
             .load(self.filter.to_query())
             .map_err(|error| error.to_string());
+        self.selection = GallerySelection::default();
+    }
+
+    fn select_media(&mut self, media_id: i64, modifiers: Modifiers, cx: &mut Context<Self>) {
+        let Ok(snapshot) = &self.snapshot else {
+            return;
+        };
+        self.selection.select_click(
+            &snapshot.skeletons,
+            media_id,
+            SelectionModifiers {
+                ctrl: modifiers.control,
+                alt: modifiers.alt,
+                shift: modifiers.shift,
+            },
+        );
+        cx.notify();
+    }
+
+    fn apply_rating(&mut self, rating: u8, cx: &mut Context<Self>) {
+        match self
+            .service
+            .apply_rating(&self.selection.selected_media_ids, rating)
+        {
+            Ok(()) => {
+                self.reload();
+                cx.notify();
+            }
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
     }
 
     fn load_more(&mut self) {
@@ -190,6 +223,11 @@ impl Render for GalleryView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match &self.snapshot {
             Ok(snapshot) => {
+                let mut media_cards = Vec::with_capacity(snapshot.media.len());
+                for media in &snapshot.media {
+                    let selected = self.selection.selected_media_ids.contains(&media.id);
+                    media_cards.push(render_media_card(media, selected, cx));
+                }
                 let mut grid = div()
                     .v_flex()
                     .size_full()
@@ -227,7 +265,7 @@ impl Render for GalleryView {
                             .content_start()
                             .gap_3()
                             .overflow_y_scrollbar()
-                            .children(snapshot.media.iter().map(render_media_card)),
+                            .children(media_cards),
                     );
                 if snapshot.media.is_empty() {
                     grid = grid.child(
@@ -239,6 +277,33 @@ impl Render for GalleryView {
                             .text_sm()
                             .text_color(rgb(0x9aa0ad))
                             .child("No indexed media in this view."),
+                    );
+                }
+                if !self.selection.selected_media_ids.is_empty() {
+                    grid = grid.child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap_1()
+                            .child(div().text_sm().child(format!(
+                                "{} selected · Rate",
+                                self.selection.selected_media_ids.len()
+                            )))
+                            .children((0..=5).map(|rating| {
+                                Button::new(format!("gallery-rating-{rating}"))
+                                    .label(format!("{rating}★"))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.apply_rating(rating, cx)
+                                    }))
+                            }))
+                            .child(
+                                Button::new("gallery-clear-selection")
+                                    .label("Clear")
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.selection = GallerySelection::default();
+                                        cx.notify();
+                                    })),
+                            ),
                     );
                 }
                 if (snapshot.media.len() as i64) < snapshot.media_count {
@@ -267,7 +332,12 @@ impl Render for GalleryView {
     }
 }
 
-fn render_media_card(media: &photag_plugin_database::db::queries::MediaItem) -> Div {
+fn render_media_card(
+    media: &photag_plugin_database::db::queries::MediaItem,
+    selected: bool,
+    cx: &mut Context<GalleryView>,
+) -> impl IntoElement + 'static {
+    let media_id = media.id;
     let mut card = div()
         .v_flex()
         .w_48()
@@ -275,8 +345,16 @@ fn render_media_card(media: &photag_plugin_database::db::queries::MediaItem) -> 
         .justify_between()
         .rounded_md()
         .border_1()
-        .border_color(rgb(0x343943))
-        .bg(rgb(0x20232b))
+        .border_color(if selected {
+            rgb(0x61a9ff)
+        } else {
+            rgb(0x343943)
+        })
+        .bg(if selected {
+            rgb(0x27374b)
+        } else {
+            rgb(0x20232b)
+        })
         .p_2();
     if let Some(path) = media.thumb_path.as_ref() {
         card = card.child(
@@ -306,7 +384,11 @@ fn render_media_card(media: &photag_plugin_database::db::queries::MediaItem) -> 
                 .child(media.media_type.to_uppercase()),
         );
     }
-    card.child(div().text_sm().font_medium().child(media.filename.clone()))
+    card.id(format!("gallery-media-{media_id}"))
+        .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
+            this.select_media(media_id, event.modifiers(), cx)
+        }))
+        .child(div().text_sm().font_medium().child(media.filename.clone()))
         .child(
             div()
                 .text_xs()

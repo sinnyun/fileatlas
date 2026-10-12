@@ -30,20 +30,17 @@ explicitly incomplete.
 - `photag-plugin-watcher` owns registered-folder notifications and database
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
-- `photag-plugin-gallery` ports the source skeleton/window data model and owns
-  its UI contribution metadata and initial media-card GPUI view. Do not treat
-  that service/view and its host-neutral keyboard selection model as completion
-  of thumbnail tiles, pointer selection, date grouping, or host key-event/action
-  integration. Its GPUI search input reloads through the `filter` module into
-  the existing database query; source search scopes, remaining filter controls
-  and settings persistence still need GPUI migration.
-- `photag-plugin-navigation` preserves sidebar folder/tag tree data and routes
-  tag mutations through the source query layer and renders its initial tree in
-  GPUI. It coordinates folder add, rescan, remove, scanner cancellation and
-  watcher registration; current GPUI controls expose refresh/rescan/remove and
-  show rescan progress. Keep native folder picking, selection coupling, tag
-  drag/drop and context menus marked incomplete until their GPUI event flow is
-  implemented.
+- `photag-plugin-gallery` ports the source skeleton/window data model, paints
+  cached image thumbnails, pages records in 200-row batches, supports
+  plain/Ctrl/Shift card selection and batch 0–5 ratings, and reloads on
+  Cordis folder/tag/path/index events. Automatic viewport paging, host keyboard
+  binding, date grouping, rubber-band selection, preview/actions, source search
+  scope controls, remaining filters and settings persistence are incomplete.
+- `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
+  nested directories, accepts folder paths, coordinates folder add/rescan/
+  remove, scanner cancellation and watcher registration, and emits Cordis
+  folder/tag/path selection events. Native folder picking, tag editing menus,
+  drag/drop, expansion persistence, and full visual parity are incomplete.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge
   commands through source database queries. Keep picker/context-menu UI,
   hotkeys, and XMP rewrite integration marked incomplete until migrated.
