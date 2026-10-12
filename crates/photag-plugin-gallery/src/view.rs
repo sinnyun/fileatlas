@@ -9,11 +9,12 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_ui_bridge::UiViewContribution;
 
-use crate::{GalleryService, GallerySnapshot, SelectedFolder, filter::GalleryFilter};
+use crate::{GalleryService, GallerySnapshot, SelectedFolder, SelectedTag, filter::GalleryFilter};
 
 pub(super) fn gallery(
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
+    selected_tag: Arc<SelectedTag>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
@@ -22,10 +23,13 @@ pub(super) fn gallery(
         move |window, app| {
             let view_service = Arc::clone(&service);
             let view_selection = Arc::clone(&selected_folder);
+            let view_tag_selection = Arc::clone(&selected_tag);
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
-            app.new(|cx| GalleryView::new(view_service, view_selection, search, cx))
-                .into()
+            app.new(|cx| {
+                GalleryView::new(view_service, view_selection, view_tag_selection, search, cx)
+            })
+            .into()
         },
     )
 }
@@ -33,6 +37,7 @@ pub(super) fn gallery(
 struct GalleryView {
     service: Arc<GalleryService>,
     selected_folder: Arc<SelectedFolder>,
+    selected_tag: Arc<SelectedTag>,
     search: Entity<InputState>,
     filter: GalleryFilter,
     snapshot: Result<GallerySnapshot, String>,
@@ -43,6 +48,7 @@ impl GalleryView {
     fn new(
         service: Arc<GalleryService>,
         selected_folder: Arc<SelectedFolder>,
+        selected_tag: Arc<SelectedTag>,
         search: Entity<InputState>,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -61,6 +67,11 @@ impl GalleryView {
             .unwrap_or(None);
         let mut filter = filter;
         filter.folder_id = selected;
+        filter.selected_tag_ids = selected_tag
+            .0
+            .lock()
+            .map(|selected| selected.iter().copied().collect())
+            .unwrap_or_default();
         let snapshot = service
             .load(filter.to_query())
             .map_err(|error| error.to_string());
@@ -77,8 +88,17 @@ impl GalleryView {
                             .lock()
                             .map(|selected| *selected)
                             .unwrap_or(None);
-                        if view.filter.folder_id != selected {
+                        let selected_tag = view
+                            .selected_tag
+                            .0
+                            .lock()
+                            .map(|selected| selected.iter().copied().collect::<Vec<_>>())
+                            .unwrap_or_default();
+                        let changed = view.filter.folder_id != selected
+                            || view.filter.selected_tag_ids != selected_tag;
+                        if changed {
                             view.filter.folder_id = selected;
+                            view.filter.selected_tag_ids = selected_tag;
                             view.reload();
                             cx.notify();
                         }
@@ -94,6 +114,7 @@ impl GalleryView {
         Self {
             service,
             selected_folder,
+            selected_tag,
             search,
             filter,
             snapshot,
@@ -125,7 +146,9 @@ impl Render for GalleryView {
                             .items_center()
                             .justify_between()
                             .child(div().text_lg().font_semibold().child(
-                                if self.filter.folder_id.is_some() {
+                                if !self.filter.selected_tag_ids.is_empty() {
+                                    "Tagged Media"
+                                } else if self.filter.folder_id.is_some() {
                                     "Selected Folder"
                                 } else {
                                     "All Media"

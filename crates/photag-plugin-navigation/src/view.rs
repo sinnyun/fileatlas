@@ -7,7 +7,7 @@ use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
-use photag_contracts::FolderSelectionChanged;
+use photag_contracts::{FolderSelectionChanged, TagSelectionChanged};
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_ui_bridge::UiViewContribution;
 
@@ -127,6 +127,19 @@ impl SidebarView {
         })
         .detach();
     }
+
+    fn select_tag(&self, tag_id: Option<i64>, cx: &mut Context<Self>) {
+        let cordis = self.cordis.clone();
+        cx.spawn(async move |_, _| {
+            if let Err(error) = cordis
+                .emit::<TagSelectionChanged>(Routing::Unscoped, tag_id)
+                .await
+            {
+                eprintln!("tag selection dispatch failed: {error}");
+            }
+        })
+        .detach();
+    }
 }
 
 impl Render for SidebarView {
@@ -225,12 +238,17 @@ impl Render for SidebarView {
                 }
                 panel = panel.child(
                     div()
+                        .h_flex()
+                        .justify_between()
                         .pt_3()
-                        .text_xs()
-                        .text_color(rgb(0x9aa0ad))
-                        .child("Tags"),
+                        .child(div().text_xs().text_color(rgb(0x9aa0ad)).child("Tags"))
+                        .child(
+                            Button::new("navigation-clear-tag-filter")
+                                .label("Clear")
+                                .on_click(cx.listener(|this, _, _, cx| this.select_tag(None, cx))),
+                        ),
                 );
-                panel.children(snapshot.tags.iter().map(render_tag))
+                panel.children(snapshot.tags.iter().map(|tag| render_tag(tag, cx)))
             }
             Err(error) => panel.child(
                 div()
@@ -242,17 +260,35 @@ impl Render for SidebarView {
     }
 }
 
-fn render_tag(tag: &photag_plugin_database::db::queries::Tag) -> Div {
+fn render_tag(
+    tag: &photag_plugin_database::db::queries::Tag,
+    cx: &mut Context<SidebarView>,
+) -> Div {
     let indent = "  ".repeat(tag.full_path.matches('>').count());
+    let tag_id = tag.id;
+    let select = Button::new(format!("navigation-tag-{}", tag.id))
+        .label("Filter")
+        .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(tag_id), cx)));
+    let children = tag
+        .children
+        .iter()
+        .map(|child| render_tag(child, cx))
+        .collect::<Vec<_>>();
     div()
         .v_flex()
         .child(
             div()
-                .w_full()
-                .px_2()
-                .py_1()
-                .text_sm()
-                .child(format!("{indent}{}  {}", tag.name, tag.media_count)),
+                .h_flex()
+                .justify_between()
+                .child(
+                    div()
+                        .w_full()
+                        .px_2()
+                        .py_1()
+                        .text_sm()
+                        .child(format!("{indent}{}  {}", tag.name, tag.media_count)),
+                )
+                .child(select),
         )
-        .children(tag.children.iter().map(render_tag))
+        .children(children)
 }

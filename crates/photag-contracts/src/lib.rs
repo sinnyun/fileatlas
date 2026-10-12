@@ -14,3 +14,12 @@ impl Event for FolderSelectionChanged {
     type Args = Option<i64>;
     type Output = ();
 }
+
+/// Toggle the selected library tag in the gallery; `None` clears tag filtering.
+pub struct TagSelectionChanged;
+
+impl Event for TagSelectionChanged {
+    const NAME: &'static str = "photag/navigation/tag-selection-changed";
+    type Args = Option<i64>;
+    type Output = ();
+}
