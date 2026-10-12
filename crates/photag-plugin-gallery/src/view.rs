@@ -2,6 +2,7 @@
 
 mod card;
 mod controls;
+mod filter_actions;
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -312,26 +313,6 @@ impl GalleryView {
         cx.notify();
     }
 
-    fn clear_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let folder_id = self.filter.folder_id;
-        let path_prefix = self.filter.path_prefix.clone();
-        let selected_tag_ids = self.filter.selected_tag_ids.clone();
-        self.filter = GalleryFilter {
-            folder_id,
-            path_prefix,
-            selected_tag_ids,
-            ..GalleryFilter::default()
-        };
-        self.search
-            .update(cx, |input, cx| input.set_value("", window, cx));
-        self.date_from
-            .update(cx, |input, cx| input.set_value("", window, cx));
-        self.date_to
-            .update(cx, |input, cx| input.set_value("", window, cx));
-        self.reload();
-        cx.notify();
-    }
-
     fn set_sort(&mut self, sort: SortOrder, cx: &mut Context<Self>) {
         if self.filter.sort != sort {
             self.filter.sort = sort;
@@ -421,6 +402,7 @@ impl Render for GalleryView {
                     .child(Input::new(&self.search).w_full())
                     .child(controls::search_scope_row(&self.filter, cx))
                     .child(controls::clear_filters_button(cx))
+                    .child(controls::active_filter_row(&self.filter, cx))
                     .child(controls::media_type_row(&self.filter, cx))
                     .child(controls::sort_row(&self.filter, cx))
                     .child(controls::rating_row(&self.filter, cx))
