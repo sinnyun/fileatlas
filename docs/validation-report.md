@@ -14,8 +14,8 @@ Windows runtime behavior or feature parity.
 
 GitHub Actions run 24 passed formatting and `cargo check -p photag-shell
 --locked` for the selected-media details implementation. The new EXIF parser
-and lazy field display were added after that run and have not yet passed
-formatting or compilation. Plugin tests remain deferred; Windows runtime
+and lazy field display have now passed formatting and `cargo check -p
+photag-shell --locked` in run 27. Plugin tests remain deferred; Windows runtime
 behavior, ffprobe video details and the preview info toggle remain unfinished.
 
 | Check | Result | Notes |
@@ -29,6 +29,7 @@ behavior, ffprobe video details and the preview info toggle remain unfinished.
 | GitHub Actions: open-count reader fix | Formatting failed; compile skipped | Commit `3bae0c2005d9cc700a636dee9b5569217099b9c0`, run 23; rustfmt requested line wrapping for the new `Ok(...)`. Corrected locally; rerun pending. |
 | GitHub Actions: selected-media metadata detail | Passed | Commit `34a9386ec8ee1a4a249a745987f8066a5c253451`, run 24; formatting and `cargo check -p photag-shell --locked` passed. Plugin tests were not run. |
 | GitHub Actions: lazy EXIF field display | Formatting failed; compile skipped | Commit `2a929d79a8c68aa42bfb564533389a8932335ef8`, run 26; one line-wrap difference in the error display arm is corrected locally. The EXIF dependency and lockfile have not yet reached compilation. |
+| GitHub Actions: lazy EXIF field display correction | Passed | Commit `490b9dfee985831ea2f67e3b8f8616c29affd692`, run 27; formatting and `cargo check -p photag-shell --locked` passed with the new EXIF dependency. Plugin tests were not run. |
 | GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
 | GitHub Actions: shell check after formatting corrections | Not created | The formatting correction is published at `44b5199cbb3fd11d2b3fbc631a76c29bbd589525`, but GitHub reports no workflow run or commit status for it. |
 | GitHub Actions: file-operation/XMP migration check | Failed at formatting step | Commit `4f893eb2dbce0768eb4ade07aaca4a539fb04313`; rustfmt reported formatting in file operations, tagging, and reused XMP source, plus three settings field attributes. Base shell compilation was skipped. Corrections are being applied from the logged rustfmt diff; the next push will rerun formatting and the base shell compile. |
