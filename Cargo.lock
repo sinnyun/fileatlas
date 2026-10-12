@@ -922,19 +922,6 @@ dependencies = [
 
 [[package]]
 name = "chrono"
-version = "0.4.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
-dependencies = [
- "iana-time-zone",
- "js-sys 0.3.94",
- "num-traits",
- "wasm-bindgen 0.2.117",
- "windows-link 0.2.1",
-]
-
-[[package]]
-name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
@@ -7566,7 +7553,7 @@ version = "5.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9b93a14fcf658568eb11b3ac4cb406822e916e2c55cdebc421beeb0bd7c94d8"
 dependencies = [
- "chrono 0.4.44",
+ "chrono 0.4.45",
  "libc 0.2.184",
  "log 0.4.29",
  "objc2 0.6.4",
