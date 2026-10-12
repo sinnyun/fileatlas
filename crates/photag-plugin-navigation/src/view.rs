@@ -6,6 +6,7 @@ use std::time::Duration;
 use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::*;
 use photag_contracts::{FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged};
 use photag_plugin_indexing::scan::ScanProgress;
@@ -21,10 +22,11 @@ pub(super) fn sidebar(
         "navigation/sidebar-view",
         "workspace.sidebar",
         0,
-        move |_, app| {
+        move |window, app| {
             let view_service = Arc::clone(&service);
             let view_cordis = cordis.clone();
-            app.new(|_| SidebarView::new(view_service, view_cordis))
+            let folder_path = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
+            app.new(|_| SidebarView::new(view_service, view_cordis, folder_path))
                 .into()
         },
     )
@@ -33,16 +35,22 @@ pub(super) fn sidebar(
 struct SidebarView {
     service: Arc<NavigationService>,
     cordis: CordisContext,
+    folder_path: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
 }
 
 impl SidebarView {
-    fn new(service: Arc<NavigationService>, cordis: CordisContext) -> Self {
+    fn new(
+        service: Arc<NavigationService>,
+        cordis: CordisContext,
+        folder_path: Entity<InputState>,
+    ) -> Self {
         Self {
             service: Arc::clone(&service),
             cordis,
+            folder_path,
             snapshot: service.snapshot().map_err(|error| error.to_string()),
             active_scan: None,
             scan_progress: None,
@@ -56,6 +64,22 @@ impl SidebarView {
     fn rescan(&mut self, folder_id: i64, cx: &mut Context<Self>) {
         match self.service.rescan(folder_id) {
             Ok(progress) => {
+                self.active_scan = Some(progress);
+                self.scan_progress = None;
+                self.refresh();
+                self.monitor_scan(cx);
+            }
+            Err(error) => self.snapshot = Err(error.to_string()),
+        }
+    }
+
+    fn add_folder(&mut self, cx: &mut Context<Self>) {
+        let path = self.folder_path.read(cx).value().trim().to_owned();
+        if path.is_empty() {
+            return;
+        }
+        match self.service.add_folder(path) {
+            Ok((_, progress)) => {
                 self.active_scan = Some(progress);
                 self.scan_progress = None;
                 self.refresh();
@@ -184,6 +208,17 @@ impl Render for SidebarView {
                                 cx.notify();
                             }),
                         )),
+                );
+                panel = panel.child(
+                    div()
+                        .h_flex()
+                        .gap_1()
+                        .child(Input::new(&self.folder_path).flex_1())
+                        .child(
+                            Button::new("navigation-add-folder")
+                                .label("Add")
+                                .on_click(cx.listener(|this, _, _, cx| this.add_folder(cx))),
+                        ),
                 );
                 panel = panel.child(
                     Button::new("navigation-all-media")
