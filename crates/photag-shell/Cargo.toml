@@ -19,4 +19,5 @@ photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-session = { path = "../photag-plugin-session" }
+photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 gpui-kit.workspace = true

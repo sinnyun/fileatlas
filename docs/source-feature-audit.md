@@ -28,7 +28,7 @@ capturing behavioral regression cases before each port.
 | Recycle Bin delete, copy/move/rename/create folder, reveal/open, index follow-through | `src/app.rs`, `src/db/queries.rs`, `src/drag.rs` | file-operations plugin | Not migrated |
 | Drag-out to Explorer/drop targets via `CF_HDROP` | `src/drag.rs` | Windows shell integration plugin | Not migrated |
 | Bulk action console and filter-driven delete/copy/move | `src/app.rs`, `src/main.rs`, `src/db/queries.rs` | bulk-operations plugin | Not migrated |
-| JSON export of metadata | `src/db/queries.rs`, `src/main.rs` | metadata-export plugin | Not migrated |
+| JSON export of metadata | `src/db/queries.rs`, `src/main.rs` | `photag-plugin-metadata-export` | Source-compatible query, all-record ordering, rating default, hierarchical tag formatting, and pretty JSON file writer are exposed by a Cordis service. Windows save dialog, export command dispatch, toast, and integrated UI remain pending. |
 | AI MobileNetV2 suggestions, brightness/warmth/saturation analysis, mandatory groups, ONNX model download | `src/ai.rs`, `src/settings.rs` | ai-tagging plugin | Not migrated |
 | JPEG IPTC and XMP sidecar writing, restore original modified time | `src/xmp.rs`, `src/app.rs` | metadata-write plugin | Not migrated |
 | Settings persistence, accent presets, search scopes, tag search/merge behavior, toolbar config/position, update setting | `src/settings.rs`, `src/theme.rs` | `photag-plugin-settings` + theme plugin | PhoTag-compatible settings schema, serde defaults, enum spellings, LocalAppData path, default accent and Cordis persistence service are migrated. GPUI settings controls, accent/theme application, command/keybinding adapters, and connecting settings to gallery/preview/updater behavior remain pending. |
@@ -42,7 +42,7 @@ capturing behavioral regression cases before each port.
 
 Current crate boundary and runtime input/output details are documented next to
 each crate in `PORTS.md`: contracts, database, thumbnails, indexing, watcher,
-gallery, navigation, tagging, settings, session, UI bridge, and shell. These port guides describe
+gallery, navigation, tagging, settings, session, metadata export, UI bridge, and shell. These port guides describe
 only APIs that exist in source. They do not change any `Not migrated` status in
 the feature map and should be updated with each public contract change.
 
@@ -61,6 +61,7 @@ the feature map and should be updated with each public contract change.
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
 | PhoTag settings schema and Cordis persistence service | `crates/photag-plugin-settings/` | Original settings fields/defaults/enums and `%LOCALAPPDATA%\PhoTag\settings.json` path are preserved. The shell starts/stops the plugin. UI controls and feature consumers remain unconnected. |
 | PhoTag session schema and Cordis persistence service | `crates/photag-plugin-session/` | Original session fields/defaults/enums and `%LOCALAPPDATA%\PhoTag\session.json` path are preserved. The shell starts/stops the plugin. Restoring/saving live view state remains unconnected. |
+| PhoTag metadata export query and JSON writer | `crates/photag-plugin-metadata-export/` | Calls the source database export query and writes the source pretty JSON shape through a Cordis service. The native Save File dialog, command handling, and completion toast remain outstanding. |
 
 ## Source file inventory
 

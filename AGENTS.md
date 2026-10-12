@@ -54,6 +54,9 @@ explicitly incomplete.
 - `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
   models and paths as Cordis services. Their UI adapters and applying/restoring
   state to active views remain incomplete.
+- `photag-plugin-metadata-export` wraps PhoTag's complete metadata query and
+  JSON writer. The native save dialog, command event handling, and completion
+  feedback remain incomplete; do not report the export UI as migrated.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

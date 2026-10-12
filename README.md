@@ -27,6 +27,7 @@ migration; the gallery, preview, file operations, and many other product feature
 - `crates/photag-plugin-navigation`: folder/tag snapshots, lazy subdirectory counts and expansion, database-backed tag commands, scan/watch-coordinated folder actions, and a GPUI folder/tag tree with path-based Add, rescan/remove, scan progress, and Cordis-driven folder/tag/path filters; the native folder picker remains pending.
 - `crates/photag-plugin-tagging`: source-compatible media tag assignment, associated tags, automatic ancestor links, removal, clearing, and tag merge behind a Cordis service; assignment UI and XMP metadata writeback remain pending.
 - `crates/photag-plugin-settings` and `crates/photag-plugin-session`: PhoTag-compatible JSON settings/session schemas and Cordis persistence services; GPUI controls and applying/restoring live state remain pending.
+- `crates/photag-plugin-metadata-export`: source-compatible all-library metadata records and pretty JSON writing behind a Cordis service; save dialog and command execution remain pending.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.
 - `vendor/photag-source`: unmodified source mirror for the pinned PhoTag commit.
