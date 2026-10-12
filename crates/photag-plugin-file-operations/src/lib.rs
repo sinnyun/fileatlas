@@ -56,10 +56,7 @@ impl FileOperationsService {
                         let item = service
                             .media(media_id)?
                             .ok_or(FileOperationError::MissingMedia(media_id))?;
-                        std::fs::copy(
-                            &item.full_path,
-                            destination_dir.join(&item.filename),
-                        )?;
+                        std::fs::copy(&item.full_path, destination_dir.join(&item.filename))?;
                         Ok::<_, FileOperationError>(())
                     })();
                     match result {
