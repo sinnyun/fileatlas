@@ -24,7 +24,10 @@ formatting before compiling; its rustfmt output has been applied to the Rust
 sources. The formatting-correction commit is awaiting a fresh base-shell check.
 Run 31 on formatting commit `df9889e1517ce9bff4bc2311b4a483e4fc99284b`
 found one remaining rustfmt difference at the end of the settings view; it has
-been applied. The next CI run is pending.
+been applied. Run 32 on `fa1312eede8f02c701b3d647c2a16145a87a65e8` passed
+formatting but compilation found missing `StyledExt` import and a reusable
+settings callback issue, plus a borrowed EXIF error string escaping the render
+scope. All three compiler findings are fixed locally; a fresh check is pending.
 
 | Check | Result | Notes |
 |---|---|---|

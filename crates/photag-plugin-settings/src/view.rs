@@ -2,6 +2,7 @@
 use crate::{
     AiTagGroup, ExcludeModifier, Settings, SettingsService, TagMergeChildren, TagSearchMatch,
 };
+use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
@@ -92,9 +93,13 @@ impl SettingsView {
         action: impl Fn(&mut Settings) + Send + Sync + 'static,
         cx: &mut Context<Self>,
     ) -> Button {
+        let action = Arc::new(action);
         Button::new(format!("settings-{id}"))
             .label(label)
-            .on_click(cx.listener(move |this, _, _, cx| this.edit(action, cx)))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                let action = Arc::clone(&action);
+                this.edit(move |settings| action(settings), cx);
+            }))
     }
     fn section(&self, label: &str) -> Div {
         div().pt_2().font_semibold().child(label)

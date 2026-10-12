@@ -188,7 +188,7 @@ pub(super) fn render_media_details(
                         div()
                             .text_sm()
                             .text_color(rgb(0x9aa0ad))
-                            .child(message.as_str()),
+                            .child(message.clone()),
                     );
                 }
                 None => {
