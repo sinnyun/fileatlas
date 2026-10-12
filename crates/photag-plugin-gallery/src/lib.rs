@@ -119,6 +119,13 @@ impl GalleryService {
             .database
             .with_reader(|connection| queries::get_media_by_id(connection, id))?)
     }
+
+    /// Persist a selection rating using PhoTag's clamped bulk update query.
+    pub fn apply_rating(&self, media_ids: &[i64], rating: u8) -> Result<(), GalleryError> {
+        Ok(self.database.with_writer(|connection| {
+            queries::set_rating_bulk(connection, media_ids, i32::from(rating))
+        })?)
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -253,6 +260,42 @@ mod tests {
         assert!(window.offset <= 220);
         assert!(window.offset + window.media.len() >= 235);
         assert_eq!(window.media[220 - window.offset].filename, "image-220.png");
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn applies_bulk_rating_with_source_range_clamping() {
+        let root = std::env::temp_dir().join(format!(
+            "photag-gallery-rating-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let media_id = database
+            .with_writer(|connection| {
+                let folder = queries::add_folder(connection, "/rating-test")?;
+                queries::insert_media(
+                    connection,
+                    folder.id,
+                    "sample.jpg",
+                    "/rating-test/sample.jpg",
+                    "image",
+                    12,
+                    1_700_000_000,
+                    None,
+                    None,
+                    None,
+                )
+            })
+            .unwrap();
+        let gallery = GalleryService::new(Arc::clone(&database));
+        gallery.apply_rating(&[media_id], 6).unwrap();
+        assert_eq!(gallery.media_by_id(media_id).unwrap().unwrap().rating, 5);
+        gallery.apply_rating(&[media_id], 0).unwrap();
+        assert_eq!(gallery.media_by_id(media_id).unwrap().unwrap().rating, 0);
         let _ = std::fs::remove_dir_all(root);
     }
 
