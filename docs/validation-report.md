@@ -6,21 +6,21 @@ This pass is in code-generation/documentation mode. Per the current task scope,
 plugin tests are deferred to the second-round concentrated debugging phase.
 The active interactive tool environment has no `rustc` or `cargo` on `PATH`.
 After publication, GitHub Actions on commit `0940e41024d021f7883be387f9400469d20bff7d`
-completed the base Shell check successfully. Earlier validation below records
-prior runs and does not validate the changes in this pass.
+completed the base Shell check successfully. The settings/session changes generated in this pass have not yet been validated by CI. Earlier validation below records prior runs and does not validate these changes.
 
 | Check | Result | Notes |
 |---|---|---|
 | Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |
 | `cargo fmt --all -- --check` | Not run | Requires rustfmt; no Rust toolchain is installed. |
 | Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
-| GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; base shell and registered plugin dependency graph compiled. |
+| GitHub Actions: shell check for this code-generation slice | Pending | Run after publishing the settings/session changes. |
+| Prior GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; validates only that earlier tree. |
 | Plugin tests | Deferred | Per task direction, run during second-round concentrated testing. |
 | Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
 
-The current cloud workflow uses incremental compilation, two build jobs, and
-no dev debug symbols. GitHub Actions passed formatting and
-`cargo check -p photag-shell` for this commit; it did not run plugin tests.
+The requested cloud workflow uses incremental compilation, two build jobs, and
+no dev debug symbols. Plugin tests remain deferred. The prior GitHub Actions
+result applies only to its recorded commit, not to the new settings/session code.
 
 ---
 

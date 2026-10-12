@@ -31,8 +31,8 @@ capturing behavioral regression cases before each port.
 | JSON export of metadata | `src/db/queries.rs`, `src/main.rs` | metadata-export plugin | Not migrated |
 | AI MobileNetV2 suggestions, brightness/warmth/saturation analysis, mandatory groups, ONNX model download | `src/ai.rs`, `src/settings.rs` | ai-tagging plugin | Not migrated |
 | JPEG IPTC and XMP sidecar writing, restore original modified time | `src/xmp.rs`, `src/app.rs` | metadata-write plugin | Not migrated |
-| Settings persistence, accent presets, search scopes, tag search/merge behavior, toolbar config/position, update setting | `src/settings.rs`, `src/theme.rs` | settings + theme plugins | Not migrated |
-| Session restore: folder, selection, scroll, expanded nodes, sidebar width, filters | `src/session.rs`, `src/app.rs` | session plugin | Not migrated |
+| Settings persistence, accent presets, search scopes, tag search/merge behavior, toolbar config/position, update setting | `src/settings.rs`, `src/theme.rs` | `photag-plugin-settings` + theme plugin | PhoTag-compatible settings schema, serde defaults, enum spellings, LocalAppData path, default accent and Cordis persistence service are migrated. GPUI settings controls, accent/theme application, command/keybinding adapters, and connecting settings to gallery/preview/updater behavior remain pending. |
+| Session restore: folder, selection, scroll, expanded nodes, sidebar width, filters | `src/session.rs`, `src/app.rs` | `photag-plugin-session` | PhoTag-compatible session fields, serde defaults, enum spellings, LocalAppData path, and Cordis persistence service are migrated and started by the shell. Applying restored values to navigation/gallery/preview and saving at UI/lifecycle boundaries remain pending. |
 | Mica/Acrylic, dark title bar, system accent, fallback | `src/winfx.rs`, `src/theme.rs` | Windows appearance plugin | Not migrated |
 | GitHub update check, confirmation, download, SHA256 verification, staged swap/rollback | `src/update.rs`, `src/settings.rs` | updater plugin | Not migrated |
 | Theme, typography, custom fonts, icon availability, visual tokens | `src/theme.rs` | GPUI Kit theme layer + theme plugin | Not migrated |
@@ -42,7 +42,7 @@ capturing behavioral regression cases before each port.
 
 Current crate boundary and runtime input/output details are documented next to
 each crate in `PORTS.md`: contracts, database, thumbnails, indexing, watcher,
-gallery, navigation, tagging, UI bridge, and shell. These port guides describe
+gallery, navigation, tagging, settings, session, UI bridge, and shell. These port guides describe
 only APIs that exist in source. They do not change any `Not migrated` status in
 the feature map and should be updated with each public contract change.
 
@@ -59,6 +59,8 @@ the feature map and should be updated with each public contract change.
 | Sidebar navigation/tag service and initial GPUI tree view | `crates/photag-plugin-navigation/src/` | Cordis plugin provides folder/tag snapshots, subdirectory counts, source tag mutations, and scan/watch-coordinated folder operations. Initial tree view is mounted at `workspace.sidebar`; path-based Add, lazy root/nested directory expansion, Refresh/Rescan/Remove, Open/All Media and tag Filter/Clear actions are wired to services/events. The native folder picker, tag editing menus, drag/drop and full visual parity remain unported. |
 | Media tagging and association service | `crates/photag-plugin-tagging/src/lib.rs` | Cordis service wraps source assignment/association/merge queries and preserves auto-applied ancestor semantics; synthetic assignment/removal regression passes. Picker UI, hotkeys and XMP rewrite workflow are not yet ported. |
 | GPUI Kit native shell and runtime composition | `crates/photag-shell/src/main.rs` | Compiles on Linux. Hosts the contribution catalog and emits command events; it does not yet implement PhoTag’s original screen or controls. Windows runtime remains unverified. |
+| PhoTag settings schema and Cordis persistence service | `crates/photag-plugin-settings/` | Original settings fields/defaults/enums and `%LOCALAPPDATA%\PhoTag\settings.json` path are preserved. The shell starts/stops the plugin. UI controls and feature consumers remain unconnected. |
+| PhoTag session schema and Cordis persistence service | `crates/photag-plugin-session/` | Original session fields/defaults/enums and `%LOCALAPPDATA%\PhoTag\session.json` path are preserved. The shell starts/stops the plugin. Restoring/saving live view state remains unconnected. |
 
 ## Source file inventory
 
@@ -86,8 +88,8 @@ behavioral seams during migration without dropping behavior.
 | `src/watcher.rs` | 182 | filesystem watcher | Migrated to Cordis watcher plugin; Windows native behavior is unverified. |
 | `src/drag.rs` | 332 | Windows drag-out | Audited inventory; not ported |
 | `src/winfx.rs` | 288 | Windows visual effects | Audited inventory; not ported |
-| `src/settings.rs` | 306 | persisted settings and key mappings | Audited inventory; not ported |
-| `src/session.rs` | 73 | session persistence | Audited inventory; not ported |
+| `src/settings.rs` | 306 | persisted settings and key mappings | Schema/defaults and Cordis persistence service migrated; GPUI controls and consumers remain pending. |
+| `src/session.rs` | 73 | session persistence | Schema/defaults and Cordis persistence service migrated; active restore/save wiring remains pending. |
 | `src/theme.rs` | 610 | theme and drawing primitives | Audited inventory; not ported |
 | `src/ui/mod.rs` | 5 | UI module exports | Audited inventory; not ported |
 

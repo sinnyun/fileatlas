@@ -17,4 +17,6 @@ photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
+photag-plugin-settings = { path = "../photag-plugin-settings" }
+photag-plugin-session = { path = "../photag-plugin-session" }
 gpui-kit.workspace = true

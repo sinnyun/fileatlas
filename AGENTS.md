@@ -51,6 +51,9 @@ explicitly incomplete.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge
   commands through source database queries. Keep picker/context-menu UI,
   hotkeys, and XMP rewrite integration marked incomplete until migrated.
+- `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
+  models and paths as Cordis services. Their UI adapters and applying/restoring
+  state to active views remain incomplete.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

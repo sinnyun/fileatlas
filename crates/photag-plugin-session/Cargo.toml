@@ -1,0 +1,18 @@
+[package]
+name = "photag-plugin-session"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+dirs.workspace = true
+photag-plugin-database = { path = "../photag-plugin-database" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
