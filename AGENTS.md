@@ -34,14 +34,13 @@ explicitly incomplete.
   cached image thumbnails, pages records in 200-row batches, supports
   plain/Ctrl/Shift card selection, batch and keyboard 0–5 ratings, basic
   arrow/Home/End/Ctrl+A/Escape selection keys, media-type segmented controls,
-  and reloads on Cordis
-  all eight source sort orders, inclusive 0–5 rating-range controls and
-  include/exclude/clear extension filters, and
-  filename/path/tag search scopes,
-  reloads on Cordis folder/tag/path/index
-  events. Automatic viewport paging, scrolling to
+  all eight source sort orders, inclusive 0–5 rating-range controls,
+  include/exclude/clear extension filters, filename/path/tag search scopes,
+  typed date filters and clear-all filters, and reloads on Cordis
+  folder/tag/path/index events.
+  Automatic viewport paging, scrolling to
   keyboard targets, Enter/preview and Delete confirmation, date grouping,
-  rubber-band selection, native date-picker controls
+  rubber-band selection, native date-picker controls, per-filter source pills,
   and settings persistence are incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, accepts folder paths, coordinates folder add/rescan/

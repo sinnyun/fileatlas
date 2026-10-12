@@ -18,6 +18,12 @@ pub(super) fn search_scope_row(filter: &GalleryFilter, cx: &mut Context<GalleryV
     ])
 }
 
+pub(super) fn clear_filters_button(cx: &mut Context<GalleryView>) -> Button {
+    Button::new("gallery-clear-filters")
+        .label("Clear filters")
+        .on_click(cx.listener(|this, _, window, cx| this.clear_filters(window, cx)))
+}
+
 fn scope_button(
     id: &str,
     label: &str,
