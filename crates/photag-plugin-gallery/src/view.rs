@@ -13,7 +13,7 @@ use photag_ui_bridge::UiViewContribution;
 
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
-    filter::GalleryFilter,
+    filter::{GalleryFilter, MediaTypeFilter},
     selection::{GalleryKey, GallerySelection, Modifiers as SelectionModifiers, SelectionEffect},
 };
 
@@ -259,6 +259,14 @@ impl GalleryView {
         }
     }
 
+    fn set_media_type(&mut self, media_type: MediaTypeFilter, cx: &mut Context<Self>) {
+        if self.filter.media_type != media_type {
+            self.filter.media_type = media_type;
+            self.reload();
+            cx.notify();
+        }
+    }
+
     fn load_more(&mut self) {
         let offset = match &self.snapshot {
             Ok(snapshot) => snapshot.media.len(),
@@ -316,6 +324,36 @@ impl Render for GalleryView {
                             ),
                     )
                     .child(Input::new(&self.search).w_full())
+                    .child(div().h_flex().gap_1().children([
+                        media_type_button(
+                            "all",
+                            "All",
+                            MediaTypeFilter::All,
+                            self.filter.media_type,
+                            cx,
+                        ),
+                        media_type_button(
+                            "photos",
+                            "Photos",
+                            MediaTypeFilter::Photos,
+                            self.filter.media_type,
+                            cx,
+                        ),
+                        media_type_button(
+                            "videos",
+                            "Videos",
+                            MediaTypeFilter::Videos,
+                            self.filter.media_type,
+                            cx,
+                        ),
+                        media_type_button(
+                            "audio",
+                            "Audio",
+                            MediaTypeFilter::Audio,
+                            self.filter.media_type,
+                            cx,
+                        ),
+                    ]))
                     .child(div().h_1().w_full().bg(rgb(0x343943)))
                     .child(
                         div()
@@ -391,6 +429,23 @@ impl Render for GalleryView {
                 .into_any_element(),
         }
     }
+}
+
+fn media_type_button(
+    id: &str,
+    label: &str,
+    media_type: MediaTypeFilter,
+    active: MediaTypeFilter,
+    cx: &mut Context<GalleryView>,
+) -> Button {
+    let selected_label = if media_type == active {
+        format!("• {label}")
+    } else {
+        label.to_owned()
+    };
+    Button::new(format!("gallery-media-type-{id}"))
+        .label(selected_label)
+        .on_click(cx.listener(move |this, _, _, cx| this.set_media_type(media_type, cx)))
 }
 
 fn render_media_card(

@@ -33,7 +33,8 @@ explicitly incomplete.
 - `photag-plugin-gallery` ports the source skeleton/window data model, paints
   cached image thumbnails, pages records in 200-row batches, supports
   plain/Ctrl/Shift card selection, batch and keyboard 0–5 ratings, basic
-  arrow/Home/End/Ctrl+A/Escape selection keys, and reloads on Cordis
+  arrow/Home/End/Ctrl+A/Escape selection keys, media-type segmented controls,
+  and reloads on Cordis
   folder/tag/path/index events. Automatic viewport paging, scrolling to
   keyboard targets, Enter/preview and Delete confirmation, date grouping,
   rubber-band selection, source search scopes, remaining filters and settings
