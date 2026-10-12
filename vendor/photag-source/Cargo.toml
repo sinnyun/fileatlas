@@ -1,0 +1,38 @@
+[package]
+name = "photag"
+version = "0.2.0"
+edition = "2021"
+
+[dependencies]
+eframe = { version = "0.29", features = ["default"] }
+egui = "0.29"
+egui_extras = { version = "0.29", features = ["image", "datepicker"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+image = "0.25"
+zune-jpeg = "0.5"
+jpeg-decoder = "0.3"
+rusqlite = { version = "0.31", features = ["bundled"] }
+sha2 = "0.10"
+walkdir = "2"
+dirs = "5"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+open = "5"
+rodio = { version = "0.19", default-features = false }
+memmap2 = "0.9"
+notify = "6"
+trash = "5"
+kamadak-exif = "0.6.1"
+mimalloc = { version = "0.1", default-features = false }
+tract-onnx = "0.21"
+ndarray = "0.16"
+ureq = "2"
+# Used to obtain the native Win32 HWND for applying the Mica/Acrylic
+# backdrop + dark title bar. Resolves to the same version eframe/winit
+# already pull in, so this adds no new download.
+raw-window-handle = "0.6"
+
+[profile.release]
+opt-level = 3
+lto = true

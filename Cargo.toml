@@ -1,0 +1,32 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/photag-shell",
+    "crates/photag-contracts",
+    "crates/photag-ui-bridge",
+    "crates/photag-plugin-database",
+]
+default-members = ["crates/photag-shell"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+
+[workspace.dependencies]
+cordis = { package = "cordis-rs", version = "0.11.1" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+gpui-kit = "=0.7.1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+todo = "deny"
+dbg_macro = "deny"

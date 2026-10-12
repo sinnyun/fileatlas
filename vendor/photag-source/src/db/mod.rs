@@ -1,0 +1,190 @@
+pub mod queries;
+
+use rusqlite::Connection;
+
+fn db_path() -> std::path::PathBuf {
+    let base = dirs::data_local_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    let dir = base.join("PhoTag");
+    std::fs::create_dir_all(&dir).ok();
+    dir.join("photag.db")
+}
+
+pub fn open_db() -> rusqlite::Result<Connection> {
+    let conn = Connection::open(db_path())?;
+    initialize(&conn)?;
+    migrate(&conn)?;
+    Ok(conn)
+}
+
+/// Open an additional connection to the same DB. Used so the UI thread can
+/// read while the scan thread holds the write connection — SQLite's WAL
+/// journal allows concurrent readers + one writer at the file level, but
+/// only when they're separate Connection objects.
+pub fn open_read_conn() -> rusqlite::Result<Connection> {
+    let conn = Connection::open(db_path())?;
+    // WAL is set on the writer; both connections see it. Tune for fast reads.
+    conn.execute_batch("PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;").ok();
+    Ok(conn)
+}
+
+fn initialize(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute_batch("
+        PRAGMA journal_mode = WAL;
+        -- NORMAL is safe with WAL: durable on commit, only loses last txn on
+        -- power loss (not on app crash). Avoids fsync per commit, which
+        -- otherwise stalls the scan flusher every 16-row batch.
+        PRAGMA synchronous = NORMAL;
+        -- Checkpoint when WAL exceeds ~4 MB (1000 pages × 4 KB). Keeps the
+        -- WAL file small so reader queries stay fast as the scan progresses.
+        PRAGMA wal_autocheckpoint = 1000;
+        PRAGMA foreign_keys = ON;
+
+        CREATE TABLE IF NOT EXISTS folders (
+            id          INTEGER PRIMARY KEY,
+            path        TEXT NOT NULL UNIQUE,
+            last_scan   INTEGER
+        );
+
+        CREATE TABLE IF NOT EXISTS media (
+            id              INTEGER PRIMARY KEY,
+            folder_id       INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
+            filename        TEXT NOT NULL,
+            full_path       TEXT NOT NULL UNIQUE,
+            media_type      TEXT NOT NULL,
+            file_size       INTEGER,
+            modified_at     INTEGER,
+            width           INTEGER,
+            height          INTEGER,
+            date_taken      INTEGER,
+            thumb_path      TEXT,
+            metadata_dirty  INTEGER DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS tags (
+            id          INTEGER PRIMARY KEY,
+            name        TEXT NOT NULL,
+            parent_id   INTEGER REFERENCES tags(id) ON DELETE CASCADE,
+            full_path   TEXT NOT NULL UNIQUE
+        );
+
+        CREATE TABLE IF NOT EXISTS media_tags (
+            media_id    INTEGER NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+            tag_id      INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+            PRIMARY KEY (media_id, tag_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_media_folder ON media(folder_id);
+        CREATE INDEX IF NOT EXISTS idx_media_modified ON media(modified_at);
+        CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag_id);
+        CREATE INDEX IF NOT EXISTS idx_media_tags_media ON media_tags(media_id);
+        CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_id);
+    ")
+}
+
+/// Run schema migrations for new columns added after initial release.
+fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    // Optimization #2: micro_thumb BLOB — tiny 8x8 placeholder thumbnail
+    let has_micro = conn
+        .prepare("SELECT micro_thumb FROM media LIMIT 0")
+        .is_ok();
+    if !has_micro {
+        conn.execute_batch("ALTER TABLE media ADD COLUMN micro_thumb BLOB")?;
+    }
+
+    // Tag appearance: per-tag color (hex "#RRGGBB") and icon (short emoji/char).
+    let has_color = conn.prepare("SELECT color FROM tags LIMIT 0").is_ok();
+    if !has_color {
+        conn.execute_batch("ALTER TABLE tags ADD COLUMN color TEXT")?;
+    }
+    let has_icon = conn.prepare("SELECT icon FROM tags LIMIT 0").is_ok();
+    if !has_icon {
+        conn.execute_batch("ALTER TABLE tags ADD COLUMN icon TEXT")?;
+    }
+
+    // open_count: number of times the user has opened this media item in the
+    // preview (image preview or video player). Surfaced in the info panel.
+    let has_open_count = conn
+        .prepare("SELECT open_count FROM media LIMIT 0")
+        .is_ok();
+    if !has_open_count {
+        conn.execute_batch("ALTER TABLE media ADD COLUMN open_count INTEGER DEFAULT 0")?;
+    }
+
+    // Rating (0..=5) and pick flag (-1 reject, 0 none, 1 pick) — drives
+    // the photo-culling workflow (1-5 / P / X hotkeys, rating sort + filter).
+    let has_rating = conn.prepare("SELECT rating FROM media LIMIT 0").is_ok();
+    if !has_rating {
+        conn.execute_batch("ALTER TABLE media ADD COLUMN rating INTEGER DEFAULT 0")?;
+    }
+    let has_pick = conn.prepare("SELECT pick_flag FROM media LIMIT 0").is_ok();
+    if !has_pick {
+        conn.execute_batch("ALTER TABLE media ADD COLUMN pick_flag INTEGER DEFAULT 0")?;
+    }
+
+    // Per-tag "display on thumbnail chips" toggle. Defaults to 1 so every
+    // existing tag stays visible after upgrade.
+    let has_display = conn.prepare("SELECT display FROM tags LIMIT 0").is_ok();
+    if !has_display {
+        conn.execute_batch("ALTER TABLE tags ADD COLUMN display INTEGER DEFAULT 1")?;
+    }
+    // Per-tag sibling ordering, set by drag-reorder in the sidebar. Pre-
+    // migration rows all get 0; we seed them from name order so the
+    // existing alphabetic look is preserved until the user reorders.
+    // Tracks whether a (media, tag) assignment was made directly by the user
+    // (=0, manual) or implicitly via ancestor expansion when assigning a
+    // descendant (=1, auto). Pre-migration rows all get 0 so existing
+    // assignments are treated as manual — they will never be auto-removed.
+    let has_auto = conn.prepare("SELECT auto_applied FROM media_tags LIMIT 0").is_ok();
+    if !has_auto {
+        conn.execute_batch("ALTER TABLE media_tags ADD COLUMN auto_applied INTEGER DEFAULT 0")?;
+    }
+
+    let has_sort_order = conn.prepare("SELECT sort_order FROM tags LIMIT 0").is_ok();
+    if !has_sort_order {
+        conn.execute_batch("ALTER TABLE tags ADD COLUMN sort_order INTEGER DEFAULT 0")?;
+        // Seed sort_order per parent group by name. Using a correlated
+        // subquery so SQLite can do it in one shot.
+        conn.execute_batch(
+            "UPDATE tags SET sort_order = (
+                SELECT COUNT(*) FROM tags t2
+                 WHERE (t2.parent_id IS tags.parent_id)
+                   AND (t2.name < tags.name OR (t2.name = tags.name AND t2.id < tags.id))
+             )",
+        )?;
+    }
+
+    // Associated tags: when tag A is assigned, also auto-assign its associates.
+    let has_assoc = conn
+        .prepare("SELECT 1 FROM tag_associations LIMIT 0")
+        .is_ok();
+    if !has_assoc {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS tag_associations (
+                tag_id            INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                associated_tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+                PRIMARY KEY (tag_id, associated_tag_id)
+            )",
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Increment the open_count for a media row. Best-effort; silently ignores
+/// errors (the count is informational, not critical).
+pub fn increment_open_count(conn: &Connection, media_id: i64) {
+    let _ = conn.execute(
+        "UPDATE media SET open_count = COALESCE(open_count, 0) + 1 WHERE id = ?1",
+        rusqlite::params![media_id],
+    );
+}
+
+/// Read the open_count for a single media row. Returns 0 on any error
+/// (missing column on a freshly-migrated DB, missing row, etc.).
+pub fn get_open_count(conn: &Connection, media_id: i64) -> i64 {
+    conn.query_row(
+        "SELECT COALESCE(open_count, 0) FROM media WHERE id = ?1",
+        rusqlite::params![media_id],
+        |r| r.get::<_, i64>(0),
+    ).unwrap_or(0)
+}

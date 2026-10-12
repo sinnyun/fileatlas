@@ -1,0 +1,14 @@
+[package]
+name = "photag-shell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+tokio.workspace = true
+photag-contracts = { path = "../photag-contracts" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+photag-plugin-database = { path = "../photag-plugin-database" }
+gpui-kit.workspace = true

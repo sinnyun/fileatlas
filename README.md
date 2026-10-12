@@ -1,0 +1,29 @@
+# PhoTag Rust plugin migration
+
+This repository contains a staged Rust migration of PhoTag. The pinned source,
+feature audit, Cargo workspace, Cordis-managed SQLite plugin, lifecycle-owned UI
+contribution bridge, and GPUI Kit shell are present. **This is an incomplete
+migration; the gallery, preview, indexing, file operations, and other product
+features are not yet at parity.**
+
+- [Source pins](SOURCE_PINS.md)
+- [Feature/source mapping and compatibility audit](docs/source-feature-audit.md)
+- [Validation report](docs/validation-report.md)
+- [Codex instructions](AGENTS.md)
+
+## Workspace
+
+- `crates/photag-shell`: Cordis runtime composition and GPUI Kit host; currently
+  renders the active contribution catalog and dispatches UI command events.
+- `crates/photag-ui-bridge`: typed UI contributions and Cordis lifecycle cleanup.
+- `crates/photag-plugin-database`: original schema/query implementation wrapped
+  as a Cordis service plugin, with separate reader/writer connections.
+- `crates/photag-contracts`: reserved for stable domain contracts; migration is
+  in progress.
+- `vendor/photag-source`: unmodified source mirror for the pinned PhoTag commit.
+
+## Build status
+
+Run `cargo check --workspace` and `cargo test --workspace`. A Windows MSVC
+toolchain and native dependencies are required for Windows execution. See
+`docs/validation-report.md` for tested commands and remaining platform checks.

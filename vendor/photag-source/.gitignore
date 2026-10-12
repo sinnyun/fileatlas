@@ -1,0 +1,52 @@
+# ── Rust build artifacts ────────────────────────────────────────────
+/target/
+**/*.rs.bk
+*.pdb
+
+# ── Bundled / downloaded third-party binaries ───────────────────────
+# ffmpeg + ffprobe are not redistributed with the source tree.
+ffmpeg/
+ffmpeg.exe
+ffprobe.exe
+*.exe
+
+# ── AI model cache ──────────────────────────────────────────────────
+# MobileNetV2 is downloaded on first use into %LOCALAPPDATA%\PhoTag\models,
+# but ignore any stray copies inside the working tree.
+*.onnx
+
+# ── Assistant / design working files ────────────────────────────────
+CLAUDE.md
+claude.md
+.claude/
+.cursor/
+.aider*
+docs/design/
+design/
+DESIGN.md
+DESIGN_NOTES.md
+NOTES.md
+TODO.md
+*.design.md
+
+# ── Editor / IDE ────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+*~
+
+# ── OS noise ────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# ── Local runtime data (should never be in the repo anyway) ─────────
+photag.db
+photag.db-wal
+photag.db-shm
+settings.json
+session.json
+thumbs/
