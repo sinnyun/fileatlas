@@ -4,21 +4,23 @@
 
 This pass is in code-generation/documentation mode. Per the current task scope,
 plugin tests are deferred to the second-round concentrated debugging phase.
-The active tool environment has no `rustc` or `cargo` on `PATH`, so the base
-Shell check could not be run here. Do not interpret earlier validation below
-as validation of the changes in this pass.
+The active interactive tool environment has no `rustc` or `cargo` on `PATH`.
+After publication, GitHub Actions on commit `0940e41024d021f7883be387f9400469d20bff7d`
+completed the base Shell check successfully. Earlier validation below records
+prior runs and does not validate the changes in this pass.
 
 | Check | Result | Notes |
 |---|---|---|
 | Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |
 | `cargo fmt --all -- --check` | Not run | Requires rustfmt; no Rust toolchain is installed. |
-| `cargo check -p photag-shell --locked` | Not run | This is the only compilation gate for the current cloud code-generation pass; requires a Rust toolchain. |
+| Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
+| GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; base shell and registered plugin dependency graph compiled. |
 | Plugin tests | Deferred | Per task direction, run during second-round concentrated testing. |
 | Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
 
 The current cloud workflow uses incremental compilation, two build jobs, and
-no dev debug symbols. It runs formatting plus `cargo check -p photag-shell`; it
-does not run plugin tests.
+no dev debug symbols. GitHub Actions passed formatting and
+`cargo check -p photag-shell` for this commit; it did not run plugin tests.
 
 ---
 
