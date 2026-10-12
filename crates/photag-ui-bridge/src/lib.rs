@@ -1,22 +1,30 @@
-//! Framework-neutral UI contribution catalog shared by Cordis feature plugins
-//! and the GPUI host. Contributions contain stable identifiers and presentation
-//! metadata; executable UI and state remain in the GPUI host and feature plugins.
+//! Lifecycle-owned UI contribution metadata and GPUI view mounts for Cordis plugins.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, RwLock};
 
 use cordis::{Event, Service};
 
+mod views;
+pub use views::{
+    OwnedUiView, UiViewCatalog, UiViewContribution, UiViewFactory, register_views_for_plugin,
+};
+
 /// Cordis service contract for the application's lifecycle-managed UI catalog.
 pub struct UiBridgeService {
     /// Shared catalog read by the GPUI application thread.
     pub catalog: Arc<UiCatalog>,
+    /// Plugin-owned GPUI views mounted by the native shell.
+    pub views: Arc<UiViewCatalog>,
 }
 
 impl UiBridgeService {
     /// Construct the bridge around one catalog instance.
     pub fn new(catalog: Arc<UiCatalog>) -> Self {
-        Self { catalog }
+        Self {
+            catalog,
+            views: Arc::new(UiViewCatalog::default()),
+        }
     }
 }
 
@@ -266,6 +274,7 @@ mod tests {
     use std::sync::Arc;
 
     use cordis::{Context, Plugin, PreparedPlugin};
+    use gpui_kit::{AnyView, App, AppContext as _, ParentElement as _, Window};
 
     fn widget(id: &str) -> UiContribution {
         UiContribution::new(
@@ -324,17 +333,42 @@ mod tests {
             context: Context,
             contributions: &Self::Input,
         ) -> Result<(), Self::ApplyError> {
-            register_for_plugin(&context, "feature.test", contributions.clone())
+            register_for_plugin(&context, "feature.test", contributions.clone())?;
+            register_views_for_plugin(
+                &context,
+                "feature.test",
+                [UiViewContribution::new(
+                    "feature.test/view",
+                    "main",
+                    0,
+                    test_view,
+                )],
+            )
         }
+    }
+
+    struct TestView;
+
+    impl gpui_kit::Render for TestView {
+        fn render(
+            &mut self,
+            _: &mut gpui_kit::Window,
+            _: &mut gpui_kit::Context<Self>,
+        ) -> impl gpui_kit::IntoElement {
+            gpui_kit::div().child("test view")
+        }
+    }
+
+    fn test_view(_: &mut Window, app: &mut App) -> AnyView {
+        app.new(|_| TestView).into()
     }
 
     #[tokio::test]
     async fn cordis_disposal_removes_feature_ui_contributions() {
         let context = Context::new();
         let catalog = Arc::new(UiCatalog::default());
-        let _bridge = context
-            .provide(Arc::new(UiBridgeService::new(Arc::clone(&catalog))))
-            .unwrap();
+        let bridge = Arc::new(UiBridgeService::new(Arc::clone(&catalog)));
+        let _bridge_publication = context.provide(Arc::clone(&bridge)).unwrap();
 
         let plugin = RegisteringFeature;
         let input = plugin.prepare(vec![widget("feature.test/grid")]).unwrap();
@@ -344,8 +378,14 @@ mod tests {
             .unwrap();
         fiber.ready().await.unwrap();
         assert_eq!(catalog.snapshot().unwrap().len(), 1);
+        assert_eq!(
+            bridge.views.snapshot().unwrap().len(),
+            1,
+            "plugin registers an executable GPUI mount"
+        );
 
         fiber.dispose().await.unwrap();
         assert!(catalog.snapshot().unwrap().is_empty());
+        assert!(bridge.views.snapshot().unwrap().is_empty());
     }
 }

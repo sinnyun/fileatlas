@@ -1,5 +1,7 @@
 //! PhoTag library sidebar data and tag tree operations, owned by Cordis.
 
+mod view;
+
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,7 +12,9 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Folder, Tag, TagDropPos};
 use photag_plugin_indexing::{IndexingService, scan::ScanProgress};
 use photag_plugin_watcher::WatcherService;
-use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
+use photag_ui_bridge::{
+    ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
+};
 
 #[derive(Debug, Clone)]
 pub struct FolderNode {
@@ -279,9 +283,9 @@ impl Plugin for NavigationPlugin {
         let watcher = context
             .try_service::<WatcherService>()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
-        let service = NavigationService::new(database, indexing).with_watcher(watcher);
+        let service = Arc::new(NavigationService::new(database, indexing).with_watcher(watcher));
         let _publication = context
-            .provide(Arc::new(service))
+            .provide(Arc::clone(&service))
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,
@@ -313,6 +317,8 @@ impl Plugin for NavigationPlugin {
             ],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(&context, "photag.navigation", [view::sidebar(service)])
+            .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }

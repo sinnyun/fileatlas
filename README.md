@@ -12,17 +12,18 @@ migration; the gallery, preview, file operations, and many other product feature
 
 ## Workspace
 
-- `crates/photag-shell`: Cordis runtime composition and GPUI Kit host; currently
-  renders the active contribution catalog and dispatches UI command events.
-- `crates/photag-ui-bridge`: typed UI contributions and Cordis lifecycle cleanup.
+- `crates/photag-shell`: Cordis runtime composition and GPUI Kit host; mounts
+  plugin-created views into named app slots and dispatches UI command events.
+- `crates/photag-ui-bridge`: typed UI contributions, GPUI view factories, and
+  Cordis lifecycle cleanup for both metadata and executable mounts.
 - `crates/photag-plugin-database`: original schema/query implementation wrapped
   as a Cordis service plugin, with separate reader/writer connections.
 - `crates/photag-plugin-thumbnails`: original image thumbnail decoding and
   cache pipeline exposed as a Cordis service.
 - `crates/photag-plugin-indexing`: recursive scanning, database indexing, poster pairing, thumbnail backfill and directory listing exposed through a Cordis service.
 - `crates/photag-plugin-watcher`: registered-folder filesystem notifications and debounced SQLite reconciliation.
-- `crates/photag-plugin-gallery`: compact gallery query results, windowed media loading, filter/selection models and gallery UI contribution metadata; the GPUI gallery itself is not yet migrated.
-- `crates/photag-plugin-navigation`: folder/tag snapshots, lazy subdirectory counts, database-backed tag commands, and add/rescan/remove actions wired to scanning and watcher lifecycle; GPUI sidebar interactions remain pending.
+- `crates/photag-plugin-gallery`: compact query results, windowed media loading, filter/selection models and an initial GPUI media-card view; thumbnails, filtering controls and grid interactions remain pending.
+- `crates/photag-plugin-navigation`: folder/tag snapshots, lazy subdirectory counts, database-backed tag commands, add/rescan/remove actions wired to scanning/watcher lifecycle, and an initial GPUI folder/tag tree view; sidebar actions and selection coupling remain pending.
 - `crates/photag-plugin-tagging`: source-compatible media tag assignment, associated tags, automatic ancestor links, removal, clearing, and tag merge behind a Cordis service; assignment UI and XMP metadata writeback remain pending.
 - `crates/photag-contracts`: reserved for stable domain contracts; migration is
   in progress.

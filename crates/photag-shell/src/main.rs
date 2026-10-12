@@ -15,6 +15,7 @@ use photag_ui_bridge::{
 
 struct PhoTagShell {
     catalog: Arc<UiCatalog>,
+    views: Vec<(String, gpui_kit::AnyView)>,
     cordis: CordisContext,
     executor: tokio::runtime::Handle,
 }
@@ -22,6 +23,16 @@ struct PhoTagShell {
 impl Render for PhoTagShell {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         let contributions = self.catalog.snapshot().unwrap_or_default();
+        let mut sidebar_views = Vec::new();
+        let mut content_views = Vec::new();
+        let mut auxiliary_views = Vec::new();
+        for (slot, view) in &self.views {
+            match slot.as_str() {
+                "workspace.sidebar" => sidebar_views.push(view.clone()),
+                "gallery.content" | "workspace.main" => content_views.push(view.clone()),
+                _ => auxiliary_views.push(view.clone()),
+            }
+        }
         let commands = contributions.iter().filter_map(|owned| {
             let ContributionKind::Command { label } = &owned.contribution.kind else {
                 return None;
@@ -46,9 +57,7 @@ impl Render for PhoTagShell {
                     }),
             )
         });
-        let extension_rows = contributions.iter().map(render_contribution);
-
-        div()
+        let mut shell = div()
             .v_flex()
             .size_full()
             .bg(rgb(0x181a20))
@@ -67,12 +76,37 @@ impl Render for PhoTagShell {
             )
             .child(
                 div()
+                    .h_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .child(
+                        div()
+                            .v_flex()
+                            .w_72()
+                            .border_r_1()
+                            .border_color(rgb(0x343943))
+                            .overflow_y_scrollbar()
+                            .children(sidebar_views),
+                    )
+                    .child(
+                        div()
+                            .v_flex()
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_y_scrollbar()
+                            .children(content_views)
+                            .children(auxiliary_views),
+                    ),
+            );
+        if self.views.is_empty() {
+            shell = shell.child(
+                div()
                     .v_flex()
                     .flex_1()
                     .gap_2()
                     .overflow_y_scrollbar()
                     .p_4()
-                    .children(extension_rows)
+                    .children(contributions.iter().map(render_contribution))
                     .when(contributions.is_empty(), |body| {
                         body.child(
                             div()
@@ -81,7 +115,9 @@ impl Render for PhoTagShell {
                                 .child("No feature plugins are active."),
                         )
                     }),
-            )
+            );
+        }
+        shell
     }
 }
 
@@ -138,8 +174,9 @@ fn main() {
         .expect("create Cordis async runtime");
     let cordis = CordisContext::new();
     let catalog = Arc::new(UiCatalog::default());
+    let bridge = Arc::new(UiBridgeService::new(Arc::clone(&catalog)));
     let _bridge_publication = cordis
-        .provide(Arc::new(UiBridgeService::new(Arc::clone(&catalog))))
+        .provide(Arc::clone(&bridge))
         .expect("publish UI bridge service");
 
     let database_plugin = photag_plugin_database::DatabasePlugin;
@@ -202,11 +239,23 @@ fn main() {
     gpui_kit::application().run(move |cx| {
         gpui_kit::init(cx);
         let catalog = Arc::clone(&catalog);
+        let views = Arc::clone(&bridge.views);
         let cordis = cordis.clone();
         let executor = executor.clone();
-        gpui_kit::open_window(WindowOptions::default(), cx, move |_, cx| {
+        gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
+            let mounted_views = views
+                .snapshot()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|entry| {
+                    let slot = entry.contribution.slot.clone();
+                    let view = (entry.contribution.factory)(window, cx);
+                    (slot, view)
+                })
+                .collect();
             cx.new(|_| PhoTagShell {
                 catalog,
+                views: mounted_views,
                 cordis,
                 executor,
             })

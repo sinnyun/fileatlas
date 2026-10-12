@@ -1,5 +1,7 @@
 //! PhoTag gallery data access with its original skeleton-plus-window memory model.
 
+mod view;
+
 use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::Arc;
@@ -10,7 +12,9 @@ pub mod selection;
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
-use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
+use photag_ui_bridge::{
+    ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
+};
 
 /// The full media query result remains compact; full rows are loaded around the viewport.
 pub const MEDIA_WINDOW_SIZE: usize = 200;
@@ -157,8 +161,9 @@ impl Plugin for GalleryPlugin {
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let service = Arc::new(GalleryService::new(database));
         let _publication = context
-            .provide(Arc::new(GalleryService::new(database)))
+            .provide(Arc::clone(&service))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,
@@ -189,6 +194,8 @@ impl Plugin for GalleryPlugin {
             ],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(&context, "photag.gallery", [view::gallery(service)])
+            .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
 }

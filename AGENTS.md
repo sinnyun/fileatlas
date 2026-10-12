@@ -18,7 +18,8 @@ explicitly incomplete.
   composition. Product behavior belongs to compile-time feature crates.
 - Feature UI contributions (layout/dock/panel/slot/widget/command/menu/keymap)
   must have lifecycle ownership and be removed on plugin stop.
-- `photag-ui-bridge` is the shared UI registration contract and catalog.
+- `photag-ui-bridge` is the shared UI registration contract, metadata catalog,
+  executable GPUI view-factory catalog, and Cordis-owned cleanup boundary.
 - `photag-plugin-database` owns the source-compatible SQLite data layer. Keep
   all DB access behind its Cordis service as migration proceeds.
 - `photag-plugin-thumbnails` retains PhoTag image thumbnail/cache generation.
@@ -30,16 +31,18 @@ explicitly incomplete.
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
 - `photag-plugin-gallery` ports the source skeleton/window data model and owns
-  its UI contribution metadata. Do not treat that service and its host-neutral keyboard selection model as
-  completion of the GPUI gallery view, pointer selection, date grouping, or
-  host key-event/action integration. The `filter` module maps source filter state
-  into the existing database query; the original filter controls and settings
-  persistence still require GPUI migration.
+  its UI contribution metadata and initial media-card GPUI view. Do not treat
+  that service/view and its host-neutral keyboard selection model as completion
+  of thumbnail tiles, pointer selection, date grouping, or host key-event/action
+  integration. The `filter` module maps source filter state into the existing
+  database query; original filter controls and settings persistence still need
+  GPUI migration.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data and routes
-  tag mutations through the source query layer. It coordinates folder add,
-  rescan, remove, scanner cancellation and watcher registration; keep native
-  sidebar widgets/pickers, GPUI action dispatch, tag drag/drop and context menus
-  marked incomplete until their GPUI event flow is implemented.
+  tag mutations through the source query layer and renders its initial tree in
+  GPUI. It coordinates folder add, rescan, remove, scanner cancellation and
+  watcher registration; keep sidebar actions/pickers, selection coupling, tag
+  drag/drop and context menus marked incomplete until their GPUI event flow is
+  implemented.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge
   commands through source database queries. Keep picker/context-menu UI,
   hotkeys, and XMP rewrite integration marked incomplete until migrated.

@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 cordis.workspace = true
+gpui-kit.workspace = true
 
 [dev-dependencies]
 tokio.workspace = true

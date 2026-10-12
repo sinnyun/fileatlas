@@ -4963,6 +4963,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "cordis-rs",
+ "gpui-kit",
  "photag-plugin-database",
  "photag-ui-bridge",
  "rusqlite",
@@ -4988,6 +4989,7 @@ name = "photag-plugin-navigation"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "gpui-kit",
  "photag-plugin-database",
  "photag-plugin-indexing",
  "photag-plugin-thumbnails",
@@ -5059,6 +5061,7 @@ name = "photag-ui-bridge"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "gpui-kit",
  "tokio",
 ]
 
