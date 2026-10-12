@@ -8,6 +8,7 @@ migration; the gallery, preview, file operations, and many other product feature
 - [Source pins](SOURCE_PINS.md)
 - [Feature/source mapping and compatibility audit](docs/source-feature-audit.md)
 - [Validation report](docs/validation-report.md)
+- [Cloud development environment guide](docs/cloud-development-environment.md)
 - [Codex instructions](AGENTS.md)
 
 ## Workspace
