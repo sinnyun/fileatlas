@@ -40,7 +40,8 @@ explicitly incomplete.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data and routes
   tag mutations through the source query layer and renders its initial tree in
   GPUI. It coordinates folder add, rescan, remove, scanner cancellation and
-  watcher registration; keep sidebar actions/pickers, selection coupling, tag
+  watcher registration; current GPUI controls expose refresh/rescan/remove and
+  show rescan progress. Keep native folder picking, selection coupling, tag
   drag/drop and context menus marked incomplete until their GPUI event flow is
   implemented.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge
