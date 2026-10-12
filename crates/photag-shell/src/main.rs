@@ -184,20 +184,14 @@ fn main() {
         .prepare(photag_plugin_settings::SettingsConfig::default())
         .expect("prepare settings plugin");
     let settings_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            settings_plugin,
-            settings_input,
-        )))
+        .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
         .expect("start settings plugin");
     let session_plugin = photag_plugin_session::SessionPlugin;
     let session_input = session_plugin
         .prepare(photag_plugin_session::SessionConfig::default())
         .expect("prepare session plugin");
     let session_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(
-            session_plugin,
-            session_input,
-        )))
+        .block_on(cordis.spawn(PreparedPlugin::from_input(session_plugin, session_input)))
         .expect("start session plugin");
     let database_plugin = photag_plugin_database::DatabasePlugin;
     let database_input = database_plugin

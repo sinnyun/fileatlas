@@ -6,7 +6,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AiTagGroup {
@@ -51,23 +53,41 @@ impl ExcludeModifier {
     }
 }
 
-fn default_exclude_modifier() -> ExcludeModifier { ExcludeModifier::Ctrl }
+fn default_exclude_modifier() -> ExcludeModifier {
+    ExcludeModifier::Ctrl
+}
 
-fn default_open_key() -> String { "Space".to_string() }
+fn default_open_key() -> String {
+    "Space".to_string()
+}
 
-fn default_accent_name() -> String { "System".to_string() }
-fn default_show_date_dividers() -> bool { true }
-fn default_auto_check_updates() -> bool { true }
+fn default_accent_name() -> String {
+    "System".to_string()
+}
+fn default_show_date_dividers() -> bool {
+    true
+}
+fn default_auto_check_updates() -> bool {
+    true
+}
 
-fn default_search_scopes() -> SearchScopes { SearchScopes::default() }
+fn default_search_scopes() -> SearchScopes {
+    SearchScopes::default()
+}
 
-fn default_tag_search_match() -> TagSearchMatch { TagSearchMatch::Contains }
-fn default_tag_search_persist() -> bool { true }
-fn default_tag_merge_children() -> TagMergeChildren { TagMergeChildren::Reparent }
+fn default_tag_search_match() -> TagSearchMatch {
+    TagSearchMatch::Contains
+}
+fn default_tag_search_persist() -> bool {
+    true
+}
+fn default_tag_merge_children() -> TagMergeChildren {
+    TagMergeChildren::Reparent
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TagHotkey {
-    pub key: String,  // e.g. "F1", "F2"
+    pub key: String, // e.g. "F1", "F2"
     pub tag_id: i64,
 }
 
@@ -81,16 +101,18 @@ pub enum TagSearchMatch {
 impl TagSearchMatch {
     pub fn label(self) -> &'static str {
         match self {
-            TagSearchMatch::Contains   => "Contains",
+            TagSearchMatch::Contains => "Contains",
             TagSearchMatch::StartsWith => "Starts with",
         }
     }
     pub fn matches(self, name: &str, query: &str) -> bool {
-        if query.is_empty() { return true; }
+        if query.is_empty() {
+            return true;
+        }
         let n = name.to_lowercase();
         let q = query.to_lowercase();
         match self {
-            TagSearchMatch::Contains   => n.contains(&q),
+            TagSearchMatch::Contains => n.contains(&q),
             TagSearchMatch::StartsWith => n.starts_with(&q),
         }
     }
@@ -110,7 +132,7 @@ impl TagMergeChildren {
     pub fn label(self) -> &'static str {
         match self {
             TagMergeChildren::Reparent => "Re-parent under target",
-            TagMergeChildren::Delete   => "Delete",
+            TagMergeChildren::Delete => "Delete",
         }
     }
 }
@@ -127,10 +149,13 @@ pub struct SearchScopes {
 
 impl Default for SearchScopes {
     fn default() -> Self {
-        Self { filenames: true, paths: true, tags: true }
+        Self {
+            filenames: true,
+            paths: true,
+            tags: true,
+        }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
@@ -267,7 +292,11 @@ impl ToolbarSettings {
         self.tags_button
     }
     pub fn file_category_visible(&self) -> bool {
-        self.delete_button || self.copy_button || self.move_button || self.explorer_button || self.open_external_button
+        self.delete_button
+            || self.copy_button
+            || self.move_button
+            || self.explorer_button
+            || self.open_external_button
     }
     pub fn view_category_visible(&self) -> bool {
         self.filmstrip_toggle

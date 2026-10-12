@@ -13,7 +13,8 @@ completed the base Shell check successfully. The settings/session and metadata-e
 | Rust toolchain availability | Blocked | `command -v cargo` and `rustc --version`; neither executable is installed in this active environment. |
 | `cargo fmt --all -- --check` | Not run | Requires rustfmt; no Rust toolchain is installed. |
 | Local `cargo check -p photag-shell --locked` | Not run | No local Rust toolchain in the active interactive environment. |
-| GitHub Actions: shell check for this code-generation slice | Pending | Run after publishing the generated plugin migrations. |
+| GitHub Actions: latest shell check | Failed at formatting step | Commit `54f266f99866fd351aff602d1561751106181eec`; rustfmt requested standard multiline formatting in the copied settings/session models and two shell calls. Those reported changes are now applied locally; compilation was skipped until formatting passes. |
+| GitHub Actions: shell check after formatting corrections | Pending | Run after publishing this correction. |
 | Prior GitHub Actions: `cargo check -p photag-shell --locked` | Passed | Remote commit `0940e41024d021f7883be387f9400469d20bff7d`; validates only that earlier tree. |
 | Plugin tests | Deferred | Per task direction, run during second-round concentrated testing. |
 | Windows GUI / Shell / file operations | Deferred | Requires the user's Windows environment. |
