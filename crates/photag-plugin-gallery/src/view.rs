@@ -3,36 +3,67 @@
 use std::sync::Arc;
 
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::MediaQuery;
 use photag_ui_bridge::UiViewContribution;
 
-use crate::{GalleryService, GallerySnapshot};
+use crate::{GalleryService, GallerySnapshot, filter::GalleryFilter};
 
 pub(super) fn gallery(service: Arc<GalleryService>) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
         "gallery.content",
         0,
-        move |_, app| {
+        move |window, app| {
             let view_service = Arc::clone(&service);
-            app.new(|_| GalleryView::new(view_service)).into()
+            let search =
+                app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
+            app.new(|cx| GalleryView::new(view_service, search, cx))
+                .into()
         },
     )
 }
 
 struct GalleryView {
+    service: Arc<GalleryService>,
+    search: Entity<InputState>,
+    filter: GalleryFilter,
     snapshot: Result<GallerySnapshot, String>,
+    _subscriptions: Vec<Subscription>,
 }
 
 impl GalleryView {
-    fn new(service: Arc<GalleryService>) -> Self {
+    fn new(
+        service: Arc<GalleryService>,
+        search: Entity<InputState>,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let filter = GalleryFilter::default();
+        let snapshot = service
+            .load(filter.to_query())
+            .map_err(|error| error.to_string());
+        let _subscriptions = vec![cx.subscribe(&search, |this, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                this.filter.search = this.search.read(cx).value().to_string();
+                this.reload();
+                cx.notify();
+            }
+        })];
         Self {
-            snapshot: service
-                .load(MediaQuery::default())
-                .map_err(|error| error.to_string()),
+            service,
+            search,
+            filter,
+            snapshot,
+            _subscriptions,
         }
+    }
+
+    fn reload(&mut self) {
+        self.snapshot = self
+            .service
+            .load(self.filter.to_query())
+            .map_err(|error| error.to_string());
     }
 }
 
@@ -59,6 +90,7 @@ impl Render for GalleryView {
                                     .child(format!("{} items", snapshot.media_count)),
                             ),
                     )
+                    .child(Input::new(&self.search).w_full())
                     .child(div().h_1().w_full().bg(rgb(0x343943)))
                     .child(
                         div()

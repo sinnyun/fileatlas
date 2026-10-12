@@ -34,9 +34,9 @@ explicitly incomplete.
   its UI contribution metadata and initial media-card GPUI view. Do not treat
   that service/view and its host-neutral keyboard selection model as completion
   of thumbnail tiles, pointer selection, date grouping, or host key-event/action
-  integration. The `filter` module maps source filter state into the existing
-  database query; original filter controls and settings persistence still need
-  GPUI migration.
+  integration. Its GPUI search input reloads through the `filter` module into
+  the existing database query; source search scopes, remaining filter controls
+  and settings persistence still need GPUI migration.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data and routes
   tag mutations through the source query layer and renders its initial tree in
   GPUI. It coordinates folder add, rescan, remove, scanner cancellation and
