@@ -4,6 +4,7 @@
 //! follows that rule: transformed rasters are materialized under a cache directory and the
 //! original path remains the identity used by callers.
 
+mod info;
 mod view;
 
 use std::hash::{Hash, Hasher};
@@ -18,7 +19,7 @@ use photag_ui_bridge::{
 pub use view::preview_view;
 
 /// Current preview item and the source transform controls.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PreviewSnapshot {
     pub source: Option<PathBuf>,
     /// Clockwise quarter-turn count, normalized to 0..=3.
@@ -28,6 +29,13 @@ pub struct PreviewSnapshot {
     pub fit_to_window: bool,
     /// Percent zoom when fit-to-window is disabled; source presets are retained.
     pub zoom_percent: u16,
+    /// Continuous zoom multiplier used by the source wheel interaction.
+    pub zoom_scale: f32,
+    /// Image-center offset from the viewport center in screen pixels.
+    pub pan_x: f32,
+    pub pan_y: f32,
+    /// Source default is center-anchored wheel zoom; cursor mode preserves the point under the cursor.
+    pub zoom_at_cursor: bool,
     pub show_info: bool,
     pub revision: u64,
 }
@@ -41,6 +49,10 @@ impl Default for PreviewSnapshot {
             flip_vertical: false,
             fit_to_window: true,
             zoom_percent: 100,
+            zoom_scale: 1.0,
+            pan_x: 0.0,
+            pan_y: 0.0,
+            zoom_at_cursor: false,
             show_info: false,
             revision: 0,
         }
@@ -83,6 +95,9 @@ impl PreviewService {
         state.flip_vertical = false;
         state.fit_to_window = true;
         state.zoom_percent = 100;
+        state.zoom_scale = 1.0;
+        state.pan_x = 0.0;
+        state.pan_y = 0.0;
         state.revision = state.revision.wrapping_add(1);
         Ok(())
     }
@@ -112,6 +127,9 @@ impl PreviewService {
         self.change(|s| {
             s.fit_to_window = true;
             s.zoom_percent = 100;
+            s.zoom_scale = 1.0;
+            s.pan_x = 0.0;
+            s.pan_y = 0.0;
         });
     }
     pub fn set_zoom_percent(&self, percent: u16) {
@@ -119,8 +137,47 @@ impl PreviewService {
             self.change(|s| {
                 s.fit_to_window = false;
                 s.zoom_percent = percent;
+                s.zoom_scale = percent as f32 / 100.0;
             });
         }
+    }
+
+    pub fn toggle_zoom_at_cursor(&self) {
+        self.change(|s| s.zoom_at_cursor = !s.zoom_at_cursor);
+    }
+
+    /// Apply PhoTag's wheel multiplier and cursor-anchor pan calculation.
+    /// `cursor_delta` is the cursor's offset from the viewport center.
+    pub fn zoom_wheel(&self, scroll_delta: f32, fit_scale: f32, cursor_delta: (f32, f32)) {
+        if scroll_delta == 0.0 || !scroll_delta.is_finite() || !fit_scale.is_finite() {
+            return;
+        }
+        self.change(|s| {
+            let old_scale = if s.fit_to_window {
+                fit_scale
+            } else {
+                s.zoom_scale
+            };
+            let new_scale = (old_scale * (1.0 + scroll_delta * 0.0025)).clamp(0.05, 16.0);
+            if s.zoom_at_cursor {
+                let ratio = new_scale / old_scale;
+                s.pan_x = cursor_delta.0 * (1.0 - ratio) + s.pan_x * ratio;
+                s.pan_y = cursor_delta.1 * (1.0 - ratio) + s.pan_y * ratio;
+            }
+            s.fit_to_window = false;
+            s.zoom_scale = new_scale;
+            s.zoom_percent = (new_scale * 100.0).round().clamp(5.0, 1600.0) as u16;
+        });
+    }
+
+    pub fn pan_by(&self, dx: f32, dy: f32) {
+        if !dx.is_finite() || !dy.is_finite() {
+            return;
+        }
+        self.change(|s| {
+            s.pan_x += dx;
+            s.pan_y += dy;
+        });
     }
 
     /// Return the original path for the identity transform, otherwise make a cached oriented copy.

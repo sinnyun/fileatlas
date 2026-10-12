@@ -9,6 +9,7 @@ license.workspace = true
 cordis.workspace = true
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
+photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 dirs.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -152,8 +152,8 @@ impl SidebarView {
         }
     }
 
-    fn add_folder(&mut self, cx: &mut Context<Self>) {
-        let path = self.folder_path.read(cx).value().trim().to_owned();
+    fn add_folder_path(&mut self, path: String, cx: &mut Context<Self>) {
+        let path = path.trim().to_owned();
         if path.is_empty() {
             return;
         }
@@ -166,6 +166,21 @@ impl SidebarView {
             }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
+    }
+
+    fn pick_folder(&mut self, cx: &mut Context<Self>) {
+        // Match PhoTag's PendingAction::AddFolder flow: a native directory
+        // dialog returns an optional path, and cancellation is a no-op.
+        let Some(path) = rfd::FileDialog::new().pick_folder() else {
+            return;
+        };
+        let path = path.to_string_lossy().into_owned();
+        self.add_folder_path(path, cx);
+    }
+
+    fn add_folder(&mut self, cx: &mut Context<Self>) {
+        let path = self.folder_path.read(cx).value().trim().to_owned();
+        self.add_folder_path(path, cx);
     }
 
     fn monitor_scan(&mut self, cx: &mut Context<Self>) {
@@ -460,6 +475,11 @@ impl Render for SidebarView {
                         .h_flex()
                         .gap_1()
                         .child(Input::new(&self.folder_path).flex_1())
+                        .child(
+                            Button::new("navigation-browse-folder")
+                                .label("Browse…")
+                                .on_click(cx.listener(|this, _, _, cx| this.pick_folder(cx))),
+                        )
                         .child(
                             Button::new("navigation-add-folder")
                                 .label("Add")

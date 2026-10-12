@@ -11,6 +11,8 @@ gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 image = "0.25"
 thiserror = "2"
+chrono = "0.4"
+kamadak-exif = "0.6.1"
 
 [lints]
 workspace = true

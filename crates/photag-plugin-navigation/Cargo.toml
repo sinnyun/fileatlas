@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 cordis.workspace = true
 gpui-kit.workspace = true
+rfd = { version = "0.15", default-features = false }
 tokio.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-contracts = { path = "../photag-contracts" }

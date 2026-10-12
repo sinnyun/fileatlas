@@ -6,8 +6,12 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
+use photag_plugin_navigation::NavigationService;
 use photag_ui_bridge::UiViewContribution;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
+
+#[path = "view/tag_hotkeys.rs"]
+mod tag_hotkeys;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
@@ -18,7 +22,10 @@ enum Tab {
     Ai,
     Updates,
 }
-pub(super) fn settings(service: Arc<SettingsService>) -> UiViewContribution {
+pub(super) fn settings(
+    service: Arc<SettingsService>,
+    navigation: Option<Weak<NavigationService>>,
+) -> UiViewContribution {
     UiViewContribution::new(
         "settings/panel-view",
         "workspace.settings",
@@ -26,6 +33,7 @@ pub(super) fn settings(service: Arc<SettingsService>) -> UiViewContribution {
         move |_, app| {
             app.new(|cx| SettingsView {
                 service: Arc::clone(&service),
+                navigation: navigation.clone(),
                 tab: Tab::Appearance,
                 error: None,
                 capturing_open_key: false,
@@ -37,6 +45,7 @@ pub(super) fn settings(service: Arc<SettingsService>) -> UiViewContribution {
 }
 struct SettingsView {
     service: Arc<SettingsService>,
+    navigation: Option<Arc<NavigationService>>,
     tab: Tab,
     error: Option<String>,
     capturing_open_key: bool,
@@ -167,6 +176,7 @@ impl SettingsView {
                 this.edit(move |settings| action(settings), cx);
             }))
     }
+
     fn section(&self, label: &'static str) -> Div {
         div().pt_2().font_semibold().child(label)
     }
@@ -308,16 +318,65 @@ impl SettingsView {
                         "Ratings 0–5 use number-row keys; preview stars set rating by mouse.",
                     ));
                 b = b.child(self.section("Tag hotkeys F1–F9"));
-                for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
-                    let val = s
-                        .tag_hotkeys
-                        .iter()
-                        .find(|h| h.key == key)
-                        .map(|h| format!("tag #{}", h.tag_id))
-                        .unwrap_or_else(|| "None".into());
-                    b = b.child(div().child(format!("{key}: {val}")));
+                b =
+                    b.child(div().child(
+                        "Press an F-key in the gallery or preview to toggle its assigned tag.",
+                    ));
+                match self
+                    .navigation
+                    .as_ref()
+                    .and_then(Weak::upgrade)
+                    .map(|navigation| navigation.snapshot())
+                {
+                    Some(Ok(snapshot)) => {
+                        let mut flat_tags = Vec::new();
+                        let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
+                        while let Some(tag) = pending.pop() {
+                            let icon = tag
+                                .icon
+                                .as_deref()
+                                .filter(|icon| !icon.is_empty())
+                                .unwrap_or("🏷");
+                            flat_tags.push((
+                                tag.id,
+                                format!("{icon} {}", tag.full_path.replace('>', " > ")),
+                            ));
+                            pending.extend(tag.children.into_iter().rev());
+                        }
+                        for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
+                            let selected = s
+                                .tag_hotkeys
+                                .iter()
+                                .find(|hotkey| hotkey.key == key)
+                                .map(|hotkey| hotkey.tag_id);
+                            b = b.child(tag_hotkeys::button(
+                                key,
+                                selected,
+                                flat_tags.clone(),
+                                cx.entity().downgrade(),
+                            ));
+                        }
+                    }
+                    Some(Err(error)) => {
+                        b = b.child(div().child(format!("Could not load tags: {error}")));
+                    }
+                    None => {
+                        b = b.child(div().child(
+                            "Tag choices are unavailable while the navigation plugin is stopped.",
+                        ));
+                        for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
+                            let selected = s
+                                .tag_hotkeys
+                                .iter()
+                                .find(|hotkey| hotkey.key == key)
+                                .map(|hotkey| hotkey.tag_id);
+                            let assigned = selected
+                                .map(|id| format!("tag #{id}"))
+                                .unwrap_or_else(|| "None".into());
+                            b = b.child(div().child(format!("{key}: {assigned}")));
+                        }
+                    }
                 }
-                b=b.child(div().child("Tag hotkey editing needs the navigation tag picker and hotkey dispatch integration."));
             }
             Tab::Tags => {
                 b = b.child(self.section("Global search scope"));

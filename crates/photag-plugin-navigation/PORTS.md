@@ -1,6 +1,6 @@
 # Navigation plugin ports / 导航插件数据对接
 
-Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The tag UI now exposes create, rename, delete, color/icon, display and explicit reparent actions. Original egui interactions are only partially migrated: no native folder picker, tag drag/drop zones, multi-select/exclude mode, modal confirmation/edit flow, recursive tag search/collapse state, merge workflow, or undo integration.
+Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. The tag UI exposes create, rename, delete, color/icon, display and explicit reparent actions. Original egui interactions are only partially migrated: tag drag/drop zones, multi-select/exclude mode, modal confirmation/edit flow, recursive tag search/collapse state, merge workflow, and undo integration remain incomplete.
 
 ## Lifecycle and dependencies
 
@@ -33,5 +33,6 @@ The tag panel uses GPUI Kit `Input` and `Button`. `TagSelectionChanged` filters 
 Reference: pinned `vendor/photag-source/src/ui/sidebar.rs` (`show_sidebar`, `show_tag_tree`, `show_tag_node`) and tag actions in `vendor/photag-source/src/app.rs`.
 
 - Migrated: folder registration/rescan/removal, lazy directory listing, recursive tag tree, single-tag filter, root/child creation, rename, delete, color/icon editing, display propagation, reparent into a selected tag.
-- Pending: native directory picker; original tabs and exact visuals; drag/drop before/after/into with feedback; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations.
+- Migrated: native directory picker via the same `rfd` API used by PhoTag's `PendingAction::AddFolder`. Cancel/backend `None` leaves the sidebar unchanged; folder validation and registration errors surface in the navigation panel as before.
+- Pending: original tabs and exact visuals; drag/drop before/after/into with feedback; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations.
 - Local integration: verify event refresh and destructive delete behavior against representative PhoTag databases; run Windows GUI/filesystem flows; then finish visual and interaction parity. Plugin tests remain deferred to the local integration pass.

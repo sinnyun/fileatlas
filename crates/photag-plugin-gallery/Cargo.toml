@@ -10,9 +10,14 @@ cordis.workspace = true
 gpui-kit.workspace = true
 tokio.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
+photag-plugin-history = { path = "../photag-plugin-history" }
+photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
 photag-plugin-preview = { path = "../photag-plugin-preview" }
 photag-plugin-session = { path = "../photag-plugin-session" }
+photag-plugin-settings = { path = "../photag-plugin-settings" }
+photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }

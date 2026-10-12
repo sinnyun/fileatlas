@@ -7,7 +7,7 @@ mod filter_actions;
 mod keyboard;
 
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::{future::Future, path::PathBuf};
 
@@ -17,9 +17,14 @@ use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_history::{HistoryService, UndoEntry};
+use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_preview::PreviewService;
 use photag_plugin_session::{MediaTypeFilter as SavedMediaType, SessionService};
+use photag_plugin_settings::SettingsService;
+use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::UiViewContribution;
 
 use bulk_actions::{BulkActionKind, BulkActionSource};
@@ -34,13 +39,18 @@ use crate::{
 pub(super) fn gallery(
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
+    drag_drop: Arc<DragDropService>,
     preview: Arc<PreviewService>,
+    playback: Arc<MediaPlaybackService>,
     runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
     session: Arc<SessionService>,
+    history: Option<Arc<HistoryService>>,
+    settings: Option<Arc<SettingsService>>,
+    tagging: Option<Arc<TaggingService>>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "gallery/media-grid-view",
@@ -49,13 +59,18 @@ pub(super) fn gallery(
         move |window, app| {
             let view_service = Arc::clone(&service);
             let view_file_operations = Arc::clone(&file_operations);
+            let view_drag_drop = Arc::clone(&drag_drop);
             let view_preview = Arc::clone(&preview);
+            let view_playback = Arc::clone(&playback);
             let view_runtime = runtime.clone();
             let view_selection = Arc::clone(&selected_folder);
             let view_tag_selection = Arc::clone(&selected_tag);
             let view_path_selection = Arc::clone(&selected_path);
             let view_index_revision = Arc::clone(&index_revision);
             let view_session = Arc::clone(&session);
+            let view_history = history.clone();
+            let view_settings = settings.clone();
+            let view_tagging = tagging.clone();
             let saved = view_session.snapshot().unwrap_or_default();
             let search =
                 app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
@@ -94,13 +109,18 @@ pub(super) fn gallery(
                 GalleryView::new(
                     view_service,
                     view_file_operations,
+                    view_drag_drop,
                     view_preview,
+                    view_playback,
                     view_runtime,
                     view_selection,
                     view_tag_selection,
                     view_path_selection,
                     view_index_revision,
                     view_session,
+                    view_history,
+                    view_settings,
+                    view_tagging,
                     search,
                     date_from,
                     date_to,
@@ -118,13 +138,18 @@ pub(super) fn gallery(
 struct GalleryView {
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
+    drag_drop: Arc<DragDropService>,
     preview: Arc<PreviewService>,
+    playback: Arc<MediaPlaybackService>,
     runtime: tokio::runtime::Handle,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
     index_revision: Arc<IndexRevision>,
     session: Arc<SessionService>,
+    history: Option<Arc<HistoryService>>,
+    settings: Option<Arc<SettingsService>>,
+    tagging: Option<Arc<TaggingService>>,
     search: Entity<InputState>,
     date_from: Entity<InputState>,
     date_to: Entity<InputState>,
@@ -137,6 +162,8 @@ struct GalleryView {
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
+    drag_allowed: Arc<AtomicBool>,
+    video_preview_open: bool,
     show_exif: bool,
     exif_cache: Option<(i64, Result<Vec<(String, String)>, String>)>,
     operation_status: Option<String>,
@@ -149,13 +176,18 @@ impl GalleryView {
     fn new(
         service: Arc<GalleryService>,
         file_operations: Arc<FileOperationsService>,
+        drag_drop: Arc<DragDropService>,
         preview: Arc<PreviewService>,
+        playback: Arc<MediaPlaybackService>,
         runtime: tokio::runtime::Handle,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
         selected_path: Arc<SelectedPath>,
         index_revision: Arc<IndexRevision>,
         session: Arc<SessionService>,
+        history: Option<Arc<HistoryService>>,
+        settings: Option<Arc<SettingsService>>,
+        tagging: Option<Arc<TaggingService>>,
         search: Entity<InputState>,
         date_from: Entity<InputState>,
         date_to: Entity<InputState>,
@@ -304,13 +336,18 @@ impl GalleryView {
         Self {
             service,
             file_operations,
+            drag_drop,
             preview,
+            playback,
             runtime,
             selected_folder,
             selected_tag,
             selected_path,
             index_revision,
             session,
+            history,
+            settings,
+            tagging,
             search,
             date_from,
             date_to,
@@ -323,6 +360,8 @@ impl GalleryView {
             focus_handle,
             filter,
             selection: GallerySelection::default(),
+            drag_allowed: Arc::new(AtomicBool::new(true)),
+            video_preview_open: false,
             show_exif: false,
             exif_cache: None,
             operation_status: None,
@@ -481,6 +520,10 @@ impl GalleryView {
         let Some(&media_id) = self.selection.selected_media_ids.first() else {
             return;
         };
+        self.preview_media(media_id, cx);
+    }
+
+    fn preview_media(&mut self, media_id: i64, cx: &mut Context<Self>) {
         match self.service.media_by_id(media_id) {
             Ok(Some(media)) if media.media_type == "image" => {
                 match self.preview.open(media.full_path) {
@@ -488,12 +531,28 @@ impl GalleryView {
                     Err(error) => self.operation_status = Some(error.to_string()),
                 }
             }
+            Ok(Some(media)) if media.media_type == "video" => {
+                match self.playback.open(media.full_path) {
+                    Ok(()) => {
+                        self.video_preview_open = true;
+                        self.operation_status = Some("Video playback opened.".into());
+                    }
+                    Err(error) => self.operation_status = Some(error.to_string()),
+                }
+            }
             Ok(Some(_)) => {
-                self.operation_status = Some("Preview currently supports images only.".into())
+                self.operation_status = Some("Preview supports images and video.".into())
             }
             Ok(None) => self.operation_status = Some("Selected media is no longer indexed.".into()),
             Err(error) => self.operation_status = Some(error.to_string()),
         }
+        cx.notify();
+    }
+
+    fn close_video_preview(&mut self, cx: &mut Context<Self>) {
+        self.playback.close();
+        self.video_preview_open = false;
+        self.operation_status = Some("Returned to the gallery.".into());
         cx.notify();
     }
 
@@ -503,14 +562,30 @@ impl GalleryView {
         }
         let media_id = self.selection.selected_media_ids[0];
         let new_filename = self.rename_input.read(cx).value().to_string();
+        let old_filename = self
+            .service
+            .media_by_id(media_id)
+            .ok()
+            .flatten()
+            .map(|media| media.filename);
         let operations = Arc::clone(&self.file_operations);
         let gallery = Arc::clone(&self.service);
+        let history = self.history.clone();
         self.start_operation(
             async move {
                 match operations.rename(media_id, new_filename.clone()).await {
                     Err(error) => format!("Rename failed: {error}"),
                     Ok(()) => match gallery.media_by_id(media_id) {
                         Ok(Some(media)) if media.filename == new_filename => {
+                            if let (Some(history), Some(old_filename)) = (history, old_filename) {
+                                if old_filename != new_filename {
+                                    history.push(UndoEntry::Renamed {
+                                        media_id,
+                                        old_filename,
+                                        new_filename: new_filename.clone(),
+                                    });
+                                }
+                            }
                             format!("Renamed to {}.", media.filename)
                         }
                         Ok(_) => {
@@ -631,13 +706,32 @@ impl GalleryView {
     }
 
     fn apply_rating(&mut self, rating: u8, cx: &mut Context<Self>) {
-        match self
-            .service
-            .apply_rating(&self.selection.selected_media_ids, rating)
-        {
+        let media_ids = self.selection.selected_media_ids.clone();
+        self.apply_rating_to(&media_ids, rating);
+        cx.notify();
+    }
+
+    pub(super) fn apply_rating_to(&mut self, media_ids: &[i64], rating: u8) {
+        if media_ids.is_empty() {
+            return;
+        }
+        let old_rating = media_ids
+            .first()
+            .and_then(|id| self.service.media_by_id(*id).ok().flatten())
+            .map(|media| media.rating);
+        match self.service.apply_rating(media_ids, rating) {
             Ok(()) => {
+                let new_rating = i32::from(rating.min(5));
+                if let (Some(history), Some(old_rating)) = (&self.history, old_rating) {
+                    if old_rating != new_rating {
+                        history.push(UndoEntry::RatingChanged {
+                            media_ids: media_ids.to_vec(),
+                            old_rating,
+                            new_rating,
+                        });
+                    }
+                }
                 self.reload();
-                cx.notify();
             }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
@@ -729,14 +823,35 @@ impl Render for GalleryView {
         match &self.snapshot {
             Ok(snapshot) => {
                 let mut media_cards = Vec::with_capacity(snapshot.media.len());
+                let selected_drag_paths = if self.selection.selected_media_ids.is_empty() {
+                    Vec::new()
+                } else {
+                    self.service
+                        .media_paths_by_ids(&self.selection.selected_media_ids)
+                        .unwrap_or_default()
+                };
                 for media in &snapshot.media {
                     let selected = self.selection.selected_media_ids.contains(&media.id);
-                    media_cards.push(render_media_card(media, selected, cx));
+                    let drag_paths = if selected && !selected_drag_paths.is_empty() {
+                        selected_drag_paths.clone()
+                    } else {
+                        vec![PathBuf::from(media.full_path.as_str())]
+                    };
+                    media_cards.push(render_media_card(
+                        media,
+                        selected,
+                        Arc::clone(&self.drag_drop),
+                        drag_paths,
+                        Arc::clone(&self.drag_allowed),
+                        cx,
+                    ));
                 }
                 let mut grid = div()
                     .id("gallery-grid-root")
                     .track_focus(&self.focus_handle)
-                    .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
+                    .on_key_down(
+                        cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),
+                    )
                     .v_flex()
                     .size_full()
                     .gap_3()
@@ -763,6 +878,13 @@ impl Render for GalleryView {
                                     .child(format!("{} items", snapshot.media_count)),
                             ),
                     );
+                if self.video_preview_open {
+                    grid = grid.child(
+                        Button::new("gallery-return-from-video")
+                            .label("Return to gallery")
+                            .on_click(cx.listener(|this, _, _, cx| this.close_video_preview(cx))),
+                    );
+                }
                 grid = grid.child(Input::new(&self.search).w_full());
                 grid = grid.child(controls::search_scope_row(&self.filter, cx));
                 grid = grid.child(controls::clear_filters_button(cx));
@@ -777,6 +899,14 @@ impl Render for GalleryView {
                     cx,
                 ));
                 grid = grid.child(bulk_actions::render(self, cx));
+                if let Some(status) = &self.operation_status {
+                    grid = grid.child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(0x9aa0ad))
+                            .child(status.clone()),
+                    );
+                }
                 grid = grid.child(div().h_1().w_full().bg(rgb(0x343943)));
                 grid = grid.child(
                     div()
@@ -897,14 +1027,6 @@ impl Render for GalleryView {
                                     ),
                             ),
                     );
-                    if let Some(status) = &self.operation_status {
-                        actions = actions.child(
-                            div()
-                                .text_sm()
-                                .text_color(rgb(0x9aa0ad))
-                                .child(status.clone()),
-                        );
-                    }
                     actions = actions.child(div().text_xs().text_color(rgb(0x747b89)).child(
                         "Enter a destination folder path; native folder dialogs are still pending.",
                     ));

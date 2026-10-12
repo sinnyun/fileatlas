@@ -131,6 +131,10 @@ impl Plugin for SettingsPlugin {
         let settings = service
             .snapshot()
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        let navigation = context
+            .try_service::<photag_plugin_navigation::NavigationService>()
+            .ok()
+            .map(|service| Arc::downgrade(&service));
         photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
         let publication = context
             .provide(Arc::clone(&service))
@@ -172,8 +176,12 @@ impl Plugin for SettingsPlugin {
             ],
         )
         .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
-        register_views_for_plugin(&context, "photag.settings", [view::settings(service)])
-            .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
+        register_views_for_plugin(
+            &context,
+            "photag.settings",
+            [view::settings(service, navigation)],
+        )
+        .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         drop(publication);
         Ok(())
     }

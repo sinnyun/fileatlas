@@ -18,7 +18,9 @@ use photag_contracts::{
 };
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
+use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_preview::PreviewService;
 use photag_plugin_session::SessionService;
 use photag_ui_bridge::{
@@ -181,6 +183,20 @@ impl GalleryService {
             .with_reader(|connection| queries::get_media_by_id(connection, id))?)
     }
 
+    /// Resolve filesystem paths in the exact order of a drag selection.
+    pub fn media_paths_by_ids(&self, ids: &[i64]) -> Result<Vec<std::path::PathBuf>, GalleryError> {
+        Ok(self.database.with_reader(|connection| {
+            let items = ids
+                .iter()
+                .map(|id| {
+                    queries::get_media_by_id(connection, *id)
+                        .map(|media| media.map(|item| std::path::PathBuf::from(item.full_path)))
+                })
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            Ok(items.into_iter().flatten().collect())
+        })?)
+    }
+
     /// Read the informational open counter stored by PhoTag's original schema.
     pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
         Ok(self.database.with_reader(|connection| {
@@ -230,12 +246,29 @@ impl Plugin for GalleryPlugin {
         let file_operations = context
             .try_service::<FileOperationsService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let drag_drop = context
+            .try_service::<DragDropService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let playback = context
+            .try_service::<MediaPlaybackService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let preview = context
             .try_service::<PreviewService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        // History is optional so Gallery remains usable when the development
+        // history plugin is not part of the active Cordis graph.
+        let history = context
+            .try_service::<photag_plugin_history::HistoryService>()
+            .ok();
+        let settings = context
+            .try_service::<photag_plugin_settings::SettingsService>()
+            .ok();
+        let tagging = context
+            .try_service::<photag_plugin_tagging::TaggingService>()
+            .ok();
         let runtime = tokio::runtime::Handle::current();
         let service = Arc::new(GalleryService::new(database));
         let selected_folder = Arc::new(SelectedFolder::default());
@@ -352,13 +385,18 @@ impl Plugin for GalleryPlugin {
             [view::gallery(
                 service,
                 file_operations,
+                drag_drop,
                 preview,
+                playback,
                 runtime,
                 selected_folder,
                 selected_tag,
                 selected_path,
                 index_revision,
                 session,
+                history,
+                settings,
+                tagging,
             )],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
@@ -505,9 +543,23 @@ mod tests {
         let _database = context.provide(Arc::clone(&database)).unwrap();
         let _file_operations = context
             .provide(Arc::new(FileOperationsService::new(
-                database,
+                Arc::clone(&database),
                 context.clone(),
             )))
+            .unwrap();
+        let _drag_drop = context.provide(Arc::new(DragDropService)).unwrap();
+        let _playback = context
+            .provide(Arc::new(
+                MediaPlaybackService::new(root.join("playback")).unwrap(),
+            ))
+            .unwrap();
+        let _preview = context
+            .provide(Arc::new(
+                PreviewService::open_at(root.join("preview")).unwrap(),
+            ))
+            .unwrap();
+        let _session = context
+            .provide(Arc::new(SessionService::open_at(root.join("session.json"))))
             .unwrap();
         let plugin = GalleryPlugin;
         let input = plugin.prepare(GalleryConfig).unwrap();

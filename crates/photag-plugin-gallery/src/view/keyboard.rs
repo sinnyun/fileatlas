@@ -6,7 +6,50 @@ use super::GalleryView;
 use crate::selection::{GalleryKey, Modifiers as SelectionModifiers, SelectionEffect};
 
 impl GalleryView {
-    pub(super) fn handle_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+    pub(super) fn handle_key(
+        &mut self,
+        event: &KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let gallery_focused = self.focus_handle.is_focused(window);
+        if event.keystroke.modifiers.control
+            && !event.keystroke.modifiers.shift
+            && event.keystroke.key.eq_ignore_ascii_case("z")
+            && gallery_focused
+        {
+            self.run_history(true, cx);
+            return;
+        }
+        if event.keystroke.modifiers.control
+            && event.keystroke.key.eq_ignore_ascii_case("y")
+            && gallery_focused
+        {
+            self.run_history(false, cx);
+            return;
+        }
+        if gallery_focused && self.bulk_action.is_none() && !self.confirm_delete {
+            if self.handle_tag_hotkey(&event.keystroke.key, cx) {
+                return;
+            }
+            if !self.video_preview_open && !self.selection.selected_media_ids.is_empty() {
+                let configured = self.settings.as_ref().and_then(|settings| {
+                    settings.snapshot().ok().map(|settings| settings.open_key)
+                });
+                if configured
+                    .as_deref()
+                    .is_some_and(|key| keys_match(key, &event.keystroke.key))
+                    || (configured.is_none() && event.keystroke.key.eq_ignore_ascii_case("enter"))
+                {
+                    self.open_configured_target(cx);
+                    return;
+                }
+            }
+        }
+        if event.keystroke.key.eq_ignore_ascii_case("escape") && self.video_preview_open {
+            self.close_video_preview(cx);
+            return;
+        }
         if event.keystroke.key.eq_ignore_ascii_case("d")
             && event.keystroke.modifiers.control
             && event.keystroke.modifiers.shift
@@ -26,7 +69,8 @@ impl GalleryView {
             "end" => GalleryKey::End,
             "escape" => GalleryKey::Escape,
             "delete" | "backspace" => GalleryKey::Delete,
-            "enter" => GalleryKey::Enter,
+            "enter" if self.settings.is_none() => GalleryKey::Enter,
+            "enter" => return,
             "a" if event.keystroke.modifiers.control => GalleryKey::SelectAll,
             "0" => GalleryKey::Rating(0),
             "1" => GalleryKey::Rating(1),
@@ -53,11 +97,7 @@ impl GalleryView {
         );
         match effect {
             SelectionEffect::ApplyRating { media_ids, rating } => {
-                if let Err(error) = self.service.apply_rating(&media_ids, rating) {
-                    self.snapshot = Err(error.to_string());
-                } else {
-                    self.reload();
-                }
+                self.apply_rating_to(&media_ids, rating);
             }
             SelectionEffect::ConfirmDelete { .. } => self.delete_selected(cx),
             SelectionEffect::OpenPreview { .. } => self.preview_selected(cx),
@@ -65,4 +105,123 @@ impl GalleryView {
         }
         cx.notify();
     }
+
+    fn run_history(&mut self, undo: bool, cx: &mut Context<Self>) {
+        let Some(history) = self.history.clone() else {
+            return;
+        };
+        let has_entry = if undo {
+            history.undo_description().is_some()
+        } else {
+            history.redo_description().is_some()
+        };
+        if !has_entry {
+            return;
+        }
+        self.start_operation(
+            async move {
+                let message = if undo {
+                    history.undo().await
+                } else {
+                    history.redo().await
+                };
+                message.unwrap_or_else(|| {
+                    if undo {
+                        "Nothing to undo."
+                    } else {
+                        "Nothing to redo."
+                    }
+                    .into()
+                })
+            },
+            true,
+            cx,
+        );
+    }
+
+    fn handle_tag_hotkey(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
+        let Some(settings) = self
+            .settings
+            .as_ref()
+            .and_then(|service| service.snapshot().ok())
+        else {
+            return false;
+        };
+        let Some(hotkey) = settings
+            .tag_hotkeys
+            .iter()
+            .find(|hotkey| keys_match(&hotkey.key, key))
+        else {
+            return false;
+        };
+        let media_ids = self.selection.selected_media_ids.clone();
+        if media_ids.is_empty() {
+            return true;
+        }
+        let tag_id = hotkey.tag_id;
+        let Some(tagging) = self.tagging.clone() else {
+            self.operation_status = Some("Tagging service is unavailable.".into());
+            cx.notify();
+            return true;
+        };
+        let already_tagged = media_ids
+            .first()
+            .and_then(|media_id| tagging.for_media(*media_id).ok())
+            .is_some_and(|tags| tags.iter().any(|tag| tag.id == tag_id));
+        let result = if already_tagged {
+            tagging.remove(&media_ids, &[tag_id])
+        } else {
+            tagging.assign(&media_ids, &[tag_id])
+        };
+        match result {
+            Ok(()) => {
+                if let Some(history) = &self.history {
+                    let entry = if already_tagged {
+                        photag_plugin_history::UndoEntry::RemovedTags {
+                            media_ids: media_ids.clone(),
+                            tag_ids: vec![tag_id],
+                        }
+                    } else {
+                        photag_plugin_history::UndoEntry::AssignedTags {
+                            media_ids: media_ids.clone(),
+                            tag_ids: vec![tag_id],
+                        }
+                    };
+                    history.push(entry);
+                }
+                self.operation_status = Some(if already_tagged {
+                    format!(
+                        "Removed tag from {} item{}.",
+                        media_ids.len(),
+                        if media_ids.len() == 1 { "" } else { "s" }
+                    )
+                } else {
+                    format!(
+                        "Assigned tag to {} item{}.",
+                        media_ids.len(),
+                        if media_ids.len() == 1 { "" } else { "s" }
+                    )
+                });
+                self.reload();
+            }
+            Err(error) => self.operation_status = Some(format!("Tag update failed: {error}")),
+        }
+        cx.notify();
+        true
+    }
+
+    fn open_configured_target(&mut self, cx: &mut Context<Self>) {
+        self.preview_selected(cx);
+    }
+}
+
+fn keys_match(configured: &str, event_key: &str) -> bool {
+    let normalize = |key: &str| {
+        if key.eq_ignore_ascii_case("space") || key == " " {
+            return "space".to_string();
+        }
+        let key = key.trim().to_ascii_lowercase();
+        key
+    };
+    normalize(configured) == normalize(event_key)
 }

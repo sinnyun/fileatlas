@@ -243,13 +243,6 @@ fn main() {
         .provide(Arc::clone(&bridge))
         .expect("publish UI bridge service");
 
-    let settings_plugin = photag_plugin_settings::SettingsPlugin;
-    let settings_input = settings_plugin
-        .prepare(photag_plugin_settings::SettingsConfig::default())
-        .expect("prepare settings plugin");
-    let settings_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
-        .expect("start settings plugin");
     let session_plugin = photag_plugin_session::SessionPlugin;
     let session_input = session_plugin
         .prepare(photag_plugin_session::SessionConfig::default())
@@ -381,6 +374,15 @@ fn main() {
     } else {
         None
     };
+    // Settings can read the live tag tree from NavigationService when the
+    // navigation plugin is enabled, so start it after Navigation.
+    let settings_plugin = photag_plugin_settings::SettingsPlugin;
+    let settings_input = settings_plugin
+        .prepare(photag_plugin_settings::SettingsConfig::default())
+        .expect("prepare settings plugin");
+    let settings_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
+        .expect("start settings plugin");
     let tagging_fiber = if enable_tagging {
         let plugin = photag_plugin_tagging::TaggingPlugin;
         let input = plugin

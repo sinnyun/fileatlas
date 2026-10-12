@@ -51,6 +51,24 @@ impl ExportPanel {
         }
     }
 
+    fn choose_destination(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        // Match the pinned PhoTag action: use rfd's native Save File dialog,
+        // with its OS-provided overwrite confirmation, instead of asking the
+        // user to type an absolute path into the panel.
+        if let Some(path) = rfd::FileDialog::new()
+            .set_title("Export metadata backup")
+            .add_filter("JSON", &["json"])
+            .set_file_name("photag_backup.json")
+            .save_file()
+        {
+            self.path.update(cx, |state, cx| {
+                state.set_value(&path.to_string_lossy(), window, cx)
+            });
+            self.input_error = None;
+            cx.notify();
+        }
+    }
+
     fn export(&mut self, cx: &mut Context<Self>) {
         let path = self.path.read(cx).value().trim().to_owned();
         if path.is_empty() {
@@ -123,6 +141,13 @@ impl Render for ExportPanel {
                     .h_flex()
                     .gap_2()
                     .child(Input::new(&self.path).flex_1())
+                    .child(
+                        Button::new("metadata-export-browse")
+                            .label("Browse…")
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.choose_destination(window, cx)
+                            })),
+                    )
                     .child(
                         Button::new("metadata-export-run")
                             .label("Export JSON")

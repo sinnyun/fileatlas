@@ -3,15 +3,27 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
+use photag_plugin_drag_drop::DragDropService;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::GalleryView;
 
 pub(super) fn render_media_card(
     media: &photag_plugin_database::db::queries::MediaItem,
     selected: bool,
+    drag_drop: Arc<DragDropService>,
+    drag_paths: Vec<PathBuf>,
+    drag_allowed: Arc<AtomicBool>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
+    let payload = FileDragPayload {
+        service: drag_drop,
+        paths: drag_paths,
+        allowed: drag_allowed.clone(),
+    };
     let mut card = div()
         .v_flex()
         .w_48()
@@ -59,9 +71,27 @@ pub(super) fn render_media_card(
         );
     }
     card.id(format!("gallery-media-{media_id}"))
+        .on_mouse_down(
+            MouseButton::Left,
+            cx.listener(move |_, event: &MouseDownEvent, _, _| {
+                drag_allowed.store(
+                    !event.modifiers.control && !event.modifiers.shift,
+                    Ordering::Release,
+                );
+            }),
+        )
         .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
-            this.select_media(media_id, event.modifiers(), window, cx)
+            this.select_media(media_id, event.modifiers(), window, cx);
+            if event.down.click_count >= 2 {
+                this.preview_media(media_id, cx);
+            }
         }))
+        .on_drag(payload, |payload, _, _, cx| {
+            if payload.allowed.load(Ordering::Acquire) {
+                let _ = payload.service.start_file_drag(&payload.paths);
+            }
+            cx.new(|_| FileDragGhost)
+        })
         .child(div().text_sm().font_medium().child(media.filename.clone()))
         .child(
             div()
@@ -69,6 +99,20 @@ pub(super) fn render_media_card(
                 .text_color(rgb(0x9aa0ad))
                 .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
         )
+}
+
+struct FileDragPayload {
+    service: Arc<DragDropService>,
+    paths: Vec<PathBuf>,
+    allowed: Arc<AtomicBool>,
+}
+
+struct FileDragGhost;
+
+impl Render for FileDragGhost {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div().size(px(1.))
+    }
 }
 
 pub(super) fn render_media_details(

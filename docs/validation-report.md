@@ -247,3 +247,12 @@ The shell enables `settings`, `session`, and `database` by default, with the UI 
 To progressively enable a feature, pass its name, for example `start-dev.bat gallery` or `start-dev.bat navigation`.
 
 Some initial runs exited with a GPUI debug panic (`Duplicate a11y node id`) during first render; this can recur and is still unresolved. Other direct and batch-file runs remained responsive with a nonzero window handle, including the current no-argument batch-file launch. Capture a full backtrace and isolate the view as plugins are enabled incrementally.
+
+## Parallel migration follow-up (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Windows MSVC toolchain. |
+| `cargo +1.97.1 check -p photag-shell --locked` | Failed during lock resolution | Newly added native dialogs and EXIF/date dependencies bring a transitive graph that conflicts with pinned versions (currently `futures-util` 0.3.32 vs 0.3.34). No Rust compilation was reached. Lock graph requires a coherent regeneration/reconciliation before this migration is validated. |
+| Tests | Not run | Repository instructions reserve tests for the concentrated second-round debugging pass. |
+| Windows UI/native dialogs/OLE | Unverified | Requires real Windows runtime validation. |
