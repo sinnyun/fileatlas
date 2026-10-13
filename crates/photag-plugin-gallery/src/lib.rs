@@ -201,6 +201,22 @@ impl GalleryService {
         })?)
     }
 
+    /// Resolve surviving media identities and paths in caller order.
+    pub fn media_path_pairs_by_ids(
+        &self,
+        ids: &[i64],
+    ) -> Result<Vec<(std::path::PathBuf, i64)>, GalleryError> {
+        Ok(self.database.with_reader(|connection| {
+            ids.iter()
+                .filter_map(|id| match queries::get_media_by_id(connection, *id) {
+                    Ok(Some(media)) => Some(Ok((std::path::PathBuf::from(media.full_path), *id))),
+                    Ok(None) => None,
+                    Err(error) => Some(Err(error)),
+                })
+                .collect::<rusqlite::Result<Vec<_>>>()
+        })?)
+    }
+
     /// Read the informational open counter stored by PhoTag's original schema.
     pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
         Ok(self.database.with_reader(|connection| {

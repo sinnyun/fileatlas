@@ -1,9 +1,10 @@
 # AI plugin port
 
-Status: Cordis service is registered in the root workspace and shell. Its
-inference and download paths are adapted from the preserved PhoTag source; the
-Cargo lockfile still needs dependency resolution, and no Windows runtime or
-model download has been validated here.
+Status: Cordis service is registered in the root workspace and shell. The
+Preview plugin now requests suggestions using the persisted mandatory groups,
+polls worker results, honors `auto_analyze`, and applies/removes labels through
+the Tagging service. Windows inference, model download, and database writeback
+have not been runtime-validated.
 
 ## Cordis identity and startup
 
@@ -11,9 +12,9 @@ model download has been validated here.
 - `AiPlugin` has no startup dependencies. The shell starts it when Gallery,
   MCP, all plugins, or the explicit `ai` development plugin is enabled. It
   publishes `Arc<AiService>`; consumers must resolve that service from Cordis.
-- The consumer passes persisted settings into `suggest_tags`; this avoids a
-  service dependency on the settings plugin lifecycle. The settings type is
-  `photag_plugin_settings::AiSettings`.
+- Preview resolves `AiService`, `SettingsService`, and `TaggingService` from
+  Cordis and passes the current `Settings::ai` snapshot into `suggest_tags`.
+  Shell starts these providers before Preview.
 - Integration dependencies: `cordis`, `photag-plugin-settings`, `dirs`,
   `image`, `ndarray`, `tract-onnx`, `ureq`, and `thiserror`. These are declared
   in this crate's manifest; `ndarray` and `tract-onnx` are not yet present in
@@ -49,13 +50,22 @@ model download has been validated here.
 - The port preserves MobileNetV2 preprocessing, the ImageNet label mapping,
   image brightness/warmth/saturation analysis, mandatory-group scoring, and
   worker-thread behavior.
-- The source caller is `vendor/photag-source/src/app.rs` (`poll_ai` and
-  `request_ai_suggestions`) and `vendor/photag-source/src/ui/preview.rs` (the
-  suggestion panel and apply actions). The shell now registers the service,
-  but the native preview does not yet request suggestions, poll results,
-  apply tag assignments, or honor `AiSettings::auto_analyze`. The preview
-  currently has only a path, not the indexed media ID required by the tagging
-  service; these caller behaviors remain incomplete.
+- The source flow in `vendor/photag-source/src/app.rs` (`poll_ai` and
+  `request_ai_suggestions`) and `vendor/photag-source/src/ui/preview.rs` is
+  connected through `crates/photag-plugin-preview/src/ai_suggestions.rs`.
+  Auto-analysis runs only when enabled and the model already exists; manual
+  Analyze downloads a missing model and then starts inference. Image identity
+  comes from `PreviewSnapshot::media_id`; video and audio extensions are
+  excluded. Suggested labels are created under `AI Suggested` when missing,
+  then assigned through `TaggingService`, preserving its metadata rewrite
+  behavior. Successful AI assignments record the exact direct label IDs in
+  `HistoryService` as source-compatible `UndoEntry::AssignedTags`; failed DB
+  assignments do not create a history entry. Removal removes a matching
+  assigned tag from the current image.
+- Inference receivers are discarded when preview selection changes, so late
+  results are ignored and cannot mutate a different image. The current engine
+  API has no cancellation token; the detached worker can finish computing in
+  the background, and the Preview panel tells the user when this happens.
 - To investigate failures, inspect the receiver result and then
   `src/engine.rs` for model access/inference or `src/imagenet.rs` for label
   mapping. Source reference: `vendor/photag-source/src/ai.rs` at PhoTag commit

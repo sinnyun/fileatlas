@@ -19,12 +19,23 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 - `UndoEntry` matches the source data model: `AssignedTags`, `RemovedTags`, `ClearedTags`, `RatingChanged`, `Renamed`.
 - Tag changes use `TaggingService` (including source XMP metadata synchronization); ratings use the original database bulk query; rename uses `FileOperationsService`, which emits `MediaIndexChanged`.
 
-## Semantics and limits
+## Source action map and semantics
+
+- The pinned source's complete `UndoEntry` enum has exactly five variants:
+  `AssignedTags`, `RemovedTags`, `ClearedTags`, `RatingChanged`, and `Renamed`.
+  Its producers are pending-action handling in `vendor/photag-source/src/app.rs`
+  (tag assignment/removal/clear, rating, rename, and AI suggestion acceptance).
+- In this migration, Gallery produces the first four action families and
+  confirmed rename. AI suggestion acceptance currently assigns tags without
+  recording `AssignedTags` in `HistoryService`; that source producer remains
+  unported. File copy/move/delete and folder/tag-tree edits are not undoable in
+  the source model and must not be represented as history entries.
 
 - As in PhoTag, operation failures are best-effort and do not stop the entry from moving to the opposite stack. A new push always clears redo.
 - Stack transfer performed by undo/redo does not trim the destination stack, matching the source handlers.
 - File operation success/failure is currently not exposed to the caller as a result; Gallery shows the returned history status and refreshes its query after undo/redo.
-- Pending actions outside the five source `UndoEntry` variants are not undoable here. Folder/tag tree edits, delete/copy/move/bulk operations remain outside history, matching the source `UndoEntry` model.
+- Folder/tag tree edits, delete/copy/move/bulk operations remain outside history,
+  matching the source `UndoEntry` model.
 
 ## Debugging
 

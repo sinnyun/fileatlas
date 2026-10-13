@@ -11,6 +11,8 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_kit::gpui::InteractiveElement as _;
+use gpui_kit::gpui::StatefulInteractiveElement as _;
 use gpui_kit::*;
 use photag_contracts::{
     DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
@@ -434,13 +436,41 @@ impl SidebarView {
                 id,
                 photag_plugin_database::db::queries::TagDropPos::Into(target),
             ) {
-                Ok(_) => {
+                Ok(affected) => {
                     self.refresh();
-                    self.notify_media_index(cx);
+                    if !affected.is_empty() {
+                        self.notify_media_index(cx);
+                    }
                 }
                 Err(error) => self.snapshot = Err(error.to_string()),
             },
             Err(_) => self.snapshot = Err("Parent tag ID must be an integer".into()),
+        }
+        cx.notify();
+    }
+
+    fn move_tag_to(
+        &mut self,
+        source: i64,
+        drop: photag_plugin_database::db::queries::TagDropPos,
+        cx: &mut Context<Self>,
+    ) {
+        let target = match drop {
+            photag_plugin_database::db::queries::TagDropPos::Before(id)
+            | photag_plugin_database::db::queries::TagDropPos::After(id)
+            | photag_plugin_database::db::queries::TagDropPos::Into(id) => id,
+        };
+        if source == target {
+            return;
+        }
+        match self.service.move_tag(source, drop) {
+            Ok(affected) => {
+                self.refresh();
+                if !affected.is_empty() {
+                    self.notify_media_index(cx);
+                }
+            }
+            Err(error) => self.snapshot = Err(error.to_string()),
         }
         cx.notify();
     }
@@ -778,6 +808,14 @@ fn render_tag(
             tag.media_count
         ))
         .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(select_name_id), cx)));
+    let drag_name = div()
+        .id(format!("navigation-tag-drag-{}", tag.id))
+        .on_drag(TagDragPayload { source_id: tag.id }, |payload, _, _, cx| {
+            cx.new(|_| TagDragGhost {
+                label: format!("Move tag {}", payload.source_id),
+            })
+        })
+        .child(name);
     let edit_name = tag_name;
     let edit_color = tag_color;
     let edit_icon = tag_icon;
@@ -920,7 +958,27 @@ fn render_tag(
     } else {
         Vec::new()
     };
-    div()
+    let before_id = tag.id;
+    let before = div()
+        .w_full()
+        .h(px(20.))
+        .items_center()
+        .justify_center()
+        .text_xs()
+        .text_color(rgb(theme::TEXT_MUTED))
+        .child("Drop above to place before")
+        .drag_over::<TagDragPayload>(|style, _, _, _| {
+            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+        })
+        .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
+            this.move_tag_to(
+                payload.source_id,
+                photag_plugin_database::db::queries::TagDropPos::Before(before_id),
+                cx,
+            );
+        }));
+    let into_id = tag.id;
+    let row = div()
         .v_flex()
         .child(
             div()
@@ -934,7 +992,19 @@ fn render_tag(
                         .child(div().w_2().h_2().rounded_sm().bg(rgb((u32::from(red) << 16)
                             | (u32::from(green) << 8)
                             | u32::from(blue))))
-                        .child(name),
+                        .child(drag_name)
+                        .drag_over::<TagDragPayload>(|style, _, _, _| {
+                            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+                        })
+                        .on_drop::<TagDragPayload>(cx.listener(
+                            move |this, payload: &TagDragPayload, _, cx| {
+                                this.move_tag_to(
+                                    payload.source_id,
+                                    photag_plugin_database::db::queries::TagDropPos::Into(into_id),
+                                    cx,
+                                );
+                            },
+                        )),
                 )
                 .child(select)
                 .child(actions),
@@ -951,7 +1021,48 @@ fn render_tag(
                 .child(move_into)
                 .child(delete),
         )
-        .children(children)
+        .children(children);
+    let after_id = tag.id;
+    let after = div()
+        .w_full()
+        .h(px(20.))
+        .items_center()
+        .justify_center()
+        .text_xs()
+        .text_color(rgb(theme::TEXT_MUTED))
+        .child("Drop below to place after")
+        .drag_over::<TagDragPayload>(|style, _, _, _| {
+            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+        })
+        .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
+            this.move_tag_to(
+                payload.source_id,
+                photag_plugin_database::db::queries::TagDropPos::After(after_id),
+                cx,
+            );
+        }));
+    div().v_flex().child(before).child(row).child(after)
+}
+
+#[derive(Clone, Copy)]
+struct TagDragPayload {
+    source_id: i64,
+}
+
+struct TagDragGhost {
+    label: String,
+}
+
+impl Render for TagDragGhost {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .px_2()
+            .py_1()
+            .rounded_md()
+            .bg(rgb(theme::SURFACE_PANEL))
+            .text_sm()
+            .child(self.label.clone())
+    }
 }
 
 fn render_subdirectory(

@@ -48,6 +48,25 @@ pub struct SessionState {
     /// Reopen the image preview on startup when the source still exists.
     #[serde(default)]
     pub preview_path: Option<String>,
+    /// Preview transform state is optional so existing PhoTag session files retain defaults.
+    #[serde(default)]
+    pub preview_quarter_turns: Option<u8>,
+    #[serde(default)]
+    pub preview_flip_horizontal: Option<bool>,
+    #[serde(default)]
+    pub preview_flip_vertical: Option<bool>,
+    #[serde(default)]
+    pub preview_fit_to_window: Option<bool>,
+    #[serde(default)]
+    pub preview_zoom_scale: Option<f32>,
+    #[serde(default)]
+    pub preview_pan_x: Option<f32>,
+    #[serde(default)]
+    pub preview_pan_y: Option<f32>,
+    #[serde(default)]
+    pub preview_zoom_at_cursor: Option<bool>,
+    #[serde(default)]
+    pub preview_show_info: Option<bool>,
     /// Whether the gallery groups date-sorted results by capture month.
     #[serde(default)]
     pub group_by_month: Option<bool>,

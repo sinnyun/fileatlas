@@ -2,6 +2,7 @@
 use super::{GalleryView, format_bulk_outcome};
 use chrono::{NaiveDate, Utc};
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
 use gpui_kit::*;
@@ -56,6 +57,12 @@ impl BulkActionSource {
 }
 fn read(view: &GalleryView, index: usize, cx: &Context<GalleryView>) -> String {
     view.bulk_inputs[index].read(cx).value().to_string()
+}
+
+pub(super) fn reset_inputs(view: &GalleryView, window: &mut Window, cx: &mut Context<GalleryView>) {
+    for input in &view.bulk_inputs {
+        input.update(cx, |state, cx| state.set_value("", window, cx));
+    }
 }
 
 fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64>, String> {
@@ -188,13 +195,15 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                 } else {
                     "Bulk actions… (Ctrl+Shift+D)"
                 })
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.bulk_action = if this.bulk_action.is_some() {
-                        None
-                    } else {
-                        Some(BulkActionKind::Delete)
-                    };
+                .on_click(cx.listener(|this, _, window, cx| {
+                    let closing = this.bulk_action.is_some();
+                    if !closing {
+                        reset_inputs(this, window, cx);
+                        this.bulk_source = BulkActionSource::WholeLibrary;
+                    }
+                    this.bulk_action = (!closing).then_some(BulkActionKind::Delete);
                     this.confirm_bulk_action = false;
+                    this.confirm_bulk_action_ids = None;
                     cx.notify();
                 })),
         );
@@ -216,6 +225,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.bulk_action = Some(choice);
                         this.confirm_bulk_action = false;
+                        this.confirm_bulk_action_ids = None;
                         cx.notify();
                     }))
             }),
@@ -229,6 +239,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.bulk_source = choice;
                     this.confirm_bulk_action = false;
+                    this.confirm_bulk_action_ids = None;
                     cx.notify();
                 }))
         }),
@@ -256,6 +267,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         Ok(ids) => (ids.len(), None),
         Err(error) => (0, Some(error)),
     };
+    let has_filter_error = error.is_some();
     if let Some(error) = error {
         panel = panel.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
     }
@@ -284,6 +296,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                         cx.listener(|this, _, _, cx| {
                             this.bulk_action = None;
                             this.confirm_bulk_action = false;
+                            this.confirm_bulk_action_ids = None;
                             cx.notify();
                         }),
                     ))
@@ -296,6 +309,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                                     format!("{} {count}", action.verb())
                                 },
                             )
+                            .disabled(count == 0 || has_filter_error)
                             .on_click(cx.listener(|this, _, window, cx| execute(this, window, cx))),
                     ),
             ),
@@ -316,14 +330,31 @@ fn execute(view: &mut GalleryView, _window: &mut Window, cx: &mut Context<Galler
         }
     };
     if ids.is_empty() {
+        view.confirm_bulk_action = false;
+        view.confirm_bulk_action_ids = None;
         view.operation_status = Some("No media match these bulk action filters.".into());
         cx.notify();
         return;
     }
-    if action == BulkActionKind::Delete && !view.confirm_bulk_action {
+    if action == BulkActionKind::Delete
+        && (!view.confirm_bulk_action || view.confirm_bulk_action_ids.is_none())
+    {
         view.confirm_bulk_action = true;
+        view.confirm_bulk_action_ids = Some(ids.clone());
         view.operation_status = Some(format!(
             "Confirm deleting {} matching files to the Recycle Bin.",
+            ids.len()
+        ));
+        cx.notify();
+        return;
+    }
+    if action == BulkActionKind::Delete
+        && view.confirm_bulk_action_ids.as_deref() != Some(ids.as_slice())
+    {
+        view.confirm_bulk_action = true;
+        view.confirm_bulk_action_ids = Some(ids.clone());
+        view.operation_status = Some(format!(
+            "Bulk delete targets changed. Review the new set of {} items and confirm again.",
             ids.len()
         ));
         cx.notify();
@@ -335,10 +366,19 @@ fn execute(view: &mut GalleryView, _window: &mut Window, cx: &mut Context<Galler
         rfd::FileDialog::new().pick_folder()
     };
     if action != BulkActionKind::Delete && destination.is_none() {
+        view.bulk_action = None;
+        view.confirm_bulk_action = false;
+        view.confirm_bulk_action_ids = None;
+        view.operation_status = Some(format!(
+            "{} cancelled; no destination was selected.",
+            action.verb()
+        ));
+        cx.notify();
         return;
     }
     view.bulk_action = None;
     view.confirm_bulk_action = false;
+    view.confirm_bulk_action_ids = None;
     let operations = Arc::clone(&view.file_operations);
     let total = ids.len();
     let refresh = action != BulkActionKind::CopyTo;

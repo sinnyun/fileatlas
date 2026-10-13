@@ -1,74 +1,114 @@
 //! GPUI presentation for the source preview controls.
 
+mod actions;
+
 use std::sync::Arc;
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
+use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_settings::SettingsService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::PreviewService;
 
-pub fn preview_view(service: Arc<PreviewService>) -> UiViewContribution {
-    UiViewContribution::new("preview/image-view", "workspace.main", 0, move |_, app| {
-        let service = Arc::clone(&service);
-        app.new(|cx| {
-            let view_service = Arc::clone(&service);
-            let focus_handle = cx.focus_handle();
-            let mut revision = service.snapshot().revision;
-            let mut decode_revision = service.decode_revision();
-            let mut showing_progressive = service
-                .snapshot()
-                .source
-                .as_deref()
-                .and_then(|source| service.progressive_path(source))
-                .is_some();
-            let decode_service = Arc::clone(&service);
-            cx.spawn(async move |this, cx| {
-                loop {
-                    cx.background_executor()
-                        .timer(std::time::Duration::from_millis(150))
-                        .await;
-                    let next_decode_revision = decode_service.decode_revision();
-                    let snapshot = decode_service.snapshot();
-                    let next_showing_progressive = snapshot
-                        .source
-                        .as_deref()
-                        .and_then(|source| decode_service.progressive_path(source))
-                        .is_some();
-                    let changed = this
-                        .update(cx, |view: &mut PreviewView, cx| {
-                            let next = view.service.snapshot().revision;
-                            if next != revision
-                                || next_decode_revision != decode_revision
-                                || next_showing_progressive != showing_progressive
-                            {
-                                revision = next;
-                                decode_revision = next_decode_revision;
-                                showing_progressive = next_showing_progressive;
-                                cx.notify();
-                            }
-                        })
-                        .is_ok();
-                    if !changed {
-                        break;
+pub fn preview_view(
+    service: Arc<PreviewService>,
+    settings: Arc<SettingsService>,
+    file_operations: Arc<FileOperationsService>,
+    runtime: tokio::runtime::Handle,
+) -> UiViewContribution {
+    UiViewContribution::new(
+        "preview/image-view",
+        "workspace.main",
+        0,
+        move |window, app| {
+            let service = Arc::clone(&service);
+            let rename_input =
+                app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
+            app.new(|cx| {
+                let view_service = Arc::clone(&service);
+                let focus_handle = cx.focus_handle();
+                let mut revision = service.snapshot().revision;
+                let mut decode_revision = service.decode_revision();
+                let mut showing_progressive = service
+                    .snapshot()
+                    .source
+                    .as_deref()
+                    .and_then(|source| service.progressive_path(source))
+                    .is_some();
+                let decode_service = Arc::clone(&service);
+                cx.spawn(async move |this, cx| {
+                    loop {
+                        cx.background_executor()
+                            .timer(std::time::Duration::from_millis(150))
+                            .await;
+                        let next_decode_revision = decode_service.decode_revision();
+                        let snapshot = decode_service.snapshot();
+                        let next_showing_progressive = snapshot
+                            .source
+                            .as_deref()
+                            .and_then(|source| decode_service.progressive_path(source))
+                            .is_some();
+                        let changed = this
+                            .update(cx, |view: &mut PreviewView, cx| {
+                                let next = view.service.snapshot().revision;
+                                if next != revision
+                                    || next_decode_revision != decode_revision
+                                    || next_showing_progressive != showing_progressive
+                                {
+                                    revision = next;
+                                    decode_revision = next_decode_revision;
+                                    showing_progressive = next_showing_progressive;
+                                    cx.notify();
+                                }
+                            })
+                            .is_ok();
+                        if !changed {
+                            break;
+                        }
                     }
+                })
+                .detach();
+                PreviewView {
+                    service: view_service,
+                    settings: Arc::clone(&settings),
+                    last_drag_position: None,
+                    toolbar_drag_origin: None,
+                    toolbar_drag_offset: None,
+                    toolbar_error: None,
+                    file_operations: Arc::clone(&file_operations),
+                    runtime: runtime.clone(),
+                    rename_input,
+                    rename_target: None,
+                    delete_confirmation_open: false,
+                    operation_status: None,
+                    operation_busy: false,
+                    focus_handle,
                 }
             })
-            .detach();
-            PreviewView {
-                service: view_service,
-                last_drag_position: None,
-                focus_handle,
-            }
-        })
-        .into()
-    })
+            .into()
+        },
+    )
 }
 
 struct PreviewView {
     service: Arc<PreviewService>,
+    settings: Arc<SettingsService>,
     last_drag_position: Option<(f32, f32)>,
+    toolbar_drag_origin: Option<(f32, f32, f32, f32)>,
+    toolbar_drag_offset: Option<(f32, f32)>,
+    toolbar_error: Option<String>,
+    file_operations: Arc<FileOperationsService>,
+    runtime: tokio::runtime::Handle,
+    rename_input: gpui::Entity<InputState>,
+    rename_target: Option<i64>,
+    delete_confirmation_open: bool,
+    operation_status: Option<String>,
+    operation_busy: bool,
     focus_handle: FocusHandle,
 }
 
@@ -83,10 +123,14 @@ impl Render for PreviewView {
             .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(|| "No image selected".into());
         let service = Arc::clone(&self.service);
-        let close = cx.listener(move |_, _: &ClickEvent, _, cx| {
+        let close = cx.listener(move |this, _: &ClickEvent, _, cx| {
+            this.rename_target = None;
             service.close();
             cx.notify();
         });
+        let rename = cx.listener(|this, _: &ClickEvent, window, cx| this.begin_rename(window, cx));
+        let delete =
+            cx.listener(|this, _: &ClickEvent, window, cx| this.request_delete(window, cx));
         let service = Arc::clone(&self.service);
         let rotate_left = cx.listener(move |_, _: &ClickEvent, _, cx| {
             service.rotate_counter_clockwise();
@@ -183,6 +227,8 @@ impl Render for PreviewView {
                 })
                 .on_click(info),
             )
+            .child(button("Rename (F2)").on_click(rename))
+            .child(button("Delete").on_click(delete))
             .child(button("Close").on_click(close));
         let bounds = window.bounds().size;
         let viewport_width = (f32::from(bounds.width) - 32.0).max(1.0);
@@ -316,7 +362,106 @@ impl Render for PreviewView {
                 );
             }
         }
-        let paths = self.service.filmstrip();
+        let saved_toolbar_pos = self
+            .settings
+            .snapshot()
+            .map(|settings| settings.toolbar_pos)
+            .unwrap_or_default();
+        let (toolbar_x, toolbar_y) = self
+            .toolbar_drag_offset
+            .unwrap_or((saved_toolbar_pos.offset_x, saved_toolbar_pos.offset_y));
+        let (toolbar_x, toolbar_y) =
+            clamp_toolbar_offset(toolbar_x, toolbar_y, viewport_width, viewport_height);
+        let drag_start = cx.listener(move |this, event: &MouseDownEvent, window, cx| {
+            window.focus(&this.focus_handle, cx);
+            let saved = this
+                .settings
+                .snapshot()
+                .ok()
+                .map(|settings| settings.toolbar_pos);
+            if saved.is_some_and(|position| !position.locked) {
+                this.toolbar_drag_origin = Some((
+                    f32::from(event.position.x),
+                    f32::from(event.position.y),
+                    toolbar_x,
+                    toolbar_y,
+                ));
+                this.toolbar_drag_offset = Some((toolbar_x, toolbar_y));
+            }
+        });
+        let drag_move = cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
+            if !event.dragging() {
+                return;
+            }
+            if let Some((start_x, start_y, offset_x, offset_y)) = this.toolbar_drag_origin {
+                this.toolbar_drag_offset = Some(clamp_toolbar_offset(
+                    offset_x + f32::from(event.position.x) - start_x,
+                    offset_y + f32::from(event.position.y) - start_y,
+                    viewport_width,
+                    viewport_height,
+                ));
+                cx.notify();
+            }
+        });
+        let drag_end = cx.listener(|this, _: &MouseUpEvent, _, cx| {
+            if let Some((offset_x, offset_y)) = this.toolbar_drag_offset.take() {
+                this.toolbar_drag_origin = None;
+                match this.settings.update(|settings| {
+                    settings.toolbar_pos.offset_x = offset_x;
+                    settings.toolbar_pos.offset_y = offset_y;
+                }) {
+                    Ok(_) => this.toolbar_error = None,
+                    Err(error) => this.toolbar_error = Some(error.to_string()),
+                }
+                cx.notify();
+            }
+        });
+        let toolbar = div()
+            .absolute()
+            .bottom(px(24.0 - toolbar_y))
+            .left(px(toolbar_x))
+            .w_full()
+            .h_flex()
+            .items_center()
+            .justify_center()
+            .gap_2()
+            .child(
+                div()
+                    .id("preview-toolbar-drag-handle")
+                    .px_2()
+                    .py_1()
+                    .rounded_md()
+                    .bg(rgb(theme::SURFACE_MODAL))
+                    .text_color(rgb(if saved_toolbar_pos.locked {
+                        theme::TEXT_SECONDARY
+                    } else {
+                        theme::TEXT_PRIMARY
+                    }))
+                    .child(if saved_toolbar_pos.locked {
+                        "🔒"
+                    } else {
+                        "⠿"
+                    })
+                    .on_mouse_down(MouseButton::Left, drag_start),
+            )
+            .child(controls);
+        stage = stage
+            .on_mouse_move(drag_move)
+            .on_mouse_up(MouseButton::Left, drag_end)
+            .child(toolbar);
+        if let Some(error) = &self.toolbar_error {
+            stage = stage.child(
+                div()
+                    .absolute()
+                    .bottom(px(4.0))
+                    .left(px(8.0))
+                    .text_xs()
+                    .text_color(rgb(theme::DANGER))
+                    .child(format!("Could not save preview toolbar position: {error}")),
+            );
+        }
+        let items = self.service.filmstrip_items();
+        let paths: Vec<_> = items.iter().map(|(path, _)| path.clone()).collect();
         let current = snapshot
             .source
             .as_ref()
@@ -330,6 +475,7 @@ impl Render for PreviewView {
                 .enumerate()
                 .map(|(offset, path)| {
                     let path = path.clone();
+                    let media_id = items[start + offset].1;
                     let service = Arc::clone(&self.service);
                     let selected = start + offset == center;
                     let thumbnail = self.service.filmstrip_thumbnail(&path);
@@ -348,7 +494,7 @@ impl Render for PreviewView {
                             MouseButton::Left,
                             cx.listener(move |this, _: &MouseDownEvent, window, cx| {
                                 window.focus(&this.focus_handle, cx);
-                                let _ = service.open(path.clone());
+                                let _ = service.open_media(path.clone(), media_id);
                                 cx.notify();
                             }),
                         )
@@ -385,14 +531,32 @@ impl Render for PreviewView {
             .gap_2()
             .p_3()
             .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(move |_, event: &KeyDownEvent, _, cx| {
+            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+                if this.rename_target.is_some() {
+                    match event.keystroke.key.as_str() {
+                        "enter" | "Enter" => this.commit_rename(cx),
+                        "escape" | "Escape" => {
+                            this.rename_target = None;
+                            cx.notify();
+                        }
+                        _ => {}
+                    }
+                    return;
+                }
+                if this.delete_confirmation_open {
+                    return;
+                }
                 match event.keystroke.key.as_str() {
                     "left" | "ArrowLeft" => {
-                        key_service.navigate_filmstrip(-1);
+                        if !this.operation_busy {
+                            key_service.navigate_filmstrip(-1);
+                        }
                         cx.notify();
                     }
                     "right" | "ArrowRight" => {
-                        key_service.navigate_filmstrip(1);
+                        if !this.operation_busy {
+                            key_service.navigate_filmstrip(1);
+                        }
                         cx.notify();
                     }
                     "escape" | "Escape" => {
@@ -407,17 +571,62 @@ impl Render for PreviewView {
                         key_service.rotate_clockwise();
                         cx.notify();
                     }
+                    "f" | "F" | "0" => {
+                        key_service.set_fit();
+                        cx.notify();
+                    }
+                    "+" | "=" => {
+                        let zoom = key_service.snapshot().zoom_percent;
+                        let next = [25, 50, 100, 125, 150, 200]
+                            .into_iter()
+                            .find(|preset| *preset > zoom)
+                            .unwrap_or(200);
+                        key_service.set_zoom_percent(next);
+                        cx.notify();
+                    }
+                    "-" => {
+                        let zoom = key_service.snapshot().zoom_percent;
+                        let next = [200, 150, 125, 100, 50, 25]
+                            .into_iter()
+                            .find(|preset| *preset < zoom)
+                            .unwrap_or(25);
+                        key_service.set_zoom_percent(next);
+                        cx.notify();
+                    }
+                    "f2" | "F2" if !this.operation_busy => this.begin_rename(window, cx),
+                    "delete" | "Delete" | "backspace" | "Backspace" => {
+                        if !this.operation_busy {
+                            this.request_delete(window, cx)
+                        }
+                    }
                     _ => {}
                 }
             }))
-            .child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .justify_between()
-                    .child(div().text_sm().font_medium().child(title))
-                    .child(controls),
-            )
+            .child(div().text_sm().font_medium().child(title))
+            .when_some(self.rename_target, |root, _| {
+                root.child(
+                    div()
+                        .h_flex()
+                        .gap_2()
+                        .child(Input::new(&self.rename_input).w(px(260.)))
+                        .child(
+                            Button::new("preview-rename-commit")
+                                .label("Rename")
+                                .on_click(cx.listener(|this, _, _, cx| this.commit_rename(cx))),
+                        )
+                        .child(
+                            Button::new("preview-rename-cancel")
+                                .label("Cancel")
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.rename_target = None;
+                                    cx.notify();
+                                })),
+                        ),
+                )
+            })
+            .when_some(self.operation_status.as_ref(), |root, status| {
+                root.child(div().text_sm().child(status.clone()))
+            })
             .child(stage)
             .child(strip)
     }
@@ -425,4 +634,11 @@ impl Render for PreviewView {
 
 fn button(label: &'static str) -> Button {
     Button::new(format!("preview-{label}")).label(label)
+}
+
+fn clamp_toolbar_offset(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
+    const TOOLBAR_CONTENT_WIDTH: f32 = 920.0;
+    let max_x = ((width - TOOLBAR_CONTENT_WIDTH) / 2.0).max(0.0);
+    let min_y = -(height - 72.0).max(0.0);
+    (x.clamp(-max_x, max_x), y.clamp(min_y, 16.0))
 }

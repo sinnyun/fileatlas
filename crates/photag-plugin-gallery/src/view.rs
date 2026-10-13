@@ -14,7 +14,7 @@ use std::time::Duration;
 use std::{future::Future, path::PathBuf};
 
 use ::gpui::InteractiveElement as _;
-use ::gpui::StatefulInteractiveElement as _;
+use ::gpui::{ScrollStrategy, UniformListScrollHandle, uniform_list};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTime};
@@ -41,6 +41,56 @@ use crate::{
     filter::{GalleryFilter, MediaTypeFilter, SearchScope, parse_date_input},
     selection::{GallerySelection, Modifiers as SelectionModifiers},
 };
+
+fn writeback_failure_signature() -> Vec<(String, String)> {
+    photag_plugin_tagging::writeback::failures()
+        .into_iter()
+        .map(|failure| (failure.path.display().to_string(), failure.error))
+        .collect()
+}
+
+#[derive(Clone)]
+struct GalleryVisualRow {
+    media_range: std::ops::Range<usize>,
+    month_label: Option<String>,
+}
+
+fn build_gallery_rows(
+    skeletons: &[photag_plugin_database::db::queries::MediaSkeleton],
+    columns: usize,
+    group_by_month: bool,
+) -> Vec<GalleryVisualRow> {
+    let columns = columns.max(1);
+    let mut rows = Vec::new();
+    let mut start = 0;
+    let mut previous_month: Option<String> = None;
+    while start < skeletons.len() {
+        let month_at = |index: usize| {
+            chrono::DateTime::<chrono::Utc>::from_timestamp(skeletons[index].effective_date, 0)
+                .map(|date| date.format("%B %Y").to_string())
+        };
+        let month = group_by_month.then(|| month_at(start)).flatten();
+        let mut end = (start + columns).min(skeletons.len());
+        if group_by_month {
+            end = start + 1;
+            while end < skeletons.len() && end - start < columns && month_at(end) == month {
+                end += 1;
+            }
+        }
+        let month_label = if group_by_month && month.is_some() && month != previous_month {
+            month.clone()
+        } else {
+            None
+        };
+        rows.push(GalleryVisualRow {
+            media_range: start..end,
+            month_label,
+        });
+        previous_month = month;
+        start = end;
+    }
+    rows
+}
 
 pub(super) fn gallery(
     service: Arc<GalleryService>,
@@ -175,10 +225,14 @@ struct GalleryView {
     bulk_action: Option<BulkActionKind>,
     bulk_source: BulkActionSource,
     confirm_bulk_action: bool,
+    confirm_bulk_action_ids: Option<Vec<i64>>,
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
-    scroll: ScrollHandle,
+    scroll: UniformListScrollHandle,
+    columns: usize,
+    row_layout: Arc<Vec<GalleryVisualRow>>,
+    row_layout_key: Option<(usize, bool, SortOrder)>,
     thumb_size: f32,
     group_by_month: bool,
     drag_allowed: Arc<AtomicBool>,
@@ -186,6 +240,7 @@ struct GalleryView {
     show_exif: bool,
     exif_cache: Option<(i64, Result<Vec<(String, String)>, String>)>,
     operation_status: Option<String>,
+    writeback_failure_signature: Vec<(String, String)>,
     confirm_delete: bool,
     snapshot: Result<GallerySnapshot, String>,
     _subscriptions: Vec<Subscription>,
@@ -217,6 +272,11 @@ impl GalleryView {
     ) -> Self {
         let saved = session.snapshot().unwrap_or_default();
         let mut filter = GalleryFilter::default();
+        if let Some(settings) = &settings
+            && let Ok(settings_snapshot) = settings.snapshot()
+        {
+            filter.search_scopes = settings_snapshot.search_scopes.into();
+        }
         filter.search = saved.search_query.clone();
         filter.sort = saved.sort_order.unwrap_or(SortOrder::NewestFirst);
         filter.media_type = match saved.media_type_filter.unwrap_or(SavedMediaType::All) {
@@ -313,14 +373,22 @@ impl GalleryView {
                 .collect();
             selection.anchor_id = selection.selected_media_ids.first().copied();
         }
-        let scroll = ScrollHandle::new();
+        let scroll = UniformListScrollHandle::new();
         let restored_scroll = if saved.gallery_scroll.is_finite() {
             saved.gallery_scroll.max(0.)
         } else {
             0.
         };
-        scroll.set_offset(point(px(0.), px(-restored_scroll)));
+        scroll
+            .0
+            .borrow()
+            .base_handle
+            .set_offset(point(px(0.), px(-restored_scroll)));
         let scroll_for_monitor = scroll.clone();
+        let initial_writeback_failures = tagging
+            .as_ref()
+            .map(|_| writeback_failure_signature())
+            .unwrap_or_default();
         let mut last_saved_scroll = restored_scroll;
         cx.spawn(async move |this, cx| {
             loop {
@@ -360,7 +428,16 @@ impl GalleryView {
                             view.reload();
                             cx.notify();
                         }
-                        let current_scroll = (-f32::from(scroll_for_monitor.offset().y)).max(0.);
+                        if view.tagging.is_some() {
+                            let current = writeback_failure_signature();
+                            if current != view.writeback_failure_signature {
+                                view.writeback_failure_signature = current;
+                                cx.notify();
+                            }
+                        }
+                        let current_scroll =
+                            (-f32::from(scroll_for_monitor.0.borrow().base_handle.offset().y))
+                                .max(0.);
                         if (current_scroll - last_saved_scroll).abs() >= 1.0 {
                             view.persist_filter_session();
                             last_saved_scroll = current_scroll;
@@ -399,10 +476,14 @@ impl GalleryView {
             bulk_action: None,
             bulk_source: BulkActionSource::WholeLibrary,
             confirm_bulk_action: false,
+            confirm_bulk_action_ids: None,
             focus_handle,
             filter,
             selection,
             scroll,
+            columns: 4,
+            row_layout: Arc::new(Vec::new()),
+            row_layout_key: None,
             thumb_size: saved
                 .thumb_size
                 .filter(|size| size.is_finite() && (100.0..=300.0).contains(size))
@@ -413,6 +494,7 @@ impl GalleryView {
             show_exif: false,
             exif_cache: None,
             operation_status: None,
+            writeback_failure_signature: initial_writeback_failures,
             confirm_delete: false,
             snapshot,
             _subscriptions,
@@ -425,12 +507,20 @@ impl GalleryView {
             .service
             .load(self.filter.to_query())
             .map_err(|error| error.to_string());
+        self.row_layout = Arc::new(Vec::new());
+        self.row_layout_key = None;
         self.selection = GallerySelection::default();
-        self.scroll.set_offset(point(px(0.), px(0.)));
+        self.scroll
+            .0
+            .borrow()
+            .base_handle
+            .set_offset(point(px(0.), px(0.)));
         self.persist_filter_session();
         self.show_exif = false;
         self.exif_cache = None;
         self.confirm_delete = false;
+        self.confirm_bulk_action = false;
+        self.confirm_bulk_action_ids = None;
     }
 
     fn persist_filter_session(&self) {
@@ -462,7 +552,7 @@ impl GalleryView {
         saved.selected_tag_ids = self.filter.selected_tag_ids.clone();
         saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
         saved.selected_media_ids = self.selection.selected_media_ids.clone();
-        saved.gallery_scroll = (-f32::from(self.scroll.offset().y)).max(0.);
+        saved.gallery_scroll = (-f32::from(self.scroll.0.borrow().base_handle.offset().y)).max(0.);
         saved.thumb_size = Some(self.thumb_size.clamp(100., 300.));
         saved.group_by_month = Some(self.group_by_month);
         let _ = self.session.replace(saved);
@@ -592,12 +682,12 @@ impl GalleryView {
                             .map(|item| item.id)
                             .collect::<Vec<_>>();
                         self.service
-                            .media_paths_by_ids(&image_ids)
+                            .media_path_pairs_by_ids(&image_ids)
                             .unwrap_or_default()
                     })
                     .unwrap_or_default();
-                self.preview.set_filmstrip(filmstrip);
-                match self.preview.open(media.full_path) {
+                self.preview.set_filmstrip_media(filmstrip);
+                match self.preview.open_media(media.full_path, Some(media_id)) {
                     Ok(()) => self.operation_status = Some("Image preview opened.".into()),
                     Err(error) => self.operation_status = Some(error.to_string()),
                 }
@@ -669,6 +759,14 @@ impl GalleryView {
 
     fn toggle_search_scope(&mut self, scope: SearchScope, cx: &mut Context<Self>) {
         self.filter.toggle_search_scope(scope);
+        if let Some(settings) = &self.settings {
+            let scopes = self.filter.search_scopes;
+            if let Err(error) = settings.update(|preferences| {
+                preferences.search_scopes = scopes.into();
+            }) {
+                self.operation_status = Some(format!("Couldn't save search scope: {error}"));
+            }
+        }
         self.reload();
         cx.notify();
     }
@@ -703,66 +801,42 @@ impl GalleryView {
         cx.notify();
     }
 
-    fn load_more(&mut self) {
-        let offset = match &self.snapshot {
-            Ok(snapshot) => snapshot.media.len(),
-            Err(_) => return,
-        };
-        match self.service.load_page(self.filter.to_query(), offset) {
-            Ok(page) => {
-                if let Ok(snapshot) = &mut self.snapshot {
-                    snapshot.media.extend(page.media);
-                    snapshot.media_tags.extend(page.media_tags);
-                }
-            }
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-    }
-
     pub(super) fn scroll_to_gallery_item(&self, index: usize) {
-        let headers_before_target = if self.group_by_month
-            && matches!(
-                self.filter.sort,
-                SortOrder::NewestFirst | SortOrder::OldestFirst
-            ) {
-            self.snapshot
-                .as_ref()
-                .map(|snapshot| {
-                    let mut previous = None;
-                    snapshot
-                        .media
-                        .iter()
-                        .take(index)
-                        .filter_map(|media| {
-                            snapshot
-                                .skeletons
-                                .iter()
-                                .find(|item| item.id == media.id)
-                                .and_then(|item| {
-                                    chrono::DateTime::<chrono::Utc>::from_timestamp(
-                                        item.effective_date,
-                                        0,
-                                    )
-                                })
-                                .map(|date| date.format("%B %Y").to_string())
-                        })
-                        .filter(|month| {
-                            let changed = previous.as_ref() != Some(month);
-                            previous = Some(month.clone());
-                            changed
-                        })
-                        .count()
-                })
-                .unwrap_or(0)
-        } else {
-            0
-        };
-        self.scroll.scroll_to_item(index + headers_before_target);
+        let row_index = self
+            .row_layout
+            .iter()
+            .position(|row| row.media_range.contains(&index))
+            .unwrap_or(index / self.columns.max(1));
+        self.scroll
+            .scroll_to_item(row_index, ScrollStrategy::Nearest);
     }
 }
 
 impl Render for GalleryView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let columns = ((f32::from(window.bounds().size.width) - 24.) / (self.thumb_size + 44.))
+            .floor()
+            .clamp(1., 4.) as usize;
+        self.columns = columns;
+        let group_by_month = self.group_by_month
+            && matches!(
+                self.filter.sort,
+                SortOrder::NewestFirst | SortOrder::OldestFirst
+            );
+        let row_layout_key = (columns, group_by_month, self.filter.sort);
+        if self.row_layout_key != Some(row_layout_key) {
+            self.row_layout = Arc::new(
+                self.snapshot
+                    .as_ref()
+                    .map(|snapshot| {
+                        build_gallery_rows(&snapshot.skeletons, columns, group_by_month)
+                    })
+                    .unwrap_or_default(),
+            );
+            self.row_layout_key = Some(row_layout_key);
+        }
+        let row_layout = Arc::clone(&self.row_layout);
+        let row_count = row_layout.len();
         let tag_picker = if self.tagging.is_some() && !self.selection.selected_media_ids.is_empty()
         {
             Some(tagging_picker::render(self, cx))
@@ -771,62 +845,9 @@ impl Render for GalleryView {
         };
         match &self.snapshot {
             Ok(snapshot) => {
-                let mut media_cards: Vec<AnyElement> = Vec::with_capacity(snapshot.media.len());
-                let selected_drag_paths = if self.selection.selected_media_ids.is_empty() {
-                    Vec::new()
-                } else {
-                    self.service
-                        .media_paths_by_ids(&self.selection.selected_media_ids)
-                        .unwrap_or_default()
-                };
-                let mut previous_month = None;
-                for media in &snapshot.media {
-                    let month = snapshot
-                        .skeletons
-                        .iter()
-                        .find(|item| item.id == media.id)
-                        .and_then(|item| {
-                            chrono::DateTime::<chrono::Utc>::from_timestamp(item.effective_date, 0)
-                        })
-                        .map(|date| date.format("%B %Y").to_string());
-                    let date_sort = matches!(
-                        self.filter.sort,
-                        SortOrder::NewestFirst | SortOrder::OldestFirst
-                    );
-                    if self.group_by_month && date_sort && month != previous_month {
-                        if let Some(label) = &month {
-                            media_cards.push(
-                                div()
-                                    .w_full()
-                                    .pt_2()
-                                    .text_sm()
-                                    .font_semibold()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(label.clone())
-                                    .into_any_element(),
-                            );
-                        }
-                    }
-                    previous_month = month;
-                    let selected = self.selection.selected_media_ids.contains(&media.id);
-                    let drag_paths = if selected && !selected_drag_paths.is_empty() {
-                        selected_drag_paths.clone()
-                    } else {
-                        vec![PathBuf::from(media.full_path.as_str())]
-                    };
-                    media_cards.push(
-                        render_media_card(
-                            media,
-                            selected,
-                            Arc::clone(&self.drag_drop),
-                            drag_paths,
-                            Arc::clone(&self.drag_allowed),
-                            self.thumb_size,
-                            cx,
-                        )
-                        .into_any_element(),
-                    );
-                }
+                let list_scroll = self.scroll.clone();
+                let card_size = self.thumb_size;
+                let row_layout = Arc::clone(&row_layout);
                 let mut grid = div()
                     .id("gallery-grid-root")
                     .track_focus(&self.focus_handle)
@@ -941,37 +962,195 @@ impl Render for GalleryView {
                             .child(status.clone()),
                     );
                 }
+                if self.tagging.is_some() {
+                    for failure in photag_plugin_tagging::writeback::failures() {
+                        let path = failure.path.clone();
+                        let label = failure
+                            .path
+                            .file_name()
+                            .and_then(|name| name.to_str())
+                            .unwrap_or("media")
+                            .to_string();
+                        grid = grid.child(
+                            div()
+                                .h_flex()
+                                .items_center()
+                                .justify_between()
+                                .gap_2()
+                                .rounded_md()
+                                .bg(rgb(theme::SURFACE_FAINT))
+                                .p_2()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .text_sm()
+                                        .text_color(rgb(theme::TEXT_SECONDARY))
+                                        .child(format!(
+                                            "Tag metadata writeback failed for {label}: {}",
+                                            failure.error
+                                        )),
+                                )
+                                .child(
+                                    Button::new(format!(
+                                        "gallery-clear-writeback-{}",
+                                        failure.path.display()
+                                    ))
+                                    .label("Dismiss")
+                                    .on_click(cx.listener(
+                                        move |_, _, _, cx| {
+                                            photag_plugin_tagging::writeback::clear_failure(&path);
+                                            cx.notify();
+                                        },
+                                    )),
+                                ),
+                        );
+                    }
+                }
                 grid = grid.child(div().h_1().w_full().bg(rgb(theme::SURFACE_FAINT)));
                 grid = grid.child(
                     div()
-                        .id("gallery-media-scroll")
-                        .h_flex()
-                        .flex_wrap()
                         .flex_1()
-                        .content_start()
-                        .gap_3()
-                        .overflow_y_scroll()
-                        .track_scroll(&self.scroll)
-                        .overflow_y_scroll()
-                        .vertical_scrollbar(&self.scroll)
-                        .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
-                            let delta = f32::from(event.delta.pixel_delta(px(40.)).y);
-                            let current = (-f32::from(this.scroll.offset().y)).max(0.);
-                            let count = this
-                                .snapshot
-                                .as_ref()
-                                .map(|snapshot| snapshot.media.len())
-                                .unwrap_or(0);
-                            let columns = 4usize;
-                            let loaded_height =
-                                (count.div_ceil(columns) as f32) * (this.thumb_size + 76.);
-                            if delta < 0. && current >= loaded_height - (this.thumb_size + 76.) * 2.
-                            {
-                                this.load_more();
-                                cx.notify();
-                            }
-                        }))
-                        .children(media_cards),
+                        .relative()
+                        .child(
+                            uniform_list(
+                                "gallery-media-rows",
+                                row_count,
+                                cx.processor(
+                                    move |this, range: std::ops::Range<usize>, _window, cx| {
+                                        let mut rows = Vec::with_capacity(range.len());
+                                        let requested_start = row_layout
+                                            .get(range.start)
+                                            .map(|row| row.media_range.start)
+                                            .unwrap_or(0);
+                                        let requested_end = range
+                                            .end
+                                            .checked_sub(1)
+                                            .and_then(|row| row_layout.get(row))
+                                            .map(|row| row.media_range.end)
+                                            .unwrap_or(requested_start);
+                                        let window_range = requested_start
+                                            .saturating_sub(columns * 2)
+                                            ..requested_end.saturating_add(columns * 2);
+                                        let shifted_window = match &this.snapshot {
+                                            Ok(snapshot) => {
+                                                this.service.ensure_window(snapshot, window_range)
+                                            }
+                                            Err(_) => Ok(None),
+                                        };
+                                        match shifted_window {
+                                            Ok(Some(window)) => {
+                                                if let Ok(snapshot) = &mut this.snapshot {
+                                                    snapshot.window_offset = window.offset;
+                                                    snapshot.media = window.media;
+                                                    snapshot.media_tags = window.media_tags;
+                                                }
+                                            }
+                                            Ok(None) => {}
+                                            Err(error) => this.snapshot = Err(error.to_string()),
+                                        }
+                                        if let Ok(snapshot) = &this.snapshot {
+                                            let selected_drag_paths =
+                                                if this.selection.selected_media_ids.is_empty() {
+                                                    Vec::new()
+                                                } else {
+                                                    this.service
+                                                        .media_paths_by_ids(
+                                                            &this.selection.selected_media_ids,
+                                                        )
+                                                        .unwrap_or_default()
+                                                };
+                                            for row_index in range {
+                                                let Some(layout_row) = row_layout.get(row_index)
+                                                else {
+                                                    continue;
+                                                };
+                                                let first = layout_row.media_range.start;
+                                                let end = layout_row.media_range.end;
+                                                let month_label = layout_row.month_label.clone();
+                                                let mut cards = Vec::with_capacity(end - first);
+                                                for skeleton in &snapshot.skeletons[first..end] {
+                                                    if let Some(media) = snapshot
+                                                        .media
+                                                        .iter()
+                                                        .find(|item| item.id == skeleton.id)
+                                                    {
+                                                        let selected = this
+                                                            .selection
+                                                            .selected_media_ids
+                                                            .contains(&media.id);
+                                                        let rating_target_ids = if selected {
+                                                            this.selection
+                                                                .selected_media_ids
+                                                                .clone()
+                                                        } else {
+                                                            vec![media.id]
+                                                        };
+                                                        let drag_paths = if selected
+                                                            && !selected_drag_paths.is_empty()
+                                                        {
+                                                            selected_drag_paths.clone()
+                                                        } else {
+                                                            vec![PathBuf::from(
+                                                                media.full_path.as_str(),
+                                                            )]
+                                                        };
+                                                        cards.push(
+                                                            render_media_card(
+                                                                media,
+                                                                selected,
+                                                                Arc::clone(&this.drag_drop),
+                                                                drag_paths,
+                                                                Arc::clone(&this.drag_allowed),
+                                                                card_size,
+                                                                media.micro_thumb.as_deref(),
+                                                                rating_target_ids,
+                                                                cx,
+                                                            )
+                                                            .into_any_element(),
+                                                        );
+                                                    } else {
+                                                        cards.push(
+                                                            div()
+                                                                .w(px(card_size + 32.))
+                                                                .h(px(card_size + 64.))
+                                                                .rounded_md()
+                                                                .bg(rgb(theme::SURFACE_PANEL))
+                                                                .into_any_element(),
+                                                        );
+                                                    }
+                                                }
+                                                let header = month_label
+                                                    .map(|label| {
+                                                        div()
+                                                            .h(px(20.))
+                                                            .text_sm()
+                                                            .font_semibold()
+                                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                                            .child(label)
+                                                    })
+                                                    .unwrap_or_else(|| div().h(px(20.)));
+                                                rows.push(
+                                                    div()
+                                                        .id(format!("gallery-row-{row_index}"))
+                                                        .v_flex()
+                                                        .w_full()
+                                                        .h(px(card_size + 92.))
+                                                        .gap_2()
+                                                        .child(header)
+                                                        .child(
+                                                            div().h_flex().gap_3().children(cards),
+                                                        ),
+                                                );
+                                            }
+                                        }
+                                        rows
+                                    },
+                                ),
+                            )
+                            .track_scroll(&list_scroll)
+                            .size_full(),
+                        )
+                        .vertical_scrollbar(&list_scroll),
                 );
                 if snapshot.media.is_empty() {
                     grid = grid.child(
@@ -1108,20 +1287,6 @@ impl Render for GalleryView {
                             cx,
                         ));
                     }
-                }
-                if (snapshot.media.len() as i64) < snapshot.media_count {
-                    grid = grid.child(
-                        Button::new("gallery-load-more")
-                            .label(format!(
-                                "Load more ({} of {})",
-                                snapshot.media.len(),
-                                snapshot.media_count
-                            ))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.load_more();
-                                cx.notify();
-                            })),
-                    );
                 }
                 grid.into_any_element()
             }

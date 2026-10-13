@@ -4,6 +4,7 @@
 //! follows that rule: transformed rasters are materialized under a cache directory and the
 //! original path remains the identity used by callers.
 
+mod ai_suggestions;
 mod info;
 mod view;
 
@@ -14,7 +15,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
 use cordis::{Context, Plugin, Service};
+use photag_plugin_ai::AiService;
+use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_history::HistoryService;
 use photag_plugin_session::SessionService;
+use photag_plugin_settings::SettingsService;
+use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
 };
@@ -25,6 +31,8 @@ pub use view::preview_view;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreviewSnapshot {
     pub source: Option<PathBuf>,
+    /// Database identity when opened by a caller that has an indexed media row.
+    pub media_id: Option<i64>,
     /// Clockwise quarter-turn count, normalized to 0..=3.
     pub quarter_turns: u8,
     pub flip_horizontal: bool,
@@ -47,6 +55,7 @@ impl Default for PreviewSnapshot {
     fn default() -> Self {
         Self {
             source: None,
+            media_id: None,
             quarter_turns: 0,
             flip_horizontal: false,
             flip_vertical: false,
@@ -68,6 +77,7 @@ pub struct PreviewService {
     cache_dir: PathBuf,
     session: Option<Arc<SessionService>>,
     filmstrip: Mutex<Vec<PathBuf>>,
+    filmstrip_media_ids: Mutex<std::collections::HashMap<PathBuf, i64>>,
     decode_queue: Arc<DecodeQueue>,
     pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32)>>>,
     decode_revision: Arc<AtomicU64>,
@@ -167,6 +177,7 @@ impl PreviewService {
             cache_dir,
             session: None,
             filmstrip: Mutex::new(Vec::new()),
+            filmstrip_media_ids: Mutex::new(std::collections::HashMap::new()),
             decode_queue,
             pending_decodes,
             decode_revision,
@@ -204,12 +215,22 @@ impl PreviewService {
     }
 
     pub fn open(&self, path: impl Into<PathBuf>) -> Result<(), PreviewError> {
+        self.open_media(path, None)
+    }
+
+    /// Open a preview with its indexed media identity for detail and AI consumers.
+    pub fn open_media(
+        &self,
+        path: impl Into<PathBuf>,
+        media_id: Option<i64>,
+    ) -> Result<(), PreviewError> {
         let path = path.into();
         if !path.is_file() {
             return Err(PreviewError::MissingSource(path));
         }
         let mut state = self.state.lock().map_err(|_| PreviewError::StatePoisoned)?;
         state.source = Some(path.clone());
+        state.media_id = media_id;
         state.quarter_turns = 0;
         state.flip_horizontal = false;
         state.flip_vertical = false;
@@ -220,7 +241,9 @@ impl PreviewService {
         state.pan_y = 0.0;
         state.revision = state.revision.wrapping_add(1);
         drop(state);
+        self.restore_preview_transform(&path);
         self.save_preview_path(Some(path));
+        self.save_preview_transform();
         if let Some(source) = self.snapshot().source {
             self.prewarm_image(&source, 1600);
             let paths = self.filmstrip();
@@ -240,6 +263,9 @@ impl PreviewService {
     /// Only a small neighborhood is decoded ahead, so filtered libraries do not fan out work.
     pub fn set_filmstrip(&self, paths: impl IntoIterator<Item = PathBuf>) {
         let paths: Vec<_> = paths.into_iter().filter(|path| path.is_file()).collect();
+        if let Ok(mut ids) = self.filmstrip_media_ids.lock() {
+            ids.retain(|path, _| paths.contains(path));
+        }
         if let Ok(mut strip) = self.filmstrip.lock() {
             *strip = paths.clone();
         }
@@ -251,6 +277,66 @@ impl PreviewService {
                 self.prewarm_image(path, 96);
             }
         }
+    }
+
+    /// Set ordered filmstrip paths with their indexed row IDs for preview actions/navigation.
+    pub fn set_filmstrip_media(&self, items: impl IntoIterator<Item = (PathBuf, i64)>) {
+        let items: Vec<_> = items
+            .into_iter()
+            .filter(|(path, _)| path.is_file())
+            .collect();
+        if let Ok(mut ids) = self.filmstrip_media_ids.lock() {
+            *ids = items.iter().cloned().collect();
+        }
+        self.set_filmstrip(items.into_iter().map(|(path, _)| path));
+    }
+
+    /// Return the filmstrip together with IDs, when supplied by an indexed caller.
+    pub fn filmstrip_items(&self) -> Vec<(PathBuf, Option<i64>)> {
+        let ids = self
+            .filmstrip_media_ids
+            .lock()
+            .map(|ids| ids.clone())
+            .unwrap_or_default();
+        self.filmstrip()
+            .into_iter()
+            .map(|path| {
+                let media_id = ids.get(&path).copied();
+                (path, media_id)
+            })
+            .collect()
+    }
+
+    /// Keep the active filmstrip coherent after an indexed rename.
+    pub fn replace_filmstrip_path(&self, old: &std::path::Path, new: PathBuf, media_id: i64) {
+        if let Ok(mut paths) = self.filmstrip.lock() {
+            for path in paths.iter_mut() {
+                if path == old {
+                    *path = new.clone();
+                }
+            }
+        }
+        if let Ok(mut ids) = self.filmstrip_media_ids.lock() {
+            let had_identity = ids.remove(old).is_some();
+            if had_identity {
+                ids.insert(new, media_id);
+            }
+        }
+    }
+
+    /// Replace a renamed source path without resetting its view transforms or indexed identity.
+    pub fn replace_media_path(&self, old: &std::path::Path, new: PathBuf, media_id: i64) {
+        self.replace_filmstrip_path(old, new.clone(), media_id);
+        if let Ok(mut state) = self.state.lock() {
+            if state.source.as_deref() == Some(old) && state.media_id == Some(media_id) {
+                state.source = Some(new.clone());
+                state.revision = state.revision.wrapping_add(1);
+            }
+        }
+        self.save_preview_path(Some(new.clone()));
+        self.save_preview_transform();
+        self.prewarm_image(&new, 1600);
+        self.prewarm_image(&new, 96);
     }
 
     pub fn filmstrip(&self) -> Vec<PathBuf> {
@@ -273,7 +359,12 @@ impl PreviewService {
         if next == index {
             return false;
         }
-        self.open(paths[next].clone()).is_ok()
+        let media_id = self
+            .filmstrip_media_ids
+            .lock()
+            .ok()
+            .and_then(|ids| ids.get(&paths[next]).copied());
+        self.open_media(paths[next].clone(), media_id).is_ok()
     }
 
     /// Return a brief low-resolution first frame while the native image element starts
@@ -326,6 +417,7 @@ impl PreviewService {
     pub fn close(&self) {
         if let Ok(mut s) = self.state.lock() {
             s.source = None;
+            s.media_id = None;
             s.revision = s.revision.wrapping_add(1);
         }
         self.save_preview_path(None);
@@ -447,6 +539,61 @@ impl PreviewService {
             update(&mut state);
             state.revision = state.revision.wrapping_add(1);
         }
+        self.save_preview_transform();
+    }
+
+    fn restore_preview_transform(&self, path: &std::path::Path) {
+        let Some(session) = &self.session else { return };
+        let Ok(saved) = session.snapshot() else {
+            return;
+        };
+        let source_path = path.to_string_lossy().into_owned();
+        if saved.preview_path.as_deref() != Some(source_path.as_str()) {
+            return;
+        }
+        if let Ok(mut state) = self.state.lock() {
+            state.quarter_turns = saved.preview_quarter_turns.unwrap_or(0).min(3);
+            state.flip_horizontal = saved.preview_flip_horizontal.unwrap_or(false);
+            state.flip_vertical = saved.preview_flip_vertical.unwrap_or(false);
+            state.fit_to_window = saved.preview_fit_to_window.unwrap_or(true);
+            state.zoom_scale = saved
+                .preview_zoom_scale
+                .filter(|v| v.is_finite())
+                .unwrap_or(1.0)
+                .clamp(0.05, 16.0);
+            state.zoom_percent = (state.zoom_scale * 100.0).round() as u16;
+            state.pan_x = saved.preview_pan_x.filter(|v| v.is_finite()).unwrap_or(0.0);
+            state.pan_y = saved.preview_pan_y.filter(|v| v.is_finite()).unwrap_or(0.0);
+            state.zoom_at_cursor = saved.preview_zoom_at_cursor.unwrap_or(false);
+            state.show_info = saved.preview_show_info.unwrap_or(false);
+        }
+    }
+
+    fn save_preview_transform(&self) {
+        let Some(session) = &self.session else { return };
+        let state = self.snapshot();
+        let Ok(mut saved) = session.snapshot() else {
+            return;
+        };
+        let current_path = state
+            .source
+            .as_deref()
+            .map(|p| p.to_string_lossy().into_owned());
+        if saved.preview_path != current_path {
+            return;
+        }
+        saved.preview_quarter_turns = Some(state.quarter_turns);
+        saved.preview_flip_horizontal = Some(state.flip_horizontal);
+        saved.preview_flip_vertical = Some(state.flip_vertical);
+        saved.preview_fit_to_window = Some(state.fit_to_window);
+        saved.preview_zoom_scale = Some(state.zoom_scale);
+        saved.preview_pan_x = Some(state.pan_x);
+        saved.preview_pan_y = Some(state.pan_y);
+        saved.preview_zoom_at_cursor = Some(state.zoom_at_cursor);
+        saved.preview_show_info = Some(state.show_info);
+        if let Err(error) = session.replace(saved) {
+            eprintln!("preview transform session save failed: {error}");
+        }
     }
 
     fn save_preview_path(&self, path: Option<PathBuf>) {
@@ -476,6 +623,8 @@ pub enum PreviewError {
     Publish(String),
     #[error("session service is unavailable")]
     SessionUnavailable,
+    #[error("required preview integration service is unavailable: {0}")]
+    IntegrationServiceUnavailable(&'static str),
     #[error("could not register preview UI: {0}")]
     Ui(String),
 }
@@ -502,6 +651,23 @@ impl Plugin for PreviewPlugin {
         let session = context
             .try_service::<SessionService>()
             .map_err(|_| PreviewError::SessionUnavailable)?;
+        let ai = context
+            .try_service::<AiService>()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/ai"))?;
+        let settings = context
+            .try_service::<SettingsService>()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/settings"))?;
+        let tagging = context
+            .try_service::<TaggingService>()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/tagging"))?;
+        let history = context
+            .try_service::<HistoryService>()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/history"))?;
+        let file_operations = context
+            .try_service::<FileOperationsService>()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/file-operations"))?;
+        let runtime = tokio::runtime::Handle::try_current()
+            .map_err(|_| PreviewError::IntegrationServiceUnavailable("tokio runtime"))?;
         let service = Arc::new(PreviewService::open_with_session_at(directory, session)?);
         let _publication = context
             .provide(Arc::clone(&service))
@@ -509,20 +675,38 @@ impl Plugin for PreviewPlugin {
         register_for_plugin(
             &context,
             "photag.preview",
-            [UiContribution::new(
-                "preview/image",
-                ContributionKind::Panel {
-                    label: "Image preview".into(),
-                    slot: "workspace.main".into(),
-                    order: 0,
-                },
-            )],
+            [
+                UiContribution::new(
+                    "preview/image",
+                    ContributionKind::Panel {
+                        label: "Image preview".into(),
+                        slot: "workspace.main".into(),
+                        order: 0,
+                    },
+                ),
+                UiContribution::new(
+                    "preview/ai-suggestions",
+                    ContributionKind::Panel {
+                        label: "AI tag suggestions".into(),
+                        slot: "workspace.main".into(),
+                        order: 1,
+                    },
+                ),
+            ],
         )
         .map_err(|error| PreviewError::Ui(error.to_string()))?;
         register_views_for_plugin(
             &context,
             "photag.preview",
-            [preview_view(Arc::clone(&service))],
+            [
+                preview_view(
+                    Arc::clone(&service),
+                    Arc::clone(&settings),
+                    file_operations,
+                    runtime,
+                ),
+                ai_suggestions::view(service, ai, settings, tagging, history),
+            ],
         )
         .map_err(|error| PreviewError::Ui(error.to_string()))
     }

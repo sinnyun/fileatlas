@@ -7,6 +7,7 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Tag};
 use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
 
+pub mod writeback;
 pub mod xmp;
 
 pub struct TaggingService {
@@ -43,6 +44,29 @@ impl TaggingService {
             .with_writer(|connection| queries::remove_all_tags(connection, media_ids))?;
         self.schedule_xmp_sync(media_ids);
         Ok(())
+    }
+
+    /// Create missing AI suggestion tags beneath PhoTag's source-compatible
+    /// `AI Suggested` group and assign all requested labels to one item.
+    pub fn apply_ai_suggestions(
+        &self,
+        media_id: i64,
+        labels: &[String],
+    ) -> Result<Vec<i64>, TaggingError> {
+        let tag_ids = self.database.with_writer(|connection| {
+            let parent = queries::find_or_create_tag(connection, "AI Suggested");
+            let mut ids = std::collections::BTreeSet::new();
+            for label in labels {
+                if let Some(id) = queries::find_tag_by_name(connection, label) {
+                    ids.insert(id);
+                } else if let Ok(tag) = queries::create_tag(connection, label, parent) {
+                    ids.insert(tag.id);
+                }
+            }
+            Ok::<_, rusqlite::Error>(ids.into_iter().collect::<Vec<_>>())
+        })?;
+        self.assign(&[media_id], &tag_ids)?;
+        Ok(tag_ids)
     }
 
     pub fn for_media(&self, media_id: i64) -> Result<Vec<Tag>, TaggingError> {
@@ -108,20 +132,9 @@ impl TaggingService {
         if media_ids.is_empty() {
             return;
         }
-        let Ok(entries) = self
-            .database
-            .with_reader(|connection| queries::get_paths_and_current_tags(connection, media_ids))
-        else {
-            return;
-        };
-        if entries.is_empty() {
-            return;
+        if let Err(error) = writeback::schedule(&self.database, media_ids) {
+            eprintln!("tag metadata writeback could not be scheduled: {error}");
         }
-        std::thread::spawn(move || {
-            for (path, tags) in entries {
-                let _ = xmp::write_metadata(&path, &tags);
-            }
-        });
     }
 }
 

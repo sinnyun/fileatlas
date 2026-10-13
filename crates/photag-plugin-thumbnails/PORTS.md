@@ -12,6 +12,7 @@ Status: original image thumbnail pipeline is wrapped as a service and cache reus
 - Request: `generate_image(source: AsRef<Path>)`.
 - Result: `Option<(cache_path: String, width: u32, height: u32, micro_thumb: Option<Vec<u8>>)>`; `None` means generation could not produce an image result. A cache hit reports `(0, 0)` dimensions per the retained implementation and may still return micro-thumbnail bytes.
 - `directory()` returns the cache root. Cache filenames and image processing remain source-compatible with PhoTag.
+- The returned `micro_thumb` is an 8×8 RGB byte array (192 bytes) on the generation path; Gallery uses it as a low-resolution placeholder while GPUI loads the cached JPEG. Existing database cache hits may return no micro data if no stored blob exists.
 
 ## Consumers and debugging
 

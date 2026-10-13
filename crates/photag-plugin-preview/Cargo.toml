@@ -10,10 +10,17 @@ cordis.workspace = true
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-session = { path = "../photag-plugin-session" }
+photag-plugin-ai = { path = "../photag-plugin-ai" }
+photag-plugin-settings = { path = "../photag-plugin-settings" }
+photag-plugin-tagging = { path = "../photag-plugin-tagging" }
+photag-plugin-history = { path = "../photag-plugin-history" }
+photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
+tokio.workspace = true
 image = "0.25"
 thiserror = "2"
 chrono = "0.4"
 kamadak-exif = "0.6.1"
+serde_json.workspace = true
 
 [lints]
 workspace = true

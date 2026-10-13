@@ -295,3 +295,28 @@ The shell provider-order audit found that Gallery was started before MediaPlayba
 | Tests | Not run | Per the repository's code-generation pass restriction. |
 | Windows user-interface, model download/inference, updater replacement/restart, audio device, Explorer and Recycle Bin behavior | Unverified | These require interactive Windows validation and representative media/user-library fixtures. |
 
+
+## Parallel remaining-feature migration and consolidation (2026-10-13)
+
+Ten feature work packages were developed by subagents, followed by a separate
+consolidation and repair pass. The pass advances Gallery viewport virtualization,
+micro-thumbnail rendering, Preview transforms/session state and host actions,
+AI suggestion application/history, tag drag/drop and writeback error feedback,
+Settings search-scope and toolbar persistence, export status handling, theme
+tokens, and bulk-action behavior. Source audit entries were updated to retain
+the remaining parity limits.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update --offline` | Passed | Reconciled workspace package dependency edges after Preview began depending on AI, Settings, Tagging, History, and File Operations. No packages changed versions. |
+| Initial `cargo +1.97.1 fmt --all -- --check` | Failed, then corrected | Reported formatting in the concurrent feature edits. Formatting was corrected by the owning agents. |
+| Final `cargo +1.97.1 fmt --all -- --check` | Passed | Workspace formatting check after the consolidation pass. |
+| Initial `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Failed, then corrected | First required lockfile reconciliation. Subsequent compiler diagnostics found GPUI drag/drop trait/stateful-ID/type annotations, Preview fluent-builder imports and asynchronous callback captures, Gallery uniform-list scrolling, disabled-button trait scope, and render-image frame construction. Owning agents fixed them. |
+| Final `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows MSVC shell dependency graph compiled successfully with the integrated feature changes. |
+| Plugin/workspace tests | Not run | Per repository instructions, tests remain reserved for a separate concentrated debugging pass. |
+| Windows visual, shell, media, and filesystem behavior | Unverified | The compile does not validate UI interactions, model download/runtime inference, native dialogs, OLE, Recycle Bin, real-media metadata, or filesystem races. |
+
+Rubber-band selection remains incomplete because GPUI's current virtual-list
+callbacks do not provide stable per-card bounds mapped to scrolled media IDs.
+Full source card/preview context menus, non-image Preview, and several Windows
+visual/native behaviors also remain incomplete or unverified.

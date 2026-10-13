@@ -247,6 +247,12 @@ impl FileOperationsService {
         Ok(result)
     }
 
+    /// Read an indexed media row after an operation returns an error. Event
+    /// delivery can fail after the filesystem and database mutation committed.
+    pub fn media_by_id(&self, media_id: i64) -> Result<Option<MediaItem>, FileOperationError> {
+        self.media(media_id)
+    }
+
     /// Bulk delete follows PhoTag's best-effort contract: trash every
     /// available path, clean thumbnails, remove indexed rows and emit one
     /// refresh event. A broken item does not stop the rest of the batch.
@@ -390,7 +396,14 @@ impl FileOperationsService {
         }
         let folder_id = self.folder_for_path(&dest)?;
         self.database.with_writer(|connection| {
-            queries::update_media_path(connection, media_id, &item.filename, &dest, folder_id)
+            if folder_id.is_some() {
+                queries::update_media_path(connection, media_id, &item.filename, &dest, folder_id)
+            } else {
+                // PhoTag removes the indexed row when a bulk move leaves all
+                // registered library roots. Keep the moved file on disk, but
+                // stop presenting it as library media.
+                queries::delete_media(connection, media_id)
+            }
         })?;
         Ok(true)
     }

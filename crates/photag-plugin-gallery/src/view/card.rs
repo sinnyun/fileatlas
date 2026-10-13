@@ -2,6 +2,7 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
 use photag_plugin_drag_drop::DragDropService;
 use photag_ui_bridge::theme;
@@ -18,6 +19,8 @@ pub(super) fn render_media_card(
     drag_paths: Vec<PathBuf>,
     drag_allowed: Arc<AtomicBool>,
     thumb_size: f32,
+    micro_thumb: Option<&[u8]>,
+    rating_target_ids: Vec<i64>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
@@ -44,34 +47,78 @@ pub(super) fn render_media_card(
             rgb(theme::SURFACE_PANEL)
         })
         .p_2();
+    let thumb_height = thumb_size - 35.;
+    let mut thumbnail = div().relative().w_full().h(px(thumb_height));
+    let micro_image = micro_thumb.and_then(micro_render_image);
+    if let Some(image) = micro_image.clone() {
+        thumbnail = thumbnail.child(
+            img(image)
+                .absolute()
+                .top(px(0.))
+                .left(px(0.))
+                .right(px(0.))
+                .bottom(px(0.))
+                .object_fit(ObjectFit::Cover),
+        );
+    }
     if let Some(path) = media.thumb_path.as_ref() {
-        card = card.child(
+        thumbnail = thumbnail.child(
             img(std::path::PathBuf::from(path))
-                .w_full()
-                .h(px(thumb_size - 35.))
+                .absolute()
+                .top(px(0.))
+                .left(px(0.))
+                .right(px(0.))
+                .bottom(px(0.))
                 .object_fit(ObjectFit::Cover)
                 .with_fallback(move || {
                     div()
-                        .w_full()
-                        .h(px(thumb_size - 35.))
-                        .bg(rgb(theme::SURFACE_PANEL))
+                        .absolute()
+                        .top(px(0.))
+                        .left(px(0.))
+                        .right(px(0.))
+                        .bottom(px(0.))
                         .into_any_element()
                 }),
         );
-    } else {
-        card = card.child(
-            div()
-                .w_full()
-                .h(px(thumb_size - 35.))
-                .rounded_sm()
-                .bg(rgb(theme::SURFACE_PANEL))
-                .items_center()
-                .justify_center()
-                .text_xs()
-                .text_color(rgb(theme::TEXT_MUTED))
-                .child(media.media_type.to_uppercase()),
-        );
+    } else if micro_image.is_none() {
+        thumbnail = thumbnail
+            .items_center()
+            .justify_center()
+            .text_xs()
+            .text_color(rgb(theme::TEXT_MUTED))
+            .bg(rgb(theme::SURFACE_PANEL))
+            .child(media.media_type.to_uppercase());
     }
+    let menu_view = cx.entity().downgrade();
+    let menu = Button::new(format!("gallery-card-actions-{media_id}"))
+        .label("⋯")
+        .dropdown_menu(move |mut menu, _, _| {
+            let preview_view = menu_view.clone();
+            menu = menu.item(PopupMenuItem::new("Preview").on_click(move |_, _, cx| {
+                let _ = preview_view.update(cx, |this, cx| {
+                    this.preview_media(media_id, cx);
+                });
+            }));
+            menu = menu.item(PopupMenuItem::separator());
+            for rating in 0..=5 {
+                let rating_view = menu_view.clone();
+                let rating_target_ids = rating_target_ids.clone();
+                let label = if rating == 0 {
+                    "No rating".to_string()
+                } else {
+                    format!("Rate {rating}★")
+                };
+                menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
+                    let _ = rating_view.update(cx, |this, cx| {
+                        this.apply_rating_to(&rating_target_ids, rating);
+                        cx.notify();
+                    });
+                }));
+            }
+            menu
+        });
+    thumbnail = thumbnail.child(div().absolute().top(px(4.)).right(px(4.)).child(menu));
+    card = card.child(thumbnail);
     card.id(format!("gallery-media-{media_id}"))
         .on_mouse_down(
             MouseButton::Left,
@@ -101,6 +148,20 @@ pub(super) fn render_media_card(
                 .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
         )
+}
+
+fn micro_render_image(data: &[u8]) -> Option<Arc<::gpui::RenderImage>> {
+    if data.len() != 8 * 8 * 3 {
+        return None;
+    }
+    let rgba = data
+        .chunks_exact(3)
+        .flat_map(|rgb| [rgb[0], rgb[1], rgb[2], 255])
+        .collect::<Vec<_>>();
+    let buffer = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(8, 8, rgba)?;
+    Some(Arc::new(::gpui::RenderImage::new(vec![image::Frame::new(
+        buffer,
+    )])))
 }
 
 struct FileDragPayload {

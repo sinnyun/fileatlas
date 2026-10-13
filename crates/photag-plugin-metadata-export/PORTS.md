@@ -41,7 +41,22 @@ and displays the record count/path or failure.
   thread. Existing command/menu contributions use the same command ID.
 - Result payload: successful status includes the exact output path and number
   of exported rows; errors preserve database, JSON, filesystem, and state-lock
-  messages.
+  messages. The panel renders idle guidance, an in-progress message, and a
+  persistent terminal success or failure message (including path and record
+  count on success); service failures and unavailable status use the danger
+  color, while input and command-dispatch errors have a separate visible error
+  line.
+- The Cordis command is single-flight: another invocation while an export is
+  running is rejected without replacing the active status. Thread-start errors
+  transition the status to `Failed`, so the view cannot remain stuck at
+  `Exporting`; worker panics are caught and reported as failures as well.
+  Completion is stored only by the worker associated with that active run;
+  the panel observes it through a weak entity update, starts at most one local
+  status poll per invocation, and stops polling when work ends or the view is
+  disposed. Database and file I/O run without holding the status mutex.
+- Selecting or submitting a new destination clears the prior terminal result
+  (unless a run is active), so success text always identifies the file actually
+  written and is not left attached to a newly selected destination.
 
 ## Debugging
 

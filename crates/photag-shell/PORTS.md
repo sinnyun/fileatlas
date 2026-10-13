@@ -2,6 +2,8 @@
 
 `photag-shell` is the host composition root. It publishes `UiBridgeService`, starts Cordis plugins in dependency order, mounts GPUI view factories into host regions, and dispatches command IDs as Cordis events.
 
+The host chrome and contribution fallback view use `photag_ui_bridge::theme` surface and text tokens. GPUI Kit typography presets are still used by the shell; parity with source Segoe UI font loading and Windows font availability has not been validated.
+
 The shell restores `SessionState.sidebar_width` when it is between 160 and 500 pixels (otherwise 288 px) and saves the width when the sidebar divider drag ends. The updater is started before Settings. When Settings confirms an update it persists the current session snapshot, queues the staged path, and quits GPUI; after the application loop returns, the shell installs and relaunches the staged build before disposing the updater service. This update shutdown path still needs interactive Windows validation.
 
 ## Current runtime dependency order

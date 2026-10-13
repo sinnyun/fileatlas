@@ -35,6 +35,7 @@ struct ExportPanel {
     cordis: CordisContext,
     path: Entity<InputState>,
     input_error: Option<String>,
+    waiting_for_export: bool,
 }
 
 impl ExportPanel {
@@ -48,6 +49,7 @@ impl ExportPanel {
             cordis,
             path,
             input_error: None,
+            waiting_for_export: false,
         }
     }
 
@@ -61,6 +63,11 @@ impl ExportPanel {
             .set_file_name("photag_backup.json")
             .save_file()
         {
+            if let Err(error) = self.service.set_destination(path.clone()) {
+                self.input_error = Some(error.to_string());
+                cx.notify();
+                return;
+            }
             self.path.update(cx, |state, cx| {
                 state.set_value(path.to_string_lossy().into_owned(), window, cx)
             });
@@ -70,6 +77,9 @@ impl ExportPanel {
     }
 
     fn export(&mut self, cx: &mut Context<Self>) {
+        if self.waiting_for_export {
+            return;
+        }
         let path = self.path.read(cx).value().trim().to_owned();
         if path.is_empty() {
             self.input_error = Some("Enter a destination JSON file path.".into());
@@ -82,6 +92,7 @@ impl ExportPanel {
             return;
         }
         self.input_error = None;
+        self.waiting_for_export = true;
         let cordis = self.cordis.clone();
         cx.spawn(async move |this, cx| {
             if let Err(error) = cordis
@@ -90,6 +101,7 @@ impl ExportPanel {
             {
                 this.update(cx, |view, cx| {
                     view.input_error = Some(format!("Could not start export: {error}"));
+                    view.waiting_for_export = false;
                     cx.notify();
                 })
                 .ok();
@@ -109,6 +121,11 @@ impl ExportPanel {
                     .timer(Duration::from_millis(180))
                     .await;
             }
+            this.update(cx, |view, cx| {
+                view.waiting_for_export = false;
+                cx.notify();
+            })
+            .ok();
         })
         .detach();
     }
@@ -116,16 +133,22 @@ impl ExportPanel {
 
 impl Render for ExportPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let status = match self.service.status() {
-            Ok(MetadataExportStatus::Idle) => {
-                "Choose a JSON destination and export all indexed media metadata.".into()
+        let (status, status_color) = match self.service.status() {
+            Ok(MetadataExportStatus::Idle) => (
+                "Choose a JSON destination and export all indexed media metadata.".into(),
+                theme::TEXT_SECONDARY,
+            ),
+            Ok(MetadataExportStatus::Exporting) => {
+                ("Exporting metadata…".into(), theme::TEXT_SECONDARY)
             }
-            Ok(MetadataExportStatus::Exporting) => "Exporting metadata…".into(),
-            Ok(MetadataExportStatus::Succeeded { path, records }) => {
-                format!("Exported {records} records to {}", path.display())
+            Ok(MetadataExportStatus::Succeeded { path, records }) => (
+                format!("Exported {records} records to {}", path.display()),
+                theme::TEXT_SECONDARY,
+            ),
+            Ok(MetadataExportStatus::Failed(error)) => {
+                (format!("Export failed: {error}"), theme::DANGER)
             }
-            Ok(MetadataExportStatus::Failed(error)) => format!("Export failed: {error}"),
-            Err(error) => format!("Export status unavailable: {error}"),
+            Err(error) => (format!("Export status unavailable: {error}"), theme::DANGER),
         };
         let error = self.input_error.clone();
         let panel = div()
@@ -154,12 +177,7 @@ impl Render for ExportPanel {
                             .on_click(cx.listener(|this, _, _, cx| this.export(cx))),
                     ),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child(status),
-            );
+            .child(div().text_xs().text_color(rgb(status_color)).child(status));
         if let Some(message) = error {
             panel.child(
                 div()

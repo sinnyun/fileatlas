@@ -32,7 +32,9 @@ has not been compiled or tested in this cloud pass.
   `move_to_with_outcome` additionally returns whether the move occurred;
   `false` represents a source-compatible collision or filesystem move failure.
 - `move_into_folder(media_id, destination_dir)` retains the filename, refuses
-  to overwrite an existing file, and updates the indexed path/root.
+  to overwrite an existing file, and updates the indexed path/root when the
+  destination is under a registered library root. Moving outside all roots
+  leaves the file on disk and removes its media row, matching PhoTag.
   `move_into_folder_with_outcome` reports whether it moved the file.
 - `bulk_move_into_folder(media_ids, destination_dir)` applies the same behavior
   per item, continues after an individual failure, and returns one
@@ -47,6 +49,9 @@ has not been compiled or tested in this cloud pass.
 - `delete_to_recycle_bin(media_id)` uses the `trash` crate. It removes the
   thumbnail best-effort and deletes the DB row even if recycle-bin submission
   fails. `DeleteResult` reports whether recycling succeeded and its error.
+- `media_by_id(media_id)` reads the indexed row for post-operation repair. Use
+  it after an operation error when the error may be from event delivery after
+  the filesystem/database mutation already committed.
 - `bulk_delete_to_recycle_bin(media_ids)` resolves rows first, best-effort
   trashes files and thumbnails, removes each row even when trash submission
   fails, and returns one `BulkDeleteOutcome` per input. Database/query failures

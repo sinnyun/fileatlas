@@ -73,6 +73,13 @@ impl MetadataExportService {
             .destination
             .lock()
             .map_err(|_| MetadataExportError::StatePoisoned)? = Some(path.into());
+        let mut status = self
+            .status
+            .lock()
+            .map_err(|_| MetadataExportError::StatePoisoned)?;
+        if !matches!(&*status, MetadataExportStatus::Exporting) {
+            *status = MetadataExportStatus::Idle;
+        }
         Ok(())
     }
 
@@ -91,28 +98,51 @@ impl MetadataExportService {
             .map_err(|_| MetadataExportError::StatePoisoned)?
             .clone()
             .ok_or(MetadataExportError::DestinationMissing)?;
-        *self
+        let mut status = self
             .status
             .lock()
-            .map_err(|_| MetadataExportError::StatePoisoned)? = MetadataExportStatus::Exporting;
+            .map_err(|_| MetadataExportError::StatePoisoned)?;
+        if matches!(&*status, MetadataExportStatus::Exporting) {
+            return Err(MetadataExportError::AlreadyRunning);
+        }
+        *status = MetadataExportStatus::Exporting;
+        drop(status);
         let service = Arc::clone(self);
-        std::thread::Builder::new()
+        if let Err(error) = std::thread::Builder::new()
             .name("photag-metadata-export".into())
             .spawn(move || {
-                let result = service.records().and_then(|records| {
-                    let count = records.len();
-                    let json = serde_json::to_string_pretty(&records)?;
-                    std::fs::write(&path, json)?;
-                    Ok(count)
-                });
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    service.records().and_then(|records| {
+                        let count = records.len();
+                        let json = serde_json::to_string_pretty(&records)?;
+                        std::fs::write(&path, json)?;
+                        Ok(count)
+                    })
+                }));
                 let status = match result {
-                    Ok(records) => MetadataExportStatus::Succeeded { path, records },
-                    Err(error) => MetadataExportStatus::Failed(error.to_string()),
+                    Ok(Ok(records)) => MetadataExportStatus::Succeeded { path, records },
+                    Ok(Err(error)) => MetadataExportStatus::Failed(error.to_string()),
+                    Err(_) => MetadataExportStatus::Failed(
+                        "export worker stopped unexpectedly; see application logs for details"
+                            .into(),
+                    ),
                 };
                 if let Ok(mut current) = service.status.lock() {
                     *current = status;
                 }
-            })?;
+            })
+        {
+            // A failed thread spawn must not strand the panel in an endless
+            // Exporting state. The listener exposes this same error to users.
+            let mut current = self
+                .status
+                .lock()
+                .map_err(|_| MetadataExportError::StatePoisoned)?;
+            if matches!(&*current, MetadataExportStatus::Exporting) {
+                *current = MetadataExportStatus::Failed(error.to_string());
+            }
+            return Err(MetadataExportError::Io(error));
+        }
         Ok(())
     }
 }
@@ -127,6 +157,8 @@ pub enum MetadataExportError {
     Io(#[from] std::io::Error),
     #[error("metadata export destination has not been selected")]
     DestinationMissing,
+    #[error("a metadata export is already running")]
+    AlreadyRunning,
     #[error("metadata export state lock is poisoned")]
     StatePoisoned,
 }
@@ -164,7 +196,10 @@ impl Plugin for MetadataExportPlugin {
                 if command_id == EXPORT_COMMAND_ID
                     && let Err(error) = command_service.start_export()
                 {
-                    if let Ok(mut status) = command_service.status.lock() {
+                    if !matches!(&error, MetadataExportError::AlreadyRunning)
+                        && let Ok(mut status) = command_service.status.lock()
+                        && !matches!(&*status, MetadataExportStatus::Exporting)
+                    {
                         *status = MetadataExportStatus::Failed(error.to_string());
                     }
                 }

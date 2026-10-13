@@ -1,6 +1,6 @@
 # Navigation plugin ports / 导航插件数据对接
 
-Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. The tag UI exposes create, rename, delete, color/icon, display and explicit reparent actions, with common tag operations also available from a per-tag dropdown menu. Original egui interactions are only partially migrated: tag drag/drop zones, multi-select/exclude mode, modal confirmation/edit flow, recursive tag search/collapse state, merge workflow, and undo integration remain incomplete.
+Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. The tag UI exposes create, rename, delete, color/icon, display and reparent actions, with common tag operations also available from a per-tag dropdown menu. Typed GPUI drag/drop moves a dragged tag before/after/into an explicit row target. PhoTag has no folder-tree drag/drop behavior; its folder rows only select, expand, rescan and remove folders.
 
 ## Lifecycle and dependencies
 
@@ -23,19 +23,19 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - `delete_tag(id)` -> `()`; **Delete** invokes database cascade semantics. Unlike original PhoTag, no affected-media/ancestor-cleanup confirmation is shown yet.
 - `set_tag_appearance(id, color, icon)` -> `()`; color accepts `#RRGGBB` or empty to clear; icon accepts text/emoji or empty to clear. **Edit fields** loads existing values; **Save style** applies them. Appearance inheritance UI is pending.
 - `set_tag_display(id, display)` -> `()`; applies gallery chip visibility to the selected tag and all descendants, matching original edit behavior.
-- `move_tag(id, TagDropPos)` -> IDs of media whose implicit tag set changed. The UI offers **Move into ID** using the parent ID field. Before/after sibling ordering and drag hit-testing are pending.
+- `move_tag(id, TagDropPos)` -> IDs of media whose implicit tag set changed. The tag name is the drag source; highlighted targets above, on, and below another tag invoke `Before`, `Into`, and `After` respectively. The existing **Move into ID** command remains available. Database cycle checks and subtree path recomputation are authoritative; self-drops and cycle-forming moves return an empty list as safe no-ops. Only emit `MediaIndexChanged` when the returned affected-media list is nonempty.
 
 ## GPUI controls and debugging
 
-The tag panel uses GPUI Kit `Input`, `Button`, and dropdown menu actions. `TagSelectionChanged` filters one tag. Original multi-select, include/exclude modifier, select-all, and tag query mode remain pending. A service/input error currently replaces the snapshot panel; use Refresh after correcting input or inspect the displayed error and database query. For failed reparent operations, verify that both IDs exist and the move does not create a cycle. For stale Gallery results, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
+The tag panel uses GPUI Kit `Input`, `Button`, dropdown actions, and typed drag payloads. `TagSelectionChanged` filters one tag. Original multi-select, include/exclude modifier, select-all, and tag query mode remain pending. Drag a tag name onto the highlighted target above/on/below another row; database errors appear in the snapshot panel. Self and cycle drops are silently rejected by the source-compatible database operation. For stale Gallery results after inherited assignments change, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
 
 ## Original source mapping / 未完成
 
 Reference: pinned `vendor/photag-source/src/ui/sidebar.rs` (`show_sidebar`, `show_tag_tree`, `show_tag_node`) and tag actions in `vendor/photag-source/src/app.rs`.
 
 - Migrated: folder registration/rescan/removal, lazy directory listing, recursive tag tree, single-tag filter, root/child creation, rename, delete, color/icon editing, display propagation, reparent into a selected tag.
-- Migrated: native directory picker via the same `rfd` API used by PhoTag's `PendingAction::AddFolder`. Cancel/backend `None` leaves the sidebar unchanged; folder validation and registration errors surface in the navigation panel as before.
-- Pending: original tabs and exact visuals; drag/drop before/after/into with feedback; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations. Expanded tag nodes are persisted, but the current GPUI renderer only allows collapsing/expanding already-loaded tree nodes.
+- Migrated: native directory picker via the same `rfd` API used by PhoTag's `PendingAction::AddFolder`. Cancel/backend `None` leaves the sidebar unchanged; folder validation and registration errors surface in the navigation panel as before. Tag drag/drop reparenting and sibling ordering use the source `TagDropPos` database commands. PhoTag does not implement folder drag/drop.
+- Pending: original tabs and exact visuals; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations. Expanded tag nodes are persisted, but the current GPUI renderer only allows collapsing/expanding already-loaded tree nodes.
 - Local integration: verify event refresh and destructive delete behavior against representative PhoTag databases; run Windows GUI/filesystem flows; then finish visual and interaction parity. Plugin tests remain deferred to the local integration pass.
 
 ## Shared visual tokens

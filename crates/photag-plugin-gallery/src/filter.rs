@@ -63,6 +63,26 @@ impl Default for SearchScopes {
     }
 }
 
+impl From<photag_plugin_settings::SearchScopes> for SearchScopes {
+    fn from(scopes: photag_plugin_settings::SearchScopes) -> Self {
+        Self {
+            filenames: scopes.filenames,
+            paths: scopes.paths,
+            tags: scopes.tags,
+        }
+    }
+}
+
+impl From<SearchScopes> for photag_plugin_settings::SearchScopes {
+    fn from(scopes: SearchScopes) -> Self {
+        Self {
+            filenames: scopes.filenames,
+            paths: scopes.paths,
+            tags: scopes.tags,
+        }
+    }
+}
+
 /// Filter values that the original top bar/sidebar combine into one database query.
 #[derive(Debug, Clone)]
 pub struct GalleryFilter {

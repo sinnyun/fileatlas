@@ -59,13 +59,26 @@ impl GalleryView {
         if self.confirm_delete {
             return;
         }
-        if event.keystroke.key.eq_ignore_ascii_case("d")
+        if self.bulk_action.is_some() && event.keystroke.key.eq_ignore_ascii_case("escape") {
+            self.bulk_action = None;
+            self.confirm_bulk_action = false;
+            self.confirm_bulk_action_ids = None;
+            cx.notify();
+            return;
+        }
+        if gallery_focused
+            && self.bulk_action.is_none()
+            && !self.video_preview_open
+            && !self.confirm_delete
+            && event.keystroke.key.eq_ignore_ascii_case("d")
             && event.keystroke.modifiers.control
             && event.keystroke.modifiers.shift
         {
+            super::bulk_actions::reset_inputs(self, window, cx);
             self.bulk_action = Some(super::BulkActionKind::Delete);
             self.bulk_source = super::BulkActionSource::WholeLibrary;
             self.confirm_bulk_action = false;
+            self.confirm_bulk_action_ids = None;
             cx.notify();
             return;
         }
@@ -96,7 +109,7 @@ impl GalleryView {
             .unwrap_or_default();
         let effect = self.selection.handle_key(
             skeletons,
-            6,
+            self.columns,
             key,
             SelectionModifiers {
                 ctrl: event.keystroke.modifiers.control,
@@ -112,27 +125,6 @@ impl GalleryView {
             SelectionEffect::ConfirmDelete { .. } => self.request_delete_confirmation(window, cx),
             SelectionEffect::OpenPreview { .. } => self.preview_selected(cx),
             SelectionEffect::ScrollTo { index } => {
-                while self
-                    .snapshot
-                    .as_ref()
-                    .is_ok_and(|snapshot| snapshot.media.len() <= index)
-                {
-                    let before = self
-                        .snapshot
-                        .as_ref()
-                        .map(|snapshot| snapshot.media.len())
-                        .unwrap_or(0);
-                    self.load_more();
-                    if self
-                        .snapshot
-                        .as_ref()
-                        .map(|snapshot| snapshot.media.len())
-                        .unwrap_or(0)
-                        == before
-                    {
-                        break;
-                    }
-                }
                 self.scroll_to_gallery_item(index);
             }
             SelectionEffect::None => {}

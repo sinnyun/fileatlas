@@ -11,12 +11,94 @@ pub const SURFACE_PANEL: u32 = 0x252525;
 pub const SURFACE_ELEVATED: u32 = 0x2e2e2e;
 pub const SURFACE_MODAL: u32 = 0x2b2b2b;
 pub const SURFACE_FAINT: u32 = 0x1f1f1f;
+/// Lowest contrast surface used for egui's extreme/faint backgrounds.
+pub const SURFACE_EXTREME: u32 = 0x131313;
 pub const TEXT_PRIMARY: u32 = 0xebebeb;
 pub const TEXT_SECONDARY: u32 = 0xa0a0a0;
 pub const TEXT_MUTED: u32 = 0x707070;
 pub const DANGER: u32 = 0xe86060;
 pub const WARNING: u32 = 0xe8a860;
 pub const STAR: u32 = 0xf0c850;
+/// Source colors are premultiplied because they are composited over the
+/// active surface. Keep alpha explicit when adapting them to GPUI paints.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PremultipliedColor {
+    pub red: u8,
+    pub green: u8,
+    pub blue: u8,
+    pub alpha: u8,
+}
+
+impl PremultipliedColor {
+    /// Pack this source color as the straight-alpha `0xRRGGBBAA` value that
+    /// GPUI's `rgba` helper expects. Source egui tokens are already premultiplied.
+    pub const fn to_rgba(self) -> u32 {
+        if self.alpha == 0 {
+            return 0;
+        }
+        ((unpremultiply(self.red, self.alpha) as u32) << 24)
+            | ((unpremultiply(self.green, self.alpha) as u32) << 16)
+            | ((unpremultiply(self.blue, self.alpha) as u32) << 8)
+            | self.alpha as u32
+    }
+}
+
+const fn unpremultiply(channel: u8, alpha: u8) -> u8 {
+    let value = (channel as u32 * 255 + alpha as u32 / 2) / alpha as u32;
+    if value > 255 { 255 } else { value as u8 }
+}
+
+pub const CONTROL_HOVER: PremultipliedColor = PremultipliedColor {
+    red: 22,
+    green: 22,
+    blue: 22,
+    alpha: 22,
+};
+pub const CONTROL_ACTIVE: PremultipliedColor = PremultipliedColor {
+    red: 12,
+    green: 12,
+    blue: 12,
+    alpha: 12,
+};
+pub const CONTROL_GHOST: PremultipliedColor = PremultipliedColor {
+    red: 16,
+    green: 16,
+    blue: 16,
+    alpha: 16,
+};
+pub const CONTROL_GHOST_HOVER: PremultipliedColor = PremultipliedColor {
+    red: 28,
+    green: 28,
+    blue: 28,
+    alpha: 28,
+};
+pub const CONTROL_GHOST_PRESSED: PremultipliedColor = PremultipliedColor {
+    red: 10,
+    green: 10,
+    blue: 10,
+    alpha: 10,
+};
+pub const CONTROL_BOX: u32 = 0x4a4a4a;
+pub const CONTROL_BOX_HOVER: u32 = 0x5c5c5c;
+pub const CONTROL_BOX_PRESSED: u32 = 0x686868;
+pub const HAIRLINE: PremultipliedColor = PremultipliedColor {
+    red: 0,
+    green: 0,
+    blue: 0,
+    alpha: 64,
+};
+pub const BORDER: PremultipliedColor = PremultipliedColor {
+    red: 0,
+    green: 0,
+    blue: 0,
+    alpha: 130,
+};
+pub const FAINT_OVERLAY: PremultipliedColor = PremultipliedColor {
+    red: 8,
+    green: 8,
+    blue: 8,
+    alpha: 8,
+};
 pub const SELECTION_BAR_WIDTH: f32 = 3.0;
 pub const ROUND_SM: f32 = 4.0;
 pub const ROUND_MD: f32 = 6.0;

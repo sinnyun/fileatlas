@@ -5492,6 +5492,7 @@ dependencies = [
  "cordis-rs",
  "gpui-kit",
  "gpui-pre",
+ "image",
  "kamadak-exif",
  "photag-contracts",
  "photag-plugin-database",
@@ -5614,9 +5615,16 @@ dependencies = [
  "gpui-kit",
  "image",
  "kamadak-exif",
+ "photag-plugin-ai",
+ "photag-plugin-file-operations",
+ "photag-plugin-history",
  "photag-plugin-session",
+ "photag-plugin-settings",
+ "photag-plugin-tagging",
  "photag-ui-bridge",
+ "serde_json",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

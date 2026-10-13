@@ -3,6 +3,7 @@
 //! database-backed tags and engagement counts are intentionally omitted.
 
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -29,7 +30,10 @@ pub(super) fn info_panel(path: &Path) -> impl IntoElement {
         .child(section_title("File"))
         .child(detail("Name", &name))
         .child(detail("Path", &path.display().to_string()))
-        .child(detail("Type", "image"));
+        .child(detail(
+            "Type",
+            if is_video(path) { "video" } else { "image" },
+        ));
 
     if let Some(extension) = path.extension().and_then(|value| value.to_str()) {
         panel = panel.child(detail(
@@ -56,6 +60,32 @@ pub(super) fn info_panel(path: &Path) -> impl IntoElement {
         Err(_) => panel = panel.child(detail("File", "Couldn't read file metadata.")),
     }
 
+    if is_video(path) {
+        panel = panel.child(section_title("Video"));
+        match probe_video(path) {
+            Some(info) => {
+                panel = panel
+                    .child(detail(
+                        "Dimensions",
+                        &format!("{} × {} px", info.width, info.height),
+                    ))
+                    .child(detail("Duration", &format_video_time(info.duration)))
+                    .child(detail("FPS", &format!("{:.2}", info.fps)));
+                if let Some(codec) = info.codec.as_deref() {
+                    panel = panel.child(detail("Codec", codec));
+                }
+                if let Some(bitrate) = info.bitrate {
+                    panel =
+                        panel.child(detail("Bitrate", &format!("{:.0} kbps", bitrate / 1000.0)));
+                }
+                if let Some(codec) = info.audio_codec.as_deref() {
+                    panel = panel.child(detail("Audio", codec));
+                }
+            }
+            None => panel = panel.child(mut_text("ffprobe metadata is unavailable.")),
+        }
+        return panel;
+    }
     panel = panel.child(section_title("Image"));
     match image::image_dimensions(path) {
         Ok((width, height)) => {
@@ -86,6 +116,130 @@ pub(super) fn info_panel(path: &Path) -> impl IntoElement {
         Err(message) => panel = panel.child(mut_text(message)),
     }
     panel
+}
+
+fn is_video(path: &Path) -> bool {
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            matches!(
+                ext.to_ascii_lowercase().as_str(),
+                "mp4"
+                    | "m4v"
+                    | "mov"
+                    | "avi"
+                    | "mkv"
+                    | "webm"
+                    | "wmv"
+                    | "flv"
+                    | "mpeg"
+                    | "mpg"
+                    | "3gp"
+                    | "mts"
+                    | "m2ts"
+            )
+        })
+}
+
+#[derive(Clone)]
+struct VideoProbe {
+    width: u32,
+    height: u32,
+    fps: f64,
+    duration: f64,
+    codec: Option<String>,
+    bitrate: Option<f64>,
+    audio_codec: Option<String>,
+}
+
+fn probe_video(path: &Path) -> Option<VideoProbe> {
+    static CACHE: OnceLock<
+        Mutex<std::collections::HashMap<(std::path::PathBuf, u128, u64), Option<VideoProbe>>>,
+    > = OnceLock::new();
+    let metadata = std::fs::metadata(path).ok()?;
+    let stamp = metadata
+        .modified()
+        .ok()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_nanos();
+    let key = (path.to_path_buf(), stamp, metadata.len());
+    let cache = CACHE.get_or_init(|| Mutex::new(std::collections::HashMap::new()));
+    if let Ok(cache) = cache.lock() {
+        if let Some(result) = cache.get(&key) {
+            return result.clone();
+        }
+    }
+    let result = probe_video_uncached(path);
+    if let Ok(mut cache) = cache.lock() {
+        cache.retain(|(cached_path, _, _), _| cached_path != path);
+        cache.insert(key, result.clone());
+    }
+    result
+}
+
+fn probe_video_uncached(path: &Path) -> Option<VideoProbe> {
+    #[cfg(windows)]
+    use std::os::windows::process::CommandExt;
+    use std::process::{Command, Stdio};
+    let executable = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let candidates = [
+        executable.join("ffprobe.exe"),
+        executable.join("ffmpeg").join("bin").join("ffprobe.exe"),
+        "ffprobe".into(),
+    ];
+    let bin = candidates
+        .iter()
+        .find(|candidate| candidate.exists())
+        .unwrap_or(&candidates[2]);
+    let mut command = Command::new(bin);
+    #[cfg(windows)]
+    command.creation_flags(0x08000000);
+    let output = command.args(["-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,r_frame_rate,bit_rate:format=duration,bit_rate", "-of", "json"]).arg(path).stdout(Stdio::piped()).stderr(Stdio::null()).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let streams = json["streams"].as_array()?;
+    let video = streams
+        .iter()
+        .find(|stream| stream["codec_type"] == "video")?;
+    let rate = video["r_frame_rate"].as_str().unwrap_or("0/1");
+    let fps = rate
+        .split_once('/')
+        .and_then(|(n, d)| Some(n.parse::<f64>().ok()? / d.parse::<f64>().ok()?.max(1.0)))
+        .unwrap_or(0.0);
+    let bitrate = |value: &serde_json::Value| value.as_str().and_then(|s| s.parse::<f64>().ok());
+    Some(VideoProbe {
+        width: video["width"].as_u64()? as u32,
+        height: video["height"].as_u64()? as u32,
+        fps,
+        duration: json["format"]["duration"]
+            .as_str()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.0),
+        codec: video["codec_name"].as_str().map(str::to_owned),
+        bitrate: bitrate(&video["bit_rate"]).or_else(|| bitrate(&json["format"]["bit_rate"])),
+        audio_codec: streams
+            .iter()
+            .find(|stream| stream["codec_type"] == "audio")
+            .and_then(|stream| stream["codec_name"].as_str())
+            .map(str::to_owned),
+    })
+}
+
+fn format_video_time(seconds: f64) -> String {
+    let total = seconds.max(0.0) as u64;
+    if total >= 3600 {
+        format!(
+            "{:02}:{:02}:{:02}",
+            total / 3600,
+            total % 3600 / 60,
+            total % 60
+        )
+    } else {
+        format!("{:02}:{:02}", total / 60, total % 60)
+    }
 }
 
 fn section_title(title: &str) -> Div {

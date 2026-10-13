@@ -46,7 +46,7 @@ use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::component::*;
 use gpui_kit::*;
 use photag_ui_bridge::{
-    ContributionKind, OwnedContribution, UiBridgeService, UiCatalog, UiCommandInvoked,
+    ContributionKind, OwnedContribution, UiBridgeService, UiCatalog, UiCommandInvoked, theme,
 };
 
 struct PhoTagShell {
@@ -99,8 +99,8 @@ impl Render for PhoTagShell {
         let mut shell = div()
             .v_flex()
             .size_full()
-            .bg(rgb(0x181a20))
-            .text_color(rgb(0xe7e9ee))
+            .bg(rgb(theme::SURFACE_BASE))
+            .text_color(rgb(theme::TEXT_PRIMARY))
             .child(
                 div()
                     .h_flex()
@@ -109,7 +109,7 @@ impl Render for PhoTagShell {
                     .gap_2()
                     .px_4()
                     .py_3()
-                    .bg(rgb(0x20232b))
+                    .bg(rgb(theme::SURFACE_BASE))
                     .child(div().text_lg().font_semibold().child("PhoTag"))
                     .children(commands),
             )
@@ -123,7 +123,7 @@ impl Render for PhoTagShell {
                             .v_flex()
                             .w(px(self.sidebar_width))
                             .border_r_1()
-                            .border_color(rgb(0x343943))
+                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
                             .overflow_y_scrollbar()
                             .children(sidebar_views),
                     )
@@ -131,7 +131,7 @@ impl Render for PhoTagShell {
                         div()
                             .w(px(4.))
                             .h_full()
-                            .bg(rgb(0x343943))
+                            .bg(rgba(theme::HAIRLINE.to_rgba()))
                             .on_mouse_down(
                                 MouseButton::Left,
                                 cx.listener(|this, _, _, _| {
@@ -187,7 +187,7 @@ impl Render for PhoTagShell {
                         body.child(
                             div()
                                 .text_sm()
-                                .text_color(rgb(0x9aa0ad))
+                                .text_color(rgb(theme::TEXT_SECONDARY))
                                 .child("No feature plugins are active."),
                         )
                     }),
@@ -222,23 +222,28 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
         .gap_3()
         .rounded_md()
         .border_1()
-        .border_color(rgb(0x343943))
-        .bg(rgb(0x20232b))
+        .border_color(rgba(theme::BORDER.to_rgba()))
+        .bg(rgb(theme::SURFACE_PANEL))
         .px_3()
         .py_2()
         .child(
             div()
                 .w_24()
                 .text_xs()
-                .text_color(rgb(0x9aa0ad))
+                .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(category),
         )
         .child(div().flex_1().child(title))
-        .child(div().text_xs().text_color(rgb(0x9aa0ad)).child(location))
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(0x747b89))
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(location),
+        )
+        .child(
+            div()
+                .text_xs()
+                .text_color(rgb(theme::TEXT_MUTED))
                 .child(owned.owner.clone()),
         )
 }
@@ -279,8 +284,11 @@ fn main() {
         || enable_mcp
         || enable_navigation
         || dev_plugin_enabled(&plugin_config, "watcher");
-    let enable_tagging =
-        enable_all || enable_mcp || enable_history || dev_plugin_enabled(&plugin_config, "tagging");
+    let enable_tagging = enable_all
+        || enable_mcp
+        || enable_gallery
+        || enable_history
+        || dev_plugin_enabled(&plugin_config, "tagging");
     let enable_history = enable_history || (enable_gallery && enable_tagging);
     let enable_media_playback = enable_all
         || enable_mcp
@@ -349,19 +357,6 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start drag-drop plugin"),
-        )
-    } else {
-        None
-    };
-    let preview_fiber = if enable_gallery {
-        let plugin = photag_plugin_preview::PreviewPlugin;
-        let input = plugin
-            .prepare(photag_plugin_preview::PreviewConfig::default())
-            .expect("prepare image preview plugin");
-        Some(
-            runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start image preview plugin"),
         )
     } else {
         None
@@ -477,6 +472,21 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start history plugin"),
+        )
+    } else {
+        None
+    };
+    // Preview resolves AI, Settings, Tagging, and History while applying its
+    // UI integration, so it starts after all four providers.
+    let preview_fiber = if enable_gallery {
+        let plugin = photag_plugin_preview::PreviewPlugin;
+        let input = plugin
+            .prepare(photag_plugin_preview::PreviewConfig::default())
+            .expect("prepare image preview plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start image preview plugin"),
         )
     } else {
         None
