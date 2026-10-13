@@ -159,6 +159,7 @@ struct SidebarView {
     included_tags: Vec<i64>,
     excluded_tags: Vec<i64>,
     active_tab: SidebarTab,
+    show_folder_path_entry: bool,
     new_folder_parent: Option<String>,
     exclude_mode: bool,
     tag_search_match: TagSearchMatch,
@@ -246,6 +247,7 @@ impl SidebarView {
             included_tags,
             excluded_tags,
             active_tab,
+            show_folder_path_entry: false,
             new_folder_parent: None,
             exclude_mode: saved_tag_click_mode
                 == Some(photag_plugin_session::TagClickMode::Exclude),

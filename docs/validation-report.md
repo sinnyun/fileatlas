@@ -636,7 +636,10 @@ workspace by default. This is the first structural alignment pass; detailed
 toolbar placement and remaining source-layout differences are still follow-up
 work. The current capture still shows empty gray bands at the top and bottom
 of the content pane, so exact workspace boundary alignment is not yet accepted
-as matching the reference.
+as matching the reference. Navigation's folder picker is now the compact `+`
+action; manual path entry is behind `Path` so the folder tree stays visible.
+UI Automation confirmed the editor is absent by default and appears when `Path`
+is invoked; its close/reopen sequence still needs a clean follow-up check.
 
 ### Live reference-to-migration UI comparison (2026-10-13)
 

@@ -67,6 +67,7 @@ impl Render for SidebarView {
                     panel = panel.child(
                         div()
                             .h_flex()
+                            .items_center()
                             .justify_between()
                             .pt_2()
                             .child(
@@ -75,29 +76,58 @@ impl Render for SidebarView {
                                     .text_color(rgb(theme::TEXT_SECONDARY))
                                     .child("Folders"),
                             )
-                            .child(Button::new("navigation-refresh").label("Refresh").on_click(
-                                cx.listener(|this, _, _, cx| {
-                                    this.refresh();
-                                    cx.notify();
-                                }),
-                            )),
-                    );
-                    panel = panel.child(
-                        div()
-                            .h_flex()
-                            .gap_1()
-                            .child(Input::new(&self.folder_path).flex_1())
                             .child(
-                                Button::new("navigation-browse-folder")
-                                    .label("Browse…")
-                                    .on_click(cx.listener(|this, _, _, cx| this.pick_folder(cx))),
-                            )
-                            .child(
-                                Button::new("navigation-add-folder")
-                                    .label("Add")
-                                    .on_click(cx.listener(|this, _, _, cx| this.add_folder(cx))),
+                                div()
+                                    .h_flex()
+                                    .gap_1()
+                                    .child(
+                                        Button::new("navigation-folder-path-toggle")
+                                            .label(if self.show_folder_path_entry {
+                                                "Cancel"
+                                            } else {
+                                                "Path"
+                                            })
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.show_folder_path_entry =
+                                                    !this.show_folder_path_entry;
+                                                cx.notify();
+                                            })),
+                                    )
+                                    .child(
+                                        Button::new("navigation-add-folder").label("+").on_click(
+                                            cx.listener(|this, _, _, cx| this.pick_folder(cx)),
+                                        ),
+                                    )
+                                    .child(Button::new("navigation-refresh").label("↻").on_click(
+                                        cx.listener(|this, _, _, cx| {
+                                            this.refresh();
+                                            cx.notify();
+                                        }),
+                                    )),
                             ),
                     );
+                    if self.show_folder_path_entry {
+                        panel = panel.child(
+                            div()
+                                .h_flex()
+                                .gap_1()
+                                .child(Input::new(&self.folder_path).flex_1())
+                                .child(
+                                    Button::new("navigation-browse-folder")
+                                        .label("Browse…")
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| this.pick_folder(cx)),
+                                        ),
+                                )
+                                .child(
+                                    Button::new("navigation-add-folder-path")
+                                        .label("Add")
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| this.add_folder(cx)),
+                                        ),
+                                ),
+                        );
+                    }
                     if let Some(parent) = &self.new_folder_parent {
                         panel = panel.child(
                             div()
