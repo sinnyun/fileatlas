@@ -1,6 +1,6 @@
 # MCP plugin ports / MCP 对接
 
-Status: local stdio MCP server and typed PhoTag tools are implemented. The server is opt-in through `--mcp` (or the development plugin list `mcp`). It starts the normal GPUI window and MCP stdio transport in the same process. Native screenshot behavior has not yet been visually validated on Windows.
+Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Native screenshot behavior has not yet been visually validated on Windows.
 
 ## Cordis lifecycle and dependencies
 
@@ -22,6 +22,14 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The serve
 - `get_media`: returns a single indexed media row and its current tags.
 - `get_view_state`, `open_media`, `control_preview`, and `control_playback`: inspect/change preview and playback state using the existing preview/playback services. Actual media decoding/rendering remains subject to the host playback implementation and Windows runtime validation.
 - `cancel_scan`: requests cancellation for a folder's active scan.
+- `dev_test_status`, `dev_test_scan_fixture`, `dev_test_inject_virtual`, and
+  `dev_test_clear_virtual`: control the optional `DevTestService` in the same
+  PhoTag process. These tools are available when `PHOTAG_DEV_PLUGINS` contains
+  `dev-test`; virtual injection accepts only 1,000, 10,000, or 100,000 rows.
+  Start operations return immediately; poll `dev_test_status` until `running`
+  is false, then use `search_media` / `list_library` and `screenshot_window` to
+  inspect the same running application. The isolated `target/dev-test` data
+  directory is selected by the Shell profile, not by MCP tool arguments.
 - `set_rating`, `assign_tags`, `remove_tags`, `create_tag`, `rename_tag`, `delete_tag`, `add_folder`, `remove_folder`, `rescan_folder`, `rename_media`, `copy_media`, `move_media`, `delete_media`, and `export_metadata` are mutating tools. They require `PHOTAG_MCP_ALLOW_MUTATIONS=1`; file/export, folder, tag-delete, and rescan tools also require `confirm: true`. Batch limits are 100 media IDs and 50 tag IDs. Tag assignment follows the PhoTag best-effort XMP/IPTC writeback behavior.
 - `delete_tag` removes the requested tag and its direct associations; it passes `clean_parents: false` because the MCP request only confirms deleting that tag and does not separately request ancestor-assignment cleanup. The Navigation service's affected media IDs are intentionally omitted from the existing `{ "ok": true }` response.
 
@@ -29,7 +37,7 @@ Mutations are disabled by default. `confirm: true` is an explicit call-site ackn
 
 ## Current limits and debugging
 
-- The MCP server is a child-process stdio endpoint: the client must launch `photag-shell --mcp`; it does not attach to an already-open PhoTag process.
+- The MCP server is a child-process stdio endpoint: the client must launch `photag-shell --mcp`; the child process itself is the GUI application instance MCP controls. It does not attach to an already-open PhoTag process.
 - MCP tool availability does not complete native UI behavior listed in `docs/source-feature-audit.md`; tools call the same Cordis services and their existing limits apply.
 - Check `PHOTAG_MCP_ALLOW_MUTATIONS`, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
 - If a screenshot fails, check HWND publication and window state first. If it returns a blank or stale image, inspect PrintWindow/GPUI Windows rendering behavior; do not treat protocol compilation as screenshot parity.

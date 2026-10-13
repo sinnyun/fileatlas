@@ -81,9 +81,9 @@ impl DevTestService {
         self.running.store(false, Ordering::Release);
     }
 
-    pub fn scan_fixture(self: &Arc<Self>) {
+    pub fn scan_fixture(self: &Arc<Self>) -> bool {
         if !self.begin("扫描样例目录") {
-            return;
+            return false;
         }
         let service = Arc::clone(self);
         let spawn = std::thread::Builder::new()
@@ -102,7 +102,9 @@ impl DevTestService {
             });
         if let Err(error) = spawn {
             self.finish(format!("无法启动扫描线程：{error}"));
+            return false;
         }
+        true
     }
 
     fn scan_fixture_blocking(
@@ -134,13 +136,13 @@ impl DevTestService {
         Ok((folder.id, count, started.elapsed()))
     }
 
-    pub fn inject_virtual(self: &Arc<Self>, count: usize) {
+    pub fn inject_virtual(self: &Arc<Self>, count: usize) -> bool {
         if !matches!(count, 1_000 | 10_000 | 100_000) {
             self.set_status("仅支持注入 1,000、10,000 或 100,000 条虚拟记录。");
-            return;
+            return false;
         }
         if !self.begin(&format!("注入 {count} 条虚拟记录")) {
-            return;
+            return false;
         }
         let service = Arc::clone(self);
         let spawn = std::thread::Builder::new()
@@ -156,7 +158,9 @@ impl DevTestService {
             });
         if let Err(error) = spawn {
             self.finish(format!("无法启动注入线程：{error}"));
+            return false;
         }
+        true
     }
 
     fn inject_virtual_blocking(
@@ -171,9 +175,9 @@ impl DevTestService {
         })
     }
 
-    pub fn clear_virtual(self: &Arc<Self>) {
+    pub fn clear_virtual(self: &Arc<Self>) -> bool {
         if !self.begin("清理虚拟记录") {
-            return;
+            return false;
         }
         let service = Arc::clone(self);
         let spawn = std::thread::Builder::new()
@@ -191,7 +195,9 @@ impl DevTestService {
             });
         if let Err(error) = spawn {
             self.finish(format!("无法启动清理线程：{error}"));
+            return false;
         }
+        true
     }
 
     fn emit_index_changed(&self, folder_id: i64) {

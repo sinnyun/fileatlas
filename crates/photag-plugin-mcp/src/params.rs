@@ -22,6 +22,12 @@ pub(super) struct SearchMediaRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct DevTestInjectRequest {
+    /// Only 1000, 10000, or 100000 are accepted.
+    pub(super) count: usize,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct MediaIdsRequest {
     /// Media IDs, limited to 100 per call.
     pub(super) media_ids: Vec<i64>,

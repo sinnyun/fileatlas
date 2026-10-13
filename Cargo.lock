@@ -5563,6 +5563,7 @@ dependencies = [
  "cordis-rs",
  "image",
  "photag-plugin-database",
+ "photag-plugin-dev-test",
  "photag-plugin-file-operations",
  "photag-plugin-gallery",
  "photag-plugin-media-playback",

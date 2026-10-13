@@ -527,3 +527,19 @@ to `target/dev-test/` by default; it does not touch the regular PhoTag database.
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Host and opt-in plugin compile together. |
 | `git diff --check` | Passed | No whitespace errors. |
 | Interactive Windows profile and 100K Gallery scrolling | Not run | Launch with `start-dev.bat dev-test` to inspect real GPUI rendering, database response and scrolling; automated tests do not measure user-visible frame rate. |
+
+### MCP control of the development child process (2026-10-13)
+
+The MCP child process is the PhoTag application instance: its GPUI window,
+Cordis services, and stdio MCP server share one process. With
+`PHOTAG_DEV_PLUGINS=dev-test`, MCP now exposes fixture scan, virtual 1K/10K/100K
+injection, virtual cleanup, and task status. The agent can invoke these tools,
+poll completion, query Gallery data, and request a screenshot from the same
+window. Attaching MCP to a separately launched PhoTag main process remains a
+future IPC/transport change.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 check -p photag-plugin-mcp --locked -j 2` | Passed | MCP and optional development-service integration compile together. |
+| Live MCP client launching a GPUI window and calling dev-test tools | Not run | Requires an MCP client configured to spawn the child and a Windows interactive desktop. |
+| Screenshot image fidelity on the launched GPUI window | Not run | `screenshot_window` is implemented; compare its returned image with a Windows desktop capture during runtime validation. |

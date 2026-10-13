@@ -37,11 +37,14 @@ MCP 客户端需要将 PhoTag 作为 stdio 子进程启动，Shell 会同时打�
 ```json
 {
   "command": "cargo",
-  "args": ["run", "--locked", "-p", "photag-shell", "--", "--mcp"]
+  "args": ["run", "--locked", "-p", "photag-shell", "--", "--mcp"],
+  "env": {
+    "PHOTAG_DEV_PLUGINS": "dev-test"
+  }
 }
 ```
 
-也可以将 `command` 指向已构建的 `photag-shell.exe`，并设置 `args` 为 `["--mcp"]`。MCP 服务默认只开放读取、截图、预览和播放控制。若需要修改评分、标签、文件或索引，请在 MCP 子进程环境显式设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1`，并配置 MCP 客户端对修改工具逐次询问用户；破坏性工具还要求 `confirm: true`。不要将此 stdio 服务交给不可信客户端。
+也可以将 `command` 指向已构建的 `photag-shell.exe`，并设置 `args` 为 `["--mcp"]`。设置 `PHOTAG_DEV_PLUGINS=dev-test` 时，客户端启动的这个 PhoTag 子进程会启用开发测试面板及 MCP 开发测试工具；AI 可通过 MCP 请求扫描样例目录、注入/清理虚拟数据、轮询任务状态、查询图库结果并截取同一窗口。开发测试数据自动放入隔离目录。MCP 服务默认只开放读取、截图、预览、播放控制和隔离的开发测试操作。若需要修改日常图库的评分、标签、文件或索引，请在 MCP 子进程环境显式设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1`，并配置 MCP 客户端对修改工具逐次询问用户；破坏性工具还要求 `confirm: true`。不要将此 stdio 服务交给不可信客户端。
 
 可用工具和当前限制见 [MCP 对接说明](crates/photag-plugin-mcp/PORTS.md)。
 

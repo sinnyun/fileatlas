@@ -11,6 +11,10 @@ scale checks. It is development tooling and is not enabled by `core` or `all`.
 - Requires `DatabaseService`, `IndexingService`, and the shell's `UiBridgeService`.
 - Owns a GPUI panel in `workspace.dev-test`; Cordis removes its service and view
   contribution when the plugin stops.
+- When the same process also enables the MCP plugin, the service is exposed as
+  `dev_test_status`, `dev_test_scan_fixture`, `dev_test_inject_virtual`, and
+  `dev_test_clear_virtual`. MCP task starts are asynchronous; poll status until
+  `running=false`, then inspect Gallery with normal read/screenshot tools.
 - The shell enables Gallery, Navigation, Thumbnails, Indexing, Preview, and
   their required providers for this profile.
 

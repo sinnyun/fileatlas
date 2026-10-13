@@ -13,6 +13,7 @@ photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-preview = { path = "../photag-plugin-preview" }

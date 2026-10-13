@@ -2,6 +2,7 @@
 
 mod params;
 mod screenshot;
+mod tools_dev_test;
 mod tools_read;
 mod tools_write;
 
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use cordis::{Context, Plugin, Service};
 use params::*;
 use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_dev_test::DevTestService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_gallery::GalleryService;
 use photag_plugin_media_playback::MediaPlaybackService;
@@ -87,6 +89,7 @@ impl Plugin for McpPlugin {
         let capture = context
             .try_service::<CaptureWindowHandle>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let dev_test = context.try_service::<DevTestService>().ok();
 
         let server = PhoTagMcpServer::new(
             gallery,
@@ -97,6 +100,7 @@ impl Plugin for McpPlugin {
             metadata_export,
             file_operations,
             capture,
+            dev_test,
         );
         let task = tokio::spawn(async move {
             match server.serve(stdio()).await {
@@ -151,6 +155,7 @@ struct PhoTagMcpServer {
     metadata_export: Arc<MetadataExportService>,
     file_operations: Arc<FileOperationsService>,
     capture: Arc<CaptureWindowHandle>,
+    dev_test: Option<Arc<DevTestService>>,
     mutations_enabled: bool,
 }
 
@@ -164,9 +169,12 @@ impl PhoTagMcpServer {
         metadata_export: Arc<MetadataExportService>,
         file_operations: Arc<FileOperationsService>,
         capture: Arc<CaptureWindowHandle>,
+        dev_test: Option<Arc<DevTestService>>,
     ) -> Self {
         Self {
-            tool_router: Self::read_tool_router() + Self::write_tool_router(),
+            tool_router: Self::read_tool_router()
+                + Self::write_tool_router()
+                + Self::dev_test_tool_router(),
             gallery,
             navigation,
             tagging,
@@ -175,6 +183,7 @@ impl PhoTagMcpServer {
             metadata_export,
             file_operations,
             capture,
+            dev_test,
             mutations_enabled: std::env::var("PHOTAG_MCP_ALLOW_MUTATIONS")
                 .is_ok_and(|value| value == "1"),
         }
@@ -216,7 +225,7 @@ impl ServerHandler for PhoTagMcpServer {
     fn get_info(&self) -> ServerConfig {
         ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(rmcp::model::Implementation::new("photag-mcp", env!("CARGO_PKG_VERSION")))
-            .with_instructions("PhoTag 本机 MCP 接口。读取工具可直接使用；评分、标签和文件修改仅在启动环境显式设置 PHOTAG_MCP_ALLOW_MUTATIONS=1 后启用。文件操作的授权应由 MCP 客户端配置为每次询问用户。")
+            .with_instructions("PhoTag 本机 MCP 接口。该服务运行在 MCP 客户端启动的 PhoTag 子进程内，可读取和控制这个窗口对应的应用实例。开发测试工具仅在 PHOTAG_DEV_PLUGINS 启用 dev-test 时可用。评分、标签和文件修改仅在启动环境显式设置 PHOTAG_MCP_ALLOW_MUTATIONS=1 后启用；文件操作的授权应由 MCP 客户端配置为每次询问用户。")
     }
 }
 
