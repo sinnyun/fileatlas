@@ -4,9 +4,12 @@
 
 This repository is an **incomplete migration**, not a completed PhoTag
 replacement. The selected PhoTag source is preserved in
-`vendor/photag-source/`. Consult `docs/source-feature-audit.md` before making
-claims about parity. Any feature not marked `Migrated` there must remain
-explicitly incomplete.
+`vendor/photag-source/`. `docs/source-feature-audit.md` is the canonical,
+current feature-to-source map. Read its status descriptions before making
+parity claims. Do not use this file's architecture notes as a migration status
+list: older feature summaries below were superseded by the audit dated
+2026-10-13. Distinguish implemented behavior from behavior that still needs
+Windows, media-corpus, or regression validation.
 
 ## Architecture target
 
@@ -31,38 +34,36 @@ explicitly incomplete.
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
 - `photag-plugin-gallery` ports the source skeleton/window data model, paints
-  cached image thumbnails, pages records in 200-row batches, supports
-  plain/Ctrl/Shift card selection, batch and keyboard 0–5 ratings, basic
-  arrow/Home/End/Ctrl+A/Escape selection keys, media-type segmented controls,
-  all eight source sort orders, inclusive 0–5 rating-range controls,
-  include/exclude/clear extension filters, filename/path/tag search scopes,
-  typed date filters and clear-all filters, and reloads on Cordis
-  folder/tag/path/index events. A selected-item details panel shows indexed
-  path, type, file size, dimensions, capture date, rating and tags.
-  Automatic viewport paging, scrolling to
-  keyboard targets, Enter/preview and Delete confirmation, date grouping,
-  rubber-band selection, native date-picker controls, per-filter source pills,
-  tag filter pills and settings persistence are incomplete.
+  cached image thumbnails, pages records in 200-row batches, and supports
+  source-style selection, ratings, keyboard navigation, filters, date grouping,
+  rubber-band selection, named tag filters, hierarchical tag assignment,
+  settings/session persistence, file actions, statistics, bulk operations,
+  preview routing, and Cordis event reloads. See the canonical audit for the
+  current interaction inventory. Windows behavior and visual parity remain
+  unverified.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
-  nested directories, accepts folder paths, coordinates folder add/rescan/
-  remove, scanner cancellation and watcher registration, and emits Cordis
-  folder/tag/path selection events. Native folder picking, tag editing menus,
-  drag/drop, expansion persistence, and full visual parity are incomplete.
+  nested directories, coordinates folder add/rescan/remove, scanner
+  cancellation and watcher registration, emits Cordis selection events, and
+  provides native folder picking, tag editing menus, drag placement, and
+  persisted expansion. Windows interaction and visual parity remain
+  unverified.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge/
   reparent commands through source database queries. It reuses PhoTag's XMP/
-  IPTC writer and schedules best-effort metadata rewrites after mutations.
-  Picker/context-menu UI, hotkeys, visible write errors, and validation of the
-  new writeback remain incomplete.
+  IPTC writer, schedules metadata rewrites after mutations, and exposes
+  writeback failures for retry or dismissal in Gallery. Regression validation
+  and Windows writeback behavior remain outstanding.
 - `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
-  models and paths as Cordis services. Their UI adapters and applying/restoring
-  state to active views remain incomplete.
+  models and paths as Cordis services. Settings controls and active-view state
+  restore/save paths are integrated; see the audit for remaining validation
+  limits.
 - `photag-plugin-metadata-export` wraps PhoTag's complete metadata query and
-  JSON writer. The native save dialog, command event handling, and completion
-  feedback remain incomplete; do not report the export UI as migrated.
+  JSON writer. Its command, native JSON save dialog, progress, result, and
+  error feedback are integrated; Windows interaction remains unverified.
 - `photag-plugin-file-operations` preserves source single/bulk file and
   database operation order and emits `MediaIndexChanged` after row mutations.
-  Folder/save dialogs, bulk-action UI, and preview/selection follow-through
-  remain incomplete.
+  Gallery and Preview integrate destination/confirmation dialogs, bulk actions,
+  selection repair, and filmstrip follow-through; native Windows behavior
+  remains unverified.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 

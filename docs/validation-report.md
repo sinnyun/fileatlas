@@ -1,6 +1,20 @@
 # Validation report
 
-## Preview, theme, and navigation integration pass (2026-10-13)
+## Current status index (2026-10-13)
+
+The latest recorded consolidation and source-parity pass reports
+`cargo +1.97.1 fmt --all -- --check`,
+`$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2`, and `git diff --check` passed. The prescribed shell check compiles the host dependency graph; it does not establish full plugin behavior, Windows runtime behavior, or complete source parity. Tests were not run in that final pass under the then-applicable implementation-pass instructions. Earlier sections below are dated snapshots and may describe features as absent or checks as blocked before later work; use the latest entry and [`source-feature-audit.md`](source-feature-audit.md) for current migration status.
+
+Outstanding evidence includes executable regression specifications for source
+menu/confirmation behavior, settings defaults, database query semantics and
+cascades, file-operation rollback, watcher reconciliation, preview toolbar
+configuration, and control-level visual behavior. Windows UI/system
+integration, representative media coverage, updater replacement/restart, and
+real PhoTag library compatibility also require their respective environments
+and fixtures.
+
+## Historical snapshot: preview, theme, and navigation integration pass (2026-10-13)
 
 | Check | Result | Notes |
 |---|---|---|
@@ -18,7 +32,7 @@ scale the rendered image. AI engine code exists in an unregistered crate draft;
 its new ONNX/HTTP dependencies are not in the locked workspace and no runtime
 integration is claimed.
 
-## Parallel feature migration pass (2026-10-13)
+## Historical snapshot: parallel feature migration pass (2026-10-13)
 
 | Check | Result | Notes |
 |---|---|---|
@@ -36,7 +50,7 @@ migrated. The AI and updater crate drafts remain outside the workspace because
 their new external dependencies are not represented in the pinned lockfile;
 they are not shell features yet.
 
-## Session restore migration pass (2026-10-12)
+## Historical snapshot: session restore migration pass (2026-10-12)
 
 | Check | Result | Notes |
 |---|---|---|
@@ -50,7 +64,7 @@ The session migration restores/persists gallery query filters and restores
 validated navigation selection and directory expansion. This compile does not
 verify behavior in a running Windows GUI or against an actual PhoTag library.
 
-## Current cloud task pass (2026-10-12)
+## Historical snapshot: cloud task pass (2026-10-12)
 
 This pass is in code-generation/documentation mode. Per the current task scope,
 plugin tests are deferred to the second-round concentrated debugging phase.
@@ -198,9 +212,12 @@ to the cloud environment guide.
   `cargo test --workspace --exclude photag-shell --offline` and
   `cargo check -p photag-shell --offline` both pass independently.
 
-A successful compile is not evidence of feature parity. UI bridge, shell, database, thumbnails, and a partial folder-indexing migration are present; most user-visible PhoTag behavior is still unmigrated. Windows GUI, Windows Shell drag/drop, and file operation
-behavior need testing. Real user-library compatibility still needs a test with
-an actual library copy.
+This paragraph records the validation report's initial baseline assessment,
+before the later feature migrations documented below. It is superseded as a
+current feature inventory by the 2026-10-13 source-parity/consolidation entry
+and `docs/source-feature-audit.md`. The underlying caution still applies:
+successful compilation is not evidence of complete parity, and Windows
+behavior plus real user-library compatibility need dedicated validation.
 
 ## Windows build performance baseline (2026-10-12)
 
@@ -416,3 +433,32 @@ ordering. It also synchronized the crate `PORTS.md` guides and this feature map.
 | `git diff --check` | Passed | No whitespace errors in the consolidated changes. |
 | Tests | Not run | Reserved for the user's second-round concentrated debugging per workspace instructions. |
 | Windows UI/media/filesystem behavior | Unverified | Native modal/keyboard behavior, update replacement, codecs/audio devices, FFmpeg corpus, OLE, shell dialogs, watcher delivery and visual parity require real Windows validation. |
+
+### Graph-guided source code parity review (2026-10-13)
+
+The reference mirror and migrated workspace were indexed separately with the
+codebase-memory graph. The reference index covered all 22 Rust files (1,228
+nodes / 5,195 edges, no reported parse gaps); the target index contained 2,796
+nodes / 10,446 edges (vendor, docs and build output excluded). Traces from
+`AppState::process_pending`, `show_gallery`, `show_tag_node`, and `show_preview`
+were used to navigate source call paths, then relevant destination code was
+read directly. The detailed feature-family mapping and remaining caveats are in
+`docs/source-feature-audit.md`.
+
+Direct source review found two Gallery parity defects: Enter stopped previewing
+when Settings was available, and multi-selection had no visible Preview-first
+action despite the source exposing Open for a non-empty selection. Both were
+fixed in `crates/photag-plugin-gallery/src/view/keyboard.rs` and `view/render.rs`.
+The same review recorded one intentional difference: after AI automatic
+inference fails or disconnects, the migrated Preview marks the image analyzed
+to avoid a tight automatic retry loop; the source leaves it eligible for retry.
+Manual Analyze remains available. This is a behavior difference, not an absent
+feature.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Run after the Gallery parity repairs. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Incremental shell dependency graph check after the Gallery parity repairs. |
+| `git diff --check` | Passed | No whitespace errors at the time of the final review; line-ending normalization warnings may appear on Windows for edited Markdown files. |
+| Tests | Not run | Per repository instruction, reserve tests for the user's second-round concentrated debugging. |
+| Equivalence / runtime | Not established | Graph correspondence and successful compilation do not prove every source branch or Windows behavior. Full SQL, native UI, media corpus and system integration still need focused validation. |

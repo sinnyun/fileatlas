@@ -10,7 +10,7 @@
 - 已实现 `screenshot_window`、媒体库/搜索/详情读取、视图状态、预览/播放控制、扫描取消、评分/标签、文件夹管理、媒体文件操作和元数据导出工具。逐项服务映射和限制见 [`crates/photag-plugin-mcp/PORTS.md`](../crates/photag-plugin-mcp/PORTS.md)。
 - Windows 截图通过 Shell 提供的本进程 GPUI HWND 调用 `PrintWindow(PW_RENDERFULLCONTENT)`，编码成 MCP PNG 图片内容。代码已实现；MCP 客户端实连、截图画面保真度和不同窗口状态仍需 Windows 实机验证。
 - 修改工具默认关闭；设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1` 后才开放。文件操作、导出、文件夹删除/重扫、标签删除还需请求参数中的 `confirm: true`。MCP 客户端仍应逐次向用户确认高影响操作。
-- 最终 `cargo fmt --all -- --check` 通过。最终 shell 检查现被图库既有 `.track_scroll` API 编译错误阻塞；MCP 曾在较早的整合构建中通过，完整状态记录见 [`docs/validation-report.md`](validation-report.md)。测试按仓库规则未运行。
+- 该状态快照最初记录 shell 检查被 Gallery `.track_scroll` API 编译错误阻塞；此问题已在后续整合中修复。2026-10-13 的最终整合记录中，格式检查及 `cargo check -p photag-shell --locked -j 2` 均通过。MCP 实际客户端往返、窗口截图保真度及 Windows 行为仍待实机验证；以 [`docs/validation-report.md`](validation-report.md) 最新迁移记录为准。
 
 ## 架构
 
@@ -59,7 +59,7 @@
 - 将 `photag-plugin-mcp` 加入 workspace，并纳入 Shell 的启动/停止顺序。
 - 注册截图和少量基于现有服务的只读工具。
 - 为新增 crate 编写 `PORTS.md`，记录插件/服务标识、依赖、数据结构、生产者/消费者、限制和排错方式。
-- 在同一实现变更中更新 `docs/source-feature-audit.md`，如实标记 MCP 能力，不得改变现有未完成迁移项的状态。
+- 在同一实现变更中更新 `docs/source-feature-audit.md`，如实标记 MCP 能力，并保留原生 PhoTag UI 与 MCP 适配能力的状态区别。
 
 ### 阶段 2：可逆操作
 
@@ -70,7 +70,7 @@
 ### 阶段 3：受控文件操作与导出
 
 - 在确认流程、路径范围、批量限制、逐项结果和失败处理完成后，再加入文件修改和元数据导出。
-- 对照 `docs/source-feature-audit.md` 保留尚未完成的原生 UI 工作状态；增加 MCP 入口不代表原生 UI 迁移完成。
+- 对照 `docs/source-feature-audit.md` 保留原生 UI 的实际迁移状态；增加 MCP 入口不代表原生 UI 迁移完成，也不应把已迁入 UI 的状态回退成未完成。
 
 ## 验收标准
 

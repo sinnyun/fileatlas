@@ -486,18 +486,18 @@ impl Render for GalleryView {
                         .bg(rgb(theme::SURFACE_PANEL))
                         .p_3()
                         .child(div().text_sm().font_semibold().child("File actions"));
+                    actions = actions.child(
+                        div().h_flex().gap_2().child(
+                            Button::new("gallery-preview-selected")
+                                .label("Preview first selected")
+                                .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
+                        ),
+                    );
                     if self.selection.selected_media_ids.len() == 1 {
                         actions = actions.child(
                             div()
                                 .h_flex()
                                 .gap_2()
-                                .child(
-                                    Button::new("gallery-preview-selected")
-                                        .label("Preview")
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| this.preview_selected(cx)),
-                                        ),
-                                )
                                 .child(Button::new("gallery-open-selected").label("Open").on_click(
                                     cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
                                 ))

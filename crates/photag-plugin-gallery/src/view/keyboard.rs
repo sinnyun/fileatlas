@@ -40,7 +40,7 @@ impl GalleryView {
                 if configured
                     .as_deref()
                     .is_some_and(|key| keys_match(key, &event.keystroke.key))
-                    || (configured.is_none() && event.keystroke.key.eq_ignore_ascii_case("enter"))
+                    || event.keystroke.key.eq_ignore_ascii_case("enter")
                 {
                     self.open_configured_target(cx);
                     return;
@@ -91,8 +91,7 @@ impl GalleryView {
             "end" => GalleryKey::End,
             "escape" => GalleryKey::Escape,
             "delete" | "backspace" => GalleryKey::Delete,
-            "enter" if self.settings.is_none() => GalleryKey::Enter,
-            "enter" => return,
+            "enter" => GalleryKey::Enter,
             "a" if event.keystroke.modifiers.control => GalleryKey::SelectAll,
             "0" => GalleryKey::Rating(0),
             "1" => GalleryKey::Rating(1),

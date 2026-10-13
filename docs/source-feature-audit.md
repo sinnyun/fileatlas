@@ -4,10 +4,17 @@
 PhoTag v0.2.0. Mirrored source: `vendor/photag-source/`. Source count:
 18,434 Rust lines across 22 files. Migration status below was reconciled with
 the latest implementation commits on 2026-10-13.
-This audit catalogs documented behavior and original source locations; it is
-not a claim that every internal branch has been exhaustively behavior-tested.
-Detailed code-level migration requires working through the listed modules and
-capturing behavioral regression cases before each port.
+This audit catalogs source behavior and original locations, cross-checked
+against the migrated implementation. It is not a claim that every internal
+branch has been exhaustively behavior-tested.
+
+This is the canonical current migration map. Its status prose describes code
+reported as implemented; `unverified`, `validation pending`, and similar notes
+are evidence gaps, not automatically missing implementations. Conversely,
+compilation or a synthetic test is not proof of complete source parity. Older
+summaries in `AGENTS.md`, `README.md`, and dated validation sections are
+historical if they conflict with this map. Reconciliation did not establish a
+blanket claim of full PhoTag equivalence.
 
 ## Feature-to-source mapping
 
@@ -27,7 +34,7 @@ parity.
 | Video/audio playback, synchronization, speed, rotation metadata, ffmpeg integration | `src/video.rs` | media-playback plugin | FFmpeg video frames and PCM audio play through a worker-owned Rodio sink. Audio-clock timing falls back to wall clock when the stream drains; seek and volume sliders, pause/frame-step, source speed presets, 0.05× adjustment, and 3×/4×/8× boosts are exposed. Video Preview routes Space/Left/Right/Escape to playback as in the source and opens unprobeable videos through the default application. Windows codecs/audio-device behavior and synchronization remain unverified. |
 | EXIF and metadata display, dimensions, paths, open count | `src/ui/info.rs`, `src/ai.rs`, `src/db/queries.rs` | Gallery selected details + Preview info panel | Gallery selected-item details include filesystem read-only/modified/created values, formatted size, indexed dimensions/megapixels/aspect ratio, capture date, rating, hierarchical tags, and the original database open counter. The selected-image panel lazily parses source-compatible curated and complete EXIF fields with `kamadak-exif` 0.6.1. The preview info overlay/toggle parses filesystem and EXIF metadata and displays cached ffprobe video metadata. The pinned source exposes no generated-description feature; Windows visual parity is unverified. |
 | Hierarchical tags, ancestor auto-apply/manual distinction, associations, merge, rename, reparent, colors/icons/order/display | `src/db/queries.rs`, `src/ui/sidebar.rs`, `src/ui/preview.rs` | navigation + `photag-plugin-tagging` | Database assignment, association expansion, automatic ancestor rows, manual/automatic distinction, removal/clear/merge and tree editing/style/display services are exposed through Cordis. Navigation supports association editing, source merge-target selection, media-aware delete confirmation/ancestor handling, and drag reorder. Gallery has searchable assignment/removal/clear across selected media with undo; Preview has a searchable tree picker with recent tags and persisted collapse state. AI suggestions enter source-compatible history. Background XMP write failures are surfaced in Gallery with retry/dismiss behavior. Windows behavior and writeback regression coverage remain unverified. |
-| Ratings, pick/reject, keyboard shortcuts, tag hotkeys | `src/app.rs`, `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/settings.rs` | `photag-plugin-gallery` + command/keybinding contributions | Rating selection effects persist through the source bulk update query (0–5 clamp verified), with GPUI card selection, batch controls and 0–5 key handling. Arrow/Home/End/Ctrl+A/Escape selection keys are bound; Enter opens the selected image in the preview service; Gallery and Preview delete actions use ID-bound Recycle Bin confirmation. Settings captures/persists the open key and F1–F9 tag targets; Gallery consumes open and tag keys, with history entries for tag mutations. Preview supports F2 rename, fit/zoom keys, and image/video/audio filmstrip navigation. The source provides no pick/reject action handler; therefore those glyphs have no action to port. Windows shortcut/focus behavior and visual parity remain unverified. |
+| Ratings, pick/reject, keyboard shortcuts, tag hotkeys | `src/app.rs`, `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/settings.rs` | `photag-plugin-gallery` + command/keybinding contributions | Rating selection effects persist through the source bulk update query (0–5 clamp verified), with GPUI card selection, batch controls and 0–5 key handling. Arrow/Home/End/Ctrl+A/Escape selection keys are bound. Source Enter preview and the configurable open key are both handled unconditionally in `view/keyboard.rs::handle_key`; the action bar exposes Preview first selected for multi-selection, matching the source's selected-set action. Gallery and Preview delete actions use ID-bound Recycle Bin confirmation. Settings captures/persists the open key and F1–F9 tag targets; Preview supports F2 rename, fit/zoom keys, and image/video/audio filmstrip navigation. The source provides no pick/reject action handler; therefore those glyphs have no action to port. Windows shortcut/focus behavior and visual parity remain unverified. |
 | Search tag assignment menus and context menus | `src/ui/gallery.rs`, `src/ui/preview.rs`, `src/ui/sidebar.rs` | menu contributions owned by feature plugins | Gallery provides a searchable hierarchical tag picker for assign/remove/clear across selected media, with undo history. Card actions expose Preview, open/reveal, hierarchical tag assignment, copy/move, confirmed delete, AI Suggest Tags and rating; sidebar tags can be dragged onto cards. Preview's right-click menu exposes open/reveal, AI suggestions, rating and confirmed delete, and its toolbar has a searchable tag picker. Navigation tag rows provide edit, rename, show/hide chips, parent, save style, delete, and before/into/after drag placement. Windows interaction and visual parity remain unverified. |
 | Recursive multi-thread scanning, hidden-file filtering, video/poster pairing, DB batches, image/video thumbnails, cancellation/progress, missing-thumbnail backfill, child directory listing | `src/scan.rs`, `src/thumbs.rs`, FFmpeg helpers from `src/video.rs` | `photag-plugin-indexing` + `photag-plugin-thumbnails` | Source scanning, video/poster pairing, database batching, cancellation/progress, thumbnail generation/backfill and child directory listing are implemented behind Cordis services. Synthetic regression coverage exists; full media corpus, FFmpeg deployment and Windows paths remain unverified. |
 | Filesystem watcher and reconciliation | `src/watcher.rs`, `src/scan.rs`, `src/app.rs` watcher reconciliation | `photag-plugin-watcher` + indexing plugin | Original create/remove/rename filtering, hidden-file exclusion, 800ms debounce, 4,000-event drain and 200-path reconcile budget are retained. Cordis plugin watches registered folders, runs reconciliation in a bounded background poller, triggers missing-thumbnail generation for added rows, emits a Cordis media-index event after database changes, and stops the worker with the plugin. Linux integration tests cover file create/remove and dispatch of both change notifications; native Windows delivery and DB/file race cases remain unverified. |
@@ -93,6 +100,33 @@ behavioral seams during migration without dropping behavior.
 | `src/theme.rs` | 610 | theme and drawing primitives | Palette, dimensions, typography names, control state colors, accent presets and source alpha levels are exposed and consumed through shared UI tokens; Windows font and visual parity remain unverified. |
 | `src/ui/mod.rs` | 5 | UI module exports | Source module organization only; feature behavior is tracked in the rows above. |
 
+## Source-code and graph cross-check (2026-10-13)
+
+The codebase-memory graph indexed the pinned reference (`vendor/photag-source`)
+as 1,228 nodes / 5,195 edges across all 22 Rust files, with no reported parse
+gaps. The migrated workspace index contained 2,796 nodes / 10,446 edges; vendor,
+docs and build output are intentionally excluded. Graph traces were followed
+from the source's `AppState::process_pending`, `show_gallery`, `show_tag_node`,
+and `show_preview` entry points, then matched to destination crate/service and
+view symbols. The source and destination use different architectural boundaries,
+so this is a behavior mapping, not a requirement for one-to-one function names.
+
+| Reference source path / traced behavior | Migrated code counterpart | Finding |
+|---|---|---|
+| `src/main.rs`, `src/app.rs`: startup, pending actions, gallery, history, navigation, file actions, export, update | `photag-shell`; app-state, Gallery, Navigation, History, File Operations, Metadata Export, Updater and Settings plugins | Every source-backed action family inspected has a destination implementation. Concrete misses found in Gallery Enter handling and multi-selection Preview affordance were repaired in Gallery keyboard/render code; see the keyboard row above. |
+| `src/ui/gallery.rs`, `src/ui/filterbar.rs`, `src/db/queries.rs`: windowed media, selection, filters, bulk actions, stats | Gallery view/filter/bulk/statistics modules and Database service | Corresponding code paths exist for paging/rendering, selection, filter-to-query mapping, snapshot-bound bulk actions and statistics. This structural check does not prove every SQL edge case or Windows interaction. |
+| `src/ui/sidebar.rs`, `src/db/queries.rs`: folder/tag trees, lazy children, edits, associations, merge | Navigation and Database services; Tagging commands | Corresponding folder/tag operations and UI flows exist, including lazy loading and tag placement/association controls. Native picker, drag and confirmation behavior still needs Windows validation. |
+| `src/ui/preview.rs`, `src/ui/info.rs`, `src/thumbs.rs`, `src/video.rs`: preview, metadata, image transforms, filmstrip, playback | Preview, Thumbnails, Media Playback, File Operations and Tagging services | Corresponding source feature areas are present. Windows devices, codecs, metadata corpus and visual interaction remain unverified. |
+| `src/scan.rs`, `src/watcher.rs`, `src/app.rs`: indexing, progress/cancel, reconciliation | Indexing, Thumbnails, Watcher and Database services | Corresponding scan, backfill, notification and reconciliation paths exist; native event delivery and filesystem races remain unverified. |
+| `src/ai.rs`, `src/xmp.rs`: inference, suggestions, model download, metadata writeback | AI and Tagging services plus Preview suggestion view | Corresponding analysis, assignment, history and writeback paths exist. One explicit semantic difference remains: source auto-analysis leaves failed image IDs eligible for retry, while migrated `AiSuggestionsView::poll` marks failed/disconnected inference as analyzed to prevent automatic retry loops. Manual Analyze remains available. |
+| `src/settings.rs`, `src/session.rs`, `src/theme.rs`, `src/update.rs`, `src/drag.rs`, `src/winfx.rs` | Settings, Session, UI Bridge, Updater, Drag/Drop and Shell | Corresponding persistence, theme, updater and OLE feature areas have code counterparts. OS-specific effects remain unverified on Windows. |
+
+This pass directly read both source and destination implementations for the
+identified regressions; graph presence alone is not treated as proof of parity.
+No whole source feature family in this mapping lacked a destination code area.
+The table below records specific remaining behavior and validation gaps; this
+result does not certify every branch as equivalent.
+
 ## Interaction inventory from upstream README
 
 Gallery keys include configurable open (default Space), arrows/Home/End, Ctrl+A,
@@ -100,8 +134,10 @@ Gallery keys include configurable open (default Space), arrows/Home/End, Ctrl+A,
 The open-key setting, history commands, source-supported history producers,
 filter-driven bulk panel, paging, tag picker, month grouping, thumbnail size
 controls, rubber-band selection, Gallery AI Suggest Tags, sidebar-tag drop
-assignment, and card/Preview action menus are migrated. Bulk delete binds
-confirmation to the exact media-ID set. Preview supports filmstrip navigation,
+assignment, and card/Preview action menus are present in the migrated code.
+Bulk delete binds confirmation to the exact media-ID set. Source Enter preview
+and multi-selection Preview are present after code-review repairs. Preview
+supports filmstrip navigation,
 low-resolution-first decode, arrows, Escape, I info toggle, F2 rename,
 delete-and-advance, persisted transforms and toolbar offsets. Audio preview and
 image/video/audio filmstrip navigation are migrated; video hands off to Playback.
@@ -135,4 +171,9 @@ must be extracted into executable regression specifications before parity can
 be accepted: every menu item and confirmation, all settings controls/defaults,
 all SQL query semantics and cascades, edge cases in file-operation rollback,
 watcher event reconciliation, viewer toolbar configuration, and per-control
-visual behavior. The baseline source remains available to inspect directly.
+visual behavior. These are specification/validation gaps; they do not imply
+that the corresponding UI or service code is absent. The source mirror remains
+available for deeper branch-by-branch comparison. Windows interaction, native
+system integration, representative full-format media coverage, update restart,
+and real-library compatibility also remain unverified until exercised in the
+appropriate environment.
