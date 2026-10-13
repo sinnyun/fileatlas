@@ -1,5 +1,10 @@
 # Validation report
 
+**Phase status:** migration-phase record. Interface work from 2026-10-13 onward
+is validated against the redesign references and recorded in
+[`redesign-validation.md`](redesign-validation.md); source-parity statements
+below describe the migration phase, not the current UI target.
+
 ## Current status index (2026-10-13)
 
 The latest recorded consolidation and source-parity pass reports

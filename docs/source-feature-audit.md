@@ -4,6 +4,12 @@
 PhoTag v0.2.0. Mirrored source: `vendor/photag-source/`. Source count:
 18,434 Rust lines across 22 files. Migration status below was reconciled with
 the latest implementation commits on 2026-10-13.
+
+**Phase status:** migration-phase record. The project is now in the interface
+redesign phase, where [`docs/reference-ui/final-v5/`](reference-ui/final-v5/README.md)
+is the design authority. Use this audit to locate existing backend behavior and
+its original source, not to require the new UI to match the egui interface.
+
 This audit catalogs source behavior and original locations, cross-checked
 against the migrated implementation. It is not a claim that every internal
 branch has been exhaustively behavior-tested.

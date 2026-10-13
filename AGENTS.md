@@ -2,14 +2,21 @@
 
 ## Status
 
-This repository is an **incomplete migration**, not a completed PhoTag
-replacement. The selected PhoTag source is preserved in
-`vendor/photag-source/`. `docs/source-feature-audit.md` is the canonical,
-current feature-to-source map. Read its status descriptions before making
-parity claims. Do not use this file's architecture notes as a migration status
-list: older feature summaries below were superseded by the audit dated
-2026-10-13. Distinguish implemented behavior from behavior that still needs
-Windows, media-corpus, or regression validation.
+The project is in the **interface redesign phase**: the user owns the UI
+design, and the workspace now implements that design rather than reproducing
+the PhoTag (egui) interface. Design references live in
+`docs/reference-ui/final-v5/` with its companion notes in
+`docs/reference-ui/concepts/`; static mockups are visual direction only, not
+pixel measurements.
+
+`vendor/photag-source/` remains the reference for backend behavior, data
+semantics and queries. The migration-phase documents
+`docs/source-feature-audit.md`, `docs/validation-report.md` and
+`docs/reference-ui/source-layout-spec.md` are historical records of that phase:
+useful for locating existing behavior, but they are not the current interface
+specification and must not be used to demand source UI parity. Feature
+completeness statements in them describe the state at the time they were
+written.
 
 ## Architecture target
 
@@ -24,29 +31,27 @@ Windows, media-corpus, or regression validation.
 - `photag-ui-bridge` is the shared UI registration contract, metadata catalog,
   executable GPUI view-factory catalog, and Cordis-owned cleanup boundary.
 - `photag-plugin-database` owns the source-compatible SQLite data layer. Keep
-  all DB access behind its Cordis service as migration proceeds.
+  all DB access behind its Cordis service as the redesign proceeds.
 - `photag-plugin-thumbnails` retains PhoTag image thumbnail/cache generation.
 - `photag-plugin-indexing` owns recursive scanning and thumbnail backfill; its
   service is the public entry point for scan progress/cancellation streams. Its
   current regression test uses a synthetic image and paired video poster; it
-  does not establish Windows or full-format parity.
+  does not establish Windows behavior or full media-format coverage.
 - `photag-plugin-watcher` owns registered-folder notifications and database
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
 - `photag-plugin-gallery` ports the source skeleton/window data model, paints
   cached image thumbnails, pages records in 200-row batches, and supports
-  source-style selection, ratings, keyboard navigation, filters, date grouping,
+  selection, ratings, keyboard navigation, filters, date grouping,
   rubber-band selection, named tag filters, hierarchical tag assignment,
   settings/session persistence, file actions, statistics, bulk operations,
-  preview routing, and Cordis event reloads. See the canonical audit for the
-  current interaction inventory. Windows behavior and visual parity remain
+  preview routing, and Cordis event reloads. Windows behavior remains
   unverified.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, coordinates folder add/rescan/remove, scanner
   cancellation and watcher registration, emits Cordis selection events, and
   provides native folder picking, tag editing menus, drag placement, and
-  persisted expansion. Windows interaction and visual parity remain
-  unverified.
+  persisted expansion. Windows interaction remains unverified.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge/
   reparent commands through source database queries. It reuses PhoTag's XMP/
   IPTC writer, schedules metadata rewrites after mutations, and exposes
@@ -55,8 +60,8 @@ Windows, media-corpus, or regression validation.
   real camera/editor interoperability remains unverified.
 - `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
   models and paths as Cordis services. Settings controls and active-view state
-  restore/save paths are integrated; see the audit for remaining validation
-  limits.
+  restore/save paths are integrated; their panels are rebuilt on the current
+  design while keeping these persisted models compatible.
 - `photag-plugin-metadata-export` wraps PhoTag's complete metadata query and
   JSON writer. Its command, native JSON save dialog, progress, result, and
   error feedback are integrated; Windows interaction remains unverified.
@@ -69,27 +74,21 @@ Windows, media-corpus, or regression validation.
   It scans `test-data/photag-library` through the production Indexing service
   and seeds up to 100,000 virtual rows in an isolated DB. Its profile must keep
   the normal PhoTag DB, settings, session and thumbnail cache untouched.
-- Reuse the pinned PhoTag implementation and data semantics. Never replace
-  working behavior with placeholder behavior or report partial parity as full.
+- Reuse the pinned PhoTag implementation and data semantics for backend
+  behavior. Never replace working behavior with placeholder behavior, and never
+  report partial coverage as complete.
 
 ## Implementation rules
 
-- Trace source behavior and callers in `vendor/photag-source/` before migration;
-  update the mapping table in the same change.
-- For every UI layout, style, or control-placement change, inspect the pinned
-  source implementation and its exact dimensions, ordering, spacing, typography,
-  colors, and interaction state before editing the migrated plugin. Screenshots
-  are for checking the rendered result only; never infer layout values from
-  pixels when source code provides them. Follow
-  `docs/reference-ui/source-layout-spec.md` and add source file/line references
-  to the change notes or validation record. If a value is computed or inherited
-  from egui defaults, document that actual source rule instead of inventing a
-  GPUI value. Keep every visible source control and state represented in its
-  corresponding feature plugin; explicitly record source UI that has no
-  migrated counterpart.
-- Complete and review the source layout specification before making broad UI
-  restructuring changes. Work from its source-to-plugin component map so
-  framework edits proceed region by region without speculative placement.
+- Trace source behavior and callers in `vendor/photag-source/` before changing
+  backend/data behavior; update the mapping table in the same change.
+- Interface work follows the user's current design. Before implementing a
+  screen, read the corresponding `docs/reference-ui/final-v5/` mockup and its
+  concepts notes, then reproduce its structure, controls, and states in GPUI
+  Kit. The user's design decisions and in-session direction override any older
+  source-layout document. Record which mockup a change implements, and note
+  designed controls or states that are still missing from the app. Screenshots
+  of the running app are for checking the rendered result only.
 - Preserve SQLite schema and existing `%LOCALAPPDATA%\\PhoTag` files unless a
   tested compatibility migration is supplied.
 - Keep Rust files below 500 lines where practical and below 800 lines.
@@ -121,21 +120,26 @@ See `docs/rust-toolchain.md` for exact local commands and MCP configuration.
 
 ## Verification
 
-The project is in the local validation phase. Run the checks needed for the
-change, including `cargo fmt --all -- --check`, locked shell compilation, and
-relevant crate or workspace tests. Use bounded parallel build jobs and keep
-incremental compilation enabled when practical. Do not describe a compile or
-headless test as proof of interactive parity.
+Redesign-phase changes are verified against the current design, not against the
+egui source. Run the checks needed for the change, including
+`cargo fmt --all -- --check`, locked shell compilation, and relevant crate or
+workspace tests. Use bounded parallel build jobs and keep incremental
+compilation enabled when practical. Do not describe a compile or headless test
+as proof that an interface works.
 
-For migration validation, compare each source feature in
-`docs/source-feature-audit.md` with its pinned implementation under
-`vendor/photag-source/` and its migrated counterpart. Start the Windows desktop
-application locally and exercise the corresponding workflows where the
-interactive environment permits. Record exact commands, environment, outcomes,
-and untested cases in `docs/validation-report.md`; mark Windows UI, shell,
-drag/drop, file operations, codecs, and system integration unverified until
-they have actually been exercised. Keep the audit map and each crate's
-`PORTS.md` aligned with observed behavior and public signatures.
+For interface work, launch the Windows application and exercise the redesigned
+flows, comparing the rendered window against the corresponding
+`docs/reference-ui/final-v5/` mockup: layout, visible controls, states, and
+copy. Record the mockup checked, exact commands, environment, outcomes, and the
+designed controls or states still missing in `docs/redesign-validation.md`.
+Windows UI, shell, drag/drop, file operations, codecs, and system integration
+remain unverified until actually exercised.
+
+For backend behavior, keep comparing the affected feature with its pinned
+implementation under `vendor/photag-source/` and record results in
+`docs/validation-report.md`, which continues to hold the migration-phase
+history. Keep each crate's `PORTS.md` aligned with observed behavior and public
+signatures.
 
 For live verification and debugging, use the project's PhoTag MCP plugin when
 an MCP client is available: configure the client to launch

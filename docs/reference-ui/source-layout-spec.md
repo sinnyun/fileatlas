@@ -1,5 +1,10 @@
 # PhoTag source UI layout and styling specification
 
+**Phase status:** migration-phase record. The interface redesign phase uses
+[`docs/reference-ui/final-v5/`](final-v5/README.md) as the design authority;
+this document stays only as a lookup for how the original egui interface
+behaved and is not a requirement on the new UI.
+
 **Purpose:** source-code specification for restoring the migrated UI. Every
 layout value below is read from the pinned source implementation; screenshots
 are only a later rendered-result check and are not a source of dimensions.
