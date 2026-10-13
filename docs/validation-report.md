@@ -580,5 +580,51 @@ startup, available tools, and mutation gates.
 | `cargo +1.97.1 test -p photag-plugin-indexing --locked extracts_a_thumbnail_from_a_valid_generated_video -- --ignored --nocapture` | Passed | FFmpeg 8 generated a short video and the migrated helper extracted its JPEG poster. |
 | `$env:PHOTAG_DEV_PLUGINS='gallery'; $env:LOCALAPPDATA='F:\AI\geren\pho_cordis\target\local-validation'; cargo +1.97.1 run -p photag-shell --locked -j 2` | Passed | Launched with `Start-Process`; native process/window handle observed, then closed after startup check. |
 | `$env:PHOTAG_DEV_PLUGINS='dev-test'; $env:PHOTAG_DEV_TEST_DIR='F:\AI\geren\pho_cordis\target\dev-test'; $env:LOCALAPPDATA='F:\AI\geren\pho_cordis\target\local-validation'; cargo +1.97.1 run -p photag-shell --locked -j 2` | Passed | Launched with `Start-Process`; isolated dev-test profile created a native window handle, then closed after startup check. |
-| Interactive Gallery/Navigation/Preview workflows and visual/source parity | Not tested | No manual control operation or full visual comparison was performed. Continue with a representative PhoTag library and Windows input/device integration. |
-| MCP child round trips, native dialogs, OLE drag-out, updater replacement, real camera/editor metadata, codecs/audio devices | Not tested | The existing source audit records these as remaining runtime/corpus validation items. |
+| Interactive Gallery/Navigation/Preview workflows and visual/source parity | In progress | The isolated reference and migrated apps were both launched. Gallery, tag creation, media selection, preview, and info-panel screenshots were captured. Live comparison found and fixed Preview layout/centering. Settings tabs were separately captured in the reference app; migrated Settings, Navigation input/dialogs, drag/drop, and remaining Preview controls still need one-to-one interaction checks. |
+| MCP child round trips | Passed | The local MCP stdio client initialized, listed 27 tools, scanned the fixture library to 9 indexed media, queried library/media state, opened a PNG in the actual window, toggled preview info, set a 4-star rating, assigned a tag, and verified the resulting media/tag state. `screenshot_window` returned inspected 2326 × 1699 PNG captures from the same GPUI process. |
+| Original reference launch isolation | Passed with one initial caveat | The original v0.2.0 app was built from a temporary source copy. Its first launch touched the default PhoTag runtime profile before the path override was added; no UI mutations were made there. The reference was stopped, patched only in the temporary copy to use `PHOTAG_REFERENCE_DATA_DIR`, then relaunched with its database and settings isolated under `target/reference-local`. All subsequent reference operations used the isolated profile. |
+| Native dialogs, OLE drag-out, updater replacement, real camera/editor metadata, codecs/audio devices | Not tested | The source audit records these as remaining runtime/corpus validation items. The temporary reference fixture is synthetic and does not prove codec or metadata interoperability. |
+
+### Live reference-to-migration UI comparison (2026-10-13)
+
+Built and launched PhoTag v0.2.0 from `vendor/photag-source/` using a temporary
+copy, then ran the migrated `target/debug/photag-shell.exe --mcp` with the
+opt-in `dev-test` plugin. Both profiles used generated test media; the
+migrated database/settings/cache live under `target/dev-test/` and its
+`LOCALAPPDATA` redirect, while reference data lives under
+`target/reference-local/`. This round validates only the interactions listed
+below; it is not full source-feature parity.
+
+The reference was operated through Windows UI Automation and mouse input:
+open folder picker, add and scan the fixture folder (9 visible items), switch
+to Tags, create `ValidationTag`, select `tiny.jpg`, show the selection action
+bar, and open its preview. Reference Settings tabs for Appearance, Shortcuts,
+Tags, AI, and Updates were also captured. Migrated interactions used MCP tools
+against the same process that owned the GPUI HWND: scan fixture, query 9 media,
+create/read `ValidationTag`, open `small.png`, toggle info, set rating 4, assign
+the tag, and query the final record. `get_view_state` matched the selected path
+and info toggle; `get_media` returned rating 4 and `ValidationTag`.
+
+The comparison caught two actual Preview defects. The view was registered in
+`workspace.main`, so it appeared as a short panel below Gallery instead of
+PhoTag's full-window preview. The preview image row also used alignment styles
+without flex display, pinning the image to the stage's upper-left. The view now
+uses `workspace.modal`, returns a zero-size element when no source is open,
+draws a dim full-window backdrop, and uses flex containers to center the
+image. Rebuilt and inspected the resulting MCP PNG: `small.png` is centered,
+the Gallery is dimmed, and the file/image/EXIF panel appears when info is
+enabled. The original Reference screenshot and migrated screenshot artifacts
+are in the ignored local directory `target/validation-screenshots/` (for
+example `reference-settings.png`, `reference-selected-media.png`,
+`reference-preview.png`, `migrated-gallery-clean.png`, `migrated-preview.png`,
+and `migrated-preview-info.png`).
+
+| Check | Result | Notes |
+|---|---|---|
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Repeated after the modal-layer and image-centering fix. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 build -p photag-shell --locked -j 2` | Passed | Rebuilt the actual Windows executable used by the MCP UI walkthrough. |
+| MCP fixture scan and state round trip | Passed | 9 media rows; small PNG opened; info became true; rating 4 and tag association were returned by `get_media`. |
+| Preview full-window screenshot comparison | Passed for tested state | MCP `PrintWindow` output visually inspected; image centered and Gallery dimmed. High-DPI/window-size parity and every toolbar action are not yet checked. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` after this UI fix | Passed | 49 passed, 0 failed, 3 ignored (two live network checksum downloads and the optional FFmpeg smoke test). |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Workspace formatting check after all local validation changes. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Includes the MCP close action and Preview modal/wrapping changes. |

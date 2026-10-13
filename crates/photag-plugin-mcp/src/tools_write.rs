@@ -242,6 +242,7 @@ impl super::PhoTagMcpServer {
     #[tool(description = "控制当前图片预览的旋转、翻转、适配、缩放和信息面板。")]
     fn control_preview(&self, Parameters(request): Parameters<PreviewControlRequest>) -> String {
         match request.action.as_str() {
+            "close" => self.preview.close(),
             "rotate_clockwise" => self.preview.rotate_clockwise(),
             "rotate_counter_clockwise" => self.preview.rotate_counter_clockwise(),
             "flip_horizontal" => self.preview.flip_horizontal(),

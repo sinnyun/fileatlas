@@ -93,7 +93,7 @@ impl Plugin for PreviewPlugin {
                     "preview/image",
                     ContributionKind::Panel {
                         label: "Image preview".into(),
-                        slot: "workspace.main".into(),
+                        slot: "workspace.modal".into(),
                         order: 0,
                     },
                 ),

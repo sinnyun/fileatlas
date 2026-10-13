@@ -37,7 +37,7 @@ pub fn preview_view(
 ) -> UiViewContribution {
     UiViewContribution::new(
         "preview/image-view",
-        "workspace.main",
+        "workspace.modal",
         0,
         move |window, app| {
             let service = Arc::clone(&service);

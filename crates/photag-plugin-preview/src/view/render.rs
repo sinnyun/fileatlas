@@ -3,6 +3,9 @@ use super::*;
 impl Render for PreviewView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let snapshot = self.service.snapshot();
+        if snapshot.source.is_none() {
+            return div().size_0();
+        }
         let chrome_alpha = self.service.chrome_alpha();
         if snapshot.source != self.last_seen_source {
             self.last_seen_source = snapshot.source.clone();
@@ -140,6 +143,8 @@ impl Render for PreviewView {
         let controls = div()
             .h_flex()
             .items_center()
+            .flex_wrap()
+            .max_w_full()
             .gap_2()
             .when(is_image && toolbar_settings.rotate_buttons, |controls| {
                 controls
@@ -379,6 +384,7 @@ impl Render for PreviewView {
             this.last_drag_position = None;
         });
         let mut stage = div()
+            .v_flex()
             .relative()
             .flex_1()
             .min_h_0()
@@ -391,6 +397,7 @@ impl Render for PreviewView {
             .overflow_hidden();
         stage = stage.child(
             div()
+                .h_flex()
                 .flex_1()
                 .min_h_0()
                 .w_full()
@@ -613,10 +620,11 @@ impl Render for PreviewView {
             .then(|| context_menu::render(self, cx));
         div()
             .v_flex()
-            .flex_1()
-            .min_h_0()
+            .absolute()
+            .inset_0()
             .gap_2()
             .p_3()
+            .bg(rgba(0x000000dd))
             .track_focus(&self.focus_handle)
             .on_mouse_move(cx.listener(|this, _: &MouseMoveEvent, _, _| {
                 this.service.mark_activity();

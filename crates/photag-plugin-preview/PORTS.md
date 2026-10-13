@@ -1,6 +1,6 @@
 # Preview plugin ports
 
-Status: image and audio preview surfaces are implemented, with video playback handed to MediaPlayback. The Gallery opens selected media with its database identity. The AI suggestions surface polls local inference, reads live AI settings, and supports assigning/removing suggested tags. Source wheel multiplier, smooth zoom animation, fit/preset zoom, cursor-anchored zoom, drag pan, auto-hiding preview chrome, and a toggled file/image/EXIF information overlay are available; source visual parity remains unverified.
+Status: image and audio preview surfaces are implemented, with video playback handed to MediaPlayback. The Gallery opens selected media with its database identity. The AI suggestions surface polls local inference, reads live AI settings, and supports assigning/removing suggested tags. Source wheel multiplier, smooth zoom animation, fit/preset zoom, cursor-anchored zoom, drag pan, auto-hiding preview chrome, and a toggled file/image/EXIF information overlay are available. A live Windows comparison corrected the preview from an in-flow main panel to a modal full-window overlay and fixed image centering; remaining control, DPI, and media-corpus parity still need validation.
 
 ## Lifecycle and dependencies
 
@@ -34,7 +34,7 @@ Status: image and audio preview surfaces are implemented, with video playback ha
 
 ## Shared visual tokens
 
-The preview information panel and status messages use photag-ui-bridge::theme for source modal/base surfaces, accent headings, secondary text, and danger text. Windows visual parity is unverified.
+The preview information panel and status messages use photag-ui-bridge::theme for source modal/base surfaces, accent headings, secondary text, and danger text. The live validation verified the full-window dim overlay, centered image, and info panel with a generated PNG; other settings, devices, codecs, metadata corpora, and interaction states remain unverified.
 
 ## Code map
 

@@ -102,7 +102,7 @@ pub(super) struct MediaIdRequest {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct PreviewControlRequest {
     /// rotate_clockwise, rotate_counter_clockwise, flip_horizontal, flip_vertical,
-    /// fit, toggle_info, or zoom.
+    /// close, fit, toggle_info, or zoom.
     pub(super) action: String,
     /// Used only by the zoom action; accepted presets are 25, 50, 100, 125, 150, and 200.
     pub(super) zoom_percent: Option<u16>,

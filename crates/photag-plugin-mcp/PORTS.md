@@ -1,6 +1,6 @@
 # MCP plugin ports / MCP 对接
 
-Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Native screenshot behavior has not yet been visually validated on Windows.
+Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Windows `PrintWindow` capture and live MCP round trips have been exercised with the isolated dev-test profile; see `docs/validation-report.md` for the checked interactions and remaining limits.
 
 ## Cordis lifecycle and dependencies
 
@@ -16,11 +16,11 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP c
 
 ## Tool contracts
 
-- `screenshot_window`: captures only the PhoTag top-level HWND on Windows with `PrintWindow(PW_RENDERFULLCONTENT)`, encodes the result as PNG, and returns MCP image content plus pixel dimensions. A missing, minimized, invalid, or unsupported window returns an error. PrintWindow output fidelity with GPUI's GPU surface still needs a real Windows visual check.
+- `screenshot_window`: captures only the PhoTag top-level HWND on Windows with `PrintWindow(PW_RENDERFULLCONTENT)`, encodes the result as PNG, and returns MCP image content plus pixel dimensions. A missing, minimized, invalid, or unsupported window returns an error. Visual output has been inspected for Gallery and Preview on the isolated validation profile; other screens and DPI/window-size configurations remain to be checked.
 - `list_library`: reads registered folder IDs, paths, last-scan times/counts, and the hierarchical tag tree.
 - `search_media`: supports a phrase across filename/path/tag, folder ID, tag IDs, media type, offset, a maximum page size of 100, and the source sort orders.
 - `get_media`: returns a single indexed media row and its current tags.
-- `get_view_state`, `open_media`, `control_preview`, and `control_playback`: inspect/change preview and playback state using the existing preview/playback services. Actual media decoding/rendering remains subject to the host playback implementation and Windows runtime validation.
+- `get_view_state`, `open_media`, `control_preview`, and `control_playback`: inspect/change preview and playback state using the existing preview/playback services. Preview controls include `close`; live image rendering was exercised with the generated PNG. Video/audio codecs and device output still need Windows runtime validation.
 - `cancel_scan`: requests cancellation for a folder's active scan.
 - `dev_test_status`, `dev_test_scan_fixture`, `dev_test_inject_virtual`, and
   `dev_test_clear_virtual`: control the optional `DevTestService` in the same
