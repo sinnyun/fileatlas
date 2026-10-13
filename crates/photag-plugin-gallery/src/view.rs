@@ -281,6 +281,7 @@ struct GalleryView {
     row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
     thumb_size: f32,
     group_by_month: bool,
+    show_advanced_filters: bool,
     show_statistics: bool,
     collapsed_months: HashSet<String>,
     extension_exclude_mode: bool,
@@ -608,6 +609,7 @@ impl GalleryView {
                 .filter(|size| size.is_finite() && (100.0..=300.0).contains(size))
                 .unwrap_or(160.),
             group_by_month,
+            show_advanced_filters: false,
             show_statistics: false,
             collapsed_months: saved.collapsed_months.clone(),
             extension_exclude_mode: saved.ext_click_mode

@@ -130,6 +130,9 @@ struct PlaybackView {
 impl Render for PlaybackView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let snapshot = self.service.snapshot();
+        if snapshot.path.is_none() {
+            return div().size_0();
+        }
         let seek_value = self.playhead_value.unwrap_or_else(|| {
             if snapshot.duration_seconds > 0.0 {
                 (snapshot.position_seconds / snapshot.duration_seconds * 1000.0) as f32

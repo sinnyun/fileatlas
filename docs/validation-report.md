@@ -585,6 +585,46 @@ startup, available tools, and mutation gates.
 | Original reference launch isolation | Passed with one initial caveat | The original v0.2.0 app was built from a temporary source copy. Its first launch touched the default PhoTag runtime profile before the path override was added; no UI mutations were made there. The reference was stopped, patched only in the temporary copy to use `PHOTAG_REFERENCE_DATA_DIR`, then relaunched with its database and settings isolated under `target/reference-local`. All subsequent reference operations used the isolated profile. |
 | Native dialogs, OLE drag-out, updater replacement, real camera/editor metadata, codecs/audio devices | Not tested | The source audit records these as remaining runtime/corpus validation items. The temporary reference fixture is synthetic and does not prove codec or metadata interoperability. |
 
+### Follow-up live UI debugging (2026-10-13)
+
+Continued the reference comparison in the isolated Windows profiles above. The
+first migrated Gallery capture showed nine records in MCP but no visible media
+cards. Runtime layout tracing confirmed 9 skeletons, 9 loaded media records,
+and 3 visual rows; the list viewport was shorter than a card row. The Gallery
+now starts with advanced type/sort/rating/date/extension filters collapsed,
+allows six columns on the validated window size, reserves enough viewport for
+two rows, and clips thumbnails to each card. AI suggestions and playback
+controls return zero-size content when no image/video is active. The resulting
+MCP screenshot shows all nine fixture records in two rows, including generated
+thumbnails and audio/broken-image placeholders. Advanced filters remain
+available from “More filters”.
+
+The live Settings tab pass had also exposed duplicate GPUI accessibility IDs in
+repeated option controls and a content card with no bounded height. Option IDs
+are now unique, and the Settings card has an explicit viewport-derived height;
+the migrated Appearance, Toolbar, Shortcuts, Tags, AI, and Updates tabs were
+opened through UI Automation after the fixes. Navigation tags and expanded
+folder hierarchy were also exercised against the same 9-item fixture.
+
+These fixes improve live functionality but do not establish full visual parity:
+the migrated top-level layout and filter controls still differ from the
+reference, the validated gallery uses generated synthetic media, and native
+Windows dialogs, drag/drop, file operations, codec coverage, and external
+metadata interoperability remain to be exercised individually. Screenshots
+are local ignored artifacts under `target/validation-screenshots/`, including
+`reference-gallery-library.png`, `migrated-gallery-clean.png`, and the six
+`migrated-settings-*.png` captures.
+
+| Check | Result | Notes |
+|---|---|---|
+| UI Automation: open migrated Settings and switch through all six tabs | Passed | Repeated after fixing duplicate a11y IDs and card height. |
+| UI Automation: switch Navigation to Tags and expand fixture folders | Passed | Tag row and nested folder counts correspond to the indexed test library. |
+| Same-process MCP scan/query/screenshot and tag/rating round trip | Passed | 9 fixture media; screenshot displays all 9 Gallery cards; queried `small.png` returned 4-star rating and `ValidationTag`. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 fmt --all -- --check` | Passed | After live UI fixes. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows shell and plugin dependency graph. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 49 passed, 0 failed, 3 ignored. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 build -p photag-shell --locked -j 2` | Passed | Executable used for the final MCP screenshot pass. |
+
 ### Live reference-to-migration UI comparison (2026-10-13)
 
 Built and launched PhoTag v0.2.0 from `vendor/photag-source/` using a temporary

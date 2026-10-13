@@ -287,6 +287,9 @@ fn is_image(path: &std::path::Path) -> bool {
 impl Render for AiSuggestionsView {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let unavailable = self.key.is_none();
+        if unavailable {
+            return div().size_0();
+        }
         let ai = Arc::clone(&self.ai);
         let request = cx.listener(move |this, _: &ClickEvent, _, cx| {
             this.request();

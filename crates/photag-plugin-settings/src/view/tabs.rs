@@ -19,7 +19,7 @@ impl SettingsView {
                     let selected = s.accent_name == name;
                     let value = name.to_owned();
                     b = b.child(self.enum_button(
-                        "accent",
+                        format!("accent-{name}"),
                         format!("{} {name}", if selected { "●" } else { "○" }),
                         move |s| s.accent_name = value.clone(),
                         cx,
@@ -136,7 +136,7 @@ impl SettingsView {
                 ] {
                     let selected = s.exclude_modifier == opt;
                     b = b.child(self.enum_button(
-                        "exclude-modifier",
+                        format!("exclude-modifier-{}", opt.label()),
                         format!("{}{}", if selected { "● " } else { "" }, opt.label()),
                         move |s| s.exclude_modifier = opt,
                         cx,
@@ -233,7 +233,7 @@ impl SettingsView {
                 for opt in [TagSearchMatch::Contains, TagSearchMatch::StartsWith] {
                     let chosen = s.tag_search_match == opt;
                     b = b.child(self.enum_button(
-                        "tag-match",
+                        format!("tag-match-{}", opt.label()),
                         format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
                         move |s| s.tag_search_match = opt,
                         cx,
@@ -243,7 +243,7 @@ impl SettingsView {
                 for opt in [TagMergeChildren::Reparent, TagMergeChildren::Delete] {
                     let chosen = s.tag_merge_children == opt;
                     b = b.child(self.enum_button(
-                        "tag-merge",
+                        format!("tag-merge-{}", opt.label()),
                         format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
                         move |s| s.tag_merge_children = opt,
                         cx,

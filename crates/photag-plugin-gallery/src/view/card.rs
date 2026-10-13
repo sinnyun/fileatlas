@@ -50,7 +50,12 @@ pub(super) fn render_media_card(
         }))
         .p_2();
     let thumb_height = thumb_size - 35.;
-    let mut thumbnail = div().relative().w_full().h(px(thumb_height));
+    let mut thumbnail = div()
+        .relative()
+        .w_full()
+        .h(px(thumb_height))
+        .overflow_hidden()
+        .rounded_sm();
     let micro_image = micro_thumb.and_then(micro_render_image);
     if let Some(image) = micro_image.clone() {
         thumbnail = thumbnail.child(

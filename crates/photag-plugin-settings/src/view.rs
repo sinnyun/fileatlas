@@ -313,13 +313,13 @@ impl SettingsView {
     }
     fn enum_button(
         &self,
-        id: &'static str,
+        id: impl Into<String>,
         label: String,
         action: impl Fn(&mut Settings) + Send + Sync + 'static,
         cx: &mut Context<Self>,
     ) -> Button {
         let action = Arc::new(action);
-        Button::new(format!("settings-{id}"))
+        Button::new(format!("settings-{}", id.into()))
             .label(label)
             .on_click(cx.listener(move |this, _, _, cx| {
                 let action = Arc::clone(&action);
@@ -363,6 +363,7 @@ impl Render for SettingsView {
             return self.render_update_offer(window, cx).into_any_element();
         }
         let viewport = window.bounds().size;
+        let card_height = (f32::from(viewport.height) - 24.0).clamp(100.0, 520.0);
         let (left, top) = self.window_position.unwrap_or((
             (f32::from(viewport.width) - 360.).max(0.) / 2.,
             (f32::from(viewport.height) / 2. - 200.).max(24.),
@@ -414,7 +415,8 @@ impl Render for SettingsView {
             .top(px(top))
             .v_flex()
             .w(px(360.))
-            .max_h(px((f32::from(viewport.height) - 24.).max(100.)))
+            .h(px(card_height))
+            .max_h(px(card_height))
             .rounded_md()
             .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
             .text_color(rgb(theme::TEXT_PRIMARY))

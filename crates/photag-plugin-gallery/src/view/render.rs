@@ -4,7 +4,7 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let columns = ((f32::from(window.bounds().size.width) - 24.) / (self.thumb_size + 44.))
             .floor()
-            .clamp(1., 4.) as usize;
+            .clamp(1., 6.) as usize;
         self.columns = columns;
         let group_by_month = self.group_by_month
             && matches!(
@@ -153,16 +153,30 @@ impl Render for GalleryView {
                     &snapshot.tag_tree,
                     cx,
                 ));
-                grid = grid.child(controls::media_type_row(&self.filter, cx));
-                grid = grid.child(controls::sort_row(&self.filter, cx));
-                grid = grid.child(controls::rating_row(&self.filter, cx));
-                grid = grid.child(controls::date_row(&self.date_from, &self.date_to));
-                grid = grid.child(controls::extension_row(
-                    &self.filter,
-                    &snapshot.available_extensions,
-                    self.extension_exclude_mode,
-                    cx,
-                ));
+                grid = grid.child(
+                    Button::new("gallery-advanced-filters")
+                        .label(if self.show_advanced_filters {
+                            "Hide filters"
+                        } else {
+                            "More filters"
+                        })
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.show_advanced_filters = !this.show_advanced_filters;
+                            cx.notify();
+                        })),
+                );
+                if self.show_advanced_filters {
+                    grid = grid.child(controls::media_type_row(&self.filter, cx));
+                    grid = grid.child(controls::sort_row(&self.filter, cx));
+                    grid = grid.child(controls::rating_row(&self.filter, cx));
+                    grid = grid.child(controls::date_row(&self.date_from, &self.date_to));
+                    grid = grid.child(controls::extension_row(
+                        &self.filter,
+                        &snapshot.available_extensions,
+                        self.extension_exclude_mode,
+                        cx,
+                    ));
+                }
                 if let Some(tag_picker) = tag_picker {
                     grid = grid.child(tag_picker);
                 }
@@ -245,6 +259,7 @@ impl Render for GalleryView {
                 grid = grid.child(
                     div()
                         .flex_1()
+                        .min_h(px((card_size + 92.) * 2. + 20.))
                         .relative()
                         .on_mouse_down(
                             MouseButton::Left,
