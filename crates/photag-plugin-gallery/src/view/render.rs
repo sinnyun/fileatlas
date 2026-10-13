@@ -122,8 +122,7 @@ impl Render for GalleryView {
                             })),
                     );
                 }
-                grid = grid.child(gallery_options);
-                grid = grid.child(
+                gallery_options = gallery_options.child(
                     Button::new("gallery-statistics")
                         .label(if self.show_statistics {
                             "Hide statistics"
@@ -135,6 +134,7 @@ impl Render for GalleryView {
                             cx.notify();
                         })),
                 );
+                grid = grid.child(gallery_options);
                 if self.show_statistics {
                     grid = grid.child(super::statistics::render(self, cx));
                 }
@@ -147,23 +147,29 @@ impl Render for GalleryView {
                 }
                 grid = grid.child(Input::new(&self.search).w_full());
                 grid = grid.child(controls::search_scope_row(&self.filter, cx));
-                grid = grid.child(controls::clear_filters_button(cx));
                 grid = grid.child(controls::active_filter_row(
                     &self.filter,
                     &snapshot.tag_tree,
                     cx,
                 ));
                 grid = grid.child(
-                    Button::new("gallery-advanced-filters")
-                        .label(if self.show_advanced_filters {
-                            "Hide filters"
-                        } else {
-                            "More filters"
-                        })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.show_advanced_filters = !this.show_advanced_filters;
-                            cx.notify();
-                        })),
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap_2()
+                        .child(controls::clear_filters_button(cx))
+                        .child(
+                            Button::new("gallery-advanced-filters")
+                                .label(if self.show_advanced_filters {
+                                    "Hide filters"
+                                } else {
+                                    "More filters"
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.show_advanced_filters = !this.show_advanced_filters;
+                                    cx.notify();
+                                })),
+                        ),
                 );
                 if self.show_advanced_filters {
                     grid = grid.child(controls::media_type_row(&self.filter, cx));

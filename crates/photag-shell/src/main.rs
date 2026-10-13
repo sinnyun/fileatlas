@@ -67,12 +67,14 @@ impl Render for PhoTagShell {
         let contributions = self.catalog.snapshot().unwrap_or_default();
         let mut sidebar_views = Vec::new();
         let mut content_views = Vec::new();
+        let mut context_views = Vec::new();
         let mut auxiliary_views = Vec::new();
         let mut modal_views = Vec::new();
         for (slot, view) in &self.views {
             match slot.as_str() {
                 "workspace.sidebar" => sidebar_views.push(view.clone()),
-                "gallery.content" | "workspace.main" => content_views.push(view.clone()),
+                "gallery.content" => content_views.push(view.clone()),
+                "workspace.main" => context_views.push(view.clone()),
                 "workspace.modal" => modal_views.push(view.clone()),
                 _ => auxiliary_views.push(view.clone()),
             }
@@ -202,8 +204,26 @@ impl Render for PhoTagShell {
                             .flex_1()
                             .min_h_0()
                             .min_w_0()
+                            .relative()
                             .overflow_hidden()
-                            .children(content_views)
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .flex_1()
+                                    .size_full()
+                                    .min_h_0()
+                                    .min_w_0()
+                                    .overflow_hidden()
+                                    .children(content_views),
+                            )
+                            .child(
+                                div()
+                                    .absolute()
+                                    .inset_0()
+                                    .v_flex()
+                                    .justify_end()
+                                    .children(context_views),
+                            )
                             .when(self.tools_open, |content| {
                                 content.child(
                                     div()
