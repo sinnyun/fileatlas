@@ -620,10 +620,21 @@ are local ignored artifacts under `target/validation-screenshots/`, including
 | UI Automation: open migrated Settings and switch through all six tabs | Passed | Repeated after fixing duplicate a11y IDs and card height. |
 | UI Automation: switch Navigation to Tags and expand fixture folders | Passed | Tag row and nested folder counts correspond to the indexed test library. |
 | Same-process MCP scan/query/screenshot and tag/rating round trip | Passed | 9 fixture media; screenshot displays all 9 Gallery cards; queried `small.png` returned 4-star rating and `ValidationTag`. |
+| Shell structure: hide development/metadata panels by default and expose from Tools | Passed | UI Automation invoked Tools and found the metadata export and development controls; default screenshot keeps the Gallery workspace unobstructed. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 fmt --all -- --check` | Passed | After live UI fixes. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows shell and plugin dependency graph. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 49 passed, 0 failed, 3 ignored. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 build -p photag-shell --locked -j 2` | Passed | Executable used for the final MCP screenshot pass. |
+
+Original runtime screenshots are now committed under
+`docs/reference-ui/2026-10-13/`; the accompanying README maps captures to
+their UI state and records the isolated reference build and fixture context.
+The shell now treats the header, navigation/gallery workspace, contextual
+views, and optional Tools panel as separate regions. The Tools panel starts
+closed so metadata-export and dev-test surfaces do not consume the Gallery's
+workspace by default. This is the first structural alignment pass; detailed
+toolbar placement and remaining source-layout differences are still follow-up
+work.
 
 ### Live reference-to-migration UI comparison (2026-10-13)
 

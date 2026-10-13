@@ -59,6 +59,7 @@ struct PhoTagShell {
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     sidebar_width: f32,
     resizing_sidebar: bool,
+    tools_open: bool,
 }
 
 impl Render for PhoTagShell {
@@ -130,7 +131,19 @@ impl Render for PhoTagShell {
                     .py_3()
                     .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .child(div().text_lg().font_semibold().child("PhoTag"))
-                    .children(commands),
+                    .children(commands)
+                    .child(
+                        Button::new("shell-tools")
+                            .label(if self.tools_open {
+                                "Hide tools"
+                            } else {
+                                "Tools"
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.tools_open = !this.tools_open;
+                                cx.notify();
+                            })),
+                    ),
             )
             .child(
                 div()
@@ -187,10 +200,24 @@ impl Render for PhoTagShell {
                         div()
                             .v_flex()
                             .flex_1()
+                            .min_h_0()
                             .min_w_0()
-                            .overflow_y_scrollbar()
+                            .overflow_hidden()
                             .children(content_views)
-                            .children(auxiliary_views),
+                            .when(self.tools_open, |content| {
+                                content.child(
+                                    div()
+                                        .v_flex()
+                                        .max_h(px(300.))
+                                        .min_h_0()
+                                        .gap_2()
+                                        .border_t_1()
+                                        .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                                        .overflow_y_scrollbar()
+                                        .p_2()
+                                        .children(auxiliary_views),
+                                )
+                            }),
                     ),
             );
         if self.views.is_empty() {
@@ -656,6 +683,7 @@ fn main() {
                 surfaces: Arc::clone(&bridge.surfaces),
                 sidebar_width,
                 resizing_sidebar: false,
+                tools_open: false,
             })
         })
         .expect("open PhoTag window");
