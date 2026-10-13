@@ -320,3 +320,24 @@ Rubber-band selection remains incomplete because GPUI's current virtual-list
 callbacks do not provide stable per-card bounds mapped to scrolled media IDs.
 Full source card/preview context menus, non-image Preview, and several Windows
 visual/native behaviors also remain incomplete or unverified.
+
+## Migration audit and documentation reconciliation (2026-10-13)
+
+The feature-to-source table in `docs/source-feature-audit.md` is the canonical
+migration status. The older duplicated implementation-slice summary was removed
+because it no longer reflected the latest Gallery, Navigation, AI, updater,
+Preview, and Settings work. Crate `PORTS.md` coverage was checked for all current
+workspace crates.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Ran against the current workspace after the latest migration commits. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Ran against the current workspace; no compiler warnings were emitted. |
+| Tests | Not run | This documentation reconciliation does not change implementation code. The latest feature migration test pass remains deferred as described above. |
+| Windows/MCP runtime validation | Still required | MCP client round trips, screenshot fidelity, model inference/download, updater replacement, media-device behavior, Explorer/OLE, Recycle Bin, native dialogs, and watcher race behavior require focused Windows validation. |
+
+MCP mutations are disabled by default and require the environment opt-in.
+Selected high-impact tools also require `confirm: true`; this acknowledges the
+call but does not prove a human reviewed it. Configure a trusted MCP client to
+request user confirmation before mutation, and do not treat tool descriptions
+as an application-enforced safety boundary.
