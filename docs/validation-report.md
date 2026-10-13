@@ -543,3 +543,42 @@ future IPC/transport change.
 | `cargo +1.97.1 check -p photag-plugin-mcp --locked -j 2` | Passed | MCP and optional development-service integration compile together. |
 | Live MCP client launching a GPUI window and calling dev-test tools | Not run | Requires an MCP client configured to spawn the child and a Windows interactive desktop. |
 | Screenshot image fidelity on the launched GPUI window | Not run | `screenshot_window` is implemented; compare its returned image with a Windows desktop capture during runtime validation. |
+
+### Local Windows validation phase (2026-10-13)
+
+Updated `AGENTS.md` to reflect the current local validation phase. Compared the
+local verification targets with the source-backed feature families in
+`docs/source-feature-audit.md` and the pinned PhoTag v0.2.0 sources under
+`vendor/photag-source/`. Existing targeted tests exercise schema/query
+compatibility, Gallery filters and selection, file operation ordering,
+tagging/XMP writeback, image thumbnails, watcher reconciliation, and the
+development scanner/virtual-row tool. This is a code/test comparison, not a
+manual one-to-one interaction walkthrough of every source feature.
+
+The first real Windows launch of the `gallery` and `dev-test` profiles failed
+with `STATUS_STACK_OVERFLOW`; the empty `core` profile did start. Added an
+MSVC-only 8 MiB executable stack in `crates/photag-shell/build.rs`, retaining
+the GPUI Windows main thread. After that change, both profiles started and
+created a native window handle. They were run with `LOCALAPPDATA` redirected to
+`target/local-validation` and dev-test data under `target/dev-test`, then
+closed after confirming startup. This validates process/plugin startup, not
+interactive rendering or feature workflows.
+
+For the next live interaction/debug pass, configure a local MCP client to spawn
+`photag-shell --mcp` and use the same-process window/library/media tools; enable
+`dev-test` to scan the generated fixture library and exercise 1K/10K/100K
+virtual Gallery rows. The server cannot attach to the separately launched
+processes used for the startup checks above. Keep mutations disabled for
+read-only inspection. See `crates/photag-plugin-mcp/PORTS.md` for client
+startup, available tools, and mutation gates.
+
+| Check | Result | Notes |
+|---|---|---|
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 fmt --all -- --check` | Passed | Run after the Windows stack configuration change. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows MSVC shell dependency graph compiled. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 49 passed, 0 failed, 3 ignored. Two ignored cases require live network checksum downloads; the ignored FFmpeg test passed when run separately below. |
+| `cargo +1.97.1 test -p photag-plugin-indexing --locked extracts_a_thumbnail_from_a_valid_generated_video -- --ignored --nocapture` | Passed | FFmpeg 8 generated a short video and the migrated helper extracted its JPEG poster. |
+| `$env:PHOTAG_DEV_PLUGINS='gallery'; $env:LOCALAPPDATA='F:\AI\geren\pho_cordis\target\local-validation'; cargo +1.97.1 run -p photag-shell --locked -j 2` | Passed | Launched with `Start-Process`; native process/window handle observed, then closed after startup check. |
+| `$env:PHOTAG_DEV_PLUGINS='dev-test'; $env:PHOTAG_DEV_TEST_DIR='F:\AI\geren\pho_cordis\target\dev-test'; $env:LOCALAPPDATA='F:\AI\geren\pho_cordis\target\local-validation'; cargo +1.97.1 run -p photag-shell --locked -j 2` | Passed | Launched with `Start-Process`; isolated dev-test profile created a native window handle, then closed after startup check. |
+| Interactive Gallery/Navigation/Preview workflows and visual/source parity | Not tested | No manual control operation or full visual comparison was performed. Continue with a representative PhoTag library and Windows input/device integration. |
+| MCP child round trips, native dialogs, OLE drag-out, updater replacement, real camera/editor metadata, codecs/audio devices | Not tested | The existing source audit records these as remaining runtime/corpus validation items. |

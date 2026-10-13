@@ -87,15 +87,33 @@ Windows, media-corpus, or regression validation.
 
 ## Verification
 
-During the cloud code-generation pass, run only `cargo fmt --all -- --check` and
-`cargo check -p photag-shell --locked` (with incremental compilation and bounded
-parallel jobs). Do not run workspace or individual plugin tests in this pass;
-reserve those for the user's second-round concentrated debugging. The shell
-check compiles the host dependency graph but does not prove plugin behavior or
-produce a tested Windows executable. Record exact commands and outcomes in
-`docs/validation-report.md`. Windows-only UI, shell, drag/drop, file operations,
-and system integration require real Windows validation; mark them unverified
-until tested.
+The project is in the local validation phase. Run the checks needed for the
+change, including `cargo fmt --all -- --check`, locked shell compilation, and
+relevant crate or workspace tests. Use bounded parallel build jobs and keep
+incremental compilation enabled when practical. Do not describe a compile or
+headless test as proof of interactive parity.
+
+For migration validation, compare each source feature in
+`docs/source-feature-audit.md` with its pinned implementation under
+`vendor/photag-source/` and its migrated counterpart. Start the Windows desktop
+application locally and exercise the corresponding workflows where the
+interactive environment permits. Record exact commands, environment, outcomes,
+and untested cases in `docs/validation-report.md`; mark Windows UI, shell,
+drag/drop, file operations, codecs, and system integration unverified until
+they have actually been exercised. Keep the audit map and each crate's
+`PORTS.md` aligned with observed behavior and public signatures.
+
+For live verification and debugging, use the project's PhoTag MCP plugin when
+an MCP client is available: configure the client to launch
+`photag-shell --mcp`, then use its tools to read the running window, library,
+media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
+The MCP server and GPUI window share that child process; it cannot attach to a
+separately launched PhoTag process. Use an isolated `dev-test` profile for
+fixture scans and virtual rows. Consult `crates/photag-plugin-mcp/PORTS.md` for
+the tool list and startup diagnostics. MCP mutations remain disabled unless
+`PHOTAG_MCP_ALLOW_MUTATIONS=1` is explicitly set; keep them disabled for
+read-only validation and only enable them when the validation requires a
+mutation.
 
 Each crate must maintain a `PORTS.md` that documents Cordis plugin/service
 identity, startup dependencies, input/output payloads, event producers and
