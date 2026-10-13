@@ -34,6 +34,23 @@ pub struct GallerySelection {
     pub anchor_id: Option<i64>,
 }
 
+/// Whether a key opens the selected media in Preview. Enter is always active,
+/// alongside the user-configured open key retained from PhoTag settings.
+pub(crate) fn should_open_preview(configured: Option<&str>, event_key: &str) -> bool {
+    configured.is_some_and(|key| keys_match(key, event_key))
+        || event_key.eq_ignore_ascii_case("enter")
+}
+
+pub(crate) fn keys_match(configured: &str, event_key: &str) -> bool {
+    let normalize = |key: &str| {
+        if key.eq_ignore_ascii_case("space") || key == " " {
+            return "space".to_string();
+        }
+        key.trim().to_ascii_lowercase()
+    };
+    normalize(configured) == normalize(event_key)
+}
+
 /// Side effects the host must perform after applying a key.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SelectionEffect {
@@ -206,6 +223,14 @@ mod tests {
     }
 
     #[test]
+    fn enter_remains_a_preview_key_when_a_custom_key_is_configured() {
+        assert!(should_open_preview(Some("space"), "enter"));
+        assert!(should_open_preview(None, "ENTER"));
+        assert!(should_open_preview(Some("space"), " "));
+        assert!(!should_open_preview(Some("space"), "x"));
+    }
+
+    #[test]
     fn shift_navigation_extends_from_stable_anchor_and_scrolls() {
         let items = skeletons(10);
         let mut state = GallerySelection::default();
@@ -253,6 +278,20 @@ mod tests {
             SelectionEffect::ConfirmDelete {
                 media_ids: vec![100, 101, 102]
             }
+        );
+    }
+
+    #[test]
+    fn enter_previews_the_first_selected_item() {
+        let items = skeletons(4);
+        let mut state = GallerySelection {
+            selected_media_ids: vec![102, 100],
+            anchor_id: Some(102),
+        };
+
+        assert_eq!(
+            state.handle_key(&items, 2, GalleryKey::Enter, Modifiers::default()),
+            SelectionEffect::OpenPreview { media_id: 102 }
         );
     }
 

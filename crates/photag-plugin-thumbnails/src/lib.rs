@@ -121,4 +121,40 @@ mod tests {
         assert!(cached.3.is_some());
         let _ = std::fs::remove_dir_all(root);
     }
+
+    #[test]
+    fn original_pipeline_decodes_common_still_image_formats() {
+        let root = std::env::temp_dir().join(format!(
+            "photag-thumbnail-formats-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let cache = root.join("cache");
+        std::fs::create_dir_all(&cache).unwrap();
+        let service = ThumbnailService { directory: cache };
+        let pixels = ImageBuffer::from_fn(64, 40, |x, y| {
+            Rgb([(x * 3) as u8, (y * 5) as u8, ((x + y) * 2) as u8])
+        });
+
+        for (extension, format) in [
+            ("jpg", image::ImageFormat::Jpeg),
+            ("png", image::ImageFormat::Png),
+            ("webp", image::ImageFormat::WebP),
+            ("tiff", image::ImageFormat::Tiff),
+            ("bmp", image::ImageFormat::Bmp),
+        ] {
+            let source = root.join(format!("sample.{extension}"));
+            pixels.save_with_format(&source, format).unwrap();
+            let thumbnail = service
+                .generate_image(&source)
+                .unwrap_or_else(|| panic!("thumbnail generation failed for {extension}"));
+            assert_eq!((thumbnail.1, thumbnail.2), (64, 40), "{extension}");
+            assert!(Path::new(&thumbnail.0).is_file(), "{extension}");
+        }
+
+        let _ = std::fs::remove_dir_all(root);
+    }
 }

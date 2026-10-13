@@ -4,7 +4,9 @@ use gpui_kit::component::WindowExt as _;
 use gpui_kit::*;
 
 use super::GalleryView;
-use crate::selection::{GalleryKey, Modifiers as SelectionModifiers, SelectionEffect};
+use crate::selection::{
+    GalleryKey, Modifiers as SelectionModifiers, SelectionEffect, keys_match, should_open_preview,
+};
 
 impl GalleryView {
     pub(super) fn handle_key(
@@ -37,11 +39,7 @@ impl GalleryView {
                 let configured = self.settings.as_ref().and_then(|settings| {
                     settings.snapshot().ok().map(|settings| settings.open_key)
                 });
-                if configured
-                    .as_deref()
-                    .is_some_and(|key| keys_match(key, &event.keystroke.key))
-                    || event.keystroke.key.eq_ignore_ascii_case("enter")
-                {
+                if should_open_preview(configured.as_deref(), &event.keystroke.key) {
                     self.open_configured_target(cx);
                     return;
                 }
@@ -238,15 +236,4 @@ impl GalleryView {
     fn open_configured_target(&mut self, cx: &mut Context<Self>) {
         self.preview_selected(cx);
     }
-}
-
-fn keys_match(configured: &str, event_key: &str) -> bool {
-    let normalize = |key: &str| {
-        if key.eq_ignore_ascii_case("space") || key == " " {
-            return "space".to_string();
-        }
-        let key = key.trim().to_ascii_lowercase();
-        key
-    };
-    normalize(configured) == normalize(event_key)
 }

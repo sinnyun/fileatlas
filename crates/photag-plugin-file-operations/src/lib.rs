@@ -519,3 +519,108 @@ fn reveal_path(path: &str) -> Result<(), FileOperationError> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup() -> (PathBuf, Arc<FileOperationsService>, i64) {
+        let root = std::env::temp_dir().join(format!(
+            "photag-file-ops-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let library = root.join("library");
+        std::fs::create_dir_all(&library).unwrap();
+        let source = library.join("photo.jpg");
+        std::fs::write(&source, b"temporary test media").unwrap();
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let media_id = database
+            .with_writer(|connection| {
+                let folder = queries::add_folder(connection, &library.to_string_lossy())?;
+                queries::insert_media(
+                    connection,
+                    folder.id,
+                    "photo.jpg",
+                    &source.to_string_lossy(),
+                    "image",
+                    20,
+                    1,
+                    None,
+                    None,
+                    None,
+                )
+            })
+            .unwrap();
+        (
+            root,
+            Arc::new(FileOperationsService::new(database, Context::new())),
+            media_id,
+        )
+    }
+
+    #[test]
+    fn rename_updates_the_file_and_indexed_path() {
+        let (root, service, media_id) = setup();
+        assert!(
+            service
+                .rename_blocking(media_id, "renamed.jpg".into())
+                .unwrap()
+        );
+        let row = service.media(media_id).unwrap().unwrap();
+        assert_eq!(row.filename, "renamed.jpg");
+        assert!(Path::new(&row.full_path).is_file());
+        assert!(!root.join("library/photo.jpg").exists());
+        drop(service);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn move_within_registered_library_updates_index_and_external_move_removes_row() {
+        let (root, service, media_id) = setup();
+        let archive = root.join("library/archive");
+        std::fs::create_dir_all(&archive).unwrap();
+        assert!(
+            service
+                .move_into_folder_blocking(media_id, archive.clone())
+                .unwrap()
+        );
+        let moved = archive.join("photo.jpg");
+        assert!(moved.is_file());
+        assert_eq!(
+            service.media(media_id).unwrap().unwrap().full_path,
+            moved.to_string_lossy()
+        );
+
+        let outside = root.join("export/photo.jpg");
+        std::fs::create_dir_all(outside.parent().unwrap()).unwrap();
+        assert!(service.move_to_blocking(media_id, outside.clone()).unwrap());
+        assert!(outside.is_file());
+        assert!(service.media(media_id).unwrap().is_none());
+        drop(service);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn destination_collision_leaves_source_and_database_unchanged() {
+        let (root, service, media_id) = setup();
+        let destination = root.join("library/archive");
+        std::fs::create_dir_all(&destination).unwrap();
+        std::fs::write(destination.join("photo.jpg"), b"existing file").unwrap();
+        assert!(
+            !service
+                .move_into_folder_blocking(media_id, destination.clone())
+                .unwrap()
+        );
+        assert!(root.join("library/photo.jpg").is_file());
+        assert_eq!(
+            service.media(media_id).unwrap().unwrap().full_path,
+            root.join("library").join("photo.jpg").to_string_lossy()
+        );
+        drop(service);
+        let _ = std::fs::remove_dir_all(root);
+    }
+}

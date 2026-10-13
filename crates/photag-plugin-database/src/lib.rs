@@ -257,11 +257,129 @@ mod tests {
                 assert_eq!(tag_ids.len(), 1);
                 assert_eq!(tag_ids[0].full_path, "Travel");
                 assert_eq!(db::get_open_count(connection, 11), 0);
+                let migrated_columns = {
+                    let mut statement = connection.prepare("PRAGMA table_info(media)")?;
+                    statement
+                        .query_map([], |row| row.get::<_, String>(1))?
+                        .collect::<rusqlite::Result<Vec<_>>>()?
+                };
+                for expected in ["micro_thumb", "open_count", "rating", "pick_flag"] {
+                    assert!(migrated_columns.iter().any(|column| column == expected));
+                }
+                let (pick_flag, auto_applied): (i64, i64) = connection.query_row(
+                    "SELECT m.pick_flag, mt.auto_applied FROM media m JOIN media_tags mt ON mt.media_id = m.id WHERE m.id = 11",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )?;
+                assert_eq!(pick_flag, 0);
+                assert_eq!(auto_applied, 0);
                 Ok(())
             })
             .unwrap();
         drop(database);
+
+        // Opening an already upgraded library again must be idempotent.
+        let reopened = DatabaseService::open_at(&path).unwrap();
+        reopened
+            .with_reader(|connection| {
+                assert_eq!(
+                    db::queries::get_media_count(connection, &db::queries::MediaQuery::default())?,
+                    1
+                );
+                assert_eq!(db::queries::get_media_tags(connection, 11)?.len(), 1);
+                Ok(())
+            })
+            .unwrap();
+        drop(reopened);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn media_query_filters_and_sort_orders_match_the_source_contract() {
+        use db::queries::{MediaQuery, SortOrder};
+
+        let path = std::env::temp_dir().join(format!(
+            "photag-plugin-query-{}-{}.sqlite",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let database = DatabaseService::open_at(&path).unwrap();
+        let folder_id = database
+            .with_writer(|connection| {
+                let folder = db::queries::add_folder(connection, r"D:\Archive")?;
+                connection.execute_batch(
+                    "INSERT INTO tags (id, name, full_path) VALUES (13, 'Travel', 'Travel'), (14, 'Family', 'Family');
+                     INSERT INTO media (id, folder_id, filename, full_path, media_type, file_size, modified_at, date_taken, rating) VALUES
+                       (11, 1, 'trip.jpg', 'D:\\Archive\\trip.jpg', 'image', 1000, 100, 200, 3),
+                       (12, 1, 'trip.mp4', 'D:\\Archive\\trip.mp4', 'video', 3000, 300, NULL, 5),
+                       (13, 1, 'portrait.jpg', 'D:\\Archive\\nested\\portrait.jpg', 'image', 2000, 400, 400, 0);
+                     INSERT INTO media_tags (media_id, tag_id) VALUES (11, 13), (12, 14), (13, 14);",
+                )?;
+                Ok(folder.id)
+            })
+            .unwrap();
+
+        let ids_for = |query: &MediaQuery| {
+            database
+                .with_reader(|connection| {
+                    Ok(db::queries::get_media_skeletons(connection, query)?
+                        .into_iter()
+                        .map(|row| row.id)
+                        .collect::<Vec<_>>())
+                })
+                .unwrap()
+        };
+        let mut query = MediaQuery {
+            folder_id: Some(folder_id),
+            sort: Some(SortOrder::NewestFirst),
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![13, 12, 11]);
+
+        query.sort = Some(SortOrder::HighestRated);
+        assert_eq!(ids_for(&query), vec![12, 11, 13]);
+
+        query = MediaQuery {
+            extensions: Some(vec!["jpg".into()]),
+            date_from: Some(200),
+            date_to: Some(400),
+            rating_min: Some(3),
+            rating_max: Some(5),
+            sort: Some(SortOrder::NameAsc),
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![11]);
+
+        query = MediaQuery {
+            tag_ids: Some(vec![14]),
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![13, 12]);
+
+        query = MediaQuery {
+            excluded_tag_ids: Some(vec![14]),
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![11]);
+
+        query = MediaQuery {
+            search: Some("TRIP".into()),
+            search_in_filenames: true,
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![11, 12]);
+
+        query = MediaQuery {
+            path_prefix: Some(r"D:\Archive".into()),
+            ..MediaQuery::default()
+        };
+        assert_eq!(ids_for(&query), vec![13, 11, 12]);
+
+        drop(database);
+        let _ = std::fs::remove_file(path);
     }
 
     #[tokio::test]

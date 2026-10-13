@@ -103,3 +103,60 @@ pub fn extract_video_thumbnail(video_path: &str, output_path: &str) -> bool {
     }
     ok
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Runtime smoke check for installations that have FFmpeg and its testsrc
+    /// lavfi filter available. Kept ignored so normal unit tests need no tool.
+    #[test]
+    #[ignore = "requires a local FFmpeg executable with lavfi testsrc"]
+    fn extracts_a_thumbnail_from_a_valid_generated_video() {
+        assert!(is_ffmpeg_available(), "FFmpeg must be available on PATH");
+        let root = std::env::temp_dir().join(format!(
+            "photag-ffmpeg-smoke-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let video = root.join("sample.mp4");
+        let thumbnail = root.join("sample.jpg");
+        let generated = ffmpeg_cmd("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=96x64:rate=5",
+                "-t",
+                "1.4",
+                "-c:v",
+                "mpeg4",
+                "-pix_fmt",
+                "yuv420p",
+                "-threads",
+                "1",
+                "-y",
+            ])
+            .arg(&video)
+            .output()
+            .unwrap();
+        assert!(
+            generated.status.success(),
+            "FFmpeg sample generation failed: {}",
+            String::from_utf8_lossy(&generated.stderr)
+        );
+        assert!(extract_video_thumbnail(
+            video.to_string_lossy().as_ref(),
+            thumbnail.to_string_lossy().as_ref()
+        ));
+        assert!(std::fs::metadata(&thumbnail).unwrap().len() > 100);
+        let _ = std::fs::remove_dir_all(root);
+    }
+}

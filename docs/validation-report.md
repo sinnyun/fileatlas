@@ -438,8 +438,9 @@ ordering. It also synchronized the crate `PORTS.md` guides and this feature map.
 
 The reference mirror and migrated workspace were indexed separately with the
 codebase-memory graph. The reference index covered all 22 Rust files (1,228
-nodes / 5,195 edges, no reported parse gaps); the target index contained 2,796
-nodes / 10,446 edges (vendor, docs and build output excluded). Traces from
+nodes / 5,195 edges, no reported parse gaps); the final post-test target index
+contained 2,807 nodes / 10,539 edges (vendor, docs and build output excluded).
+Traces from
 `AppState::process_pending`, `show_gallery`, `show_tag_node`, and `show_preview`
 were used to navigate source call paths, then relevant destination code was
 read directly. The detailed feature-family mapping and remaining caveats are in
@@ -462,3 +463,21 @@ feature.
 | `git diff --check` | Passed | No whitespace errors at the time of the final review; line-ending normalization warnings may appear on Windows for edited Markdown files. |
 | Tests | Not run | Per repository instruction, reserve tests for the user's second-round concentrated debugging. |
 | Equivalence / runtime | Not established | Graph correspondence and successful compilation do not prove every source branch or Windows behavior. Full SQL, native UI, media corpus and system integration still need focused validation. |
+
+### Second-round concentrated debugging (2026-10-13)
+
+This is the second-round test pass requested after the implementation/audit
+round. It adds Gallery keyboard regression coverage, legacy-database reopen and
+query behavior checks, common still-image decoder coverage, and a separately
+run FFmpeg-generated video thumbnail smoke test.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 test --workspace --locked -j 2` | Passed | 42 passed, 0 failed, 3 ignored. Ignored tests are two live network checksum tests and an FFmpeg smoke test; the FFmpeg smoke test was run separately and passed below. |
+| `cargo +1.97.1 test -p photag-plugin-indexing --locked extracts_a_thumbnail_from_a_valid_generated_video -- --ignored --nocapture` | Passed | On Windows MSVC with FFmpeg 8.1 available, generated a valid short MP4 and extracted a JPEG thumbnail through the migrated indexing FFmpeg helper. |
+| Gallery regression tests | Passed | 15 tests, including Enter preview while a configured open key is active and Enter opening the first selected item in selection order. |
+| Database tests | Passed | 4 tests, including pre-migration library preservation/defaults after upgrade and reopen, plus representative source filter/sort behavior against temporary SQLite data. |
+| Thumbnail / indexing tests | Passed | Synthetic JPEG, PNG, WebP, TIFF, BMP thumbnail generation; image/video-poster pairing and hidden-file filtering. These are generated fixtures, not a representative real-media corpus. |
+| `cargo +1.97.1 test -p photag-plugin-file-operations --locked` | Passed | 3 Windows temporary-directory tests verify rename/index update, move within a registered library, move outside the library while retaining the file and removing the row, and collision leaves both source and index unchanged. |
+| Windows watcher test | Passed | The workspace run executed native file create/remove reconciliation against the Windows filesystem. Rename delivery and harder race cases remain unverified. |
+| Native GUI, shell operations and real library corpus | Unverified | This headless test run did not exercise live GPUI focus/dialogs, Explorer OLE, Recycle Bin, audio devices, updater replacement, real PhoTag libraries, or diverse camera EXIF files. |
