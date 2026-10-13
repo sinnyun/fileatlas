@@ -13,6 +13,7 @@ use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu, PopupMenuItem};
 use gpui_kit::component::popover::Popover;
+use gpui_kit::component::slider::{Slider, SliderValue};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_plugin_settings::ToolbarSettings;
@@ -366,6 +367,7 @@ impl PreviewView {
                         menu
                     }),
             );
+            row = row.child(Slider::new(&self.zoom_slider).w(px(128.0)));
         }
 
         if anything_in_zoom && settings.manip_category_visible() {
@@ -434,31 +436,41 @@ impl PreviewView {
         {
             row = row.child(separator());
         }
-        if settings.delete_button {
+        if settings.file_category_visible() {
+            row = row.child(
+                tool_button("more", tr("More"))
+                    .dropdown_caret(self.more_actions_open)
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        this.more_actions_open = !this.more_actions_open;
+                        cx.notify();
+                    })),
+            );
+        }
+        if self.more_actions_open && settings.delete_button {
             row = row.child(
                 icon_button("delete", "🗑", "Delete (Del/Backspace)")
                     .on_click(cx.listener(|this, _, window, cx| this.request_delete(window, cx))),
             );
         }
-        if settings.copy_button {
+        if self.more_actions_open && settings.copy_button {
             row = row.child(
                 icon_button("copy", "📋", "Copy to…")
                     .on_click(cx.listener(|this, _, _, cx| this.copy_current_to_file(cx))),
             );
         }
-        if settings.move_button {
+        if self.more_actions_open && settings.move_button {
             row = row.child(
                 icon_button("move", "➡", "Move to…")
                     .on_click(cx.listener(|this, _, _, cx| this.move_current_to_file(cx))),
             );
         }
-        if settings.explorer_button {
+        if self.more_actions_open && settings.explorer_button {
             row = row.child(
                 icon_button("explorer", "📂", "Show in Explorer")
                     .on_click(cx.listener(|this, _, _, cx| this.reveal_in_file_manager(cx))),
             );
         }
-        if settings.open_external_button {
+        if self.more_actions_open && settings.open_external_button {
             row = row.child(
                 icon_button("open-external", "🔗", "Open in default app")
                     .on_click(cx.listener(|this, _, _, cx| this.open_in_default_app(cx))),
@@ -578,6 +590,7 @@ impl PreviewView {
         &mut self,
         has_display: bool,
         viewport: (f32, f32),
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Option<AnyElement> {
         let viewport_height = viewport.1;
@@ -595,6 +608,16 @@ impl PreviewView {
                 let alpha = self.service.chrome_alpha();
                 if !self.toolbar_settings().any_visible() || !has_display || alpha <= 0.01 {
                     return None;
+                }
+                let snapshot = self.service.snapshot();
+                let current = match self.zoom_slider.read(cx).value() {
+                    SliderValue::Single(value) => value,
+                    SliderValue::Range(_, end) => end,
+                };
+                let next = snapshot.zoom_percent.clamp(25, 200) as f32;
+                if (current - next).abs() > 0.5 {
+                    self.zoom_slider
+                        .update(cx, |state, cx| state.set_value(next, window, cx));
                 }
                 let (offset_x, offset_y) = self
                     .toolbar_drag_offset

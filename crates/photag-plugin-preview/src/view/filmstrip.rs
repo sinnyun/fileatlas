@@ -129,12 +129,55 @@ pub(super) fn plate(
             .bg(rgba(PLATE))
             .child(
                 div()
+                    .id("preview-filmstrip-items")
                     .absolute()
                     .left(px(start_x))
                     .top(px((FILMSTRIP_H - THUMB_SIZE) / 2.0))
                     .flex()
                     .gap(px(THUMB_GAP))
                     .children(rows),
+            )
+            .child(
+                div()
+                    .id("preview-filmstrip-previous")
+                    .absolute()
+                    .left(px(6.0))
+                    .top_0()
+                    .bottom_0()
+                    .w(px(32.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(4.0))
+                    .bg(rgba(0x20252cdd))
+                    .cursor_pointer()
+                    .text_lg()
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        this.service.navigate_filmstrip(-1);
+                        cx.notify();
+                    }))
+                    .child("‹"),
+            )
+            .child(
+                div()
+                    .id("preview-filmstrip-next")
+                    .absolute()
+                    .right(px(6.0))
+                    .top_0()
+                    .bottom_0()
+                    .w(px(32.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(4.0))
+                    .bg(rgba(0x20252cdd))
+                    .cursor_pointer()
+                    .text_lg()
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        this.service.navigate_filmstrip(1);
+                        cx.notify();
+                    }))
+                    .child("›"),
             )
             .opacity(view.service.chrome_alpha())
             .into_any_element(),

@@ -16,6 +16,7 @@ use cordis::Context as CordisContext;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::InputState;
+use gpui_kit::component::slider::{SliderEvent, SliderState, SliderValue};
 use gpui_kit::*;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_history::HistoryService;
@@ -53,6 +54,25 @@ pub fn preview_view(
             app.new(|cx| {
                 let view_service = Arc::clone(&service);
                 let focus_handle = cx.focus_handle();
+                let zoom_slider = cx.new(|_| {
+                    SliderState::new()
+                        .min(25.0)
+                        .max(200.0)
+                        .step(1.0)
+                        .default_value(service.snapshot().zoom_percent as f32)
+                });
+                let zoom_service = Arc::clone(&service);
+                let zoom_subscription = cx.subscribe(
+                    &zoom_slider,
+                    move |_: &mut PreviewView, _, event: &SliderEvent, cx| match event {
+                        SliderEvent::Change(SliderValue::Single(value))
+                        | SliderEvent::Release(SliderValue::Single(value)) => {
+                            zoom_service.set_zoom_scale(*value);
+                            cx.notify();
+                        }
+                        _ => {}
+                    },
+                );
                 let mut revision = service.snapshot().revision;
                 let mut decode_revision = service.decode_revision();
                 let mut showing_progressive = service
@@ -108,6 +128,9 @@ pub fn preview_view(
                 PreviewView {
                     locale_revision: u64::MAX,
                     service: view_service,
+                    zoom_slider,
+                    _zoom_subscription: zoom_subscription,
+                    more_actions_open: false,
                     settings: Arc::clone(&settings),
                     session: view_session,
                     tagging: Arc::clone(&tagging),
@@ -131,7 +154,6 @@ pub fn preview_view(
                     collapsed_dropdown_tag_ids,
                     context_menu_open: false,
                     context_menu_anchor: None,
-                    title_click_generation: 0,
                     last_playback_source: None,
                     last_seen_source: service.snapshot().source,
                 }
@@ -143,6 +165,9 @@ pub fn preview_view(
 struct PreviewView {
     locale_revision: u64,
     service: Arc<PreviewService>,
+    zoom_slider: Entity<SliderState>,
+    _zoom_subscription: Subscription,
+    more_actions_open: bool,
     settings: Arc<SettingsService>,
     session: Arc<SessionService>,
     tagging: Arc<TaggingService>,
@@ -166,7 +191,6 @@ struct PreviewView {
     collapsed_dropdown_tag_ids: std::collections::HashSet<i64>,
     context_menu_open: bool,
     context_menu_anchor: Option<(f32, f32)>,
-    title_click_generation: u64,
     last_playback_source: Option<std::path::PathBuf>,
     last_seen_source: Option<std::path::PathBuf>,
 }

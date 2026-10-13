@@ -3,6 +3,7 @@
 mod params;
 mod screenshot;
 mod tools_dev_test;
+mod tools_gallery_ui;
 mod tools_read;
 mod tools_ui;
 mod tools_write;
@@ -190,7 +191,8 @@ impl PhoTagMcpServer {
             tool_router: Self::read_tool_router()
                 + Self::write_tool_router()
                 + Self::dev_test_tool_router()
-                + Self::ui_tool_router(),
+                + Self::ui_tool_router()
+                + Self::gallery_ui_tool_router(),
             i18n,
             surfaces,
             gallery,

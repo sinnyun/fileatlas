@@ -6,18 +6,12 @@ impl SidebarView {
         if name.is_empty() {
             return;
         }
-        let parent_text = self.tag_parent.read(cx).value().trim().to_owned();
-        let parent = if parent_text.is_empty() {
-            None
-        } else {
-            parent_text.parse::<i64>().ok()
-        };
-        if !parent_text.is_empty() && parent.is_none() {
-            self.snapshot = Err("Parent tag ID must be an integer".into());
-            return;
-        }
-        match self.service.create_tag(&name, parent) {
-            Ok(_) => self.refresh(),
+        match self.service.create_tag(&name, self.parent_tag_id) {
+            Ok(_) => {
+                self.refresh();
+                self.tag_create_open = false;
+                self.parent_tag_id = None;
+            }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
         cx.notify();
@@ -102,6 +96,7 @@ impl SidebarView {
     }
 
     pub(super) fn begin_edit_tag(&mut self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
+        self.tag_edit_name_only = false;
         let Some(tagging) = &self.tagging else {
             self.snapshot = Err("Tagging service is unavailable".into());
             cx.notify();
@@ -120,6 +115,7 @@ impl SidebarView {
                     let name = tag.name.clone();
                     let color = tag.color.clone().unwrap_or_default();
                     let icon = tag.icon.clone().unwrap_or_default();
+                    self.tag_edit_display = tag.display;
                     self.tag_edit_name
                         .update(cx, |state, cx| state.set_value(&name, window, cx));
                     self.tag_color
@@ -130,6 +126,28 @@ impl SidebarView {
             }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
+        cx.notify();
+    }
+
+    pub(super) fn begin_rename_tag(
+        &mut self,
+        id: i64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(tag) = self
+            .snapshot
+            .as_ref()
+            .ok()
+            .and_then(|s| find_tag(&s.tags, id))
+        else {
+            return;
+        };
+        let name = tag.name.clone();
+        self.tag_edit_name
+            .update(cx, |state, cx| state.set_value(&name, window, cx));
+        self.tag_edit_name_only = true;
+        self.associated_edit_tag = Some(id);
         cx.notify();
     }
 
@@ -155,12 +173,8 @@ impl SidebarView {
         let Some(tag) = tag else { return };
         let name = tag.name.clone();
         let count = tag.media_count.max(0) as usize;
-        if count > 0 && tag.parent_id.is_some() {
-            self.confirm_delete = Some((id, name, count));
-            cx.notify();
-        } else {
-            self.delete_tag(id, false, cx);
-        }
+        self.confirm_delete = Some((id, name, count));
+        cx.notify();
     }
 
     pub(super) fn delete_tag(&mut self, id: i64, clean_parents: bool, cx: &mut Context<Self>) {
@@ -225,21 +239,23 @@ impl SidebarView {
     }
 
     pub(super) fn move_tag_into(&mut self, id: i64, cx: &mut Context<Self>) {
-        let target = self.tag_move_target.read(cx).value().trim().parse::<i64>();
-        match target {
-            Ok(target) => match self.service.move_tag(
-                id,
-                photag_plugin_database::db::queries::TagDropPos::Into(target),
-            ) {
-                Ok(affected) => {
-                    self.refresh();
-                    if !affected.is_empty() {
-                        self.notify_media_index(cx);
-                    }
+        let Some(target) = self.move_target_tag_id else {
+            self.snapshot = Err(photag_ui_bridge::i18n::tr("Choose a target tag"));
+            cx.notify();
+            return;
+        };
+        match self.service.move_tag(
+            id,
+            photag_plugin_database::db::queries::TagDropPos::Into(target),
+        ) {
+            Ok(affected) => {
+                self.refresh();
+                self.move_target_tag_id = None;
+                if !affected.is_empty() {
+                    self.notify_media_index(cx);
                 }
-                Err(error) => self.snapshot = Err(error.to_string()),
-            },
-            Err(_) => self.snapshot = Err("Parent tag ID must be an integer".into()),
+            }
+            Err(error) => self.snapshot = Err(error.to_string()),
         }
         cx.notify();
     }
@@ -278,9 +294,15 @@ impl SidebarView {
         cx.notify();
     }
 
-    pub(super) fn use_tag_as_parent(&self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
+    pub(super) fn use_tag_as_parent(
+        &mut self,
+        id: i64,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.parent_tag_id = Some(id);
         self.tag_parent.update(cx, |state, cx| {
-            state.set_value(&id.to_string(), window, cx);
+            state.set_value("", window, cx);
         });
     }
 }

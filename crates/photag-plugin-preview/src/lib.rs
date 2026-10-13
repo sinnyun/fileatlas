@@ -566,12 +566,22 @@ impl PreviewService {
     }
     pub fn set_zoom_percent(&self, percent: u16) {
         if [25, 50, 100, 125, 150, 200].contains(&percent) {
-            self.change(|s| {
-                s.fit_to_window = false;
-                s.zoom_percent = percent;
-                s.zoom_scale = percent as f32 / 100.0;
-            });
+            self.set_zoom_scale(percent as f32);
         }
+    }
+
+    /// Set a continuous toolbar zoom percentage while keeping the persisted
+    /// transform and public percentage snapshot in sync.
+    pub fn set_zoom_scale(&self, percent: f32) {
+        if !percent.is_finite() {
+            return;
+        }
+        let percent = percent.clamp(5.0, 1600.0);
+        self.change(|snapshot| {
+            snapshot.fit_to_window = false;
+            snapshot.zoom_percent = percent.round() as u16;
+            snapshot.zoom_scale = percent / 100.0;
+        });
     }
 
     pub fn toggle_zoom_at_cursor(&self) {

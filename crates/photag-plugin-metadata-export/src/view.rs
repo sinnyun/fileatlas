@@ -133,56 +133,69 @@ impl ExportPanel {
 
 impl Render for ExportPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (status, status_color) = match self.service.status() {
+        let (title, detail, status_color) = match self.service.status() {
             Ok(MetadataExportStatus::Idle) => (
-                "Choose a JSON destination and export all indexed media metadata.".into(),
+                "Ready to export".to_owned(),
+                "Choose a destination to create a JSON backup of indexed media metadata."
+                    .to_owned(),
                 theme::TEXT_SECONDARY,
             ),
-            Ok(MetadataExportStatus::Exporting) => {
-                ("Exporting metadata…".into(), theme::TEXT_SECONDARY)
-            }
+            Ok(MetadataExportStatus::Exporting) => (
+                "Exporting metadata…".to_owned(),
+                "Writing the metadata backup. This panel updates when the export finishes."
+                    .to_owned(),
+                theme::TEXT_SECONDARY,
+            ),
             Ok(MetadataExportStatus::Succeeded { path, records }) => (
-                format!("Exported {records} records to {}", path.display()),
+                "Export complete".to_owned(),
+                format!("Wrote {records} records to {}", path.display()),
                 theme::TEXT_SECONDARY,
             ),
             Ok(MetadataExportStatus::Failed(error)) => {
-                (format!("Export failed: {error}"), theme::DANGER)
+                ("Export failed".to_owned(), error, theme::DANGER)
             }
-            Err(error) => (format!("Export status unavailable: {error}"), theme::DANGER),
+            Err(error) => (
+                "Export status unavailable".to_owned(),
+                error.to_string(),
+                theme::DANGER,
+            ),
         };
         let error = self.input_error.clone();
         let panel = div()
             .v_flex()
             .w_full()
-            .gap_2()
-            .p_3()
+            .gap_3()
+            .p_4()
             .border_t_1()
             .border_color(rgb(theme::SURFACE_FAINT))
             .child(
-                div()
-                    .text_sm()
-                    .font_semibold()
-                    .child(photag_ui_bridge::i18n::tr("Metadata backup")),
+                div().v_flex().gap_1()
+                    .child(div().text_base().font_semibold().child(photag_ui_bridge::i18n::tr("Metadata export (JSON)")))
+                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                        photag_ui_bridge::i18n::tr("Export every indexed media record with its path, rating, and hierarchical tags."),
+                    )),
             )
             .child(
-                div()
-                    .h_flex()
-                    .gap_2()
-                    .child(Input::new(&self.path).flex_1())
-                    .child(
-                        Button::new("metadata-export-browse")
+                div().v_flex().gap_2().p_3().rounded_md()
+                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                    .child(div().text_xs().font_semibold().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr("Destination file")))
+                    .child(div().h_flex().gap_2()
+                        .child(Input::new(&self.path).flex_1())
+                        .child(Button::new("metadata-export-browse")
                             .label(photag_ui_bridge::i18n::tr("Browse…"))
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.choose_destination(window, cx)
-                            })),
+                            .on_click(cx.listener(|this, _, window, cx| this.choose_destination(window, cx))))
+                        .child(Button::new("metadata-export-run")
+                            .label(photag_ui_bridge::i18n::tr(&(if self.waiting_for_export { "Exporting…" } else { "Export JSON" }).to_string()))
+                            .on_click(cx.listener(|this, _, _, cx| this.export(cx)))),
                     )
-                    .child(
-                        Button::new("metadata-export-run")
-                            .label(photag_ui_bridge::i18n::tr(&("Export JSON").to_string()))
-                            .on_click(cx.listener(|this, _, _, cx| this.export(cx))),
-                    ),
             )
-            .child(div().text_xs().text_color(rgb(status_color)).child(status));
+            .child(
+                div().v_flex().gap_1().p_3().rounded_md()
+                    .border_1().border_color(rgba(theme::HAIRLINE.to_rgba()))
+                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                    .child(div().text_sm().font_semibold().text_color(rgb(status_color)).child(photag_ui_bridge::i18n::tr(&title)))
+                    .child(div().text_xs().text_color(rgb(status_color)).child(detail)),
+            );
         if let Some(message) = error {
             panel.child(
                 div()

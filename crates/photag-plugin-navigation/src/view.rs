@@ -9,6 +9,7 @@ use std::time::Duration;
 use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::gpui::InteractiveElement as _;
@@ -29,33 +30,13 @@ use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 mod render;
 mod support;
 mod tag_actions;
+mod tag_modal;
+mod tag_picker;
 
 use support::{
     collect_tag_appearance_descendants, collect_tag_ids, find_tag, restore_expanded_directories,
     tag_matches,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SidebarTab {
-    Folders,
-    Tags,
-}
-
-impl SidebarTab {
-    fn from_session(value: &str) -> Self {
-        match value {
-            "Tags" => Self::Tags,
-            _ => Self::Folders,
-        }
-    }
-
-    fn session_value(self) -> &'static str {
-        match self {
-            Self::Folders => "Folders",
-            Self::Tags => "Tags",
-        }
-    }
-}
 
 pub(super) fn sidebar(
     service: Arc<NavigationService>,
@@ -65,88 +46,192 @@ pub(super) fn sidebar(
     selected_path: Option<String>,
     expanded_subdirs: HashSet<String>,
     preferences: Arc<RwLock<TagInteractionPreferences>>,
-) -> UiViewContribution {
-    UiViewContribution::new(
-        "navigation/sidebar-view",
-        "workspace.sidebar",
-        0,
-        move |window, app| {
-            let view_service = Arc::clone(&service);
-            let view_cordis = cordis.clone();
-            let tagging = view_cordis
-                .try_service::<photag_plugin_tagging::TaggingService>()
-                .ok();
-            let view_session = Arc::clone(&session);
-            let saved = view_session.snapshot().unwrap_or_default();
-            let view_selected_folder_id = selected_folder_id;
-            let view_selected_path = selected_path.clone();
-            let view_expanded_subdirs = expanded_subdirs.clone();
-            let view_preferences = Arc::clone(&preferences);
-            let folder_path = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
-            });
-            let new_folder_name = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder name"))
-            });
-            let tag_name = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New tag name"))
-            });
-            let tag_parent = app.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(photag_ui_bridge::i18n::tr("Parent tag ID (optional)"))
-            });
-            let tag_edit_name = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Tag name"))
-            });
-            let tag_color = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr(
-                    "Color #RRGGBB (empty = default)",
-                ))
-            });
-            let tag_icon = app.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(photag_ui_bridge::i18n::tr("Icon / emoji (empty = default)"))
-            });
-            let tag_move_target = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Parent tag ID"))
-            });
-            let tag_search = app.new(|cx| {
-                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search tags…"))
-            });
-            let merge_search = app.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(photag_ui_bridge::i18n::tr("Filter target tags…"))
-            });
-            app.new(|_| {
-                SidebarView::new(
-                    view_service,
-                    view_cordis,
-                    tagging,
-                    view_session,
-                    view_selected_folder_id,
-                    view_selected_path,
-                    view_expanded_subdirs,
-                    saved.expanded_tag_ids,
-                    saved.selected_tag_ids,
-                    saved.excluded_tag_ids,
-                    saved.tag_click_mode,
-                    SidebarTab::from_session(&saved.sidebar_tab),
-                    folder_path,
-                    new_folder_name,
-                    tag_name,
-                    tag_parent,
-                    tag_edit_name,
-                    tag_color,
-                    tag_icon,
-                    tag_move_target,
-                    tag_search,
-                    merge_search,
-                    view_preferences,
-                )
+    add_folder_requested: Arc<std::sync::atomic::AtomicBool>,
+) -> Vec<UiViewContribution> {
+    let cached = Arc::new(std::sync::Mutex::new(None::<Entity<SidebarView>>));
+    let create = Arc::new(move |window: &mut Window, app: &mut App| {
+        let mut cached = cached.lock().expect("navigation view factory lock");
+        if let Some(view) = cached.as_ref() {
+            return view.clone();
+        }
+        let view_service = Arc::clone(&service);
+        let view_cordis = cordis.clone();
+        let tagging = view_cordis
+            .try_service::<photag_plugin_tagging::TaggingService>()
+            .ok();
+        let view_session = Arc::clone(&session);
+        let saved = view_session.snapshot().unwrap_or_default();
+        let view_selected_folder_id = selected_folder_id;
+        let view_selected_path = selected_path.clone();
+        let view_expanded_subdirs = expanded_subdirs.clone();
+        let view_preferences = Arc::clone(&preferences);
+        let folder_path = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
+        });
+        let new_folder_name = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder name"))
+        });
+        let tag_name = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New tag name"))
+        });
+        let tag_parent = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Search parent tags…"))
+        });
+        let tag_edit_name = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Tag name"))
+        });
+        let tag_color = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr(
+                "Color #RRGGBB (empty = default)",
+            ))
+        });
+        let tag_icon = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Icon / emoji (empty = default)"))
+        });
+        let tag_move_target = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Search move targets…"))
+        });
+        let tag_search = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search tags…"))
+        });
+        let merge_search = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Filter target tags…"))
+        });
+        let pending = Arc::clone(&add_folder_requested);
+        let view = app.new(|cx| {
+            cx.spawn(async move |this, cx| {
+                loop {
+                    cx.background_executor()
+                        .timer(Duration::from_millis(100))
+                        .await;
+                    if this
+                        .update(cx, |view: &mut SidebarView, cx| {
+                            let requested =
+                                pending.swap(false, std::sync::atomic::Ordering::AcqRel);
+                            let ui_requested = view.service.has_ui_request();
+                            if requested || ui_requested {
+                                if requested {
+                                    view.pick_folder(cx);
+                                }
+                                cx.notify();
+                            }
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
             })
-            .into()
-        },
-    )
+            .detach();
+            SidebarView::new(
+                view_service,
+                view_cordis,
+                tagging,
+                view_session,
+                view_selected_folder_id,
+                view_selected_path,
+                view_expanded_subdirs,
+                saved.expanded_tag_ids,
+                saved.selected_tag_ids,
+                saved.excluded_tag_ids,
+                saved.tag_click_mode,
+                folder_path,
+                new_folder_name,
+                tag_name,
+                tag_parent,
+                tag_edit_name,
+                tag_color,
+                tag_icon,
+                tag_move_target,
+                tag_search,
+                merge_search,
+                view_preferences,
+            )
+        });
+        *cached = Some(view.clone());
+        view
+    });
+    let sidebar = create.clone();
+    let breadcrumb = create.clone();
+    let modal = create;
+    vec![
+        UiViewContribution::new(
+            "navigation/sidebar-view",
+            "workspace.sidebar",
+            0,
+            move |window, app| sidebar(window, app).into(),
+        ),
+        UiViewContribution::new(
+            "navigation/breadcrumb-view",
+            "command.breadcrumb",
+            0,
+            move |window, app| {
+                let sidebar = breadcrumb(window, app);
+                app.new(|cx| {
+                    let subscription = cx.observe(&sidebar, |_, _, cx| cx.notify());
+                    SidebarBreadcrumb {
+                        sidebar,
+                        _subscription: subscription,
+                    }
+                })
+                .into()
+            },
+        ),
+        UiViewContribution::new(
+            "navigation/tag-management-modal",
+            "workspace.modal",
+            0,
+            move |window, app| {
+                let sidebar = modal(window, app);
+                app.new(|cx| {
+                    let subscription = cx.observe(&sidebar, |_, _, cx| cx.notify());
+                    SidebarTagModal {
+                        sidebar,
+                        _subscription: subscription,
+                    }
+                })
+                .into()
+            },
+        ),
+    ]
+}
+
+struct SidebarBreadcrumb {
+    sidebar: Entity<SidebarView>,
+    _subscription: Subscription,
+}
+
+impl Render for SidebarBreadcrumb {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sidebar
+            .update(cx, |sidebar, cx| sidebar.render_breadcrumb(cx))
+    }
+}
+
+struct SidebarTagModal {
+    sidebar: Entity<SidebarView>,
+    _subscription: Subscription,
+}
+
+impl Render for SidebarTagModal {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sidebar
+            .update(cx, |sidebar, cx| sidebar.render_tag_modal(cx))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+                if event.keystroke.key.eq_ignore_ascii_case("escape") {
+                    let sidebar = this.sidebar.clone();
+                    let _ = sidebar.update(cx, |sidebar, cx| {
+                        sidebar.close_tag_modal();
+                        cx.notify();
+                    });
+                    cx.notify();
+                }
+            }))
+    }
 }
 
 struct SidebarView {
@@ -159,10 +244,14 @@ struct SidebarView {
     new_folder_name: Entity<InputState>,
     tag_name: Entity<InputState>,
     tag_parent: Entity<InputState>,
+    parent_tag_id: Option<i64>,
     tag_edit_name: Entity<InputState>,
     tag_color: Entity<InputState>,
     tag_icon: Entity<InputState>,
+    tag_edit_display: bool,
+    tag_edit_name_only: bool,
     tag_move_target: Entity<InputState>,
+    move_target_tag_id: Option<i64>,
     tag_search: Entity<InputState>,
     merge_search: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
@@ -176,8 +265,8 @@ struct SidebarView {
     preferences: Arc<RwLock<TagInteractionPreferences>>,
     included_tags: Vec<i64>,
     excluded_tags: Vec<i64>,
-    active_tab: SidebarTab,
     show_folder_path_entry: bool,
+    show_tag_search_controls: bool,
     new_folder_parent: Option<String>,
     exclude_mode: bool,
     tag_search_match: TagSearchMatch,
@@ -186,11 +275,74 @@ struct SidebarView {
     associated_edit_tag: Option<i64>,
     associated_tag_ids: Vec<i64>,
     merge_source: Option<i64>,
+    move_source_id: Option<i64>,
     merge_reparent_children: bool,
     confirm_delete: Option<(i64, String, usize)>,
+    tag_create_open: bool,
 }
 
 impl SidebarView {
+    fn render_breadcrumb(&mut self, cx: &mut Context<Self>) -> Div {
+        let saved = self.session.snapshot().unwrap_or_default();
+        let all_selected = saved.selected_folder_id.is_none()
+            && saved.selected_path.is_none()
+            && self.included_tags.is_empty()
+            && self.excluded_tags.is_empty();
+        let location = saved
+            .selected_path
+            .as_deref()
+            .and_then(|path| Path::new(path).file_name())
+            .and_then(|name| name.to_str())
+            .map(str::to_owned)
+            .or_else(|| {
+                saved.selected_folder_id.and_then(|id| {
+                    self.snapshot
+                        .as_ref()
+                        .ok()?
+                        .folders
+                        .iter()
+                        .find(|node| node.folder.id == id)
+                        .map(|node| node.folder.name.clone())
+                })
+            })
+            .or_else(|| {
+                self.included_tags.first().and_then(|id| {
+                    self.snapshot.as_ref().ok().and_then(|snapshot| {
+                        find_tag(&snapshot.tags, *id).map(|tag| tag.name.clone())
+                    })
+                })
+            });
+        div()
+            .h_flex()
+            .items_center()
+            .gap(px(8.))
+            .child(
+                Button::new("navigation-breadcrumb-all-files")
+                    .ghost()
+                    .compact()
+                    .label(photag_ui_bridge::i18n::tr("All files"))
+                    .text_color(rgb(if all_selected {
+                        theme::TEXT_PRIMARY
+                    } else {
+                        theme::TEXT_SECONDARY
+                    }))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.select_folder(None, cx);
+                        this.select_tag(None, cx);
+                        cx.notify();
+                    })),
+            )
+            .when_some(location, |row, label| {
+                row.child(div().text_color(rgb(theme::TEXT_MUTED)).child("/"))
+                    .child(
+                        div()
+                            .text_size(px(13.))
+                            .text_color(rgb(theme::TEXT_PRIMARY))
+                            .child(label),
+                    )
+            })
+    }
+
     fn new(
         service: Arc<NavigationService>,
         cordis: CordisContext,
@@ -203,7 +355,6 @@ impl SidebarView {
         included_tags: Vec<i64>,
         excluded_tags: Vec<i64>,
         saved_tag_click_mode: Option<photag_plugin_session::TagClickMode>,
-        active_tab: SidebarTab,
         folder_path: Entity<InputState>,
         new_folder_name: Entity<InputState>,
         tag_name: Entity<InputState>,
@@ -248,10 +399,14 @@ impl SidebarView {
             new_folder_name,
             tag_name,
             tag_parent,
+            parent_tag_id: None,
             tag_edit_name,
             tag_color,
             tag_icon,
+            tag_edit_display: false,
+            tag_edit_name_only: false,
             tag_move_target,
+            move_target_tag_id: None,
             tag_search,
             merge_search,
             snapshot,
@@ -265,8 +420,8 @@ impl SidebarView {
             preferences,
             included_tags,
             excluded_tags,
-            active_tab,
             show_folder_path_entry: false,
+            show_tag_search_controls: false,
             new_folder_parent: None,
             exclude_mode: saved_tag_click_mode
                 == Some(photag_plugin_session::TagClickMode::Exclude),
@@ -276,13 +431,25 @@ impl SidebarView {
             associated_edit_tag: None,
             associated_tag_ids: Vec::new(),
             merge_source: None,
+            move_source_id: None,
             merge_reparent_children: true,
             confirm_delete: None,
+            tag_create_open: false,
         }
     }
 
     fn refresh(&mut self) {
         self.snapshot = self.service.snapshot().map_err(|error| error.to_string());
+    }
+
+    fn close_tag_modal(&mut self) {
+        self.tag_create_open = false;
+        self.associated_edit_tag = None;
+        self.confirm_delete = None;
+        self.merge_source = None;
+        self.move_source_id = None;
+        self.parent_tag_id = None;
+        self.move_target_tag_id = None;
     }
 
     fn rescan(&mut self, folder_id: i64, cx: &mut Context<Self>) {
@@ -415,31 +582,6 @@ impl SidebarView {
             }
         })
         .detach();
-    }
-
-    fn switch_tab(&mut self, tab: SidebarTab, window: &mut Window, cx: &mut Context<Self>) {
-        if self.active_tab == tab {
-            return;
-        }
-        if self.active_tab == SidebarTab::Tags {
-            let clear_search = self
-                .preferences
-                .read()
-                .map(|preferences| !preferences.search_persist)
-                .unwrap_or(false);
-            if clear_search {
-                self.tag_search
-                    .update(cx, |state, cx| state.set_value("", window, cx));
-            }
-        }
-        self.active_tab = tab;
-        if let Ok(mut session) = self.session.snapshot() {
-            session.sidebar_tab = tab.session_value().to_owned();
-            if let Err(error) = self.session.replace(session) {
-                eprintln!("sidebar tab session save failed: {error}");
-            }
-        }
-        cx.notify();
     }
 
     fn request_new_subfolder(

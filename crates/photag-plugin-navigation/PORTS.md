@@ -1,6 +1,6 @@
 # Navigation plugin ports / 导航插件数据对接
 
-Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. Folder/Tags pivot tabs restore and save `SessionState.sidebar_tab`; leaving Tags clears the query only when the settings preference `tag_search_persist` is false. Folder and subdirectory menus expose new-subfolder and file-manager actions. The tag UI exposes create, rename, delete, color/icon, display, one-way associated-tag assignment, reparent, merge, and confirmed deletion with optional ancestor-assignment cleanup. Appearance can be applied recursively while skipping descendants that already have an explicit color or icon. Typed GPUI drag/drop moves a dragged tag before/after/into an explicit row target. PhoTag has no folder-tree drag/drop behavior.
+Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. Folder and subdirectory menus expose new-subfolder and file-manager actions. The tag UI exposes create, rename, delete, color/icon, display, one-way associated-tag assignment, reparent, merge, and confirmed deletion with optional ancestor-assignment cleanup. Appearance can be applied recursively while skipping descendants that already have an explicit color or icon. Typed GPUI drag/drop moves a dragged tag before/after/into an explicit row target. PhoTag has no folder-tree drag/drop behavior.
 
 ## Lifecycle and dependencies
 
@@ -14,22 +14,23 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 ## Service input/output
 
 - `snapshot()` -> registered folders with media counts and the recursive PhoTag tag tree.
+- `request_ui(NavigationUiRequest)` -> queues one typed action for the mounted sidebar. `OpenCreate`, `OpenEdit(tag_id)`, `OpenDelete(tag_id)`, `OpenMerge(tag_id)`, and `CloseModal` are consumed on the GPUI thread by the same cached `SidebarView` used by sidebar, breadcrumb, and tag modal. Tag IDs are validated against the live recursive tree; invalid/unknown IDs, a poisoned queue, and a second pending request return `NavigationUiRequestError`. The sidebar polls this queue with the existing native folder-picker request.
 - `subdirectories(path)` -> lazy direct child nodes: name, path, child-presence and indexed count.
 - `add_folder(path)` -> validates an existing directory; returns `(Folder, Receiver<Option<ScanProgress>>)` after registering it and scheduling indexing. Watcher registration follows when available.
 - `rescan(folder_id)` -> cancels prior scan, clears folder media rows and starts scanning; returns a progress receiver.
 - `cancel_scan(folder_id)` -> requests cancellation of that folder's active indexing work; succeeds when none is active.
 - `remove_folder(folder_id)` -> cancels scanning, removes indexed rows and unregisters watcher; returns the removed folder.
-- `create_tag(name, parent_id)` -> new `Tag`; parent is optional. The sidebar parent field takes a tag database ID; each tag row's **Use as parent** fills it.
+- `create_tag(name, parent_id)` -> new `Tag`; parent is optional. The create modal provides a searchable hierarchical parent picker and a root option; tag IDs remain internal. Each tag row's **Use as parent** selects that row in the picker.
 - `rename_tag(id, name)` -> `()`; **Edit fields** loads name and **Rename** persists it.
 - `delete_tag(id, clean_parents)` -> affected media IDs; deleting an unassigned tag or a root tag proceeds immediately. Deleting an assigned child tag asks whether strict ancestor tag assignments should also be removed from those affected media. Both confirmed choices delete the target; cleanup removes ancestor links first. The returned IDs are sent to `TaggingService` for metadata refresh.
 - `set_tag_appearance(id, color, icon)` -> `()`; color accepts `#RRGGBB` or empty to clear; icon accepts text/emoji or empty to clear. **Edit fields** loads existing values; **Save style** applies them to the selected tag. **Apply to children** propagates both style fields depth-first; **Skip edited children** (enabled by default) preserves descendants with an explicit color or icon, matching the source override rule.
 - `TaggingService::associated_with(id)` / `set_associations(id, ids)` -> source-compatible one-way association list. **Edit fields** loads the selected tag's associated IDs; its checkbox list excludes the tag itself, and **Save style** replaces its outgoing associations. Assigning the tag expands its associated tags and their required ancestors through Tagging.
 - `set_tag_display(id, display)` -> `()`; applies gallery chip visibility to the selected tag and all descendants, matching original edit behavior.
-- `move_tag(id, TagDropPos)` -> IDs of media whose implicit tag set changed. The tag name is the drag source; highlighted targets above, on, and below another tag invoke `Before`, `Into`, and `After` respectively. The existing **Move into ID** command remains available. Database cycle checks and subtree path recomputation are authoritative; self-drops and cycle-forming moves return an empty list as safe no-ops. Only emit `MediaIndexChanged` when the returned affected-media list is nonempty.
+- `move_tag(id, TagDropPos)` -> IDs of media whose implicit tag set changed. The tag name is the drag source; highlighted targets above, on, and below another tag invoke `Before`, `Into`, and `After` respectively. The move modal provides a searchable hierarchy picker excluding the source subtree; target IDs remain internal. Database cycle checks and subtree path recomputation are authoritative; self-drops and cycle-forming moves return an empty list as safe no-ops. Only emit `MediaIndexChanged` when the returned affected-media list is nonempty.
 
 ## GPUI controls and debugging
 
-The sidebar uses Folder/Tags tabs. Tag search follows source `tag_search_persist`: its in-memory query survives tab switches by default and is cleared when leaving Tags if the preference is disabled. The tag panel uses GPUI Kit `Input`, `Button`, dropdown actions, and typed drag payloads. It supports included and excluded tag sets, Select/Exclude click modes, the configured modifier to apply the opposite mode for one click, selecting or clearing all tags in the active mode, per-mode clear actions, and source-compatible Contains/Starts with search matching that reveals matching descendants and their ancestors. `TagInteractionPreferencesChanged` supplies the current settings without adding a Settings → Navigation crate dependency; defaults are Ctrl, Contains, persistent search, and reparent children when merging. Drag a tag name onto the highlighted target above/on/below another row; database errors appear in the snapshot panel. Self and cycle drops are silently rejected by the source-compatible database operation. For stale Gallery results after inherited assignments change, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
+The v5 sidebar renders All files, the registered folder tree and the tag tree together. The persisted `sidebar_tab` value remains readable for compatibility but no longer controls visibility. Tag search retains the source `tag_search_persist` preference behavior. The tag panel uses GPUI Kit `Input`, `Button`, dropdown actions, and typed drag payloads. It supports included and excluded tag sets, Select/Exclude click modes, the configured modifier to apply the opposite mode for one click, selecting or clearing all tags in the active mode, per-mode clear actions, and source-compatible Contains/Starts with search matching that reveals matching descendants and their ancestors. `TagInteractionPreferencesChanged` supplies the current settings without adding a Settings → Navigation crate dependency; defaults are Ctrl, Contains, persistent search, and reparent children when merging. Tag modal surfaces dismiss on Escape. Drag a tag name onto the highlighted target above/on/below another row; database errors appear in the snapshot panel. Self and cycle drops are silently rejected by the source-compatible database operation. For stale Gallery results after inherited assignments change, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
 
 ## Original source mapping / 源行为映射
 
@@ -49,7 +50,7 @@ The sidebar uses photag-ui-bridge::theme for the source backdrop-aware base surf
 
 - `src/view.rs` owns the sidebar view state, folder scanning/picking, selection, and view lifecycle.
 - `src/view/tag_actions.rs` implements tag creation/editing, appearance/association updates, delete/merge/reparent actions, and tag display propagation.
-- `src/view/render.rs` builds the folder/tag sidebar; `src/view/render/tag_render.rs` renders tag rows and subtrees; `src/view/support.rs` holds tree traversal and session restoration helpers.
+- `src/view/render.rs` builds the folder/tag sidebar; `src/view/render/tag_render.rs` renders tag rows and subtrees; `src/view/tag_modal.rs` renders create/edit/rename/delete/merge/move surfaces; `src/view/support.rs` holds tree traversal and session restoration helpers.
 
 
 ## Localization integration (2026-10-13)
@@ -61,3 +62,49 @@ OS/backend errors and some generated diagnostics are not fully localized.
 The real MCP-only validation coverage and remaining source layout differences
 are recorded in docs/validation-report.md; screenshots do not prove pointer
 interaction or animation parity.
+
+## Empty-library folder command (2026-10-13)
+
+The Cordis-owned `UiCommandInvoked` listener accepts
+`"navigation/add-folder"`. A coalesced atomic pending flag is consumed by the
+mounted Sidebar entity every 100 ms on the GPUI thread and calls its existing
+native `pick_folder` flow. Cancellation is a no-op. A valid directory uses
+`NavigationService::add_folder`, production Indexing, watcher registration
+and existing progress/error handling. The listener is removed on plugin stop;
+the poller ends when its view entity disappears. No new public service payload
+or database schema is introduced.
+
+## v5 navigation projection update (2026-10-13)
+
+The sidebar now renders All files, the registered-folder tree and the tag tree
+at the same time; the old Folders/Tags pivot is removed. All files is the first
+row, followed by the Folders group header and tree. Folder/subdirectory actions
+remain in hover `⋯` menus; subdirectory names select their path, and chevrons
+expand descendants. The Tags header keeps Search and Create; its searchable
+filter/mode controls expand only when Search is activated. Tag names toggle
+their selection state and selected rows use an accent bar and background;
+create-child, merge, edit, rename, display, appearance, parent, move and delete
+remain in each row's hover `⋯` menu. All files clears both folder/path selection
+and included/excluded tag filters.
+
+`navigation/sidebar-view` in `workspace.sidebar` and
+`navigation/breadcrumb-view` in `command.breadcrumb` are projections of one
+cached `SidebarView` entity. The breadcrumb observes that entity and derives
+its current location from its existing session and navigation snapshot; its
+All files action clears the complete navigation scope. The two views remain
+Cordis-owned and are removed when the navigation plugin stops. The initial
+PhoTag MCP screenshot was checked against `00-main-library.png`; the observed
+sidebar density and ordering mismatches were corrected in the latest source.
+The revised state still needs a new MCP capture and interaction check.
+
+The `workspace.modal` projection in the same view set handles tag creation,
+rename/edit, assignment-aware deletion confirmation, merge target selection,
+and reparenting. `NavigationService::request_ui` exposes typed create/edit/delete/
+merge/close-modal requests for the mounted view; requests invoke existing
+actions and reject invalid IDs or an occupied single-request slot. Parent and
+move modals use searchable hierarchy paths, and Escape dismisses an active tag
+modal. Merge still executes when a target is selected; the source-compatible
+child reparent/delete option is retained. The edit modal includes name, color
+swatches, icon presets, associated tags, child appearance propagation and
+display-on-thumbnail state. Live appearance and interaction remain unverified
+until checked through PhoTag MCP.

@@ -11,14 +11,19 @@ use std::time::Duration;
 use super::SettingsView;
 
 impl SettingsView {
-    pub(super) fn begin_update_check(&mut self, _manual: bool) {
+    pub(super) fn begin_update_check(&mut self, manual: bool) {
         let Some(updater) = &self.updater else {
             self.update_error = Some("Updater service is unavailable.".into());
             return;
         };
         self.update_error = None;
+        self.update_check_manual = manual;
+        if manual {
+            self.update_offer_dismissed = false;
+        }
         self.update_status = Some("Checking GitHub for a newer release…".into());
         self.update_check = Some(updater.check_async());
+        let _ = self.surfaces.set_open("settings.update-checking", true);
     }
 
     pub(super) fn begin_update_download(&mut self) {
@@ -61,6 +66,7 @@ impl SettingsView {
             .and_then(|receiver| receiver.try_recv().ok());
         if let Some(result) = check_result {
             self.update_check = None;
+            let _ = self.surfaces.set_open("settings.update-checking", false);
             match result {
                 Ok(Some(info)) => {
                     self.update_status = Some(format!(
@@ -69,12 +75,19 @@ impl SettingsView {
                         info.size_mb()
                     ));
                     self.update_info = Some(info);
-                    if !self.update_offer_dismissed {
+                    let _ = self.surfaces.set_open("settings.update-available", true);
+                    // Startup checks populate Settings quietly. Only an explicit
+                    // manual check may open the update offer.
+                    if self.update_check_manual && !self.update_offer_dismissed {
                         self.update_offer_open = true;
                     }
+                    let _ = self
+                        .surfaces
+                        .set_open("settings.update-offer", self.update_offer_open);
                 }
                 Ok(None) => {
                     self.update_info = None;
+                    let _ = self.surfaces.set_open("settings.update-available", false);
                     self.update_status = Some(format!(
                         "PhoTag {} is up to date.",
                         photag_plugin_updater::current_version()
@@ -112,6 +125,9 @@ impl SettingsView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Div {
+        let _ = self
+            .surfaces
+            .set_open("settings.update-offer", self.update_offer_open);
         if !self.update_offer_open {
             return div();
         }

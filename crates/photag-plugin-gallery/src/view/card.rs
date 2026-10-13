@@ -2,7 +2,7 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu};
 use gpui_kit::*;
 use photag_contracts::TagDragPayload;
 use photag_plugin_drag_drop::DragDropService;
@@ -13,11 +13,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::GalleryView;
 
+/// Fixed caption block under the image: filename line plus metadata line.
+/// Rows reserve this height so uniform_list keeps a uniform item size.
+pub(super) const CARD_CAPTION_HEIGHT: f32 = 38.;
+
 pub(super) fn render_media_card(
     media: &photag_plugin_database::db::queries::MediaItem,
-    _selected: bool,
     hover: f32,
     selection: f32,
+    keyboard_focus: bool,
     drag_drop: Arc<DragDropService>,
     drag_paths: Vec<PathBuf>,
     drag_allowed: Arc<AtomicBool>,
@@ -33,271 +37,142 @@ pub(super) fn render_media_card(
         paths: drag_paths,
         allowed: drag_allowed.clone(),
     };
-    // The hit target keeps its original square; only the painted child grows.
-    let lift = thumb_size * 0.018 * hover / 2.;
-    let visual_size = thumb_size + 2. * lift;
-    let mut card = div()
-        .relative()
-        .absolute()
-        .left(px(-lift))
-        .top(px(-lift))
-        .w(px(visual_size))
-        .h(px(visual_size))
-        .rounded(px(theme::THUMB_ROUND))
-        .overflow_hidden()
-        .shadow(vec![
-            BoxShadow::new(
-                px(0.),
-                px(2. + 3. * hover),
-                rgba((42. + 60. * hover) as u32).into(),
-            )
-            .blur_radius(px(10. + 8. * hover)),
-        ])
-        .bg(rgba(theme::accent_alpha(theme::accent(), 0.22 * selection)));
-    // PhoTag paints a square image target. Selection reveals the accent
-    // backplate by insetting the image seven source points on every edge.
-    let image_inset = 7. * selection;
-    let mut thumbnail = div()
-        .relative()
-        .absolute()
-        .top(px(image_inset))
-        .left(px(image_inset))
-        .right(px(image_inset))
-        .bottom(px(image_inset))
-        .overflow_hidden()
-        .rounded(px(theme::THUMB_ROUND));
+    let media_type = media.media_type.as_str();
     let micro_image = micro_thumb.and_then(micro_render_image);
+    let mut frame = div()
+        .relative()
+        .absolute()
+        .inset_0()
+        .overflow_hidden()
+        .rounded(px(theme::THUMB_ROUND))
+        .bg(rgb(theme::SURFACE_FAINT));
     if let Some(image) = micro_image.clone() {
-        thumbnail = thumbnail.child(
-            img(image)
-                .rounded(px(theme::THUMB_ROUND))
-                .absolute()
-                .top(px(0.))
-                .left(px(0.))
-                .right(px(0.))
-                .bottom(px(0.))
-                .object_fit(ObjectFit::Cover),
-        );
+        frame = frame.child(img(image).absolute().inset_0().object_fit(ObjectFit::Cover));
     }
     if let Some(path) = media.thumb_path.as_ref() {
-        thumbnail = thumbnail.child(
+        frame = frame.child(
             img(std::path::PathBuf::from(path))
-                .rounded(px(theme::THUMB_ROUND))
                 .absolute()
-                .top(px(0.))
-                .left(px(0.))
-                .right(px(0.))
-                .bottom(px(0.))
+                .inset_0()
                 .object_fit(ObjectFit::Cover)
-                .with_fallback(move || {
+                .with_fallback(|| {
                     div()
                         .absolute()
-                        .top(px(0.))
-                        .left(px(0.))
-                        .right(px(0.))
-                        .bottom(px(0.))
+                        .inset_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .font_family(theme::ICON_FONT_FAMILY)
+                        .text_size(px(22.))
+                        .text_color(rgb(theme::WARNING))
+                        .child(theme::icons::WARNING.to_string())
                         .into_any_element()
                 }),
         );
     } else if micro_image.is_none() {
-        thumbnail = thumbnail
-            .items_center()
-            .justify_center()
-            .flex()
-            .font_family(theme::ICON_FONT_FAMILY)
-            .text_size(px(22.))
-            .text_color(rgba(0xffffff22))
-            .bg(rgb(theme::SURFACE_ELEVATED))
-            .child(
-                match media.media_type.as_str() {
-                    "video" => theme::icons::VIDEO,
-                    "audio" => theme::icons::AUDIO,
-                    _ => theme::icons::PICTURE,
-                }
-                .to_string(),
-            );
+        frame = match media_type {
+            "video" | "audio" => frame
+                .flex()
+                .items_center()
+                .justify_center()
+                .font_family(theme::ICON_FONT_FAMILY)
+                .text_size(px(24.))
+                .text_color(rgba(0xffffff30))
+                .child(if media_type == "video" {
+                    theme::icons::VIDEO.to_string()
+                } else {
+                    theme::icons::AUDIO.to_string()
+                }),
+            // The thumbnailer has not produced an image yet; keep the slot
+            // alive while the indexer backfills.
+            _ => frame
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(gpui_kit::component::spinner::Spinner::new()),
+        };
     }
     let menu_view = cx.entity().downgrade();
     let menu_targets = rating_target_ids.clone();
     let drop_targets = rating_target_ids.clone();
+    let menu_media = media.clone();
+    let menu_tags = tag_tree.clone();
+    let menu_ratings = rating_target_ids.clone();
     let menu = Button::new(format!("gallery-card-actions-{media_id}"))
-        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
-        .dropdown_menu(move |mut menu, _, _| {
-            let ai_view = menu_view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("AI Suggest Tags")).on_click(
-                    move |_, _, cx| {
-                        let _ = ai_view.update(cx, |this, cx| {
-                            this.suggest_tags(media_id, cx);
-                        });
-                    },
-                ),
-            );
-            let preview_view = menu_view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Preview")).on_click(
-                    move |_, _, cx| {
-                        let _ = preview_view.update(cx, |this, cx| {
-                            this.preview_media(media_id, cx);
-                        });
-                    },
-                ),
-            );
-            let open_view = menu_view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Open in default app")).on_click(
-                    move |_, _, cx| {
-                        let _ = open_view.update(cx, |this, cx| {
-                            this.open_media_action(media_id, false, cx);
-                        });
-                    },
-                ),
-            );
-            let reveal_view = menu_view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Show in File Explorer")).on_click(
-                    move |_, _, cx| {
-                        let _ = reveal_view.update(cx, |this, cx| {
-                            this.open_media_action(media_id, true, cx);
-                        });
-                    },
-                ),
-            );
-            menu = menu.item(PopupMenuItem::separator());
-            for tag in flatten_tags(&tag_tree) {
-                let tag_view = menu_view.clone();
-                let tag_targets = menu_targets.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(format!("Assign tag: {}", tag.label)).on_click(
-                        move |_, _, cx| {
-                            let _ = tag_view.update(cx, |this, cx| {
-                                this.assign_context_tag(&tag_targets, tag.id, cx);
-                            });
-                        },
-                    ),
-                );
-            }
-            menu = menu.item(PopupMenuItem::separator());
-            let copy_view = menu_view.clone();
-            let copy_targets = menu_targets.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Copy to…")).on_click(
-                    move |_, _, cx| {
-                        let _ = copy_view.update(cx, |this, cx| {
-                            this.selection.selected_media_ids = copy_targets.clone();
-                            this.copy_selected_with_dialog(cx);
-                        });
-                    },
-                ),
-            );
-            let move_view = menu_view.clone();
-            let move_targets = menu_targets.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Move to…")).on_click(
-                    move |_, _, cx| {
-                        let _ = move_view.update(cx, |this, cx| {
-                            this.selection.selected_media_ids = move_targets.clone();
-                            this.move_selected_with_dialog(cx);
-                        });
-                    },
-                ),
-            );
-            let delete_view = menu_view.clone();
-            let delete_targets = menu_targets.clone();
-            menu = menu.item(
-                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Delete…")).on_click(
-                    move |_, window, cx| {
-                        let _ = delete_view.update(cx, |this, cx| {
-                            this.selection.selected_media_ids = delete_targets.clone();
-                            this.selection.anchor_id = delete_targets.first().copied();
-                            this.request_delete_confirmation(window, cx);
-                        });
-                    },
-                ),
-            );
-            menu = menu.item(PopupMenuItem::separator());
-            for rating in 0..=5 {
-                let rating_view = menu_view.clone();
-                let rating_target_ids = rating_target_ids.clone();
-                let label = if rating == 0 {
-                    "No rating".to_string()
-                } else {
-                    format!("Rate {rating}★")
-                };
-                menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
-                    let _ = rating_view.update(cx, |this, cx| {
-                        this.apply_rating_to(&rating_target_ids, rating);
-                        cx.notify();
-                    });
-                }));
-            }
-            menu
+        .label("⋯")
+        .dropdown_menu(move |menu, window, cx| {
+            super::card_menu::build(
+                menu,
+                menu_media.clone(),
+                menu_targets.clone(),
+                menu_ratings.clone(),
+                menu_tags.clone(),
+                menu_view.clone(),
+                window,
+                cx,
+            )
         });
-    // Retain migration actions, reveal on hover; selected badge owns this corner.
+    // The actions menu reveals on hover; the selection badge owns this corner.
     if hover > 0.01 {
-        thumbnail = thumbnail.child(
+        frame = frame.child(
             div()
                 .absolute()
-                .top(px(7.))
-                .right(px(7. + 24. * selection))
+                .top(px(6.))
+                .right(px(6. + 22. * selection))
                 .opacity(hover)
                 .child(menu),
         );
     }
     if media.rating > 0 {
-        thumbnail = thumbnail.child(
+        frame = frame.child(
             div()
                 .absolute()
-                .left(px(7.))
-                .bottom(px(7.))
+                .left(px(6.))
+                .bottom(px(6.))
                 .h(px(18.))
                 .rounded_full()
                 .bg(rgba(0x00000096))
                 .px_2()
+                .flex()
                 .items_center()
                 .text_xs()
                 .text_color(rgb(theme::STAR))
                 .child(format!("★ {}", media.rating)),
         );
     }
-    if media.media_type == "video" || media.media_type == "audio" {
-        thumbnail = thumbnail.child(
+    if media_type == "video" {
+        frame = frame.child(
             div()
                 .absolute()
-                .right(px(7.))
-                .bottom(px(7.))
-                .size(px(22.))
+                .right(px(6.))
+                .bottom(px(6.))
+                .h(px(18.))
                 .rounded_full()
                 .bg(rgba(0x00000096))
+                .px_2()
+                .flex()
                 .items_center()
-                .justify_center()
                 .font_family(theme::ICON_FONT_FAMILY)
                 .text_size(px(9.5))
                 .text_color(rgb(theme::TEXT_PRIMARY))
-                .child(if media.media_type == "video" {
-                    theme::icons::PLAY.to_string()
-                } else {
-                    theme::icons::AUDIO.to_string()
-                }),
+                .child(theme::icons::PLAY.to_string()),
         );
     }
     if hover > 0.01 {
-        thumbnail = thumbnail
-            .child(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .bg(rgba(0xffffff00 | (9. * hover) as u32)),
-            )
-            .child(super::card_motion::hover_overlay(
-                media,
-                visual_size - image_inset * 2.,
-                hover,
-            ));
+        frame = frame.child(
+            div()
+                .absolute()
+                .inset_0()
+                .bg(rgba(0xffffff00 | (18. * hover) as u32)),
+        );
     }
-    card = card.child(thumbnail);
+    let mut image_area = div()
+        .relative()
+        .w(px(thumb_size))
+        .h(px(thumb_size))
+        .child(frame);
     if selection > 0.01 {
-        card = card
+        image_area = image_area
             .child(
                 div()
                     .absolute()
@@ -309,38 +184,74 @@ pub(super) fn render_media_card(
             .child(
                 div()
                     .absolute()
-                    .top(px(13. - 12. * selection))
-                    .right(px(13. - 12. * selection))
-                    .size(px(24. * selection))
-                    .rounded_full()
-                    .bg(rgba((110. * selection) as u32))
+                    .top(px(6.))
+                    .right(px(6.))
+                    .size(px(18. * selection))
+                    .rounded(px(theme::ROUND_SM))
+                    .bg(rgb(theme::accent()))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(
-                        div()
-                            .size(px(20. * selection))
-                            .rounded_full()
-                            .bg(rgb(theme::accent()))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .font_family(theme::ICON_FONT_FAMILY)
-                            .text_size(px(10. * selection))
-                            .text_color(rgb(0xffffff))
-                            .child(if selection > 0.5 {
-                                theme::icons::CHECK.to_string()
-                            } else {
-                                String::new()
-                            }),
-                    ),
+                    .font_family(theme::ICON_FONT_FAMILY)
+                    .text_size(px(11. * selection))
+                    .text_color(rgb(0xffffff))
+                    .child(if selection > 0.5 {
+                        theme::icons::CHECK.to_string()
+                    } else {
+                        String::new()
+                    }),
             );
     }
+    if keyboard_focus && selection > 0.5 {
+        image_area = image_area.child(
+            div()
+                .absolute()
+                .top(px(-1.))
+                .left(px(-1.))
+                .right(px(-1.))
+                .bottom(px(-1.))
+                .rounded(px(theme::THUMB_ROUND + 1.))
+                .border_1()
+                .border_color(rgba((theme::accent() << 8) | 0x80)),
+        );
+    }
+    let mut caption = div()
+        .w_full()
+        .pt(px(5.))
+        .v_flex()
+        .items_center()
+        .gap(px(1.))
+        .child(
+            div()
+                .w_full()
+                .text_size(px(theme::FONT_SIZE_SMALL))
+                .text_color(rgb(theme::TEXT_PRIMARY))
+                .overflow_hidden()
+                .text_ellipsis()
+                .text_center()
+                .child(media.filename.clone()),
+        );
+    if let Some(meta) = caption_metadata(media) {
+        caption = caption.child(
+            div()
+                .w_full()
+                .text_size(px(theme::FONT_SIZE_TINY))
+                .text_color(rgb(theme::TEXT_MUTED))
+                .overflow_hidden()
+                .text_ellipsis()
+                .text_center()
+                .child(meta),
+        );
+    }
+    let context_view = cx.entity().downgrade();
+    let context_media = media.clone();
+    let context_targets = rating_target_ids.clone();
+    let context_tags = tag_tree.clone();
     div()
         .relative()
         .w(px(thumb_size))
-        .h(px(thumb_size))
-        .child(card)
+        .h(px(thumb_size + CARD_CAPTION_HEIGHT))
+        .v_flex()
         .id(format!("gallery-media-{media_id}"))
         .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
             this.set_card_hover(media_id, *hovered, cx)
@@ -378,9 +289,35 @@ pub(super) fn render_media_card(
             }
             cx.new(|_| FileDragGhost)
         })
+        .child(image_area)
+        .child(caption)
+        .context_menu(move |menu, window, cx| {
+            super::card_menu::build(
+                menu,
+                context_media.clone(),
+                context_targets.clone(),
+                context_targets.clone(),
+                context_tags.clone(),
+                context_view.clone(),
+                window,
+                cx,
+            )
+        })
 }
 
-fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMenuEntry> {
+/// Second caption line. The source schema stores no media duration, so
+/// video/audio rows keep the type glyph and omit a fabricated time.
+fn caption_metadata(media: &photag_plugin_database::db::queries::MediaItem) -> Option<String> {
+    match media.media_type.as_str() {
+        "video" | "audio" => None,
+        _ => media
+            .width
+            .zip(media.height)
+            .map(|(width, height)| format!("{width} × {height}")),
+    }
+}
+
+pub(super) fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMenuEntry> {
     fn visit(
         tags: &[photag_plugin_database::db::queries::Tag],
         depth: usize,
@@ -399,9 +336,9 @@ fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMen
     entries
 }
 
-struct TagMenuEntry {
-    id: i64,
-    label: String,
+pub(super) struct TagMenuEntry {
+    pub(super) id: i64,
+    pub(super) label: String,
 }
 
 fn micro_render_image(data: &[u8]) -> Option<Arc<::gpui::RenderImage>> {
@@ -649,7 +586,7 @@ fn detail_line(key: &str, value: &str) -> Div {
         .child(div().flex_1().child(value.to_string()))
 }
 
-fn format_bytes(bytes: i64) -> String {
+pub(super) fn format_bytes(bytes: i64) -> String {
     let value = bytes as f64;
     if value < 1024.0 {
         format!("{bytes} B")
@@ -668,7 +605,7 @@ fn format_system_time(time: Option<std::time::SystemTime>) -> String {
         .unwrap_or_else(|| "—".to_string())
 }
 
-fn format_timestamp(timestamp: i64) -> String {
+pub(super) fn format_timestamp(timestamp: i64) -> String {
     use chrono::TimeZone;
     chrono::Local
         .timestamp_opt(timestamp, 0)

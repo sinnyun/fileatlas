@@ -1,4 +1,4 @@
-//! Source gallery.rs:784-846. Full-width hit target, title19, metadata12.
+//! v5 month group header: chevron + title 15 semibold + muted 12 count.
 use super::*;
 
 pub(super) fn render(
@@ -32,17 +32,25 @@ pub(super) fn render(
         .items_center()
         .pl(px(28.))
         .pt(px(4.))
-        .gap(px(10.))
+        .gap(px(8.))
         .child(
             div()
                 .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                .text_size(px(19.))
+                .text_size(px(theme::FONT_SIZE_HEADING))
+                .text_color(rgb(theme::TEXT_PRIMARY))
                 .child(display),
         )
         .child(
             div()
-                .text_size(px(12.))
-                .pt(px(3.))
+                .text_size(px(theme::FONT_SIZE_SMALL))
+                .pt(px(2.))
+                .text_color(rgb(theme::TEXT_MUTED))
+                .child("·"),
+        )
+        .child(
+            div()
+                .text_size(px(theme::FONT_SIZE_SMALL))
+                .pt(px(2.))
                 .text_color(rgb(theme::TEXT_MUTED))
                 .child(photag_ui_bridge::i18n::tr_args(
                     "{count} items",

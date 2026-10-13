@@ -286,8 +286,7 @@ impl PreviewView {
             .settings
             .update(|settings| settings.show_filmstrip = show)
         {
-            self.operation_status =
-                Some(format!("Could not save filmstrip visibility: {error}"));
+            self.operation_status = Some(format!("Could not save filmstrip visibility: {error}"));
         }
         cx.notify();
     }

@@ -1,4 +1,7 @@
 use super::*;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Disableable as _;
+use gpui_kit::component::Icon;
 
 impl Render for PreviewView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -24,7 +27,10 @@ impl Render for PreviewView {
                 window.focus(&self.focus_handle, cx);
             }
         }
-        if snapshot.media_kind == Some(PreviewMediaKind::Video) {
+        if matches!(
+            snapshot.media_kind,
+            Some(PreviewMediaKind::Video | PreviewMediaKind::Audio)
+        ) {
             if let Some(path) = snapshot.source.as_ref() {
                 if self.last_playback_source.as_ref() != Some(path) {
                     self.last_playback_source = Some(path.clone());
@@ -190,12 +196,6 @@ impl Render for PreviewView {
         };
         // `preview.rs:1934-1938`: the header percentage truncates and reports
         // the fitted scale while fit mode is on.
-        let percent = if snapshot.fit_to_window {
-            (fit_scale * 100.0) as i32
-        } else {
-            (snapshot.zoom_scale * 100.0) as i32
-        };
-
         let service = Arc::clone(&self.service);
         let can_zoom = has_display;
         let cursor_center = (viewport.0 / 2.0, viewport.1 / 2.0);
@@ -237,7 +237,14 @@ impl Render for PreviewView {
 
         let mut stage = div()
             .absolute()
-            .inset_0()
+            .top(px(52.0))
+            .bottom(px(if self.filmstrip_visible() && is_image {
+                150.0
+            } else {
+                54.0
+            }))
+            .left_0()
+            .right_0()
             .flex()
             .items_center()
             .justify_center()
@@ -269,9 +276,10 @@ impl Render for PreviewView {
                 stage = stage.child(
                     div()
                         .absolute()
-                        .left(px(12.0))
-                        .top(px(44.0))
-                        .max_h_full()
+                        .right(px(12.0))
+                        .top(px(12.0))
+                        .w(px(310.0))
+                        .max_h(px(viewport.1 - 76.0))
                         .occlude()
                         .child(crate::info::info_panel(path, indexed)),
                 );
@@ -306,26 +314,70 @@ impl Render for PreviewView {
         if let Some(plate) = filmstrip::plate(self, viewport.0, cx) {
             root = root.child(plate);
         }
-        if let Some(toolbar) = self.render_toolbar(has_display, viewport, cx) {
+        if let Some(toolbar) = self.render_toolbar(has_display, viewport, window, cx) {
             root = root.child(toolbar);
         }
 
-        // `preview.rs:995-1002`, `:404-454`: the corner controls and header fade
-        // with the chrome and drop out once the chrome has faded.
+        // The v5 shell keeps identity and primary actions in one fixed top bar.
         if chrome_alpha > 0.01 {
-            let mut chrome = div().absolute().inset_0().opacity(chrome_alpha);
-            chrome = chrome.child(overlays::info_toggle(self, cx));
-            if has_display || !is_image {
-                chrome = chrome.child(overlays::close_button(self, cx));
-            }
-            if is_image {
-                if has_display {
-                    chrome = chrome.child(overlays::filename_row(title.clone(), percent, cx));
+            let info = cx.listener(|this, _: &ClickEvent, _, cx| {
+                this.service.toggle_info();
+                cx.notify();
+            });
+            let ai = cx.listener(|this, _: &ClickEvent, _, cx| {
+                if let Some(media_id) = this.service.snapshot().media_id {
+                    this.service.request_ai_suggestions(media_id);
+                    cx.notify();
                 }
-            } else if media_kind == Some(PreviewMediaKind::Video) {
-                chrome = chrome.child(overlays::video_title(title.clone()));
-            }
-            root = root.child(chrome);
+            });
+            let exif = cx.listener(|this, _: &ClickEvent, _, cx| {
+                this.service.toggle_info();
+                cx.notify();
+            });
+            let close = cx.listener(|this, _: &ClickEvent, _, cx| {
+                this.rename_target = None;
+                this.service.close();
+                cx.notify();
+            });
+            root = root.child(
+                div()
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(52.0))
+                    .px_3()
+                    .h_flex()
+                    .items_center()
+                    .gap_3()
+                    .bg(rgba(theme::modal_rgba(theme::SURFACE_BASE)))
+                    .border_b_1()
+                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .opacity(chrome_alpha)
+                    .child(Icon::new(IconName::Aperture).text_color(rgb(theme::accent())))
+                    .child(div().text_sm().font_medium().child("PhoTag"))
+                    .child(
+                        div()
+                            .w(px(1.0))
+                            .h(px(24.0))
+                            .bg(rgba(theme::SEPARATOR_LIGHT)),
+                    )
+                    .child(div().flex_1().min_w_0().text_sm().child(title.clone()))
+                    .child(button("Info").icon(IconName::Info).on_click(info))
+                    .child(
+                        button("AI")
+                            .icon(IconName::Sparkles)
+                            .disabled(snapshot.media_id.is_none())
+                            .on_click(ai),
+                    )
+                    .child(button("EXIF").icon(IconName::Tag).on_click(exif))
+                    .child(
+                        button("Close")
+                            .icon(IconName::Close)
+                            .tooltip(photag_ui_bridge::i18n::tr("Close"))
+                            .on_click(close),
+                    ),
+            );
         }
 
         if is_image && !has_display {

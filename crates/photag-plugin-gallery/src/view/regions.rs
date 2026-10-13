@@ -1,6 +1,7 @@
 //! Projections of the single Gallery entity into the source window bands.
 //! Source: main.rs:1007-1277 and ui/filterbar.rs:15-821.
 use super::*;
+use gpui_kit::base::Disableable;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
@@ -12,6 +13,7 @@ enum Region {
     Status,
     Tools,
     Modal,
+    Inspector,
 }
 
 struct GalleryRegion {
@@ -29,6 +31,7 @@ impl Render for GalleryRegion {
             Region::Status => view.render_status(cx),
             Region::Tools => view.render_tools(cx),
             Region::Modal => view.render_modal(window, cx),
+            Region::Inspector => view.render_inspector(cx),
         })
     }
 }
@@ -50,6 +53,7 @@ pub(super) fn contributions(
         (Region::Status, "status", "workspace.status"),
         (Region::Tools, "tools", "command.tools"),
         (Region::Modal, "modal", "workspace.modal"),
+        (Region::Inspector, "inspector", "gallery.inspector"),
     ] {
         let create = create.clone();
         views.push(UiViewContribution::new(
@@ -135,8 +139,8 @@ impl GalleryView {
             .relative()
             .w_full()
             .h(px(32.))
-            .rounded(px(16.))
-            .bg(rgb(theme::SURFACE_PANEL))
+            .rounded(px(theme::ROUND_MD))
+            .bg(rgb(theme::SURFACE_FAINT))
             .child(
                 Input::new(&self.search)
                     .appearance(false)
@@ -165,12 +169,7 @@ impl GalleryView {
                     .py(px(10.))
                     .rounded(px(8.))
                     .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                    .child(
-                        div()
-                            .text_size(px(12.))
-                            .child(photag_ui_bridge::i18n::tr("Search in")),
-                    )
-                    .child(controls::search_scope_row(&self.filter, cx)),
+                    .child(filter_row::search_scope_panel(self, cx)),
             );
         }
         div()
@@ -178,239 +177,105 @@ impl GalleryView {
             .flex_1()
             .min_w_0()
             .justify_center()
-            .child(div().w_full().min_w(px(220.)).max_w(px(540.)).child(field))
+            .child(div().w_full().min_w(px(220.)).max_w(px(280.)).child(field))
             .into_any_element()
     }
 
     fn render_filters(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        let weak = cx.entity().downgrade();
-        let sort = chip(
-            "gallery-sort",
-            format!("⇅ {}", self.filter.sort.label()),
-            false,
-        )
-        .dropdown_menu(move |mut menu, _, _| {
-            for order in [
-                SortOrder::NewestFirst,
-                SortOrder::OldestFirst,
-                SortOrder::BiggestFirst,
-                SortOrder::SmallestFirst,
-                SortOrder::NameAsc,
-                SortOrder::NameDesc,
-                SortOrder::HighestRated,
-                SortOrder::LowestRated,
-            ] {
-                let view = weak.clone();
-                menu = menu.item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(order.label())).on_click(
-                        move |_, _, cx| {
-                            let _ = view.update(cx, |this, cx| this.set_sort(order, cx));
-                        },
-                    ),
-                );
-            }
-            menu
-        });
-        let mut row = div()
-            .h_flex()
-            .w_full()
-            .flex_wrap()
-            .items_center()
-            .gap(px(6.))
-            .child(sort);
-        if matches!(
-            self.filter.sort,
-            SortOrder::NewestFirst | SortOrder::OldestFirst
-        ) {
-            row = row.child(
-                chip("gallery-month-groups", "▦ Months", self.group_by_month).on_click(
-                    cx.listener(|this, _, _, cx| this.set_month_grouping(!this.group_by_month, cx)),
-                ),
-            );
-        }
-        row = row.child(controls::media_type_row(&self.filter, cx));
-        let weak = cx.entity().downgrade();
-        let extensions = self
-            .snapshot
-            .as_ref()
-            .map(|s| s.available_extensions.clone())
-            .unwrap_or_default();
-        let filter = self.filter.clone();
-        let exclude_mode = self.extension_exclude_mode;
-        row = row.child(
-            chip(
-                "gallery-extensions",
-                "Extensions",
-                !filter.extensions.is_empty() || !filter.excluded_extensions.is_empty(),
-            )
-            .dropdown_menu(move |mut menu, _, _| {
-                for (exclude, label) in [(false, "✓ Select"), (true, "⊘ Exclude")] {
-                    let view = weak.clone();
-                    menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
-                        let _ =
-                            view.update(cx, |this, cx| this.set_extension_click_mode(exclude, cx));
-                    }));
-                }
-                menu = menu.item(PopupMenuItem::separator());
-                for ext in &extensions {
-                    let view = weak.clone();
-                    let ext = ext.clone();
-                    let selected = if exclude_mode {
-                        filter.excluded_extensions.contains(&ext)
-                    } else {
-                        filter.extensions.contains(&ext)
-                    };
-                    menu = menu.item(
-                        PopupMenuItem::new(format!("{} .{ext}", if selected { "✓" } else { "" }))
-                            .on_click(move |event, _, cx| {
-                                let _ = view.update(cx, |this, cx| {
-                                    let modifier = this
-                                        .settings
-                                        .as_ref()
-                                        .and_then(|s| s.snapshot().ok())
-                                        .map(|s| match s.exclude_modifier {
-                                            photag_plugin_settings::ExcludeModifier::None => false,
-                                            photag_plugin_settings::ExcludeModifier::Ctrl => {
-                                                event.modifiers().control
-                                            }
-                                            photag_plugin_settings::ExcludeModifier::Shift => {
-                                                event.modifiers().shift
-                                            }
-                                            photag_plugin_settings::ExcludeModifier::Alt => {
-                                                event.modifiers().alt
-                                            }
-                                        })
-                                        .unwrap_or(event.modifiers().control);
-                                    let mode = this.extension_exclude_mode;
-                                    this.extension_exclude_mode ^= modifier;
-                                    this.cycle_extension(ext.clone(), cx);
-                                    this.extension_exclude_mode = mode;
-                                    this.persist_filter_session();
-                                });
-                            }),
-                    );
-                }
-                let view = weak.clone();
-                menu.item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Clear all")).on_click(
-                        move |_, _, cx| {
-                            let _ = view.update(cx, |this, cx| this.clear_extensions(cx));
-                        },
-                    ),
-                )
-            }),
-        );
-        row = row
-            .child(self.date_control(true, cx))
-            .child(div().text_color(rgb(theme::TEXT_MUTED)).child("–"))
-            .child(self.date_control(false, cx))
-            .child(
-                div()
-                    .font_family(theme::ICON_FONT_FAMILY)
-                    .text_color(rgb(theme::TEXT_MUTED))
-                    .child(theme::icons::STAR.to_string()),
-            )
-            .child(sliders::rating(self, cx))
-            .child(
-                div()
-                    .text_size(px(10.5))
-                    .text_color(rgb(theme::TEXT_MUTED))
-                    .child(format!(
-                        "{}–{}",
-                        self.filter.rating_min, self.filter.rating_max
-                    )),
-            );
-        let active = !self.filter.search.is_empty()
-            || self.filter.media_type != MediaTypeFilter::All
-            || self.filter.date_from.is_some()
-            || self.filter.date_to.is_some()
-            || self.filter.rating_min != 0
-            || self.filter.rating_max != 5
-            || !self.filter.extensions.is_empty()
-            || !self.filter.excluded_extensions.is_empty()
-            || !self.filter.selected_tag_ids.is_empty()
-            || !self.filter.excluded_tag_ids.is_empty();
-        if active {
-            row = row.child(
-                controls::clear_filters_button(cx)
-                    .ghost()
-                    .compact()
-                    .h(px(26.)),
-            );
-        }
-        let mut root = div().v_flex().gap(px(4.)).w_full().child(row);
-        if active {
-            let tags = self
-                .snapshot
-                .as_ref()
-                .map(|s| s.tag_tree.as_slice())
-                .unwrap_or_default();
-            root = root.child(controls::active_filter_row(&self.filter, tags, cx));
-        }
-        root.into_any_element()
-    }
-
-    fn date_control(&self, from: bool, cx: &mut Context<Self>) -> AnyElement {
-        let date = if from {
-            self.filter.date_from
-        } else {
-            self.filter.date_to
-        };
-        if date.is_some() {
-            let picker = if from { &self.date_from } else { &self.date_to };
-            div()
-                .h_flex()
-                .items_center()
-                .gap(px(2.))
-                .child(gpui_kit::component::date_picker::DatePicker::new(picker).h(px(26.)))
-                .child(
-                    chip(
-                        if from {
-                            "date-from-clear"
-                        } else {
-                            "date-to-clear"
-                        },
-                        "×",
-                        false,
-                    )
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.clear_date_filter(from, window, cx)
-                    })),
-                )
-                .into_any_element()
-        } else {
-            chip(
-                if from { "date-from" } else { "date-to" },
-                if from { "From" } else { "To" },
-                false,
-            )
-            .on_click(cx.listener(move |this, _, window, cx| {
-                let today = chrono::Local::now().date_naive();
-                let picker = if from { &this.date_from } else { &this.date_to };
-                picker.update(cx, |picker, cx| picker.set_date(today, window, cx));
-                if from {
-                    this.filter.date_from = Some(today);
-                } else {
-                    this.filter.date_to = Some(today);
-                }
-                this.reload();
-                cx.notify();
-            }))
-            .into_any_element()
-        }
+        filter_row::render(self, cx)
     }
 
     fn render_status(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let n = self.selection.selected_media_ids.len();
+        let count = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.skeletons.len())
+            .unwrap_or(0);
+        let weak = cx.entity().downgrade();
+        let more = Button::new("gallery-selection-more")
+            .ghost()
+            .compact()
+            .label(photag_ui_bridge::i18n::tr("More"))
+            .icon(gpui_kit::assets::IconName::Ellipsis)
+            .disabled(n == 0)
+            .dropdown_menu(move |menu, _, _| {
+                let preview = weak.clone();
+                let copy = weak.clone();
+                let move_view = weak.clone();
+                let delete = weak.clone();
+                let details = weak.clone();
+                let clear = weak.clone();
+                menu.item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Preview")).on_click(
+                        move |_, _, cx| {
+                            let _ = preview.update(cx, |this, cx| this.preview_selected(cx));
+                        },
+                    ),
+                )
+                .item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                        "Details, rename, copy, move and ratings",
+                    ))
+                    .on_click(move |_, _, cx| {
+                        let _ = details.update(cx, |this, cx| {
+                            this.show_selection_details = true;
+                            cx.notify();
+                        });
+                    }),
+                )
+                .item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Copy to…")).on_click(
+                        move |_, _, cx| {
+                            let _ = copy.update(cx, |this, cx| this.copy_selected_with_dialog(cx));
+                        },
+                    ),
+                )
+                .item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Move to…")).on_click(
+                        move |_, _, cx| {
+                            let _ =
+                                move_view.update(cx, |this, cx| this.move_selected_with_dialog(cx));
+                        },
+                    ),
+                )
+                .item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Delete…")).on_click(
+                        move |_, window, cx| {
+                            let _ = delete.update(cx, |this, cx| {
+                                this.request_delete_confirmation(window, cx)
+                            });
+                        },
+                    ),
+                )
+                .item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Deselect")).on_click(
+                        move |_, _, cx| {
+                            let _ = clear.update(cx, |this, cx| {
+                                this.selection = GallerySelection::default();
+                                this.persist_filter_session();
+                                cx.notify();
+                            });
+                        },
+                    ),
+                )
+            });
         let mut row = div()
             .h_flex()
             .w_full()
             .items_center()
             .gap(px(8.))
-            .text_size(px(12.));
+            .text_size(px(theme::FONT_SIZE_SMALL))
+            .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                photag_ui_bridge::i18n::tr_args("{count} items", &[("count", count.to_string())]),
+            ))
+            .child(div().text_color(rgb(theme::TEXT_MUTED)).child("·"))
+            .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                photag_ui_bridge::i18n::tr_args("{count} selected", &[("count", n.to_string())]),
+            ));
         if let Some(progress) = self.service.scan_progress() {
             let fraction = progress.scanned as f32 / progress.total.max(1) as f32;
-            return row
+            row = row
                 .child(gpui_kit::component::spinner::Spinner::new())
                 .child(
                     div()
@@ -418,115 +283,89 @@ impl GalleryView {
                         .child(photag_ui_bridge::i18n::tr(&progress.phase)),
                 )
                 .child(
-                    div()
-                        .w(px(180.))
-                        .h(px(6.))
-                        .rounded(px(3.))
-                        .bg(rgb(theme::SURFACE_ELEVATED))
-                        .child(
-                            div()
-                                .w(relative(fraction.clamp(0., 1.)))
-                                .h_full()
-                                .rounded(px(3.))
-                                .bg(rgb(theme::accent())),
-                        ),
-                )
-                .into_any_element();
-        }
-        if n == 0 {
-            row = row.child(
-                div()
-                    .text_color(rgb(theme::TEXT_MUTED))
-                    .child(photag_ui_bridge::i18n::tr_args(
-                        "{count} items in library",
-                        &[(
-                            "count",
-                            self.snapshot
-                                .as_ref()
-                                .map(|s| s.media_count)
-                                .unwrap_or(0)
-                                .to_string(),
-                        )],
-                    )),
-            );
-        } else {
-            row = row
-                .child(div().text_color(rgb(theme::accent_hover())).child(
-                    photag_ui_bridge::i18n::tr_args(
-                        "{count} selected",
-                        &[("count", n.to_string())],
-                    ),
-                ))
-                .child(
-                    chip("gallery-preview-selected", "Open", false)
-                        .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
-                )
-                .child(
-                    chip("gallery-selection-tags", "Tags", self.show_tag_picker).on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.show_tag_picker = !this.show_tag_picker;
-                            cx.notify();
-                        }),
-                    ),
-                )
-                .child(
-                    chip("gallery-clear-tags", "Clear tags", false)
-                        .on_click(cx.listener(|this, _, _, cx| this.clear_picker_tags(cx))),
-                )
-                .child(chip("gallery-delete-selected", "Delete", false).on_click(
-                    cx.listener(|this, _, window, cx| this.request_delete_confirmation(window, cx)),
-                ))
-                .child(
-                    chip(
-                        "gallery-selection-details",
-                        "⋯",
-                        self.show_selection_details,
-                    )
-                    .tooltip(photag_ui_bridge::i18n::tr(
-                        "Details, rename, copy, move and ratings",
-                    ))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.show_selection_details = !this.show_selection_details;
-                        cx.notify();
-                    })),
-                )
-                .child(div().flex_1())
-                .child(
-                    chip("gallery-clear-selection", "Deselect", false).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.selection = GallerySelection::default();
-                            this.persist_filter_session();
-                            cx.notify();
-                        },
-                    )),
+                    gpui_kit::component::progress::Progress::new("gallery-scan-progress")
+                        .value(fraction.clamp(0., 1.) * 100.)
+                        .w(px(180.)),
                 );
         }
-        row.into_any_element()
+        row.child(div().flex_1())
+            .child(
+                Button::new("gallery-selection-tags")
+                    .ghost()
+                    .compact()
+                    .icon(gpui_kit::assets::IconName::Tag)
+                    .label(photag_ui_bridge::i18n::tr("Tags"))
+                    .disabled(n == 0)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.show_tag_picker = !this.show_tag_picker;
+                        cx.notify();
+                    })),
+            )
+            .child(more)
+            .into_any_element()
     }
 
     fn render_tools(&mut self, cx: &mut Context<Self>) -> AnyElement {
         div()
             .v_flex()
-            .gap(px(6.))
+            .gap(px(2.))
+            .w_full()
             .child(
-                chip("gallery-bulk-open", "Bulk actions… (Ctrl+Shift+D)", false).on_click(
-                    cx.listener(|this, _, window, cx| {
-                        bulk_actions::reset_inputs(this, window, cx);
-                        this.bulk_source = BulkActionSource::WholeLibrary;
-                        this.bulk_action = Some(BulkActionKind::Delete);
-                        this.confirm_bulk_action = false;
-                        this.confirm_bulk_action_ids = None;
-                        cx.notify();
-                    }),
+                tool_button(
+                    "gallery-bulk-open",
+                    "Bulk actions…",
+                    gpui_kit::assets::IconName::ListChecks,
+                )
+                .on_click(cx.listener(|this, _, window, cx| {
+                    bulk_actions::reset_inputs(this, window, cx);
+                    this.bulk_source = BulkActionSource::WholeLibrary;
+                    this.bulk_action = Some(BulkActionKind::Delete);
+                    this.confirm_bulk_action = false;
+                    this.confirm_bulk_action_ids = None;
+                    cx.notify();
+                })),
+            )
+            .child(
+                tool_button(
+                    "gallery-statistics",
+                    "Statistics",
+                    gpui_kit::assets::IconName::ChartColumn,
+                )
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.show_statistics = true;
+                    cx.notify();
+                })),
+            )
+            .child(
+                tool_button(
+                    "gallery-export-metadata",
+                    "Export metadata",
+                    gpui_kit::assets::IconName::File,
+                )
+                .on_click(
+                    cx.listener(|this, _, _, _| this.dispatch_command("metadata-export/export")),
                 ),
             )
             .child(
-                chip("gallery-statistics", "Statistics", false).on_click(cx.listener(
-                    |this, _, _, cx| {
-                        this.show_statistics = true;
-                        cx.notify();
-                    },
-                )),
+                div()
+                    .border_t_1()
+                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .mt(px(6.))
+                    .pt(px(6.))
+                    .text_size(px(theme::FONT_SIZE_SMALL))
+                    .text_color(rgb(theme::TEXT_MUTED))
+                    .child(photag_ui_bridge::i18n::tr("View")),
+            )
+            .child(
+                tool_button(
+                    "gallery-tools-months",
+                    "Group by month",
+                    gpui_kit::assets::IconName::Calendar,
+                )
+                .toggled(self.group_by_month)
+                .on_click(
+                    cx.listener(|this, _, _, cx| this.set_month_grouping(!this.group_by_month, cx)),
+                ),
             )
             .into_any_element()
     }
@@ -537,7 +376,7 @@ impl GalleryView {
         if self.show_statistics || self.bulk_action.is_some() {
             let mut card = div()
                 .v_flex()
-                .w(px(if self.show_statistics { 480. } else { 440. }))
+                .w(px(if self.show_statistics { 800. } else { 860. }))
                 .max_h(px(600.))
                 .overflow_y_scrollbar()
                 .rounded(px(8.))
@@ -575,12 +414,18 @@ impl GalleryView {
             root = root.child(
                 div()
                     .absolute()
-                    .left(px(120.))
-                    .bottom(px(48.))
-                    .w(px(320.))
-                    .max_h(px(480.))
-                    .overflow_y_scrollbar()
-                    .child(tagging_picker::render(self, cx)),
+                    .inset_0()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(rgba(theme::SCRIM))
+                    .child(
+                        div()
+                            .w(px(690.))
+                            .max_h(px((f32::from(window.bounds().size.height) - 70.).max(300.)))
+                            .overflow_y_scrollbar()
+                            .child(tagging_picker::render(self, cx)),
+                    ),
             );
         }
         root = self.selection_details(root, cx);
@@ -625,4 +470,15 @@ impl GalleryView {
         }
         root.into_any_element()
     }
+}
+
+fn tool_button(id: &'static str, label: &str, icon: gpui_kit::assets::IconName) -> Button {
+    Button::new(id)
+        .ghost()
+        .compact()
+        .w_full()
+        .h(px(30.))
+        .justify_start()
+        .icon(icon)
+        .label(photag_ui_bridge::i18n::tr(label))
 }

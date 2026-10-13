@@ -6,7 +6,8 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
 pub(super) struct UiRequest {
     /// settings_open/close/tab, language, statistics, bulk_actions,
-    /// gallery_dialogs_close, select_media, deselect, hover_media, hover_clear.
+    /// gallery_dialogs_close, select_media, deselect, hover_media, hover_clear,
+    /// inspector_open, inspector_close, settings_check_updates.
     action: String,
     /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
@@ -19,7 +20,23 @@ impl PhoTagMcpServer {
     )]
     fn get_ui_state(&self) -> String {
         json!({
+            "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
+            "tools_open": self.surfaces.is_open("tools"),
+            "gallery": self.gallery.ui_snapshot().map(|state| json!({
+                "search": state.filter.search, "media_type": format!("{:?}", state.filter.media_type),
+                "sort": format!("{:?}", state.filter.sort), "extensions": state.filter.extensions,
+                "excluded_extensions": state.filter.excluded_extensions, "included_tags": state.filter.selected_tag_ids,
+                "excluded_tags": state.filter.excluded_tag_ids, "rating_min": state.filter.rating_min,
+                "rating_max": state.filter.rating_max, "date_from": state.filter.date_from.map(|d| d.to_string()),
+                "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
+                "matched_count": state.matched_count, "group_by_month": state.group_by_month,
+                "inspector_sections": state.inspector_sections,
+            })),
             "settings_open": self.surfaces.is_open("settings"),
+            "inspector_open": self.surfaces.is_open("inspector"),
+            "update_checking": self.surfaces.is_open("settings.update-checking"),
+            "update_available": self.surfaces.is_open("settings.update-available"),
+            "update_offer_open": self.surfaces.is_open("settings.update-offer"),
             "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
             "language": self.i18n.as_ref().map(|service| service.language().code()),
             "translation_revision": photag_ui_bridge::i18n::revision(),
@@ -47,6 +64,9 @@ impl PhoTagMcpServer {
         let result = match request.action.as_str() {
             "settings_open" => self.surfaces.set_open("settings", true),
             "settings_close" => self.surfaces.set_open("settings", false),
+            "inspector_open" => self.surfaces.set_open("inspector", true),
+            "inspector_close" => self.surfaces.set_open("inspector", false),
+            "settings_check_updates" => self.surfaces.set_open("settings.check-updates", true),
             "statistics"
             | "bulk_actions"
             | "gallery_dialogs_close"

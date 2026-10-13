@@ -29,7 +29,7 @@ impl GalleryView {
     }
 
     pub(super) fn start_rubberband(&mut self, event: &MouseDownEvent, cx: &mut Context<Self>) {
-        let viewport = self.scroll.0.borrow().base_handle.bounds();
+        let viewport = self.scroll.viewport_bounds();
         if !viewport.contains(&event.position) {
             return;
         }
@@ -62,7 +62,7 @@ impl GalleryView {
         };
         rubberband.end = event.position;
         rubberband.dragged = true;
-        let viewport = self.scroll.0.borrow().base_handle.bounds();
+        let viewport = self.scroll.viewport_bounds();
         let band = Bounds::from_corners(
             point(
                 rubberband.start.x.min(rubberband.end.x),
@@ -83,24 +83,35 @@ impl GalleryView {
             && visible_band.size.height > px(0.)
             && let Ok(snapshot) = &self.snapshot
         {
-            let scroll = self.scroll.0.borrow();
-            let row_height = scroll
-                .last_item_size
-                .map(|size| size.item.height)
-                .unwrap_or(px(self.thumb_size + 12.));
-            let offset_y = scroll.base_handle.offset().y;
             let card_width = px(self.thumb_size);
             let card_height = px(self.thumb_size);
-            let card_step = card_width + px(12.);
-            for (row_index, row) in self.row_layout.iter().enumerate() {
-                let row_y = viewport.origin.y + row_height * row_index as f32 + offset_y;
+            let card_step = card_width + px(16.);
+            let start = self.scroll.logical_scroll_top().item_ix;
+            let visible_count = (f32::from(viewport.size.height) / 40.).ceil() as usize + 2;
+            for (row_index, row) in self
+                .row_layout
+                .iter()
+                .enumerate()
+                .skip(start)
+                .take(visible_count)
+            {
+                if row.collapsed {
+                    continue;
+                }
+                let Some(bounds) = self.scroll.bounds_for_item(row_index) else {
+                    continue;
+                };
+                let row_y = bounds.origin.y;
                 let card_y = row_y + px(if row.month_label.is_some() { 40. } else { 0. });
                 if card_y + card_height < visible_band.top() || card_y > visible_band.bottom() {
                     continue;
                 }
                 for (column, media_index) in row.media_range.clone().enumerate() {
                     let card_bounds = Bounds::new(
-                        point(viewport.origin.x + card_step * column as f32, card_y),
+                        point(
+                            viewport.origin.x + px(16.) + card_step * column as f32,
+                            card_y,
+                        ),
                         size(card_width, card_height),
                     );
                     if card_bounds.intersects(&visible_band)
@@ -135,27 +146,37 @@ impl GalleryView {
     pub(super) fn toggle_exif(&mut self, cx: &mut Context<Self>) {
         self.show_exif = !self.show_exif;
         if self.show_exif {
-            let selected_path = self
-                .selection
-                .selected_media_ids
-                .first()
-                .and_then(|&media_id| {
-                    self.snapshot
-                        .as_ref()
-                        .ok()?
-                        .media
-                        .iter()
-                        .find(|media| media.id == media_id)
-                        .map(|media| (media_id, media.full_path.clone()))
-                });
-            if let Some((media_id, path)) = selected_path {
-                self.exif_cache = Some((
-                    media_id,
-                    card::read_exif_fields(&path).map_err(str::to_string),
-                ));
-            }
+            self.ensure_exif_loaded(cx);
         }
         cx.notify();
+    }
+
+    pub(super) fn ensure_exif_loaded(&mut self, cx: &mut Context<Self>) {
+        let selected_path = self
+            .selection
+            .selected_media_ids
+            .first()
+            .and_then(|&media_id| {
+                self.service
+                    .media_by_id(media_id)
+                    .ok()
+                    .flatten()
+                    .map(|media| (media_id, media.full_path))
+            });
+        if let Some((media_id, path)) = selected_path {
+            if self
+                .exif_cache
+                .as_ref()
+                .is_some_and(|(id, _)| *id == media_id)
+            {
+                return;
+            }
+            self.exif_cache = Some((
+                media_id,
+                card::read_exif_fields(&path).map_err(str::to_string),
+            ));
+            cx.notify();
+        }
     }
 
     pub(super) fn start_operation<F>(&mut self, operation: F, refresh: bool, cx: &mut Context<Self>)
@@ -448,7 +469,6 @@ impl GalleryView {
             .iter()
             .position(|row| row.media_range.contains(&index))
             .unwrap_or(index / self.columns.max(1));
-        self.scroll
-            .scroll_to_item(row_index, ScrollStrategy::Nearest);
+        self.scroll.scroll_to_reveal_item(row_index);
     }
 }

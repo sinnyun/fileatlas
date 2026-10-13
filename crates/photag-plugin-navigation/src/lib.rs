@@ -1,6 +1,8 @@
 //! PhoTag library sidebar data and tag tree operations, owned by Cordis.
 
+mod ui_requests;
 mod view;
+pub use ui_requests::{NavigationUiRequest, NavigationUiRequestError};
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -41,6 +43,7 @@ pub struct NavigationService {
     indexing: Arc<IndexingService>,
     watcher: Option<Arc<WatcherService>>,
     scans: Mutex<HashMap<i64, Arc<AtomicBool>>>,
+    ui_request: Mutex<Option<NavigationUiRequest>>,
 }
 
 impl Service for NavigationService {
@@ -54,7 +57,45 @@ impl NavigationService {
             indexing,
             watcher: None,
             scans: Mutex::new(HashMap::new()),
+            ui_request: Mutex::new(None),
         }
+    }
+
+    /// Queue one typed action for the mounted navigation view.
+    pub fn request_ui(&self, request: NavigationUiRequest) -> Result<(), NavigationUiRequestError> {
+        if let Some(id) = request.target_id() {
+            if id <= 0 {
+                return Err(NavigationUiRequestError::InvalidTagId(id));
+            }
+            let snapshot = self
+                .snapshot()
+                .map_err(|_| NavigationUiRequestError::TagLookupFailed)?;
+            if !tree_contains_tag(&snapshot.tags, id) {
+                return Err(NavigationUiRequestError::UnknownTag(id));
+            }
+        }
+        let mut pending = self
+            .ui_request
+            .lock()
+            .map_err(|_| NavigationUiRequestError::QueuePoisoned)?;
+        if pending.is_some() {
+            return Err(NavigationUiRequestError::Busy);
+        }
+        *pending = Some(request);
+        Ok(())
+    }
+
+    pub(crate) fn has_ui_request(&self) -> bool {
+        self.ui_request
+            .lock()
+            .is_ok_and(|pending| pending.is_some())
+    }
+
+    pub(crate) fn take_ui_request(&self) -> Option<NavigationUiRequest> {
+        self.ui_request
+            .lock()
+            .ok()
+            .and_then(|mut pending| pending.take())
     }
 
     fn with_watcher(mut self, watcher: Arc<WatcherService>) -> Self {
@@ -264,6 +305,11 @@ impl NavigationService {
     }
 }
 
+fn tree_contains_tag(tags: &[Tag], id: i64) -> bool {
+    tags.iter()
+        .any(|tag| tag.id == id || tree_contains_tag(&tag.children, id))
+}
+
 impl Drop for NavigationService {
     fn drop(&mut self) {
         if let Ok(scans) = self.scans.get_mut() {
@@ -365,6 +411,18 @@ impl Plugin for NavigationPlugin {
             selected_folder_id
         };
         let expanded_subdirs = session.expanded_subdirs;
+        let add_folder_requested = Arc::new(AtomicBool::new(false));
+        let pending = Arc::clone(&add_folder_requested);
+        let _command_listener = context
+            .on::<photag_ui_bridge::UiCommandInvoked, _>(cordis::event::observer_sync(
+                move |_, command: String| {
+                    if command == "navigation/add-folder" {
+                        pending.store(true, Ordering::Release);
+                    }
+                    Ok::<_, std::convert::Infallible>(())
+                },
+            ))
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
@@ -401,7 +459,7 @@ impl Plugin for NavigationPlugin {
         register_views_for_plugin(
             &context,
             "photag.navigation",
-            [view::sidebar(
+            view::sidebar(
                 service,
                 context.clone(),
                 session_service,
@@ -409,7 +467,8 @@ impl Plugin for NavigationPlugin {
                 selected_path,
                 expanded_subdirs,
                 preferences,
-            )],
+                add_folder_requested,
+            ),
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
         Ok(())

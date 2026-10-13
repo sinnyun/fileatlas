@@ -3,14 +3,18 @@
 mod behavior;
 mod bulk_actions;
 mod card;
+mod card_menu;
 mod card_motion;
-mod controls;
+mod empty_state;
 mod file_actions;
 mod filter_actions;
+mod filter_row;
+mod inspector;
 mod keyboard;
 mod month_header;
 mod regions;
 mod render;
+mod scope_actions;
 mod selection_panel;
 mod sliders;
 mod statistics;
@@ -24,11 +28,13 @@ use std::{future::Future, path::PathBuf};
 
 use ::gpui::InteractiveElement as _;
 use ::gpui::{
-    Bounds, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    ScrollStrategy, UniformListScrollHandle, point, px, size, uniform_list,
+    Bounds, ListAlignment, ListOffset, ListState, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, Pixels, Point, list, point, px, size,
 };
+use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::calendar::CalendarState;
 use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTime};
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
@@ -42,8 +48,8 @@ use photag_plugin_preview::PreviewService;
 use photag_plugin_session::{MediaTypeFilter as SavedMediaType, SessionService};
 use photag_plugin_settings::SettingsService;
 use photag_plugin_tagging::TaggingService;
-use photag_ui_bridge::UiViewContribution;
 use photag_ui_bridge::theme;
+use photag_ui_bridge::{UiCommandInvoked, UiViewContribution};
 
 use bulk_actions::{BulkActionKind, BulkActionSource};
 use card::{render_media_card, render_media_details};
@@ -159,6 +165,7 @@ pub(super) fn gallery(
     preview: Arc<PreviewService>,
     playback: Arc<MediaPlaybackService>,
     runtime: tokio::runtime::Handle,
+    cordis: CordisContext,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
@@ -167,6 +174,7 @@ pub(super) fn gallery(
     history: Option<Arc<HistoryService>>,
     settings: Option<Arc<SettingsService>>,
     tagging: Option<Arc<TaggingService>>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
 ) -> Vec<UiViewContribution> {
     // All regions share one entity. A filter or selection change invalidates
     // every projection; no independent state, workers or session writers.
@@ -182,6 +190,7 @@ pub(super) fn gallery(
         let view_preview = Arc::clone(&preview);
         let view_playback = Arc::clone(&playback);
         let view_runtime = runtime.clone();
+        let view_cordis = cordis.clone();
         let view_selection = Arc::clone(&selected_folder);
         let view_tag_selection = Arc::clone(&selected_tag);
         let view_path_selection = Arc::clone(&selected_path);
@@ -197,6 +206,15 @@ pub(super) fn gallery(
         });
         let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
         let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+        let date_calendar = app.new(|cx| {
+            let mut calendar = CalendarState::new(window, cx);
+            calendar.set_date(
+                gpui_kit::component::calendar::Date::Range(None, None),
+                window,
+                cx,
+            );
+            calendar
+        });
         let tag_picker_search = app.new(|cx| {
             InputState::new(window, cx)
                 .placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
@@ -246,6 +264,7 @@ pub(super) fn gallery(
                 view_preview,
                 view_playback,
                 view_runtime,
+                view_cordis,
                 view_selection,
                 view_tag_selection,
                 view_path_selection,
@@ -254,10 +273,12 @@ pub(super) fn gallery(
                 view_history,
                 view_settings,
                 view_tagging,
+                Arc::clone(&surfaces),
                 tag_picker_search,
                 search,
                 date_from,
                 date_to,
+                date_calendar,
                 bulk_date_from,
                 bulk_date_to,
                 rename_input,
@@ -265,6 +286,7 @@ pub(super) fn gallery(
                 cx,
             )
         });
+        filter_row::subscribe_calendar(&view, window, app);
         *cached = Some(view.clone());
         view
     });
@@ -282,6 +304,7 @@ struct GalleryView {
     preview: Arc<PreviewService>,
     playback: Arc<MediaPlaybackService>,
     runtime: tokio::runtime::Handle,
+    cordis: CordisContext,
     selected_folder: Arc<SelectedFolder>,
     selected_tag: Arc<SelectedTag>,
     selected_path: Arc<SelectedPath>,
@@ -290,11 +313,13 @@ struct GalleryView {
     history: Option<Arc<HistoryService>>,
     settings: Option<Arc<SettingsService>>,
     tagging: Option<Arc<TaggingService>>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     tag_picker_search: Entity<InputState>,
     tag_picker_selected: std::collections::HashSet<i64>,
     search: Entity<InputState>,
     date_from: Entity<DatePickerState>,
     date_to: Entity<DatePickerState>,
+    date_calendar: Entity<CalendarState>,
     bulk_date_from: Entity<DatePickerState>,
     bulk_date_to: Entity<DatePickerState>,
     bulk_date_from_value: Option<chrono::NaiveDate>,
@@ -303,13 +328,17 @@ struct GalleryView {
     bulk_inputs: Vec<Entity<InputState>>,
     bulk_action: Option<BulkActionKind>,
     bulk_source: BulkActionSource,
+    bulk_media_type: MediaTypeFilter,
+    bulk_tag_ids: Vec<i64>,
+    bulk_extension_exclude: bool,
     confirm_bulk_action: bool,
     confirm_bulk_action_ids: Option<Vec<i64>>,
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
     rubberband: Option<GalleryRubberband>,
-    scroll: UniformListScrollHandle,
+    scroll: ListState,
+    pending_scroll_restore: Option<f32>,
     columns: usize,
     row_layout: Arc<Vec<GalleryVisualRow>>,
     row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
@@ -320,6 +349,8 @@ struct GalleryView {
     slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
     collapsed_months: HashSet<String>,
+    inspector_expanded: HashSet<&'static str>,
+    tag_filter_exclude_mode: bool,
     extension_exclude_mode: bool,
     drag_allowed: Arc<AtomicBool>,
     video_preview_open: bool,
@@ -333,28 +364,6 @@ struct GalleryView {
 }
 
 impl GalleryView {
-    pub(super) fn set_month_grouping(&mut self, enabled: bool, cx: &mut Context<Self>) {
-        self.group_by_month = enabled;
-        self.row_layout_key = None;
-        if let Some(settings) = &self.settings {
-            if let Err(error) = settings.update(|settings| settings.show_date_dividers = enabled) {
-                self.operation_status =
-                    Some(format!("Month grouping preference save failed: {error}"));
-            }
-        }
-        self.persist_filter_session();
-        cx.notify();
-    }
-
-    pub(super) fn toggle_month_collapsed(&mut self, month: String, cx: &mut Context<Self>) {
-        if !self.collapsed_months.insert(month.clone()) {
-            self.collapsed_months.remove(&month);
-        }
-        self.row_layout_key = None;
-        self.persist_filter_session();
-        cx.notify();
-    }
-
     fn new(
         service: Arc<GalleryService>,
         file_operations: Arc<FileOperationsService>,
@@ -362,6 +371,7 @@ impl GalleryView {
         preview: Arc<PreviewService>,
         playback: Arc<MediaPlaybackService>,
         runtime: tokio::runtime::Handle,
+        cordis: CordisContext,
         selected_folder: Arc<SelectedFolder>,
         selected_tag: Arc<SelectedTag>,
         selected_path: Arc<SelectedPath>,
@@ -370,10 +380,12 @@ impl GalleryView {
         history: Option<Arc<HistoryService>>,
         settings: Option<Arc<SettingsService>>,
         tagging: Option<Arc<TaggingService>>,
+        surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
         tag_picker_search: Entity<InputState>,
         search: Entity<InputState>,
         date_from: Entity<DatePickerState>,
         date_to: Entity<DatePickerState>,
+        date_calendar: Entity<CalendarState>,
         bulk_date_from: Entity<DatePickerState>,
         bulk_date_to: Entity<DatePickerState>,
         rename_input: Entity<InputState>,
@@ -504,17 +516,12 @@ impl GalleryView {
                 .collect();
             selection.anchor_id = selection.selected_media_ids.first().copied();
         }
-        let scroll = UniformListScrollHandle::new();
+        let scroll = ListState::new(0, ListAlignment::Top, px(240.));
         let restored_scroll = if saved.gallery_scroll.is_finite() {
             saved.gallery_scroll.max(0.)
         } else {
             0.
         };
-        scroll
-            .0
-            .borrow()
-            .base_handle
-            .set_offset(point(px(0.), px(-restored_scroll)));
         let scroll_for_monitor = scroll.clone();
         let settings_group_by_month = settings
             .as_ref()
@@ -528,6 +535,7 @@ impl GalleryView {
             .unwrap_or_default();
         let mut last_saved_scroll = restored_scroll;
         let mut previous_progress = None;
+        let mut previous_popover = surfaces.value("gallery.popover");
         cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor()
@@ -535,6 +543,11 @@ impl GalleryView {
                     .await;
                 let changed = this
                     .update(cx, |view, cx| {
+                        let popover = view.surfaces.value("gallery.popover");
+                        if previous_popover != popover {
+                            previous_popover = popover;
+                            cx.notify();
+                        }
                         let progress = view
                             .service
                             .scan_progress()
@@ -599,7 +612,7 @@ impl GalleryView {
                             cx.notify();
                         }
                         let current_scroll =
-                            (-f32::from(scroll_for_monitor.0.borrow().base_handle.offset().y))
+                            (-f32::from(scroll_for_monitor.scroll_px_offset_for_scrollbar().y))
                                 .max(0.);
                         if (current_scroll - last_saved_scroll).abs() >= 1.0 {
                             view.persist_filter_session();
@@ -625,6 +638,7 @@ impl GalleryView {
             preview,
             playback,
             runtime,
+            cordis,
             selected_folder,
             selected_tag,
             selected_path,
@@ -633,11 +647,13 @@ impl GalleryView {
             history,
             settings,
             tagging,
+            surfaces,
             tag_picker_search,
             tag_picker_selected: Default::default(),
             search,
             date_from,
             date_to,
+            date_calendar,
             bulk_date_from,
             bulk_date_to,
             bulk_date_from_value: None,
@@ -646,6 +662,9 @@ impl GalleryView {
             bulk_inputs,
             bulk_action: None,
             bulk_source: BulkActionSource::WholeLibrary,
+            bulk_media_type: MediaTypeFilter::All,
+            bulk_tag_ids: Vec::new(),
+            bulk_extension_exclude: false,
             confirm_bulk_action: false,
             confirm_bulk_action_ids: None,
             focus_handle,
@@ -653,6 +672,7 @@ impl GalleryView {
             selection,
             rubberband: None,
             scroll,
+            pending_scroll_restore: Some(restored_scroll),
             columns: 4,
             row_layout: Arc::new(Vec::new()),
             row_layout_key: None,
@@ -669,6 +689,8 @@ impl GalleryView {
             slider_drag: None,
             show_statistics: false,
             collapsed_months: saved.collapsed_months.clone(),
+            inspector_expanded: ["basic", "tags"].into_iter().collect(),
+            tag_filter_exclude_mode: false,
             extension_exclude_mode: saved.ext_click_mode
                 == Some(photag_plugin_session::TagClickMode::Exclude),
             drag_allowed: Arc::new(AtomicBool::new(true)),
@@ -692,11 +714,8 @@ impl GalleryView {
         self.row_layout = Arc::new(Vec::new());
         self.row_layout_key = None;
         self.selection = GallerySelection::default();
-        self.scroll
-            .0
-            .borrow()
-            .base_handle
-            .set_offset(point(px(0.), px(0.)));
+        self.scroll.reset(0);
+        self.pending_scroll_restore = None;
         self.persist_filter_session();
         self.show_exif = false;
         self.exif_cache = None;
@@ -734,7 +753,7 @@ impl GalleryView {
         saved.selected_tag_ids = self.filter.selected_tag_ids.clone();
         saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
         saved.selected_media_ids = self.selection.selected_media_ids.clone();
-        saved.gallery_scroll = (-f32::from(self.scroll.0.borrow().base_handle.offset().y)).max(0.);
+        saved.gallery_scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
         saved.thumb_size = Some(
             self.thumb_size
                 .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),

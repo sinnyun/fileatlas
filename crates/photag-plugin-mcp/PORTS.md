@@ -60,3 +60,38 @@ isolated fixture profile, capture 23 UI states, and sample the real Preview
 chrome fade curve. Output lives in target/mcp-ui-screenshots; the script never
 executes delete/copy/move/update operations. Hover/tooltip activation, native
 dialogs and pointer-driven animations remain untested by this interface.
+
+## S2 and startup-update diagnostics (2026-10-13)
+
+`get_ui_state` additionally returns boolean `inspector_open`,
+`update_checking`, `update_available`, and `update_offer_open` from shared
+UiSurfaceState. `control_ui` additionally accepts `inspector_open`,
+`inspector_close`, and `settings_check_updates` (no value required). The
+existing mutation guard still applies. Settings consumes manual-check
+requests on its 100 ms GPUI poller; update completion is asynchronous.
+Inspector controls operate the same surface state as the Shell toggle and
+Gallery close button. These service-level requests and screenshots verify
+state/rendering; they do not prove pointer click propagation inside filter
+popovers, native dialogs, or every designed state.
+
+## v5 live Gallery/Navigation controls (2026-10-14 handoff)
+
+`get_ui_state` adds `gallery_popover`, `tools_open` and the live Gallery
+snapshot (filters, selected IDs, matched count, month grouping and inspector
+sections). `control_gallery` controls the same Gallery actions and controlled
+Popover state as the UI. Actions: popover, search, media_type, sort, rating,
+extension, tag, tag_mode, extension_mode, date_from, date_to, clear_filters,
+inspector_section, tag_picker, month_grouping, tools_open and tools_close.
+Read tools/list for exact optional fields and accepted string values.
+`control_navigation` accepts create/edit/delete/merge/close with optional
+required-on-target tag_id; these open dialogs, never commit deletion/merge.
+Both tools require the existing mutation flag and asynchronous view polling.
+
+MCP `open_media` currently still rejects audio, despite Playback's new
+underlying audio-only implementation. New Playback media_id/open_media API
+and audio routing are planned, not implemented. Tool text JSON may carry an
+error without CallToolResult.isError; clients must check both. The new
+scripts/photag-mcp-debug.cjs does so, uses an isolated target profile, captures
+via screenshot_window and keeps one child window alive in interactive mode.
+It cannot attach to another instance. Current-source compilation is blocked
+by Gallery's 19 errors; the last successful exe predates final layout edits.

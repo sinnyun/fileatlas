@@ -7,7 +7,7 @@ Status: the source-compatible settings model and JSON persistence are active. Th
 - Plugin: `photag.settings`; service: `photag/settings` (`SettingsService`).
 - Requires the host `photag/ui-bridge` service. It publishes the settings service, contributes the `workspace.modal` Settings view and `settings/toggle` command/Window menu entry, and registers them under the same plugin owner.
 - Cordis effect cleanup removes the UI contribution metadata, command listener, and view factory when the plugin stops. The service and `UiSurfaceState` are held by their host lifetime.
-- The Shell mounts `workspace.modal` above application content. The 360 px Settings surface starts closed and centers on first open. Its title bar can be dragged; Close and Escape dismiss it. While open-key capture is active, Escape cancels capture without closing Settings. The shared bridge state lets the host command open the window and the panel close itself.
+- The Shell mounts `workspace.modal` above application content. The Settings surface starts closed and centers on first open, with a 680–980 px width based on the viewport. Its title bar can be dragged; Close and Escape dismiss it. While open-key capture is active, Escape cancels capture without closing Settings. The shared bridge state lets the host command open the window and the panel close itself.
 
 ## Migrated settings controls
 
@@ -34,8 +34,8 @@ The floating Settings panel uses the shared backdrop-aware base and modal surfac
 
 ## Code map
 
-- `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and the six-tab host.
-- `src/view/tabs.rs` renders the six tab contents; `src/view/ai_groups.rs`, `tag_hotkeys.rs`, and `updates.rs` implement their focused editing flows and update offer.
+- `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and the six-page host.
+- `src/view/tabs.rs` renders Appearance, Toolbar, Shortcuts, Tags, and AI; `src/view/ai_groups.rs` owns mandatory-group editing and `tag_hotkeys.rs` owns F1–F9 assignment menus. `src/view/updates_page.rs` renders release/check/download/install states; `updates.rs` owns update lifecycle and the floating offer.
 - `src/settings.rs` owns the source-compatible preference schema/defaults and JSON service persistence.
 
 ## Localization and live Settings validation (2026-10-13)
@@ -51,13 +51,27 @@ Appearance. The i18n provider owns the language preference and controls.
 the existing GPUI poller observes it as well as open/close requests for MCP tests.
 Visible labels and input placeholders update through UI Bridge translation.
 
-Six tabs stay on one row. Width follows source minimum 360/5 plus measured text,
-source button padding and row/window spacing (main.rs:2111-2175); unlike the old
-wrapped toolbar, longer English labels expand the surface. Appearance renders
-22×22 source palette swatches (main.rs:2187-2246). Content remains a bounded
-scroll area with a 520-point cap to avoid GPUI's intrinsic scroll collapse; this
-is a documented compatibility difference from source content-sized height.
-All six tabs were captured in English and Chinese through the actual MCP child.
-Checkbox presentation, tab icons, exact selected-swatch outer ring, title/footer
-geometry and remaining source controls still differ. No mouse click or shortcut
-validation was performed in the MCP-only pass.
+The redesign uses six vertically stacked navigation entries beside the active
+page, a bounded scrolling content area, and a footer that says changes save
+automatically. All existing page controls remain in the page renderer.
+Appearance keeps the seven source accent choices plus System; Toolbar retains
+its action visibility and position controls; Shortcuts retains key capture and
+F1–F9 tag assignments; Tags, AI, and Updates retain their source-backed settings.
+The Updates page separates current version, startup-check preference, live check
+status, available release notes/download verification, and the explicit staged
+restart/install action. Automatic checks continue to populate status quietly;
+manual checks may open the existing floating update offer. This layout has not
+yet received the parent task's live MCP screenshot review.
+
+## Quiet startup update checks (2026-10-13)
+
+Per user direction, automatic startup checks still honor the persisted
+`Settings.auto_check_updates`, but never open the update offer. Check results
+remain available in Settings. `begin_update_check(manual)` tracks request
+origin; explicit manual checks may open the existing offer, and download,
+verification and explicit install behavior are unchanged. The existing
+`settings.check-updates` surface request invokes that same manual action on
+the GPUI poller. Read-only diagnostic surfaces publish update-checking,
+update-available and update-offer state for the plugin MCP tools. Live MCP
+verification found a release without opening a startup offer, then opened
+that offer after a manual request. No update was downloaded or installed.

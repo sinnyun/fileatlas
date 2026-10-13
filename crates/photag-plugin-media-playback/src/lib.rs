@@ -24,6 +24,7 @@ pub use view::media_playback_view;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlaybackSnapshot {
     pub path: Option<PathBuf>,
+    pub has_video: bool,
     pub frame_path: Option<PathBuf>,
     pub playing: bool,
     pub position_seconds: f64,
@@ -44,6 +45,7 @@ impl Default for PlaybackSnapshot {
     fn default() -> Self {
         Self {
             path: None,
+            has_video: false,
             frame_path: None,
             playing: false,
             position_seconds: 0.0,
@@ -136,6 +138,14 @@ impl MediaPlaybackService {
             state.snapshot.position_seconds = state.snapshot.duration_seconds;
             state.snapshot.revision = state.snapshot.revision.wrapping_add(1);
         }
+        if state.snapshot.playing
+            && state.snapshot.duration_seconds > 0.0
+            && current_position(&state) >= state.snapshot.duration_seconds
+        {
+            stop(&mut state);
+            state.snapshot.position_seconds = state.snapshot.duration_seconds;
+            state.snapshot.revision = state.snapshot.revision.wrapping_add(1);
+        }
         state.snapshot.clone()
     }
 
@@ -164,6 +174,7 @@ impl MediaPlaybackService {
             }
         };
         state.snapshot.path = Some(path);
+        state.snapshot.has_video = info.has_video;
         state.snapshot.frame_path = None;
         state.snapshot.duration_seconds = info.duration;
         state.snapshot.frame_rate = info.fps;
@@ -206,9 +217,13 @@ impl MediaPlaybackService {
         stop(&mut state);
         state.pause_after_frame = false;
         state.snapshot.position_seconds = pos;
-        if state.snapshot.path.is_some() && (resume || pos < state.snapshot.duration_seconds) {
-            start(&mut state, pos)?;
-            state.pause_after_frame = !resume;
+        if state.snapshot.path.is_some() {
+            if state.snapshot.has_video && (resume || pos < state.snapshot.duration_seconds) {
+                start(&mut state, pos)?;
+                state.pause_after_frame = !resume;
+            } else if !state.snapshot.has_video && resume {
+                start(&mut state, pos)?;
+            }
         }
         state.snapshot.revision = state.snapshot.revision.wrapping_add(1);
         Ok(())
@@ -216,6 +231,9 @@ impl MediaPlaybackService {
 
     pub fn step_frames(&self, frames: i32) -> Result<(), PlaybackError> {
         let s = self.snapshot();
+        if !s.has_video {
+            return Ok(());
+        }
         self.seek(s.position_seconds + frames as f64 / s.frame_rate.max(1.0))?;
         if let Ok(mut state) = self.state.lock() {
             if state.snapshot.playing {
@@ -460,6 +478,16 @@ fn start_audio(state: &mut PlaybackState, position: f64) {
 
 fn start(state: &mut PlaybackState, position: f64) -> Result<(), PlaybackError> {
     let path = state.snapshot.path.clone().ok_or(PlaybackError::NoMedia)?;
+    if !state.snapshot.has_video {
+        start_audio(state, position);
+        state.receiver = None;
+        state.child = None;
+        state.started = Some(Instant::now());
+        state.start_position = position;
+        state.snapshot.position_seconds = position;
+        state.snapshot.playing = true;
+        return Ok(());
+    }
     let width = state.snapshot.width.max(2);
     let height = state.snapshot.height.max(2);
     let out_width = (if width > 1280 { 1280 } else { width & !1 }).max(2) as usize;
@@ -584,7 +612,7 @@ impl Plugin for MediaPlaybackPlugin {
                 "media-playback/transport",
                 ContributionKind::Panel {
                     label: "Media playback".into(),
-                    slot: "workspace.main".into(),
+                    slot: "workspace.modal".into(),
                     order: 10,
                 },
             )],
@@ -605,6 +633,37 @@ fn default_cache_dir() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
         .join("PhoTag")
         .join("playback")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn seeking_paused_audio_keeps_output_paused() {
+        let mut snapshot = PlaybackSnapshot::default();
+        snapshot.path = Some(PathBuf::from("ambient_nature.wav"));
+        snapshot.has_video = false;
+        snapshot.duration_seconds = 207.25;
+        let service = MediaPlaybackService {
+            state: Mutex::new(PlaybackState {
+                snapshot,
+                child: None,
+                audio: None,
+                receiver: None,
+                started: None,
+                start_position: 0.0,
+                pause_after_frame: false,
+                cache: std::env::temp_dir(),
+            }),
+        };
+
+        service.seek(61.0).unwrap();
+
+        let snapshot = service.snapshot();
+        assert_eq!(snapshot.position_seconds, 61.0);
+        assert!(!snapshot.playing);
+    }
 }
 
 /// Remove only this player's frame files that have been inactive for a week.

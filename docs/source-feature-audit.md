@@ -22,6 +22,17 @@ summaries in `AGENTS.md`, `README.md`, and dated validation sections are
 historical if they conflict with this map. Reconciliation did not establish a
 blanket claim of full PhoTag equivalence.
 
+## v5 S2 backend reuse note (2026-10-13)
+
+The new Gallery inspector removes an existing assignment through the same
+`TaggingService::remove` path as the tag picker. Source anchors:
+`src/ui/gallery.rs:1612-1617` dispatches `PendingAction::RemoveTags` for the
+clicked media/tag; `src/db/queries.rs:1006-1011` deletes those assignments.
+The current port continues metadata writeback and `RemovedTags` history;
+SQLite schema, assignment semantics and persisted files are unchanged. The
+new empty-library command enters Navigation's existing native folder picker
+and production add/scan/watch path. v5 visuals are validated separately.
+
 ## Feature-to-source mapping
 
 The status column describes implemented behavior and remaining gaps. A
@@ -191,3 +202,24 @@ available for deeper branch-by-branch comparison. Windows interaction, native
 system integration, representative full-format media coverage, update restart,
 and real-library compatibility also remain unverified until exercised in the
 appropriate environment.
+
+### User-directed startup update policy (2026-10-13)
+
+Source `src/main.rs:111-113` starts automatic checks and
+`src/main.rs:791` renders its offer. The redesign deliberately changes only
+notification behavior: startup checks populate Settings silently; manual
+checks may open the offer. `auto_check_updates` and persisted JSON models,
+updater download/SHA256/install service semantics are preserved. Plugin MCP
+verified available-release startup suppression and manual offer opening.
+
+### v5 unverified audio-only extension (2026-10-14 handoff)
+
+Pinned source `src/video.rs::get_video_info` selects v:0 and its
+start_playback decodes video with an optional separate PCM audio stream.
+The current media-playback worktree adds audio-only ffprobe classification,
+container-duration parsing and PCM playback plus paused-seek preservation.
+This is a redesign extension, not source parity. Parser/service-state tests
+were added but not run in the latest pass; Windows audio output is unverified.
+MCP still rejects audio in tools_write::open_media, so the audio screenshot
+attempt showed the Gallery rather than playback. Planned indexed media_id
+routing and Tags/More service integration are not implemented.

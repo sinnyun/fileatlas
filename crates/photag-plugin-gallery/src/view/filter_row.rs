@@ -1,0 +1,491 @@
+//! v5 filter chip row for the gallery (slot `command.filters`). Every chip
+//! opens a gpui-kit Popover with radio/checkbox lists; once a filter is
+//! active its chip turns accent and its trailing control clears that filter.
+//! Mockups: docs/reference-ui/final-v5/00-main-library.png and
+//! 05-filters-menus.png.
+
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
+use gpui_kit::component::button::ButtonVariants;
+use gpui_kit::component::checkbox::Checkbox;
+use gpui_kit::component::date_picker::DatePicker;
+use gpui_kit::component::popover::Popover;
+use gpui_kit::component::radio::Radio;
+
+use super::*;
+use gpui_kit::prelude::FluentBuilder as _;
+
+mod helpers;
+mod multi_select;
+use helpers::*;
+use multi_select::{extensions_chip, tags_chip};
+
+pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
+    let weak = cx.entity().downgrade();
+    let mut row = div().h_flex().w_full().items_center().gap(px(4.));
+    row = row.child(type_chip(view, weak.clone(), cx));
+    row = row.child(tags_chip(view, weak.clone(), cx));
+    row = row.child(extensions_chip(view, weak.clone(), cx));
+    row = row.child(date_chip(view, weak.clone(), cx));
+    row = row.child(rating_chip(view, weak.clone(), cx));
+    row = row.child(sort_chip(view, weak.clone(), cx));
+    if matches!(
+        view.filter.sort,
+        SortOrder::NewestFirst | SortOrder::OldestFirst
+    ) {
+        row = row.child(month_toggle_chip(view, cx));
+    }
+    row.into_any_element()
+}
+
+/// Checkbox list panel body under the search field (mockup 05-1).
+pub(super) fn search_scope_panel(view: &GalleryView, cx: &mut Context<GalleryView>) -> Div {
+    let scopes = view.filter.search_scopes;
+    let mut panel = div()
+        .v_flex()
+        .w(px(260.))
+        .gap(px(2.))
+        .child(popover_title("Search scope"));
+    for (id, scope, title, subtitle, checked) in [
+        (
+            "search-scope-filenames",
+            SearchScope::Filenames,
+            "Filenames",
+            "Match file names",
+            scopes.filenames,
+        ),
+        (
+            "search-scope-paths",
+            SearchScope::Paths,
+            "Paths",
+            "Match file paths",
+            scopes.paths,
+        ),
+        (
+            "search-scope-tags",
+            SearchScope::Tags,
+            "Tags",
+            "Match file tags",
+            scopes.tags,
+        ),
+    ] {
+        panel = panel.child(
+            div()
+                .id(format!("gallery-{id}"))
+                .h_flex()
+                .items_center()
+                .gap(px(8.))
+                .h(px(44.))
+                .px(px(6.))
+                .rounded(px(theme::ROUND_SM))
+                .cursor_pointer()
+                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+                .child(Checkbox::new(format!("gallery-{id}-box")).checked(checked))
+                .child(
+                    div()
+                        .v_flex()
+                        .child(
+                            div()
+                                .text_size(px(theme::FONT_SIZE_BUTTON))
+                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .child(photag_ui_bridge::i18n::tr(title)),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(theme::FONT_SIZE_TINY))
+                                .text_color(rgb(theme::TEXT_MUTED))
+                                .child(photag_ui_bridge::i18n::tr(subtitle)),
+                        ),
+                )
+                .on_click(cx.listener(move |this, _, _, cx| this.toggle_search_scope(scope, cx))),
+        );
+    }
+    panel
+}
+
+fn type_chip(
+    view: &GalleryView,
+    weak: WeakEntity<GalleryView>,
+    cx: &mut Context<GalleryView>,
+) -> AnyElement {
+    let active = view.filter.media_type != MediaTypeFilter::All;
+    let label = media_type_label(view.filter.media_type).to_string();
+    let selected = view.filter.media_type;
+    let clear = active.then(|| {
+        clear_control(
+            "gallery-filter-type-clear",
+            cx.listener(|this, _, _, cx| this.clear_type_filter(cx)),
+        )
+    });
+    controlled_popover(view, weak.clone(), "gallery-filter-type-popover", "type")
+        .trigger(chip(
+            "gallery-filter-type",
+            IconName::LayoutGrid,
+            label,
+            active,
+            clear,
+        ))
+        .content(move |_, _, cx| {
+            let popover = cx.entity();
+            let mut panel = div()
+                .v_flex()
+                .w(px(220.))
+                .gap(px(2.))
+                .child(popover_title("Media type"));
+            for (value, label, icon) in [
+                (MediaTypeFilter::All, "All files", IconName::LayoutGrid),
+                (MediaTypeFilter::Photos, "Photos", IconName::Image),
+                (MediaTypeFilter::Videos, "Videos", IconName::Video),
+                (MediaTypeFilter::Audio, "Audio", IconName::Music),
+            ] {
+                let weak = weak.clone();
+                let popover = popover.clone();
+                panel = panel.child(
+                    menu_row(format!("gallery-filter-type-{}", value as u8))
+                        .child(
+                            Radio::new(format!("gallery-filter-type-radio-{}", value as u8))
+                                .checked(value == selected),
+                        )
+                        .child(
+                            Icon::new(icon)
+                                .size(px(14.))
+                                .text_color(rgb(theme::TEXT_MUTED)),
+                        )
+                        .child(row_label(photag_ui_bridge::i18n::tr(label).to_string()))
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |this, cx| this.set_media_type(value, cx));
+                            popover.update(cx, |state, cx| state.dismiss(window, cx));
+                        }),
+                );
+            }
+            panel
+        })
+        .into_any_element()
+}
+
+fn date_chip(
+    view: &GalleryView,
+    weak: WeakEntity<GalleryView>,
+    cx: &mut Context<GalleryView>,
+) -> AnyElement {
+    let active = view.filter.date_from.is_some() || view.filter.date_to.is_some();
+    let date_from = view.date_from.clone();
+    let date_to = view.date_to.clone();
+    let calendar = view.date_calendar.clone();
+    let clear = active.then(|| {
+        clear_control(
+            "gallery-filter-date-clear",
+            cx.listener(|this, _, window, cx| {
+                if this.filter.date_from.is_some() {
+                    this.clear_date_filter(true, window, cx);
+                }
+                if this.filter.date_to.is_some() {
+                    this.clear_date_filter(false, window, cx);
+                }
+            }),
+        )
+    });
+    controlled_popover(view, weak.clone(), "gallery-filter-date-popover", "date")
+        .trigger(chip(
+            "gallery-filter-date",
+            IconName::CalendarDays,
+            "Date".into(),
+            active,
+            clear,
+        ))
+        .content(move |_, _, cx| {
+            let popover = cx.entity();
+            let weak = weak.clone();
+            div()
+                .v_flex()
+                .w(px(304.))
+                .gap(px(6.))
+                .child(popover_title("Date range"))
+                .child(
+                    div()
+                        .h_flex()
+                        .w_full()
+                        .gap(px(8.))
+                        .child(
+                            div()
+                                .v_flex()
+                                .flex_1()
+                                .gap(px(4.))
+                                .child(row_label(photag_ui_bridge::i18n::tr("Date from")))
+                                .child(
+                                    DatePicker::new(&date_from)
+                                        .placeholder(photag_ui_bridge::i18n::tr("Select date"))
+                                        .w_full(),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .v_flex()
+                                .flex_1()
+                                .gap(px(4.))
+                                .child(row_label(photag_ui_bridge::i18n::tr("Date to")))
+                                .child(
+                                    DatePicker::new(&date_to)
+                                        .placeholder(photag_ui_bridge::i18n::tr("Select date"))
+                                        .w_full(),
+                                ),
+                        ),
+                )
+                .child(gpui_kit::component::calendar::Calendar::new(&calendar).w_full())
+                .child(
+                    Button::new("gallery-date-clear-all")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Clear dates"))
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |this, cx| {
+                                if this.filter.date_from.is_some() {
+                                    this.clear_date_filter(true, window, cx);
+                                }
+                                if this.filter.date_to.is_some() {
+                                    this.clear_date_filter(false, window, cx);
+                                }
+                            });
+                            popover.update(cx, |state, cx| state.dismiss(window, cx));
+                        }),
+                )
+        })
+        .into_any_element()
+}
+
+fn rating_chip(
+    view: &GalleryView,
+    weak: WeakEntity<GalleryView>,
+    cx: &mut Context<GalleryView>,
+) -> AnyElement {
+    let rating_min = view.filter.rating_min;
+    let rating_max = view.filter.rating_max;
+    let active = rating_min != 0 || rating_max != 5;
+    let clear = active.then(|| {
+        clear_control(
+            "gallery-filter-rating-clear",
+            cx.listener(|this, _, _, cx| {
+                this.clear_rating_filter(cx);
+            }),
+        )
+    });
+    controlled_popover(
+        view,
+        weak.clone(),
+        "gallery-filter-rating-popover",
+        "rating",
+    )
+    .trigger(chip(
+        "gallery-filter-rating",
+        IconName::Star,
+        "Rating".into(),
+        active,
+        clear,
+    ))
+    .content(move |_, _, cx| {
+        let popup = cx.entity().downgrade();
+        let weak = weak.clone();
+        let (rating_min, rating_max) = weak
+            .upgrade()
+            .map(|view| {
+                let view = view.read(cx);
+                (view.filter.rating_min, view.filter.rating_max)
+            })
+            .unwrap_or((rating_min, rating_max));
+        let mut stars = div().h_flex().items_center().gap(px(4.));
+        for star in 1..=5u8 {
+            let weak = weak.clone();
+            stars = stars.child(
+                div()
+                    .id(format!("gallery-filter-rating-star-{star}"))
+                    .cursor_pointer()
+                    .text_size(px(18.))
+                    .text_color(rgb(if i32::from(star) <= rating_min {
+                        theme::STAR
+                    } else {
+                        theme::TEXT_MUTED
+                    }))
+                    .hover(|style| style.text_color(rgb(theme::STAR)))
+                    .child(if i32::from(star) <= rating_min {
+                        "★"
+                    } else {
+                        "☆"
+                    })
+                    .on_click(cx.listener(move |_, _, _, cx| {
+                        let _ = weak.update(cx, |this, cx| {
+                            let next = i32::from(star);
+                            if this.filter.rating_min == next && this.filter.rating_max == 5 {
+                                this.set_rating_bound(true, 0, cx);
+                            } else {
+                                this.set_rating_bound(true, next, cx);
+                                this.set_rating_bound(false, 5, cx);
+                            }
+                        });
+                        cx.notify();
+                    })),
+            );
+        }
+        div()
+            .v_flex()
+            .w(px(270.))
+            .gap(px(8.))
+            .child(popover_title("Rating range"))
+            .child(stars)
+            .child(
+                div()
+                    .h_flex()
+                    .items_center()
+                    .gap(px(8.))
+                    .child(
+                        div()
+                            .text_size(px(theme::FONT_SIZE_TINY))
+                            .text_color(rgb(theme::TEXT_MUTED))
+                            .child("0"),
+                    )
+                    .child(rating_slider(weak, popup, rating_min, rating_max))
+                    .child(
+                        div()
+                            .text_size(px(theme::FONT_SIZE_TINY))
+                            .text_color(rgb(theme::TEXT_MUTED))
+                            .child("5"),
+                    ),
+            )
+    })
+    .into_any_element()
+}
+
+fn sort_chip(
+    view: &GalleryView,
+    weak: WeakEntity<GalleryView>,
+    _: &mut Context<GalleryView>,
+) -> AnyElement {
+    let selected = view.filter.sort;
+
+    controlled_popover(view, weak.clone(), "gallery-filter-sort-popover", "sort")
+        .trigger(chip(
+            "gallery-filter-sort",
+            IconName::ArrowUpDown,
+            photag_ui_bridge::i18n::tr(selected.label()).to_string(),
+            false,
+            None,
+        ))
+        .content(move |_, _, cx| {
+            let popover = cx.entity();
+            let mut panel = div()
+                .v_flex()
+                .w(px(250.))
+                .gap(px(2.))
+                .child(popover_title("Sort by"));
+            for (order, icon) in [
+                (SortOrder::NewestFirst, IconName::CalendarArrowDown),
+                (SortOrder::OldestFirst, IconName::CalendarArrowUp),
+                (SortOrder::BiggestFirst, IconName::ArrowDownWideNarrow),
+                (SortOrder::SmallestFirst, IconName::ArrowUpNarrowWide),
+                (SortOrder::NameAsc, IconName::ArrowDownAZ),
+                (SortOrder::NameDesc, IconName::ArrowUpZA),
+                (SortOrder::HighestRated, IconName::Star),
+                (SortOrder::LowestRated, IconName::Star),
+            ] {
+                let weak = weak.clone();
+                let popover = popover.clone();
+                panel = panel.child(
+                    menu_row(format!("gallery-filter-sort-{}", order as u8))
+                        .child(
+                            Radio::new(format!("gallery-filter-sort-radio-{}", order as u8))
+                                .checked(order == selected),
+                        )
+                        .child(
+                            Icon::new(icon)
+                                .size(px(14.))
+                                .text_color(rgb(theme::TEXT_MUTED)),
+                        )
+                        .child(row_label(
+                            photag_ui_bridge::i18n::tr(order.label()).to_string(),
+                        ))
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |this, cx| this.set_sort(order, cx));
+                            popover.update(cx, |state, cx| state.dismiss(window, cx));
+                        }),
+                );
+            }
+            panel
+        })
+        .into_any_element()
+}
+
+fn month_toggle_chip(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
+    let active = view.group_by_month;
+    chip(
+        "gallery-filter-months",
+        IconName::CalendarRange,
+        "Group by month".into(),
+        active,
+        Some(
+            div()
+                .ml(px(2.))
+                .child(
+                    Icon::new(IconName::Check)
+                        .size(px(12.))
+                        .text_color(rgb(theme::accent())),
+                )
+                .into_any_element(),
+        ),
+    )
+    .on_click(cx.listener(|this, _, _, cx| this.set_month_grouping(!this.group_by_month, cx)))
+    .into_any_element()
+}
+
+fn media_type_label(media_type: MediaTypeFilter) -> &'static str {
+    match media_type {
+        MediaTypeFilter::All => "All types",
+        MediaTypeFilter::Photos => "Photos",
+        MediaTypeFilter::Videos => "Videos",
+        MediaTypeFilter::Audio => "Audio",
+    }
+}
+
+fn flatten_tag_tree(
+    tags: &[photag_plugin_database::db::queries::Tag],
+) -> Vec<(i64, String, usize)> {
+    fn visit(
+        tags: &[photag_plugin_database::db::queries::Tag],
+        depth: usize,
+        out: &mut Vec<(i64, String, usize)>,
+    ) {
+        for tag in tags {
+            out.push((tag.id, tag.full_path.clone(), depth));
+            visit(&tag.children, depth + 1, out);
+        }
+    }
+    let mut out = Vec::new();
+    visit(tags, 0, &mut out);
+    out
+}
+
+pub(super) fn subscribe_calendar(view: &Entity<GalleryView>, window: &mut Window, app: &mut App) {
+    view.update(app, |view, cx| {
+        let calendar = view.date_calendar.clone();
+        view._subscriptions.push(cx.subscribe_in(
+            &calendar,
+            window,
+            |this, _, event: &gpui_kit::component::calendar::CalendarEvent, window, cx| {
+                let gpui_kit::component::calendar::CalendarEvent::Selected(date) = event;
+                let (from, to) = (date.start(), date.end());
+                this.filter.date_from = from;
+                this.filter.date_to = to;
+                this.date_from.update(cx, |state, cx| {
+                    state.set_date(
+                        gpui_kit::component::calendar::Date::Single(from),
+                        window,
+                        cx,
+                    )
+                });
+                this.date_to.update(cx, |state, cx| {
+                    state.set_date(gpui_kit::component::calendar::Date::Single(to), window, cx)
+                });
+                this.reload();
+                cx.notify();
+            },
+        ));
+    });
+}

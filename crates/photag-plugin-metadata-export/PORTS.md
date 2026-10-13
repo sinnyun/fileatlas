@@ -32,8 +32,10 @@ and displays the record count/path or failure.
 - `set_destination(path)` stores the path used by the command and
   `status()` exposes `Idle`, `Exporting`, `Succeeded { path, records }`, or
   `Failed(message)` to the panel.
-- The GPUI panel `workspace.metadata-export` contains a path input, Browse…,
-  and Export buttons. Browse opens `rfd::FileDialog` with the source title,
+- The GPUI panel `workspace.metadata-export` contains a JSON backup heading,
+  destination input, Browse…, and Export JSON controls. It presents ready,
+  exporting, success, and failure cards from the real service status. Browse
+  opens `rfd::FileDialog` with the source title,
   JSON filter, and `photag_backup.json` default. On Windows, the native Save
   File dialog handles existing-file overwrite confirmation. Cancel leaves the
   current path intact. The button emits `UiCommandInvoked("metadata-export/export")`;
@@ -45,7 +47,8 @@ and displays the record count/path or failure.
   persistent terminal success or failure message (including path and record
   count on success); service failures and unavailable status use the danger
   color, while input and command-dispatch errors have a separate visible error
-  line.
+  line. Ready and active states include concise guidance about the current
+  operation.
 - The Cordis command is single-flight: another invocation while an export is
   running is rejected without replacing the active status. Thread-start errors
   transition the status to `Failed`, so the view cannot remain stuck at
@@ -80,6 +83,8 @@ Visible control labels consume the public UI Bridge translator supplied by
 photag.i18n. Stable commands, source settings/schema values, media paths and
 user-created tag data are unchanged. Missing translations fall back to English;
 OS/backend errors and some generated diagnostics are not fully localized.
-The real MCP-only validation coverage and remaining source layout differences
-are recorded in docs/validation-report.md; screenshots do not prove pointer
-interaction or animation parity.
+The 07 companion sheet shows percentage progress, but the public export status
+has only `Exporting` and carries no progress count, so the panel reports the
+actual active state without an invented percentage. Live MCP visual review is
+reserved for the parent redesign task; Windows native dialog interaction is
+still unverified here.

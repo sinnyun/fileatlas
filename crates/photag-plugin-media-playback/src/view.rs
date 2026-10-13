@@ -2,9 +2,13 @@
 
 use std::sync::Arc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::Disableable as _;
+use gpui_kit::component::Icon;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_ui_bridge::{UiViewContribution, theme};
 
@@ -13,7 +17,7 @@ use crate::MediaPlaybackService;
 pub fn media_playback_view(service: Arc<MediaPlaybackService>) -> UiViewContribution {
     UiViewContribution::new(
         "media-playback/transport-view",
-        "workspace.main",
+        "workspace.modal",
         10,
         move |_, app| {
             let view_service = Arc::clone(&service);
@@ -202,26 +206,24 @@ impl Render for PlaybackView {
             view.speed_popup_open = !view.speed_popup_open;
             cx.notify();
         });
-        let controls = div()
-            .h_flex()
-            .flex_wrap()
-            .items_center()
-            .gap_2()
-            .child(button("−5s").on_click(back))
-            .child(button("Prev frame").on_click(previous_frame))
-            .child(button(if snapshot.playing { "Pause" } else { "Play" }).on_click(toggle))
-            .child(button("Next frame").on_click(next_frame))
-            .child(button("+5s").on_click(forward))
-            .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup))
-            .child(div().text_xs().child(photag_ui_bridge::i18n::tr("Volume")))
-            .child(Slider::new(&self.volume).w_32())
-            .child(button("Close").on_click(close));
-
         let frame = match &snapshot.frame_path {
             Some(path) => img(path.clone())
                 .max_w_full()
                 .max_h_full()
                 .object_fit(ObjectFit::Contain)
+                .into_any_element(),
+            None if snapshot.path.is_some() && !snapshot.has_video => div()
+                .v_flex()
+                .items_center()
+                .justify_center()
+                .gap_3()
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(div().text_2xl().text_color(rgb(theme::accent())).child("♫"))
+                .child(
+                    div()
+                        .text_sm()
+                        .child(photag_ui_bridge::i18n::tr("Audio playback")),
+                )
                 .into_any_element(),
             None if snapshot.path.is_some() => div()
                 .text_sm()
@@ -240,12 +242,6 @@ impl Render for PlaybackView {
             .and_then(|p| p.file_name())
             .map(|n| n.to_string_lossy().to_string())
             .unwrap_or_else(|| "No media selected".into());
-        let progress = format!(
-            "{} / {}  ·  {:.2}×",
-            format_time(snapshot.position_seconds),
-            format_time(snapshot.duration_seconds),
-            snapshot.speed
-        );
         let speed_controls = if self.speed_popup_open {
             let presets = [0.25_f32, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0].into_iter().fold(
                 div().h_flex().flex_wrap().items_center().gap_1(),
@@ -308,49 +304,131 @@ impl Render for PlaybackView {
         } else {
             div()
         };
-        let audio = if snapshot.audio_available {
-            "Audio enabled"
+        let output = if snapshot.audio_available {
+            photag_ui_bridge::i18n::tr("Audio enabled")
         } else {
-            "Audio output unavailable"
+            photag_ui_bridge::i18n::tr("Audio output unavailable")
         };
-        div()
-            .v_flex()
-            .flex_1()
-            .min_h_0()
+        let compact_controls = div()
+            .h_flex()
+            .items_center()
             .gap_2()
-            .p_3()
             .child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .justify_between()
-                    .child(div().text_sm().font_medium().child(title))
-                    .child(controls),
+                button(if snapshot.playing { "Ⅱ" } else { "▶" })
+                    .tooltip(photag_ui_bridge::i18n::tr(if snapshot.playing {
+                        "Pause"
+                    } else {
+                        "Play"
+                    }))
+                    .on_click(toggle),
             )
             .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .items_center()
-                    .justify_center()
-                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
-                    .child(frame),
+                button("‹")
+                    .tooltip(photag_ui_bridge::i18n::tr("Previous frame"))
+                    .disabled(!snapshot.has_video)
+                    .on_click(previous_frame),
             )
-            .child(Slider::new(&self.playhead).w_full().h_2())
-            .child(speed_controls)
+            .child(button("−5s").on_click(back))
             .child(
                 div()
-                    .h_flex()
-                    .justify_between()
                     .text_xs()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child(progress)
-                    .child(format!(
-                        "{}  ·  rotation {}°",
-                        audio,
-                        snapshot.rotation_quarters * 90
-                    )),
+                    .child(format_time(snapshot.position_seconds)),
+            )
+            .child(Slider::new(&self.playhead).flex_1().h_2())
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(format_time(snapshot.duration_seconds)),
+            )
+            .child(button("+5s").on_click(forward))
+            .child(
+                button("›")
+                    .tooltip(photag_ui_bridge::i18n::tr("Next frame"))
+                    .disabled(!snapshot.has_video)
+                    .on_click(next_frame),
+            )
+            .child(div().text_xs().child(photag_ui_bridge::i18n::tr("Volume")))
+            .child(Slider::new(&self.volume).w_24())
+            .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup));
+        let error = snapshot
+            .error
+            .map(|error| div().text_xs().text_color(rgb(theme::DANGER)).child(error));
+        div()
+            .absolute()
+            .inset_0()
+            .bg(rgba(0x000000dd))
+            .flex()
+            .items_center()
+            .justify_center()
+            .p_4()
+            .child(
+                div()
+                    .v_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .gap_0()
+                    .rounded(px(8.0))
+                    .border_1()
+                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .bg(rgba(theme::modal_rgba(theme::SURFACE_BASE)))
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap_3()
+                            .h(px(50.0))
+                            .px_3()
+                            .border_b_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .child(Icon::new(IconName::Aperture).text_color(rgb(theme::accent())))
+                            .child(div().text_sm().font_medium().child("PhoTag"))
+                            .child(
+                                div()
+                                    .w(px(1.0))
+                                    .h(px(24.0))
+                                    .bg(rgba(theme::SEPARATOR_LIGHT)),
+                            )
+                            .child(div().flex_1().text_sm().child(title))
+                            .child(button("Close").icon(IconName::Close).on_click(close)),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_h_0()
+                            .w_full()
+                            .items_center()
+                            .justify_center()
+                            .bg(rgba(if snapshot.has_video {
+                                theme::base_rgba(theme::SURFACE_BASE)
+                            } else {
+                                theme::SURFACE_AUDIO << 8 | 0xff
+                            }))
+                            .child(frame),
+                    )
+                    .child(
+                        div()
+                            .v_flex()
+                            .gap_2()
+                            .px_3()
+                            .py_2()
+                            .border_t_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .child(compact_controls)
+                            .when_some(error, |row, error| row.child(error))
+                            .child(speed_controls)
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(rgb(theme::TEXT_SECONDARY))
+                                    .child(format!(
+                                        "{}  ·  rotation {}°",
+                                        output,
+                                        snapshot.rotation_quarters * 90
+                                    )),
+                            ),
+                    ),
             )
     }
 }

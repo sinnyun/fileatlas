@@ -11,11 +11,7 @@ use photag_plugin_navigation::NavigationService;
 use photag_plugin_session::SessionService;
 use photag_plugin_updater::{UpdateInfo, UpdaterService};
 use photag_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
-use std::sync::{
-    Arc, Weak,
-    atomic::{AtomicU64, Ordering},
-    mpsc,
-};
+use std::sync::{Arc, Weak, atomic::AtomicU64, mpsc};
 
 #[path = "view/ai_groups.rs"]
 mod ai_groups;
@@ -27,6 +23,8 @@ mod tabs;
 mod tag_hotkeys;
 #[path = "view/updates.rs"]
 mod updates;
+#[path = "view/updates_page.rs"]
+mod updates_page;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
@@ -75,6 +73,7 @@ pub(super) fn settings(
                     updater: updater.clone(),
                     session: session.clone(),
                     update_check: None,
+                    update_check_manual: false,
                     update_download: None,
                     update_info: None,
                     update_staged: None,
@@ -105,6 +104,20 @@ pub(super) fn settings(
                             .await;
                         let visible = surface_poll.is_open("settings");
                         let tab = surface_poll.value("settings.tab");
+                        if surface_poll.is_open("settings.check-updates") {
+                            let _ = surface_poll.set_open("settings.check-updates", false);
+                            if this
+                                .update(cx, |view: &mut SettingsView, cx| {
+                                    if view.update_check.is_none() {
+                                        view.begin_update_check(true);
+                                        view.monitor_updates(cx);
+                                    }
+                                })
+                                .is_err()
+                            {
+                                break;
+                            }
+                        }
                         if visible != previous || tab != previous_tab {
                             previous_tab = tab;
                             previous = visible;
@@ -153,6 +166,7 @@ pub(super) struct SettingsView {
     update_error: Option<String>,
     update_offer_open: bool,
     update_offer_dismissed: bool,
+    update_check_manual: bool,
     confirm_install: bool,
     group_name_input: Entity<InputState>,
     editing_group: Option<usize>,
@@ -347,12 +361,7 @@ impl SettingsView {
             .child(photag_ui_bridge::i18n::tr(label))
     }
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut row = div()
-            .h_flex()
-            .gap(px(8.))
-            .px(px(14.))
-            .h(px(28.))
-            .flex_shrink_0();
+        let mut rail = div().v_flex().w(px(166.)).gap(px(6.)).p_2().flex_shrink_0();
         for (tab, name) in [
             (Tab::Appearance, "Appearance"),
             (Tab::Toolbar, "Toolbar"),
@@ -362,18 +371,17 @@ impl SettingsView {
             (Tab::Updates, "Updates"),
         ] {
             let label = if self.tab == tab {
-                format!("• {}", photag_ui_bridge::i18n::tr(name))
+                format!("●  {}", photag_ui_bridge::i18n::tr(name))
             } else {
                 photag_ui_bridge::i18n::tr(name)
             };
-            row = row.child(
+            rail = rail.child(
                 Button::new(format!("settings-tab-{name}"))
                     .ghost()
-                    .compact()
-                    .min_w(px(72.))
-                    .h(px(28.))
-                    .px(px(12.))
-                    .text_size(px(13.))
+                    .w_full()
+                    .h(px(38.))
+                    .px(px(10.))
+                    .text_size(px(14.))
                     .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.tab = tab;
@@ -390,7 +398,7 @@ impl SettingsView {
                     })),
             );
         }
-        row
+        rail
     }
 }
 impl Render for SettingsView {
@@ -417,45 +425,17 @@ impl Render for SettingsView {
             };
         }
         let viewport = window.bounds().size;
-        // Source adds six non-wrapping tabs with minimum width 360/5.
-        // Intrinsic text + theme button padding can expand the egui window.
-        let tab_names = [
-            "Appearance",
-            "Toolbar",
-            "Shortcuts",
-            "Tags",
-            "AI",
-            "Updates",
-        ];
-        let card_width = tab_names
-            .iter()
-            .map(|label| {
-                let text = photag_ui_bridge::i18n::tr(label);
-                let line = window.text_system().shape_line(
-                    text.clone().into(),
-                    px(13.),
-                    &[TextRun {
-                        len: text.len(),
-                        font: font(theme::UI_FONT_FAMILY),
-                        color: rgb(theme::TEXT_PRIMARY).into(),
-                        background_color: None,
-                        underline: None,
-                        strikethrough: None,
-                    }],
-                    None,
-                );
-                (f32::from(line.width) + 24.).max(72.)
-            })
-            .sum::<f32>()
-            + 40.
-            + 28.;
+        let card_width = (f32::from(viewport.width) - 32.).clamp(680., 980.);
         let card_height = (f32::from(viewport.height) - 24.).max(100.);
         let (left, top) = self.window_position.unwrap_or((
-            (f32::from(viewport.width) - 360.).max(0.) / 2.,
-            (f32::from(viewport.height) / 2. - 200.).max(24.),
+            (f32::from(viewport.width) - card_width).max(0.) / 2.,
+            (f32::from(viewport.height) - card_height).max(0.) / 2.,
         ));
         let left = left.clamp(0., (f32::from(viewport.width) - card_width).max(0.));
         let top = top.clamp(0., (f32::from(viewport.height) - 100.).max(0.));
+        let card_height = (f32::from(viewport.height) - top - 14.).clamp(100., 520.);
+        let body_height = (card_height - 48. - 44.).max(8.);
+        let content_width = (card_width - 167.).max(320.);
         self.window_position = Some((left, top));
         let drag_start = cx.listener(move |this, event: &MouseDownEvent, _, _| {
             this.drag_origin = Some((
@@ -482,10 +462,12 @@ impl Render for SettingsView {
         let close = cx.listener(|this, _, _, cx| this.close_surface(cx));
         let header = div()
             .h_flex()
+            .h(px(48.))
+            .flex_shrink_0()
             .items_center()
             .justify_between()
             .p_2()
-            .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+            .bg(rgb(theme::SURFACE_MODAL))
             .on_mouse_down(MouseButton::Left, drag_start)
             .on_mouse_move(drag_move)
             .on_mouse_up(MouseButton::Left, drag_end)
@@ -506,43 +488,77 @@ impl Render for SettingsView {
             .top(px(top))
             .v_flex()
             .w(px(card_width))
-            .h(px(
-                (f32::from(viewport.height) - top - 14.).clamp(100., 520.)
-            ))
+            .h(px(card_height))
             .max_h(px(card_height))
             .rounded_md()
-            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+            .bg(rgb(theme::SURFACE_MODAL))
             .text_color(rgb(theme::TEXT_PRIMARY))
             .border_1()
             .border_color(rgba(theme::HAIRLINE.to_rgba()))
             .track_focus(&self.focus_handle)
             .child(header)
-            .child(self.tabs(cx))
             .child(
                 div()
-                    .h(px(1.))
-                    .mx(px(14.))
-                    .mt(px(4.))
-                    .bg(rgba(theme::HAIRLINE.to_rgba())),
+                    .h_flex()
+                    .w_full()
+                    .h(px(body_height))
+                    .flex_shrink_0()
+                    .child(
+                        div()
+                            .v_flex()
+                            .w(px(166.))
+                            .h(px(body_height))
+                            .flex_shrink_0()
+                            .bg(rgb(theme::SURFACE_BASE))
+                            .child(self.tabs(cx)),
+                    )
+                    .child(
+                        div()
+                            .h(px(body_height))
+                            .w(px(1.))
+                            .flex_shrink_0()
+                            .bg(rgba(theme::HAIRLINE.to_rgba())),
+                    )
+                    .child(
+                        div()
+                            .v_flex()
+                            .w(px(content_width))
+                            .h(px(body_height))
+                            .flex_shrink_0()
+                            .bg(rgb(theme::SURFACE_MODAL))
+                            .child(div().size_full().overflow_y_scrollbar().p_4().child(
+                                match self.service.snapshot() {
+                                    Ok(s) => self.render_tab(&s, cx).into_any_element(),
+                                    Err(error) => div().child(error.to_string()).into_any_element(),
+                                },
+                            )),
+                    ),
             );
-        match self.service.snapshot() {
-            Ok(s) => {
-                card = card.child(
-                    div()
-                        .flex_1()
-                        .min_h_0()
-                        .overflow_y_scrollbar()
-                        .child(self.render_tab(&s, cx)),
-                )
-            }
-            Err(e) => card = card.child(e.to_string()),
-        }
         card = card.child(
-            div().h_flex().justify_end().p_2().child(
-                Button::new("settings-close-footer")
-                    .label(photag_ui_bridge::i18n::tr("Close"))
-                    .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
-            ),
+            div()
+                .h_flex()
+                .h(px(44.))
+                .flex_shrink_0()
+                .items_center()
+                .justify_between()
+                .border_t_1()
+                .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                .bg(rgb(theme::SURFACE_MODAL))
+                .px_3()
+                .py_2()
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(
+                            "Settings changes are saved automatically.",
+                        )),
+                )
+                .child(
+                    Button::new("settings-close-footer")
+                        .label(photag_ui_bridge::i18n::tr("Close"))
+                        .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
+                ),
         );
         if let Some(e) = &self.error {
             card = card.child(

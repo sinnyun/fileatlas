@@ -139,12 +139,8 @@ pub(super) fn thumbnail(view: &GalleryView, cx: &mut Context<GalleryView>) -> Di
         .child(slider(view, false, cx))
 }
 
-pub(super) fn rating(view: &GalleryView, cx: &mut Context<GalleryView>) -> impl IntoElement {
-    slider(view, true, cx)
-}
-
 impl GalleryView {
-    fn change_slider(&mut self, x: f32, pad: f32, track: f32, cx: &mut Context<Self>) {
+    pub(super) fn change_slider(&mut self, x: f32, pad: f32, track: f32, cx: &mut Context<Self>) {
         let fraction = ((x - pad) / track).clamp(0., 1.);
         match self.slider_drag {
             Some(SliderDrag::Size) => {

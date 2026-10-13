@@ -2,7 +2,49 @@ use super::*;
 
 impl SettingsView {
     pub(super) fn render_tab(&self, s: &Settings, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut b = div().v_flex().gap_2().p_3().line_height(relative(1.));
+        if self.tab == Tab::Updates {
+            return self.render_updates_page(s, cx);
+        }
+        let (title, description) = match self.tab {
+            Tab::Appearance => ("Appearance", "Choose the accent color used across PhoTag."),
+            Tab::Toolbar => (
+                "Toolbar",
+                "Choose which preview actions and position controls are shown.",
+            ),
+            Tab::Shortcuts => (
+                "Shortcuts",
+                "Set the open-media key and assign tags to F1–F9.",
+            ),
+            Tab::Tags => (
+                "Tags",
+                "Configure tag search and child-tag handling after a merge.",
+            ),
+            Tab::Ai => (
+                "AI",
+                "Configure automatic analysis and required tag groups.",
+            ),
+            Tab::Updates => (
+                "Updates",
+                "Check for releases and choose when to install them.",
+            ),
+        };
+        let mut b = div().v_flex().gap_3().line_height(relative(1.)).child(
+            div()
+                .v_flex()
+                .gap_1()
+                .child(
+                    div()
+                        .text_lg()
+                        .font_semibold()
+                        .child(photag_ui_bridge::i18n::tr(title)),
+                )
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(description)),
+                ),
+        );
         match self.tab {
             Tab::Appearance => {
                 b = b.children(self.language_views.clone());
@@ -52,12 +94,30 @@ impl SettingsView {
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
                     photag_ui_bridge::i18n::tr("System follows the Windows accent color. Preview and feature panels use the shared accent palette."),
                 ));
-                b = b.child(self.toggle_button(
-                    "date",
-                    "Group date-sorted gallery by month",
-                    s.show_date_dividers,
-                    cx,
-                ));
+                b = b.child(self.section("Accent preview")).child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap_2()
+                        .p_2()
+                        .rounded_md()
+                        .border_1()
+                        .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                        .child(div().font_semibold().child("PhoTag"))
+                        .child(div().flex_1())
+                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Library")))
+                        .child(
+                            div()
+                                .px_2()
+                                .py_1()
+                                .rounded_sm()
+                                .bg(rgb(theme::resolve_accent(&s.accent_name)))
+                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .child(photag_ui_bridge::i18n::tr("Gallery")),
+                        )
+                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Tags"))),
+                );
             }
             Tab::Toolbar => {
                 for (group, controls) in [
@@ -104,11 +164,18 @@ impl SettingsView {
                     ),
                     (
                         "View",
-                        vec![(
-                            "tb.filmstrip",
-                            "Filmstrip toggle",
-                            s.toolbar.filmstrip_toggle,
-                        )],
+                        vec![
+                            (
+                                "tb.filmstrip",
+                                "Filmstrip toggle",
+                                s.toolbar.filmstrip_toggle,
+                            ),
+                            (
+                                "date",
+                                "Group date-sorted gallery by month",
+                                s.show_date_dividers,
+                            ),
+                        ],
                     ),
                 ] {
                     let mut section = div().v_flex().gap(px(6.)).child(
@@ -283,143 +350,65 @@ impl SettingsView {
                     s.tag_search_persist,
                     cx,
                 ));
+                b = b.child(self.section("Search match"));
+                b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                    photag_ui_bridge::i18n::tr("Choose whether search matches anywhere in a tag name or only from its beginning."),
+                ));
+                let mut match_options = div().h_flex().gap_2();
                 for opt in [TagSearchMatch::Contains, TagSearchMatch::StartsWith] {
                     let chosen = s.tag_search_match == opt;
-                    b = b.child(self.enum_button(
+                    match_options = match_options.child(self.enum_button(
                         format!("tag-match-{}", opt.label()),
                         format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
                         move |s| s.tag_search_match = opt,
                         cx,
                     ));
                 }
+                b = b.child(match_options);
                 b = b.child(self.section("Source tag children after merge"));
+                b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                    photag_ui_bridge::i18n::tr("Choose whether child tags move to the target tag or are removed with the merged tag."),
+                ));
+                let mut merge_options = div().h_flex().gap_2();
                 for opt in [TagMergeChildren::Reparent, TagMergeChildren::Delete] {
                     let chosen = s.tag_merge_children == opt;
-                    b = b.child(self.enum_button(
+                    merge_options = merge_options.child(self.enum_button(
                         format!("tag-merge-{}", opt.label()),
                         format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
                         move |s| s.tag_merge_children = opt,
                         cx,
                     ));
                 }
+                b = b.child(merge_options);
             }
             Tab::Ai => {
                 b = b
-                    .child(self.section("AI analysis"))
                     .child(self.toggle_button(
                         "ai",
                         "Automatically analyze opened photos",
                         s.ai.auto_analyze,
                         cx,
                     ))
-                    .child(self.section("Mandatory tag groups"));
+                    .child(self.section("Mandatory tag groups"))
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr(
+                                "Each group defines required tags for automatic analysis.",
+                            )),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr(
+                                "Add a group, rename it, and select or remove its tags below.",
+                            )),
+                    );
                 b = b.child(self.ai_groups(s, cx));
             }
-            Tab::Updates => {
-                b = b
-                    .child(self.section("Updates"))
-                    .child(div().child(format!(
-                        "PhoTag {}",
-                        photag_plugin_updater::current_version()
-                    )))
-                    .child(self.toggle_button(
-                        "updates",
-                        "Check for updates on startup",
-                        s.auto_check_updates,
-                        cx,
-                    ));
-                if self.updater.is_some() {
-                    let checking = self.update_check.is_some();
-                    b = b.child(
-                        Button::new("settings-update-check")
-                            .label(photag_ui_bridge::i18n::tr(
-                                &(if checking { "Checking…" } else { "Check now" }).to_string(),
-                            ))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                if this.update_check.is_none() {
-                                    this.begin_update_check(true);
-                                    this.monitor_updates(cx);
-                                }
-                            })),
-                    );
-                    if let Some(status) = &self.update_status {
-                        b = b.child(div().child(status.clone()));
-                    }
-                    if let Some(error) = &self.update_error {
-                        b = b.child(
-                            div()
-                                .text_color(rgb(theme::DANGER))
-                                .child(format!("Update failed: {error}")),
-                        );
-                    }
-                    if let Some(info) = &self.update_info {
-                        b = b
-                            .child(div().child(format!("Release notes\n{}", info.notes_plain())))
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .child(format!("Release page: {}", info.html_url)),
-                            );
-                        if self.update_download.is_some() {
-                            let got = self.update_progress.load(Ordering::Relaxed);
-                            let total = info.asset_size;
-                            b = b.child(div().child(format!(
-                                "Downloading: {:.1} / {:.1} MB ({:.0}%)",
-                                got as f64 / 1_048_576.0,
-                                info.size_mb(),
-                                if total == 0 {
-                                    0.0
-                                } else {
-                                    got as f64 * 100.0 / total as f64
-                                }
-                            )));
-                        } else if self.update_staged.is_none() {
-                            b = b.child(
-                                Button::new("settings-update-download")
-                                    .label(photag_ui_bridge::i18n::tr("Download and verify update"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        if this.update_download.is_none() {
-                                            this.begin_update_download();
-                                            this.monitor_updates(cx);
-                                        }
-                                    })),
-                            );
-                        }
-                        if self.update_offer_dismissed {
-                            b = b.child(
-                                Button::new("settings-update-offer-reopen")
-                                    .label(photag_ui_bridge::i18n::tr("Show update offer…"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.update_offer_open = true;
-                                        this.update_offer_dismissed = false;
-                                        cx.notify();
-                                    })),
-                            );
-                        }
-                    }
-                    if self.update_staged.is_some() {
-                        b = b.child(
-                            Button::new("settings-update-install")
-                                .label(photag_ui_bridge::i18n::tr(
-                                    &(if self.confirm_install {
-                                        "Confirm restart and install"
-                                    } else {
-                                        "Restart and install…"
-                                    })
-                                    .to_string(),
-                                ))
-                                .on_click(cx.listener(|this, _, _, cx| this.install_update(cx))),
-                        );
-                        if self.confirm_install {
-                            b = b.child(div().child(photag_ui_bridge::i18n::tr("PhoTag will replace its executable and launch the updated version.")));
-                        }
-                    }
-                } else {
-                    b = b.child(div().child(photag_ui_bridge::i18n::tr(
-                        "Updater service is unavailable.",
-                    )));
-                }
-            }
+            Tab::Updates => {}
         }
         b
     }

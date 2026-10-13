@@ -1,6 +1,9 @@
 //! Source-compatible filter-driven bulk file actions.
 use super::{GalleryView, format_bulk_outcome};
 use chrono::Utc;
+mod filters;
+use crate::filter::MediaTypeFilter;
+use filters::{filter_controls, match_results_list};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
@@ -69,6 +72,9 @@ pub(super) fn reset_inputs(
     for input in &view.bulk_inputs {
         input.update(cx, |state, cx| state.set_value("", window, cx));
     }
+    view.bulk_media_type = MediaTypeFilter::All;
+    view.bulk_tag_ids.clear();
+    view.bulk_extension_exclude = false;
     view.bulk_date_from_value = None;
     view.bulk_date_to_value = None;
     view.bulk_date_from.update(cx, |picker, cx| {
@@ -79,9 +85,26 @@ pub(super) fn reset_inputs(
     });
 }
 
-fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64>, String> {
+fn matching_results(
+    view: &GalleryView,
+    cx: &Context<GalleryView>,
+) -> Result<(Vec<i64>, Vec<MediaItem>), String> {
     if view.bulk_source == BulkActionSource::CurrentSelection {
-        return Ok(view.selection.selected_media_ids.clone());
+        let ids = view.selection.selected_media_ids.clone();
+        let media = view
+            .snapshot
+            .as_ref()
+            .ok()
+            .map(|snapshot| {
+                snapshot
+                    .media
+                    .iter()
+                    .filter(|media| ids.contains(&media.id))
+                    .cloned()
+                    .collect()
+            })
+            .unwrap_or_default();
+        return Ok((ids, media));
     }
     let mut query = MediaQuery::default();
     match view.bulk_source {
@@ -99,6 +122,12 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         BulkActionSource::CurrentSelection => unreachable!(),
     }
     let fields = (0..8).map(|i| read(view, i, cx)).collect::<Vec<_>>();
+    query.media_type = match view.bulk_media_type {
+        MediaTypeFilter::All => None,
+        MediaTypeFilter::Photos => Some("image".into()),
+        MediaTypeFilter::Videos => Some("video".into()),
+        MediaTypeFilter::Audio => Some("audio".into()),
+    };
     query.date_from = view
         .bulk_date_from_value
         .and_then(|day| day.and_hms_opt(0, 0, 0).map(|dt| dt.and_utc().timestamp()));
@@ -156,10 +185,20 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         query.search_in_paths = false;
         query.search_in_tags = false;
     }
-    if !fields[5].trim().is_empty() {
-        query.extensions = Some(vec![
-            fields[5].trim().trim_start_matches('.').to_lowercase(),
-        ]);
+    let extensions = fields[5]
+        .split([',', ';', '|', ' '])
+        .map(|extension| extension.trim().trim_start_matches('.').to_lowercase())
+        .filter(|extension| !extension.is_empty())
+        .collect::<Vec<_>>();
+    if !extensions.is_empty() {
+        if view.bulk_extension_exclude {
+            query.excluded_extensions = Some(extensions);
+        } else {
+            query.extensions = Some(extensions);
+        }
+    }
+    if !view.bulk_tag_ids.is_empty() && view.bulk_source != BulkActionSource::SelectedTag {
+        query.tag_ids = Some(view.bulk_tag_ids.clone());
     }
     let size = |index: usize| -> Result<Option<i64>, String> {
         if fields[index].trim().is_empty() {
@@ -183,7 +222,29 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         .service
         .load(query)
         .map_err(|error| error.to_string())?;
-    Ok(snapshot.skeletons.into_iter().map(|item| item.id).collect())
+    let mut ids = snapshot
+        .skeletons
+        .iter()
+        .map(|item| item.id)
+        .collect::<Vec<_>>();
+    if view.bulk_source == BulkActionSource::SelectedTag && !view.bulk_tag_ids.is_empty() {
+        ids.retain(|id| {
+            snapshot
+                .media_tags
+                .get(id)
+                .is_some_and(|tags| tags.iter().any(|tag| view.bulk_tag_ids.contains(&tag.id)))
+        });
+    }
+    let media = snapshot
+        .media
+        .into_iter()
+        .filter(|media| ids.contains(&media.id))
+        .collect();
+    Ok((ids, media))
+}
+
+fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64>, String> {
+    matching_results(view, cx).map(|(ids, _)| ids)
 }
 
 pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
@@ -218,82 +279,12 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
     };
-    panel = panel.child(
-        div()
-            .text_sm()
-            .font_semibold()
-            .child(photag_ui_bridge::i18n::tr("Action")),
-    );
-    panel = panel.child(
-        div().h_flex().gap_2().children(
-            [
-                BulkActionKind::Delete,
-                BulkActionKind::CopyTo,
-                BulkActionKind::MoveTo,
-            ]
-            .into_iter()
-            .map(|choice| {
-                Button::new(format!("gallery-bulk-action-{}", choice.verb()))
-                    .label(photag_ui_bridge::i18n::tr(choice.label()))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.bulk_action = Some(choice);
-                        this.confirm_bulk_action = false;
-                        this.confirm_bulk_action_ids = None;
-                        cx.notify();
-                    }))
-            }),
-        ),
-    );
-    panel = panel.child(
-        div()
-            .text_sm()
-            .font_semibold()
-            .child(photag_ui_bridge::i18n::tr("Source")),
-    );
-    panel = panel.child(div().h_flex().flex_wrap().gap_2().children(
-        BulkActionSource::ALL.into_iter().map(|choice| {
-            Button::new(format!("gallery-bulk-source-{}", choice.label()))
-                .label(photag_ui_bridge::i18n::tr(choice.label()))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.bulk_source = choice;
-                    this.confirm_bulk_action = false;
-                    this.confirm_bulk_action_ids = None;
-                    cx.notify();
-                }))
-        }),
-    ));
-    if view.bulk_source != BulkActionSource::CurrentSelection {
-        panel = panel.child(
-            div()
-                .text_sm()
-                .font_semibold()
-                .child(photag_ui_bridge::i18n::tr("Filters (AND)")),
-        );
-        panel = panel.child(date_row(view, true, cx));
-        panel = panel.child(date_row(view, false, cx));
-        panel = panel.child(
-            div().h_flex().flex_wrap().gap_2().children(
-                view.bulk_inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, input)| Input::new(input).w(px(if i > 5 { 180. } else { 150. }))),
-            ),
-        );
-    } else {
-        panel = panel.child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(photag_ui_bridge::i18n::tr(
-                    "Current selection uses its selected items directly; filters are skipped.",
-                )),
-        );
-    }
-    let matching = matching_ids(view, cx);
-    let (count, error) = match matching {
-        Ok(ids) => (ids.len(), None),
-        Err(error) => (0, Some(error)),
+    let matching = matching_results(view, cx);
+    let (ids, matched_media, error) = match matching {
+        Ok((ids, media)) => (ids, media, None),
+        Err(error) => (Vec::new(), Vec::new(), Some(error)),
     };
+    let count = ids.len();
     let has_filter_error = error.is_some();
     if let Some(error) = error {
         panel = panel.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
@@ -306,6 +297,65 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                 .child(status.clone()),
         );
     }
+    let mut controls =
+        div()
+            .v_flex()
+            .gap_2()
+            .w(px(560.))
+            .child(section_title("1. Choose action"))
+            .child(
+                div().h_flex().gap_2().children(
+                    [
+                        BulkActionKind::Delete,
+                        BulkActionKind::CopyTo,
+                        BulkActionKind::MoveTo,
+                    ]
+                    .into_iter()
+                    .map(|choice| {
+                        Button::new(format!("gallery-bulk-action-{}", choice.verb()))
+                            .label(photag_ui_bridge::i18n::tr(choice.label()))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.bulk_action = Some(choice);
+                                this.confirm_bulk_action = false;
+                                this.confirm_bulk_action_ids = None;
+                                cx.notify();
+                            }))
+                    }),
+                ),
+            )
+            .child(section_title("2. Choose source"))
+            .child(div().h_flex().flex_wrap().gap_2().children(
+                BulkActionSource::ALL.into_iter().map(|choice| {
+                    Button::new(format!("gallery-bulk-source-{}", choice.label()))
+                        .label(photag_ui_bridge::i18n::tr(choice.label()))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.bulk_source = choice;
+                            this.confirm_bulk_action = false;
+                            this.confirm_bulk_action_ids = None;
+                            cx.notify();
+                        }))
+                }),
+            ));
+    if view.bulk_source == BulkActionSource::CurrentSelection {
+        controls = controls.child(
+            div()
+                .text_xs()
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(photag_ui_bridge::i18n::tr(
+                    "Current selection uses its selected items directly; filters are skipped.",
+                )),
+        );
+    } else {
+        controls = controls.child(filter_controls(view, cx));
+    }
+    let result_list = match_results_list(&matched_media);
+    let layout = div()
+        .h_flex()
+        .items_start()
+        .gap_4()
+        .child(controls)
+        .child(result_list);
+    panel = panel.child(layout);
     panel = panel.child(
         div()
             .h_flex()
@@ -339,7 +389,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                                     )
                                 } else {
                                     photag_ui_bridge::i18n::tr_args(
-                                        "{action} {count}",
+                                        "Continue · {action} {count}",
                                         &[
                                             ("action", photag_ui_bridge::i18n::tr(action.verb())),
                                             ("count", count.to_string()),

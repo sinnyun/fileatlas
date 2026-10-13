@@ -441,9 +441,12 @@ fn main() {
     let executor = runtime.handle().clone();
     let app_cordis = cordis.clone();
 
-    let application = gpui_kit::application().with_assets(gpui_kit::assets::Assets);
+    let application = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
     application.run(move |cx| {
         gpui_kit::init(cx);
+        if let Ok(i18n) = app_cordis.try_service::<photag_plugin_i18n::I18nService>() {
+            gpui_kit::component::set_locale(i18n.language().code());
+        }
         photag_ui_bridge::theme::apply_components(cx);
         let catalog = Arc::clone(&catalog);
         let views = Arc::clone(&bridge.views);
@@ -511,6 +514,9 @@ fn main() {
                     (slot, view)
                 })
                 .collect();
+            if let Err(error) = bridge.surfaces.set_open("inspector", true) {
+                eprintln!("inspector initialization failed: {error}");
+            }
             cx.new(|cx| {
                 cx.spawn(async move |this, cx| {
                     let mut revision = photag_ui_bridge::i18n::revision();
@@ -521,9 +527,37 @@ fn main() {
                         let next = photag_ui_bridge::i18n::revision();
                         if next != revision {
                             revision = next;
-                            if this.update(cx, |_, cx| cx.refresh_windows()).is_err() {
+                            if this
+                                .update(cx, |shell: &mut PhoTagShell, cx| {
+                                    if let Ok(i18n) = shell
+                                        .cordis
+                                        .try_service::<photag_plugin_i18n::I18nService>()
+                                    {
+                                        gpui_kit::component::set_locale(i18n.language().code());
+                                    }
+                                    cx.refresh_windows();
+                                })
+                                .is_err()
+                            {
                                 break;
                             }
+                        }
+                        if this
+                            .update(cx, |shell: &mut PhoTagShell, cx| {
+                                let tools = shell.surfaces.is_open("tools");
+                                if tools != shell.tools_open {
+                                    shell.tools_open = tools;
+                                    cx.notify();
+                                }
+                                let next = shell.surfaces.is_open("inspector");
+                                if next != shell.inspector_open {
+                                    shell.inspector_open = next;
+                                    cx.notify();
+                                }
+                            })
+                            .is_err()
+                        {
+                            break;
                         }
                         if this.upgrade().is_none() {
                             break;
@@ -541,6 +575,8 @@ fn main() {
                     sidebar_width,
                     resizing_sidebar: false,
                     tools_open: false,
+                    sidebar_open: true,
+                    inspector_open: true,
                 }
             })
         })

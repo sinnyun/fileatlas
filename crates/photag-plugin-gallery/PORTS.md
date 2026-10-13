@@ -72,3 +72,50 @@ localized. MCP captures confirmed 9 fixture cards, bottom selected actions,
 statistics and bulk surfaces in both languages. Hover filename/tag overlays,
 120ms hover/140ms selection animation, exact month typography and scan-status
 priority remain unverified or different from source; this is not full parity.
+
+## v5 S2 region wiring (2026-10-13)
+
+`view::gallery` now receives `Arc<UiSurfaceState>` from `UiBridgeService`.
+The single Gallery entity also contributes `gallery/inspector` to
+`gallery.inspector`, through the existing lifecycle-owned view registry.
+The inspector closes `surfaces["inspector"]`; Shell observes that state every
+100 ms. Basic info and tags start expanded; EXIF/path start collapsed. EXIF is
+cached by selected media ID. Off-page media/tags use the existing Gallery and
+Tagging service lookups. Removing a tag uses `TaggingService::remove` and
+records `UndoEntry::RemovedTags`, then restores selection after reload.
+
+`command.filters` uses GPUI Kit popovers for type, tags, extensions, dates,
+ratings and sort. Single-choice popovers dismiss through their own entity;
+multi-choice popovers stay open and read the current include/exclude state.
+Tag selection emits `TagFilterSelectionChanged` (shared navigation scope);
+its include/exclude click mode is transient. Extension mode retains the
+source `ext_click_mode` persistence. `command.tools` dispatches the existing
+`metadata-export/export` command through `UiCommandInvoked`. Status actions
+reuse preview, tagging and file-operation services. Runtime evidence and
+remaining designed states are recorded in `docs/redesign-validation.md`.
+
+## Current handoff / v5 control contracts (2026-10-14)
+
+`src/ui_requests.rs` exports `GalleryUiRequest` and `GalleryUiSnapshot`.
+Requests now include search, media type/sort, rating range, extension/tag
+include/exclude, date bounds, clear filters, inspector section, tag picker,
+and month grouping, in addition to existing selection/dialog/hover requests.
+`GalleryService::ui_snapshot()` reads the state published by the live Gallery
+render; it includes filter, selected IDs, matched count, grouping and expanded
+inspector sections. It is not an independent database query.
+
+GPUI `ListState/list` now accommodates differing month-header/card-row
+heights; pixel scroll persistence, visible-range service caching, keyboard
+reveal and measured-row rubber-band mapping were adapted. The service still
+keeps the 200-row rich-media cache. Real nine-item MCP screenshots show the
+spacing correction; cross-page selection, restore and scale behavior remain
+to be verified. The obsolete `uniform_list` descriptions above are historical.
+
+Filter popovers share `surfaces.value("gallery.popover")` with native trigger
+open/dismiss callbacks and plugin MCP controls. Date Calendar range selection
+and 04/06 bulk/tag picker layout are the latest unverified edits. Bulk state
+adds MediaTypeFilter, tag IDs and extension exclusion; original scopes and
+confirmation-bound file-operation execution are retained. Current Gallery
+compilation fails on 19 missing type/trait/visibility errors in these new
+panels. See docs/development-handoff-2026-10-14.md for exact diagnostics and
+pending public-interface/runtime validation; do not claim this work complete.

@@ -2,6 +2,31 @@
 
 ## Status
 
+### Current development handoff (2026-10-14)
+
+**User-directed task scope:** at each handoff, the user specifies which section
+or task range to execute. Determine responsibilities from that assignment, not
+from model identity or size. For assigned C0–C4 coding tasks, write the code and
+implementation notes only; do not run Cargo fmt/check/build/test/clippy, launch
+the app, run MCP, capture screenshots, scan fixtures, or perform runtime checks.
+Writing test code and MCP interfaces is allowed. Mark this work unverified and
+list follow-up checks. For assigned V1–V4 verification tasks, execute the named
+checks; runtime debugging and UI screenshots must use the project PhoTag MCP.
+If coding and verification are both assigned, do both in the specified scope.
+Leave unassigned sections for a later user assignment. See
+[`docs/development-handoff-2026-10-14.md`](docs/development-handoff-2026-10-14.md)
+for the task lists and current handoff state.
+
+Before continuing the v5 redesign, read the handoff document above. It records
+the current uncommitted worktree, 19 Gallery compilation errors,
+the older last runnable executable, actual plugin MCP screenshots, pending
+localization, and the next small development steps. Do not treat an older
+successful build or screenshot as verification of the latest source.
+`scripts/photag-mcp-debug.cjs` provides a reproducible same-process plugin MCP
+client with isolated profiles and screenshot capture; its usage is in that
+handoff. Automatic startup update offers must remain suppressed; explicit
+manual update checks and installation remain available.
+
 The project is in the **interface redesign phase**: the user owns the UI
 design, and the workspace now implements that design rather than reproducing
 the PhoTag (egui) interface. Design references live in
@@ -141,8 +166,14 @@ implementation under `vendor/photag-source/` and record results in
 history. Keep each crate's `PORTS.md` aligned with observed behavior and public
 signatures.
 
-For live verification and debugging, use the project's PhoTag MCP plugin when
-an MCP client is available: configure the client to launch
+For live debugging, runtime tests, and interface/interaction verification,
+**always use the project's PhoTag MCP plugin directly**. This is the required
+workflow, not an optional fallback. Do not substitute generic computer-use,
+OS mouse/keyboard injection, or a separately launched application for plugin
+MCP debugging. Cargo fmt/check/build/test remain required static/build and
+automated regression checks; they do not replace live MCP verification.
+
+Configure the MCP client to launch
 `photag-shell --mcp`, then use its tools to read the running window, library,
 media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
 The MCP server and GPUI window share that child process; it cannot attach to a
@@ -152,6 +183,12 @@ the tool list and startup diagnostics. MCP mutations remain disabled unless
 `PHOTAG_MCP_ALLOW_MUTATIONS=1` is explicitly set; keep them disabled for
 read-only validation and only enable them when the validation requires a
 mutation.
+
+If a required interaction or state is not exposed by the plugin, inspect and
+extend the PhoTag MCP public tools and their PORTS.md as part of the debugging
+work, then test through those tools. If MCP startup or access is blocked,
+record the exact blocker and leave the affected runtime path unverified;
+do not silently switch to generic UI automation or claim runtime coverage.
 
 Each crate must maintain a `PORTS.md` that documents Cordis plugin/service
 identity, startup dependencies, input/output payloads, event producers and

@@ -866,3 +866,16 @@ These are compilation and existing lifecycle tests, not runtime theme or SVG
 rendering tests. This fix pass did not exercise native windows, accent swatch
 clicks, menu/calendar icons, keyboard, codecs or file operations. Windows
 interaction and visual parity remain unverified by this pass.
+
+### 2026-10-13 v5 S2 existing backend paths
+
+The inspector reuses TaggingService removal and RemovedTags history (source
+Gallery RemoveTags + queries::remove_tags); empty-library add-folder dispatch
+reuses Navigation's native picker and production scan/watch services. No
+schema or persisted file format change. Existing Gallery/Navigation tests
+passed (16/4); MCP scanned 9 synthetic fixture media in an isolated profile.
+Inspector tag removal, native folder picker, and real-media interoperability
+were not exercised. User-directed quiet startup updates retain source check,
+download and install semantics, but suppress automatic offer opening. Live
+MCP observed update_available=true/update_offer_open=false after startup and
+update_offer_open=true after a manual check; no download/install performed.

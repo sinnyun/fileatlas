@@ -1,6 +1,8 @@
 //! PhoTag gallery data access with its original skeleton-plus-window memory model.
 
+mod ui_requests;
 mod view;
+pub use ui_requests::{GalleryUiRequest, GalleryUiSnapshot};
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -56,6 +58,7 @@ pub struct GalleryService {
     database: Arc<DatabaseService>,
     indexing: Option<Arc<photag_plugin_indexing::IndexingService>>,
     ui_request: Mutex<Option<GalleryUiRequest>>,
+    ui_snapshot: Mutex<Option<GalleryUiSnapshot>>,
     card_states: Mutex<Vec<GalleryCardState>>,
     card_frames: Mutex<std::collections::VecDeque<GalleryCardState>>,
 }
@@ -67,17 +70,6 @@ pub struct GalleryCardState {
     pub hover: f32,
     pub selection: f32,
     pub timestamp_ms: u64,
-}
-
-/// Requests consumed by the live Gallery view, using its existing actions.
-#[derive(Clone, Copy)]
-pub enum GalleryUiRequest {
-    Statistics,
-    BulkActions,
-    CloseDialogs,
-    Select(i64),
-    Deselect,
-    Hover(Option<i64>),
 }
 
 #[derive(Default)]
@@ -118,6 +110,7 @@ impl GalleryService {
             database,
             indexing: None,
             ui_request: Mutex::new(None),
+            ui_snapshot: Mutex::new(None),
             card_states: Mutex::new(Vec::new()),
             card_frames: Mutex::new(std::collections::VecDeque::new()),
         }
@@ -327,6 +320,16 @@ impl GalleryService {
         })?)
     }
 
+    /// Resolve assigned tags even when the media row is outside the viewport window.
+    pub fn tags_for_media(
+        &self,
+        media_ids: &[i64],
+    ) -> Result<HashMap<i64, Vec<Tag>>, GalleryError> {
+        Ok(self
+            .database
+            .with_reader(|connection| queries::get_tags_for_media_batch(connection, media_ids))?)
+    }
+
     pub fn statistics(&self) -> Result<queries::LibraryStats, GalleryError> {
         Ok(self.database.with_reader(queries::get_statistics)?)
     }
@@ -533,6 +536,9 @@ impl Plugin for GalleryPlugin {
             ],
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
+        let bridge = context
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         register_views_for_plugin(
             &context,
             "photag.gallery",
@@ -543,6 +549,7 @@ impl Plugin for GalleryPlugin {
                 preview,
                 playback,
                 runtime,
+                context.clone(),
                 selected_folder,
                 selected_tag,
                 selected_path,
@@ -551,6 +558,7 @@ impl Plugin for GalleryPlugin {
                 history,
                 settings,
                 tagging,
+                Arc::clone(&bridge.surfaces),
             ),
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
