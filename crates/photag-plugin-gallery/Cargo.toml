@@ -8,10 +8,12 @@ license.workspace = true
 [dependencies]
 cordis.workspace = true
 gpui-kit.workspace = true
+gpui = { package = "gpui-pre", version = "=0.3.8" }
 tokio.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
+rfd = { version = "0.15", default-features = false }
 photag-plugin-history = { path = "../photag-plugin-history" }
 photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
 photag-plugin-preview = { path = "../photag-plugin-preview" }

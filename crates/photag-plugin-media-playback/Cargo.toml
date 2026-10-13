@@ -12,6 +12,7 @@ photag-ui-bridge = { path = "../photag-ui-bridge" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 serde_json.workspace = true
 thiserror.workspace = true
+rodio = "0.19"
 
 [lints]
 workspace = true

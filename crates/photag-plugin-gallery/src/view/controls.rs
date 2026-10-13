@@ -2,10 +2,11 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::date_picker::{DatePicker, DatePickerState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_database::db::queries::Tag;
 
 use super::GalleryView;
 use crate::filter::{GalleryFilter, MediaTypeFilter, SearchScope};
@@ -26,6 +27,7 @@ pub(super) fn clear_filters_button(cx: &mut Context<GalleryView>) -> Button {
 
 pub(super) fn active_filter_row(
     filter: &GalleryFilter,
+    tags: &[Tag],
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement {
     let mut row = div().h_flex().items_center().gap_1().overflow_x_scrollbar();
@@ -99,7 +101,42 @@ pub(super) fn active_filter_row(
                 })),
         );
     }
+    for (ids, included) in [
+        (&filter.selected_tag_ids, true),
+        (&filter.excluded_tag_ids, false),
+    ] {
+        for tag_id in ids {
+            let tag_id = *tag_id;
+            let name =
+                find_tag_name(tags, tag_id).unwrap_or_else(|| format!("Deleted tag {tag_id}"));
+            row = row.child(
+                Button::new(format!(
+                    "gallery-clear-tag-filter-{}-{tag_id}",
+                    if included { "include" } else { "exclude" }
+                ))
+                .label(format!(
+                    "{} {name} ×",
+                    if included { "Include" } else { "Exclude" }
+                ))
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.clear_tag_filter(tag_id, included, cx)),
+                ),
+            );
+        }
+    }
     row
+}
+
+fn find_tag_name(tags: &[Tag], id: i64) -> Option<String> {
+    for tag in tags {
+        if tag.id == id {
+            return Some(tag.name.clone());
+        }
+        if let Some(name) = find_tag_name(&tag.children, id) {
+            return Some(name);
+        }
+    }
+    None
 }
 
 fn scope_button(
@@ -119,15 +156,15 @@ fn scope_button(
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_search_scope(scope, cx)))
 }
 
-pub(super) fn date_row(from: &Entity<InputState>, to: &Entity<InputState>) -> Div {
+pub(super) fn date_row(from: &Entity<DatePickerState>, to: &Entity<DatePickerState>) -> Div {
     div()
         .h_flex()
         .items_center()
         .gap_1()
         .child(div().text_sm().child("Date"))
-        .child(Input::new(from).w(px(150.0)))
+        .child(DatePicker::new(from).placeholder("From date"))
         .child(div().text_sm().child("to"))
-        .child(Input::new(to).w(px(150.0)))
+        .child(DatePicker::new(to).placeholder("To date"))
 }
 
 pub(super) fn media_type_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {

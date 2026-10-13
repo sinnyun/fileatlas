@@ -2,12 +2,17 @@
 
 use std::sync::{Arc, Mutex};
 
-use cordis::{Context, Plugin, Service};
+use cordis::event::observer_sync;
+use cordis::{Context, Plugin, Routing, Service};
+use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::{DatabaseService, db::queries};
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_tagging::TaggingService;
+use photag_ui_bridge::{ContributionKind, UiCommandInvoked, UiContribution, register_for_plugin};
 
 const HISTORY_LIMIT: usize = 100;
+const UNDO_COMMAND_ID: &str = "history/undo";
+const REDO_COMMAND_ID: &str = "history/redo";
 
 /// A reversible operation recorded by the original PhoTag application.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -280,9 +285,76 @@ impl Plugin for HistoryPlugin {
         let files = context
             .try_service::<FileOperationsService>()
             .map_err(|e| HistoryPluginError::Dependency(e.to_string()))?;
+        let service = Arc::new(HistoryService::new(database, tagging, files));
         let _publication = context
-            .provide(Arc::new(HistoryService::new(database, tagging, files)))
+            .provide(Arc::clone(&service))
             .map_err(|e| HistoryPluginError::Publish(e.to_string()))?;
+        let command_service = Arc::clone(&service);
+        let cordis = context.clone();
+        let runtime = tokio::runtime::Handle::current();
+        let _command_listener = context
+            .on::<UiCommandInvoked, _>(observer_sync(move |_, command_id: String| {
+                let undo = match command_id.as_str() {
+                    UNDO_COMMAND_ID => true,
+                    REDO_COMMAND_ID => false,
+                    _ => return Ok::<_, std::convert::Infallible>(()),
+                };
+                let service = Arc::clone(&command_service);
+                let cordis = cordis.clone();
+                runtime.spawn(async move {
+                    let result = if undo {
+                        service.undo().await
+                    } else {
+                        service.redo().await
+                    };
+                    if result.is_some()
+                        && let Err(error) = cordis
+                            .emit::<MediaIndexChanged>(Routing::Unscoped, ())
+                            .await
+                    {
+                        eprintln!("history refresh event failed: {error}");
+                    }
+                });
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|e| HistoryPluginError::EventRegistration(e.to_string()))?;
+        register_for_plugin(
+            &context,
+            "photag.history",
+            [
+                UiContribution::new(
+                    UNDO_COMMAND_ID,
+                    ContributionKind::Command {
+                        label: "Undo".into(),
+                    },
+                ),
+                UiContribution::new(
+                    "history/undo-menu-item",
+                    ContributionKind::MenuItem {
+                        label: "Undo".into(),
+                        menu: "Edit".into(),
+                        command_id: UNDO_COMMAND_ID.into(),
+                        order: 10,
+                    },
+                ),
+                UiContribution::new(
+                    REDO_COMMAND_ID,
+                    ContributionKind::Command {
+                        label: "Redo".into(),
+                    },
+                ),
+                UiContribution::new(
+                    "history/redo-menu-item",
+                    ContributionKind::MenuItem {
+                        label: "Redo".into(),
+                        menu: "Edit".into(),
+                        command_id: REDO_COMMAND_ID.into(),
+                        order: 20,
+                    },
+                ),
+            ],
+        )
+        .map_err(|e| HistoryPluginError::UiRegistration(e.to_string()))?;
         Ok(())
     }
 }
@@ -293,4 +365,8 @@ pub enum HistoryPluginError {
     Dependency(String),
     #[error("history service publication failed: {0}")]
     Publish(String),
+    #[error("history command listener registration failed: {0}")]
+    EventRegistration(String),
+    #[error("history UI registration failed: {0}")]
+    UiRegistration(String),
 }

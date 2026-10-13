@@ -39,6 +39,8 @@ pub struct GallerySnapshot {
     pub media_tags: HashMap<i64, Vec<Tag>>,
     pub available_extensions: Vec<String>,
     pub folder_counts: HashMap<i64, i64>,
+    /// Full tag tree for naming active include/exclude filters.
+    pub tag_tree: Vec<Tag>,
     query: MediaQuery,
 }
 
@@ -104,6 +106,7 @@ impl GalleryService {
             let media_tags = queries::get_tags_for_media_batch(connection, &media_ids)?;
             let available_extensions = queries::get_available_extensions(connection)?;
             let folder_counts = queries::count_media_per_folder(connection)?;
+            let tag_tree = queries::get_tag_tree(connection)?;
             Ok(GallerySnapshot {
                 skeletons,
                 media_count,
@@ -112,6 +115,7 @@ impl GalleryService {
                 media_tags,
                 available_extensions,
                 folder_counts,
+                tag_tree,
                 query,
             })
         })?)

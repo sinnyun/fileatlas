@@ -53,3 +53,8 @@ native through `rfd`; Windows overwrite behavior follows the native dialog.
 Other desktop-platform behavior depends on the corresponding `rfd` backend and
 has not been validated. The worker writes directly to the selected path after
 the dialog returns.
+
+## Shared visual tokens
+
+The export panel uses photag-ui-bridge::theme for source secondary/danger text and its subtle edge color. Layout spacing and typography still use GPUI Kit presets; Windows visual parity is unverified.
+

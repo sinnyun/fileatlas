@@ -1,0 +1,230 @@
+//! MCP server adapter for PhoTag's Cordis-owned application services.
+
+mod params;
+mod screenshot;
+mod tools_read;
+mod tools_write;
+
+use std::sync::Arc;
+
+use cordis::{Context, Plugin, Service};
+use params::*;
+use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_gallery::GalleryService;
+use photag_plugin_media_playback::MediaPlaybackService;
+use photag_plugin_metadata_export::MetadataExportService;
+use photag_plugin_navigation::NavigationService;
+use photag_plugin_preview::PreviewService;
+use photag_plugin_tagging::TaggingService;
+use rmcp::{
+    ErrorData as McpError, ServerHandler, ServiceExt,
+    handler::server::{router::tool::ToolRouter, wrapper::Parameters},
+    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig},
+    tool, tool_router,
+    transport::stdio,
+};
+use serde_json::json;
+
+/// Native PhoTag window handle, supplied by the Shell once GPUI creates it.
+#[derive(Default)]
+pub struct CaptureWindowHandle(std::sync::atomic::AtomicIsize);
+
+impl Service for CaptureWindowHandle {
+    const NAME: &'static str = "photag/mcp-window-handle";
+}
+
+impl CaptureWindowHandle {
+    pub fn set(&self, handle: isize) {
+        self.0.store(handle, std::sync::atomic::Ordering::Release);
+    }
+
+    fn get(&self) -> isize {
+        self.0.load(std::sync::atomic::Ordering::Acquire)
+    }
+}
+
+/// Starts an stdio server. Mutating tools are disabled unless the user opts in
+/// through `PHOTAG_MCP_ALLOW_MUTATIONS=1` in the MCP server environment.
+pub struct McpPlugin;
+
+impl Plugin for McpPlugin {
+    type Config = ();
+    type Input = ();
+    type PrepareError = std::convert::Infallible;
+    type ApplyError = McpPluginError;
+
+    fn name(&self) -> std::borrow::Cow<'_, str> {
+        "photag.mcp".into()
+    }
+
+    fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
+        Ok(config)
+    }
+
+    async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
+        let gallery = context
+            .try_service::<GalleryService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let navigation = context
+            .try_service::<NavigationService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let tagging = context
+            .try_service::<TaggingService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let preview = context
+            .try_service::<PreviewService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let playback = context
+            .try_service::<MediaPlaybackService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let metadata_export = context
+            .try_service::<MetadataExportService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let file_operations = context
+            .try_service::<FileOperationsService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let capture = context
+            .try_service::<CaptureWindowHandle>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+
+        let server = PhoTagMcpServer::new(
+            gallery,
+            navigation,
+            tagging,
+            preview,
+            playback,
+            metadata_export,
+            file_operations,
+            capture,
+        );
+        let task = tokio::spawn(async move {
+            match server.serve(stdio()).await {
+                Ok(server) => {
+                    if let Err(error) = server.waiting().await {
+                        eprintln!("PhoTag MCP server stopped: {error}");
+                    }
+                }
+                Err(error) => eprintln!("PhoTag MCP server failed: {error}"),
+            }
+        });
+        let _publication = context
+            .provide(Arc::new(McpTaskGuard(task.abort_handle())))
+            .map_err(|error| McpPluginError::Publish(error.to_string()))?;
+        Ok(())
+    }
+}
+
+struct McpTaskGuard(tokio::task::AbortHandle);
+
+impl Service for McpTaskGuard {
+    const NAME: &'static str = "photag/mcp-task-guard";
+}
+
+impl Drop for McpTaskGuard {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum McpPluginError {
+    #[error("required MCP dependency unavailable: {0}")]
+    Dependency(String),
+    #[error("MCP lifecycle guard publication failed: {0}")]
+    Publish(String),
+}
+
+#[derive(Clone)]
+struct PhoTagMcpServer {
+    #[allow(dead_code)]
+    tool_router: ToolRouter<Self>,
+    gallery: Arc<GalleryService>,
+    navigation: Arc<NavigationService>,
+    tagging: Arc<TaggingService>,
+    preview: Arc<PreviewService>,
+    playback: Arc<MediaPlaybackService>,
+    metadata_export: Arc<MetadataExportService>,
+    file_operations: Arc<FileOperationsService>,
+    capture: Arc<CaptureWindowHandle>,
+    mutations_enabled: bool,
+}
+
+impl PhoTagMcpServer {
+    fn new(
+        gallery: Arc<GalleryService>,
+        navigation: Arc<NavigationService>,
+        tagging: Arc<TaggingService>,
+        preview: Arc<PreviewService>,
+        playback: Arc<MediaPlaybackService>,
+        metadata_export: Arc<MetadataExportService>,
+        file_operations: Arc<FileOperationsService>,
+        capture: Arc<CaptureWindowHandle>,
+    ) -> Self {
+        Self {
+            tool_router: Self::read_tool_router() + Self::write_tool_router(),
+            gallery,
+            navigation,
+            tagging,
+            preview,
+            playback,
+            metadata_export,
+            file_operations,
+            capture,
+            mutations_enabled: std::env::var("PHOTAG_MCP_ALLOW_MUTATIONS")
+                .is_ok_and(|value| value == "1"),
+        }
+    }
+
+    fn mutation_guard(&self) -> Result<(), String> {
+        if self.mutations_enabled {
+            Ok(())
+        } else {
+            Err("修改工具当前已禁用。只有在 MCP 服务环境中设置 PHOTAG_MCP_ALLOW_MUTATIONS=1 才会启用。".into())
+        }
+    }
+}
+
+impl PhoTagMcpServer {
+    fn mutate_tags(&self, request: TagMutationRequest, assign: bool) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if let Err(error) = validate_batch(&request.media_ids) {
+            return error_json(&error);
+        }
+        if !(1..=50).contains(&request.tag_ids.len()) {
+            return error_json("tag_ids 数量必须为 1 到 50。");
+        }
+        let result = if assign {
+            self.tagging.assign(&request.media_ids, &request.tag_ids)
+        } else {
+            self.tagging.remove(&request.media_ids, &request.tag_ids)
+        };
+        match result {
+            Ok(()) => "{\"ok\":true}".into(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+}
+
+impl ServerHandler for PhoTagMcpServer {
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(rmcp::model::Implementation::new("photag-mcp", env!("CARGO_PKG_VERSION")))
+            .with_instructions("PhoTag 本机 MCP 接口。读取工具可直接使用；评分、标签和文件修改仅在启动环境显式设置 PHOTAG_MCP_ALLOW_MUTATIONS=1 后启用。文件操作的授权应由 MCP 客户端配置为每次询问用户。")
+    }
+}
+
+fn validate_batch(ids: &[i64]) -> Result<(), String> {
+    if !(1..=100).contains(&ids.len()) {
+        Err("media_ids 数量必须为 1 到 100。".into())
+    } else {
+        Ok(())
+    }
+}
+
+fn error_json(error: &str) -> String {
+    serde_json::to_string(&json!({ "error": error }))
+        .unwrap_or_else(|_| "{\"error\":\"序列化失败\"}".into())
+}

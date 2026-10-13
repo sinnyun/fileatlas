@@ -269,3 +269,29 @@ Some initial runs exited with a GPUI debug panic (`Duplicate a11y node id`) duri
 | Windows UI/OLE/dialog/watcher interactions | Partially verified | Native UI automation is unavailable in this environment. The Gallery window starts and responds, but visual inspection, Explorer drag, native dialog interaction, and filesystem notification exercise were not performed. |
 
 The shell provider-order audit found that Gallery was started before MediaPlayback, Tagging, and History despite requiring or optionally consuming those services. Startup now starts Gallery after its providers, and shutdown stops Gallery and History before those dependencies. The duplicate accessibility node came from both Preview and MediaPlayback using the same `Close` button ID; plugin-specific button IDs fixed it in two consecutive Gallery profile launches.
+
+## MCP integration (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update --offline` | Passed | Reconciled the lockfile from the cached registry for the official `rmcp` 3.5.1 SDK and current workspace manifests. |
+| Initial `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Failed, then fixed | The first compile found the Windows `PrintWindow` API under the XPS module and bulk outcome types without serialization. The adapter now calls the correct Windows API and maps operation outcomes into explicit JSON fields. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Final formatting check. |
+| First MCP-integrated `cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed before later MCP/workspace edits | Windows MSVC shell dependency graph, including the MCP tools and native screenshot code at that point. The `export_metadata` tool and later workspace edits were added afterward, so they are not covered by this passing result. |
+| `cargo +1.97.1 fmt --manifest-path crates/photag-plugin-mcp/Cargo.toml -- --check` | Passed | MCP crate formatting. |
+| Concurrent-edit `cargo +1.97.1 fmt --all -- --check` (intermediate) | Blocked, later resolved | Gallery referenced a module before it was created and Preview had unformatted changes. The final formatting check after integration and repair passed in the section below. |
+| Earlier `cargo +1.97.1 fmt --all -- --check` | Passed | Passed before the latest concurrent workspace edits. |
+| MCP-era `cargo +1.97.1 check -p photag-shell --locked -j 2` (intermediate) | Failed, later resolved | At that point Gallery lacked the scroll-tracking API and Updater emitted warnings. The API integration was corrected; final shell check passed in the section below. |
+| Tests | Not run | Followed the repository code-generation pass restriction. |
+| MCP client launch and live screenshot fidelity | Unverified | The `--mcp` stdio path and `PrintWindow(PW_RENDERFULLCONTENT)` implementation compile. A live MCP client round trip and visual comparison of the returned image against the GPUI window still require Windows runtime validation. |
+
+## Parallel migration and repair (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update --offline` | Passed | Reconciled the lockfile for updater, Rodio, native dialogs, and the workspace-registered AI crate using the cached registry. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Final workspace formatting check after the parallel implementation and repair rounds. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Final Windows MSVC shell dependency graph compiled with AI, updater, playback, native dialogs, and UI changes. Earlier runs exposed and then fixed Navigation menu closure ownership, Settings install-path ownership, History event argument inference, Gallery imports/dialog APIs/snapshot borrowing, and Shell Cordis context ownership. |
+| Tests | Not run | Per the repository's code-generation pass restriction. |
+| Windows user-interface, model download/inference, updater replacement/restart, audio device, Explorer and Recycle Bin behavior | Unverified | These require interactive Windows validation and representative media/user-library fixtures. |
+

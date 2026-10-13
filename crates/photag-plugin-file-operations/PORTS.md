@@ -2,9 +2,9 @@
 
 Status: source-compatible single-item and bulk copy/move/delete, rename,
 create-folder, Recycle Bin delete, open, reveal, and database follow-through
-are available. PhoTag's destination dialogs, bulk-action console, preview
-advance, selection updates, and success/error UI are not connected. This
-migration slice has not been compiled or tested in this cloud pass.
+are available. Gallery owns destination dialogs, Delete confirmation, operation
+feedback, and preview/selection repair after mutations. This migration slice
+has not been compiled or tested in this cloud pass.
 
 ## Lifecycle and dependencies
 
@@ -29,14 +29,19 @@ migration slice has not been compiled or tested in this cloud pass.
 - `move_to(media_id, destination)` uses rename then copy/delete fallback for
   cross-volume moves. It updates the row when the destination string begins
   with a registered root, otherwise removes the row, matching PhoTag's logic.
+  `move_to_with_outcome` additionally returns whether the move occurred;
+  `false` represents a source-compatible collision or filesystem move failure.
 - `move_into_folder(media_id, destination_dir)` retains the filename, refuses
   to overwrite an existing file, and updates the indexed path/root.
+  `move_into_folder_with_outcome` reports whether it moved the file.
 - `bulk_move_into_folder(media_ids, destination_dir)` applies the same behavior
   per item, continues after an individual failure, and returns one
   `BulkMoveOutcome` per input ID. A collision or missing item is `moved: false`;
   database errors are attached to that outcome.
 - `rename(media_id, new_filename)` trims the name, refuses empty/unchanged or
   colliding names, renames on disk, then updates the existing DB row.
+  `rename_with_outcome` returns `false` for an unchanged, empty, or colliding
+  name so the UI can distinguish a no-op from a completed rename.
 - `create_folder(parent, name)` preserves PhoTag's invalid-character rules and
   creates exactly one directory level.
 - `delete_to_recycle_bin(media_id)` uses the `trash` crate. It removes the
@@ -61,5 +66,8 @@ cleanup, and delete-on-recycle-failure against `vendor/photag-source/src/app.rs`
 `do_create_folder`, and `do_delete_media`). Database changes use the original
 query helpers in `photag-plugin-database`. Do not call these synchronous file
 operations from GPUI render; the service already offloads filesystem/database
-work. The UI still needs to request native save/folder dialogs, call these
-methods, report outcomes, and update preview/selection state.
+work. The Gallery view requests native save/folder dialogs and calls these
+methods. Review `photag-plugin-gallery/PORTS.md` and
+`src/view/file_actions.rs` for the UI flow, confirmation, feedback, and
+post-operation preview/selection handling. This service leaves dialog and
+presentation policy to its caller.

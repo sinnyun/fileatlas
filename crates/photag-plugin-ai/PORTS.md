@@ -1,23 +1,24 @@
 # AI plugin port
 
-Status: implementation draft ready for host integration. The crate remains
-outside the root Cargo workspace until the dependency lockfile is updated in
-the integration pass. Its inference and download paths match the preserved
-PhoTag source; no Windows runtime or model download has been validated here.
+Status: Cordis service is registered in the root workspace and shell. Its
+inference and download paths are adapted from the preserved PhoTag source; the
+Cargo lockfile still needs dependency resolution, and no Windows runtime or
+model download has been validated here.
 
 ## Cordis identity and startup
 
 - Plugin: `photag.ai` (`AiPlugin`); service: `photag/ai` (`AiService`).
-- `AiPlugin` has no startup dependencies. It publishes `Arc<AiService>` when
-  applied; the host must include this crate and start the plugin before
-  resolving `AiService` from Cordis.
+- `AiPlugin` has no startup dependencies. The shell starts it when Gallery,
+  MCP, all plugins, or the explicit `ai` development plugin is enabled. It
+  publishes `Arc<AiService>`; consumers must resolve that service from Cordis.
 - The consumer passes persisted settings into `suggest_tags`; this avoids a
   service dependency on the settings plugin lifecycle. The settings type is
   `photag_plugin_settings::AiSettings`.
 - Integration dependencies: `cordis`, `photag-plugin-settings`, `dirs`,
   `image`, `ndarray`, `tract-onnx`, `ureq`, and `thiserror`. These are declared
-  in this crate's manifest; `tract-onnx` and `ureq` still need lockfile
-  resolution before workspace inclusion. No `tokio` API is used.
+  in this crate's manifest; `ndarray` and `tract-onnx` are not yet present in
+  the checked-in lockfile, so resolve dependencies before a `--locked` shell
+  check can succeed. No `tokio` API is used.
 - Model path: `%LOCALAPPDATA%/PhoTag/models/mobilenetv2-7.onnx` (with the
   platform data-local directory fallback used by `dirs`).
 
@@ -49,9 +50,12 @@ PhoTag source; no Windows runtime or model download has been validated here.
   image brightness/warmth/saturation analysis, mandatory-group scoring, and
   worker-thread behavior.
 - The source caller is `vendor/photag-source/src/app.rs` (`poll_ai` and
-  `request_ai_suggestions`); `src/main.rs` schedules repaint while inference
-  or download is active. Preview/gallery integration, persisted auto-analyze
-  behavior, and tag mutation remain host/UI responsibilities.
+  `request_ai_suggestions`) and `vendor/photag-source/src/ui/preview.rs` (the
+  suggestion panel and apply actions). The shell now registers the service,
+  but the native preview does not yet request suggestions, poll results,
+  apply tag assignments, or honor `AiSettings::auto_analyze`. The preview
+  currently has only a path, not the indexed media ID required by the tagging
+  service; these caller behaviors remain incomplete.
 - To investigate failures, inspect the receiver result and then
   `src/engine.rs` for model access/inference or `src/imagenet.rs` for label
   mapping. Source reference: `vendor/photag-source/src/ai.rs` at PhoTag commit

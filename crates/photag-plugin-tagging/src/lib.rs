@@ -51,6 +51,11 @@ impl TaggingService {
             .with_reader(|connection| queries::get_media_tags(connection, media_id))?)
     }
 
+    /// Return the current hierarchical tag tree for assignment pickers.
+    pub fn tag_tree(&self) -> Result<Vec<Tag>, TaggingError> {
+        Ok(self.database.with_reader(queries::get_tag_tree)?)
+    }
+
     pub fn associated_with(&self, tag_id: i64) -> Result<Vec<i64>, TaggingError> {
         Ok(self
             .database

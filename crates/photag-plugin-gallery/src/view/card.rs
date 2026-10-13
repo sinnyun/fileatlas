@@ -4,6 +4,7 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
 use photag_plugin_drag_drop::DragDropService;
+use photag_ui_bridge::theme;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,6 +17,7 @@ pub(super) fn render_media_card(
     drag_drop: Arc<DragDropService>,
     drag_paths: Vec<PathBuf>,
     drag_allowed: Arc<AtomicBool>,
+    thumb_size: f32,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
@@ -26,33 +28,33 @@ pub(super) fn render_media_card(
     };
     let mut card = div()
         .v_flex()
-        .w_48()
-        .h(px(190.))
+        .w(px(thumb_size + 32.))
+        .h(px(thumb_size + 64.))
         .justify_between()
         .rounded_md()
         .border_1()
         .border_color(if selected {
-            rgb(0x61a9ff)
+            rgb(theme::accent())
         } else {
-            rgb(0x343943)
+            rgb(theme::SURFACE_FAINT)
         })
         .bg(if selected {
-            rgb(0x27374b)
+            rgb(theme::accent_alpha(theme::accent(), 0.42))
         } else {
-            rgb(0x20232b)
+            rgb(theme::SURFACE_PANEL)
         })
         .p_2();
     if let Some(path) = media.thumb_path.as_ref() {
         card = card.child(
             img(std::path::PathBuf::from(path))
                 .w_full()
-                .h(px(125.))
+                .h(px(thumb_size - 35.))
                 .object_fit(ObjectFit::Cover)
-                .with_fallback(|| {
+                .with_fallback(move || {
                     div()
                         .w_full()
-                        .h(px(125.))
-                        .bg(rgb(0x181a20))
+                        .h(px(thumb_size - 35.))
+                        .bg(rgb(theme::SURFACE_PANEL))
                         .into_any_element()
                 }),
         );
@@ -60,13 +62,13 @@ pub(super) fn render_media_card(
         card = card.child(
             div()
                 .w_full()
-                .h(px(125.))
+                .h(px(thumb_size - 35.))
                 .rounded_sm()
-                .bg(rgb(0x181a20))
+                .bg(rgb(theme::SURFACE_PANEL))
                 .items_center()
                 .justify_center()
                 .text_xs()
-                .text_color(rgb(0x696f7c))
+                .text_color(rgb(theme::TEXT_MUTED))
                 .child(media.media_type.to_uppercase()),
         );
     }
@@ -96,7 +98,7 @@ pub(super) fn render_media_card(
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(0x9aa0ad))
+                .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
         )
 }
@@ -133,7 +135,7 @@ pub(super) fn render_media_details(
         .v_flex()
         .gap_1()
         .rounded_md()
-        .bg(rgb(0x20232b))
+        .bg(rgb(theme::SURFACE_PANEL))
         .p_3()
         .child(div().text_lg().font_semibold().child("File"))
         .child(div().text_sm().font_medium().child(media.filename.clone()))
@@ -196,7 +198,7 @@ pub(super) fn render_media_details(
         details = details.child(
             div()
                 .text_sm()
-                .text_color(rgb(0x9aa0ad))
+                .text_color(rgb(theme::TEXT_SECONDARY))
                 .child("No tags assigned."),
         );
     }
@@ -218,7 +220,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(0x9aa0ad))
+                            .text_color(rgb(theme::TEXT_SECONDARY))
                             .child("No EXIF metadata."),
                     );
                 }
@@ -231,7 +233,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(0x9aa0ad))
+                            .text_color(rgb(theme::TEXT_SECONDARY))
                             .child(message.clone()),
                     );
                 }
@@ -239,7 +241,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(0x9aa0ad))
+                            .text_color(rgb(theme::TEXT_SECONDARY))
                             .child("Select one image to read EXIF metadata."),
                     );
                 }
@@ -299,7 +301,11 @@ fn detail_line(key: &str, value: &str) -> Div {
         .h_flex()
         .gap_2()
         .text_sm()
-        .child(div().text_color(rgb(0x9aa0ad)).child(format!("{key}:")))
+        .child(
+            div()
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(format!("{key}:")),
+        )
         .child(div().flex_1().child(value.to_string()))
 }
 

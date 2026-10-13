@@ -8,7 +8,7 @@
 //! Upstream license: `vendor/photag-source/LICENSE`.
 
 use std::path::PathBuf;
-use std::sync::{mpsc, Mutex};
+use std::sync::{Mutex, mpsc};
 
 use super::TagSuggestion;
 
@@ -69,7 +69,8 @@ pub fn download_model(progress_tx: Option<mpsc::Sender<String>>) -> Result<(), S
         if backup.exists() {
             std::fs::remove_file(&backup).map_err(|e| format!("remove old backup: {}", e))?;
         }
-        std::fs::rename(&destination, &backup).map_err(|e| format!("move existing model: {}", e))?;
+        std::fs::rename(&destination, &backup)
+            .map_err(|e| format!("move existing model: {}", e))?;
         if let Err(error) = std::fs::rename(&tmp, &destination) {
             let _ = std::fs::rename(&backup, &destination);
             let _ = std::fs::remove_file(&tmp);
@@ -96,8 +97,6 @@ struct ImageAnalysis {
     center_brightness: f32,
     /// 75th-percentile brightness across the whole image (0–255).
     p75_brightness: f32,
-    /// Average brightness (0–255).
-    avg_brightness: f32,
     /// Warm-vs-cool ratio: >1 means warm tint, <1 means cool.
     warmth: f32,
     /// Average colour saturation (0–1).
@@ -171,7 +170,6 @@ fn analyze_image(image_path: &str) -> Option<ImageAnalysis> {
     Some(ImageAnalysis {
         center_brightness: center_avg,
         p75_brightness: p75,
-        avg_brightness: avg,
         warmth,
         saturation,
     })
@@ -403,7 +401,6 @@ pub fn analyze_mandatory_groups(
     let analysis = analyze_image(image_path).unwrap_or(ImageAnalysis {
         center_brightness: 128.0,
         p75_brightness: 128.0,
-        avg_brightness: 128.0,
         warmth: 1.0,
         saturation: 0.3,
     });

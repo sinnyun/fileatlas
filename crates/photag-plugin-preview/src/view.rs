@@ -5,7 +5,7 @@ use std::sync::Arc;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::*;
-use photag_ui_bridge::UiViewContribution;
+use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::PreviewService;
 
@@ -14,17 +14,38 @@ pub fn preview_view(service: Arc<PreviewService>) -> UiViewContribution {
         let service = Arc::clone(&service);
         app.new(|cx| {
             let view_service = Arc::clone(&service);
+            let focus_handle = cx.focus_handle();
             let mut revision = service.snapshot().revision;
+            let mut decode_revision = service.decode_revision();
+            let mut showing_progressive = service
+                .snapshot()
+                .source
+                .as_deref()
+                .and_then(|source| service.progressive_path(source))
+                .is_some();
+            let decode_service = Arc::clone(&service);
             cx.spawn(async move |this, cx| {
                 loop {
                     cx.background_executor()
                         .timer(std::time::Duration::from_millis(150))
                         .await;
+                    let next_decode_revision = decode_service.decode_revision();
+                    let snapshot = decode_service.snapshot();
+                    let next_showing_progressive = snapshot
+                        .source
+                        .as_deref()
+                        .and_then(|source| decode_service.progressive_path(source))
+                        .is_some();
                     let changed = this
                         .update(cx, |view: &mut PreviewView, cx| {
                             let next = view.service.snapshot().revision;
-                            if next != revision {
+                            if next != revision
+                                || next_decode_revision != decode_revision
+                                || next_showing_progressive != showing_progressive
+                            {
                                 revision = next;
+                                decode_revision = next_decode_revision;
+                                showing_progressive = next_showing_progressive;
                                 cx.notify();
                             }
                         })
@@ -38,6 +59,7 @@ pub fn preview_view(service: Arc<PreviewService>) -> UiViewContribution {
             PreviewView {
                 service: view_service,
                 last_drag_position: None,
+                focus_handle,
             }
         })
         .into()
@@ -47,6 +69,7 @@ pub fn preview_view(service: Arc<PreviewService>) -> UiViewContribution {
 struct PreviewView {
     service: Arc<PreviewService>,
     last_drag_position: Option<(f32, f32)>,
+    focus_handle: FocusHandle,
 }
 
 impl Render for PreviewView {
@@ -168,13 +191,22 @@ impl Render for PreviewView {
         let (image, fit_scale) = match display {
             Ok(Some(path)) => {
                 let dimensions = image::image_dimensions(&path).ok();
+                let display_path = if snapshot.fit_to_window {
+                    snapshot
+                        .source
+                        .as_deref()
+                        .and_then(|source| self.service.progressive_path(source))
+                        .unwrap_or(path)
+                } else {
+                    path
+                };
                 let fit_scale = dimensions.map_or(1.0, |(width, height)| {
                     (viewport_width / width as f32)
                         .min(viewport_height / height as f32)
                         .min(1.0)
                 });
                 let image = match dimensions {
-                    Some((width, height)) if !snapshot.fit_to_window => img(path)
+                    Some((width, height)) if !snapshot.fit_to_window => img(display_path)
                         .w(px(width as f32 * snapshot.zoom_scale))
                         .h(px(height as f32 * snapshot.zoom_scale))
                         .object_fit(ObjectFit::Contain)
@@ -182,7 +214,7 @@ impl Render for PreviewView {
                         .left(px(snapshot.pan_x))
                         .top(px(snapshot.pan_y))
                         .into_any_element(),
-                    _ => img(path)
+                    _ => img(display_path)
                         .max_w_full()
                         .max_h_full()
                         .object_fit(ObjectFit::Contain)
@@ -196,7 +228,7 @@ impl Render for PreviewView {
             Ok(None) => (
                 div()
                     .text_sm()
-                    .text_color(rgb(0x9aa0ad))
+                    .text_color(rgb(theme::TEXT_SECONDARY))
                     .child("Open an indexed image to preview it.")
                     .into_any_element(),
                 1.0,
@@ -204,7 +236,7 @@ impl Render for PreviewView {
             Err(error) => (
                 div()
                     .text_sm()
-                    .text_color(rgb(0xf08080))
+                    .text_color(rgb(theme::DANGER))
                     .child(error.to_string())
                     .into_any_element(),
                 1.0,
@@ -230,7 +262,8 @@ impl Render for PreviewView {
             cx.notify();
         });
         let can_pan = has_image;
-        let down = cx.listener(move |this, event: &MouseDownEvent, _, _| {
+        let down = cx.listener(move |this, event: &MouseDownEvent, window, cx| {
+            window.focus(&this.focus_handle, cx);
             this.last_drag_position =
                 can_pan.then_some((f32::from(event.position.x), f32::from(event.position.y)));
         });
@@ -255,7 +288,7 @@ impl Render for PreviewView {
             .flex_1()
             .min_h_0()
             .w_full()
-            .bg(rgb(0x14161b))
+            .bg(rgb(theme::SURFACE_BASE))
             .overflow_hidden();
         stage = stage.child(
             div()
@@ -283,12 +316,100 @@ impl Render for PreviewView {
                 );
             }
         }
+        let paths = self.service.filmstrip();
+        let current = snapshot
+            .source
+            .as_ref()
+            .and_then(|source| paths.iter().position(|path| path == source));
+        let strip = if paths.len() > 1 {
+            let center = current.unwrap_or(0);
+            let start = center.saturating_sub(3);
+            let end = (start + 7).min(paths.len());
+            let items = paths[start..end]
+                .iter()
+                .enumerate()
+                .map(|(offset, path)| {
+                    let path = path.clone();
+                    let service = Arc::clone(&self.service);
+                    let selected = start + offset == center;
+                    let thumbnail = self.service.filmstrip_thumbnail(&path);
+                    div()
+                        .id(format!("preview-filmstrip-{offset}"))
+                        .w(px(68.0))
+                        .h(px(68.0))
+                        .p_1()
+                        .rounded_md()
+                        .bg(rgb(if selected {
+                            theme::SURFACE_FAINT
+                        } else {
+                            theme::SURFACE_MODAL
+                        }))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, _: &MouseDownEvent, window, cx| {
+                                window.focus(&this.focus_handle, cx);
+                                let _ = service.open(path.clone());
+                                cx.notify();
+                            }),
+                        )
+                        .child(match thumbnail {
+                            Some(thumbnail) => img(thumbnail)
+                                .w_full()
+                                .h_full()
+                                .object_fit(ObjectFit::Contain)
+                                .into_any_element(),
+                            None => div()
+                                .size_full()
+                                .items_center()
+                                .justify_center()
+                                .text_xs()
+                                .child("…")
+                                .into_any_element(),
+                        })
+                })
+                .collect::<Vec<_>>();
+            div()
+                .h_flex()
+                .justify_center()
+                .gap_1()
+                .children(items)
+                .into_any_element()
+        } else {
+            div().into_any_element()
+        };
+        let key_service = Arc::clone(&self.service);
         div()
             .v_flex()
             .flex_1()
             .min_h_0()
             .gap_2()
             .p_3()
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(move |_, event: &KeyDownEvent, _, cx| {
+                match event.keystroke.key.as_str() {
+                    "left" | "ArrowLeft" => {
+                        key_service.navigate_filmstrip(-1);
+                        cx.notify();
+                    }
+                    "right" | "ArrowRight" => {
+                        key_service.navigate_filmstrip(1);
+                        cx.notify();
+                    }
+                    "escape" | "Escape" => {
+                        key_service.close();
+                        cx.notify();
+                    }
+                    "i" | "I" => {
+                        key_service.toggle_info();
+                        cx.notify();
+                    }
+                    "r" | "R" => {
+                        key_service.rotate_clockwise();
+                        cx.notify();
+                    }
+                    _ => {}
+                }
+            }))
             .child(
                 div()
                     .h_flex()
@@ -298,6 +419,7 @@ impl Render for PreviewView {
                     .child(controls),
             )
             .child(stage)
+            .child(strip)
     }
 }
 

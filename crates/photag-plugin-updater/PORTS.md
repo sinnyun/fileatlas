@@ -2,9 +2,9 @@
 
 Status: the source updater's release check, numeric version comparison, staged
 asset download, SHA-256 verification, executable swap with rollback, relaunch,
-and startup cleanup have been ported into a Cordis feature crate. There is no
-shell or settings UI integration yet, so users cannot reach these APIs through
-the native app in this migration slice.
+and startup cleanup are exposed by a Cordis feature crate. Shell registration
+and a Settings UI for checking, downloading, progress, and install are wired.
+Windows executable replacement and relaunch remain unverified.
 
 ## Lifecycle and dependencies
 
@@ -12,16 +12,15 @@ the native app in this migration slice.
   (`UpdaterService`). `UpdaterPlugin` publishes the service and has no runtime
   plugin dependencies.
 - `UpdaterService` exposes synchronous and background latest-release checks,
-  background download with atomic byte progress, install, and startup cleanup.
+  background download with atomic byte progress, direct install, shell-scheduled
+  install (`schedule_install`/`take_pending_install`), and startup cleanup.
 - External dependencies: `ureq = "2"` (HTTP; resolves within major 2),
   `sha2 = "0.10"`, `dirs = 5` (workspace), `serde_json = 1` (workspace),
   `cordis-rs = 0.11.1` and `thiserror = 2` (workspace). The existing upstream
   PhoTag manifest also declares `ureq = "2"` and `sha2 = "0.10"`.
-- The crate is not registered in the root workspace or host manifest by design
-  for this slice. Host integration must add the member/dependency, register
-  `UpdaterPlugin`, call `cleanup_previous()` during startup, and present the
-  service operations from Settings with explicit user confirmation before
-  download/install.
+- The shell starts the updater plugin before Settings. Applying the updater
+  plugin runs best-effort startup cleanup and publishes the service. Settings
+  receives that service through Cordis and owns the user-triggered update UI.
 
 ## Inputs, outputs, and behavior
 
@@ -50,11 +49,12 @@ the native app in this migration slice.
 Compare implementation details against `vendor/photag-source/src/update.rs`
 and Settings update flow in `vendor/photag-source/src/main.rs`
 (`SettingsTab::Updates`, `start_update_check`, `show_update_offer`, and
-`on_exit`). The legacy UI saves session state before installing. Host UI must
-preserve that order and surface install failure via a durable log because the
-source performs install during exit. This implementation uses the package's
-`CARGO_PKG_VERSION`; the host must ensure its package version tracks the
-application release version. Windows executable replacement and relaunch need
-real Windows validation. No plugin-specific UI contribution is registered in
-this crate because the current UI bridge has no updater-specific command/view
-contract.
+`on_exit`). The legacy UI saves session state before installing and installs
+during exit. The current GPUI Settings action uses an explicit two-step
+confirmation and flushes the latest `SessionService` snapshot, then schedules
+the staged path and quits the GPUI application. After `application().run`
+returns, the shell installs the update, so the prior process exits before the
+executable is replaced. Install failures are written to
+`%LOCALAPPDATA%/PhoTag/update-error.txt`. This implementation uses the package's
+`CARGO_PKG_VERSION`; the host package version must track the application
+release version. Windows replacement and relaunch need real Windows validation.

@@ -84,7 +84,7 @@ impl Plugin for AiPlugin {
     }
 
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
-        context
+        let _publication = context
             .provide(Arc::new(AiService))
             .map_err(|error| AiPluginError::Publish(error.to_string()))?;
         Ok(())

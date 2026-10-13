@@ -7,11 +7,14 @@
 mod info;
 mod view;
 
+use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
 
 use cordis::{Context, Plugin, Service};
+use photag_plugin_session::SessionService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
 };
@@ -63,6 +66,55 @@ impl Default for PreviewSnapshot {
 pub struct PreviewService {
     state: Mutex<PreviewSnapshot>,
     cache_dir: PathBuf,
+    session: Option<Arc<SessionService>>,
+    filmstrip: Mutex<Vec<PathBuf>>,
+    decode_queue: Arc<DecodeQueue>,
+    pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32)>>>,
+    decode_revision: Arc<AtomicU64>,
+}
+
+struct DecodeJob {
+    source: PathBuf,
+    target: PathBuf,
+    max_dim: u32,
+}
+
+#[derive(Default)]
+struct DecodeQueue {
+    jobs: Mutex<VecDeque<DecodeJob>>,
+    ready: Condvar,
+    closed: Mutex<bool>,
+}
+
+impl DecodeQueue {
+    fn push(&self, job: DecodeJob) {
+        if let Ok(mut jobs) = self.jobs.lock() {
+            jobs.push_back(job);
+            self.ready.notify_one();
+        }
+    }
+
+    fn pop(&self) -> Option<DecodeJob> {
+        let mut jobs = self.jobs.lock().ok()?;
+        loop {
+            if let Some(job) = jobs.pop_front() {
+                return Some(job);
+            }
+            if self.closed.lock().map(|closed| *closed).unwrap_or(true) {
+                return None;
+            }
+            jobs = self.ready.wait(jobs).ok()?;
+        }
+    }
+}
+
+impl Drop for PreviewService {
+    fn drop(&mut self) {
+        if let Ok(mut closed) = self.decode_queue.closed.lock() {
+            *closed = true;
+        }
+        self.decode_queue.ready.notify_all();
+    }
 }
 
 impl Service for PreviewService {
@@ -73,14 +125,82 @@ impl PreviewService {
     pub fn open_at(cache_dir: impl Into<PathBuf>) -> std::io::Result<Self> {
         let cache_dir = cache_dir.into();
         std::fs::create_dir_all(&cache_dir)?;
+        let decode_queue = Arc::new(DecodeQueue::default());
+        let pending_decodes = Arc::new(Mutex::new(HashSet::new()));
+        let decode_revision = Arc::new(AtomicU64::new(0));
+        for _ in 0..2 {
+            let queue = Arc::clone(&decode_queue);
+            let pending = Arc::clone(&pending_decodes);
+            let revision = Arc::clone(&decode_revision);
+            std::thread::spawn(move || {
+                while let Some(job) = queue.pop() {
+                    let key = (job.source.clone(), job.max_dim);
+                    let decoded = image::open(&job.source)
+                        .ok()
+                        .map(|image| image.thumbnail(job.max_dim, job.max_dim));
+                    let written = decoded.is_some_and(|image| {
+                        let temporary = job.target.with_extension(format!(
+                            "{}.tmp.jpg",
+                            std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map_or(0, |elapsed| elapsed.as_nanos())
+                        ));
+                        image.save(&temporary).is_ok()
+                            && if std::fs::rename(&temporary, &job.target).is_ok() {
+                                true
+                            } else {
+                                let _ = std::fs::remove_file(temporary);
+                                job.target.is_file()
+                            }
+                    });
+                    if written {
+                        revision.fetch_add(1, Ordering::Release);
+                    }
+                    if let Ok(mut pending) = pending.lock() {
+                        pending.remove(&key);
+                    }
+                }
+            });
+        }
         Ok(Self {
             state: Mutex::new(PreviewSnapshot::default()),
             cache_dir,
+            session: None,
+            filmstrip: Mutex::new(Vec::new()),
+            decode_queue,
+            pending_decodes,
+            decode_revision,
         })
+    }
+
+    pub fn open_with_session_at(
+        cache_dir: impl Into<PathBuf>,
+        session: Arc<SessionService>,
+    ) -> std::io::Result<Self> {
+        let mut service = Self::open_at(cache_dir)?;
+        service.session = Some(session);
+        if let Some(path) = service
+            .session
+            .as_ref()
+            .and_then(|session| session.snapshot().ok())
+            .and_then(|state| state.preview_path)
+            .map(PathBuf::from)
+        {
+            if path.is_file() {
+                let _ = service.open(path);
+            } else {
+                service.save_preview_path(None);
+            }
+        }
+        Ok(service)
     }
 
     pub fn snapshot(&self) -> PreviewSnapshot {
         self.state.lock().map(|s| s.clone()).unwrap_or_default()
+    }
+
+    pub fn decode_revision(&self) -> u64 {
+        self.decode_revision.load(Ordering::Acquire)
     }
 
     pub fn open(&self, path: impl Into<PathBuf>) -> Result<(), PreviewError> {
@@ -89,7 +209,7 @@ impl PreviewService {
             return Err(PreviewError::MissingSource(path));
         }
         let mut state = self.state.lock().map_err(|_| PreviewError::StatePoisoned)?;
-        state.source = Some(path);
+        state.source = Some(path.clone());
         state.quarter_turns = 0;
         state.flip_horizontal = false;
         state.flip_vertical = false;
@@ -99,7 +219,108 @@ impl PreviewService {
         state.pan_x = 0.0;
         state.pan_y = 0.0;
         state.revision = state.revision.wrapping_add(1);
+        drop(state);
+        self.save_preview_path(Some(path));
+        if let Some(source) = self.snapshot().source {
+            self.prewarm_image(&source, 1600);
+            let paths = self.filmstrip();
+            if let Some(index) = paths.iter().position(|path| path == &source) {
+                for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
+                    self.prewarm_image(path, 96);
+                    if path != &source {
+                        self.prewarm_image(path, 1600);
+                    }
+                }
+            }
+        }
         Ok(())
+    }
+
+    /// Set the ordered image paths used by the preview filmstrip and arrow-key navigation.
+    /// Only a small neighborhood is decoded ahead, so filtered libraries do not fan out work.
+    pub fn set_filmstrip(&self, paths: impl IntoIterator<Item = PathBuf>) {
+        let paths: Vec<_> = paths.into_iter().filter(|path| path.is_file()).collect();
+        if let Ok(mut strip) = self.filmstrip.lock() {
+            *strip = paths.clone();
+        }
+        let current = self.snapshot().source;
+        if let Some(index) =
+            current.and_then(|path| paths.iter().position(|candidate| candidate == &path))
+        {
+            for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
+                self.prewarm_image(path, 96);
+            }
+        }
+    }
+
+    pub fn filmstrip(&self) -> Vec<PathBuf> {
+        self.filmstrip
+            .lock()
+            .map(|paths| paths.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn navigate_filmstrip(&self, delta: isize) -> bool {
+        let Some(current) = self.snapshot().source else {
+            return false;
+        };
+        let paths = self.filmstrip();
+        let Some(index) = paths.iter().position(|path| path == &current) else {
+            return false;
+        };
+        let next =
+            (index as isize + delta).clamp(0, paths.len().saturating_sub(1) as isize) as usize;
+        if next == index {
+            return false;
+        }
+        self.open(paths[next].clone()).is_ok()
+    }
+
+    /// Return a brief low-resolution first frame while the native image element starts
+    /// decoding the full source. The file is produced off the render thread.
+    pub fn progressive_path(&self, source: &std::path::Path) -> Option<PathBuf> {
+        let fast = self.decode_cache_path(source, 1600);
+        if !fast.is_file() {
+            return None;
+        }
+        let recent = fast
+            .metadata()
+            .ok()
+            .and_then(|metadata| metadata.modified().ok())
+            .and_then(|modified| modified.elapsed().ok())
+            .is_some_and(|age| age < std::time::Duration::from_millis(500));
+        recent.then_some(fast)
+    }
+
+    pub fn filmstrip_thumbnail(&self, source: &std::path::Path) -> Option<PathBuf> {
+        let path = self.decode_cache_path(source, 96);
+        path.is_file().then_some(path)
+    }
+
+    fn decode_cache_path(&self, source: &std::path::Path, max_dim: u32) -> PathBuf {
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        source.hash(&mut hasher);
+        self.cache_dir
+            .join(format!("preview-{max_dim}-{:016x}.jpg", hasher.finish()))
+    }
+
+    fn prewarm_image(&self, source: &std::path::Path, max_dim: u32) {
+        let target = self.decode_cache_path(source, max_dim);
+        if target.is_file() {
+            return;
+        }
+        let source = source.to_path_buf();
+        let key = (source.clone(), max_dim);
+        let Ok(mut pending) = self.pending_decodes.lock() else {
+            return;
+        };
+        if pending.insert(key.clone()) {
+            self.decode_queue.push(DecodeJob {
+                source,
+                target,
+                max_dim,
+            });
+        }
     }
 
     pub fn close(&self) {
@@ -107,6 +328,7 @@ impl PreviewService {
             s.source = None;
             s.revision = s.revision.wrapping_add(1);
         }
+        self.save_preview_path(None);
     }
     pub fn rotate_clockwise(&self) {
         self.change(|s| s.quarter_turns = (s.quarter_turns + 1) % 4);
@@ -226,6 +448,16 @@ impl PreviewService {
             state.revision = state.revision.wrapping_add(1);
         }
     }
+
+    fn save_preview_path(&self, path: Option<PathBuf>) {
+        let Some(session) = &self.session else { return };
+        if let Ok(mut saved) = session.snapshot() {
+            saved.preview_path = path.map(|path| path.to_string_lossy().into_owned());
+            if let Err(error) = session.replace(saved) {
+                eprintln!("preview session save failed: {error}");
+            }
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -242,6 +474,8 @@ pub enum PreviewError {
     Io(#[from] std::io::Error),
     #[error("could not publish preview service: {0}")]
     Publish(String),
+    #[error("session service is unavailable")]
+    SessionUnavailable,
     #[error("could not register preview UI: {0}")]
     Ui(String),
 }
@@ -265,7 +499,10 @@ impl Plugin for PreviewPlugin {
     }
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let directory = config.cache_dir.clone().unwrap_or_else(default_cache_dir);
-        let service = Arc::new(PreviewService::open_at(directory)?);
+        let session = context
+            .try_service::<SessionService>()
+            .map_err(|_| PreviewError::SessionUnavailable)?;
+        let service = Arc::new(PreviewService::open_with_session_at(directory, session)?);
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| PreviewError::Publish(error.to_string()))?;

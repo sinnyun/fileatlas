@@ -24,6 +24,7 @@ fn dev_plugin_config() -> String {
         "history",
         "media-playback",
         "drag-drop",
+        "mcp",
     ];
     for plugin in config
         .split(',')
@@ -53,10 +54,13 @@ struct PhoTagShell {
     views: Vec<(String, gpui_kit::AnyView)>,
     cordis: CordisContext,
     executor: tokio::runtime::Handle,
+    session: Arc<photag_plugin_session::SessionService>,
+    sidebar_width: f32,
+    resizing_sidebar: bool,
 }
 
 impl Render for PhoTagShell {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let contributions = self.catalog.snapshot().unwrap_or_default();
         let mut sidebar_views = Vec::new();
         let mut content_views = Vec::new();
@@ -117,11 +121,48 @@ impl Render for PhoTagShell {
                     .child(
                         div()
                             .v_flex()
-                            .w_72()
+                            .w(px(self.sidebar_width))
                             .border_r_1()
                             .border_color(rgb(0x343943))
                             .overflow_y_scrollbar()
                             .children(sidebar_views),
+                    )
+                    .child(
+                        div()
+                            .w(px(4.))
+                            .h_full()
+                            .bg(rgb(0x343943))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, _| {
+                                    this.resizing_sidebar = true;
+                                }),
+                            )
+                            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
+                                if this.resizing_sidebar {
+                                    let next = f32::from(event.position.x).clamp(160., 500.);
+                                    if (next - this.sidebar_width).abs() > 0.5 {
+                                        this.sidebar_width = next;
+                                        cx.notify();
+                                    }
+                                }
+                            }))
+                            .on_mouse_up(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, _| {
+                                    if this.resizing_sidebar {
+                                        this.resizing_sidebar = false;
+                                        if let Ok(mut saved) = this.session.snapshot() {
+                                            saved.sidebar_width = this.sidebar_width;
+                                            if let Err(error) = this.session.replace(saved) {
+                                                eprintln!(
+                                                    "sidebar width session save failed: {error}"
+                                                );
+                                            }
+                                        }
+                                    }
+                                }),
+                            ),
                     )
                     .child(
                         div()
@@ -204,39 +245,61 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
 
 fn main() {
     let plugin_config = dev_plugin_config();
+    let mcp_arg = std::env::args().skip(1).any(|arg| arg == "--mcp");
+    let enable_mcp = mcp_arg
+        || plugin_config
+            .split(',')
+            .any(|plugin| plugin.trim() == "mcp");
     let enable_all = dev_plugin_enabled(&plugin_config, "all");
     let enable_history = enable_all || dev_plugin_enabled(&plugin_config, "history");
     let enable_gallery =
-        enable_all || enable_history || dev_plugin_enabled(&plugin_config, "gallery");
-    let enable_navigation = enable_all || dev_plugin_enabled(&plugin_config, "navigation");
+        enable_all || enable_mcp || enable_history || dev_plugin_enabled(&plugin_config, "gallery");
+    let enable_ai =
+        enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
+    let enable_navigation =
+        enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "navigation");
     let enable_metadata_export =
-        enable_all || dev_plugin_enabled(&plugin_config, "metadata-export");
-    let enable_file_operations =
-        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "file-operations");
+        enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
+    let enable_file_operations = enable_all
+        || enable_mcp
+        || enable_gallery
+        || dev_plugin_enabled(&plugin_config, "file-operations");
     let enable_thumbnails = enable_all
+        || enable_mcp
         || enable_navigation
         || dev_plugin_enabled(&plugin_config, "thumbnails")
         || dev_plugin_enabled(&plugin_config, "indexing")
         || dev_plugin_enabled(&plugin_config, "watcher");
     let enable_indexing = enable_all
+        || enable_mcp
         || enable_navigation
         || dev_plugin_enabled(&plugin_config, "indexing")
         || dev_plugin_enabled(&plugin_config, "watcher");
-    let enable_watcher =
-        enable_all || enable_navigation || dev_plugin_enabled(&plugin_config, "watcher");
+    let enable_watcher = enable_all
+        || enable_mcp
+        || enable_navigation
+        || dev_plugin_enabled(&plugin_config, "watcher");
     let enable_tagging =
-        enable_all || enable_history || dev_plugin_enabled(&plugin_config, "tagging");
+        enable_all || enable_mcp || enable_history || dev_plugin_enabled(&plugin_config, "tagging");
     let enable_history = enable_history || (enable_gallery && enable_tagging);
-    let enable_media_playback =
-        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "media-playback");
-    let enable_drag_drop =
-        enable_all || enable_gallery || dev_plugin_enabled(&plugin_config, "drag-drop");
+    let enable_media_playback = enable_all
+        || enable_mcp
+        || enable_gallery
+        || dev_plugin_enabled(&plugin_config, "media-playback");
+    let enable_drag_drop = enable_all
+        || enable_mcp
+        || enable_gallery
+        || dev_plugin_enabled(&plugin_config, "drag-drop");
     eprintln!("Starting development plugins: {plugin_config}");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("create Cordis async runtime");
     let cordis = CordisContext::new();
+    let capture_handle = Arc::new(photag_plugin_mcp::CaptureWindowHandle::default());
+    let _capture_publication = cordis
+        .provide(Arc::clone(&capture_handle))
+        .expect("publish MCP window capture handle");
     let catalog = Arc::new(UiCatalog::default());
     let bridge = Arc::new(UiBridgeService::new(Arc::clone(&catalog)));
     let _bridge_publication = cordis
@@ -250,6 +313,13 @@ fn main() {
     let session_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(session_plugin, session_input)))
         .expect("start session plugin");
+    let updater_plugin = photag_plugin_updater::UpdaterPlugin;
+    let updater_input = updater_plugin
+        .prepare(photag_plugin_updater::UpdaterConfig)
+        .expect("prepare updater plugin");
+    let updater_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(updater_plugin, updater_input)))
+        .expect("start updater plugin");
     let database_plugin = photag_plugin_database::DatabasePlugin;
     let database_input = database_plugin
         .prepare(photag_plugin_database::DatabaseConfig::default())
@@ -305,19 +375,6 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start metadata export plugin"),
-        )
-    } else {
-        None
-    };
-    let gallery_fiber = if enable_gallery {
-        let plugin = photag_plugin_gallery::GalleryPlugin;
-        let input = plugin
-            .prepare(photag_plugin_gallery::GalleryConfig)
-            .expect("prepare gallery plugin");
-        Some(
-            runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start gallery plugin"),
         )
     } else {
         None
@@ -383,6 +440,21 @@ fn main() {
     let settings_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
         .expect("start settings plugin");
+    // Start AI after Settings so future consumers can read the user's
+    // mandatory tag groups before requesting suggestions.
+    let ai_fiber = if enable_ai {
+        let plugin = photag_plugin_ai::AiPlugin;
+        let input = plugin
+            .prepare(photag_plugin_ai::AiConfig)
+            .expect("prepare AI plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start AI plugin"),
+        )
+    } else {
+        None
+    };
     let tagging_fiber = if enable_tagging {
         let plugin = photag_plugin_tagging::TaggingPlugin;
         let input = plugin
@@ -422,32 +494,74 @@ fn main() {
     } else {
         None
     };
+    // Gallery requires the media-playback service and optionally consumes
+    // tagging/history services, so start it after all of those providers.
+    let gallery_fiber = if enable_gallery {
+        let plugin = photag_plugin_gallery::GalleryPlugin;
+        let input = plugin
+            .prepare(photag_plugin_gallery::GalleryConfig)
+            .expect("prepare gallery plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start gallery plugin"),
+        )
+    } else {
+        None
+    };
+    let mcp_fiber = if enable_mcp {
+        let plugin = photag_plugin_mcp::McpPlugin;
+        let input = plugin.prepare(()).expect("prepare MCP plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start MCP plugin"),
+        )
+    } else {
+        None
+    };
     let executor = runtime.handle().clone();
+    let app_cordis = cordis.clone();
 
     gpui_kit::application().run(move |cx| {
         gpui_kit::init(cx);
         let catalog = Arc::clone(&catalog);
         let views = Arc::clone(&bridge.views);
-        let cordis = cordis.clone();
+        let cordis = app_cordis.clone();
         let executor = executor.clone();
+        let capture_handle = Arc::clone(&capture_handle);
+        let session = cordis
+            .try_service::<photag_plugin_session::SessionService>()
+            .expect("session service started before shell");
+        let sidebar_width = session
+            .snapshot()
+            .ok()
+            .map(|saved| saved.sidebar_width)
+            .filter(|width| width.is_finite() && (160.0..=500.0).contains(width))
+            .unwrap_or(288.0);
+        let session_for_shell = Arc::clone(&session);
         gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
             #[cfg(target_os = "windows")]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-                let backdrop = window
+                let hwnd = window
                     .window_handle()
                     .ok()
                     .and_then(|handle| match handle.as_raw() {
-                        RawWindowHandle::Win32(handle) => Some(
-                            photag_ui_bridge::winfx::apply_backdrop(handle.hwnd.get() as isize),
-                        ),
+                        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as isize),
                         _ => None,
-                    })
+                    });
+                capture_handle.set(hwnd.unwrap_or_default());
+                let backdrop = hwnd
+                    .map(photag_ui_bridge::winfx::apply_backdrop)
                     .unwrap_or(photag_ui_bridge::winfx::Backdrop::None);
                 photag_ui_bridge::theme::set_backdrop_active(backdrop.is_translucent());
             }
             #[cfg(not(target_os = "windows"))]
-            photag_ui_bridge::theme::set_backdrop_active(false);
+            {
+                capture_handle.set(1);
+                photag_ui_bridge::theme::set_backdrop_active(false);
+            }
             let mounted_views = views
                 .snapshot()
                 .unwrap_or_default()
@@ -463,30 +577,70 @@ fn main() {
                 views: mounted_views,
                 cordis,
                 executor,
+                session: session_for_shell,
+                sidebar_width,
+                resizing_sidebar: false,
             })
         })
         .expect("open PhoTag window");
     });
 
-    if let Some(fiber) = history_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop history plugin");
+    if let Ok(updater) = cordis.try_service::<photag_plugin_updater::UpdaterService>() {
+        match updater.take_pending_install() {
+            Ok(Some(staged)) => {
+                if let Err(error) = updater.install(&staged) {
+                    let log = dirs::data_local_dir()
+                        .unwrap_or_else(|| std::path::PathBuf::from("."))
+                        .join("PhoTag")
+                        .join("update-error.txt");
+                    let _ = std::fs::create_dir_all(
+                        log.parent().unwrap_or_else(|| std::path::Path::new(".")),
+                    );
+                    let _ = std::fs::write(
+                        &log,
+                        format!(
+                            "PhoTag {} could not install update from {}\n\n{}\n",
+                            photag_plugin_updater::current_version(),
+                            staged.display(),
+                            error
+                        ),
+                    );
+                    eprintln!("update installation failed: {error}; see {}", log.display());
+                }
+            }
+            Ok(None) => {}
+            Err(error) => eprintln!("could not read scheduled update: {error}"),
+        }
     }
-    if let Some(fiber) = media_playback_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop media playback plugin");
-    }
-    if let Some(fiber) = tagging_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop tagging plugin");
+
+    if let Some(fiber) = mcp_fiber {
+        runtime.block_on(fiber.dispose()).expect("stop MCP plugin");
     }
     if let Some(fiber) = gallery_fiber {
         runtime
             .block_on(fiber.dispose())
             .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = history_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop history plugin");
+    }
+    if let Some(fiber) = ai_fiber {
+        runtime.block_on(fiber.dispose()).expect("stop AI plugin");
+    }
+    runtime
+        .block_on(settings_fiber.dispose())
+        .expect("stop settings plugin");
+    if let Some(fiber) = tagging_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop tagging plugin");
+    }
+    if let Some(fiber) = media_playback_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop media playback plugin");
     }
     if let Some(fiber) = navigation_fiber {
         runtime
@@ -532,9 +686,9 @@ fn main() {
         .block_on(database_fiber.dispose())
         .expect("stop database plugin");
     runtime
+        .block_on(updater_fiber.dispose())
+        .expect("stop updater plugin");
+    runtime
         .block_on(session_fiber.dispose())
         .expect("stop session plugin");
-    runtime
-        .block_on(settings_fiber.dispose())
-        .expect("stop settings plugin");
 }

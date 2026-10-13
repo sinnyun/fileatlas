@@ -8,7 +8,7 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::*;
-use photag_ui_bridge::{UiCommandInvoked, UiViewContribution};
+use photag_ui_bridge::{UiCommandInvoked, UiViewContribution, theme};
 
 use crate::{EXPORT_COMMAND_ID, MetadataExportService, MetadataExportStatus};
 
@@ -134,7 +134,7 @@ impl Render for ExportPanel {
             .gap_2()
             .p_3()
             .border_t_1()
-            .border_color(rgb(0x343943))
+            .border_color(rgb(theme::SURFACE_FAINT))
             .child(div().text_sm().font_semibold().child("Metadata backup"))
             .child(
                 div()
@@ -154,9 +154,19 @@ impl Render for ExportPanel {
                             .on_click(cx.listener(|this, _, _, cx| this.export(cx))),
                     ),
             )
-            .child(div().text_xs().text_color(rgb(0x9aa0ad)).child(status));
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(status),
+            );
         if let Some(message) = error {
-            panel.child(div().text_xs().text_color(rgb(0xef7777)).child(message))
+            panel.child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::DANGER))
+                    .child(message),
+            )
         } else {
             panel
         }

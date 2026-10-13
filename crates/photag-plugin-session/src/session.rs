@@ -42,6 +42,15 @@ pub struct SessionState {
     pub sidebar_tab: String,
     #[serde(default)]
     pub gallery_scroll: f32,
+    /// Gallery selection restored only when the saved IDs still match the active query.
+    #[serde(default)]
+    pub selected_media_ids: Vec<i64>,
+    /// Reopen the image preview on startup when the source still exists.
+    #[serde(default)]
+    pub preview_path: Option<String>,
+    /// Whether the gallery groups date-sorted results by capture month.
+    #[serde(default)]
+    pub group_by_month: Option<bool>,
     /// Persisted left-sidebar width. 0 means "unset" → use the in-app default.
     #[serde(default)]
     pub sidebar_width: f32,

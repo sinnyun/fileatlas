@@ -6,7 +6,8 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::MediaQuery;
-use std::{path::PathBuf, sync::Arc};
+use photag_ui_bridge::theme;
+use std::sync::Arc;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum BulkActionKind {
@@ -178,7 +179,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         .v_flex()
         .gap_2()
         .rounded_md()
-        .bg(rgb(0x20232b))
+        .bg(rgb(theme::SURFACE_PANEL))
         .p_3()
         .child(
             Button::new("gallery-bulk-toggle")
@@ -246,12 +247,9 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         panel = panel.child(
             div()
                 .text_xs()
-                .text_color(rgb(0x9aa0ad))
+                .text_color(rgb(theme::TEXT_SECONDARY))
                 .child("Current selection uses its selected items directly; filters are skipped."),
         );
-    }
-    if matches!(action, BulkActionKind::CopyTo | BulkActionKind::MoveTo) {
-        panel = panel.child(Input::new(&view.destination_input).w(px(320.)));
     }
     let matching = matching_ids(view, cx);
     let (count, error) = match matching {
@@ -259,13 +257,13 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         Err(error) => (0, Some(error)),
     };
     if let Some(error) = error {
-        panel = panel.child(div().text_sm().text_color(rgb(0xef7777)).child(error));
+        panel = panel.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
     }
     if let Some(status) = &view.operation_status {
         panel = panel.child(
             div()
                 .text_sm()
-                .text_color(rgb(0x9aa0ad))
+                .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(status.clone()),
         );
     }
@@ -298,14 +296,14 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                                     format!("{} {count}", action.verb())
                                 },
                             )
-                            .on_click(cx.listener(|this, _, _, cx| execute(this, cx))),
+                            .on_click(cx.listener(|this, _, window, cx| execute(this, window, cx))),
                     ),
             ),
     );
     panel.into_any_element()
 }
 
-fn execute(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
+fn execute(view: &mut GalleryView, _window: &mut Window, cx: &mut Context<GalleryView>) {
     let Some(action) = view.bulk_action else {
         return;
     };
@@ -331,10 +329,12 @@ fn execute(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
         cx.notify();
         return;
     }
-    let destination = view.destination_input.read(cx).value().trim().to_string();
-    if action != BulkActionKind::Delete && destination.is_empty() {
-        view.operation_status = Some("Enter a destination folder path first.".into());
-        cx.notify();
+    let destination = if action == BulkActionKind::Delete {
+        None
+    } else {
+        rfd::FileDialog::new().pick_folder()
+    };
+    if action != BulkActionKind::Delete && destination.is_none() {
         return;
     }
     view.bulk_action = None;
@@ -345,34 +345,44 @@ fn execute(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
     view.start_operation(
         async move {
             match action {
-                BulkActionKind::CopyTo => match operations
-                    .bulk_copy_to_folder(ids.clone(), PathBuf::from(destination))
-                    .await
-                {
-                    Err(error) => format!("Copy failed: {error}"),
-                    Ok(outcomes) => format_bulk_outcome(
-                        "Copied",
-                        total,
-                        outcomes.iter().filter(|item| item.copied).count(),
-                        outcomes.iter().filter_map(|item| {
-                            item.error.as_ref().map(|error| (item.media_id, error))
-                        }),
-                    ),
-                },
-                BulkActionKind::MoveTo => match operations
-                    .bulk_move_into_folder(ids.clone(), PathBuf::from(destination))
-                    .await
-                {
-                    Err(error) => format!("Move failed: {error}"),
-                    Ok(outcomes) => format_bulk_outcome(
-                        "Moved",
-                        total,
-                        outcomes.iter().filter(|item| item.moved).count(),
-                        outcomes.iter().filter_map(|item| {
-                            item.error.as_ref().map(|error| (item.media_id, error))
-                        }),
-                    ),
-                },
+                BulkActionKind::CopyTo => {
+                    let Some(destination) = destination else {
+                        return "Copy cancelled; no destination was selected.".into();
+                    };
+                    match operations
+                        .bulk_copy_to_folder(ids.clone(), destination)
+                        .await
+                    {
+                        Err(error) => format!("Copy failed: {error}"),
+                        Ok(outcomes) => format_bulk_outcome(
+                            "Copied",
+                            total,
+                            outcomes.iter().filter(|item| item.copied).count(),
+                            outcomes.iter().filter_map(|item| {
+                                item.error.as_ref().map(|error| (item.media_id, error))
+                            }),
+                        ),
+                    }
+                }
+                BulkActionKind::MoveTo => {
+                    let Some(destination) = destination else {
+                        return "Move cancelled; no destination was selected.".into();
+                    };
+                    match operations
+                        .bulk_move_into_folder(ids.clone(), destination)
+                        .await
+                    {
+                        Err(error) => format!("Move failed: {error}"),
+                        Ok(outcomes) => format_bulk_outcome(
+                            "Moved",
+                            total,
+                            outcomes.iter().filter(|item| item.moved).count(),
+                            outcomes.iter().filter_map(|item| {
+                                item.error.as_ref().map(|error| (item.media_id, error))
+                            }),
+                        ),
+                    }
+                }
                 BulkActionKind::Delete => {
                     match operations.bulk_delete_to_recycle_bin(ids.clone()).await {
                         Err(error) => format!("Delete failed: {error}"),

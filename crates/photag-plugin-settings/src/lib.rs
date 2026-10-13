@@ -135,6 +135,12 @@ impl Plugin for SettingsPlugin {
             .try_service::<photag_plugin_navigation::NavigationService>()
             .ok()
             .map(|service| Arc::downgrade(&service));
+        let updater = context
+            .try_service::<photag_plugin_updater::UpdaterService>()
+            .ok();
+        let session = context
+            .try_service::<photag_plugin_session::SessionService>()
+            .ok();
         photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
         let publication = context
             .provide(Arc::clone(&service))
@@ -179,7 +185,7 @@ impl Plugin for SettingsPlugin {
         register_views_for_plugin(
             &context,
             "photag.settings",
-            [view::settings(service, navigation)],
+            [view::settings(service, navigation, updater, session)],
         )
         .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         drop(publication);

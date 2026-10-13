@@ -1,5 +1,6 @@
 //! Individual and bulk filter reset actions.
 
+use gpui_kit::component::calendar::Date;
 use gpui_kit::*;
 
 use super::GalleryView;
@@ -18,10 +19,12 @@ impl GalleryView {
         };
         self.search
             .update(cx, |input, cx| input.set_value("", window, cx));
-        self.date_from
-            .update(cx, |input, cx| input.set_value("", window, cx));
-        self.date_to
-            .update(cx, |input, cx| input.set_value("", window, cx));
+        self.date_from.update(cx, |picker, cx| {
+            picker.set_date(Date::Single(None), window, cx)
+        });
+        self.date_to.update(cx, |picker, cx| {
+            picker.set_date(Date::Single(None), window, cx)
+        });
         self.reload();
         cx.notify();
     }
@@ -46,7 +49,9 @@ impl GalleryView {
         } else {
             self.filter.date_to = None;
         }
-        input.update(cx, |input, cx| input.set_value("", window, cx));
+        input.update(cx, |picker, cx| {
+            picker.set_date(Date::Single(None), window, cx)
+        });
         self.reload();
         cx.notify();
     }
@@ -66,6 +71,17 @@ impl GalleryView {
 
     pub(super) fn clear_extension_filter(&mut self, extension: String, cx: &mut Context<Self>) {
         self.filter.clear_extension(&extension);
+        self.reload();
+        cx.notify();
+    }
+
+    pub(super) fn clear_tag_filter(&mut self, tag_id: i64, included: bool, cx: &mut Context<Self>) {
+        let ids = if included {
+            &mut self.filter.selected_tag_ids
+        } else {
+            &mut self.filter.excluded_tag_ids
+        };
+        ids.retain(|id| *id != tag_id);
         self.reload();
         cx.notify();
     }

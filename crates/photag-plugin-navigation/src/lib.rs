@@ -77,7 +77,8 @@ impl NavigationService {
             .scan_folder(folder.id, folder.path.clone(), cancel))
     }
 
-    fn cancel_scan(&self, folder_id: i64) -> Result<(), NavigationError> {
+    /// Cancel a running scan for one registered folder. Returns success when no scan is active.
+    pub fn cancel_scan(&self, folder_id: i64) -> Result<(), NavigationError> {
         if let Some(cancel) = self
             .scans
             .lock()

@@ -24,8 +24,9 @@ impl Plugin for UpdaterPlugin {
     }
 
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
-        context
-            .provide(Arc::new(UpdaterService))
+        crate::cleanup_previous();
+        let _publication = context
+            .provide(Arc::new(UpdaterService::default()))
             .map_err(|error| UpdaterPluginError::Publish(error.to_string()))?;
         Ok(())
     }

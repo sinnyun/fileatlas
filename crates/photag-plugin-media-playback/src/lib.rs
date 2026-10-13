@@ -1,13 +1,14 @@
 //! FFmpeg-backed video playback service and lifecycle-owned GPUI transport surface.
 //!
 //! Frames and timestamps are produced by one FFmpeg decode process. The source PhoTag
-//! implementation used separate video and audio processes plus rodio; this port keeps
-//! video timeline/speed/rotation behavior and exposes audio capability as unavailable
-//! until the host supplies a supported audio output backend.
+//! implementation used separate video and audio processes plus rodio; the service keeps
+//! separate FFmpeg video and PCM audio decoders, with rodio output isolated to its owning
+//! worker thread so the Cordis service remains Send + Sync.
 
 mod ffmpeg;
 mod view;
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
 use std::sync::{Arc, Mutex, mpsc};
@@ -63,6 +64,7 @@ impl Default for PlaybackSnapshot {
 struct PlaybackState {
     snapshot: PlaybackSnapshot,
     child: Option<Child>,
+    audio: Option<AudioSession>,
     receiver: Option<mpsc::Receiver<PathBuf>>,
     started: Option<Instant>,
     start_position: f64,
@@ -86,6 +88,7 @@ impl MediaPlaybackService {
             state: Mutex::new(PlaybackState {
                 snapshot: PlaybackSnapshot::default(),
                 child: None,
+                audio: None,
                 receiver: None,
                 started: None,
                 start_position: 0.0,
@@ -101,11 +104,7 @@ impl MediaPlaybackService {
             Err(_) => return PlaybackSnapshot::default(),
         };
         if state.snapshot.playing {
-            state.snapshot.position_seconds = (state.start_position
-                + state.started.map_or(0.0, |t| {
-                    t.elapsed().as_secs_f64() * state.snapshot.speed as f64
-                }))
-            .min(state.snapshot.duration_seconds);
+            state.snapshot.position_seconds = current_position(&state);
         }
         let mut decoder_finished = false;
         let mut pause_frame_ready = false;
@@ -132,9 +131,8 @@ impl MediaPlaybackService {
             stop(&mut state);
         }
         if decoder_finished {
-            state.snapshot.playing = false;
+            stop(&mut state);
             state.snapshot.position_seconds = state.snapshot.duration_seconds;
-            state.receiver = None;
             state.snapshot.revision = state.snapshot.revision.wrapping_add(1);
         }
         state.snapshot.clone()
@@ -233,6 +231,11 @@ impl MediaPlaybackService {
     pub fn set_volume(&self, volume: f32) {
         if let Ok(mut state) = self.state.lock() {
             state.snapshot.volume = volume.clamp(0.0, 1.5);
+            if let Some(audio) = &state.audio {
+                let _ = audio
+                    .commands
+                    .send(AudioCommand::SetVolume(state.snapshot.volume));
+            }
             state.snapshot.revision = state.snapshot.revision.wrapping_add(1);
         }
     }
@@ -241,8 +244,12 @@ impl MediaPlaybackService {
         if let Ok(mut state) = self.state.lock() {
             stop(&mut state);
             state.pause_after_frame = false;
+            let volume = state.snapshot.volume;
+            let speed = state.snapshot.speed;
             state.snapshot = PlaybackSnapshot {
                 revision: state.snapshot.revision.wrapping_add(1),
+                volume,
+                speed,
                 ..PlaybackSnapshot::default()
             };
         }
@@ -255,6 +262,14 @@ impl MediaPlaybackService {
 
 fn current_position(state: &PlaybackState) -> f64 {
     if state.snapshot.playing {
+        if let Some(audio) = &state.audio {
+            let (sender, receiver) = mpsc::sync_channel(1);
+            if audio.commands.send(AudioCommand::Position(sender)).is_ok()
+                && let Ok(Some(position)) = receiver.recv_timeout(Duration::from_millis(100))
+            {
+                return (state.start_position + position).min(state.snapshot.duration_seconds);
+            }
+        }
         (state.start_position
             + state.started.map_or(0.0, |t| {
                 t.elapsed().as_secs_f64() * state.snapshot.speed as f64
@@ -272,6 +287,158 @@ fn stop(state: &mut PlaybackState) {
     if let Some(mut child) = state.child.take() {
         let _ = child.kill();
         let _ = child.wait();
+    }
+    if let Some(audio) = state.audio.take() {
+        let _ = audio.commands.send(AudioCommand::Stop);
+        let _ = audio.thread.join();
+    }
+    state.snapshot.audio_available = false;
+}
+
+enum AudioCommand {
+    Position(mpsc::SyncSender<Option<f64>>),
+    SetVolume(f32),
+    Stop,
+}
+
+struct AudioSession {
+    commands: mpsc::Sender<AudioCommand>,
+    thread: std::thread::JoinHandle<()>,
+}
+
+struct ChannelAudioSource {
+    rx: mpsc::Receiver<i16>,
+}
+
+impl Iterator for ChannelAudioSource {
+    type Item = i16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.rx.recv().ok()
+    }
+}
+
+impl rodio::Source for ChannelAudioSource {
+    fn current_frame_len(&self) -> Option<usize> {
+        None
+    }
+    fn channels(&self) -> u16 {
+        2
+    }
+    fn sample_rate(&self) -> u32 {
+        44_100
+    }
+    fn total_duration(&self) -> Option<Duration> {
+        None
+    }
+}
+
+fn start_audio(state: &mut PlaybackState, position: f64) {
+    let Some(path) = state.snapshot.path.clone() else {
+        return;
+    };
+    let volume = state.snapshot.volume;
+    let speed = state.snapshot.speed;
+    let (commands, command_rx) = mpsc::channel();
+    let (ready_tx, ready_rx) = mpsc::sync_channel(1);
+    let worker = std::thread::Builder::new()
+        .name("photag-audio-playback".into())
+        .spawn(move || {
+            let (stream, handle) = match rodio::OutputStream::try_default() {
+                Ok(pair) => pair,
+                Err(_) => {
+                    let _ = ready_tx.send(false);
+                    return;
+                }
+            };
+            let sink = match rodio::Sink::try_new(&handle) {
+                Ok(sink) => sink,
+                Err(_) => {
+                    let _ = ready_tx.send(false);
+                    return;
+                }
+            };
+            let mut child = match ffmpeg::command("ffmpeg")
+                .args([
+                    "-ss",
+                    &format!("{position:.3}"),
+                    "-i",
+                    &path.to_string_lossy(),
+                    "-f",
+                    "s16le",
+                    "-ar",
+                    "44100",
+                    "-ac",
+                    "2",
+                    "-vn",
+                    "-v",
+                    "error",
+                    "pipe:1",
+                ])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .stdin(Stdio::null())
+                .spawn()
+            {
+                Ok(child) => child,
+                Err(_) => {
+                    let _ = ready_tx.send(false);
+                    return;
+                }
+            };
+            let Some(stdout) = child.stdout.take() else {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = ready_tx.send(false);
+                return;
+            };
+            let (tx, rx) = mpsc::sync_channel::<i16>(88_200);
+            std::thread::spawn(move || {
+                let mut reader = std::io::BufReader::with_capacity(16_384, stdout);
+                let mut bytes = [0u8; 16_384];
+                loop {
+                    let count = match reader.read(&mut bytes) {
+                        Ok(0) | Err(_) => break,
+                        Ok(count) => count,
+                    };
+                    for sample in bytes[..count - count % 2].chunks_exact(2) {
+                        if tx.send(i16::from_le_bytes([sample[0], sample[1]])).is_err() {
+                            return;
+                        }
+                    }
+                }
+            });
+            sink.append(ChannelAudioSource { rx });
+            sink.set_volume(volume);
+            sink.set_speed(speed);
+            let _ = ready_tx.send(true);
+            while let Ok(command) = command_rx.recv() {
+                match command {
+                    AudioCommand::Position(reply) => {
+                        let position = (!sink.empty()).then(|| sink.get_pos().as_secs_f64());
+                        let _ = reply.send(position);
+                    }
+                    AudioCommand::SetVolume(value) => sink.set_volume(value),
+                    AudioCommand::Stop => break,
+                }
+            }
+            sink.stop();
+            let _ = child.kill();
+            let _ = child.wait();
+            drop(stream);
+        });
+    let Ok(worker) = worker else {
+        return;
+    };
+    if ready_rx.recv_timeout(Duration::from_secs(3)) == Ok(true) {
+        state.audio = Some(AudioSession {
+            commands,
+            thread: worker,
+        });
+        state.snapshot.audio_available = true;
+    } else {
+        let _ = commands.send(AudioCommand::Stop);
+        let _ = worker.join();
     }
 }
 
@@ -341,6 +508,7 @@ fn start(state: &mut PlaybackState, position: f64) -> Result<(), PlaybackError> 
         }
     });
     state.child = Some(child);
+    start_audio(state, position);
     state.receiver = Some(rx);
     state.started = Some(Instant::now());
     state.start_position = position;

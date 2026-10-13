@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 cordis.workspace = true
 tokio.workspace = true
+dirs.workspace = true
 photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-database = { path = "../photag-plugin-database" }
@@ -18,12 +19,15 @@ photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
+photag-plugin-updater = { path = "../photag-plugin-updater" }
 photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 photag-plugin-preview = { path = "../photag-plugin-preview" }
+photag-plugin-ai = { path = "../photag-plugin-ai" }
 photag-plugin-history = { path = "../photag-plugin-history" }
 photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
 photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
+photag-plugin-mcp = { path = "../photag-plugin-mcp" }
 gpui-kit.workspace = true
 raw-window-handle = "0.6.2"

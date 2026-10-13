@@ -7,6 +7,7 @@ use std::path::Path;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
+use photag_ui_bridge::theme;
 
 pub(super) fn info_panel(path: &Path) -> impl IntoElement {
     let name = path
@@ -19,9 +20,9 @@ pub(super) fn info_panel(path: &Path) -> impl IntoElement {
         .w(px(310.0))
         .max_h_full()
         .p_3()
-        .bg(rgb(0x14161b))
+        .bg(rgb(theme::SURFACE_MODAL))
         .border_1()
-        .border_color(rgb(0x343943))
+        .border_color(rgb(theme::SURFACE_FAINT))
         .rounded_md()
         .overflow_y_scrollbar()
         .child(div().text_base().font_medium().child("Information"))
@@ -92,7 +93,7 @@ fn section_title(title: &str) -> Div {
         .mt_2()
         .text_sm()
         .font_medium()
-        .text_color(rgb(0xaac8ff))
+        .text_color(rgb(theme::accent()))
         .child(title.to_string())
 }
 
@@ -101,14 +102,18 @@ fn detail(key: &str, value: &str) -> Div {
         .v_flex()
         .gap_1()
         .text_xs()
-        .child(div().text_color(rgb(0x9aa0ad)).child(format!("{key}:")))
+        .child(
+            div()
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(format!("{key}:")),
+        )
         .child(div().child(value.to_string()))
 }
 
 fn mut_text(value: &str) -> Div {
     div()
         .text_xs()
-        .text_color(rgb(0x9aa0ad))
+        .text_color(rgb(theme::TEXT_SECONDARY))
         .child(value.to_string())
 }
 

@@ -93,6 +93,18 @@ impl FileOperationsService {
         media_id: i64,
         destination: PathBuf,
     ) -> Result<(), FileOperationError> {
+        self.move_to_with_outcome(media_id, destination)
+            .await
+            .map(|_| ())
+    }
+
+    /// Move to a caller-selected full path and report whether the file moved.
+    /// `false` covers source-compatible collision or filesystem move failure.
+    pub async fn move_to_with_outcome(
+        self: &Arc<Self>,
+        media_id: i64,
+        destination: PathBuf,
+    ) -> Result<bool, FileOperationError> {
         let service = Arc::clone(self);
         let changed =
             tokio::task::spawn_blocking(move || service.move_to_blocking(media_id, destination))
@@ -100,7 +112,7 @@ impl FileOperationsService {
         if changed {
             self.emit_index_changed().await?;
         }
-        Ok(())
+        Ok(changed)
     }
 
     /// Move into a registered library folder, keeping the existing name and
@@ -110,6 +122,17 @@ impl FileOperationsService {
         media_id: i64,
         destination_dir: PathBuf,
     ) -> Result<(), FileOperationError> {
+        self.move_into_folder_with_outcome(media_id, destination_dir)
+            .await
+            .map(|_| ())
+    }
+
+    /// Move into a registered folder and report collision or move failure.
+    pub async fn move_into_folder_with_outcome(
+        self: &Arc<Self>,
+        media_id: i64,
+        destination_dir: PathBuf,
+    ) -> Result<bool, FileOperationError> {
         let service = Arc::clone(self);
         let changed = tokio::task::spawn_blocking(move || {
             service.move_into_folder_blocking(media_id, destination_dir)
@@ -118,7 +141,7 @@ impl FileOperationsService {
         if changed {
             self.emit_index_changed().await?;
         }
-        Ok(())
+        Ok(changed)
     }
 
     /// Move many items to a folder, preserving PhoTag's per-item collision and
@@ -168,6 +191,17 @@ impl FileOperationsService {
         media_id: i64,
         new_filename: String,
     ) -> Result<(), FileOperationError> {
+        self.rename_with_outcome(media_id, new_filename)
+            .await
+            .map(|_| ())
+    }
+
+    /// Rename an item and report a no-op such as an unchanged or colliding name.
+    pub async fn rename_with_outcome(
+        self: &Arc<Self>,
+        media_id: i64,
+        new_filename: String,
+    ) -> Result<bool, FileOperationError> {
         let service = Arc::clone(self);
         let changed =
             tokio::task::spawn_blocking(move || service.rename_blocking(media_id, new_filename))
@@ -175,7 +209,7 @@ impl FileOperationsService {
         if changed {
             self.emit_index_changed().await?;
         }
-        Ok(())
+        Ok(changed)
     }
 
     pub async fn create_folder(

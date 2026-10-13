@@ -1,8 +1,9 @@
 //! PhoTag self-update release checking, staged download verification, and install swap.
 
-use std::sync::Arc;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
-use cordis::{Context, Service};
+use cordis::Service;
 
 mod plugin;
 mod update;
@@ -14,13 +15,37 @@ pub use update::{
 };
 
 /// Cordis-owned entry point for source-compatible self-updating behavior.
-pub struct UpdaterService;
+#[derive(Default)]
+pub struct UpdaterService {
+    pending_install: Mutex<Option<PathBuf>>,
+}
 
 impl Service for UpdaterService {
     const NAME: &'static str = "photag/updater";
 }
 
 impl UpdaterService {
+    /// Ask the shell to install this staged binary after the GPUI app exits.
+    pub fn schedule_install(&self, staged: PathBuf) -> Result<(), String> {
+        let mut pending = self
+            .pending_install
+            .lock()
+            .map_err(|_| "updater pending-install lock is poisoned".to_owned())?;
+        if pending.is_some() {
+            return Err("an update install is already scheduled".into());
+        }
+        *pending = Some(staged);
+        Ok(())
+    }
+
+    /// Take the staged binary requested by Settings after the application exits.
+    pub fn take_pending_install(&self) -> Result<Option<PathBuf>, String> {
+        self.pending_install
+            .lock()
+            .map(|mut pending| pending.take())
+            .map_err(|_| "updater pending-install lock is poisoned".to_owned())
+    }
+
     pub fn check(&self) -> Result<Option<UpdateInfo>, String> {
         update::check()
     }

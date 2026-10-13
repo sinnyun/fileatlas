@@ -12,13 +12,16 @@ members = [
     "crates/photag-plugin-navigation",
     "crates/photag-plugin-tagging",
     "crates/photag-plugin-settings",
+    "crates/photag-plugin-updater",
     "crates/photag-plugin-session",
     "crates/photag-plugin-metadata-export",
     "crates/photag-plugin-file-operations",
     "crates/photag-plugin-preview",
+    "crates/photag-plugin-ai",
     "crates/photag-plugin-history",
     "crates/photag-plugin-media-playback",
     "crates/photag-plugin-drag-drop",
+    "crates/photag-plugin-mcp",
 ]
 default-members = ["crates/photag-shell"]
 
@@ -31,6 +34,7 @@ license = "MIT"
 [workspace.dependencies]
 cordis = { package = "cordis-rs", version = "0.11.1" }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+rmcp = { version = "3.5.1", default-features = false, features = ["base64", "macros", "server", "transport-io"] }
 dirs = "5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

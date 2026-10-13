@@ -16,7 +16,7 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 
 const REPO: &str = "OleksandrShabaldas/PhoTag";
 /// GitHub rejects API requests without a User-Agent.
@@ -270,7 +270,8 @@ pub fn download(info: &UpdateInfo, progress: Arc<AtomicU64>) -> Result<PathBuf, 
         .map_err(|e| format!("download failed: {}", e))?;
 
     let part = dir.join(format!("photag-{}.part", info.version));
-    let mut file = std::fs::File::create(&part).map_err(|e| format!("create staging file: {}", e))?;
+    let mut file =
+        std::fs::File::create(&part).map_err(|e| format!("create staging file: {}", e))?;
 
     let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
     let mut reader = resp.into_reader();
@@ -462,32 +463,38 @@ mod tests {
                 None => "already current".to_string(),
             }
         );
-        let info = found
-            .unwrap_or_else(|| {
-                // Running version == latest, so synthesise the same info the
-                // checker would produce for the current release.
-                let url = format!("https://api.github.com/repos/{}/releases/latest", REPO);
-                let r = json_get(&url).expect("fetch release");
-                let assets = r["assets"].as_array().unwrap().clone();
-                let pick = |suffix: &str| {
-                    assets.iter().find(|a| {
-                        a["name"].as_str().unwrap_or("").ends_with(suffix)
-                    })
-                };
-                let exe = pick(ASSET_SUFFIX).expect("no exe asset");
-                UpdateInfo {
-                    version: r["tag_name"].as_str().unwrap().trim_start_matches('v').into(),
-                    notes: String::new(),
-                    html_url: String::new(),
-                    asset_name: exe["name"].as_str().unwrap().into(),
-                    asset_url: exe["browser_download_url"].as_str().unwrap().into(),
-                    asset_size: exe["size"].as_u64().unwrap(),
-                    checksums_url: pick(CHECKSUM_ASSET)
-                        .map(|a| a["browser_download_url"].as_str().unwrap().to_string()),
-                }
-            });
+        let info = found.unwrap_or_else(|| {
+            // Running version == latest, so synthesise the same info the
+            // checker would produce for the current release.
+            let url = format!("https://api.github.com/repos/{}/releases/latest", REPO);
+            let r = json_get(&url).expect("fetch release");
+            let assets = r["assets"].as_array().unwrap().clone();
+            let pick = |suffix: &str| {
+                assets
+                    .iter()
+                    .find(|a| a["name"].as_str().unwrap_or("").ends_with(suffix))
+            };
+            let exe = pick(ASSET_SUFFIX).expect("no exe asset");
+            UpdateInfo {
+                version: r["tag_name"]
+                    .as_str()
+                    .unwrap()
+                    .trim_start_matches('v')
+                    .into(),
+                notes: String::new(),
+                html_url: String::new(),
+                asset_name: exe["name"].as_str().unwrap().into(),
+                asset_url: exe["browser_download_url"].as_str().unwrap().into(),
+                asset_size: exe["size"].as_u64().unwrap(),
+                checksums_url: pick(CHECKSUM_ASSET)
+                    .map(|a| a["browser_download_url"].as_str().unwrap().to_string()),
+            }
+        });
 
-        assert!(info.checksums_url.is_some(), "release publishes no checksums");
+        assert!(
+            info.checksums_url.is_some(),
+            "release publishes no checksums"
+        );
         let progress = Arc::new(AtomicU64::new(0));
         let path = download(&info, progress.clone()).expect("download+verify failed");
         let got = std::fs::metadata(&path).expect("staged file missing").len();
@@ -532,7 +539,11 @@ mod tests {
 
         let err = download(&bad, Arc::new(AtomicU64::new(0)))
             .expect_err("mismatched download was accepted");
-        assert!(err.contains("checksum mismatch"), "unexpected error: {}", err);
+        assert!(
+            err.contains("checksum mismatch"),
+            "unexpected error: {}",
+            err
+        );
         // And nothing may be left behind for `install` to pick up.
         assert!(!staging_dir().join("photag-9.9.9.exe").exists());
         assert!(!staging_dir().join("photag-9.9.9.part").exists());
@@ -597,7 +608,10 @@ checksum-line
         assert!(out.starts_with("Download"), "heading text lost: {out}");
         assert!(out.contains("No installer."));
         assert!(out.contains("• Tags — nested a > b"));
-        assert!(out.contains("checksum-line"), "fenced content dropped: {out}");
+        assert!(
+            out.contains("checksum-line"),
+            "fenced content dropped: {out}"
+        );
         // No triple newlines left where the fences and headings were.
         assert!(!out.contains("\n\n\n"), "blank-line runs survived: {out:?}");
     }
@@ -615,6 +629,3 @@ bbbb111122223333444455556666777788889999aaaabbbbccccddddeeeeffff  other.exe
         assert_eq!(expected_hash(body, "missing.exe"), None);
     }
 }
-
-
-

@@ -10,13 +10,14 @@ use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
 use photag_contracts::{
     DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
 };
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_plugin_session::SessionService;
-use photag_ui_bridge::UiViewContribution;
+use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
@@ -36,6 +37,7 @@ pub(super) fn sidebar(
             let view_service = Arc::clone(&service);
             let view_cordis = cordis.clone();
             let view_session = Arc::clone(&session);
+            let saved = view_session.snapshot().unwrap_or_default();
             let view_selected_folder_id = selected_folder_id;
             let view_selected_path = selected_path.clone();
             let view_expanded_subdirs = expanded_subdirs.clone();
@@ -60,6 +62,7 @@ pub(super) fn sidebar(
                     view_selected_folder_id,
                     view_selected_path,
                     view_expanded_subdirs,
+                    saved.expanded_tag_ids,
                     folder_path,
                     tag_name,
                     tag_parent,
@@ -89,6 +92,7 @@ struct SidebarView {
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
     expanded_directories: HashMap<String, Vec<SubdirectoryNode>>,
+    expanded_tags: HashSet<i64>,
     restored_folder_id: Option<i64>,
     restored_path: Option<String>,
     restore_selection_pending: bool,
@@ -102,6 +106,7 @@ impl SidebarView {
         restored_folder_id: Option<i64>,
         restored_path: Option<String>,
         expanded_subdirs: HashSet<String>,
+        expanded_tags: HashSet<i64>,
         folder_path: Entity<InputState>,
         tag_name: Entity<InputState>,
         tag_parent: Entity<InputState>,
@@ -111,6 +116,23 @@ impl SidebarView {
         tag_move_target: Entity<InputState>,
     ) -> Self {
         let snapshot = service.snapshot().map_err(|error| error.to_string());
+        let mut expanded_tags = expanded_tags;
+        if let Ok(snapshot) = &snapshot {
+            let mut live_tag_ids = HashSet::new();
+            for tag in &snapshot.tags {
+                collect_tag_ids(tag, &mut live_tag_ids);
+            }
+            let saved_count = expanded_tags.len();
+            expanded_tags.retain(|id| live_tag_ids.contains(id));
+            if expanded_tags.len() != saved_count {
+                if let Ok(mut saved) = session.snapshot() {
+                    saved.expanded_tag_ids = expanded_tags.clone();
+                    if let Err(error) = session.replace(saved) {
+                        eprintln!("stale tag expansion cleanup failed: {error}");
+                    }
+                }
+            }
+        }
         let expanded_directories = match &snapshot {
             Ok(snapshot) => restore_expanded_directories(&service, snapshot, &expanded_subdirs),
             Err(_) => HashMap::new(),
@@ -130,6 +152,7 @@ impl SidebarView {
             active_scan: None,
             scan_progress: None,
             expanded_directories,
+            expanded_tags,
             restored_folder_id,
             restored_path,
             restore_selection_pending: true,
@@ -298,6 +321,18 @@ impl SidebarView {
         }
     }
 
+    fn toggle_tag(&mut self, tag_id: i64) {
+        if !self.expanded_tags.remove(&tag_id) {
+            self.expanded_tags.insert(tag_id);
+        }
+        if let Ok(mut saved) = self.session.snapshot() {
+            saved.expanded_tag_ids = self.expanded_tags.clone();
+            if let Err(error) = self.session.replace(saved) {
+                eprintln!("tag expansion session save failed: {error}");
+            }
+        }
+    }
+
     fn select_path(&self, path: String, cx: &mut Context<Self>) {
         if let Ok(mut session) = self.session.snapshot() {
             session.selected_folder_id = None;
@@ -452,7 +487,7 @@ impl Render for SidebarView {
             .v_flex()
             .size_full()
             .gap_1()
-            .bg(rgb(0x20232b))
+            .bg(rgb(theme::SURFACE_BASE))
             .p_3()
             .child(div().text_sm().font_semibold().child("LIBRARY"));
         match &self.snapshot {
@@ -462,7 +497,12 @@ impl Render for SidebarView {
                         .h_flex()
                         .justify_between()
                         .pt_2()
-                        .child(div().text_xs().text_color(rgb(0x9aa0ad)).child("Folders"))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .child("Folders"),
+                        )
                         .child(Button::new("navigation-refresh").label("Refresh").on_click(
                             cx.listener(|this, _, _, cx| {
                                 this.refresh();
@@ -575,17 +615,27 @@ impl Render for SidebarView {
                     }
                 }
                 if let Some(progress) = &self.scan_progress {
-                    panel = panel.child(div().text_xs().text_color(rgb(0x9aa0ad)).child(format!(
-                        "{}: {} / {} files",
-                        progress.phase, progress.scanned, progress.total
-                    )));
+                    panel = panel.child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(format!(
+                                "{}: {} / {} files",
+                                progress.phase, progress.scanned, progress.total
+                            )),
+                    );
                 }
                 panel = panel.child(
                     div()
                         .h_flex()
                         .justify_between()
                         .pt_3()
-                        .child(div().text_xs().text_color(rgb(0x9aa0ad)).child("Tags"))
+                        .child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .child("Tags"),
+                        )
                         .child(
                             Button::new("navigation-clear-tag-filter")
                                 .label("Clear")
@@ -595,7 +645,7 @@ impl Render for SidebarView {
                 panel = panel.child(
                     div()
                         .text_xs()
-                        .text_color(rgb(0x9aa0ad))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
                         .child("Tag management"),
                 );
                 panel = panel.child(
@@ -626,19 +676,31 @@ impl Render for SidebarView {
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(0x9aa0ad))
+                                .text_color(rgb(theme::TEXT_SECONDARY))
                                 .child("Set fields, then use a tag row action"),
                         ),
                 );
-                panel.children(snapshot.tags.iter().map(|tag| render_tag(tag, cx)))
+                panel.children(
+                    snapshot
+                        .tags
+                        .iter()
+                        .map(|tag| render_tag(tag, &self.expanded_tags, cx)),
+                )
             }
             Err(error) => panel.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(0xef7777))
+                    .text_color(rgb(theme::DANGER))
                     .child(format!("Could not load library: {error}")),
             ),
         }
+    }
+}
+
+fn collect_tag_ids(tag: &photag_plugin_database::db::queries::Tag, output: &mut HashSet<i64>) {
+    output.insert(tag.id);
+    for child in &tag.children {
+        collect_tag_ids(child, output);
     }
 }
 
@@ -688,6 +750,7 @@ fn restore_expanded_directories(
 
 fn render_tag(
     tag: &photag_plugin_database::db::queries::Tag,
+    expanded: &HashSet<i64>,
     cx: &mut Context<SidebarView>,
 ) -> Div {
     let indent = "  ".repeat(tag.full_path.matches('>').count());
@@ -765,11 +828,98 @@ fn render_tag(
             this.use_tag_as_parent(parent_id, window, cx);
             cx.notify();
         }));
-    let children = tag
-        .children
-        .iter()
-        .map(|child| render_tag(child, cx))
-        .collect::<Vec<_>>();
+    let is_expanded = expanded.contains(&tag.id);
+    let toggle_id = tag.id;
+    let toggle = Button::new(format!("navigation-tag-expand-{toggle_id}"))
+        .label(if is_expanded { "−" } else { "+" })
+        .on_click(cx.listener(move |this, _, _, cx| {
+            this.toggle_tag(toggle_id);
+            cx.notify();
+        }));
+    let menu_id = tag.id;
+    let menu_name = tag.name.clone();
+    let menu_color = tag.color.clone().unwrap_or_default();
+    let menu_icon = tag.icon.clone().unwrap_or_default();
+    let menu_display = tag.display;
+    let view = cx.entity().downgrade();
+    let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
+        .label("⋯")
+        .dropdown_menu(move |mut menu, _, _| {
+            let edit_view = view.clone();
+            let edit_name = menu_name.clone();
+            let edit_color = menu_color.clone();
+            let edit_icon = menu_icon.clone();
+            menu = menu.item(
+                PopupMenuItem::new("Edit fields").on_click(move |_, window, cx| {
+                    let _ = edit_view.update(cx, |this, cx| {
+                        this.tag_edit_name
+                            .update(cx, |state, cx| state.set_value(&edit_name, window, cx));
+                        this.tag_color
+                            .update(cx, |state, cx| state.set_value(&edit_color, window, cx));
+                        this.tag_icon
+                            .update(cx, |state, cx| state.set_value(&edit_icon, window, cx));
+                        cx.notify();
+                    });
+                }),
+            );
+            let rename_view = view.clone();
+            menu = menu.item(
+                PopupMenuItem::new("Rename from editor").on_click(move |_, _, cx| {
+                    let _ = rename_view.update(cx, |this, cx| {
+                        this.rename_tag(menu_id, cx);
+                        cx.notify();
+                    });
+                }),
+            );
+            let display_view = view.clone();
+            menu = menu.item(
+                PopupMenuItem::new(if menu_display {
+                    "Hide chips"
+                } else {
+                    "Show chips"
+                })
+                .on_click(move |_, _, cx| {
+                    let _ = display_view.update(cx, |this, cx| {
+                        this.toggle_tag_display(menu_id, !menu_display, cx);
+                        cx.notify();
+                    });
+                }),
+            );
+            let parent_view = view.clone();
+            menu = menu.item(
+                PopupMenuItem::new("Use as parent").on_click(move |_, window, cx| {
+                    let _ = parent_view.update(cx, |this, cx| {
+                        this.use_tag_as_parent(menu_id, window, cx);
+                        cx.notify();
+                    });
+                }),
+            );
+            let style_view = view.clone();
+            menu = menu.item(PopupMenuItem::new("Save style").on_click(move |_, _, cx| {
+                let _ = style_view.update(cx, |this, cx| {
+                    this.update_tag_appearance(menu_id, cx);
+                    cx.notify();
+                });
+            }));
+            let delete_view = view.clone();
+            let delete_name = menu_name.clone();
+            menu.item(
+                PopupMenuItem::new(format!("Delete {delete_name}")).on_click(move |_, _, cx| {
+                    let _ = delete_view.update(cx, |this, cx| {
+                        this.delete_tag(menu_id, cx);
+                        cx.notify();
+                    });
+                }),
+            )
+        });
+    let children = if is_expanded {
+        tag.children
+            .iter()
+            .map(|child| render_tag(child, expanded, cx))
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
     div()
         .v_flex()
         .child(
@@ -780,12 +930,14 @@ fn render_tag(
                     div()
                         .h_flex()
                         .gap_1()
+                        .child(toggle)
                         .child(div().w_2().h_2().rounded_sm().bg(rgb((u32::from(red) << 16)
                             | (u32::from(green) << 8)
                             | u32::from(blue))))
                         .child(name),
                 )
-                .child(select),
+                .child(select)
+                .child(actions),
         )
         .child(
             div()

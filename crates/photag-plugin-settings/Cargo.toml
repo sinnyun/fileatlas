@@ -10,6 +10,8 @@ cordis.workspace = true
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
+photag-plugin-updater = { path = "../photag-plugin-updater" }
+photag-plugin-session = { path = "../photag-plugin-session" }
 dirs.workspace = true
 serde.workspace = true
 serde_json.workspace = true

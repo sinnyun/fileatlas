@@ -1,6 +1,6 @@
 # Navigation plugin ports / 导航插件数据对接
 
-Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. The tag UI exposes create, rename, delete, color/icon, display and explicit reparent actions. Original egui interactions are only partially migrated: tag drag/drop zones, multi-select/exclude mode, modal confirmation/edit flow, recursive tag search/collapse state, merge workflow, and undo integration remain incomplete.
+Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::FileDialog::pick_folder` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. The tag UI exposes create, rename, delete, color/icon, display and explicit reparent actions, with common tag operations also available from a per-tag dropdown menu. Original egui interactions are only partially migrated: tag drag/drop zones, multi-select/exclude mode, modal confirmation/edit flow, recursive tag search/collapse state, merge workflow, and undo integration remain incomplete.
 
 ## Lifecycle and dependencies
 
@@ -8,7 +8,7 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
 - UI emits `FolderSelectionChanged(Option<i64>)`, `TagSelectionChanged(Option<i64>)`, `DirectoryPathSelected(Option<String>)`; emits `MediaIndexChanged(())` after operations that alter indexed membership.
-- On sidebar startup, restores only `selected_folder_id`, `selected_path`, and `expanded_subdirs` from `SessionService`. Folder IDs must still exist; selected paths must still resolve inside a registered folder; expanded paths are rebuilt through the live subdirectory listing. Startup emits folder and path selection events in order so Gallery receives the restored scope. Selecting a folder or All Media saves `selected_folder_id` and clears `selected_path`; selecting a path clears `selected_folder_id` and saves `selected_path`. Expanding or collapsing a directory updates only `expanded_subdirs`, preserving fields owned by other consumers.
+- On sidebar startup, restores `selected_folder_id`, `selected_path`, `expanded_subdirs`, and `expanded_tag_ids` from `SessionService`. Folder IDs must still exist; selected paths must still resolve inside a registered folder; expanded paths are rebuilt through the live subdirectory listing. Tag expansion IDs missing from the current tag tree are pruned on startup. Startup emits folder and path selection events in order so Gallery receives the restored scope. Selecting a folder or All Media saves `selected_folder_id` and clears `selected_path`; selecting a path clears `selected_folder_id` and saves `selected_path`. Directory and tag expansion changes save only their respective expansion fields, preserving fields owned by other consumers.
 
 ## Service input/output
 
@@ -16,6 +16,7 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - `subdirectories(path)` -> lazy direct child nodes: name, path, child-presence and indexed count.
 - `add_folder(path)` -> validates an existing directory; returns `(Folder, Receiver<Option<ScanProgress>>)` after registering it and scheduling indexing. Watcher registration follows when available.
 - `rescan(folder_id)` -> cancels prior scan, clears folder media rows and starts scanning; returns a progress receiver.
+- `cancel_scan(folder_id)` -> requests cancellation of that folder's active indexing work; succeeds when none is active.
 - `remove_folder(folder_id)` -> cancels scanning, removes indexed rows and unregisters watcher; returns the removed folder.
 - `create_tag(name, parent_id)` -> new `Tag`; parent is optional. The sidebar parent field takes a tag database ID; each tag row's **Use as parent** fills it.
 - `rename_tag(id, name)` -> `()`; **Edit fields** loads name and **Rename** persists it.
@@ -26,7 +27,7 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 
 ## GPUI controls and debugging
 
-The tag panel uses GPUI Kit `Input` and `Button`. `TagSelectionChanged` filters one tag. Original multi-select, include/exclude modifier, select-all, clear controls, and tag query mode remain pending. A service/input error currently replaces the snapshot panel; use Refresh after correcting input or inspect the displayed error and database query. For failed reparent operations, verify that both IDs exist and the move does not create a cycle. For stale Gallery results, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
+The tag panel uses GPUI Kit `Input`, `Button`, and dropdown menu actions. `TagSelectionChanged` filters one tag. Original multi-select, include/exclude modifier, select-all, and tag query mode remain pending. A service/input error currently replaces the snapshot panel; use Refresh after correcting input or inspect the displayed error and database query. For failed reparent operations, verify that both IDs exist and the move does not create a cycle. For stale Gallery results, inspect `MediaIndexChanged` delivery and the Gallery subscriber.
 
 ## Original source mapping / 未完成
 
@@ -34,5 +35,10 @@ Reference: pinned `vendor/photag-source/src/ui/sidebar.rs` (`show_sidebar`, `sho
 
 - Migrated: folder registration/rescan/removal, lazy directory listing, recursive tag tree, single-tag filter, root/child creation, rename, delete, color/icon editing, display propagation, reparent into a selected tag.
 - Migrated: native directory picker via the same `rfd` API used by PhoTag's `PendingAction::AddFolder`. Cancel/backend `None` leaves the sidebar unchanged; folder validation and registration errors surface in the navigation panel as before.
-- Pending: original tabs and exact visuals; drag/drop before/after/into with feedback; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations.
+- Pending: original tabs and exact visuals; drag/drop before/after/into with feedback; tag search and ancestor expansion; include/exclude multi-tag interaction and modifier settings; merge; edit/delete confirmation and delete-and-clean-parents policy; apply appearance to descendants with original override rules; tag action undo/redo; recent-tag and XMP feedback after tag-tree mutations. Expanded tag nodes are persisted, but the current GPUI renderer only allows collapsing/expanding already-loaded tree nodes.
 - Local integration: verify event refresh and destructive delete behavior against representative PhoTag databases; run Windows GUI/filesystem flows; then finish visual and interaction parity. Plugin tests remain deferred to the local integration pass.
+
+## Shared visual tokens
+
+The sidebar uses photag-ui-bridge::theme for the source base surface and secondary, muted, and danger text colors. Layout spacing and typography still use GPUI Kit presets; Windows visual parity is unverified.
+

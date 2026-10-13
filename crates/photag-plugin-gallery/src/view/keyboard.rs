@@ -1,5 +1,6 @@
 //! Gallery keyboard selection and rating actions.
 
+use gpui_kit::component::WindowExt as _;
 use gpui_kit::*;
 
 use super::GalleryView;
@@ -50,6 +51,14 @@ impl GalleryView {
             self.close_video_preview(cx);
             return;
         }
+        if event.keystroke.key.eq_ignore_ascii_case("escape") && self.confirm_delete {
+            window.close_dialog(cx);
+            self.cancel_delete_confirmation(cx);
+            return;
+        }
+        if self.confirm_delete {
+            return;
+        }
         if event.keystroke.key.eq_ignore_ascii_case("d")
             && event.keystroke.modifiers.control
             && event.keystroke.modifiers.shift
@@ -95,13 +104,38 @@ impl GalleryView {
                 shift: event.keystroke.modifiers.shift,
             },
         );
+        self.persist_filter_session();
         match effect {
             SelectionEffect::ApplyRating { media_ids, rating } => {
                 self.apply_rating_to(&media_ids, rating);
             }
-            SelectionEffect::ConfirmDelete { .. } => self.delete_selected(cx),
+            SelectionEffect::ConfirmDelete { .. } => self.request_delete_confirmation(window, cx),
             SelectionEffect::OpenPreview { .. } => self.preview_selected(cx),
-            SelectionEffect::None | SelectionEffect::ScrollTo { .. } => {}
+            SelectionEffect::ScrollTo { index } => {
+                while self
+                    .snapshot
+                    .as_ref()
+                    .is_ok_and(|snapshot| snapshot.media.len() <= index)
+                {
+                    let before = self
+                        .snapshot
+                        .as_ref()
+                        .map(|snapshot| snapshot.media.len())
+                        .unwrap_or(0);
+                    self.load_more();
+                    if self
+                        .snapshot
+                        .as_ref()
+                        .map(|snapshot| snapshot.media.len())
+                        .unwrap_or(0)
+                        == before
+                    {
+                        break;
+                    }
+                }
+                self.scroll_to_gallery_item(index);
+            }
+            SelectionEffect::None => {}
         }
         cx.notify();
     }

@@ -9,6 +9,7 @@ license.workspace = true
 cordis.workspace = true
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
+photag-plugin-session = { path = "../photag-plugin-session" }
 image = "0.25"
 thiserror = "2"
 chrono = "0.4"
