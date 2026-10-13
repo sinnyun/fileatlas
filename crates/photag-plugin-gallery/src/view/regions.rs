@@ -428,6 +428,27 @@ impl GalleryView {
                     ),
             );
         }
+        if let Some(media_id) = self.media_actions_id {
+            match self.service.media_by_id(media_id) {
+                Ok(Some(media)) => {
+                    root = root.child(
+                        div()
+                            .absolute()
+                            .inset_0()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .bg(rgba(theme::SCRIM))
+                            .child(card_menu::render_requested(&media, cx)),
+                    );
+                }
+                Ok(None) => self.media_actions_id = None,
+                Err(error) => {
+                    self.operation_status = Some(error.to_string());
+                    self.media_actions_id = None;
+                }
+            }
+        }
         root = self.selection_details(root, cx);
         if let Some(status) = &self.operation_status {
             root = root.child(
@@ -443,6 +464,7 @@ impl GalleryView {
         }
         for failure in photag_plugin_tagging::writeback::failures() {
             let path = failure.path.clone();
+            let retry_path = path.clone();
             root = root.child(
                 div()
                     .absolute()
@@ -455,6 +477,23 @@ impl GalleryView {
                         failure.path.display(),
                         failure.error
                     ))
+                    .child(
+                        Button::new(format!("writeback-retry-{}", path.display()))
+                            .primary()
+                            .compact()
+                            .label(photag_ui_bridge::i18n::tr("Retry"))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.operation_status = match photag_plugin_tagging::writeback::retry_failure(&retry_path) {
+                                    Ok(true) => Some("Metadata writeback retry queued.".into()),
+                                    Ok(false) => Some("This writeback failure is no longer available.".into()),
+                                    Err(error) => Some(photag_ui_bridge::i18n::tr_args(
+                                        "Could not retry metadata writeback: {error}",
+                                        &[("error", error.to_string())],
+                                    )),
+                                };
+                                cx.notify();
+                            })),
+                    )
                     .child(
                         chip(
                             format!("writeback-dismiss-{}", path.display()),

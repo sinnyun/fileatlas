@@ -19,6 +19,7 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - `add_folder(path)` -> validates an existing directory; returns `(Folder, Receiver<Option<ScanProgress>>)` after registering it and scheduling indexing. Watcher registration follows when available.
 - `rescan(folder_id)` -> cancels prior scan, clears folder media rows and starts scanning; returns a progress receiver.
 - `cancel_scan(folder_id)` -> requests cancellation of that folder's active indexing work; succeeds when none is active.
+- The live sidebar shows the active folder scan's phase/count/progress and Cancel control; Cancel calls `cancel_scan` with the registered active folder identity and drops the view's receiver. Immediate `add_folder`/`rescan` errors and terminal `ScanProgress.error` events both render a retry card; folder failures retry through `rescan`, path registration failures retry through `add_folder`.
 - `remove_folder(folder_id)` -> cancels scanning, removes indexed rows and unregisters watcher; returns the removed folder.
 - `create_tag(name, parent_id)` -> new `Tag`; parent is optional. The create modal provides a searchable hierarchical parent picker and a root option; tag IDs remain internal. Each tag row's **Use as parent** selects that row in the picker.
 - `rename_tag(id, name)` -> `()`; **Edit fields** loads name and **Rename** persists it.
@@ -100,7 +101,7 @@ The revised state still needs a new MCP capture and interaction check.
 The `workspace.modal` projection in the same view set handles tag creation,
 rename/edit, assignment-aware deletion confirmation, merge target selection,
 and reparenting. `NavigationService::request_ui` exposes typed create/edit/delete/
-merge/close-modal requests for the mounted view; requests invoke existing
+merge/move/close-modal requests for the mounted view; requests invoke existing
 actions and reject invalid IDs or an occupied single-request slot. Parent and
 move modals use searchable hierarchy paths, and Escape dismisses an active tag
 modal. Merge still executes when a target is selected; the source-compatible

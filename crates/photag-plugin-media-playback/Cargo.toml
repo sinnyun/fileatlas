@@ -9,6 +9,8 @@ license.workspace = true
 cordis.workspace = true
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
+photag-plugin-tagging = { path = "../photag-plugin-tagging" }
+photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 serde_json.workspace = true
 thiserror.workspace = true

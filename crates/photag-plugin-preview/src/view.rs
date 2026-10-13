@@ -152,6 +152,7 @@ pub fn preview_view(
                     tag_picker_search: tag_picker_search.clone(),
                     tag_picker_open: false,
                     collapsed_dropdown_tag_ids,
+                    collapsed_info_sections: std::collections::HashSet::new(),
                     context_menu_open: false,
                     context_menu_anchor: None,
                     last_playback_source: None,
@@ -162,7 +163,7 @@ pub fn preview_view(
         },
     )
 }
-struct PreviewView {
+pub(crate) struct PreviewView {
     locale_revision: u64,
     service: Arc<PreviewService>,
     zoom_slider: Entity<SliderState>,
@@ -189,6 +190,7 @@ struct PreviewView {
     tag_picker_search: gpui::Entity<InputState>,
     tag_picker_open: bool,
     collapsed_dropdown_tag_ids: std::collections::HashSet<i64>,
+    pub(crate) collapsed_info_sections: std::collections::HashSet<&'static str>,
     context_menu_open: bool,
     context_menu_anchor: Option<(f32, f32)>,
     last_playback_source: Option<std::path::PathBuf>,

@@ -41,7 +41,7 @@ Mutations are disabled by default. `confirm: true` is an explicit call-site ackn
 - MCP tool availability does not complete native UI behavior listed in `docs/source-feature-audit.md`; tools call the same Cordis services and their existing limits apply.
 - Check `PHOTAG_MCP_ALLOW_MUTATIONS`, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
 - If a screenshot fails, check HWND publication and window state first. If it returns a blank or stale image, inspect PrintWindow/GPUI Windows rendering behavior; do not treat protocol compilation as screenshot parity.
-- Batch scan receivers are drained by background workers so the indexing worker can finish; the current tools do not expose scan progress snapshots.
+- Batch scan receivers are drained by background workers so the indexing worker can finish; scan progress is exposed through `get_ui_state.scan_progress` when a scan is active.
 
 ## UI validation tools (2026-10-13)
 
@@ -83,15 +83,28 @@ Popover state as the UI. Actions: popover, search, media_type, sort, rating,
 extension, tag, tag_mode, extension_mode, date_from, date_to, clear_filters,
 inspector_section, tag_picker, month_grouping, tools_open and tools_close.
 Read tools/list for exact optional fields and accepted string values.
-`control_navigation` accepts create/edit/delete/merge/close with optional
-required-on-target tag_id; these open dialogs, never commit deletion/merge.
-Both tools require the existing mutation flag and asynchronous view polling.
+`control_gallery` additionally accepts bulk_open, bulk_close, and
+bulk_configure; configuration uses `value` for delete/copy/move and
+`bulk_source` for all/folder/tag/selection. `get_ui_state` reports the live
+bulk action/source. `open_media_menu` with `media_id` and `close_media_menu`
+control a live Gallery-owned media action surface; its state and indexed ID are
+reported by `get_ui_state`. The native right-click ContextMenu remains
+pointer-triggered. `control_navigation` accepts create/edit/delete/merge/move/close with
+optional required-on-target tag_id; these open dialogs, never commit
+deletion/merge. Both tools require the existing mutation flag and asynchronous
+view polling.
+`get_ui_state.scan_progress.error` can report a terminal failure while the
+Indexing progress observer still has that scan active. Navigation consumes the
+same terminal event and retains its Retry card independently; the MCP progress
+snapshot may disappear after the completion sentinel.
 
-MCP `open_media` currently still rejects audio, despite Playback's new
-underlying audio-only implementation. New Playback media_id/open_media API
-and audio routing are planned, not implemented. Tool text JSON may carry an
-error without CallToolResult.isError; clients must check both. The new
+MCP `open_media` routes image IDs to Preview and video/audio IDs to Playback
+using the indexed `media_id`; `get_view_state` includes the playback ID.
+`export_metadata` sets the destination and runs the shared
+MetadataExportService state machine; `get_ui_state.metadata_export` reports
+idle/exporting/succeeded/failed status read by the visible panel. Tool text
+JSON may carry an error without CallToolResult.isError; clients must check both. The new
 scripts/photag-mcp-debug.cjs does so, uses an isolated target profile, captures
 via screenshot_window and keeps one child window alive in interactive mode.
-It cannot attach to another instance. Current-source compilation is blocked
-by Gallery's 19 errors; the last successful exe predates final layout edits.
+It cannot attach to another instance. Current continuation changes are
+unverified; the older successful exe predates final layout edits.

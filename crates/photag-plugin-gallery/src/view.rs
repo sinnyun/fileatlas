@@ -1,24 +1,28 @@
 //! Native GPUI rendering for the windowed media gallery.
 
 mod behavior;
-mod bulk_actions;
+pub(crate) mod bulk_actions;
 mod card;
 mod card_menu;
 mod card_motion;
 mod empty_state;
+mod factory;
 mod file_actions;
 mod filter_actions;
 mod filter_row;
 mod inspector;
 mod keyboard;
+mod monitor;
 mod month_header;
 mod regions;
 mod render;
+mod rows;
 mod scope_actions;
 mod selection_panel;
 mod sliders;
 mod statistics;
 mod tagging_picker;
+mod view_state;
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -53,6 +57,7 @@ use photag_ui_bridge::{UiCommandInvoked, UiViewContribution};
 
 use bulk_actions::{BulkActionKind, BulkActionSource};
 use card::{render_media_card, render_media_details};
+use rows::{GalleryRubberband, GalleryVisualRow, build_gallery_rows};
 
 use crate::{
     GalleryService, GallerySnapshot, IndexRevision, SelectedFolder, SelectedPath, SelectedTag,
@@ -60,238 +65,7 @@ use crate::{
     selection::{GallerySelection, Modifiers as SelectionModifiers},
 };
 
-fn writeback_failure_signature() -> Vec<(String, String)> {
-    photag_plugin_tagging::writeback::failures()
-        .into_iter()
-        .map(|failure| (failure.path.display().to_string(), failure.error))
-        .collect()
-}
-
-#[derive(Clone)]
-struct GalleryVisualRow {
-    media_range: std::ops::Range<usize>,
-    month_label: Option<String>,
-    collapsed: bool,
-    month_count: usize,
-}
-
-#[derive(Clone)]
-struct GalleryRubberband {
-    start: Point<Pixels>,
-    end: Point<Pixels>,
-    initial_selection: Vec<i64>,
-    initial_anchor: Option<i64>,
-    add: bool,
-    clear_on_click: bool,
-    dragged: bool,
-}
-
-fn build_gallery_rows(
-    skeletons: &[photag_plugin_database::db::queries::MediaSkeleton],
-    columns: usize,
-    group_by_month: bool,
-    collapsed_months: &HashSet<String>,
-) -> Vec<GalleryVisualRow> {
-    let columns = columns.max(1);
-    let mut rows = Vec::new();
-    let mut start = 0;
-    let mut previous_month: Option<String> = None;
-    while start < skeletons.len() {
-        let month_at = |index: usize| {
-            if skeletons[index].effective_date <= 0 {
-                return Some("Unknown date".into());
-            }
-            chrono::DateTime::<chrono::Utc>::from_timestamp(skeletons[index].effective_date, 0).map(
-                |date| {
-                    date.with_timezone(&chrono::Local)
-                        .format("%B %Y")
-                        .to_string()
-                },
-            )
-        };
-        let month = group_by_month.then(|| month_at(start)).flatten();
-        let month_label = if group_by_month && month.is_some() && month != previous_month {
-            month.clone()
-        } else {
-            None
-        };
-        let month_count = if month_label.is_some() {
-            (start..skeletons.len())
-                .take_while(|&index| month_at(index) == month)
-                .count()
-        } else {
-            0
-        };
-        if let Some(label) = month_label.as_ref()
-            && collapsed_months.contains(label)
-        {
-            let mut end = start + 1;
-            while end < skeletons.len() && month_at(end) == month {
-                end += 1;
-            }
-            rows.push(GalleryVisualRow {
-                media_range: start..end,
-                month_label: Some(label.clone()),
-                collapsed: true,
-                month_count,
-            });
-            previous_month = month;
-            start = end;
-            continue;
-        }
-        let mut end = (start + columns).min(skeletons.len());
-        if group_by_month {
-            end = start + 1;
-            while end < skeletons.len() && end - start < columns && month_at(end) == month {
-                end += 1;
-            }
-        }
-        rows.push(GalleryVisualRow {
-            media_range: start..end,
-            month_label,
-            collapsed: false,
-            month_count,
-        });
-        previous_month = month;
-        start = end;
-    }
-    rows
-}
-
-pub(super) fn gallery(
-    service: Arc<GalleryService>,
-    file_operations: Arc<FileOperationsService>,
-    drag_drop: Arc<DragDropService>,
-    preview: Arc<PreviewService>,
-    playback: Arc<MediaPlaybackService>,
-    runtime: tokio::runtime::Handle,
-    cordis: CordisContext,
-    selected_folder: Arc<SelectedFolder>,
-    selected_tag: Arc<SelectedTag>,
-    selected_path: Arc<SelectedPath>,
-    index_revision: Arc<IndexRevision>,
-    session: Arc<SessionService>,
-    history: Option<Arc<HistoryService>>,
-    settings: Option<Arc<SettingsService>>,
-    tagging: Option<Arc<TaggingService>>,
-    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
-) -> Vec<UiViewContribution> {
-    // All regions share one entity. A filter or selection change invalidates
-    // every projection; no independent state, workers or session writers.
-    let cached = Arc::new(std::sync::Mutex::new(None::<Entity<GalleryView>>));
-    let create = Arc::new(move |window: &mut Window, app: &mut App| {
-        let mut cached = cached.lock().expect("Gallery factory lock");
-        if let Some(view) = cached.as_ref() {
-            return view.clone();
-        }
-        let view_service = Arc::clone(&service);
-        let view_file_operations = Arc::clone(&file_operations);
-        let view_drag_drop = Arc::clone(&drag_drop);
-        let view_preview = Arc::clone(&preview);
-        let view_playback = Arc::clone(&playback);
-        let view_runtime = runtime.clone();
-        let view_cordis = cordis.clone();
-        let view_selection = Arc::clone(&selected_folder);
-        let view_tag_selection = Arc::clone(&selected_tag);
-        let view_path_selection = Arc::clone(&selected_path);
-        let view_index_revision = Arc::clone(&index_revision);
-        let view_session = Arc::clone(&session);
-        let view_history = history.clone();
-        let view_settings = settings.clone();
-        let view_tagging = tagging.clone();
-        let saved = view_session.snapshot().unwrap_or_default();
-        let search = app.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder(photag_ui_bridge::i18n::tr("Search your library"))
-        });
-        let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-        let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-        let date_calendar = app.new(|cx| {
-            let mut calendar = CalendarState::new(window, cx);
-            calendar.set_date(
-                gpui_kit::component::calendar::Date::Range(None, None),
-                window,
-                cx,
-            );
-            calendar
-        });
-        let tag_picker_search = app.new(|cx| {
-            InputState::new(window, cx)
-                .placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
-        });
-        search.update(app, |input, cx| {
-            input.set_value(&saved.search_query, window, cx)
-        });
-        if let Some(date) = saved
-            .date_from
-            .as_deref()
-            .and_then(parse_date_input)
-            .flatten()
-        {
-            date_from.update(app, |picker, cx| picker.set_date(date, window, cx));
-        }
-        if let Some(date) = saved
-            .date_to
-            .as_deref()
-            .and_then(parse_date_input)
-            .flatten()
-        {
-            date_to.update(app, |picker, cx| picker.set_date(date, window, cx));
-        }
-        let rename_input = app.new(|cx| {
-            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
-        });
-        let bulk_date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-        let bulk_date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-        let bulk_inputs = [
-            "Older than days",
-            "Newer than days",
-            "Rating min 0-5",
-            "Rating max 0-5",
-            "Name contains",
-            "Extension",
-            "Size min MB",
-            "Size max MB",
-        ]
-        .into_iter()
-        .map(|placeholder| app.new(|cx| InputState::new(window, cx).placeholder(placeholder)))
-        .collect();
-        let view = app.new(|cx| {
-            GalleryView::new(
-                view_service,
-                view_file_operations,
-                view_drag_drop,
-                view_preview,
-                view_playback,
-                view_runtime,
-                view_cordis,
-                view_selection,
-                view_tag_selection,
-                view_path_selection,
-                view_index_revision,
-                view_session,
-                view_history,
-                view_settings,
-                view_tagging,
-                Arc::clone(&surfaces),
-                tag_picker_search,
-                search,
-                date_from,
-                date_to,
-                date_calendar,
-                bulk_date_from,
-                bulk_date_to,
-                rename_input,
-                bulk_inputs,
-                cx,
-            )
-        });
-        filter_row::subscribe_calendar(&view, window, app);
-        *cached = Some(view.clone());
-        view
-    });
-    regions::contributions(create)
-}
+pub(super) use factory::gallery;
 
 struct GalleryView {
     month_motion: std::collections::HashMap<String, card_motion::CardMotion>,
@@ -346,6 +120,7 @@ struct GalleryView {
     group_by_month: bool,
     show_selection_details: bool,
     show_tag_picker: bool,
+    media_actions_id: Option<i64>,
     slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
     collapsed_months: HashSet<String>,
@@ -360,408 +135,24 @@ struct GalleryView {
     writeback_failure_signature: Vec<(String, String)>,
     confirm_delete: bool,
     snapshot: Result<GallerySnapshot, String>,
+    observed_index_revision: u64,
+    last_saved_scroll: f32,
+    previous_scan_progress: Option<(usize, usize, String)>,
+    previous_popover: Option<String>,
     _subscriptions: Vec<Subscription>,
 }
 
-impl GalleryView {
-    fn new(
-        service: Arc<GalleryService>,
-        file_operations: Arc<FileOperationsService>,
-        drag_drop: Arc<DragDropService>,
-        preview: Arc<PreviewService>,
-        playback: Arc<MediaPlaybackService>,
-        runtime: tokio::runtime::Handle,
-        cordis: CordisContext,
-        selected_folder: Arc<SelectedFolder>,
-        selected_tag: Arc<SelectedTag>,
-        selected_path: Arc<SelectedPath>,
-        index_revision: Arc<IndexRevision>,
-        session: Arc<SessionService>,
-        history: Option<Arc<HistoryService>>,
-        settings: Option<Arc<SettingsService>>,
-        tagging: Option<Arc<TaggingService>>,
-        surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
-        tag_picker_search: Entity<InputState>,
-        search: Entity<InputState>,
-        date_from: Entity<DatePickerState>,
-        date_to: Entity<DatePickerState>,
-        date_calendar: Entity<CalendarState>,
-        bulk_date_from: Entity<DatePickerState>,
-        bulk_date_to: Entity<DatePickerState>,
-        rename_input: Entity<InputState>,
-        bulk_inputs: Vec<Entity<InputState>>,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        let saved = session.snapshot().unwrap_or_default();
-        let mut filter = GalleryFilter::default();
-        if let Some(settings) = &settings
-            && let Ok(settings_snapshot) = settings.snapshot()
-        {
-            filter.search_scopes = settings_snapshot.search_scopes.into();
-        }
-        filter.search = saved.search_query.clone();
-        filter.sort = saved.sort_order.unwrap_or(SortOrder::NewestFirst);
-        filter.media_type = match saved.media_type_filter.unwrap_or(SavedMediaType::All) {
-            SavedMediaType::All => MediaTypeFilter::All,
-            SavedMediaType::Photos => MediaTypeFilter::Photos,
-            SavedMediaType::Videos => MediaTypeFilter::Videos,
-            SavedMediaType::Audio => MediaTypeFilter::Audio,
-        };
-        filter.extensions = saved.selected_extensions.clone();
-        filter.excluded_extensions = saved.excluded_extensions.clone();
-        filter.date_from = saved
-            .date_from
-            .as_deref()
-            .and_then(parse_date_input)
-            .flatten();
-        filter.date_to = saved
-            .date_to
-            .as_deref()
-            .and_then(parse_date_input)
-            .flatten();
-        filter.rating_min = saved.rating_min.clamp(0, 5);
-        filter.rating_max = saved.rating_max.unwrap_or(5).clamp(filter.rating_min, 5);
-        filter.selected_tag_ids = saved.selected_tag_ids.clone();
-        filter.excluded_tag_ids = saved.excluded_tag_ids.clone();
-        if let Ok(mut selected_tags) = selected_tag.0.lock() {
-            if selected_tags.included.is_empty() && selected_tags.excluded.is_empty() {
-                selected_tags.included = saved.selected_tag_ids.clone();
-                selected_tags.excluded = saved.excluded_tag_ids.clone();
-            }
-        }
-        let focus_handle = cx.focus_handle();
-        let mut _subscriptions = vec![
-            cx.subscribe(&tag_picker_search, |_, _, event, cx| {
-                if matches!(event, InputEvent::Change) {
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&search, |this, _, event, cx| {
-                if matches!(event, InputEvent::Change) {
-                    this.filter.search = this.search.read(cx).value().to_string();
-                    this.reload();
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&date_from, |this, _, event, cx| {
-                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
-                    this.filter.date_from = date.map(|value| value.date());
-                    this.reload();
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&date_to, |this, _, event, cx| {
-                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
-                    this.filter.date_to = date.map(|value| value.date());
-                    this.reload();
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&bulk_date_from, |this, _, event, cx| {
-                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
-                    this.bulk_date_from_value = date.map(|value| value.date());
-                    this.confirm_bulk_action = false;
-                    this.confirm_bulk_action_ids = None;
-                    cx.notify();
-                }
-            }),
-            cx.subscribe(&bulk_date_to, |this, _, event, cx| {
-                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
-                    this.bulk_date_to_value = date.map(|value| value.date());
-                    this.confirm_bulk_action = false;
-                    this.confirm_bulk_action_ids = None;
-                    cx.notify();
-                }
-            }),
-        ];
-        _subscriptions.extend(bulk_inputs.iter().map(|input| {
-            cx.subscribe(input, |_, _, event, cx| {
-                if matches!(event, InputEvent::Change) {
-                    cx.notify();
-                }
-            })
-        }));
-        let selected = selected_folder
-            .0
-            .lock()
-            .map(|selected| *selected)
-            .unwrap_or(None)
-            .or(saved.selected_folder_id);
-        filter.folder_id = selected;
-        if let Ok(selected_tag) = selected_tag.0.lock() {
-            filter.selected_tag_ids = selected_tag.included.clone();
-            filter.excluded_tag_ids = selected_tag.excluded.clone();
-        }
-        filter.path_prefix = selected_path
-            .0
-            .lock()
-            .map(|selected| selected.clone())
-            .unwrap_or(None)
-            .or(saved.selected_path.clone());
-        let mut observed_revision = index_revision.0.load(Ordering::Acquire);
-        let snapshot = service
-            .load(filter.to_query())
-            .map_err(|error| error.to_string());
-        let mut selection = GallerySelection::default();
-        if let Ok(snapshot) = &snapshot {
-            let mut restored_ids = std::collections::HashSet::new();
-            selection.selected_media_ids = saved
-                .selected_media_ids
-                .iter()
-                .copied()
-                .filter(|id| {
-                    restored_ids.insert(*id)
-                        && snapshot.skeletons.iter().any(|media| media.id == *id)
-                })
-                .collect();
-            selection.anchor_id = selection.selected_media_ids.first().copied();
-        }
-        let scroll = ListState::new(0, ListAlignment::Top, px(240.));
-        let restored_scroll = if saved.gallery_scroll.is_finite() {
-            saved.gallery_scroll.max(0.)
-        } else {
-            0.
-        };
-        let scroll_for_monitor = scroll.clone();
-        let settings_group_by_month = settings
-            .as_ref()
-            .and_then(|settings| settings.snapshot().ok())
-            .map(|settings| settings.show_date_dividers);
-        let group_by_month =
-            settings_group_by_month.unwrap_or_else(|| saved.group_by_month.unwrap_or(true));
-        let initial_writeback_failures = tagging
-            .as_ref()
-            .map(|_| writeback_failure_signature())
-            .unwrap_or_default();
-        let mut last_saved_scroll = restored_scroll;
-        let mut previous_progress = None;
-        let mut previous_popover = surfaces.value("gallery.popover");
-        cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(200))
-                    .await;
-                let changed = this
-                    .update(cx, |view, cx| {
-                        let popover = view.surfaces.value("gallery.popover");
-                        if previous_popover != popover {
-                            previous_popover = popover;
-                            cx.notify();
-                        }
-                        let progress = view
-                            .service
-                            .scan_progress()
-                            .map(|p| (p.scanned, p.total, p.phase));
-                        if previous_progress != progress {
-                            previous_progress = progress;
-                            cx.notify();
-                        }
-                        if view.service.has_ui_request() {
-                            cx.notify();
-                        }
-                        let selected = view
-                            .selected_folder
-                            .0
-                            .lock()
-                            .map(|selected| *selected)
-                            .unwrap_or(None);
-                        let selected_tags = view
-                            .selected_tag
-                            .0
-                            .lock()
-                            .map(|selected| selected.clone())
-                            .unwrap_or_default();
-                        let selected_path = view
-                            .selected_path
-                            .0
-                            .lock()
-                            .map(|selected| selected.clone())
-                            .unwrap_or(None);
-                        let changed = view.filter.folder_id != selected
-                            || view.filter.selected_tag_ids != selected_tags.included
-                            || view.filter.excluded_tag_ids != selected_tags.excluded
-                            || view.filter.path_prefix != selected_path;
-                        let revision = view.index_revision.0.load(Ordering::Acquire);
-                        let index_changed = revision != observed_revision;
-                        observed_revision = revision;
-                        if changed || index_changed {
-                            view.filter.folder_id = selected;
-                            view.filter.selected_tag_ids = selected_tags.included;
-                            view.filter.excluded_tag_ids = selected_tags.excluded;
-                            view.filter.path_prefix = selected_path;
-                            view.reload();
-                            cx.notify();
-                        }
-                        if view.tagging.is_some() {
-                            let current = writeback_failure_signature();
-                            if current != view.writeback_failure_signature {
-                                view.writeback_failure_signature = current;
-                                cx.notify();
-                            }
-                        }
-                        if let Some(group_by_month) = view
-                            .settings
-                            .as_ref()
-                            .and_then(|settings| settings.snapshot().ok())
-                            .map(|settings| settings.show_date_dividers)
-                            && group_by_month != view.group_by_month
-                        {
-                            view.group_by_month = group_by_month;
-                            view.row_layout_key = None;
-                            view.persist_filter_session();
-                            cx.notify();
-                        }
-                        let current_scroll =
-                            (-f32::from(scroll_for_monitor.scroll_px_offset_for_scrollbar().y))
-                                .max(0.);
-                        if (current_scroll - last_saved_scroll).abs() >= 1.0 {
-                            view.persist_filter_session();
-                            last_saved_scroll = current_scroll;
-                        }
-                        true
-                    })
-                    .unwrap_or(false);
-                if !changed {
-                    break;
-                }
-            }
-        })
-        .detach();
-        Self {
-            month_motion: std::collections::HashMap::new(),
-            hovered_cards: HashSet::new(),
-            card_motion: std::collections::HashMap::new(),
-            locale_revision: u64::MAX,
-            service,
-            file_operations,
-            drag_drop,
-            preview,
-            playback,
-            runtime,
-            cordis,
-            selected_folder,
-            selected_tag,
-            selected_path,
-            index_revision,
-            session,
-            history,
-            settings,
-            tagging,
-            surfaces,
-            tag_picker_search,
-            tag_picker_selected: Default::default(),
-            search,
-            date_from,
-            date_to,
-            date_calendar,
-            bulk_date_from,
-            bulk_date_to,
-            bulk_date_from_value: None,
-            bulk_date_to_value: None,
-            rename_input,
-            bulk_inputs,
-            bulk_action: None,
-            bulk_source: BulkActionSource::WholeLibrary,
-            bulk_media_type: MediaTypeFilter::All,
-            bulk_tag_ids: Vec::new(),
-            bulk_extension_exclude: false,
-            confirm_bulk_action: false,
-            confirm_bulk_action_ids: None,
-            focus_handle,
-            filter,
-            selection,
-            rubberband: None,
-            scroll,
-            pending_scroll_restore: Some(restored_scroll),
-            columns: 4,
-            row_layout: Arc::new(Vec::new()),
-            row_layout_key: None,
-            thumb_size: saved
-                .thumb_size
-                .filter(|size| {
-                    size.is_finite()
-                        && (theme::THUMB_SIZE_MIN..=theme::THUMB_SIZE_MAX).contains(size)
-                })
-                .unwrap_or(theme::THUMB_SIZE_DEFAULT),
-            group_by_month,
-            show_selection_details: false,
-            show_tag_picker: false,
-            slider_drag: None,
-            show_statistics: false,
-            collapsed_months: saved.collapsed_months.clone(),
-            inspector_expanded: ["basic", "tags"].into_iter().collect(),
-            tag_filter_exclude_mode: false,
-            extension_exclude_mode: saved.ext_click_mode
-                == Some(photag_plugin_session::TagClickMode::Exclude),
-            drag_allowed: Arc::new(AtomicBool::new(true)),
-            video_preview_open: false,
-            show_exif: false,
-            exif_cache: None,
-            operation_status: None,
-            writeback_failure_signature: initial_writeback_failures,
-            confirm_delete: false,
-            snapshot,
-            _subscriptions,
-        }
-    }
-
-    fn reload(&mut self) {
+impl Drop for GalleryView {
+    fn drop(&mut self) {
         self.persist_filter_session();
-        self.snapshot = self
-            .service
-            .load(self.filter.to_query())
-            .map_err(|error| error.to_string());
-        self.row_layout = Arc::new(Vec::new());
-        self.row_layout_key = None;
-        self.selection = GallerySelection::default();
-        self.scroll.reset(0);
-        self.pending_scroll_restore = None;
-        self.persist_filter_session();
-        self.show_exif = false;
-        self.exif_cache = None;
-        self.confirm_delete = false;
-        self.confirm_bulk_action = false;
-        self.confirm_bulk_action_ids = None;
     }
+}
 
-    fn persist_filter_session(&self) {
-        let Ok(mut saved) = self.session.snapshot() else {
-            return;
-        };
-        saved.search_query = self.filter.search.clone();
-        saved.selected_folder_id = self.filter.folder_id;
-        saved.selected_path = self.filter.path_prefix.clone();
-        saved.sort_order = Some(self.filter.sort);
-        saved.media_type_filter = Some(match self.filter.media_type {
-            MediaTypeFilter::All => SavedMediaType::All,
-            MediaTypeFilter::Photos => SavedMediaType::Photos,
-            MediaTypeFilter::Videos => SavedMediaType::Videos,
-            MediaTypeFilter::Audio => SavedMediaType::Audio,
-        });
-        saved.selected_extensions = self.filter.extensions.clone();
-        saved.excluded_extensions = self.filter.excluded_extensions.clone();
-        saved.date_from = self
-            .filter
-            .date_from
-            .map(|date| date.format("%Y-%m-%d").to_string());
-        saved.date_to = self
-            .filter
-            .date_to
-            .map(|date| date.format("%Y-%m-%d").to_string());
-        saved.rating_min = self.filter.rating_min;
-        saved.rating_max = Some(self.filter.rating_max);
-        saved.selected_tag_ids = self.filter.selected_tag_ids.clone();
-        saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
-        saved.selected_media_ids = self.selection.selected_media_ids.clone();
-        saved.gallery_scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
-        saved.thumb_size = Some(
-            self.thumb_size
-                .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),
-        );
-        saved.group_by_month = Some(self.group_by_month);
-        saved.collapsed_months = self.collapsed_months.clone();
-        let _ = self.session.replace(saved);
-    }
+pub(super) fn writeback_failure_signature() -> Vec<(String, String)> {
+    photag_plugin_tagging::writeback::failures()
+        .into_iter()
+        .map(|failure| (failure.path.display().to_string(), failure.error))
+        .collect()
 }
 
 pub(super) fn format_bulk_outcome<'a>(
@@ -782,10 +173,4 @@ pub(super) fn format_bulk_outcome<'a>(
         result.push_str(&failures.join("; "));
     }
     result
-}
-
-impl Drop for GalleryView {
-    fn drop(&mut self) {
-        self.persist_filter_session();
-    }
 }

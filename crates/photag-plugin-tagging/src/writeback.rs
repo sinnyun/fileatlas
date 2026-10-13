@@ -31,6 +31,7 @@ struct State {
     worker_running: bool,
     failure_sequence: u64,
     failures: BTreeMap<PathBuf, (u64, WritebackFailure)>,
+    retry_tags: BTreeMap<PathBuf, Vec<String>>,
 }
 
 struct Job {
@@ -80,6 +81,7 @@ fn schedule_with_writer(
             let generation = state.generation;
             state.current.insert(key.clone(), generation);
             state.failures.remove(&key);
+            state.retry_tags.remove(&key);
             // Coalesce pending writes to the same path. An already-running
             // write may finish, but the single worker applies this newer job
             // afterward so stale data cannot be the final file contents.
@@ -114,6 +116,7 @@ fn schedule_with_writer(
                             &mut state,
                             job.key,
                             job.path,
+                            job.tags,
                             format!("could not start metadata writer: {error}"),
                         );
                     }
@@ -158,18 +161,25 @@ fn run_worker(writer: MetadataWriter) {
         {
             state.current.remove(&job.key);
             if let Err(error) = result {
-                record_failure(&mut state, job.key, job.path, error.to_string());
+                record_failure(&mut state, job.key, job.path, job.tags, error.to_string());
             }
         }
     }
 }
 
-fn record_failure(state: &mut State, key: PathBuf, path: PathBuf, error: String) {
+fn record_failure(
+    state: &mut State,
+    key: PathBuf,
+    path: PathBuf,
+    tags: Vec<String>,
+    error: String,
+) {
     state.failure_sequence = state.failure_sequence.wrapping_add(1).max(1);
     let sequence = state.failure_sequence;
     state
         .failures
-        .insert(key, (sequence, WritebackFailure { path, error }));
+        .insert(key.clone(), (sequence, WritebackFailure { path, error }));
+    state.retry_tags.insert(key, tags);
     while state.failures.len() > MAX_RECORDED_FAILURES {
         if let Some(oldest) = state
             .failures
@@ -178,6 +188,7 @@ fn record_failure(state: &mut State, key: PathBuf, path: PathBuf, error: String)
             .map(|(path, _)| path.clone())
         {
             state.failures.remove(&oldest);
+            state.retry_tags.remove(&oldest);
         }
     }
 }
@@ -209,8 +220,72 @@ pub fn failures() -> Vec<WritebackFailure> {
 /// Acknowledge a displayed failure, or clear it after a caller retries.
 pub fn clear_failure(path: impl AsRef<std::path::Path>) {
     if let Ok(mut state) = state().lock() {
-        state.failures.remove(&path_key(path.as_ref()));
+        let key = path_key(path.as_ref());
+        state.failures.remove(&key);
+        state.retry_tags.remove(&key);
     }
+}
+
+/// Requeue the last exact tag payload that failed for this path. The worker is
+/// shared with new writes so retries remain coalesced and ordered.
+pub fn retry_failure(path: impl AsRef<std::path::Path>) -> Result<bool, ScheduleError> {
+    let start_worker = {
+        let mut state = state().lock().map_err(|_| ScheduleError::StatePoisoned)?;
+        let key = path_key(path.as_ref());
+        let Some((_, failure)) = state.failures.remove(&key) else {
+            return Ok(false);
+        };
+        let Some(tags) = state.retry_tags.remove(&key) else {
+            let sequence = state.failure_sequence;
+            state.failures.insert(key, (sequence, failure));
+            return Ok(false);
+        };
+        state.generation = state.generation.wrapping_add(1).max(1);
+        let generation = state.generation;
+        state.current.insert(key.clone(), generation);
+        state.queue.retain(|job| job.key != key);
+        state.queue.push_back(Job {
+            key,
+            path: failure.path,
+            tags,
+            generation,
+        });
+        if state.worker_running {
+            false
+        } else {
+            state.worker_running = true;
+            true
+        }
+    };
+    if start_worker
+        && let Err(error) = std::thread::Builder::new()
+            .name("photag-tag-writeback-retry".into())
+            .spawn(move || {
+                run_worker(std::sync::Arc::new(|path, tags| {
+                    super::xmp::write_metadata(&path.to_string_lossy(), tags)
+                }))
+            })
+    {
+        if let Ok(mut state) = state().lock() {
+            state.worker_running = false;
+            if let Some(index) = state.queue.iter().position(|job| {
+                state.current.get(&job.key) == Some(&job.generation)
+            }) {
+                if let Some(job) = state.queue.remove(index) {
+                    state.current.remove(&job.key);
+                    record_failure(
+                        &mut state,
+                        job.key,
+                        job.path,
+                        job.tags,
+                        format!("could not start metadata writer: {error}"),
+                    );
+                }
+            }
+        }
+        return Err(ScheduleError::WorkerStart(error));
+    }
+    Ok(true)
 }
 
 #[cfg(windows)]

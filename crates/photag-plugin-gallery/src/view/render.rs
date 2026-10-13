@@ -15,11 +15,28 @@ impl Render for GalleryView {
                     self.confirm_bulk_action = false;
                     self.confirm_bulk_action_ids = None;
                 }
+                crate::GalleryUiRequest::ConfigureBulk(action, source) => {
+                    bulk_actions::reset_inputs(self, window, cx);
+                    self.bulk_action = Some(action);
+                    self.bulk_source = source;
+                    self.confirm_bulk_action = false;
+                    self.confirm_bulk_action_ids = None;
+                }
+                crate::GalleryUiRequest::OpenMediaActions(id) => {
+                    if self.service.media_by_id(id).ok().flatten().is_some() {
+                        self.selection.selected_media_ids = vec![id];
+                        self.selection.anchor_id = Some(id);
+                        self.media_actions_id = Some(id);
+                        self.persist_filter_session();
+                    }
+                }
+                crate::GalleryUiRequest::CloseMediaActions => self.media_actions_id = None,
                 crate::GalleryUiRequest::CloseDialogs => {
                     self.show_statistics = false;
                     self.bulk_action = None;
                     self.show_selection_details = false;
                     self.show_tag_picker = false;
+                    self.media_actions_id = None;
                     self.confirm_bulk_action = false;
                     self.confirm_bulk_action_ids = None;
                 }
@@ -113,6 +130,12 @@ impl Render for GalleryView {
                 .unwrap_or(0),
             group_by_month: self.group_by_month,
             inspector_sections: self.inspector_expanded.iter().copied().collect(),
+            bulk_action: self.bulk_action.map(|action| action.label()),
+            bulk_source: self.bulk_source.label(),
+            statistics_open: self.show_statistics,
+            tag_picker_open: self.show_tag_picker,
+            media_actions_open: self.media_actions_id.is_some(),
+            media_actions_id: self.media_actions_id,
         });
         self.refresh_locale(window, cx);
         // v5 grid: columns come from the Gallery viewport strip (rows own the

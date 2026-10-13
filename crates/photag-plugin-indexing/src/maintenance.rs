@@ -20,7 +20,7 @@ pub(super) fn process_videos_parallel(
     tx: &mpsc::Sender<Option<ScanProgress>>,
     phase_name: &str,
     start_count: usize,
-) {
+) -> Result<(), String> {
     // 3 workers: ffmpeg seek+decode is mostly I/O-bound but each subprocess
     // also spins up briefly. More than ~3 concurrent ffmpeg invocations on
     // HDD just causes seek thrash without throughput gain.
@@ -29,7 +29,7 @@ pub(super) fn process_videos_parallel(
     let vid_total = video_paths.len();
     let (result_tx, result_rx) = mpsc::channel::<(String, String, Option<Vec<u8>>)>();
 
-    std::thread::scope(|scope| {
+    std::thread::scope(|scope| -> Result<(), String> {
         for _ in 0..VIDEO_WORKERS {
             let rtx = result_tx.clone();
             let td = thumb_dir.to_path_buf();
@@ -69,43 +69,54 @@ pub(super) fn process_videos_parallel(
         const BATCH_SIZE: usize = 32;
         let mut batch: Vec<(String, String, Option<Vec<u8>>)> = Vec::with_capacity(BATCH_SIZE);
         let mut count = 0usize;
-        let flush =
-            |batch: &mut Vec<(String, String, Option<Vec<u8>>)>, db: &Arc<IndexingService>| {
-                if batch.is_empty() {
-                    return;
-                }
-                let _ = db.database.with_writer(|conn| {
-                    conn.execute_batch("BEGIN").ok();
+        let flush = |batch: &mut Vec<(String, String, Option<Vec<u8>>)>,
+                     db: &Arc<IndexingService>| -> Result<(), String> {
+            if batch.is_empty() {
+                return Ok(());
+            }
+            db.database.with_writer(|conn| {
+                conn.execute_batch("BEGIN")?;
+                let updates = (|| {
                     let mut stmt = conn.prepare_cached(
-                    "UPDATE media SET thumb_path = ?1, micro_thumb = ?2 WHERE full_path = ?3"
-                ).unwrap();
+                        "UPDATE media SET thumb_path = ?1, micro_thumb = ?2 WHERE full_path = ?3"
+                    )?;
                     for (full_path, thumb_path, micro) in batch.iter() {
                         let micro_ref: Option<&[u8]> = micro.as_deref();
-                        stmt.execute(rusqlite::params![thumb_path, micro_ref, full_path])
-                            .ok();
+                        stmt.execute(rusqlite::params![thumb_path, micro_ref, full_path])?;
                     }
-                    conn.execute_batch("COMMIT").ok();
-                    Ok(())
-                });
-                batch.clear();
-            };
+                    Ok::<(), rusqlite::Error>(())
+                })();
+                match updates {
+                    Ok(()) => conn.execute_batch("COMMIT"),
+                    Err(error) => {
+                        let _ = conn.execute_batch("ROLLBACK");
+                        Err(error)
+                    }
+                }
+            }).map_err(|error| error.to_string())?;
+            batch.clear();
+            Ok(())
+        };
         while let Ok(item) = result_rx.recv() {
             batch.push(item);
             count += 1;
             if batch.len() >= BATCH_SIZE {
-                flush(&mut batch, db);
+                flush(&mut batch, db)?;
             }
             if count % 5 == 0 || count == vid_total {
                 tx.send(Some(ScanProgress {
                     scanned: start_count + count,
                     total: start_count + vid_total,
                     phase: format!("{}... {}/{}", phase_name, count, vid_total),
+                    error: None,
                 }))
                 .ok();
             }
         }
-        flush(&mut batch, db);
-    });
+        flush(&mut batch, db)?;
+        Ok(())
+    })?;
+    Ok(())
 }
 
 /// Generate thumbnails for items that are missing them (e.g. after interrupted scan).
@@ -116,10 +127,10 @@ pub fn generate_missing_thumbnails_async(
 ) -> mpsc::Receiver<Option<ScanProgress>> {
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
+        let worker_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let thumb_dir = db.thumbnails.directory().to_path_buf();
         let total = items.len();
         if total == 0 {
-            tx.send(None).ok();
             return;
         }
 
@@ -154,7 +165,7 @@ pub fn generate_missing_thumbnails_async(
                 mpsc::channel::<(String, String, u32, u32, Option<Vec<u8>>)>();
             let work_idx = Arc::new(AtomicUsize::new(0));
 
-            std::thread::scope(|scope| {
+            let image_result = std::thread::scope(|scope| -> Result<(), String> {
                 for _ in 0..num_workers {
                     let rtx = result_tx.clone();
                     let db_worker = Arc::clone(&db);
@@ -186,50 +197,68 @@ pub fn generate_missing_thumbnails_async(
                 let mut batch: Vec<(String, String, u32, u32, Option<Vec<u8>>)> =
                     Vec::with_capacity(BATCH_SIZE);
                 let flush = |batch: &mut Vec<(String, String, u32, u32, Option<Vec<u8>>)>,
-                             db: &Arc<IndexingService>| {
+                             db: &Arc<IndexingService>| -> Result<(), String> {
                     if batch.is_empty() {
-                        return;
+                        return Ok(());
                     }
-                    let _ = db.database.with_writer(|conn| {
-                        conn.execute_batch("BEGIN").ok();
-                        let mut stmt = conn.prepare_cached(
-                            "UPDATE media SET thumb_path = ?1, width = ?2, height = ?3, micro_thumb = ?4 WHERE full_path = ?5"
-                        ).unwrap();
-                        for (full_path, thumb_path, w, h, micro) in batch.iter() {
-                            let micro_ref: Option<&[u8]> = micro.as_deref();
-                            let w_param = if *w > 0 { Some(*w as i64) } else { None };
-                            let h_param = if *h > 0 { Some(*h as i64) } else { None };
-                            stmt.execute(
-                                rusqlite::params![thumb_path, w_param, h_param, micro_ref, full_path],
-                            ).ok();
+                    db.database.with_writer(|conn| {
+                        conn.execute_batch("BEGIN")?;
+                        let updates = (|| {
+                            let mut stmt = conn.prepare_cached(
+                                "UPDATE media SET thumb_path = ?1, width = ?2, height = ?3, micro_thumb = ?4 WHERE full_path = ?5"
+                            )?;
+                            for (full_path, thumb_path, w, h, micro) in batch.iter() {
+                                let micro_ref: Option<&[u8]> = micro.as_deref();
+                                let w_param = if *w > 0 { Some(*w as i64) } else { None };
+                                let h_param = if *h > 0 { Some(*h as i64) } else { None };
+                                stmt.execute(rusqlite::params![thumb_path, w_param, h_param, micro_ref, full_path])?;
+                            }
+                            Ok::<(), rusqlite::Error>(())
+                        })();
+                        match updates {
+                            Ok(()) => conn.execute_batch("COMMIT"),
+                            Err(error) => {
+                                let _ = conn.execute_batch("ROLLBACK");
+                                Err(error)
+                            }
                         }
-                        conn.execute_batch("COMMIT").ok();
-                        Ok(())
-                    });
+                    }).map_err(|error| error.to_string())?;
                     batch.clear();
+                    Ok(())
                 };
                 while let Ok(item) = result_rx.recv() {
                     batch.push(item);
                     global_count += 1;
                     if batch.len() >= BATCH_SIZE {
-                        flush(&mut batch, &db);
+                        flush(&mut batch, &db)?;
                     }
                     if global_count % 50 == 0 || global_count == total {
                         tx.send(Some(ScanProgress {
                             scanned: global_count,
                             total,
                             phase: format!("Generating thumbnails... {}/{}", global_count, total),
+                            error: None,
                         }))
                         .ok();
                     }
                 }
-                flush(&mut batch, &db);
+                flush(&mut batch, &db)?;
+                Ok(())
             });
+            if let Err(error) = image_result {
+                tx.send(Some(ScanProgress {
+                    scanned: global_count,
+                    total,
+                    phase: "Thumbnail backfill failed".into(),
+                    error: Some(error),
+                })).ok();
+                return;
+            }
         }
 
         // Video thumbnails (parallel)
         if !video_paths.is_empty() && ffmpeg::is_ffmpeg_available() {
-            process_videos_parallel(
+            if let Err(error) = process_videos_parallel(
                 &db,
                 &video_paths,
                 &thumb_dir,
@@ -237,9 +266,26 @@ pub fn generate_missing_thumbnails_async(
                 &tx,
                 "Generating video thumbnails",
                 global_count,
-            );
+            ) {
+                tx.send(Some(ScanProgress {
+                    scanned: global_count,
+                    total,
+                    phase: "Thumbnail backfill failed".into(),
+                    error: Some(error),
+                })).ok();
+                return;
+            }
         }
 
+        }));
+        if worker_result.is_err() {
+            tx.send(Some(ScanProgress {
+                scanned: 0,
+                total: items.len(),
+                phase: "Thumbnail backfill failed".into(),
+                error: Some("The thumbnail backfill worker stopped unexpectedly.".into()),
+            })).ok();
+        }
         tx.send(None).ok();
     });
     rx

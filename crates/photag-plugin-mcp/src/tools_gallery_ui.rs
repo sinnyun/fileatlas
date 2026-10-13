@@ -5,12 +5,15 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct GalleryControl {
-    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/tools_open/tools_close.
+    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu.
     action: String,
-    /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty.
+    /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id.
     value: Option<String>,
+    /// Bulk source: all/folder/tag/selection.
+    bulk_source: Option<String>,
     exclude: Option<bool>,
     tag_id: Option<i64>,
+    media_id: Option<i64>,
     rating_min: Option<i32>,
     rating_max: Option<i32>,
     enabled: Option<bool>,
@@ -18,7 +21,7 @@ pub(super) struct GalleryControl {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct NavigationControl {
-    /// create/edit/delete/merge/close: open the corresponding real tag dialog. Opening a dialog does not commit a tag mutation.
+    /// create/edit/delete/merge/move/close: open the corresponding real tag dialog. Opening a dialog does not commit a tag mutation.
     action: String,
     tag_id: Option<i64>,
 }
@@ -26,7 +29,7 @@ pub(super) struct NavigationControl {
 #[tool_router(router = gallery_ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
+        description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Actions: create, edit, delete, merge, move, close. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
     )]
     fn control_navigation(&self, Parameters(request): Parameters<NavigationControl>) -> String {
         if let Err(error) = self.mutation_guard() {
@@ -36,14 +39,15 @@ impl PhoTagMcpServer {
         let action = match request.action.as_str() {
             "create" => R::OpenCreate,
             "close" => R::CloseModal,
-            "edit" | "delete" | "merge" => {
+            "edit" | "delete" | "merge" | "move" => {
                 let Some(id) = request.tag_id else {
                     return error_json("tag_id required");
                 };
                 match request.action.as_str() {
                     "edit" => R::OpenEdit(id),
                     "delete" => R::OpenDelete(id),
-                    _ => R::OpenMerge(id),
+                    "merge" => R::OpenMerge(id),
+                    _ => R::OpenMove(id),
                 }
             }
             _ => return error_json("unsupported navigation UI action"),
@@ -55,13 +59,16 @@ impl PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Control the live Gallery filters, native popovers and inspector sections through existing feature actions. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
+        description = "Control live Gallery filters, popovers, bulk configuration and the Gallery-owned media action surface through feature requests. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
     )]
     fn control_gallery(&self, Parameters(request): Parameters<GalleryControl>) -> String {
         if let Err(error) = self.mutation_guard() {
             return error_json(&error);
         }
-        use photag_plugin_gallery::{GalleryUiRequest as R, filter::MediaTypeFilter as M};
+        use photag_plugin_gallery::{
+            BulkActionKind as A, BulkActionSource as S, GalleryUiRequest as R,
+            filter::MediaTypeFilter as M,
+        };
         let value = request.value.as_deref().unwrap_or("");
         let action = match request.action.as_str() {
             "popover" => {
@@ -95,6 +102,34 @@ impl PhoTagMcpServer {
                     Err(e) => error_json(&e),
                 };
             }
+            "bulk_open" => R::BulkActions,
+            "bulk_close" => R::CloseDialogs,
+            "bulk_configure" => {
+                let action = match value {
+                    "delete" => A::Delete,
+                    "copy" => A::CopyTo,
+                    "move" => A::MoveTo,
+                    _ => return error_json("bulk_configure action must be delete, copy, or move"),
+                };
+                let source = match request.bulk_source.as_deref().unwrap_or("all") {
+                    "all" => S::WholeLibrary,
+                    "folder" => S::SelectedFolder,
+                    "tag" => S::SelectedTag,
+                    "selection" => S::CurrentSelection,
+                    _ => return error_json("bulk_source must be all, folder, tag, or selection"),
+                };
+                R::ConfigureBulk(action, source)
+            }
+            "open_media_menu" => {
+                let Some(id) = request.media_id else {
+                    return error_json("media_id required");
+                };
+                return match self.gallery.open_media_actions(id) {
+                    Ok(()) => json!({"accepted":true,"media_id":id}).to_string(),
+                    Err(error) => error_json(&error),
+                };
+            }
+            "close_media_menu" => R::CloseMediaActions,
             "search" => R::Search(value.to_string()),
             "media_type" => R::MediaType(match value {
                 "all" => M::All,

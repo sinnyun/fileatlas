@@ -1,4 +1,4 @@
-# PhoTag v5 开发交接：按任务范围执行的开发与验证文档
+# PhoTag v5 开发交接：自动推进开发与验证
 
 更新时间：2026-10-14，Asia/Shanghai。工作目录：`F:\AI\geren\pho_cordis`。
 用户因额度不足要求暂停实现、整理交接。本文件是接手时的当前状态入口；
@@ -6,20 +6,25 @@
 
 ## 1. 接手目标与用户最后确认的要求
 
-### 执行规则：只执行用户本轮明确分配的任务范围
+### 执行规则：根据台账自动推进下一未完成阶段
 
-**每次切换模型或交接任务时，用户会明确指定执行哪一部分。执行者不应根据模型大小、
-身份或本文件标题推断职责；只完成用户本轮指定的章节/任务，完成后汇报并等待下一项分配。**
+**用户只说“继续”时，依据本文件和阶段台账自动推进，不等待用户逐阶段分配。**显式指定范围时
+按用户指定执行；否则先完成 C0 → C4 中未完成的编码项，再开始/继续 V1 → V4 验证。跳过项必须
+有当前代码或验证证据支持，不能只凭旧勾选框推断。
 
-**职责由用户每轮通过任务范围分配，不由模型身份决定。**
+**职责由台账中的下一未完成阶段决定，不由模型身份决定。**
 
-- 用户分配 C0–C4 编码任务时：只实施所分配的代码任务并更新实现记录；本轮不运行格式、
+- 执行 C0–C4 编码任务时：只实施编码并更新实现记录；本阶段不运行格式、
   编译、测试、应用或 MCP。允许编写测试源码，但不执行测试。交付标注“代码已编写，未验证”。
-- 用户分配 V1–V4 验证任务时：执行所分配的验证步骤；运行时调试、界面测试和截图必须使用
+- C0–C4 全部完成后，自动进入 V1–V4 验证任务：执行未完成的验证步骤；运行时调试、界面测试和截图必须使用
   PhoTag 插件 MCP。根据结果修复或记录差异，按本轮范围完成。
-- 用户同时分配编码与验证时：按明确范围执行。未分配的任务留待用户后续指定。
+- C 阶段完成后如果 V 阶段仍有未完成项，“继续”即开始/继续 V 阶段，不要求用户重复指定范围。
 - 不得把未执行的验证写成通过，也不得用 TODO、空 handler 或假实现代替功能。
-- 本文件中的编码清单和验证清单均供用户逐次分配；章节标题不代表特定模型角色。
+- 本文件中的编码清单和验证清单是自动推进台账；显式用户指令可以缩小或改变本轮范围。
+
+**当前自动续接位置：C0–C4编码清单均已完成，V1–V4尚未执行。**因此，下一次用户只说
+“继续”时，应直接按验证执行者清单开始 V1–V4；不要重复实现已完成的 C 阶段，也不要等待用户
+再次确认任务范围。
 
 
 1. 编码任务按用户 v5 参考图实现界面；验证任务通过真实截图迭代验收。
@@ -42,8 +47,8 @@
 |---|---|
 | Git 工作树 | 大量未提交修改与新增文件，包含用户交接前的修改；禁止 reset/clean 或整批覆盖 |
 | 当前 `cargo fmt --all -- --check` | 已于交接最后运行，使用 `+1.97.1`，通过 |
-| 当前 Shell check | **失败：19 个错误**，集中于新批量操作/标签分配模块；尚未修复 |
-| 完整编译日志 | `target/development-handoff/check-current.log` |
+| 最近一次历史 Shell check | **失败：19 个错误**，集中于新批量操作/标签分配模块；本轮已按诊断修复导入/可见性，禁止编译确认 |
+| 完整历史编译日志 | `target/development-handoff/check-current.log` |
 | 最后成功构建并实际截图的版本 | `target/debug/photag-shell-v5-iteration.exe`，2026-10-13 23:55:42 构建 |
 | 上述二进制与现在源码的关系 | **落后于最新工作树**，不含最后的日期日历、设置正文尺寸修复、第二轮侧栏、04/06 最新布局 |
 | 较早二进制 | `photag-shell-s2.exe` / `photag-shell-s2b.exe`；更旧，不作为当前验收版本 |
@@ -87,7 +92,7 @@
 
 已验证安装：stable 1.94.1（默认，不满足 MSRV）、1.96.0、1.97.1 Windows MSVC。
 执行构建验证任务时必须显式选择已安装的 1.97.1；不降 MSRV，不改全局默认，不重复裸 `cargo`。
-仅在用户本轮分配相应验证任务时运行本节命令。
+仅当 V 阶段是台账中的下一未完成阶段，或用户明确指定验证时，运行本节命令。
 
 ```powershell
 Set-Location F:\AI\geren\pho_cordis
@@ -191,26 +196,25 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-handoff.exe --
 - `control_gallery`：`popover/search/media_type/sort/rating/extension/tag/tag_mode/`
   `extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/`
   `month_grouping/tools_open/tools_close`。具体参数以 tools/list schema 为准。
-- `control_navigation`：`create/edit/delete/merge/close`，后面三种目标动作使用
+- `control_navigation`：`create/edit/delete/merge/move/close`，目标动作使用
   `tag_id`。**只打开真实弹窗，不提交删除/合并操作**。
 - `GalleryUiRequest` 位于新 `gallery/src/ui_requests.rs`，消费在 `view/render.rs`；
   `GalleryUiSnapshot` 由真实 Gallery render 发布，不是另查 DB 假装界面状态。
 - `NavigationService::request_ui(NavigationUiRequest)`，enum 为
-  `OpenCreate/OpenEdit(i64)/OpenDelete(i64)/OpenMerge(i64)/CloseModal`，有标签存在性/
+  `OpenCreate/OpenEdit(i64)/OpenDelete(i64)/OpenMerge(i64)/OpenMove(i64)/CloseModal`，有标签存在性/
   队列 busy 错误。由同一个 SidebarView 消费。
 
 `Popover::open` 与 `on_open_change` 共同绑定 `surfaces.value("gallery.popover")`；
 真实按钮和 MCP 使用同一开关，Gallery poller检测变化后 notify。
 这是实际控件状态验证，但仍不能声称验证了 OS 指针点击传播。
 
-### 尚未实现：不要误以为已经有
+### 本轮后仍未实现：不要误以为已经有
 
-- `MediaPlaybackService::open_media(path, Option<i64>)`：**没有落地**。
-- `PlaybackSnapshot.media_id`：**没有落地**。
-- Playback Tags/More 服务接线：**没有落地**。
-- `tools_write.rs::open_media` 的 `audio` 分支仍直接返回“不支持音频预览”；
-  即使 Playback 已扩展 audio-only，MCP 当前也进不去。`v5-audio-first.png`
-  是主界面，不是成功的音频播放器截图。
+- Gallery 卡片原生 ContextMenu 的程序化 MCP 打开入口：依赖真实右键坐标；
+  GPUI Kit 的 PopupMenu 构造和 ContextMenu 内部 open_menu 均非公开接口。
+- Indexing scan worker 的异步失败回传：当前 public progress stream 仅为
+  `Receiver<Option<ScanProgress>>`，Navigation 无法显示 worker 错误或提供对应重扫。
+- 上述两项的 UI/MCP 运行时行为均未验证。
 
 MCP 工具可能返回 text 内 JSON `{error:...}` 而非 `isError=true`。新客户端已同时
 检查这两种错误；旧聊天内临时客户端曾只看 isError，因此音频 open 的错误一度被漏看。
@@ -219,16 +223,16 @@ MCP 工具可能返回 text 内 JSON `{error:...}` 而非 `isError=true`。新�
 
 | 稿/任务 | 主要代码 | 当前实现与下一步 |
 |---|---|---|
-| 00 主界面 | Shell `shell.rs/main.rs`；Gallery `filter_row/inspector/card/render`；Navigation `view/render` | 已有骨架/检查器/卡片/面包屑，继续用当前新版本截图验收 |
-| 01 图片预览 | Preview `view/render/toolbar/filmstrip/overlays` | 有新顶栏/More/slider，但信息卡、舞台、工具条尚不一致 |
-| 01 视频/音频 | Playback `view.rs/lib.rs/ffmpeg.rs` | modal 与 audio-only 扩展有代码；Tags/More、ID、MCP audio 路由缺 |
-| 02/03 设置 | Settings `view.rs/tabs.rs/ai_groups.rs/updates_page.rs` | 六项纵向导航；首轮正文空白，最后尺寸修复未重拍 |
+| 00 主界面 | Shell `shell.rs/main.rs`；Gallery `filter_row/inspector/card/render`；Navigation `view/render` | 骨架/检查器/卡片/面包屑代码已写；需当前版本视觉验收 |
+| 01 图片预览 | Preview `view/render/toolbar/filmstrip/overlays` | 本轮舞台实色、信息紧凑两列和可折叠组已写；需MCP重拍核对 |
+| 01 视频/音频 | Playback `view.rs/lib.rs/ffmpeg.rs` | audio-only扩展、真实media ID、Tags/More服务接线、MCP音视频入口已写；需验证设备/codec和布局 |
+| 02/03 设置 | Settings `view.rs/tabs.rs/ai_groups.rs/updates_page.rs` | 六项纵向导航和正文尺寸/表面修复代码已写；首轮正文空白截图是旧证据，需重拍 |
 | 04 标签管理 | Navigation `tag_modal/tag_picker/tag_actions` | create/edit/rename/delete/merge/move、层级 parent/target、Esc；未截图完整验收 |
-| 04 标签分配 | Gallery `tagging_picker.rs` | 最新430左+220预览、树和recent；当前缺trait导致编译失败 |
+| 04 标签分配 | Gallery `tagging_picker.rs` | 最新430左+220预览、层级树、recent和跨页真实预览查询已写；未验证 |
 | 05 筛选/菜单 | Gallery `filter_row`、`card_menu.rs`、`regions.rs` | 六个真实popover已截；日期溢出已写修复，未重拍；native context menu已接 |
-| 06 批量/文件 | Gallery `bulk_actions.rs/bulk_actions/filters.rs`、`file_actions/selection_panel` | 最新两栏与AND过滤未编译；单文件确认/rename完整稿面仍需检查 |
+| 06 批量/文件 | Gallery `bulk_actions.rs/bulk_actions/filters.rs`、`file_actions/selection_panel` | 两栏AND筛选、真实匹配列表、动作/source状态及全选中ID查询已写；需编译/窗口MCP验证 |
 | 07 统计/导出/更新 | Gallery `statistics.rs`、Export `view.rs`、Settings `updates*` | 有分区/状态卡；统计、导出尚未新截图；更新启动静默已验 |
-| 08 空态/扫描/错误 | Gallery `empty_state.rs/regions.rs`、Navigation 扫描、Tagging writeback | 空态代码有；失败卡/重试/取消完整稿面仍缺验证与部分实现 |
+| 08 空态/扫描/错误 | Gallery `empty_state.rs/regions.rs`、Navigation 扫描、Tagging writeback | 空态、进度/取消、Indexing终止错误Retry卡、同步失败重扫、writeback Retry/Dismiss已写；08视觉验收与Toast风格待验 |
 
 所有设计图在 `docs/reference-ui/final-v5/`。配套文字：
 `concepts/photag-reference-layout-v5-2026-10-13.md` 与
@@ -257,7 +261,7 @@ MCP 工具可能返回 text 内 JSON `{error:...}` 而非 `isError=true`。新�
 
 ## 9. 最后成功截图之后已落盘的修改与待验事项
 
-本节“截图/重拍/运行核对”属于验证任务；执行者仅在用户分配相应任务时执行。
+本节“截图/重拍/运行核对”属于验证任务；V 阶段推进到对应项目时执行。
 
 ### 9.1 Navigation 第二轮（已格式化，尚未新截图）
 
@@ -291,66 +295,85 @@ MCP 工具可能返回 text 内 JSON `{error:...}` 而非 `isError=true`。新�
   取消/继续；年龄与大小在 Advanced；原四种scope/native目的地/确认ID流程保留。
 - 新 Gallery 字段：`bulk_media_type: MediaTypeFilter`（All）、
   `bulk_tag_ids: Vec<i64>`、`bulk_extension_exclude: bool`，reset_inputs 清理它们。
-- 风险：跨页 CurrentSelection 的预览仍可能只从 snapshot.media 找，200条窗口外
-  的选中项需调用现有 `GalleryService::media_by_id` 补齐，不能悄悄显示部分结果。
-- 动作/来源按钮需核对明显选中态。Older-than/newer-than 是距今更久/更近的天数
-  下限/上限约束；目前 `Minimum / maximum age` 文案容易颠倒，按实际字段逻辑校对。
+- [x] 风险处理：跨页 CurrentSelection 现按选中 ID 调 `GalleryService::media_by_id`
+  补齐，查询失败或缺失ID显式报错，不再静默显示部分结果（代码已写未验证）。
+- 动作/来源按钮已补 `.toggled()` 真实选中态。Older-than/newer-than 是距今更久/更近的天数
+  下限/上限约束；年龄字段文案后续对照交互稿和筛选语义核查。
 - `regions.rs` bulk 外框860、统计外框800；需要在960最小窗口下 clamp 并验布局。
 
 ## 10. 编码任务清单 C0–C4
 
-只有用户本轮分配 C0–C4 时执行对应编码项。按用户指定范围逐项完成；若用户明确分配
-完整编码阶段，则按 C0 → C4。编码任务内可以阅读已有截图与日志，但不执行验证命令、启动应用或运行 MCP。
+**2026-10-14 本轮实现状态：代码已编写，未验证。** 静态复核发现并补入缩略图数据库批量写入错误和回填worker panic的终止失败通道；C0–C4编码清单现均有对应实现，仍未运行验证。
+媒体操作 surface 是 Gallery 自有可见操作面板，系统原生右键菜单仍响应真实右键事件。
+Indexing终止错误可送达Navigation Retry卡。V1–V4仍未执行。不要将下面的历史交接快照当作当前工作树状态。
+
+当 C0–C4 是台账中的下一未完成阶段时执行对应编码项，按 C0 → C4 顺序逐项完成。编码任务内
+可以阅读已有截图与日志，但不执行验证命令、启动应用或运行 MCP。完成 C0–C4 后，下一次用户
+只说“继续”时自动执行未完成的 V1–V4，不要求用户重新指定验证范围。
 
 ### C0：修复已记录问题并补齐文案
 
-- [ ] 按第3节修复19个错误对应的类型、可见性和 trait 导入，依据现有诊断修改。
-- [ ] 接近800行的文件扩展前拆分，不删除已有功能压行数。
-- [ ] 登记第11节文案，补全 keys.json/en.ftl/zh-CN.ftl；必要时调整测试源码的参数样本，
-  **不运行测试**。
-- [ ] 记录修改位置及可能需要后续验证任务重点检查的 API/借用疑点。
+- [x] 按第3节修复19个错误对应的类型、可见性和 trait 导入，依据现有诊断修改；当前源码已包含 `MediaItem`、`section_title` 与 `StyledExt`/`ScrollableElement` 修复。
+- [x] 接近800行的文件扩展前拆分，不删除已有功能压行数；本轮确认相关新模块均未超过800行，未做无必要拆分。
+- [x] 登记第11节及本轮新增播放/写回文案，补全 keys.json/en.ftl/zh-CN.ftl；catalog测试参数样本已包含 `{action}`、`{error}` 等，**未运行测试**。
+- [x] 记录修改位置及可能需要后续验证任务重点检查的 API/借用疑点；批量跨页 ID 查询、Calendar状态和写回重试并未编译核对。
 
 ### C1：补齐00/02/03/05已知布局代码
 
-- [ ] 对照00图与旧截图，保持侧栏顺序、默认折叠、图标/面包屑、一行筛选、网格间距、
+- [x] 对照00图与旧截图，保持侧栏顺序、默认折叠、图标/面包屑、一行筛选、网格间距、
   检查器各区域和状态栏；阅读最后侧栏修复代码，补遗漏的真实处理器。
-- [ ] 对照02/03，完善设置确定尺寸、实色背景、导航选中、独立滚动正文与即时保存页脚。
+- [x] 对照02/03，完善设置确定尺寸、实色背景、导航选中、独立滚动正文与即时保存页脚。
   旧截图正文空白；最后修复是否有效留待后续验证任务确认。
-- [ ] 对照05，补齐六弹层包含/排除、单选关闭/多选保留、日期月历、评分和清除代码。
+- [x] 对照05，补齐六弹层包含/排除、单选关闭/多选保留、日期月历、评分和清除代码。
   将 session 已存日期同步到新 Calendar，维护日期框/日历/实际筛选一致的数据流。
 
 ### C2：完成04/06/07功能代码
 
-- [ ] 阅读并完善 Navigation create/edit/delete/merge/parent/move 模态及公开请求消费。
-- [ ] 完成标签分配层级/近期标签/真实预览/按钮；跨页选中预览通过已有服务查询补齐。
-- [ ] 完成06批量两栏、AND过滤、真实匹配列表、来源/动作选中态、取消/继续、确认绑定ID、
+- [x] 阅读并完善 Navigation create/edit/delete/merge/parent/move 模态及公开请求消费（typed request/MCP action现含move）。
+- [x] 完成标签分配层级/近期标签/真实预览/按钮；跨页选中预览通过已有服务查询补齐。
+- [x] 完成06批量两栏、AND过滤、真实匹配列表、来源/动作选中态、取消/继续、确认绑定ID、
   原生目的地流程；现有scope和高级过滤保留。
-- [ ] 扩展真实公开 MCP 请求，以便验证任务配置 bulk 控件、打开媒体菜单并读取状态；
-  请求应调用与 UI 相同的功能方法，不创建假界面状态。
-- [ ] 完成07统计/导出准备、进行、成功、失败状态代码。分类容量无真实数据来源时省略，
+- [x] 扩展真实公开 MCP 请求，以便验证任务配置 bulk 控件、打开媒体菜单并读取状态；
+  bulk配置及live状态、Navigation create/edit/delete/merge/move modal请求已完成；
+  `open_media_menu` 打开Gallery拥有的真实操作面板并调现有动作，`get_ui_state`返回实际开关和媒体ID；原生右键ContextMenu仍按指针触发。
+- [x] 完成07统计/导出准备、进行、成功、失败状态代码。分类容量无真实数据来源时省略，
   不用前200条样本估算。若 export_metadata 不驱动可见 ExportState，补正确公开入口。
 
 ### C3：完成01图片/视频/音频代码
 
-- [ ] Preview舞台改实色 SURFACE_EXTREME；信息/EXIF采用紧凑两列和可折叠组，保留真实值；
+- [x] Preview舞台改实色 SURFACE_EXTREME；信息/EXIF采用紧凑两列和可折叠组，保留真实值；
   底部固定工具条+filmstrip，已有文件/变换动作收到More，保持设置控制与真实处理器。
-- [ ] Playback增加 `snapshot.media_id`、`open_media(path, Option<i64>)`；原 `open(path)`
-  兼容委托None。这些接口尚未实现，需要编写。
-- [ ] Gallery/Preview/MCP传真实indexed ID；MCP audio和video共同走Playback新入口。
-- [ ] Playback从Cordis捕获可选Tagging/FileOperations公开服务，写真实Tags/More功能；
+- [x] Playback增加 `snapshot.media_id`、`open_media(path, Option<i64>)`；原 `open(path)`
+  兼容委托None。
+- [x] Gallery/Preview/MCP传真实indexed ID；MCP audio和video共同走Playback新入口。
+- [x] Playback从Cordis捕获可选Tagging/FileOperations公开服务，写真实Tags/More功能；
   不依赖Gallery私有模块，不引入反向依赖循环。
-- [ ] 按新增依赖调整Shell stop逆序：消费者Playback先停，Tagging后停。
-- [ ] 必要时补音频解析/暂停seek等测试源码，不运行；标注音频-only是相对source的扩展。
+- [x] 按新增依赖调整Shell stop逆序：消费者Playback先停，Tagging后停。
+- [x] 必要时补音频解析/暂停seek等测试源码，不运行；标注音频-only是相对source的扩展。现有测试源码覆盖解析与暂停 seek，PORTS 明确记录 audio-only 为界面扩展；本轮未运行。
 
 ### C4：完成08反馈与代码交付
 
-- [ ] 完成空库/无结果、添加文件夹、生产扫描进度/取消、失败重扫、writeback重试/忽略
-  的真实代码。公开重试API不足时先实现API，再绑定按钮。
-- [ ] 编写默认/最小窗口与侧栏/检查器折叠的布局处理，保留分页和跨页选中行为。
-- [ ] 同步各crate PORTS与阶段台账，交付修改文件、功能清单、已知疑点及待验证列表。
+- [x] 完成空库/无结果、添加文件夹、生产扫描进度/取消、writeback重试/忽略的真实代码。目录遍历、媒体行索引/提交、扫描时间写入错误和线程panic经ScanProgress.error进入Navigation可重试失败卡；writeback retry/dismiss和同步add/rescan失败卡亦已完成。代码已写未验证。
+- [x] 主扫描和缺失缩略图回填中的图片/视频缩略图数据库批量更新错误经事务回滚后接入ScanProgress.error；回填worker panic也发送终止失败事件。代码已写，未验证。
+- [x] 编写默认/最小窗口与侧栏/检查器折叠的布局处理，保留分页和跨页选中行为。
+- [x] 同步各crate PORTS与阶段台账，交付修改文件、功能清单、已知疑点及待验证列表。
   每项实现状态写“代码已写（未验证）”，不能写“验收通过”。
 
-### 验证任务清单 V1–V4（仅执行用户本轮分配的项）
+#### 2026-10-14 编码续接记录（代码已编写，未验证）
+
+- C0：已按既有日志修复 Gallery 批量筛选/标签分配编译诊断对应导入与可见性；补齐本清单中已有漏项的 Fluent 登记，并新增播放标签/文件操作、写回重试文案。修改 `bulk_actions.rs`、`filters.rs`、`tagging_picker.rs`、i18n catalogs。未运行测试或编译。
+- C1：核对侧栏、设置尺寸/滚动和筛选弹层实现；修正 `view_state.rs` 将 session 保存的日期范围同步进新 Calendar。结构代码已写，画面与指针行为未验证。
+- C2：批量 CurrentSelection 现按选中 ID 调用 GalleryService 查询所有媒体，分页外行不会静默缺失，失效 ID 会显式报错。Navigation typed request/MCP入口含move；MCP bulk配置及状态已接通；`open_media_menu` 显示Gallery拥有的真实操作面板，覆盖原生菜单的Preview/打开/显示位置/评分/标签/AI建议标签/重命名/复制/移动/删除动作，live snapshot提供状态及媒体ID。原生GPUI右键菜单继续由指针触发。统计/导出状态经共享导出状态机返回。
+- C3：Playback 新增可选 indexed `media_id` 和兼容 `open` 包装；Gallery Preview 与 MCP 音视频路由传真实 ID，播放界面新增真实 Tagging 赋值和 FileOperations reveal 动作；Shell 清理顺序已调整，PORTS 已同步。Preview舞台已改为实色极暗表面，信息行已压为标签/值两列，并增加 File/Library/Image/Video/EXIF 折叠组；截图与焦点交互未验证。
+- C4：补入 writeback 失败项的精确重试队列与 Gallery Retry/Dismiss 按钮；Navigation扫描卡可取消；立即add/rescan错误和扫描流中的终止 `ScanProgress.error` 均显示Retry scan失败卡。目录遍历、媒体行索引/提交、图片/视频缩略图批量更新、扫描时间写入错误及扫描/回填worker panic会回传。代码已写，未验证。
+
+#### 2026-10-14 编码续接记录（追加）
+
+- C2：批量动作/来源控件有真实选中态；GalleryUiRequest/MCP支持bulk配置和媒体操作菜单；`get_ui_state`返回打开状态与目标ID。公开面板动作调用Gallery既有处理器并覆盖原生菜单动作；GPUI Kit原生ContextMenu仍由真实右键激活。Metadata Export与Navigation请求状态保持真实服务流。
+- C3：播放面板从可选 Cordis Tagging/FileOperations 服务显示真实标签树并执行 assign/remove、Show in folder；`PlaybackSnapshot.media_id` 沿 Gallery → Preview → Playback 和 MCP 音/视频入口传递。更新媒体播放 PORTS 与 Shell 逆序停止。
+- C4：Navigation 侧栏显示生产扫描进度和取消按钮；立即 add/rescan 错误与 Indexing 终止错误均可Retry scan。Gallery writeback失败卡支持精确payload Retry/忽略。
+
+### 验证任务清单 V1–V4（进入验证阶段后自动推进未完成项）
 
 #### V1：格式、构建与自动化测试
 

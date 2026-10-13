@@ -35,6 +35,7 @@ impl ProgressRegistry {
                     scanned: 0,
                     total: 0,
                     phase: "Scanning…".into(),
+                    error: None,
                 },
             );
         }
@@ -76,6 +77,7 @@ mod tests {
                 scanned: 2,
                 total: 5,
                 phase: "First".into(),
+                error: None,
             }))
             .unwrap();
         assert_eq!(output.recv().unwrap().unwrap().scanned, 2);
@@ -86,6 +88,7 @@ mod tests {
                 scanned: 3,
                 total: 8,
                 phase: "Second".into(),
+                error: None,
             }))
             .unwrap();
         output2.recv().unwrap();

@@ -91,6 +91,12 @@ impl MetadataExportService {
             .map_err(|_| MetadataExportError::StatePoisoned)
     }
 
+    /// Start the same lifecycle-owned export state machine consumed by the
+    /// visible panel and command. This is the public entry for MCP callers.
+    pub fn request_export(self: &Arc<Self>) -> Result<(), MetadataExportError> {
+        self.start_export()
+    }
+
     fn start_export(self: &Arc<Self>) -> Result<(), MetadataExportError> {
         let path = self
             .destination
@@ -194,7 +200,7 @@ impl Plugin for MetadataExportPlugin {
         let _command_listener = context
             .on::<UiCommandInvoked, _>(observer_sync(move |_, command_id| {
                 if command_id == EXPORT_COMMAND_ID
-                    && let Err(error) = command_service.start_export()
+                    && let Err(error) = command_service.request_export()
                 {
                     if !matches!(&error, MetadataExportError::AlreadyRunning)
                         && let Ok(mut status) = command_service.status.lock()

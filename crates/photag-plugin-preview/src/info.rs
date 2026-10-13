@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_ui_bridge::theme;
@@ -15,7 +16,12 @@ pub(super) struct IndexedInfo {
     pub tags: Vec<String>,
 }
 
-pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl IntoElement {
+pub(super) fn info_panel(
+    path: &Path,
+    indexed: Option<IndexedInfo>,
+    collapsed: &std::collections::HashSet<&'static str>,
+    cx: &mut Context<crate::view::PreviewView>,
+) -> impl IntoElement {
     let name = path
         .file_name()
         .map(|value| value.to_string_lossy().into_owned())
@@ -31,67 +37,46 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
         .border_color(rgb(theme::SURFACE_FAINT))
         .rounded_md()
         .overflow_y_scrollbar()
-        .child(
-            div()
-                .text_base()
-                .font_medium()
-                .child(photag_ui_bridge::i18n::tr("Information")),
-        )
-        .child(section_title("File"))
-        .child(detail("Name", &name))
-        .child(detail("Path", &path.display().to_string()))
-        .child(detail(
-            "Type",
-            if is_video(path) { "video" } else { "image" },
-        ));
+        .child(div().text_base().font_medium().child(photag_ui_bridge::i18n::tr("Information")))
+        .child(section_title("File", collapsed.contains("File"), cx));
+    if !collapsed.contains("File") {
+        panel = panel
+            .child(detail("Name", &name))
+            .child(detail("Path", &path.display().to_string()))
+            .child(detail("Type", if is_video(path) { "video" } else { "image" }));
+        if let Some(extension) = path.extension().and_then(|value| value.to_str()) {
+            panel = panel.child(detail("Extension", &format!(".{}", extension.to_lowercase())));
+        }
+        match std::fs::metadata(path) {
+            Ok(metadata) => {
+                panel = panel
+                    .child(detail("Size", &format_bytes(metadata.len())))
+                    .child(detail("Read-only", if metadata.permissions().readonly() { "yes" } else { "no" }))
+                    .child(detail("Modified", &format_time(metadata.modified().ok())))
+                    .child(detail("Created", &format_time(metadata.created().ok())));
+            }
+            Err(_) => panel = panel.child(detail("File", "Couldn't read file metadata.")),
+        }
+    }
 
     if let Some(indexed) = &indexed {
-        panel = panel
-            .child(section_title("Library"))
-            .child(detail("Times opened", &indexed.open_count.to_string()))
-            .child(detail(
-                "Date taken",
-                &indexed
-                    .date_taken
-                    .map(format_unix)
-                    .unwrap_or_else(|| "—".into()),
-            ))
-            .child(section_title("Assigned tags"));
-        if indexed.tags.is_empty() {
-            panel = panel.child(mut_text("No tags assigned."));
-        } else {
-            panel = panel.child(detail("Tags", &indexed.tags.join(", ")));
-        }
-    }
-
-    if let Some(extension) = path.extension().and_then(|value| value.to_str()) {
-        panel = panel.child(detail(
-            "Extension",
-            &format!(".{}", extension.to_lowercase()),
-        ));
-    }
-    match std::fs::metadata(path) {
-        Ok(metadata) => {
+        panel = panel.child(section_title("Library", collapsed.contains("Library"), cx));
+        if !collapsed.contains("Library") {
+            let tags = if indexed.tags.is_empty() {
+                "No tags assigned.".to_owned()
+            } else {
+                indexed.tags.join(", ")
+            };
             panel = panel
-                .child(detail("Size", &format_bytes(metadata.len())))
-                .child(detail(
-                    "Read-only",
-                    if metadata.permissions().readonly() {
-                        "yes"
-                    } else {
-                        "no"
-                    },
-                ))
-                .child(section_title("Dates"))
-                .child(detail("Modified", &format_time(metadata.modified().ok())))
-                .child(detail("Created", &format_time(metadata.created().ok())));
+                .child(detail("Times opened", &indexed.open_count.to_string()))
+                .child(detail("Date taken", &indexed.date_taken.map(format_unix).unwrap_or_else(|| "—".into())))
+                .child(detail("Tags", &tags));
         }
-        Err(_) => panel = panel.child(detail("File", "Couldn't read file metadata.")),
     }
 
     if is_video(path) {
-        panel = panel.child(section_title("Video"));
-        match probe_video(path) {
+        panel = panel.child(section_title("Video", collapsed.contains("Video"), cx));
+        if !collapsed.contains("Video") { match probe_video(path) {
             Some(info) => {
                 panel = panel
                     .child(detail(
@@ -112,11 +97,11 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
                 }
             }
             None => panel = panel.child(mut_text("ffprobe metadata is unavailable.")),
-        }
+        }}
         return panel;
     }
-    panel = panel.child(section_title("Image"));
-    match image::image_dimensions(path) {
+    panel = panel.child(section_title("Image", collapsed.contains("Image"), cx));
+    if !collapsed.contains("Image") { match image::image_dimensions(path) {
         Ok((width, height)) => {
             panel = panel
                 .child(detail("Dimensions", &format!("{width} × {height} px")))
@@ -130,10 +115,10 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
                 .child(detail("Aspect", &aspect_ratio(width, height)));
         }
         Err(_) => panel = panel.child(detail("Dimensions", "—")),
-    }
+    }}
 
-    panel = panel.child(section_title("Metadata (EXIF)"));
-    match read_exif(path) {
+    panel = panel.child(section_title("Metadata (EXIF)", collapsed.contains("Metadata (EXIF)"), cx));
+    if !collapsed.contains("Metadata (EXIF)") { match read_exif(path) {
         Ok(fields) if fields.is_empty() => {
             panel = panel.child(mut_text("No common EXIF tags found."));
         }
@@ -143,7 +128,7 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
             }
         }
         Err(message) => panel = panel.child(mut_text(message)),
-    }
+    }}
     panel
 }
 
@@ -271,30 +256,45 @@ fn format_video_time(seconds: f64) -> String {
     }
 }
 
-fn section_title(title: &str) -> Div {
-    div()
-        .mt_2()
-        .text_sm()
-        .font_medium()
-        .text_color(rgb(theme::accent()))
-        .child(photag_ui_bridge::i18n::tr(title))
+fn section_title(
+    title: &'static str,
+    collapsed: bool,
+    cx: &mut Context<crate::view::PreviewView>,
+) -> Button {
+    Button::new(format!("preview-info-section-{title}"))
+        .ghost()
+        .compact()
+        .label(format!("{}  {}", if collapsed { "▸" } else { "▾" }, photag_ui_bridge::i18n::tr(title)))
+        .on_click(cx.listener(move |view, _, _, cx| {
+            if !view.collapsed_info_sections.remove(title) {
+                view.collapsed_info_sections.insert(title);
+            }
+            cx.notify();
+        }))
 }
 
 fn detail(key: &str, value: &str) -> Div {
     div()
-        .v_flex()
-        .gap_1()
+        .h_flex()
+        .items_start()
+        .gap_2()
         .text_xs()
         .child(
             div()
+                .w(px(88.))
+                .flex_shrink_0()
                 .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(format!("{}:", photag_ui_bridge::i18n::tr(key))),
         )
-        .child(div().child(if ["Type", "Read-only"].contains(&key) {
-            photag_ui_bridge::i18n::tr(value)
-        } else {
-            value.to_string()
-        }))
+        .child(
+            div()
+                .flex_1()
+                .child(if ["Type", "Read-only"].contains(&key) {
+                    photag_ui_bridge::i18n::tr(value)
+                } else {
+                    value.to_string()
+                }),
+        )
 }
 
 fn mut_text(value: &str) -> Div {

@@ -3,26 +3,25 @@ use super::{GalleryView, format_bulk_outcome};
 use chrono::Utc;
 mod filters;
 use crate::filter::MediaTypeFilter;
-use filters::{filter_controls, match_results_list};
+use filters::{filter_controls, match_results_list, section_title};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::calendar::Date;
 use gpui_kit::component::date_picker::DatePicker;
-use gpui_kit::component::input::Input;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::MediaQuery;
+use photag_plugin_database::db::queries::{MediaItem, MediaQuery};
 use photag_ui_bridge::theme;
 use std::sync::Arc;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum BulkActionKind {
+pub enum BulkActionKind {
     Delete,
     CopyTo,
     MoveTo,
 }
 impl BulkActionKind {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::Delete => "Delete (Recycle Bin)",
             Self::CopyTo => "Copy to…",
@@ -38,14 +37,14 @@ impl BulkActionKind {
     }
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) enum BulkActionSource {
+pub enum BulkActionSource {
     WholeLibrary,
     SelectedFolder,
     SelectedTag,
     CurrentSelection,
 }
 impl BulkActionSource {
-    fn label(self) -> &'static str {
+    pub(crate) fn label(self) -> &'static str {
         match self {
             Self::WholeLibrary => "Whole library",
             Self::SelectedFolder => "Selected folder",
@@ -91,19 +90,19 @@ fn matching_results(
 ) -> Result<(Vec<i64>, Vec<MediaItem>), String> {
     if view.bulk_source == BulkActionSource::CurrentSelection {
         let ids = view.selection.selected_media_ids.clone();
-        let media = view
-            .snapshot
-            .as_ref()
-            .ok()
-            .map(|snapshot| {
-                snapshot
-                    .media
-                    .iter()
-                    .filter(|media| ids.contains(&media.id))
-                    .cloned()
-                    .collect()
+        // The active GallerySnapshot only contains the current 200-row page.
+        // Resolve every selected identity through the same database service so
+        // the preview covers selections that span pages and fails visibly if a
+        // selected row disappeared instead of silently truncating the target set.
+        let media = ids
+            .iter()
+            .map(|id| {
+                view.service
+                    .media_by_id(*id)
+                    .map_err(|error| error.to_string())?
+                    .ok_or_else(|| format!("Selected media {id} is no longer indexed."))
             })
-            .unwrap_or_default();
+            .collect::<Result<Vec<_>, String>>()?;
         return Ok((ids, media));
     }
     let mut query = MediaQuery::default();
@@ -314,6 +313,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                     .map(|choice| {
                         Button::new(format!("gallery-bulk-action-{}", choice.verb()))
                             .label(photag_ui_bridge::i18n::tr(choice.label()))
+                            .toggled(view.bulk_action == Some(choice))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.bulk_action = Some(choice);
                                 this.confirm_bulk_action = false;
@@ -328,6 +328,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                 BulkActionSource::ALL.into_iter().map(|choice| {
                     Button::new(format!("gallery-bulk-source-{}", choice.label()))
                         .label(photag_ui_bridge::i18n::tr(choice.label()))
+                        .toggled(view.bulk_source == choice)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.bulk_source = choice;
                             this.confirm_bulk_action = false;

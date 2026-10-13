@@ -12,12 +12,24 @@ impl super::PhoTagMcpServer {
         if !request.confirm {
             return error_json("导出元数据需要 confirm=true。 ");
         }
-        let service = Arc::clone(&self.metadata_export);
         let path = std::path::PathBuf::from(request.path);
-        match tokio::task::spawn_blocking(move || service.write_to(path)).await {
-            Ok(Ok(())) => "{\"ok\":true}".into(),
-            Ok(Err(error)) => error_json(&error.to_string()),
-            Err(error) => error_json(&error.to_string()),
+        if let Err(error) = self.metadata_export.set_destination(path.clone()) {
+            return error_json(&error.to_string());
+        }
+        if let Err(error) = self.metadata_export.request_export() {
+            return error_json(&error.to_string());
+        }
+        loop {
+            match self.metadata_export.status() {
+                Ok(photag_plugin_metadata_export::MetadataExportStatus::Succeeded { path, records }) => {
+                    return json!({"ok": true, "path": path, "records": records}).to_string();
+                }
+                Ok(photag_plugin_metadata_export::MetadataExportStatus::Failed(error)) => {
+                    return error_json(&error);
+                }
+                Ok(_) => tokio::time::sleep(std::time::Duration::from_millis(100)).await,
+                Err(error) => return error_json(&error.to_string()),
+            }
         }
     }
 
@@ -179,7 +191,7 @@ impl super::PhoTagMcpServer {
     }
 
     #[tool(
-        description = "在 PhoTag 中打开媒体：图片进入图片预览，视频进入视频播放界面。只改变当前应用视图。"
+        description = "在 PhoTag 中打开媒体：图片进入图片预览，视频或音频进入播放界面。只改变当前应用视图。"
     )]
     fn open_media(&self, Parameters(request): Parameters<MediaIdRequest>) -> String {
         let media = match self.gallery.media_by_id(request.media_id) {
@@ -211,12 +223,17 @@ impl super::PhoTagMcpServer {
                 "preview"
             }
             "video" => {
-                if let Err(error) = self.playback.open(&media.full_path) {
+                if let Err(error) = self.playback.open_media(&media.full_path, Some(media.id)) {
                     return error_json(&error.to_string());
                 }
                 "playback"
             }
-            "audio" => return error_json("当前 PhoTag 版本尚未实现音频预览。"),
+            "audio" => {
+                if let Err(error) = self.playback.open_media(&media.full_path, Some(media.id)) {
+                    return error_json(&error.to_string());
+                }
+                "playback"
+            }
             _ => return error_json("PhoTag 不支持该媒体类型的预览。"),
         };
         serde_json::to_string(&json!({ "ok": true, "view": view, "media_id": media.id }))
@@ -243,6 +260,7 @@ impl super::PhoTagMcpServer {
             },
             "playback": {
                 "path": playback.path,
+                "media_id": playback.media_id,
                 "playing": playback.playing,
                 "position_seconds": playback.position_seconds,
                 "duration_seconds": playback.duration_seconds,

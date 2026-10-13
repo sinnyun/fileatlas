@@ -5,6 +5,9 @@ use super::*;
 pub enum GalleryUiRequest {
     Statistics,
     BulkActions,
+    ConfigureBulk(crate::BulkActionKind, crate::BulkActionSource),
+    OpenMediaActions(i64),
+    CloseMediaActions,
     CloseDialogs,
     Select(i64),
     Deselect,
@@ -32,6 +35,12 @@ pub struct GalleryUiSnapshot {
     pub matched_count: usize,
     pub group_by_month: bool,
     pub inspector_sections: Vec<&'static str>,
+    pub bulk_action: Option<&'static str>,
+    pub bulk_source: &'static str,
+    pub statistics_open: bool,
+    pub tag_picker_open: bool,
+    pub media_actions_open: bool,
+    pub media_actions_id: Option<i64>,
 }
 
 impl GalleryService {
@@ -40,6 +49,18 @@ impl GalleryService {
             .lock()
             .ok()
             .and_then(|snapshot| snapshot.clone())
+    }
+
+    /// Queue the live media action surface for one indexed record.
+    pub fn open_media_actions(&self, media_id: i64) -> Result<(), String> {
+        if media_id <= 0 {
+            return Err("media_id must be positive".into());
+        }
+        if self.media_by_id(media_id).map_err(|error| error.to_string())?.is_none() {
+            return Err(format!("media {media_id} is not indexed"));
+        }
+        self.request_ui(GalleryUiRequest::OpenMediaActions(media_id));
+        Ok(())
     }
     pub(crate) fn publish_ui_snapshot(&self, snapshot: GalleryUiSnapshot) {
         if let Ok(mut current) = self.ui_snapshot.lock() {

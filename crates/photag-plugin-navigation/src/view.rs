@@ -256,6 +256,8 @@ struct SidebarView {
     merge_search: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
+    active_scan_folder_id: Option<i64>,
+    scan_failure: Option<(ScanRetryTarget, String)>,
     scan_progress: Option<ScanProgress>,
     expanded_directories: HashMap<String, Vec<SubdirectoryNode>>,
     expanded_tags: HashSet<i64>,
@@ -281,68 +283,13 @@ struct SidebarView {
     tag_create_open: bool,
 }
 
-impl SidebarView {
-    fn render_breadcrumb(&mut self, cx: &mut Context<Self>) -> Div {
-        let saved = self.session.snapshot().unwrap_or_default();
-        let all_selected = saved.selected_folder_id.is_none()
-            && saved.selected_path.is_none()
-            && self.included_tags.is_empty()
-            && self.excluded_tags.is_empty();
-        let location = saved
-            .selected_path
-            .as_deref()
-            .and_then(|path| Path::new(path).file_name())
-            .and_then(|name| name.to_str())
-            .map(str::to_owned)
-            .or_else(|| {
-                saved.selected_folder_id.and_then(|id| {
-                    self.snapshot
-                        .as_ref()
-                        .ok()?
-                        .folders
-                        .iter()
-                        .find(|node| node.folder.id == id)
-                        .map(|node| node.folder.name.clone())
-                })
-            })
-            .or_else(|| {
-                self.included_tags.first().and_then(|id| {
-                    self.snapshot.as_ref().ok().and_then(|snapshot| {
-                        find_tag(&snapshot.tags, *id).map(|tag| tag.name.clone())
-                    })
-                })
-            });
-        div()
-            .h_flex()
-            .items_center()
-            .gap(px(8.))
-            .child(
-                Button::new("navigation-breadcrumb-all-files")
-                    .ghost()
-                    .compact()
-                    .label(photag_ui_bridge::i18n::tr("All files"))
-                    .text_color(rgb(if all_selected {
-                        theme::TEXT_PRIMARY
-                    } else {
-                        theme::TEXT_SECONDARY
-                    }))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.select_folder(None, cx);
-                        this.select_tag(None, cx);
-                        cx.notify();
-                    })),
-            )
-            .when_some(location, |row, label| {
-                row.child(div().text_color(rgb(theme::TEXT_MUTED)).child("/"))
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_PRIMARY))
-                            .child(label),
-                    )
-            })
-    }
+#[derive(Clone)]
+enum ScanRetryTarget {
+    Folder(i64),
+    Path(String),
+}
 
+impl SidebarView {
     fn new(
         service: Arc<NavigationService>,
         cordis: CordisContext,
@@ -411,6 +358,8 @@ impl SidebarView {
             merge_search,
             snapshot,
             active_scan: None,
+            active_scan_folder_id: None,
+            scan_failure: None,
             scan_progress: None,
             expanded_directories,
             expanded_tags,
@@ -456,11 +405,17 @@ impl SidebarView {
         match self.service.rescan(folder_id) {
             Ok(progress) => {
                 self.active_scan = Some(progress);
+                self.active_scan_folder_id = Some(folder_id);
                 self.scan_progress = None;
+                self.scan_failure = None;
                 self.refresh();
                 self.monitor_scan(cx);
             }
-            Err(error) => self.snapshot = Err(error.to_string()),
+            Err(error) => {
+                let message = error.to_string();
+                self.scan_failure = Some((ScanRetryTarget::Folder(folder_id), message.clone()));
+                self.snapshot = Err(message);
+            }
         }
     }
 
@@ -469,14 +424,20 @@ impl SidebarView {
         if path.is_empty() {
             return;
         }
-        match self.service.add_folder(path) {
-            Ok((_, progress)) => {
+        match self.service.add_folder(path.clone()) {
+            Ok((folder, progress)) => {
                 self.active_scan = Some(progress);
+                self.active_scan_folder_id = Some(folder.id);
                 self.scan_progress = None;
+                self.scan_failure = None;
                 self.refresh();
                 self.monitor_scan(cx);
             }
-            Err(error) => self.snapshot = Err(error.to_string()),
+            Err(error) => {
+                let message = error.to_string();
+                self.scan_failure = Some((ScanRetryTarget::Path(path), message.clone()));
+                self.snapshot = Err(message);
+            }
         }
     }
 
@@ -523,9 +484,15 @@ impl SidebarView {
             return false;
         };
         let mut completed = false;
+        let mut failure = None;
         loop {
             match receiver.try_recv() {
-                Ok(Some(progress)) => self.scan_progress = Some(progress),
+                Ok(Some(progress)) => {
+                    if let Some(error) = progress.error.clone() {
+                        failure = Some(error);
+                    }
+                    self.scan_progress = Some(progress);
+                }
                 Ok(None) | Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                     completed = true;
                     break;
@@ -535,10 +502,35 @@ impl SidebarView {
         }
         if completed {
             self.active_scan = None;
+            if let (Some(folder_id), Some(error)) = (self.active_scan_folder_id, failure) {
+                self.scan_failure = Some((ScanRetryTarget::Folder(folder_id), error));
+            }
+            self.active_scan_folder_id = None;
             self.scan_progress = None;
             self.refresh();
         }
         completed
+    }
+
+    fn cancel_active_scan(&mut self, cx: &mut Context<Self>) {
+        let Some(folder_id) = self.active_scan_folder_id.take() else {
+            return;
+        };
+        if let Err(error) = self.service.cancel_scan(folder_id) {
+            self.snapshot = Err(error.to_string());
+        }
+        self.active_scan = None;
+        self.scan_progress = None;
+        cx.notify();
+    }
+
+    fn retry_scan(&mut self, target: ScanRetryTarget, cx: &mut Context<Self>) {
+        self.scan_failure = None;
+        match target {
+            ScanRetryTarget::Folder(folder_id) => self.rescan(folder_id, cx),
+            ScanRetryTarget::Path(path) => self.add_folder_path(path, cx),
+        }
+        cx.notify();
     }
 
     fn remove_folder(&mut self, folder_id: i64, cx: &mut Context<Self>) {

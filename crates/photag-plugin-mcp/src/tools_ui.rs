@@ -31,6 +31,9 @@ impl PhoTagMcpServer {
                 "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
                 "inspector_sections": state.inspector_sections,
+                "bulk_action": state.bulk_action, "bulk_source": state.bulk_source,
+                "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
+                "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             })),
             "settings_open": self.surfaces.is_open("settings"),
             "inspector_open": self.surfaces.is_open("inspector"),
@@ -48,8 +51,14 @@ impl PhoTagMcpServer {
                 "media_id": state.media_id, "hover": state.hover, "selection": state.selection, "timestamp_ms": state.timestamp_ms,
             })).collect::<Vec<_>>(),
             "scan_progress": self.gallery.scan_progress().map(|p| json!({
-                "phase": p.phase, "scanned": p.scanned, "total": p.total,
+                "phase": p.phase, "scanned": p.scanned, "total": p.total, "error": p.error,
             })),
+            "metadata_export": self.metadata_export.status().ok().map(|status| match status {
+                photag_plugin_metadata_export::MetadataExportStatus::Idle => json!({"state":"idle"}),
+                photag_plugin_metadata_export::MetadataExportStatus::Exporting => json!({"state":"exporting"}),
+                photag_plugin_metadata_export::MetadataExportStatus::Succeeded { path, records } => json!({"state":"succeeded","path":path,"records":records}),
+                photag_plugin_metadata_export::MetadataExportStatus::Failed(error) => json!({"state":"failed","error":error}),
+            }),
         })
         .to_string()
     }

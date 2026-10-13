@@ -1,11 +1,13 @@
 use super::{GalleryView, date_row};
 use crate::filter::MediaTypeFilter;
+use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::MediaItem;
 use photag_ui_bridge::theme;
-fn section_title(label: &'static str) -> Div {
+pub(super) fn section_title(label: &'static str) -> Div {
     div()
         .text_sm()
         .font_semibold()

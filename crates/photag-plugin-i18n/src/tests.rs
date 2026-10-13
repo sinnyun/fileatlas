@@ -14,7 +14,7 @@ fn temporary(name: &str) -> PathBuf {
 #[test]
 fn both_catalogs_format_every_message_and_preserve_arguments() {
     let service = I18nService::open(temporary("catalog/language.json")).unwrap();
-    let args: [(&str, String); 13] = [
+    let args: [(&str, String); 15] = [
         ("count", "9".into()),
         ("query", "sample.jpg".into()),
         ("key", "Space".into()),
@@ -28,6 +28,8 @@ fn both_catalogs_format_every_message_and_preserve_arguments() {
         ("error", "permission denied".into()),
         ("records", "9".into()),
         ("path", "backup.json".into()),
+        ("modifier", "Ctrl".into()),
+        ("scanned", "120".into()),
     ];
     for key in service.keys.values() {
         let mut fluent_args = FluentArgs::new();

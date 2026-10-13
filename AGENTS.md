@@ -4,18 +4,20 @@
 
 ### Current development handoff (2026-10-14)
 
-**User-directed task scope:** at each handoff, the user specifies which section
-or task range to execute. Determine responsibilities from that assignment, not
-from model identity or size. For assigned C0–C4 coding tasks, write the code and
-implementation notes only; do not run Cargo fmt/check/build/test/clippy, launch
-the app, run MCP, capture screenshots, scan fixtures, or perform runtime checks.
-Writing test code and MCP interfaces is allowed. Mark this work unverified and
-list follow-up checks. For assigned V1–V4 verification tasks, execute the named
-checks; runtime debugging and UI screenshots must use the project PhoTag MCP.
-If coding and verification are both assigned, do both in the specified scope.
-Leave unassigned sections for a later user assignment. See
+**Automatic continuation:** when the user says “continue” without naming a
+section, read the handoff ledger and advance to the next incomplete phase in
+order: finish incomplete C0–C4 coding first, then begin/continue V1–V4
+verification. Skip only items whose current code or verification evidence
+confirms completion. An explicit user scope overrides this default. For C0–C4,
+write code and implementation notes only; do not run Cargo
+fmt/check/build/test/clippy, launch the app, run MCP, capture screenshots, scan
+fixtures, or perform runtime checks. Writing test code and MCP interfaces is
+allowed. Mark this work unverified and list follow-up checks. For V1–V4, execute
+the named checks; runtime debugging and UI screenshots must use the project
+PhoTag MCP. See
 [`docs/development-handoff-2026-10-14.md`](docs/development-handoff-2026-10-14.md)
-for the task lists and current handoff state.
+for task lists, ordering, and current state. When C0–C4 are all complete but
+verification remains, a generic “continue” means start V1–V4 automatically.
 
 Before continuing the v5 redesign, read the handoff document above. It records
 the current uncommitted worktree, 19 Gallery compilation errors,

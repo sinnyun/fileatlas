@@ -5,13 +5,17 @@ pub enum NavigationUiRequest {
     OpenEdit(i64),
     OpenDelete(i64),
     OpenMerge(i64),
+    OpenMove(i64),
     CloseModal,
 }
 
 impl NavigationUiRequest {
     pub(crate) fn target_id(&self) -> Option<i64> {
         match self {
-            Self::OpenEdit(id) | Self::OpenDelete(id) | Self::OpenMerge(id) => Some(*id),
+            Self::OpenEdit(id)
+            | Self::OpenDelete(id)
+            | Self::OpenMerge(id)
+            | Self::OpenMove(id) => Some(*id),
             Self::OpenCreate | Self::CloseModal => None,
         }
     }

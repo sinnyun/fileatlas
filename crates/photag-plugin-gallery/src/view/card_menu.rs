@@ -1,7 +1,134 @@
 //! v5 media context menu: real thumbnail/metadata and grouped existing actions.
 use super::*;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
+
+/// Render an application-owned action menu for explicit MCP or keyboard opens.
+/// Actions delegate to the same GalleryView methods used by the native card menu.
+pub(super) fn render_requested(
+    media: &photag_plugin_database::db::queries::MediaItem,
+    cx: &mut Context<GalleryView>,
+) -> Div {
+    let id = media.id;
+    let title = media.filename.clone();
+    let rename_title = title.clone();
+    let ratings = (0..=5u8)
+        .map(|rating| {
+            Button::new(format!("gallery-requested-menu-rating-{rating}"))
+                .ghost()
+                .compact()
+                .label(if rating == 0 { "—".into() } else { format!("{rating}★") })
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.apply_rating_to(&[id], rating);
+                    this.media_actions_id = None;
+                    cx.notify();
+                }))
+        })
+        .collect::<Vec<_>>();
+    div()
+        .v_flex()
+        .w(px(300.))
+        .gap_1()
+        .p_3()
+        .rounded(px(8.))
+        .border_1()
+        .border_color(rgb(theme::SEPARATOR))
+        .bg(rgb(theme::SURFACE_MODAL))
+        .child(div().text_sm().font_medium().child(title))
+        .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(media.full_path.clone()))
+        .child(
+            Button::new("gallery-requested-menu-preview")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Preview"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.media_actions_id = None;
+                    this.preview_media(id, cx);
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-open")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Open in default app"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.media_actions_id = None;
+                    this.open_media_action(id, false, cx);
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-reveal")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Show in File Explorer"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.media_actions_id = None;
+                    this.open_media_action(id, true, cx);
+                })),
+        )
+        .child(div().h_flex().items_center().gap_1().child(div().text_xs().child(photag_ui_bridge::i18n::tr("Rating"))).children(ratings))
+        .child(
+            Button::new("gallery-requested-menu-tags")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Tags"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.show_tag_picker = true;
+                    this.media_actions_id = None;
+                    cx.notify();
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-ai-tags")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("AI Suggest Tags"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.media_actions_id = None;
+                    this.suggest_tags(id, cx);
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-rename")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Rename…"))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.selection.selected_media_ids = vec![id];
+                    this.selection.anchor_id = Some(id);
+                    this.rename_input.update(cx, |input, cx| {
+                        input.set_value(&rename_title, window, cx)
+                    });
+                    this.show_selection_details = true;
+                    this.media_actions_id = None;
+                    cx.notify();
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-copy")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Copy to…"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.selection.selected_media_ids = vec![id];
+                    this.copy_selected_with_dialog(cx);
+                    this.media_actions_id = None;
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-move")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Move to…"))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.selection.selected_media_ids = vec![id];
+                    this.move_selected_with_dialog(cx);
+                    this.media_actions_id = None;
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-delete")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Delete…"))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.selection.selected_media_ids = vec![id];
+                    this.request_delete_confirmation(window, cx);
+                    this.media_actions_id = None;
+                })),
+        )
+        .child(
+            Button::new("gallery-requested-menu-close")
+                .ghost().w_full().label(photag_ui_bridge::i18n::tr("Close"))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    this.media_actions_id = None;
+                    cx.notify();
+                })),
+        )
+}
 
 pub(super) fn build(
     mut menu: PopupMenu,

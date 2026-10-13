@@ -36,7 +36,7 @@ impl Render for PreviewView {
                     self.last_playback_source = Some(path.clone());
                     match self.service.playback() {
                         Some(playback) => {
-                            if let Err(error) = playback.open(path) {
+                            if let Err(error) = playback.open_media(path, snapshot.media_id) {
                                 if matches!(
                                     &error,
                                     photag_plugin_media_playback::PlaybackError::ProbeFailed(_)
@@ -248,10 +248,10 @@ impl Render for PreviewView {
             .flex()
             .items_center()
             .justify_center()
-            .bg(rgba(if media_kind == Some(PreviewMediaKind::Audio) {
-                (theme::SURFACE_AUDIO << 8) | 0xff
+            .bg(rgb(if media_kind == Some(PreviewMediaKind::Audio) {
+                theme::SURFACE_AUDIO
             } else {
-                theme::base_rgba(theme::SURFACE_BASE)
+                theme::SURFACE_EXTREME
             }))
             .overflow_hidden()
             .on_scroll_wheel(wheel)
@@ -281,7 +281,12 @@ impl Render for PreviewView {
                         .w(px(310.0))
                         .max_h(px(viewport.1 - 76.0))
                         .occlude()
-                        .child(crate::info::info_panel(path, indexed)),
+                        .child(crate::info::info_panel(
+                            path,
+                            indexed,
+                            &self.collapsed_info_sections,
+                            cx,
+                        )),
                 );
             }
         }

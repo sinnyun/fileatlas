@@ -3,6 +3,7 @@
 mod ui_requests;
 mod view;
 pub use ui_requests::{GalleryUiRequest, GalleryUiSnapshot};
+pub use view::bulk_actions::{BulkActionKind, BulkActionSource};
 
 use std::collections::HashMap;
 use std::ops::Range;

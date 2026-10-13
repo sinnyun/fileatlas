@@ -9,7 +9,7 @@ Status: Cordis service and original scan workflow are present. Current tests use
 
 ## Input / output
 
-- `scan_folder(folder_id, folder_path, cancel)` takes a registered PhoTag folder identity/path plus shared `AtomicBool` cancellation flag; returns `mpsc::Receiver<Option<ScanProgress>>`. Progress values carry scan updates; `None` is the completion sentinel.
+- `scan_folder(folder_id, folder_path, cancel)` takes a registered PhoTag folder identity/path plus shared `AtomicBool` cancellation flag; returns `mpsc::Receiver<Option<ScanProgress>>`. Progress values carry scan updates; a terminal `ScanProgress.error` is populated for directory traversal, media indexing/finalization, thumbnail database batch writes, or scan worker panic failures. `generate_missing_thumbnails` reports thumbnail database batch write errors and worker panics through the same terminal field. `None` remains the completion sentinel. Cancellation completes without a failure payload.
 - `generate_missing_thumbnails(items, cancel)` takes `(media_path, media_type)` pairs and returns the same progress channel shape.
 - `list_subdirectories(path)` returns immediate `(name, path, has_children)` tuples using source filtering.
 - Writes source-compatible media/folder rows through the database service and image cache through the thumbnail service.

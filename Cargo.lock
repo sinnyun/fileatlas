@@ -5659,6 +5659,8 @@ dependencies = [
  "cordis-rs",
  "gpui-kit",
  "image",
+ "photag-plugin-file-operations",
+ "photag-plugin-tagging",
  "photag-ui-bridge",
  "rodio",
  "serde_json",

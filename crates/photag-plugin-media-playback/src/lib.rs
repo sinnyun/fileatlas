@@ -24,6 +24,8 @@ pub use view::media_playback_view;
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlaybackSnapshot {
     pub path: Option<PathBuf>,
+    /// Indexed row identity for callers that opened playback from the library.
+    pub media_id: Option<i64>,
     pub has_video: bool,
     pub frame_path: Option<PathBuf>,
     pub playing: bool,
@@ -45,6 +47,7 @@ impl Default for PlaybackSnapshot {
     fn default() -> Self {
         Self {
             path: None,
+            media_id: None,
             has_video: false,
             frame_path: None,
             playing: false,
@@ -150,6 +153,15 @@ impl MediaPlaybackService {
     }
 
     pub fn open(&self, path: impl AsRef<Path>) -> Result<(), PlaybackError> {
+        self.open_media(path, None)
+    }
+
+    /// Open media while preserving its indexed identity for Tags/More actions.
+    pub fn open_media(
+        &self,
+        path: impl AsRef<Path>,
+        media_id: Option<i64>,
+    ) -> Result<(), PlaybackError> {
         let path = path.as_ref().to_path_buf();
         if !path.is_file() {
             return Err(PlaybackError::MissingMedia(path));
@@ -174,6 +186,7 @@ impl MediaPlaybackService {
             }
         };
         state.snapshot.path = Some(path);
+        state.snapshot.media_id = media_id;
         state.snapshot.has_video = info.has_video;
         state.snapshot.frame_path = None;
         state.snapshot.duration_seconds = info.duration;
@@ -618,10 +631,18 @@ impl Plugin for MediaPlaybackPlugin {
             )],
         )
         .map_err(|e| PlaybackError::Ui(e.to_string()))?;
+        let tagging = context.try_service::<photag_plugin_tagging::TaggingService>().ok();
+        let file_operations = context
+            .try_service::<photag_plugin_file_operations::FileOperationsService>()
+            .ok();
         register_views_for_plugin(
             &context,
             "photag.media-playback",
-            [media_playback_view(Arc::clone(&service))],
+            [media_playback_view(
+                Arc::clone(&service),
+                tagging,
+                file_operations,
+            )],
         )
         .map_err(|e| PlaybackError::Ui(e.to_string()))
     }

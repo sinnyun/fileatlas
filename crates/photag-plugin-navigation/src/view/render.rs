@@ -2,9 +2,73 @@ use super::*;
 use gpui_kit::component::button::ButtonVariants;
 
 mod folder_row;
+mod scan_feedback;
 mod tag_render;
 use folder_row::folder_row;
 use tag_render::{render_subdirectory, render_tag};
+
+impl SidebarView {
+    pub(super) fn render_breadcrumb(&mut self, cx: &mut Context<Self>) -> Div {
+        let saved = self.session.snapshot().unwrap_or_default();
+        let all_selected = saved.selected_folder_id.is_none()
+            && saved.selected_path.is_none()
+            && self.included_tags.is_empty()
+            && self.excluded_tags.is_empty();
+        let location = saved
+            .selected_path
+            .as_deref()
+            .and_then(|path| Path::new(path).file_name())
+            .and_then(|name| name.to_str())
+            .map(str::to_owned)
+            .or_else(|| {
+                saved.selected_folder_id.and_then(|id| {
+                    self.snapshot
+                        .as_ref()
+                        .ok()?
+                        .folders
+                        .iter()
+                        .find(|node| node.folder.id == id)
+                        .map(|node| node.folder.name.clone())
+                })
+            })
+            .or_else(|| {
+                self.included_tags.first().and_then(|id| {
+                    self.snapshot.as_ref().ok().and_then(|snapshot| {
+                        find_tag(&snapshot.tags, *id).map(|tag| tag.name.clone())
+                    })
+                })
+            });
+        div()
+            .h_flex()
+            .items_center()
+            .gap(px(8.))
+            .child(
+                Button::new("navigation-breadcrumb-all-files")
+                    .ghost()
+                    .compact()
+                    .label(photag_ui_bridge::i18n::tr("All files"))
+                    .text_color(rgb(if all_selected {
+                        theme::TEXT_PRIMARY
+                    } else {
+                        theme::TEXT_SECONDARY
+                    }))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.select_folder(None, cx);
+                        this.select_tag(None, cx);
+                        cx.notify();
+                    })),
+            )
+            .when_some(location, |row, label| {
+                row.child(div().text_color(rgb(theme::TEXT_MUTED)).child("/"))
+                    .child(
+                        div()
+                            .text_size(px(13.))
+                            .text_color(rgb(theme::TEXT_PRIMARY))
+                            .child(label),
+                    )
+            })
+    }
+}
 
 impl Render for SidebarView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -25,6 +89,11 @@ impl Render for SidebarView {
                 crate::NavigationUiRequest::OpenMerge(id) => {
                     self.close_tag_modal();
                     self.begin_merge(id, window, cx);
+                }
+                crate::NavigationUiRequest::OpenMove(id) => {
+                    self.close_tag_modal();
+                    self.move_source_id = Some(id);
+                    self.move_target_tag_id = None;
                 }
                 crate::NavigationUiRequest::CloseModal => self.close_tag_modal(),
             }
@@ -84,6 +153,7 @@ impl Render for SidebarView {
             .pr(px(6.))
             .pt(px(2.))
             .pb(px(8.));
+        panel = scan_feedback::append(panel, self, cx);
         let folder_view = cx.entity().downgrade();
         match &self.snapshot {
             Ok(snapshot) => {
@@ -477,10 +547,21 @@ impl Render for SidebarView {
                                         ),
                                 )
                                 .child(div().text_xs().child(match prefs.exclude_modifier {
-                                    TagExcludeModifier::None => "No exclude modifier",
-                                    TagExcludeModifier::Ctrl => "Ctrl + click toggles other mode",
-                                    TagExcludeModifier::Shift => "Shift + click toggles other mode",
-                                    TagExcludeModifier::Alt => "Alt + click toggles other mode",
+                                    TagExcludeModifier::None => {
+                                        photag_ui_bridge::i18n::tr("No exclude modifier")
+                                    }
+                                    TagExcludeModifier::Ctrl => photag_ui_bridge::i18n::tr_args(
+                                        "{modifier} + click toggles other mode",
+                                        &[("modifier", "Ctrl".into())],
+                                    ),
+                                    TagExcludeModifier::Shift => photag_ui_bridge::i18n::tr_args(
+                                        "{modifier} + click toggles other mode",
+                                        &[("modifier", "Shift".into())],
+                                    ),
+                                    TagExcludeModifier::Alt => photag_ui_bridge::i18n::tr_args(
+                                        "{modifier} + click toggles other mode",
+                                        &[("modifier", "Alt".into())],
+                                    ),
                                 })),
                         );
                         if !self.included_tags.is_empty() || !self.excluded_tags.is_empty() {
@@ -490,12 +571,9 @@ impl Render for SidebarView {
                                     .gap_1()
                                     .child(
                                         Button::new("navigation-tag-clear-included")
-                                            .label(photag_ui_bridge::i18n::tr(
-                                                &(format!(
-                                                    "Clear ✓ ({})",
-                                                    self.included_tags.len()
-                                                ))
-                                                .to_string(),
+                                            .label(photag_ui_bridge::i18n::tr_args(
+                                                "Included tags ({count})",
+                                                &[("count", self.included_tags.len().to_string())],
                                             ))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.included_tags.clear();
@@ -505,12 +583,9 @@ impl Render for SidebarView {
                                     )
                                     .child(
                                         Button::new("navigation-tag-clear-excluded")
-                                            .label(photag_ui_bridge::i18n::tr(
-                                                &(format!(
-                                                    "Clear ⊘ ({})",
-                                                    self.excluded_tags.len()
-                                                ))
-                                                .to_string(),
+                                            .label(photag_ui_bridge::i18n::tr_args(
+                                                "Excluded tags ({count})",
+                                                &[("count", self.excluded_tags.len().to_string())],
                                             ))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.excluded_tags.clear();

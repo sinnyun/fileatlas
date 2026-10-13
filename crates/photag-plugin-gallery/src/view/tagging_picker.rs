@@ -3,6 +3,7 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_history::UndoEntry;
 use photag_ui_bridge::theme;
@@ -209,11 +210,9 @@ fn find_tag(
 
 fn selected_media_preview(view: &GalleryView) -> Div {
     let selected = &view.selection.selected_media_ids;
-    let media = view.snapshot.as_ref().ok().and_then(|snapshot| {
-        selected
-            .first()
-            .and_then(|id| snapshot.media.iter().find(|media| media.id == *id))
-    });
+    let media = selected
+        .first()
+        .and_then(|id| view.service.media_by_id(*id).ok().flatten());
     let mut preview = div()
         .v_flex()
         .items_center()

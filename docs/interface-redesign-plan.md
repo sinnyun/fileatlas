@@ -1,16 +1,16 @@
 # PhoTag 界面 v5 改造实施文档
 
-> **按用户本轮指定的任务范围执行：** C0–C4 是编码任务，V1–V4 是验证任务。
-> 编码任务不运行格式/编译/测试/应用/MCP；验证任务按清单执行，运行时调试和截图必须使用 PhoTag 插件 MCP。
-> 不根据模型身份推断任务范围；未分配的部分留给用户后续指定。详见完整开发交接。
+> **自动续接：** 用户只说“继续”时，根据交接文档台账推进下一未完成阶段：先完成 C0–C4 编码，再执行 V1–V4 验证。
+> 编码阶段不运行格式/编译/测试/应用/MCP；验证阶段按清单执行，运行时调试和截图必须使用 PhoTag 插件 MCP。
+> 显式指定任务范围时遵照用户指定。详见完整开发交接。
 >
 > **2026-10-14 交接更新：** 当前状态与小步执行顺序以
 > [完整开发交接](development-handoff-2026-10-14.md) 为入口。本文件的设计规格仍有效，
 > 但早期工作树/11错/“未运行界面”记录均为历史快照。现在已有插件 MCP 实机截图，
 > 最新源码由于04/06批量/标签面板中间态有19个Gallery编译错误，最后成功EXE落后于源码。
 
-2026-10-13 编写。本文档保存界面重设阶段的设计和实施细节。每轮只执行用户明确
-分配的任务范围；需要了解相应设计与阶段背景时查阅本文件相关章节，并同步更新
+2026-10-13 编写。本文档保存界面重设阶段的设计和实施细节。默认根据台账自动推进下一
+未完成阶段；需要了解相应设计与阶段背景时查阅本文件相关章节，并同步更新
 第 10 节的进度台账。
 
 设计输入是 `docs/reference-ui/final-v5/` 的 9 张设计稿和
@@ -631,16 +631,12 @@ v5 自绘（SURFACE_MODAL + 圆角 10 + 边框 SEPARATOR_LIGHT）。
 - [x] 缩略图占位（加载中 Spinner / 失败警告图标）；
 - [x] 月组头重排（chevron + 15 semibold + 12 muted 计数）；
 - [x] 空库态 / 无结果态（6.8-1/2）已实现（`view/empty_state.rs`，由
-      `render.rs:103` 分派）；其 “Add folder” 按钮 dispatch
-      `navigation/add-folder`，接收方仍缺（见 7.4）；
-- [~] 筛选 chip 行重构（6.5-1 样式与激活态）：`view/filter_row.rs` 已写，
-      未接线（`view.rs` 无 `mod filter_row;`，`regions.rs` 仍用 `controls::`）；
-- [~] 筛选弹层升级：搜索范围 / 类型 / 排序 / 扩展名 / 日期 / 评分（6.5-2..5）：
-      同上，文件已写但含 7.2 列出的缺陷；
-- [ ] 状态栏内容重排 + [🏷 标签▾][⋯ 更多▾] 右侧按钮；
-- [ ] 工具菜单项按 6.5-6 重排（批量操作/统计信息/导出元数据/按月分组）；
-- [x] 检查器视图（新）文件已写：`view/inspector.rs`（稿 00 右栏），尚未注册
-      `gallery.inspector`；
+      `render.rs:103` 分派）；“Add folder” dispatch由 Navigation 的
+      Cordis-owned listener 消费并调用真实 folder picker / indexing流程；代码已写未验证。
+- [x] 筛选 chip 行重构与六个筛选弹层（搜索范围/类型/排序/扩展名/日期/评分）已接入，
+      同步包含/排除、选择后关闭规则和日期 Calendar/session；代码已写未验证。
+- [x] 状态栏内容、标签/更多操作及工具菜单已有真实控件和功能处理器；本轮未运行验证。
+- [x] 检查器已注册到 `gallery.inspector` 并显示真实字段；布局未做新版本MCP验收。
 - [ ] 验收：主界面与 00 稿对照（布局/卡片/筛选/状态栏/检查器），交互可用。
 
 #### S2 剩余接线清单（2026-10-13 交接，按序执行）
@@ -716,8 +712,8 @@ v5 自绘（SURFACE_MODAL + 圆角 10 + 边框 SEPARATOR_LIGHT）。
       既有 100ms 循环（约 514-533 行）里把 `surfaces.is_open("inspector")` 同步进
       `shell.inspector_open` 并在变化时 `notify`，这样检查器内的 ✕ 能真关掉右栏。
 - [x] `photag-plugin-navigation`：监听 `UiCommandInvoked` 的
-      `"navigation/add-folder"`，走现有 pick_folder 流程（空库态按钮已在 dispatch，
-      目前没有接收方）；参照该 crate 既有轮询/事件模式实现。
+      `"navigation/add-folder"`，走现有 pick_folder 流程（空库态按钮已在 dispatch）；
+      代码已写，未验证 native picker/Windows行径。
 
 7.5 文案
 
@@ -729,54 +725,55 @@ v5 自绘（SURFACE_MODAL + 圆角 10 + 边框 SEPARATOR_LIGHT）。
       全部类型/媒体类型/排序方式/日期范围/清除日期/评分范围/搜索范围/匹配文件名/
       匹配文件所在路径/匹配文件标签/包含所选/排除所选/按月分组/基本信息/文件类型/
       文件大小/图像尺寸/拍摄日期/文件路径 等）。
-- [x] 跑 `cargo +1.97.1 test --locked -p photag-plugin-i18n -j 2` 校验键一致。
+- [x] 测试源码样本已补 `{scanned}` 参数；验证任务运行
+      `cargo +1.97.1 test --locked -p photag-plugin-i18n -j 2` 校验键一致（本轮未运行）。
 
 ### S3 Navigation 侧栏
 
-- [ ] 侧栏分区：全部文件（LayoutGrid 图标+计数）、文件夹（组头 + ＋）、标签
+- [x] 侧栏分区：全部文件（LayoutGrid 图标+计数）、文件夹（组头 + ＋）、标签
       （组头 + 🔍 + ＋）、底部固定“设置”入口（调 settings/toggle）；
-- [ ] 行样式：选中 accent 3px 条 + 0x59 填充；计数右对齐 muted；
-- [ ] 标签行简化：删除常显 8 按钮行，保留 ⋯ 菜单（9 项保留）；
-- [ ] 面包屑视图（新）注册 `command.breadcrumb`；
+- [x] 行样式：选中 accent 3px 条 + 0x59 填充；计数右对齐 muted；
+- [x] 标签行简化：删除常显 8 按钮行，保留 ⋯ 菜单（9 项保留）；
+- [x] 面包屑视图（新）注册 `command.breadcrumb`；
 - [ ] 文件夹右键菜单 + 拖放位置菜单（6.6-6/7）；
 - [ ] 验收：侧栏与 00 稿对照；文件夹/标签交互不回归。
 
 ### S4 标签弹窗体系
 
-- [ ] navigation 增加模态视图（编辑/创建/删除/合并）到 `workspace.modal`；
+- [x] navigation 增加模态视图（编辑/创建/删除/合并/move）到 `workspace.modal`；
       替换现行内联表单、合并面板、删除确认（6.4-1..4）；
-- [ ] gallery 分配标签面板重排（6.4-5）；preview AI 建议模态（6.4-6）；
+- [x] gallery 分配标签面板重排（6.4-5），含树、recent和真实媒体预览；preview AI 建议模态（6.4-6）既有实现保留；
 - [ ] 验收：各弹窗按 04 稿呈现；操作行为与现状一致（改标签/合并/删除真实生效）。
 
 ### S5 预览重排
 
-- [ ] 顶栏（logo/文件名/信息/AI/EXIF/✕）；信息浮层 w310（真实 EXIF 行）；
+- [x] 顶栏（logo/文件名/信息/AI/EXIF/✕）；信息浮层 w310（真实 EXIF 行）；
       底部工具栏（适应窗口/百分比/缩放滑杆/重置/旋转/镜像/标签/更多）；
       胶片条 + ‹› 按钮；移除旧左上 ⓘ 与右上 ✕ 方案；
 - [ ] 验收：与 01 稿图片预览对照。
 
 ### S6 播放重排
 
-- [ ] media-playback 从 `workspace.main` 底部条改为 `workspace.modal` 播放器
+- [x] media-playback 从 `workspace.main` 底部条改为 `workspace.modal` 播放器
       覆盖层（顶栏 + 舞台 + 控制条，6.2 下半）；音频走中性占位；
 - [ ] 验收：与 01 稿视频/音频对照；播放/暂停/进度/音量/速度真实可用。
 
 ### S7 设置重排
 
-- [ ] 纵向导航六项 + 页脚（6.3）；六页控件按 02/03 稿重排；
+- [x] 纵向导航六项 + 页脚（6.3）；六页控件按 02/03 稿重排；
 - [ ] 打开/关闭、Esc、拖动、强调色即时生效不回归；
 - [ ] 验收：与 02/03 稿对照。
 
 ### S8 统计/导出/更新
 
-- [ ] 统计模态重排（6.7-1）；导出模态状态机（6.7-2，原生保存对话框在前）；
-- [ ] 更新模态重排（6.7-3）；
+- [x] 统计模态重排（6.7-1）；导出模态状态机（6.7-2，原生保存对话框在前）；
+- [x] 更新模态重排（6.7-3）；
 - [ ] 验收：与 07 稿对照；导出跑一次真实流程。
 
 ### S9 状态与反馈
 
-- [ ] 扫描进度卡（右下，取消可用）；扫描失败 Toast + 重新扫描；
-- [ ] 写回失败卡 + [重试][忽略]（先补 tagging 公开重试方法）；
+- [x] 扫描进度卡（Navigation侧栏，取消可用）；即时add/rescan错误可Retry；异步scan worker错误无返回通道，失败Toast/重扫未实现。
+- [x] 写回失败卡 + [重试][忽略]（tagging公开精确payload重试方法）；
 - [ ] gallery 操作 toast 按 6.0 重绘；
 - [ ] 验收：与 08 稿对照；扫描与写回失败路径实际触发验证。
 
@@ -814,18 +811,22 @@ v5 自绘（SURFACE_MODAL + 圆角 10 + 边框 SEPARATOR_LIGHT）。
 
 ## 10. 进度台账
 
+**2026-10-14 编码状态：代码已编写，未验证。** S2–S9的当前实现见本表备注及
+`docs/development-handoff-2026-10-14.md` 的C0–C4记录；Gallery公开媒体操作面板和
+Indexing终止失败通道已写，静态复核补入了缩略图批量数据库错误和回填worker panic反馈；V1–V4没有在本轮执行。
+
 | 阶段 | 状态 | 更新日期 | 备注 |
 |---|---|---|---|
 | S0 主题令牌 | 完成（编译核对通过，视觉仍待逐项验收）| 2026-10-13 | theme.rs 已改为 v5 值；fmt/check 通过 |
 | S1 Shell 骨架 | 进行中（编译通过，MCP 局部实机验证）| 2026-10-13 | 三段式与 inspector 槽已编译；MCP 验证检查器开关；breadcrumb 归 S3 |
-| S2 Gallery | 进行中 | 2026-10-14 | 最新04/06代码导致Gallery 19个编译错误；最后成功MCP已截00/05，之后日期/侧栏/设置修复未重拍，详见完整交接 |
-| S3 Navigation | 进行中 | 2026-10-14 | 同屏分区/breadcrumb/紧凑行/默认折叠已写；第二轮视觉待MCP重拍 |
-| S4 标签弹窗 | 进行中 | 2026-10-14 | Navigation模态/parent picker/Esc已写；Gallery分配标签最新代码未编译，当前缺ScrollableElement |
-| S5 预览 | 进行中 | 2026-10-14 | 新顶栏/More/slider/filmstrip已写；MCP截图显示舞台半透、信息长表和旧底部工具条仍需重排 |
-| S6 播放 | 进行中 | 2026-10-14 | modal/audio-only扩展已写；Tags/More、media_id、新open_media和MCP audio路由尚未实现 |
-| S7 设置 | 进行中 | 2026-10-14 | 纵向六项已写；首轮MCP正文为空，最后确定尺寸修复未重拍 |
-| S8 统计/导出/更新 | 进行中 | 2026-10-14 | 分区统计与导出/更新状态卡已写；启动更新静默MCP已验，其余新稿面未完整验收 |
-| S9 状态与反馈 | 未开始 | | |
+| S2 Gallery | 进行中 | 2026-10-14 | 编码续接：已修复日志中类型/可见性/trait缺口；批量CurrentSelection全量解析所选ID；session日期同步Calendar；bulk action/source typed MCP与live状态、`open_media_menu`/close及媒体ID状态已写。操作面板复用Gallery真实动作；原生右键菜单保留指针触发。代码已写，未验证 |
+| S3 Navigation | 进行中 | 2026-10-14 | 同屏分区/breadcrumb/紧凑行/默认折叠及真实添加/刷新处理已写；Navigation标签模态公开请求覆盖create/edit/delete/merge/move/close；代码已写，未验证，第二轮视觉待MCP重拍 |
+| S4 标签弹窗 | 进行中 | 2026-10-14 | Navigation模态/parent picker/Esc与Gallery层级/近期标签/跨页真实媒体预览已写；公开 Navigation 请求及MCP可打开create/edit/delete/merge/move；Playback新增真实标签树赋值/移除；代码已写，未验证，尚欠完整交互验收 |
+| S5 预览 | 进行中 | 2026-10-14 | 新顶栏/More/slider/filmstrip既有实现保留；本轮舞台改实色SURFACE_EXTREME，信息行改紧凑两列并增加File/Library/Image/Video/EXIF折叠组。代码已写，未验证；先前截图仍需新版本MCP复核布局 |
+| S6 播放 | 进行中 | 2026-10-14 | 新增PlaybackSnapshot.media_id/open_media兼容入口，Gallery/Preview/MCP音视频传ID；Playback真实标签赋值和FileOperations reveal入口已写，Shell停机顺序及PORTS已更新。未验证；播放器布局仍待设计稿对照 |
+| S7 设置 | 进行中 | 2026-10-14 | 纵向六项、确定尺寸、实色背景、独立滚动正文、即时保存页脚已有代码；正文空白修复未重拍，代码已写未验证 |
+| S8 统计/导出/更新 | 进行中 | 2026-10-14 | 分区统计与导出/更新状态卡已有代码；MCP导出改走MetadataExportService共享状态机，get_ui_state可读状态；启动更新静默已验，其余新稿面未完整验收 |
+| S9 状态与反馈 | 进行中 | 2026-10-14 | Gallery writeback失败卡支持基于失败payload的真实Retry/忽略；Navigation扫描显示进度/取消，立即add/rescan和Indexing终止错误均有Retry scan卡；图片/视频缩略图批量写入错误及回填worker panic也进入终止失败流。代码已写未验证；异步重试次数未显示，toast和整稿验收仍待后续验证 |
 | S10 总验证 | 未开始 | | |
 
 历史交接工作树快照（2026-10-13，未提交）：改动 13 个已跟踪文件

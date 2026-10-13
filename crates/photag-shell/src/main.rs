@@ -629,6 +629,11 @@ fn main() {
             .block_on(fiber.dispose())
             .expect("stop image preview plugin");
     }
+    if let Some(fiber) = media_playback_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop media playback plugin");
+    }
     if let Some(fiber) = history_fiber {
         runtime
             .block_on(fiber.dispose())
@@ -644,11 +649,6 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop tagging plugin");
-    }
-    if let Some(fiber) = media_playback_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop media playback plugin");
     }
     if let Some(fiber) = navigation_fiber {
         runtime
