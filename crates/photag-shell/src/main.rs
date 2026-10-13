@@ -133,6 +133,7 @@ impl Render for PhoTagShell {
                     .py_3()
                     .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .child(div().text_lg().font_semibold().child("PhoTag"))
+                    .child(div().flex_1())
                     .children(commands)
                     .child(
                         Button::new("shell-tools")
@@ -156,6 +157,7 @@ impl Render for PhoTagShell {
                         div()
                             .v_flex()
                             .w(px(self.sidebar_width))
+                            .h_full()
                             .border_r_1()
                             .border_color(rgba(theme::HAIRLINE.to_rgba()))
                             .overflow_y_scrollbar()
@@ -174,7 +176,8 @@ impl Render for PhoTagShell {
                             )
                             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                                 if this.resizing_sidebar {
-                                    let next = f32::from(event.position.x).clamp(160., 500.);
+                                    let next = f32::from(event.position.x)
+                                        .clamp(theme::SIDEBAR_MIN_WIDTH, theme::SIDEBAR_MAX_WIDTH);
                                     if (next - this.sidebar_width).abs() > 0.5 {
                                         this.sidebar_width = next;
                                         cx.notify();
@@ -202,6 +205,7 @@ impl Render for PhoTagShell {
                         div()
                             .v_flex()
                             .flex_1()
+                            .h_full()
                             .min_h_0()
                             .min_w_0()
                             .relative()
@@ -659,10 +663,27 @@ fn main() {
             .snapshot()
             .ok()
             .map(|saved| saved.sidebar_width)
-            .filter(|width| width.is_finite() && (160.0..=500.0).contains(width))
-            .unwrap_or(288.0);
+            .filter(|width| {
+                width.is_finite()
+                    && (theme::SIDEBAR_MIN_WIDTH..=theme::SIDEBAR_MAX_WIDTH).contains(width)
+            })
+            // Source: vendor/photag-source/src/app.rs::AppState::new.
+            .unwrap_or(theme::SIDEBAR_WIDTH);
         let session_for_shell = Arc::clone(&session);
-        gpui_kit::open_window(WindowOptions::default(), cx, move |window, cx| {
+        // Match the source viewport (1280×800, minimum 800×500) from
+        // vendor/photag-source/src/main.rs.
+        let window_options = WindowOptions {
+            window_bounds: Some(WindowBounds::centered(
+                size(px(theme::WINDOW_WIDTH), px(theme::WINDOW_HEIGHT)),
+                cx,
+            )),
+            window_min_size: Some(size(
+                px(theme::WINDOW_MIN_WIDTH),
+                px(theme::WINDOW_MIN_HEIGHT),
+            )),
+            ..WindowOptions::default()
+        };
+        gpui_kit::open_window(window_options, cx, move |window, cx| {
             #[cfg(target_os = "windows")]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};

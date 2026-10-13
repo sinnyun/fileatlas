@@ -76,6 +76,20 @@ Windows, media-corpus, or regression validation.
 
 - Trace source behavior and callers in `vendor/photag-source/` before migration;
   update the mapping table in the same change.
+- For every UI layout, style, or control-placement change, inspect the pinned
+  source implementation and its exact dimensions, ordering, spacing, typography,
+  colors, and interaction state before editing the migrated plugin. Screenshots
+  are for checking the rendered result only; never infer layout values from
+  pixels when source code provides them. Follow
+  `docs/reference-ui/source-layout-spec.md` and add source file/line references
+  to the change notes or validation record. If a value is computed or inherited
+  from egui defaults, document that actual source rule instead of inventing a
+  GPUI value. Keep every visible source control and state represented in its
+  corresponding feature plugin; explicitly record source UI that has no
+  migrated counterpart.
+- Complete and review the source layout specification before making broad UI
+  restructuring changes. Work from its source-to-plugin component map so
+  framework edits proceed region by region without speculative placement.
 - Preserve SQLite schema and existing `%LOCALAPPDATA%\\PhoTag` files unless a
   tested compatibility migration is supplied.
 - Keep Rust files below 500 lines where practical and below 800 lines.

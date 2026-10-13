@@ -166,143 +166,102 @@ impl Render for SidebarView {
                         let expanded = self.expanded_directories.get(&node.folder.path);
                         panel = panel.child(
                             div()
-                                .v_flex()
-                                .gap_1()
+                                .h_flex()
+                                .w_full()
+                                .items_center()
+                                .gap_0()
                                 .child(
-                                    div().w_full().rounded_md().px_2().py_1().text_sm().child(
-                                        format!("{}  {}", node.folder.name, node.media_count),
-                                    ),
+                                    Button::new(format!(
+                                        "navigation-expand-root-{}",
+                                        node.folder.id
+                                    ))
+                                    .label(if expanded.is_some() { "⌄" } else { "›" })
+                                    // Source: sidebar::arrow_slot (16×16) inside a 26 px row.
+                                    .w(px(theme::SIDEBAR_ARROW_SLOT))
+                                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                                    .on_click(cx.listener({
+                                        let path = node.folder.path.clone();
+                                        move |this, _, _, cx| {
+                                            this.toggle_directory(&path);
+                                            cx.notify();
+                                        }
+                                    })),
                                 )
                                 .child(
-                                    div()
-                                        .h_flex()
-                                        .gap_1()
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-expand-root-{}",
-                                                node.folder.id
-                                            ))
-                                            .label(if expanded.is_some() {
-                                                "Collapse"
-                                            } else {
-                                                "Expand"
-                                            })
-                                            .on_click(cx.listener({
-                                                let path = node.folder.path.clone();
-                                                move |this, _, _, cx| {
-                                                    this.toggle_directory(&path);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-select-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Open")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.select_folder(Some(folder_id), cx)
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-rescan-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Rescan")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.rescan(folder_id, cx);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-remove-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Remove")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.remove_folder(folder_id, cx);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        )
-                                        .child({
+                                    Button::new(format!("navigation-select-{}", node.folder.id))
+                                        .label(format!(
+                                            "{}  {}",
+                                            node.folder.name, node.media_count
+                                        ))
+                                        // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
+                                        .flex_1()
+                                        .min_w_0()
+                                        .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                                        .text_size(px(theme::SOURCE_FONT_SIZE_BUTTON))
+                                        .on_click(cx.listener({
                                             let folder_id = node.folder.id;
-                                            let folder_path = node.folder.path.clone();
-                                            let folder_view = cx.entity().downgrade();
-                                            Button::new(format!(
-                                                "navigation-folder-menu-{folder_id}"
-                                            ))
-                                            .label("⋯")
-                                            .dropdown_menu(move |mut menu, _, _| {
-                                                let create_path = folder_path.clone();
-                                                let create_view = folder_view.clone();
-                                                menu = menu.item(
-                                                    PopupMenuItem::new("New subfolder…").on_click(
-                                                        move |_, window, cx| {
-                                                            let _ = create_view.update(
-                                                                cx,
-                                                                |this, cx| {
-                                                                    this.request_new_subfolder(
-                                                                        create_path.clone(),
-                                                                        window,
-                                                                        cx,
-                                                                    )
-                                                                },
-                                                            );
-                                                        },
-                                                    ),
-                                                );
-                                                let rescan_view = folder_view.clone();
-                                                menu = menu.item(
-                                                    PopupMenuItem::new("Rescan").on_click(
-                                                        move |_, _, cx| {
-                                                            let _ = rescan_view.update(
-                                                                cx,
-                                                                |this, cx| {
-                                                                    this.rescan(folder_id, cx);
-                                                                    cx.notify();
-                                                                },
-                                                            );
-                                                        },
-                                                    ),
-                                                );
-                                                let open_path = folder_path.clone();
-                                                let open_view = folder_view.clone();
-                                                menu = menu.item(
-                                                    PopupMenuItem::new("Open in file manager")
-                                                        .on_click(move |_, _, cx| {
-                                                            let _ =
-                                                                open_view.update(cx, |this, _| {
-                                                                    this.open_folder_in_explorer(
-                                                                        &open_path,
-                                                                    )
-                                                                });
-                                                        }),
-                                                );
-                                                let remove_view = folder_view.clone();
-                                                menu.item(PopupMenuItem::new("Remove").on_click(
+                                            move |this, _, _, cx| {
+                                                this.select_folder(Some(folder_id), cx)
+                                            }
+                                        })),
+                                )
+                                .child({
+                                    let folder_id = node.folder.id;
+                                    let folder_path = node.folder.path.clone();
+                                    let folder_view = cx.entity().downgrade();
+                                    Button::new(format!("navigation-folder-menu-{folder_id}"))
+                                        .label("⋯")
+                                        .w(px(theme::SIDEBAR_ROW_HEIGHT))
+                                        .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                                        .dropdown_menu(move |mut menu, _, _| {
+                                            let create_path = folder_path.clone();
+                                            let create_view = folder_view.clone();
+                                            menu = menu.item(
+                                                PopupMenuItem::new("New subfolder…").on_click(
+                                                    move |_, window, cx| {
+                                                        let _ =
+                                                            create_view.update(cx, |this, cx| {
+                                                                this.request_new_subfolder(
+                                                                    create_path.clone(),
+                                                                    window,
+                                                                    cx,
+                                                                )
+                                                            });
+                                                    },
+                                                ),
+                                            );
+                                            let rescan_view = folder_view.clone();
+                                            menu =
+                                                menu.item(PopupMenuItem::new("Rescan").on_click(
                                                     move |_, _, cx| {
                                                         let _ =
-                                                            remove_view.update(cx, |this, cx| {
-                                                                this.remove_folder(folder_id, cx);
+                                                            rescan_view.update(cx, |this, cx| {
+                                                                this.rescan(folder_id, cx);
                                                                 cx.notify();
                                                             });
                                                     },
-                                                ))
-                                            })
-                                        }),
-                                ),
+                                                ));
+                                            let open_path = folder_path.clone();
+                                            let open_view = folder_view.clone();
+                                            menu = menu.item(
+                                                PopupMenuItem::new("Open in file manager")
+                                                    .on_click(move |_, _, cx| {
+                                                        let _ = open_view.update(cx, |this, _| {
+                                                            this.open_folder_in_explorer(&open_path)
+                                                        });
+                                                    }),
+                                            );
+                                            let remove_view = folder_view.clone();
+                                            menu.item(PopupMenuItem::new("Remove").on_click(
+                                                move |_, _, cx| {
+                                                    let _ = remove_view.update(cx, |this, cx| {
+                                                        this.remove_folder(folder_id, cx);
+                                                        cx.notify();
+                                                    });
+                                                },
+                                            ))
+                                        })
+                                }),
                         );
                         if let Some(children) = expanded {
                             panel = panel.children(children.iter().map(|child| {

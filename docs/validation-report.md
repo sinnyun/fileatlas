@@ -14,6 +14,33 @@ integration, representative media coverage, updater replacement/restart, and
 real PhoTag library compatibility also require their respective environments
 and fixtures.
 
+## Source-layout specification and first gallery geometry pass (2026-10-13)
+
+`docs/reference-ui/source-layout-spec.md` was assembled from read-only audits
+of the pinned `vendor/photag-source/` renderers, theme, settings model, and
+dialogs. Source screenshots remain stored in
+`docs/reference-ui/2026-10-13/`; they were inspected only after source values
+were recorded. The codebase-memory MCP transport was unavailable during this
+pass, so the source fallback was direct file reading. AGENTS.md now requires
+source file/line references and prohibits deriving layout values from pixels.
+
+The first Gallery geometry pass changes card hit areas from metadata cards to
+source-sized square thumbnail surfaces with a 7-point selection inset, source
+corner radius, 12-point row gap, and 40-point month header. References:
+`vendor/photag-source/src/ui/gallery.rs:990-1005,1383-1387,1406-1429` and
+`docs/reference-ui/source-layout-spec.md#gallery-card`. This remains partial:
+filter controls still sit inside the Gallery pane instead of the full-width
+source command bar, several controls retain migration-specific layouts, and
+their GPUI rendering has not reached visual parity.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Rust workspace formatting. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Includes the changed Gallery crate and shell host graph. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 build -p photag-shell --locked -j 2` | Passed | Rebuilt the executable used by the live MCP round trip. |
+| `node target/live-ui-roundtrip.cjs` with `PHOTAG_BIN=target/debug/photag-shell.exe`, screenshot directory `target/validation-screenshots`, `PHOTAG_DEV_PLUGINS=mcp,dev-test`, isolated `PHOTAG_DEV_TEST_DIR=target/dev-test`, and `PHOTAG_MCP_ALLOW_MUTATIONS=1` | Passed after setting required environment | First invocation without `PHOTAG_BIN` failed before launch. The configured run initialized the local MCP child, read library/media state, closed/opened Preview, toggled Info, set a four-star rating and assigned the isolated `ValidationTag`; screenshot capture returned 1942×1256 images. The generated source-fixture XMP sidecar was removed after the run; profile database/cache stay under `target/dev-test`. |
+| Visual comparison | Partial / gaps recorded | Square Gallery tiles improved; source header/filter ownership, controls, native/dark button treatment, navigation rows, details overlays, and other feature panels still need source-driven region passes. Source reference captures are retained under `docs/reference-ui/2026-10-13/`. |
+
 ## Historical snapshot: preview, theme, and navigation integration pass (2026-10-13)
 
 | Check | Result | Notes |

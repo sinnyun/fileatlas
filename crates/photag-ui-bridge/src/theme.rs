@@ -21,6 +21,34 @@ pub const TEXT_MUTED: u32 = 0x707070;
 pub const DANGER: u32 = 0xe86060;
 pub const WARNING: u32 = 0xe8a860;
 pub const STAR: u32 = 0xf0c850;
+
+// Geometry and typography copied from vendor/photag-source/src/main.rs,
+// ui/filterbar.rs, ui/sidebar.rs, app.rs, and theme.rs. Feature views should
+// use these source values instead of deriving sizes from screenshots.
+pub const WINDOW_WIDTH: f32 = 1280.0;
+pub const WINDOW_HEIGHT: f32 = 800.0;
+pub const WINDOW_MIN_WIDTH: f32 = 800.0;
+pub const WINDOW_MIN_HEIGHT: f32 = 500.0;
+pub const SIDEBAR_WIDTH: f32 = 220.0;
+pub const SIDEBAR_MIN_WIDTH: f32 = 160.0;
+pub const SIDEBAR_MAX_WIDTH: f32 = 500.0;
+pub const SIDEBAR_ROW_HEIGHT: f32 = 26.0;
+pub const SIDEBAR_ARROW_SLOT: f32 = 16.0;
+pub const SEARCH_FIELD_HEIGHT: f32 = 32.0;
+pub const FILTER_CHIP_HEIGHT: f32 = 26.0;
+pub const THUMB_SIZE_MIN: f32 = 80.0;
+pub const THUMB_SIZE_MAX: f32 = 300.0;
+pub const THUMB_SIZE_DEFAULT: f32 = 150.0;
+pub const THUMB_SLIDER_WIDTH: f32 = 116.0;
+pub const SOURCE_FONT_SIZE_BUTTON: f32 = 13.0;
+pub const SOURCE_ITEM_SPACING_X: f32 = 8.0;
+pub const SOURCE_ITEM_SPACING_Y: f32 = 6.0;
+pub const SOURCE_BUTTON_PADDING_X: f32 = 12.0;
+pub const SOURCE_BUTTON_PADDING_Y: f32 = 5.0;
+pub const SOURCE_MENU_MARGIN_X: f32 = 10.0;
+pub const SOURCE_MENU_MARGIN_Y: f32 = 8.0;
+pub const SOURCE_WINDOW_MARGIN: f32 = 14.0;
+pub const SOURCE_SCROLLBAR_WIDTH: f32 = 7.0;
 /// Source colors are premultiplied because they are composited over the
 /// active surface. Keep alpha explicit when adapting them to GPUI paints.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

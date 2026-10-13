@@ -87,15 +87,14 @@ impl GalleryView {
             let row_height = scroll
                 .last_item_size
                 .map(|size| size.item.height)
-                .unwrap_or(px(self.thumb_size + 92.));
+                .unwrap_or(px(self.thumb_size + 12.));
             let offset_y = scroll.base_handle.offset().y;
-            let card_width = px(self.thumb_size + 32.);
-            let card_height = px(self.thumb_size + 64.);
+            let card_width = px(self.thumb_size);
+            let card_height = px(self.thumb_size);
             let card_step = card_width + px(12.);
-            let card_top_offset = px(28.);
             for (row_index, row) in self.row_layout.iter().enumerate() {
                 let row_y = viewport.origin.y + row_height * row_index as f32 + offset_y;
-                let card_y = row_y + card_top_offset;
+                let card_y = row_y + px(if row.month_label.is_some() { 40. } else { 0. });
                 if card_y + card_height < visible_band.top() || card_y > visible_band.bottom() {
                     continue;
                 }

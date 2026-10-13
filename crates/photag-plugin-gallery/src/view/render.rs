@@ -2,9 +2,12 @@ use super::*;
 
 impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let columns = ((f32::from(window.bounds().size.width) - 24.) / (self.thumb_size + 44.))
+        // Match gallery.rs: the source computes columns from the Gallery
+        // viewport and the square thumb + fixed 12 pt gap.
+        let available_width = f32::from(window.bounds().size.width) - theme::SIDEBAR_WIDTH - 24.0;
+        let columns = ((available_width + 12.0) / (self.thumb_size + 12.0))
             .floor()
-            .clamp(1., 6.) as usize;
+            .max(1.0) as usize;
         self.columns = columns;
         let group_by_month = self.group_by_month
             && matches!(
@@ -53,7 +56,10 @@ impl Render for GalleryView {
                         cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),
                     )
                     .v_flex()
-                    .size_full()
+                    // The shell parent owns the viewport height; growing here avoids
+                    // size_full resolving against the window and overlapping the header.
+                    .flex_1()
+                    .min_h_0()
                     .gap_3()
                     .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .p_4()
@@ -265,7 +271,7 @@ impl Render for GalleryView {
                 grid = grid.child(
                     div()
                         .flex_1()
-                        .min_h(px((card_size + 92.) * 2. + 20.))
+                        .min_h(px((card_size + 12.) * 2. + 40.))
                         .relative()
                         .on_mouse_down(
                             MouseButton::Left,
@@ -339,6 +345,7 @@ impl Render for GalleryView {
                                                 let first = layout_row.media_range.start;
                                                 let end = layout_row.media_range.end;
                                                 let month_label = layout_row.month_label.clone();
+                                                let has_month_label = month_label.is_some();
                                                 let mut cards = Vec::with_capacity(end - first);
                                                 if !layout_row.collapsed {
                                                     for skeleton in &snapshot.skeletons[first..end]
@@ -386,8 +393,8 @@ impl Render for GalleryView {
                                                         } else {
                                                             cards.push(
                                                                 div()
-                                                                    .w(px(card_size + 32.))
-                                                                    .h(px(card_size + 64.))
+                                                                    .w(px(card_size))
+                                                                    .h(px(card_size))
                                                                     .rounded_md()
                                                                     .bg(rgba(theme::panel_rgba(
                                                                         theme::SURFACE_PANEL,
@@ -398,9 +405,10 @@ impl Render for GalleryView {
                                                     }
                                                 }
                                                 let header = month_label
+                                                    .clone()
                                                     .map(|label| {
                                                         let collapsed = layout_row.collapsed;
-                                                        div().h_flex().h(px(20.)).child(
+                                                        div().h_flex().h(px(40.)).child(
                                                             Button::new(format!(
                                                                 "gallery-month-{label}"
                                                             ))
@@ -422,18 +430,31 @@ impl Render for GalleryView {
                                                             )),
                                                         )
                                                     })
-                                                    .unwrap_or_else(|| div().h(px(20.)));
+                                                    .unwrap_or_else(|| div());
                                                 rows.push(
                                                     div()
                                                         .id(format!("gallery-row-{row_index}"))
                                                         .v_flex()
                                                         .w_full()
                                                         .h(px(if layout_row.collapsed {
-                                                            48.
+                                                            40.
                                                         } else {
-                                                            card_size + 92.
+                                                            card_size
+                                                                + 12.
+                                                                + if has_month_label {
+                                                                    40.
+                                                                } else {
+                                                                    0.
+                                                                }
+                                                                + if row_index > 0
+                                                                    && has_month_label
+                                                                {
+                                                                    14.
+                                                                } else {
+                                                                    0.
+                                                                }
                                                         }))
-                                                        .gap_2()
+                                                        .gap_0()
                                                         .child(header)
                                                         .child(
                                                             div().h_flex().gap_3().children(cards),

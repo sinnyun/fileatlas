@@ -32,30 +32,28 @@ pub(super) fn render_media_card(
         allowed: drag_allowed.clone(),
     };
     let mut card = div()
-        .v_flex()
-        .w(px(thumb_size + 32.))
-        .h(px(thumb_size + 64.))
-        .justify_between()
-        .rounded_md()
-        .border_1()
-        .border_color(if selected {
-            rgb(theme::accent())
-        } else {
-            rgb(theme::SURFACE_FAINT)
-        })
+        .relative()
+        .w(px(thumb_size))
+        .h(px(thumb_size))
+        .rounded(px(theme::THUMB_ROUND))
+        .overflow_hidden()
         .bg(rgba(if selected {
             theme::accent_alpha(theme::accent(), 0.42)
         } else {
-            theme::panel_rgba(theme::SURFACE_PANEL)
-        }))
-        .p_2();
-    let thumb_height = thumb_size - 35.;
+            theme::base_rgba(theme::SURFACE_ELEVATED)
+        }));
+    // PhoTag paints a square image target. Selection reveals the accent
+    // backplate by insetting the image seven source points on every edge.
+    let image_inset = if selected { 7.0 } else { 0.0 };
     let mut thumbnail = div()
         .relative()
-        .w_full()
-        .h(px(thumb_height))
+        .absolute()
+        .top(px(image_inset))
+        .left(px(image_inset))
+        .right(px(image_inset))
+        .bottom(px(image_inset))
         .overflow_hidden()
-        .rounded_sm();
+        .rounded(px(theme::THUMB_ROUND));
     let micro_image = micro_thumb.and_then(micro_render_image);
     if let Some(image) = micro_image.clone() {
         thumbnail = thumbnail.child(
@@ -192,7 +190,43 @@ pub(super) fn render_media_card(
             }
             menu
         });
-    thumbnail = thumbnail.child(div().absolute().top(px(4.)).right(px(4.)).child(menu));
+    thumbnail = thumbnail.child(div().absolute().top(px(7.)).right(px(7.)).child(menu));
+    if media.rating > 0 {
+        thumbnail = thumbnail.child(
+            div()
+                .absolute()
+                .left(px(7.))
+                .bottom(px(7.))
+                .h(px(18.))
+                .rounded_full()
+                .bg(rgba(0x00000096))
+                .px_2()
+                .items_center()
+                .text_xs()
+                .text_color(rgb(theme::STAR))
+                .child(format!("★ {}", media.rating)),
+        );
+    }
+    if media.media_type == "video" || media.media_type == "audio" {
+        thumbnail = thumbnail.child(
+            div()
+                .absolute()
+                .right(px(7.))
+                .bottom(px(7.))
+                .size(px(22.))
+                .rounded_full()
+                .bg(rgba(0x00000096))
+                .items_center()
+                .justify_center()
+                .text_xs()
+                .text_color(rgb(theme::TEXT_PRIMARY))
+                .child(if media.media_type == "video" {
+                    "▶"
+                } else {
+                    "♪"
+                }),
+        );
+    }
     card = card.child(thumbnail);
     card.id(format!("gallery-media-{media_id}"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
@@ -228,13 +262,6 @@ pub(super) fn render_media_card(
             }
             cx.new(|_| FileDragGhost)
         })
-        .child(div().text_sm().font_medium().child(media.filename.clone()))
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
-        )
 }
 
 fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMenuEntry> {

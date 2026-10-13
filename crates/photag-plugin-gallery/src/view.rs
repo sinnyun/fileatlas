@@ -606,8 +606,11 @@ impl GalleryView {
             row_layout_key: None,
             thumb_size: saved
                 .thumb_size
-                .filter(|size| size.is_finite() && (100.0..=300.0).contains(size))
-                .unwrap_or(160.),
+                .filter(|size| {
+                    size.is_finite()
+                        && (theme::THUMB_SIZE_MIN..=theme::THUMB_SIZE_MAX).contains(size)
+                })
+                .unwrap_or(theme::THUMB_SIZE_DEFAULT),
             group_by_month,
             show_advanced_filters: false,
             show_statistics: false,
@@ -678,7 +681,10 @@ impl GalleryView {
         saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
         saved.selected_media_ids = self.selection.selected_media_ids.clone();
         saved.gallery_scroll = (-f32::from(self.scroll.0.borrow().base_handle.offset().y)).max(0.);
-        saved.thumb_size = Some(self.thumb_size.clamp(100., 300.));
+        saved.thumb_size = Some(
+            self.thumb_size
+                .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),
+        );
         saved.group_by_month = Some(self.group_by_month);
         saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);
