@@ -292,3 +292,89 @@ fn escape_xml(s: &str) -> String {
         .replace('"', "&quot;")
         .replace('\'', "&apos;")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::write_metadata;
+    use std::time::{Duration, SystemTime};
+
+    fn temp_root() -> std::path::PathBuf {
+        std::env::temp_dir().join(format!(
+            "photag-xmp-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
+
+    #[test]
+    fn sidecar_round_trips_hierarchical_tags_and_preserves_source_file() {
+        let root = temp_root();
+        std::fs::create_dir_all(&root).unwrap();
+        let photo = root.join("sample.png");
+        let original = b"synthetic image payload";
+        std::fs::write(&photo, original).unwrap();
+
+        write_metadata(
+            photo.to_str().unwrap(),
+            &["People>A&B <C\"D\"'".to_string()],
+        )
+        .unwrap();
+
+        let sidecar = std::fs::read_to_string(root.join("sample.xmp")).unwrap();
+        assert!(
+            sidecar.contains("<rdf:li>A&amp;B &lt;C&quot;D&quot;&apos;</rdf:li>"),
+            "{sidecar}"
+        );
+        assert!(sidecar.contains("<rdf:li>People|A&amp;B &lt;C&quot;D&quot;&apos;</rdf:li>"));
+        assert_eq!(std::fs::read(&photo).unwrap(), original);
+
+        write_metadata(photo.to_str().unwrap(), &[]).unwrap();
+        assert!(!root.join("sample.xmp").exists());
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn jpeg_write_embeds_and_removes_iptc_while_restoring_modified_time() {
+        let root = temp_root();
+        std::fs::create_dir_all(&root).unwrap();
+        let photo = root.join("sample.jpg");
+        // Minimal segment sequence with an opaque scan payload.
+        let jpeg = [0xFF, 0xD8, 0xFF, 0xDA, 0x00, 0x02, 0x11, 0x22, 0xFF, 0xD9];
+        std::fs::write(&photo, jpeg).unwrap();
+        let expected_time = SystemTime::now() - Duration::from_secs(3_600);
+        std::fs::File::options()
+            .write(true)
+            .open(&photo)
+            .unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(expected_time))
+            .unwrap();
+
+        write_metadata(photo.to_str().unwrap(), &["Places>Oslo".to_string()]).unwrap();
+        let tagged = std::fs::read(&photo).unwrap();
+        assert_eq!(tagged[0..2], [0xFF, 0xD8]);
+        assert!(tagged.windows(3).any(|window| window == [0xFF, 0xED, 0x00]));
+        assert!(tagged.windows(4).any(|window| window == b"Oslo"));
+        assert_eq!(
+            std::fs::metadata(&photo)
+                .unwrap()
+                .modified()
+                .unwrap()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
+            expected_time
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        );
+
+        write_metadata(photo.to_str().unwrap(), &[]).unwrap();
+        let cleared = std::fs::read(&photo).unwrap();
+        assert!(!cleared.windows(2).any(|window| window == [0xFF, 0xED]));
+        assert!(cleared.ends_with(&[0x11, 0x22, 0xFF, 0xD9]));
+        let _ = std::fs::remove_dir_all(root);
+    }
+}

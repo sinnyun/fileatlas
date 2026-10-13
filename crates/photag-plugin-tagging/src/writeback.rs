@@ -203,3 +203,65 @@ fn path_key(path: &std::path::Path) -> PathBuf {
 fn path_key(path: &std::path::Path) -> PathBuf {
     path.to_path_buf()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{clear_failure, failures, schedule};
+    use photag_plugin_database::{DatabaseService, db::queries};
+    use std::sync::Arc;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn failed_background_write_is_visible_and_can_be_cleared() {
+        let root = std::env::temp_dir().join(format!(
+            "photag-writeback-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let missing_photo = root.join("missing.jpg");
+        let media_id = database
+            .with_writer(|connection| {
+                let folder = queries::add_folder(connection, root.to_str().unwrap())?;
+                let media_id = queries::insert_media(
+                    connection,
+                    folder.id,
+                    "missing.jpg",
+                    missing_photo.to_str().unwrap(),
+                    "image",
+                    0,
+                    1_700_000_000,
+                    None,
+                    None,
+                    None,
+                )?;
+                let tag = queries::create_tag(connection, "Retry later", None)?;
+                queries::assign_tags(connection, &[media_id], &[tag.id])?;
+                Ok(media_id)
+            })
+            .unwrap();
+
+        schedule(&database, &[media_id]).unwrap();
+        let failure = (0..200)
+            .find_map(|_| {
+                let found = failures()
+                    .into_iter()
+                    .find(|item| item.path == missing_photo);
+                if found.is_none() {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                found
+            })
+            .expect("worker should report the missing photo write failure");
+        assert!(!failure.error.is_empty());
+
+        clear_failure(&missing_photo);
+        assert!(!failures().iter().any(|item| item.path == missing_photo));
+        drop(database);
+        let _ = std::fs::remove_dir_all(root);
+    }
+}

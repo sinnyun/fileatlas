@@ -382,6 +382,75 @@ mod tests {
         let _ = std::fs::remove_file(path);
     }
 
+    #[test]
+    fn folder_and_tag_foreign_keys_cascade_through_related_rows() {
+        let path = std::env::temp_dir().join(format!(
+            "photag-plugin-cascade-{}-{}.sqlite",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let database = DatabaseService::open_at(&path).unwrap();
+        let (media_id, parent_id, child_id, associated_id) = database
+            .with_writer(|connection| {
+                let folder = db::queries::add_folder(connection, "D:/Cascade")?;
+                let media_id = db::queries::insert_media(
+                    connection,
+                    folder.id,
+                    "frame.jpg",
+                    "D:/Cascade/frame.jpg",
+                    "image",
+                    128,
+                    1_700_000_000,
+                    None,
+                    None,
+                    None,
+                )?;
+                let parent = db::queries::create_tag(connection, "Parent", None)?;
+                let child = db::queries::create_tag(connection, "Child", Some(parent.id))?;
+                let associated = db::queries::create_tag(connection, "Associated", None)?;
+                db::queries::set_associated_tags(connection, child.id, &[associated.id])?;
+                db::queries::assign_tags(connection, &[media_id], &[child.id])?;
+                Ok((media_id, parent.id, child.id, associated.id))
+            })
+            .unwrap();
+
+        database
+            .with_writer(|connection| {
+                connection.execute("DELETE FROM tags WHERE id = ?1", [parent_id])?;
+                let remaining_tags: i64 = connection.query_row(
+                    "SELECT COUNT(*) FROM tags WHERE id IN (?1, ?2, ?3)",
+                    [parent_id, child_id, associated_id],
+                    |row| row.get(0),
+                )?;
+                let remaining_links: i64 = connection.query_row(
+                    "SELECT (SELECT COUNT(*) FROM media_tags WHERE media_id = ?1) + (SELECT COUNT(*) FROM tag_associations WHERE tag_id = ?2 OR associated_tag_id = ?2)",
+                    [media_id, child_id],
+                    |row| row.get(0),
+                )?;
+                assert_eq!(remaining_tags, 1, "unrelated associated tag remains");
+                assert_eq!(
+                    remaining_links, 1,
+                    "the unrelated tag's media assignment remains until its folder is deleted"
+                );
+
+                connection.execute("DELETE FROM folders WHERE path = ?1", ["D:/Cascade"])?;
+                let remaining_media: i64 = connection.query_row(
+                    "SELECT COUNT(*) FROM media WHERE id = ?1",
+                    [media_id],
+                    |row| row.get(0),
+                )?;
+                assert_eq!(remaining_media, 0);
+                Ok(())
+            })
+            .unwrap();
+
+        drop(database);
+        let _ = std::fs::remove_file(&path);
+    }
+
     #[tokio::test]
     async fn database_service_lifetime_follows_its_cordis_plugin() {
         use cordis::PreparedPlugin;

@@ -481,3 +481,24 @@ run FFmpeg-generated video thumbnail smoke test.
 | `cargo +1.97.1 test -p photag-plugin-file-operations --locked` | Passed | 3 Windows temporary-directory tests verify rename/index update, move within a registered library, move outside the library while retaining the file and removing the row, and collision leaves both source and index unchanged. |
 | Windows watcher test | Passed | The workspace run executed native file create/remove reconciliation against the Windows filesystem. Rename delivery and harder race cases remain unverified. |
 | Native GUI, shell operations and real library corpus | Unverified | This headless test run did not exercise live GPUI focus/dialogs, Explorer OLE, Recycle Bin, audio devices, updater replacement, real PhoTag libraries, or diverse camera EXIF files. |
+
+### Continued source-parity regression checks (2026-10-13)
+
+Direct inspection compared `vendor/photag-source/src/xmp.rs` with the migrated
+`crates/photag-plugin-tagging/src/xmp.rs`; the writer logic remains source
+compatible. Added isolated file tests for JPEG APP13/IPTC insertion and removal,
+mtime restoration, XMP escaping and sidecar removal, non-JPEG byte
+preservation, and visibility/clearing of a background worker write failure. A
+temporary SQLite test verifies the actual folder/media, parent/child tag,
+media-tag, and tag-association cascade behavior. Deleting a
+tag parent removes its child and association edge while retaining the unrelated
+associated tag and its media assignment; deleting the folder then removes the
+media row and its assignment.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 test -p photag-plugin-tagging --locked xmp::tests -- --nocapture` | Passed | 2 isolated temporary-file tests. |
+| `cargo +1.97.1 test -p photag-plugin-database --locked folder_and_tag_foreign_keys_cascade_through_related_rows -- --nocapture` | Passed | Exercises foreign-key cascades on a disposable database. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 46 passed, 0 failed, 3 ignored (two live network checksum tests and the optional FFmpeg smoke test, which passed separately in the previous section). |
+| `cargo +1.97.1 test -p photag-plugin-tagging --locked failed_background_write_is_visible_and_can_be_cleared -- --nocapture` | Passed | A missing temporary media file drives the actual worker error branch; the failure is observable and acknowledgeable. |
+| Detached metadata writer coalescing | Not tested in this slice | Coalescing races and editor interoperability still need focused concurrency tests and Windows/media validation. |

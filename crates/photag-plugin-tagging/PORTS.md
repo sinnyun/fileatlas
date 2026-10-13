@@ -3,9 +3,11 @@
 Status: database-backed assignment/association/merge/reparent service and
 source-compatible JPEG IPTC/non-JPEG XMP metadata writeback are available.
 The gallery now provides a searchable hierarchical tag picker for assigning or
-removing tags from the current selection, plus clear-all. This slice has not
-been checked by crate-specific tests; the shell dependency graph compiled in the
-migration pass. Windows writeback behavior remains unverified.
+removing tags from the current selection, plus clear-all. Temporary-file tests
+cover XMP sidecar escaping/removal, source-byte preservation, JPEG IPTC
+insertion/removal, best-effort mtime restoration, and visibility/clearing of a
+background write failure. Worker coalescing and Windows interoperability with
+real photo editors remain unverified.
 
 ## Lifecycle and dependencies
 
