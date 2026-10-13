@@ -26,7 +26,9 @@ source file/line references and prohibits deriving layout values from pixels.
 
 The first Gallery geometry pass changes card hit areas from metadata cards to
 source-sized square thumbnail surfaces with a 7-point selection inset, source
-corner radius, 12-point row gap, and 40-point month header. References:
+corner radius, 12-point row gap, and 40-point month header. Column count now
+uses the measured Gallery viewport when available, with the validated session
+sidebar width used for the first layout pass. References:
 `vendor/photag-source/src/ui/gallery.rs:990-1005,1383-1387,1406-1429` and
 `docs/reference-ui/source-layout-spec.md#gallery-card`. This remains partial:
 filter controls still sit inside the Gallery pane instead of the full-width

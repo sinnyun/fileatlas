@@ -84,7 +84,7 @@ Filenames/Paths/Tags checkboxes (`filterbar.rs:95-155`).
 The thumbnail slider is continuous over **80–300**, width **116**, height
 **22**, inner track ends 8 from either side, thumb radii 6.5/5/3.2 with dark
 halo, neutral fill and accent center (`main.rs:1055-1059`,
-`main.rs:1055-1059`, `filterbar.rs:716-776`). Do not replace it with discrete +/-20 behavior.
+`main.rs:1055-1059`, `filterbar.rs:721-771`). Do not replace it with discrete +/-20 behavior.
 
 Filter component details (`filterbar.rs`):
 

@@ -4,7 +4,23 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         // Match gallery.rs: the source computes columns from the Gallery
         // viewport and the square thumb + fixed 12 pt gap.
-        let available_width = f32::from(window.bounds().size.width) - theme::SIDEBAR_WIDTH - 24.0;
+        let sidebar_width = self
+            .session
+            .snapshot()
+            .ok()
+            .map(|session| session.sidebar_width)
+            .filter(|width| {
+                width.is_finite()
+                    && (theme::SIDEBAR_MIN_WIDTH..=theme::SIDEBAR_MAX_WIDTH).contains(width)
+            })
+            .unwrap_or(theme::SIDEBAR_WIDTH);
+        let previous_viewport_width =
+            f32::from(self.scroll.0.borrow().base_handle.bounds().size.width);
+        let available_width = if previous_viewport_width > 0.0 {
+            previous_viewport_width
+        } else {
+            f32::from(window.bounds().size.width) - sidebar_width - 4.0 - 32.0
+        };
         let columns = ((available_width + 12.0) / (self.thumb_size + 12.0))
             .floor()
             .max(1.0) as usize;
@@ -431,13 +447,19 @@ impl Render for GalleryView {
                                                         )
                                                     })
                                                     .unwrap_or_else(|| div());
+                                                let month_top_gap =
+                                                    if row_index > 0 && has_month_label {
+                                                        14.0
+                                                    } else {
+                                                        0.0
+                                                    };
                                                 rows.push(
                                                     div()
                                                         .id(format!("gallery-row-{row_index}"))
                                                         .v_flex()
                                                         .w_full()
                                                         .h(px(if layout_row.collapsed {
-                                                            40.
+                                                            40. + month_top_gap
                                                         } else {
                                                             card_size
                                                                 + 12.
@@ -446,14 +468,9 @@ impl Render for GalleryView {
                                                                 } else {
                                                                     0.
                                                                 }
-                                                                + if row_index > 0
-                                                                    && has_month_label
-                                                                {
-                                                                    14.
-                                                                } else {
-                                                                    0.
-                                                                }
+                                                                + month_top_gap
                                                         }))
+                                                        .pt(px(month_top_gap))
                                                         .gap_0()
                                                         .child(header)
                                                         .child(
