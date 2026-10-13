@@ -42,10 +42,13 @@ pub fn preview_view(
         move |window, app| {
             let service = Arc::clone(&service);
             let view_session = Arc::clone(&session);
-            let rename_input =
-                app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
-            let tag_picker_search =
-                app.new(|cx| InputState::new(window, cx).placeholder("Find tags to assign"));
+            let rename_input = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
+            });
+            let tag_picker_search = app.new(|cx| {
+                InputState::new(window, cx)
+                    .placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
+            });
             app.new(|cx| {
                 let view_service = Arc::clone(&service);
                 let focus_handle = cx.focus_handle();
@@ -102,6 +105,7 @@ pub fn preview_view(
                 })
                 .detach();
                 PreviewView {
+                    locale_revision: u64::MAX,
                     service: view_service,
                     settings: Arc::clone(&settings),
                     session: view_session,
@@ -137,6 +141,7 @@ pub fn preview_view(
     )
 }
 struct PreviewView {
+    locale_revision: u64,
     service: Arc<PreviewService>,
     settings: Arc<SettingsService>,
     session: Arc<SessionService>,

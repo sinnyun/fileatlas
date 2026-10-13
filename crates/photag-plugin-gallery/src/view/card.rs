@@ -98,38 +98,48 @@ pub(super) fn render_media_card(
     let menu_targets = rating_target_ids.clone();
     let drop_targets = rating_target_ids.clone();
     let menu = Button::new(format!("gallery-card-actions-{media_id}"))
-        .label("⋯")
+        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
         .dropdown_menu(move |mut menu, _, _| {
             let ai_view = menu_view.clone();
             menu = menu.item(
-                PopupMenuItem::new("AI Suggest Tags").on_click(move |_, _, cx| {
-                    let _ = ai_view.update(cx, |this, cx| {
-                        this.suggest_tags(media_id, cx);
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("AI Suggest Tags")).on_click(
+                    move |_, _, cx| {
+                        let _ = ai_view.update(cx, |this, cx| {
+                            this.suggest_tags(media_id, cx);
+                        });
+                    },
+                ),
             );
             let preview_view = menu_view.clone();
-            menu = menu.item(PopupMenuItem::new("Preview").on_click(move |_, _, cx| {
-                let _ = preview_view.update(cx, |this, cx| {
-                    this.preview_media(media_id, cx);
-                });
-            }));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Preview")).on_click(
+                    move |_, _, cx| {
+                        let _ = preview_view.update(cx, |this, cx| {
+                            this.preview_media(media_id, cx);
+                        });
+                    },
+                ),
+            );
             let open_view = menu_view.clone();
-            menu = menu.item(PopupMenuItem::new("Open in default app").on_click(
-                move |_, _, cx| {
-                    let _ = open_view.update(cx, |this, cx| {
-                        this.open_media_action(media_id, false, cx);
-                    });
-                },
-            ));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Open in default app")).on_click(
+                    move |_, _, cx| {
+                        let _ = open_view.update(cx, |this, cx| {
+                            this.open_media_action(media_id, false, cx);
+                        });
+                    },
+                ),
+            );
             let reveal_view = menu_view.clone();
-            menu = menu.item(PopupMenuItem::new("Show in File Explorer").on_click(
-                move |_, _, cx| {
-                    let _ = reveal_view.update(cx, |this, cx| {
-                        this.open_media_action(media_id, true, cx);
-                    });
-                },
-            ));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Show in File Explorer")).on_click(
+                    move |_, _, cx| {
+                        let _ = reveal_view.update(cx, |this, cx| {
+                            this.open_media_action(media_id, true, cx);
+                        });
+                    },
+                ),
+            );
             menu = menu.item(PopupMenuItem::separator());
             for tag in flatten_tags(&tag_tree) {
                 let tag_view = menu_view.clone();
@@ -147,30 +157,40 @@ pub(super) fn render_media_card(
             menu = menu.item(PopupMenuItem::separator());
             let copy_view = menu_view.clone();
             let copy_targets = menu_targets.clone();
-            menu = menu.item(PopupMenuItem::new("Copy to…").on_click(move |_, _, cx| {
-                let _ = copy_view.update(cx, |this, cx| {
-                    this.selection.selected_media_ids = copy_targets.clone();
-                    this.copy_selected_with_dialog(cx);
-                });
-            }));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Copy to…")).on_click(
+                    move |_, _, cx| {
+                        let _ = copy_view.update(cx, |this, cx| {
+                            this.selection.selected_media_ids = copy_targets.clone();
+                            this.copy_selected_with_dialog(cx);
+                        });
+                    },
+                ),
+            );
             let move_view = menu_view.clone();
             let move_targets = menu_targets.clone();
-            menu = menu.item(PopupMenuItem::new("Move to…").on_click(move |_, _, cx| {
-                let _ = move_view.update(cx, |this, cx| {
-                    this.selection.selected_media_ids = move_targets.clone();
-                    this.move_selected_with_dialog(cx);
-                });
-            }));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Move to…")).on_click(
+                    move |_, _, cx| {
+                        let _ = move_view.update(cx, |this, cx| {
+                            this.selection.selected_media_ids = move_targets.clone();
+                            this.move_selected_with_dialog(cx);
+                        });
+                    },
+                ),
+            );
             let delete_view = menu_view.clone();
             let delete_targets = menu_targets.clone();
             menu = menu.item(
-                PopupMenuItem::new("Delete…").on_click(move |_, window, cx| {
-                    let _ = delete_view.update(cx, |this, cx| {
-                        this.selection.selected_media_ids = delete_targets.clone();
-                        this.selection.anchor_id = delete_targets.first().copied();
-                        this.request_delete_confirmation(window, cx);
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Delete…")).on_click(
+                    move |_, window, cx| {
+                        let _ = delete_view.update(cx, |this, cx| {
+                            this.selection.selected_media_ids = delete_targets.clone();
+                            this.selection.anchor_id = delete_targets.first().copied();
+                            this.request_delete_confirmation(window, cx);
+                        });
+                    },
+                ),
             );
             menu = menu.item(PopupMenuItem::separator());
             for rating in 0..=5 {
@@ -336,7 +356,12 @@ pub(super) fn render_media_details(
         .rounded_md()
         .bg(rgb(theme::SURFACE_PANEL))
         .p_3()
-        .child(div().text_lg().font_semibold().child("File"))
+        .child(
+            div()
+                .text_lg()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("File")),
+        )
         .child(div().text_sm().font_medium().child(media.filename.clone()))
         .child(detail_line("Path", &media.full_path))
         .child(detail_line("Type", &media.media_type))
@@ -365,7 +390,12 @@ pub(super) fn render_media_details(
     if let (Some(width), Some(height)) = (media.width, media.height) {
         let megapixels = width.saturating_mul(height) as f64 / 1_000_000.0;
         details = details
-            .child(div().text_sm().font_semibold().child("Image"))
+            .child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Image")),
+            )
             .child(detail_line("Dimensions", &format!("{width} × {height} px")))
             .child(detail_line("Megapixels", &format!("{megapixels:.2} MP")))
             .child(detail_line(
@@ -375,7 +405,12 @@ pub(super) fn render_media_details(
     }
     if let Some(timestamp) = media.date_taken {
         details = details
-            .child(div().text_sm().font_semibold().child("Dates"))
+            .child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Dates")),
+            )
             .child(detail_line("Date taken", &format_timestamp(timestamp)));
     }
     if !tags.is_empty() {
@@ -398,19 +433,27 @@ pub(super) fn render_media_details(
             div()
                 .text_sm()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("No tags assigned."),
+                .child(photag_ui_bridge::i18n::tr("No tags assigned.")),
         );
     }
     if media.media_type == "image" {
         details = details
-            .child(div().text_sm().font_semibold().child("Metadata (EXIF)"))
+            .child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Metadata (EXIF)")),
+            )
             .child(
                 Button::new("gallery-toggle-exif")
-                    .label(if show_exif {
-                        "Hide EXIF fields"
-                    } else {
-                        "Show EXIF fields"
-                    })
+                    .label(photag_ui_bridge::i18n::tr(
+                        &(if show_exif {
+                            "Hide EXIF fields"
+                        } else {
+                            "Show EXIF fields"
+                        })
+                        .to_string(),
+                    ))
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_exif(cx))),
             );
         if show_exif {
@@ -420,7 +463,7 @@ pub(super) fn render_media_details(
                         div()
                             .text_sm()
                             .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("No EXIF metadata."),
+                            .child(photag_ui_bridge::i18n::tr("No EXIF metadata.")),
                     );
                 }
                 Some(Ok(fields)) => {
@@ -441,7 +484,9 @@ pub(super) fn render_media_details(
                         div()
                             .text_sm()
                             .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("Select one image to read EXIF metadata."),
+                            .child(photag_ui_bridge::i18n::tr(
+                                "Select one image to read EXIF metadata.",
+                            )),
                     );
                 }
             }
@@ -503,7 +548,7 @@ fn detail_line(key: &str, value: &str) -> Div {
         .child(
             div()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(format!("{key}:")),
+                .child(format!("{}:", photag_ui_bridge::i18n::tr(key))),
         )
         .child(div().flex_1().child(value.to_string()))
 }

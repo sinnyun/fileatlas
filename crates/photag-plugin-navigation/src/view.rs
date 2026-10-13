@@ -82,24 +82,41 @@ pub(super) fn sidebar(
             let view_selected_path = selected_path.clone();
             let view_expanded_subdirs = expanded_subdirs.clone();
             let view_preferences = Arc::clone(&preferences);
-            let folder_path = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
-            let new_folder_name =
-                app.new(|cx| InputState::new(window, cx).placeholder("Folder name"));
-            let tag_name = app.new(|cx| InputState::new(window, cx).placeholder("New tag name"));
-            let tag_parent =
-                app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID (optional)"));
-            let tag_edit_name = app.new(|cx| InputState::new(window, cx).placeholder("Tag name"));
+            let folder_path = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
+            });
+            let new_folder_name = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder name"))
+            });
+            let tag_name = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New tag name"))
+            });
+            let tag_parent = app.new(|cx| {
+                InputState::new(window, cx)
+                    .placeholder(photag_ui_bridge::i18n::tr("Parent tag ID (optional)"))
+            });
+            let tag_edit_name = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Tag name"))
+            });
             let tag_color = app.new(|cx| {
-                InputState::new(window, cx).placeholder("Color #RRGGBB (empty = default)")
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr(
+                    "Color #RRGGBB (empty = default)",
+                ))
             });
             let tag_icon = app.new(|cx| {
-                InputState::new(window, cx).placeholder("Icon / emoji (empty = default)")
+                InputState::new(window, cx)
+                    .placeholder(photag_ui_bridge::i18n::tr("Icon / emoji (empty = default)"))
             });
-            let tag_move_target =
-                app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID"));
-            let tag_search = app.new(|cx| InputState::new(window, cx).placeholder("Search tags…"));
-            let merge_search =
-                app.new(|cx| InputState::new(window, cx).placeholder("Filter target tags…"));
+            let tag_move_target = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Parent tag ID"))
+            });
+            let tag_search = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search tags…"))
+            });
+            let merge_search = app.new(|cx| {
+                InputState::new(window, cx)
+                    .placeholder(photag_ui_bridge::i18n::tr("Filter target tags…"))
+            });
             app.new(|_| {
                 SidebarView::new(
                     view_service,
@@ -133,6 +150,7 @@ pub(super) fn sidebar(
 }
 
 struct SidebarView {
+    locale_revision: u64,
     service: Arc<NavigationService>,
     cordis: CordisContext,
     tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
@@ -221,6 +239,7 @@ impl SidebarView {
             Err(_) => HashMap::new(),
         };
         Self {
+            locale_revision: u64::MAX,
             service: Arc::clone(&service),
             cordis,
             tagging,

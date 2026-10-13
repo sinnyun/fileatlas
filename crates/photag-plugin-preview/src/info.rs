@@ -31,7 +31,12 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
         .border_color(rgb(theme::SURFACE_FAINT))
         .rounded_md()
         .overflow_y_scrollbar()
-        .child(div().text_base().font_medium().child("Information"))
+        .child(
+            div()
+                .text_base()
+                .font_medium()
+                .child(photag_ui_bridge::i18n::tr("Information")),
+        )
         .child(section_title("File"))
         .child(detail("Name", &name))
         .child(detail("Path", &path.display().to_string()))
@@ -272,7 +277,7 @@ fn section_title(title: &str) -> Div {
         .text_sm()
         .font_medium()
         .text_color(rgb(theme::accent()))
-        .child(title.to_string())
+        .child(photag_ui_bridge::i18n::tr(title))
 }
 
 fn detail(key: &str, value: &str) -> Div {
@@ -283,16 +288,20 @@ fn detail(key: &str, value: &str) -> Div {
         .child(
             div()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(format!("{key}:")),
+                .child(format!("{}:", photag_ui_bridge::i18n::tr(key))),
         )
-        .child(div().child(value.to_string()))
+        .child(div().child(if ["Type", "Read-only"].contains(&key) {
+            photag_ui_bridge::i18n::tr(value)
+        } else {
+            value.to_string()
+        }))
 }
 
 fn mut_text(value: &str) -> Div {
     div()
         .text_xs()
         .text_color(rgb(theme::TEXT_SECONDARY))
-        .child(value.to_string())
+        .child(photag_ui_bridge::i18n::tr(value))
 }
 
 fn read_exif(path: &Path) -> Result<Vec<(String, String)>, &'static str> {

@@ -51,3 +51,13 @@ The sidebar uses photag-ui-bridge::theme for the source backdrop-aware base surf
 - `src/view/tag_actions.rs` implements tag creation/editing, appearance/association updates, delete/merge/reparent actions, and tag display propagation.
 - `src/view/render.rs` builds the folder/tag sidebar; `src/view/render/tag_render.rs` renders tag rows and subtrees; `src/view/support.rs` holds tree traversal and session restoration helpers.
 
+
+## Localization integration (2026-10-13)
+
+Visible control labels consume the public UI Bridge translator supplied by
+photag.i18n. Stable commands, source settings/schema values, media paths and
+user-created tag data are unchanged. Missing translations fall back to English;
+OS/backend errors and some generated diagnostics are not fully localized.
+The real MCP-only validation coverage and remaining source layout differences
+are recorded in docs/validation-report.md; screenshots do not prove pointer
+interaction or animation parity.

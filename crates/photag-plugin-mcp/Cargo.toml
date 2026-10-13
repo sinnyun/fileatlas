@@ -24,6 +24,9 @@ serde_json.workspace = true
 tokio.workspace = true
 thiserror = "2"
 
+photag-plugin-i18n = { path = "../photag-plugin-i18n" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.61.2", features = [
     "Win32_Foundation",
@@ -31,6 +34,7 @@ windows-sys = { version = "0.61.2", features = [
     "Win32_Storage_Xps",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
 
 [lints]
 workspace = true

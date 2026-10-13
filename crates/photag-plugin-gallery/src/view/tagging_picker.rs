@@ -43,22 +43,22 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
             .gap_1()
             .child(
                 Button::new("gallery-tag-assign")
-                    .label("Assign")
+                    .label(photag_ui_bridge::i18n::tr("Assign"))
                     .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(true, cx))),
             )
             .child(
                 Button::new("gallery-tag-remove")
-                    .label("Remove")
+                    .label(photag_ui_bridge::i18n::tr("Remove"))
                     .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(false, cx))),
             )
             .child(
                 Button::new("gallery-tag-clear")
-                    .label("Clear all tags")
+                    .label(photag_ui_bridge::i18n::tr("Clear all tags"))
                     .on_click(cx.listener(|this, _, _, cx| this.clear_picker_tags(cx))),
             )
             .child(
                 Button::new("gallery-tag-picker-clear")
-                    .label("Clear choices")
+                    .label(photag_ui_bridge::i18n::tr("Clear choices"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.tag_picker_selected.clear();
                         cx.notify();
@@ -70,11 +70,14 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
         let selected = view.tag_picker_selected.contains(&id);
         list = list.child(
             Button::new(format!("gallery-tag-choice-{id}"))
-                .label(if selected {
-                    format!("✓ {label}")
-                } else {
-                    label
-                })
+                .label(photag_ui_bridge::i18n::tr(
+                    &(if selected {
+                        format!("✓ {label}")
+                    } else {
+                        label
+                    })
+                    .to_string(),
+                ))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     if !this.tag_picker_selected.remove(&id) {
                         this.tag_picker_selected.insert(id);
@@ -88,7 +91,7 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
             div()
                 .text_xs()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("No matching tags."),
+                .child(photag_ui_bridge::i18n::tr("No matching tags.")),
         );
     } else {
         panel = panel.child(list);
@@ -168,7 +171,7 @@ impl GalleryView {
         cx.notify();
     }
 
-    fn clear_picker_tags(&mut self, cx: &mut Context<Self>) {
+    pub(super) fn clear_picker_tags(&mut self, cx: &mut Context<Self>) {
         let media_ids = self.selection.selected_media_ids.clone();
         if media_ids.is_empty() {
             return;

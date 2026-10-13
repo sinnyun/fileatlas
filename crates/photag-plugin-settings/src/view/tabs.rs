@@ -5,6 +5,7 @@ impl SettingsView {
         let mut b = div().v_flex().gap_2().p_3();
         match self.tab {
             Tab::Appearance => {
+                b = b.children(self.language_views.clone());
                 b = b.child(self.section("Accent color"));
                 for name in [
                     "System",
@@ -18,15 +19,38 @@ impl SettingsView {
                 ] {
                     let selected = s.accent_name == name;
                     let value = name.to_owned();
-                    b = b.child(self.enum_button(
-                        format!("accent-{name}"),
-                        format!("{} {name}", if selected { "●" } else { "○" }),
-                        move |s| s.accent_name = value.clone(),
-                        cx,
-                    ));
+                    let swatch = Button::new(format!("settings-accent-{name}"))
+                        .compact()
+                        .w(px(22.))
+                        .h(px(22.))
+                        .rounded(px(4.))
+                        .bg(rgb(theme::resolve_accent(name)))
+                        .border_color(rgb(if selected {
+                            theme::TEXT_PRIMARY
+                        } else {
+                            theme::SURFACE_MODAL
+                        }))
+                        .border(px(if selected { 1.5 } else { 0. }))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            let value = value.clone();
+                            this.edit(move |s| s.accent_name = value.clone(), cx);
+                        }));
+                    b = b.child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap(px(10.))
+                            .h(px(22.))
+                            .child(swatch)
+                            .child(
+                                div()
+                                    .text_size(px(13.5))
+                                    .child(photag_ui_bridge::i18n::tr(name)),
+                            ),
+                    );
                 }
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                    "System follows the Windows accent color. Preview and feature panels use the shared accent palette.",
+                    photag_ui_bridge::i18n::tr("System follows the Windows accent color. Preview and feature panels use the shared accent palette."),
                 ));
                 b = b.child(self.toggle_button(
                     "date",
@@ -86,7 +110,9 @@ impl SettingsView {
                         "Toolbar offset: {:.0}, {:.0} px",
                         s.toolbar_pos.offset_x, s.toolbar_pos.offset_y
                     )))
-                    .child(div().child("Adjust the preview toolbar position in 10 px steps."))
+                    .child(div().child(photag_ui_bridge::i18n::tr(
+                        "Adjust the preview toolbar position in 10 px steps.",
+                    )))
                     .child(
                         div()
                             .h_flex()
@@ -148,17 +174,16 @@ impl SettingsView {
                             .h_flex()
                             .items_center()
                             .gap_2()
-                            .child(format!("Open selected media: {}", s.open_key))
+                            .child(photag_ui_bridge::i18n::tr_args("Open selected media: {key}", &[("key", s.open_key.clone())]))
                             .child(self.open_key_capture_button(cx)),
                     )
                     .child(div().child(
-                        "Gallery ratings use number-row keys. Preview applies 0–5 to the current item; F1–F9 toggles its assigned tag.",
+                        photag_ui_bridge::i18n::tr("Gallery ratings use number-row keys. Preview applies 0–5 to the current item; F1–F9 toggles its assigned tag."),
                     ));
                 b = b.child(self.section("Tag hotkeys F1–F9"));
-                b =
-                    b.child(div().child(
-                        "Press an F-key in the gallery or preview to toggle its assigned tag.",
-                    ));
+                b = b.child(div().child(photag_ui_bridge::i18n::tr(
+                    "Press an F-key in the gallery or preview to toggle its assigned tag.",
+                )));
                 match self
                     .navigation
                     .as_ref()
@@ -198,9 +223,9 @@ impl SettingsView {
                         b = b.child(div().child(format!("Could not load tags: {error}")));
                     }
                     None => {
-                        b = b.child(div().child(
+                        b = b.child(div().child(photag_ui_bridge::i18n::tr(
                             "Tag choices are unavailable while the navigation plugin is stopped.",
-                        ));
+                        )));
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
                             let selected = s
                                 .tag_hotkeys
@@ -279,7 +304,9 @@ impl SettingsView {
                     let checking = self.update_check.is_some();
                     b = b.child(
                         Button::new("settings-update-check")
-                            .label(if checking { "Checking…" } else { "Check now" })
+                            .label(photag_ui_bridge::i18n::tr(
+                                &(if checking { "Checking…" } else { "Check now" }).to_string(),
+                            ))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 if this.update_check.is_none() {
                                     this.begin_update_check(true);
@@ -321,7 +348,7 @@ impl SettingsView {
                         } else if self.update_staged.is_none() {
                             b = b.child(
                                 Button::new("settings-update-download")
-                                    .label("Download and verify update")
+                                    .label(photag_ui_bridge::i18n::tr("Download and verify update"))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         if this.update_download.is_none() {
                                             this.begin_update_download();
@@ -333,7 +360,7 @@ impl SettingsView {
                         if self.update_offer_dismissed {
                             b = b.child(
                                 Button::new("settings-update-offer-reopen")
-                                    .label("Show update offer…")
+                                    .label(photag_ui_bridge::i18n::tr("Show update offer…"))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.update_offer_open = true;
                                         this.update_offer_dismissed = false;
@@ -345,19 +372,24 @@ impl SettingsView {
                     if self.update_staged.is_some() {
                         b = b.child(
                             Button::new("settings-update-install")
-                                .label(if self.confirm_install {
-                                    "Confirm restart and install"
-                                } else {
-                                    "Restart and install…"
-                                })
+                                .label(photag_ui_bridge::i18n::tr(
+                                    &(if self.confirm_install {
+                                        "Confirm restart and install"
+                                    } else {
+                                        "Restart and install…"
+                                    })
+                                    .to_string(),
+                                ))
                                 .on_click(cx.listener(|this, _, _, cx| this.install_update(cx))),
                         );
                         if self.confirm_install {
-                            b = b.child(div().child("PhoTag will replace its executable and launch the updated version."));
+                            b = b.child(div().child(photag_ui_bridge::i18n::tr("PhoTag will replace its executable and launch the updated version.")));
                         }
                     }
                 } else {
-                    b = b.child(div().child("Updater service is unavailable."));
+                    b = b.child(div().child(photag_ui_bridge::i18n::tr(
+                        "Updater service is unavailable.",
+                    )));
                 }
             }
         }

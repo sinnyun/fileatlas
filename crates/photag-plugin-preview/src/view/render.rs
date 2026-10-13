@@ -2,6 +2,17 @@ use super::*;
 
 impl Render for PreviewView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let locale_revision = photag_ui_bridge::i18n::revision();
+        if self.locale_revision != locale_revision {
+            self.locale_revision = locale_revision;
+            self.rename_input.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("New filename"), window, cx)
+            });
+            self.tag_picker_search.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Search tags…"), window, cx)
+            });
+        }
+
         let snapshot = self.service.snapshot();
         if snapshot.source.is_none() {
             return div().size_0();
@@ -287,11 +298,14 @@ impl Render for PreviewView {
                 });
                 let ratings = (0..=5).map(|rating| {
                     Button::new(format!("preview-audio-rating-{rating}"))
-                        .label(if rating == 0 {
-                            "No rating".into()
-                        } else {
-                            format!("{rating}★")
-                        })
+                        .label(photag_ui_bridge::i18n::tr(
+                            &(if rating == 0 {
+                                "No rating".into()
+                            } else {
+                                format!("{rating}★")
+                            })
+                            .to_string(),
+                        ))
                         .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
                             this.apply_rating_shortcut(rating, cx);
                         }))
@@ -320,7 +334,9 @@ impl Render for PreviewView {
                     .text_color(rgb(theme::TEXT_PRIMARY))
                     .child(div().text_2xl().child("▶"))
                     .child(div().text_lg().font_medium().child(title.clone()))
-                    .child("Video is playing in Media Playback.")
+                    .child(photag_ui_bridge::i18n::tr(
+                        "Video is playing in Media Playback.",
+                    ))
                     .into_any_element(),
                 1.0,
             ),
@@ -328,7 +344,9 @@ impl Render for PreviewView {
                 div()
                     .text_sm()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("Open an indexed image to preview it.")
+                    .child(photag_ui_bridge::i18n::tr(
+                        "Open an indexed image to preview it.",
+                    ))
                     .into_any_element(),
                 1.0,
             ),
@@ -643,12 +661,12 @@ impl Render for PreviewView {
                         .child(Input::new(&self.rename_input).w(px(260.)))
                         .child(
                             Button::new("preview-rename-commit")
-                                .label("Rename")
+                                .label(photag_ui_bridge::i18n::tr("Rename"))
                                 .on_click(cx.listener(|this, _, _, cx| this.commit_rename(cx))),
                         )
                         .child(
                             Button::new("preview-rename-cancel")
-                                .label("Cancel")
+                                .label(photag_ui_bridge::i18n::tr("Cancel"))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.rename_target = None;
                                     cx.notify();

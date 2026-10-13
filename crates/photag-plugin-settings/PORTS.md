@@ -37,3 +37,22 @@ The floating Settings panel uses the shared backdrop-aware base and modal surfac
 - `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and the six-tab host.
 - `src/view/tabs.rs` renders the six tab contents; `src/view/ai_groups.rs`, `tag_hotkeys.rs`, and `updates.rs` implement their focused editing flows and update offer.
 - `src/settings.rs` owns the source-compatible preference schema/defaults and JSON service persistence.
+
+## Localization and live Settings validation (2026-10-13)
+
+Settings mounts lifecycle-owned `settings.language` view contributions in
+Appearance. The i18n provider owns the language preference and controls.
+`UiSurfaceState` settings.tab accepts appearance/toolbar/shortcuts/tags/ai/updates;
+the existing GPUI poller observes it as well as open/close requests for MCP tests.
+Visible labels and input placeholders update through UI Bridge translation.
+
+Six tabs stay on one row. Width follows source minimum 360/5 plus measured text,
+source button padding and row/window spacing (main.rs:2111-2175); unlike the old
+wrapped toolbar, longer English labels expand the surface. Appearance renders
+22×22 source palette swatches (main.rs:2187-2246). Content remains a bounded
+scroll area with a 520-point cap to avoid GPUI's intrinsic scroll collapse; this
+is a documented compatibility difference from source content-sized height.
+All six tabs were captured in English and Chinese through the actual MCP child.
+Checkbox presentation, tab icons, exact selected-swatch outer ring, title/footer
+geometry and remaining source controls still differ. No mouse click or shortcut
+validation was performed in the MCP-only pass.

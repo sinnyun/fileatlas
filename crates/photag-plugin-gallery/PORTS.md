@@ -46,3 +46,29 @@ Bulk date bounds use independent GPUI Kit calendar pickers with the source's opt
 ## Shared visual tokens
 
 The GPUI gallery, cards, statistics and bulk-action surfaces consume photag-ui-bridge::theme for source palette surfaces, text hierarchy, danger messaging, selection accent, and backdrop-aware base/modal/card alpha. Toolkit text-size presets and spacing helpers still do not map to every source token; Windows visual parity is unverified.
+
+## Region projections and MCP UI requests (2026-10-13)
+
+One Gallery entity is projected into command.search/size/filters/tools,
+gallery.content, workspace.status and workspace.modal. Projections observe the
+same entity, sharing filters, selection, paging and session writes. Main content
+no longer contains duplicate heading/search/options/action rows. Statistics and
+bulk actions are floating surfaces. Selected details/rename/copy/move/ratings
+remain available from the bottom status bar's extra-actions button.
+Thumbnail size is continuous 80–300; rating uses a nearest-thumb range slider.
+Source placement: main.rs:1007-1277 and filterbar.rs:600-821.
+
+`GalleryService::request_ui(GalleryUiRequest)` queues Statistics, BulkActions,
+CloseDialogs, Select(media_id) or Deselect. The live GPUI view consumes the request using
+existing UI actions; this is asynchronous and does not inject OS input. MCP
+validates media IDs before queuing selection. Requests replace an unconsumed
+request, so clients must wait between operations. These UI requests do not run
+bulk file operations. Cordis retains service ownership and all projections are
+removed by the original Gallery registration cleanup.
+
+Labels and core parameterized counts use the UI Bridge translator with English
+fallback. Month collapse keys stay in source English; only display labels are
+localized. MCP captures confirmed 9 fixture cards, bottom selected actions,
+statistics and bulk surfaces in both languages. Hover filename/tag overlays,
+120ms hover/140ms selection animation, exact month typography and scan-status
+priority remain unverified or different from source; this is not full parity.

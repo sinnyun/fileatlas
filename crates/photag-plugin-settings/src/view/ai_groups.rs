@@ -34,7 +34,7 @@ impl SettingsView {
         }
         if available_tags.is_empty() {
             panel = panel.child(div().child(
-                "No library tags are available for adding to groups while Navigation is stopped or the tag library is empty.",
+                photag_ui_bridge::i18n::tr("No library tags are available for adding to groups while Navigation is stopped or the tag library is empty."),
             ));
         }
 
@@ -54,7 +54,7 @@ impl SettingsView {
                         .child(Input::new(&self.group_name_input).flex_1())
                         .child(
                             Button::new(format!("settings-group-name-save-{index}"))
-                                .label("Save name")
+                                .label(photag_ui_bridge::i18n::tr(&("Save name").to_string()))
                                 .on_click(cx.listener(move |view, _, _, cx| {
                                     let name =
                                         view.group_name_input.read(cx).value().trim().to_owned();
@@ -78,7 +78,7 @@ impl SettingsView {
             } else {
                 group = group.child(div().child(group_settings.name.clone())).child(
                     Button::new(format!("settings-group-name-edit-{index}"))
-                        .label("Rename")
+                        .label(photag_ui_bridge::i18n::tr("Rename"))
                         .on_click(cx.listener(move |view, _, window, cx| {
                             let name = view
                                 .service
@@ -109,7 +109,7 @@ impl SettingsView {
                         .child(format!("🏷 {tag}"))
                         .child(
                             Button::new(format!("settings-group-tag-remove-{index}-{tag_index}"))
-                                .label("×")
+                                .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
                                 .on_click(cx.listener(move |view, _, _, cx| {
                                     view.edit(
                                         |settings| {
@@ -135,7 +135,9 @@ impl SettingsView {
                 let name = name.clone();
                 group = group.child(
                     Button::new(format!("settings-group-tag-add-{index}-{name}"))
-                        .label(format!("+ {display}"))
+                        .label(photag_ui_bridge::i18n::tr(
+                            &(format!("+ {display}")).to_string(),
+                        ))
                         .on_click(cx.listener(move |view, _, _, cx| {
                             view.edit(
                                 |settings| {
@@ -154,7 +156,7 @@ impl SettingsView {
 
             panel = panel.child(group).child(
                 Button::new(format!("settings-group-remove-{index}"))
-                    .label("Remove group")
+                    .label(photag_ui_bridge::i18n::tr("Remove group"))
                     .on_click(cx.listener(move |view, _, _, cx| {
                         view.edit(
                             |settings| {
@@ -169,7 +171,7 @@ impl SettingsView {
         }
         panel.child(
             Button::new("settings-group-add")
-                .label("+ Add group")
+                .label(photag_ui_bridge::i18n::tr("+ Add group"))
                 .on_click(cx.listener(|view, _, _, cx| {
                     view.edit(
                         |settings| {

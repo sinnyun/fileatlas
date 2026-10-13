@@ -14,13 +14,16 @@ pub(super) fn render_tag(
     let is_included = included.contains(&tag_id);
     let is_excluded = excluded.contains(&tag_id);
     let select = Button::new(format!("navigation-tag-{}", tag.id))
-        .label(if is_excluded {
-            "⊘"
-        } else if is_included {
-            "✓"
-        } else {
-            "Filter"
-        })
+        .label(photag_ui_bridge::i18n::tr(
+            &(if is_excluded {
+                "⊘"
+            } else if is_included {
+                "✓"
+            } else {
+                "Filter"
+            })
+            .to_string(),
+        ))
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(tag_id, event.modifiers(), cx)
         }));
@@ -31,21 +34,24 @@ pub(super) fn render_tag(
         .unwrap_or([120, 120, 130]);
     let select_name_id = tag.id;
     let name = Button::new(format!("navigation-tag-name-{}", tag.id))
-        .label(format!(
-            "{indent}{} {}{}  {}",
-            tag.icon
-                .as_deref()
-                .filter(|icon| !icon.is_empty())
-                .unwrap_or("🏷"),
-            tag.name,
-            if is_included {
-                " ✓"
-            } else if is_excluded {
-                " ⊘"
-            } else {
-                ""
-            },
-            tag.media_count
+        .label(photag_ui_bridge::i18n::tr(
+            &(format!(
+                "{indent}{} {}{}  {}",
+                tag.icon
+                    .as_deref()
+                    .filter(|icon| !icon.is_empty())
+                    .unwrap_or("🏷"),
+                tag.name,
+                if is_included {
+                    " ✓"
+                } else if is_excluded {
+                    " ⊘"
+                } else {
+                    ""
+                },
+                tag.media_count
+            ))
+            .to_string(),
         ))
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(select_name_id, event.modifiers(), cx)
@@ -60,43 +66,46 @@ pub(super) fn render_tag(
         .child(name);
     let edit_id = tag.id;
     let edit = Button::new(format!("navigation-tag-edit-{edit_id}"))
-        .label("Edit fields")
+        .label(photag_ui_bridge::i18n::tr(&("Edit fields").to_string()))
         .on_click(cx.listener(move |this, _, window, cx| {
             this.begin_edit_tag(edit_id, window, cx);
         }));
     let rename = Button::new(format!("navigation-tag-rename-{edit_id}"))
-        .label("Rename")
+        .label(photag_ui_bridge::i18n::tr("Rename"))
         .on_click(cx.listener(move |this, _, _, cx| this.rename_tag(edit_id, cx)));
     let appearance_id = tag.id;
     let appearance = Button::new(format!("navigation-tag-appearance-{appearance_id}"))
-        .label("Save style")
+        .label(photag_ui_bridge::i18n::tr(&("Save style").to_string()))
         .on_click(cx.listener(move |this, _, _, cx| this.update_tag_appearance(appearance_id, cx)));
     let display_id = tag.id;
     let was_displayed = tag.display;
     let display = Button::new(format!("navigation-tag-display-{display_id}"))
-        .label(if was_displayed {
-            "Hide chips"
-        } else {
-            "Show chips"
-        })
+        .label(photag_ui_bridge::i18n::tr(
+            &(if was_displayed {
+                "Hide chips"
+            } else {
+                "Show chips"
+            })
+            .to_string(),
+        ))
         .on_click(cx.listener(move |this, _, _, cx| {
             this.toggle_tag_display(display_id, !was_displayed, cx)
         }));
     let delete_id = tag.id;
     let delete = Button::new(format!("navigation-tag-delete-{delete_id}"))
-        .label("Delete")
+        .label(photag_ui_bridge::i18n::tr("Delete"))
         .on_click(cx.listener(move |this, _, _, cx| this.request_delete_tag(delete_id, cx)));
     let merge_id = tag.id;
     let merge = Button::new(format!("navigation-tag-merge-{merge_id}"))
-        .label("Merge into…")
+        .label(photag_ui_bridge::i18n::tr(&("Merge into…").to_string()))
         .on_click(cx.listener(move |this, _, window, cx| this.begin_merge(merge_id, window, cx)));
     let move_id = tag.id;
     let move_into = Button::new(format!("navigation-tag-move-{move_id}"))
-        .label("Move into ID")
+        .label(photag_ui_bridge::i18n::tr(&("Move into ID").to_string()))
         .on_click(cx.listener(move |this, _, _, cx| this.move_tag_into(move_id, cx)));
     let parent_id = tag.id;
     let use_parent = Button::new(format!("navigation-tag-parent-{parent_id}"))
-        .label("Use as parent")
+        .label(photag_ui_bridge::i18n::tr(&("Use as parent").to_string()))
         .on_click(cx.listener(move |this, _, window, cx| {
             this.use_tag_as_parent(parent_id, window, cx);
             cx.notify();
@@ -104,7 +113,9 @@ pub(super) fn render_tag(
     let is_expanded = !query.is_empty() || expanded.contains(&tag.id);
     let toggle_id = tag.id;
     let toggle = Button::new(format!("navigation-tag-expand-{toggle_id}"))
-        .label(if is_expanded { "−" } else { "+" })
+        .label(photag_ui_bridge::i18n::tr(
+            &(if is_expanded { "−" } else { "+" }).to_string(),
+        ))
         .on_click(cx.listener(move |this, _, _, cx| {
             this.toggle_tag(toggle_id);
             cx.notify();
@@ -114,45 +125,53 @@ pub(super) fn render_tag(
     let menu_display = tag.display;
     let view = cx.entity().downgrade();
     let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
-        .label("⋯")
+        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
         .dropdown_menu(move |mut menu, _, _| {
             let child_view = view.clone();
-            menu = menu.item(PopupMenuItem::new("Create child tag").on_click(
-                move |_, window, cx| {
-                    let _ = child_view.update(cx, |this, cx| {
-                        this.tag_parent.update(cx, |state, cx| {
-                            state.set_value(&menu_id.to_string(), window, cx)
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Create child tag")).on_click(
+                    move |_, window, cx| {
+                        let _ = child_view.update(cx, |this, cx| {
+                            this.tag_parent.update(cx, |state, cx| {
+                                state.set_value(&menu_id.to_string(), window, cx)
+                            });
+                            this.tag_name
+                                .update(cx, |state, cx| state.set_value("", window, cx));
+                            cx.notify();
                         });
-                        this.tag_name
-                            .update(cx, |state, cx| state.set_value("", window, cx));
-                        cx.notify();
-                    });
-                },
-            ));
+                    },
+                ),
+            );
             let merge_view = view.clone();
             menu = menu.item(
-                PopupMenuItem::new("Merge into…").on_click(move |_, window, cx| {
-                    let _ = merge_view.update(cx, |this, cx| {
-                        this.begin_merge(menu_id, window, cx);
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Merge into…")).on_click(
+                    move |_, window, cx| {
+                        let _ = merge_view.update(cx, |this, cx| {
+                            this.begin_merge(menu_id, window, cx);
+                        });
+                    },
+                ),
             );
             let edit_view = view.clone();
             menu = menu.item(
-                PopupMenuItem::new("Edit fields").on_click(move |_, window, cx| {
-                    let _ = edit_view.update(cx, |this, cx| {
-                        this.begin_edit_tag(menu_id, window, cx);
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Edit fields")).on_click(
+                    move |_, window, cx| {
+                        let _ = edit_view.update(cx, |this, cx| {
+                            this.begin_edit_tag(menu_id, window, cx);
+                        });
+                    },
+                ),
             );
             let rename_view = view.clone();
             menu = menu.item(
-                PopupMenuItem::new("Rename from editor").on_click(move |_, _, cx| {
-                    let _ = rename_view.update(cx, |this, cx| {
-                        this.rename_tag(menu_id, cx);
-                        cx.notify();
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Rename from editor")).on_click(
+                    move |_, _, cx| {
+                        let _ = rename_view.update(cx, |this, cx| {
+                            this.rename_tag(menu_id, cx);
+                            cx.notify();
+                        });
+                    },
+                ),
             );
             let display_view = view.clone();
             menu = menu.item(
@@ -170,20 +189,26 @@ pub(super) fn render_tag(
             );
             let parent_view = view.clone();
             menu = menu.item(
-                PopupMenuItem::new("Use as parent").on_click(move |_, window, cx| {
-                    let _ = parent_view.update(cx, |this, cx| {
-                        this.use_tag_as_parent(menu_id, window, cx);
-                        cx.notify();
-                    });
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Use as parent")).on_click(
+                    move |_, window, cx| {
+                        let _ = parent_view.update(cx, |this, cx| {
+                            this.use_tag_as_parent(menu_id, window, cx);
+                            cx.notify();
+                        });
+                    },
+                ),
             );
             let style_view = view.clone();
-            menu = menu.item(PopupMenuItem::new("Save style").on_click(move |_, _, cx| {
-                let _ = style_view.update(cx, |this, cx| {
-                    this.update_tag_appearance(menu_id, cx);
-                    cx.notify();
-                });
-            }));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Save style")).on_click(
+                    move |_, _, cx| {
+                        let _ = style_view.update(cx, |this, cx| {
+                            this.update_tag_appearance(menu_id, cx);
+                            cx.notify();
+                        });
+                    },
+                ),
+            );
             let delete_view = view.clone();
             let delete_name = menu_name.clone();
             menu.item(
@@ -212,7 +237,7 @@ pub(super) fn render_tag(
         .justify_center()
         .text_xs()
         .text_color(rgb(theme::TEXT_MUTED))
-        .child("Drop above to place before")
+        .child(photag_ui_bridge::i18n::tr("Drop above to place before"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
             style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
         })
@@ -277,7 +302,7 @@ pub(super) fn render_tag(
         .justify_center()
         .text_xs()
         .text_color(rgb(theme::TEXT_MUTED))
-        .child("Drop below to place after")
+        .child(photag_ui_bridge::i18n::tr("Drop below to place after"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
             style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
         })
@@ -325,24 +350,28 @@ pub(super) fn render_subdirectory(
     let menu_path = node.path.clone();
     let view = cx.entity().downgrade();
     let menu = Button::new(format!("navigation-directory-menu-{}", node.path))
-        .label("⋯")
+        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
         .dropdown_menu(move |mut menu, _, _| {
             let create_path = menu_path.clone();
             let create_view = view.clone();
-            menu = menu.item(PopupMenuItem::new("New subfolder…").on_click(
-                move |_, window, cx| {
-                    let _ = create_view.update(cx, |this, cx| {
-                        this.request_new_subfolder(create_path.clone(), window, cx)
-                    });
-                },
-            ));
+            menu = menu.item(
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("New subfolder…")).on_click(
+                    move |_, window, cx| {
+                        let _ = create_view.update(cx, |this, cx| {
+                            this.request_new_subfolder(create_path.clone(), window, cx)
+                        });
+                    },
+                ),
+            );
             let open_path = menu_path.clone();
             let open_view = view.clone();
             menu.item(
-                PopupMenuItem::new("Open in file manager").on_click(move |_, _, cx| {
-                    let _ =
-                        open_view.update(cx, |this, _| this.open_folder_in_explorer(&open_path));
-                }),
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("Open in file manager")).on_click(
+                    move |_, _, cx| {
+                        let _ = open_view
+                            .update(cx, |this, _| this.open_folder_in_explorer(&open_path));
+                    },
+                ),
             )
         });
     let mut row = div()
@@ -357,7 +386,7 @@ pub(super) fn render_subdirectory(
         )
         .child(
             Button::new(format!("navigation-open-dir-{}", node.path))
-                .label("Open")
+                .label(photag_ui_bridge::i18n::tr("Open"))
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
                 ),
@@ -367,11 +396,14 @@ pub(super) fn render_subdirectory(
         let directory_path = node.path.clone();
         row = row.child(
             Button::new(format!("navigation-expand-dir-{}", node.path))
-                .label(if expanded.contains_key(&node.path) {
-                    "−"
-                } else {
-                    "+"
-                })
+                .label(photag_ui_bridge::i18n::tr(
+                    &(if expanded.contains_key(&node.path) {
+                        "−"
+                    } else {
+                        "+"
+                    })
+                    .to_string(),
+                ))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.toggle_directory(&directory_path);
                     cx.notify();

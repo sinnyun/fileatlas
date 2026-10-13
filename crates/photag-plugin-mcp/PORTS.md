@@ -42,3 +42,21 @@ Mutations are disabled by default. `confirm: true` is an explicit call-site ackn
 - Check `PHOTAG_MCP_ALLOW_MUTATIONS`, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
 - If a screenshot fails, check HWND publication and window state first. If it returns a blank or stale image, inspect PrintWindow/GPUI Windows rendering behavior; do not treat protocol compilation as screenshot parity.
 - Batch scan receivers are drained by background workers so the indexing worker can finish; the current tools do not expose scan progress snapshots.
+
+## UI validation tools (2026-10-13)
+
+`get_ui_state` reads settings_open/settings_tab, language, translation_revision
+and preview_chrome_alpha. These supplement get_view_state; they do not describe
+OS pointer position or all GPUI widget state. `control_ui { action, value? }`
+requires PHOTAG_MCP_ALLOW_MUTATIONS=1 and supports settings_open/settings_close,
+settings_tab, language (en/zh-CN), statistics, bulk_actions, gallery_dialogs_close
+select_media (value is an indexed media ID string), and deselect. Settings uses public
+UiSurfaceState; language uses I18nService; Gallery uses GalleryUiRequest.
+Settings and Gallery consume requests asynchronously. Wait for rendering before
+screenshot_window. No OS mouse/keyboard injection is used.
+
+Run `node scripts/validate-ui-mcp.cjs` after a locked Shell build to scan the
+isolated fixture profile, capture 23 UI states, and sample the real Preview
+chrome fade curve. Output lives in target/mcp-ui-screenshots; the script never
+executes delete/copy/move/update operations. Hover/tooltip activation, native
+dialogs and pointer-driven animations remain untested by this interface.

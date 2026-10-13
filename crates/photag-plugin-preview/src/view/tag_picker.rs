@@ -12,7 +12,9 @@ use super::PreviewView;
 
 pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
     let Some(media_id) = view.service.snapshot().media_id else {
-        return div().text_sm().child("Open an indexed item to edit tags.");
+        return div().text_sm().child(photag_ui_bridge::i18n::tr(
+            "Open an indexed item to edit tags.",
+        ));
     };
     let query = view
         .tag_picker_search
@@ -37,7 +39,12 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         .rounded_md()
         .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_2()
-        .child(div().text_sm().font_semibold().child("Tags for this item"))
+        .child(
+            div()
+                .text_sm()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Tags for this item")),
+        )
         .child(Input::new(&view.tag_picker_search).w_full());
     if query.is_empty() {
         let recent_ids = view.tagging.recent_tags();
@@ -54,10 +61,13 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
                     .unwrap_or("🏷");
                 recent = recent.child(
                     Button::new(format!("preview-recent-tag-{id}"))
-                        .label(format!(
-                            "{icon} {} {}",
-                            if is_assigned { "☑" } else { "☐" },
-                            tag.name
+                        .label(photag_ui_bridge::i18n::tr(
+                            &(format!(
+                                "{icon} {} {}",
+                                if is_assigned { "☑" } else { "☐" },
+                                tag.name
+                            ))
+                            .to_string(),
                         ))
                         .on_click(
                             cx.listener(move |this, _, _, cx| this.toggle_preview_tag(id, cx)),
@@ -70,7 +80,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
                 div()
                     .text_xs()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("Recent"),
+                    .child(photag_ui_bridge::i18n::tr("Recent")),
             );
             panel = panel.child(recent);
         }
@@ -81,7 +91,9 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         if has_children {
             choices = choices.child(
                 Button::new(format!("preview-tag-expand-{id}"))
-                    .label(if collapsed { "▸" } else { "▾" })
+                    .label(photag_ui_bridge::i18n::tr(
+                        &(if collapsed { "▸" } else { "▾" }).to_string(),
+                    ))
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_tag_dropdown(id, cx))),
             );
         } else {
@@ -89,10 +101,13 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         }
         choices = choices.child(
             Button::new(format!("preview-tag-{id}"))
-                .label(format!(
-                    "{}{} {label}",
-                    "  ".repeat(label.matches('/').count()),
-                    if is_assigned { "✓" } else { "+" }
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!(
+                        "{}{} {label}",
+                        "  ".repeat(label.matches('/').count()),
+                        if is_assigned { "✓" } else { "+" }
+                    ))
+                    .to_string(),
                 ))
                 .on_click(cx.listener(move |this, _, _, cx| this.toggle_preview_tag(id, cx))),
         );
@@ -102,7 +117,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
             div()
                 .text_xs()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("No matching tags."),
+                .child(photag_ui_bridge::i18n::tr("No matching tags.")),
         );
     } else {
         panel = panel.child(choices);
@@ -112,12 +127,18 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         let id = tag.id;
         current = current.child(
             Button::new(format!("preview-tag-remove-{id}"))
-                .label(format!("Remove {}", tag.full_path))
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("Remove {}", tag.full_path)).to_string(),
+                ))
                 .on_click(cx.listener(move |this, _, _, cx| this.set_preview_tag(id, false, cx))),
         );
     }
     panel
-        .child(div().text_xs().child("Assigned tags"))
+        .child(
+            div()
+                .text_xs()
+                .child(photag_ui_bridge::i18n::tr("Assigned tags")),
+        )
         .child(current)
 }
 

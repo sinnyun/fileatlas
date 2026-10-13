@@ -2,6 +2,39 @@ use super::*;
 
 impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some(request) = self.service.take_ui_request() {
+            match request {
+                crate::GalleryUiRequest::Statistics => self.show_statistics = true,
+                crate::GalleryUiRequest::BulkActions => {
+                    bulk_actions::reset_inputs(self, window, cx);
+                    self.bulk_action = Some(BulkActionKind::Delete);
+                    self.bulk_source = BulkActionSource::WholeLibrary;
+                    self.confirm_bulk_action = false;
+                    self.confirm_bulk_action_ids = None;
+                }
+                crate::GalleryUiRequest::CloseDialogs => {
+                    self.show_statistics = false;
+                    self.bulk_action = None;
+                    self.show_selection_details = false;
+                    self.show_tag_picker = false;
+                    self.confirm_bulk_action = false;
+                    self.confirm_bulk_action_ids = None;
+                }
+                crate::GalleryUiRequest::Select(id) => {
+                    if self.service.media_by_id(id).ok().flatten().is_some() {
+                        self.selection.selected_media_ids = vec![id];
+                        self.selection.anchor_id = Some(id);
+                        self.persist_filter_session();
+                    }
+                }
+                crate::GalleryUiRequest::Deselect => {
+                    self.selection = GallerySelection::default();
+                    self.persist_filter_session();
+                }
+            }
+            cx.notify();
+        }
+        self.refresh_locale(window, cx);
         // Match gallery.rs: the source computes columns from the Gallery
         // viewport and the square thumb + fixed 12 pt gap.
         let sidebar_width = self
@@ -19,7 +52,7 @@ impl Render for GalleryView {
         let available_width = if previous_viewport_width > 0.0 {
             previous_viewport_width
         } else {
-            f32::from(window.bounds().size.width) - sidebar_width - 4.0 - 32.0
+            f32::from(window.bounds().size.width) - sidebar_width - 12.0 - 24.0
         };
         let columns = ((available_width + 12.0) / (self.thumb_size + 12.0))
             .floor()
@@ -54,12 +87,6 @@ impl Render for GalleryView {
         }
         let row_layout = Arc::clone(&self.row_layout);
         let row_count = row_layout.len();
-        let tag_picker = if self.tagging.is_some() && !self.selection.selected_media_ids.is_empty()
-        {
-            Some(tagging_picker::render(self, cx))
-        } else {
-            None
-        };
         match &self.snapshot {
             Ok(snapshot) => {
                 let list_scroll = self.scroll.clone();
@@ -76,192 +103,7 @@ impl Render for GalleryView {
                     // size_full resolving against the window and overlapping the header.
                     .flex_1()
                     .min_h_0()
-                    .gap_3()
-                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
-                    .p_4()
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .justify_between()
-                            .child(div().text_lg().font_semibold().child(
-                                if !self.filter.selected_tag_ids.is_empty() {
-                                    "Tagged Media"
-                                } else if self.filter.folder_id.is_some() {
-                                    "Selected Folder"
-                                } else {
-                                    "All Media"
-                                },
-                            ))
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(format!("{} items", snapshot.media_count)),
-                            ),
-                    );
-                let mut gallery_options =
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("Thumbnail size"),
-                        )
-                        .child(Button::new("gallery-thumb-smaller").label("−").on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.thumb_size = (this.thumb_size - 20.).max(100.);
-                                cx.notify();
-                            }),
-                        ))
-                        .child(
-                            div()
-                                .text_xs()
-                                .child(format!("{} px", self.thumb_size as u32)),
-                        )
-                        .child(Button::new("gallery-thumb-larger").label("+").on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.thumb_size = (this.thumb_size + 20.).min(300.);
-                                cx.notify();
-                            }),
-                        ));
-                if matches!(
-                    self.filter.sort,
-                    SortOrder::NewestFirst | SortOrder::OldestFirst
-                ) {
-                    gallery_options = gallery_options.child(
-                        Button::new("gallery-month-groups")
-                            .label(if self.group_by_month {
-                                "Months: on"
-                            } else {
-                                "Months: off"
-                            })
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.set_month_grouping(!this.group_by_month, cx);
-                            })),
-                    );
-                }
-                gallery_options = gallery_options.child(
-                    Button::new("gallery-statistics")
-                        .label(if self.show_statistics {
-                            "Hide statistics"
-                        } else {
-                            "Statistics"
-                        })
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.show_statistics = !this.show_statistics;
-                            cx.notify();
-                        })),
-                );
-                grid = grid.child(gallery_options);
-                if self.show_statistics {
-                    grid = grid.child(super::statistics::render(self, cx));
-                }
-                if self.video_preview_open {
-                    grid = grid.child(
-                        Button::new("gallery-return-from-video")
-                            .label("Return to gallery")
-                            .on_click(cx.listener(|this, _, _, cx| this.close_video_preview(cx))),
-                    );
-                }
-                grid = grid.child(Input::new(&self.search).w_full());
-                grid = grid.child(controls::search_scope_row(&self.filter, cx));
-                grid = grid.child(controls::active_filter_row(
-                    &self.filter,
-                    &snapshot.tag_tree,
-                    cx,
-                ));
-                grid = grid.child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(controls::clear_filters_button(cx))
-                        .child(
-                            Button::new("gallery-advanced-filters")
-                                .label(if self.show_advanced_filters {
-                                    "Hide filters"
-                                } else {
-                                    "More filters"
-                                })
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.show_advanced_filters = !this.show_advanced_filters;
-                                    cx.notify();
-                                })),
-                        ),
-                );
-                if self.show_advanced_filters {
-                    grid = grid.child(controls::media_type_row(&self.filter, cx));
-                    grid = grid.child(controls::sort_row(&self.filter, cx));
-                    grid = grid.child(controls::rating_row(&self.filter, cx));
-                    grid = grid.child(controls::date_row(&self.date_from, &self.date_to));
-                    grid = grid.child(controls::extension_row(
-                        &self.filter,
-                        &snapshot.available_extensions,
-                        self.extension_exclude_mode,
-                        cx,
-                    ));
-                }
-                if let Some(tag_picker) = tag_picker {
-                    grid = grid.child(tag_picker);
-                }
-                grid = grid.child(bulk_actions::render(self, cx));
-                if let Some(status) = &self.operation_status {
-                    grid = grid.child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(status.clone()),
-                    );
-                }
-                if self.tagging.is_some() {
-                    for failure in photag_plugin_tagging::writeback::failures() {
-                        let path = failure.path.clone();
-                        let label = failure
-                            .path
-                            .file_name()
-                            .and_then(|name| name.to_str())
-                            .unwrap_or("media")
-                            .to_string();
-                        grid = grid.child(
-                            div()
-                                .h_flex()
-                                .items_center()
-                                .justify_between()
-                                .gap_2()
-                                .rounded_md()
-                                .bg(rgb(theme::SURFACE_FAINT))
-                                .p_2()
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_sm()
-                                        .text_color(rgb(theme::TEXT_SECONDARY))
-                                        .child(format!(
-                                            "Tag metadata writeback failed for {label}: {}",
-                                            failure.error
-                                        )),
-                                )
-                                .child(
-                                    Button::new(format!(
-                                        "gallery-clear-writeback-{}",
-                                        failure.path.display()
-                                    ))
-                                    .label("Dismiss")
-                                    .on_click(cx.listener(
-                                        move |_, _, _, cx| {
-                                            photag_plugin_tagging::writeback::clear_failure(&path);
-                                            cx.notify();
-                                        },
-                                    )),
-                                ),
-                        );
-                    }
-                }
-                grid = grid.child(div().h_1().w_full().bg(rgb(theme::SURFACE_FAINT)));
+                    .w_full();
                 let rubberband = self.rubberband.as_ref().map(|rubberband| {
                     let viewport = self.scroll.0.borrow().base_handle.bounds();
                     let band = Bounds::from_corners(
@@ -287,7 +129,8 @@ impl Render for GalleryView {
                 grid = grid.child(
                     div()
                         .flex_1()
-                        .min_h(px((card_size + 12.) * 2. + 40.))
+                        .min_h_0()
+                        .w_full()
                         .relative()
                         .on_mouse_down(
                             MouseButton::Left,
@@ -424,17 +267,23 @@ impl Render for GalleryView {
                                                     .clone()
                                                     .map(|label| {
                                                         let collapsed = layout_row.collapsed;
+                                                        let display_label = label.rsplit_once(' ').map(|(month, year)| {
+                                                            photag_ui_bridge::i18n::tr_args("{month} {year}", &[("month", photag_ui_bridge::i18n::tr(month)), ("year", year.to_owned())])
+                                                        }).unwrap_or_else(|| label.clone());
                                                         div().h_flex().h(px(40.)).child(
                                                             Button::new(format!(
                                                                 "gallery-month-{label}"
                                                             ))
-                                                            .label(format!(
-                                                                "{} {label}",
-                                                                if collapsed {
-                                                                    "▸"
-                                                                } else {
-                                                                    "▾"
-                                                                }
+                                                            .label(photag_ui_bridge::i18n::tr(
+                                                                &(format!(
+                                                                    "{} {display_label}",
+                                                                    if collapsed {
+                                                                        "▸"
+                                                                    } else {
+                                                                        "▾"
+                                                                    }
+                                                                ))
+                                                                .to_string(),
                                                             ))
                                                             .on_click(cx.listener(
                                                                 move |this, _, _, cx| {
@@ -508,132 +357,8 @@ impl Render for GalleryView {
                             .justify_center()
                             .text_sm()
                             .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("No indexed media in this view."),
+                            .child(photag_ui_bridge::i18n::tr("No indexed media in this view.")),
                     );
-                }
-                if !self.selection.selected_media_ids.is_empty() {
-                    grid = grid.child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap_1()
-                            .child(div().text_sm().child(format!(
-                                "{} selected · Rate",
-                                self.selection.selected_media_ids.len()
-                            )))
-                            .children((0..=5).map(|rating| {
-                                Button::new(format!("gallery-rating-{rating}"))
-                                    .label(format!("{rating}★"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.apply_rating(rating, cx)
-                                    }))
-                            }))
-                            .child(
-                                Button::new("gallery-clear-selection")
-                                    .label("Clear")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.selection = GallerySelection::default();
-                                        this.persist_filter_session();
-                                        cx.notify();
-                                    })),
-                            ),
-                    );
-                    let mut actions = div()
-                        .v_flex()
-                        .gap_2()
-                        .rounded_md()
-                        .bg(rgb(theme::SURFACE_PANEL))
-                        .p_3()
-                        .child(div().text_sm().font_semibold().child("File actions"));
-                    actions = actions.child(
-                        div().h_flex().gap_2().child(
-                            Button::new("gallery-preview-selected")
-                                .label("Preview first selected")
-                                .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
-                        ),
-                    );
-                    if self.selection.selected_media_ids.len() == 1 {
-                        actions = actions.child(
-                            div()
-                                .h_flex()
-                                .gap_2()
-                                .child(Button::new("gallery-open-selected").label("Open").on_click(
-                                    cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
-                                ))
-                                .child(
-                                    Button::new("gallery-reveal-selected")
-                                        .label("Reveal")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.open_selected(true, cx)
-                                        })),
-                                ),
-                        );
-                        actions = actions.child(
-                            div()
-                                .h_flex()
-                                .gap_2()
-                                .child(Input::new(&self.rename_input).w(px(240.)))
-                                .child(
-                                    Button::new("gallery-rename-selected")
-                                        .label("Rename")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.rename_selected_with_repair(cx)
-                                        })),
-                                ),
-                        );
-                    }
-                    actions = actions.child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .child(
-                                Button::new("gallery-copy-selected")
-                                    .label("Copy…")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.copy_selected_with_dialog(cx)
-                                    })),
-                            )
-                            .child(
-                                Button::new("gallery-move-selected")
-                                    .label("Move…")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.move_selected_with_dialog(cx)
-                                    })),
-                            )
-                            .child(
-                                Button::new("gallery-delete-selected")
-                                    .label("Delete selected")
-                                    .on_click(cx.listener(|this, _, window, cx| {
-                                        this.request_delete_confirmation(window, cx)
-                                    })),
-                            ),
-                    );
-                    grid = grid.child(actions);
-                }
-                if self.selection.selected_media_ids.len() == 1 {
-                    let selected_id = self.selection.selected_media_ids[0];
-                    if let Some(media) = snapshot.media.iter().find(|media| media.id == selected_id)
-                    {
-                        let tags = snapshot
-                            .media_tags
-                            .get(&selected_id)
-                            .map(Vec::as_slice)
-                            .unwrap_or_default();
-                        let open_count = self.service.open_count(selected_id).unwrap_or(0);
-                        let exif_fields = self
-                            .exif_cache
-                            .as_ref()
-                            .filter(|(media_id, _)| *media_id == selected_id)
-                            .map(|(_, fields)| fields);
-                        grid = grid.child(render_media_details(
-                            media,
-                            tags,
-                            open_count,
-                            self.show_exif,
-                            exif_fields,
-                            cx,
-                        ));
-                    }
                 }
                 grid.into_any_element()
             }

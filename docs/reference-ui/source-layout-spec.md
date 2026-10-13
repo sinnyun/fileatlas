@@ -318,3 +318,22 @@ overflow risk, not a value to silently normalize.
    invent missing dimensions or positions.
 5. Update the source feature map and validation report. Explicitly list visible
    source controls that remain absent or intentionally differ.
+
+## Implementation decisions from MCP-only validation (2026-10-13)
+
+- Search/filters/size/status are plugin-owned projections composed by Shell;
+  source references remain main.rs:1007-1277. Scan progress still needs movement
+  from the navigation UI to the source-priority bottom status mode.
+- Settings keeps the source non-wrapping six-tab row, minimum tab width72,
+  measured label width plus button padding24, row spacing8 and window margins14.
+  The surface expands for intrinsic labels rather than wrapping the sixth tab.
+  GPUI content is currently capped at520 points with scrolling; source height
+  is content-sized. This deliberate bounded-height difference preserves working
+  controls after a live intrinsic-height attempt collapsed the content to zero.
+- Language selection in Appearance is a user-requested additional control owned
+  by photag.i18n, default English with explicit Chinese selection. It has no
+  upstream counterpart and does not replace any source control.
+- Sidebar pivot tabs use the source equal halves/minimum60, height32 and
+  underline inset28%, height3/radius1.5 (sidebar.rs:181-193,228-275). Manual-path
+  and refresh controls remain migration additions; folder/tag row/menu fidelity
+  still requires further work.

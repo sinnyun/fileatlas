@@ -375,7 +375,11 @@ impl Render for AiSuggestionsView {
                 .h_flex()
                 .items_center()
                 .justify_between()
-                .child(div().font_medium().child("AI tag suggestions"))
+                .child(
+                    div()
+                        .font_medium()
+                        .child(photag_ui_bridge::i18n::tr("AI tag suggestions")),
+                )
                 .child(
                     button(if self.inference.is_some() || self.download.is_some() {
                         "Working…"
@@ -390,14 +394,18 @@ impl Render for AiSuggestionsView {
                 div()
                     .text_sm()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("Open an indexed image to analyze it."),
+                    .child(photag_ui_bridge::i18n::tr(
+                        "Open an indexed image to analyze it.",
+                    )),
             );
         } else if !ai.model_exists() && self.inference.is_none() && self.download.is_none() {
             content = content.child(
                 div()
                     .text_sm()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("The first analysis downloads the MobileNet model (~14 MB)."),
+                    .child(photag_ui_bridge::i18n::tr(
+                        "The first analysis downloads the MobileNet model (~14 MB).",
+                    )),
             );
         }
         if let Some(message) = &self.message {
@@ -416,7 +424,7 @@ impl Render for AiSuggestionsView {
                 div()
                     .text_sm()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("No suggestions yet."),
+                    .child(photag_ui_bridge::i18n::tr("No suggestions yet.")),
             );
         }
         content.children(rows)
@@ -424,5 +432,5 @@ impl Render for AiSuggestionsView {
 }
 
 fn button(label: &'static str) -> Button {
-    Button::new(format!("ai-{label}")).label(label)
+    Button::new(format!("ai-{label}")).label(photag_ui_bridge::i18n::tr(&(label).to_string()))
 }

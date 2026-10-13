@@ -2,7 +2,7 @@
 use crate::{ExcludeModifier, Settings, SettingsService, TagMergeChildren, TagSearchMatch};
 use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::input::InputState;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
@@ -50,10 +50,22 @@ pub(super) fn settings(
         move |window, app| {
             let view_cordis = cordis.clone();
             let view_surfaces = Arc::clone(&surfaces);
-            let group_name_input =
-                app.new(|cx| InputState::new(window, cx).placeholder("Group name"));
+            let group_name_input = app.new(|cx| {
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Group name"))
+            });
+            let language_views = view_cordis
+                .try_service::<photag_ui_bridge::UiBridgeService>()
+                .ok()
+                .and_then(|bridge| bridge.views.snapshot().ok())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|entry| entry.contribution.slot == "settings.language")
+                .map(|entry| (entry.contribution.factory)(window, app))
+                .collect::<Vec<_>>();
             app.new(|cx| {
                 let mut view = SettingsView {
+                    locale_revision: u64::MAX,
+                    language_views,
                     service: Arc::clone(&service),
                     surfaces: Arc::clone(&view_surfaces),
                     cordis: view_cordis,
@@ -83,12 +95,15 @@ pub(super) fn settings(
                 let surface_poll = Arc::clone(&view_surfaces);
                 cx.spawn(async move |this, cx| {
                     let mut previous = surface_poll.is_open("settings");
+                    let mut previous_tab = surface_poll.value("settings.tab");
                     loop {
                         cx.background_executor()
                             .timer(std::time::Duration::from_millis(100))
                             .await;
                         let visible = surface_poll.is_open("settings");
-                        if visible != previous {
+                        let tab = surface_poll.value("settings.tab");
+                        if visible != previous || tab != previous_tab {
+                            previous_tab = tab;
                             previous = visible;
                             if this
                                 .update(cx, |view: &mut SettingsView, cx| {
@@ -118,6 +133,8 @@ pub(super) fn settings(
     )
 }
 pub(super) struct SettingsView {
+    locale_revision: u64,
+    language_views: Vec<AnyView>,
     service: Arc<SettingsService>,
     surfaces: Arc<UiSurfaceState>,
     cordis: CordisContext,
@@ -215,11 +232,14 @@ impl SettingsView {
 
     fn open_key_capture_button(&self, cx: &mut Context<Self>) -> Button {
         Button::new("settings-open-key-capture")
-            .label(if self.capturing_open_key {
-                "Press a key… (Escape cancels)".to_owned()
-            } else {
-                "Change key".to_owned()
-            })
+            .label(photag_ui_bridge::i18n::tr(
+                &(if self.capturing_open_key {
+                    "Press a key… (Escape cancels)".to_owned()
+                } else {
+                    "Change key".to_owned()
+                })
+                .to_string(),
+            ))
             .on_click(cx.listener(|this, _, window, cx| {
                 this.capturing_open_key = !this.capturing_open_key;
                 if let Err(error) = this
@@ -308,7 +328,14 @@ impl SettingsView {
         cx: &mut Context<Self>,
     ) -> Button {
         Button::new(format!("settings-{key}"))
-            .label(format!("{}  [{}]", label, if value { "On" } else { "Off" }))
+            .label(photag_ui_bridge::i18n::tr(
+                &(format!(
+                    "{}  [{}]",
+                    photag_ui_bridge::i18n::tr(label),
+                    photag_ui_bridge::i18n::tr(if value { "On" } else { "Off" })
+                ))
+                .to_string(),
+            ))
             .on_click(cx.listener(move |this, _, _, cx| this.toggle(key, cx)))
     }
     fn enum_button(
@@ -320,7 +347,7 @@ impl SettingsView {
     ) -> Button {
         let action = Arc::new(action);
         Button::new(format!("settings-{}", id.into()))
-            .label(label)
+            .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
             .on_click(cx.listener(move |this, _, _, cx| {
                 let action = Arc::clone(&action);
                 this.edit(move |settings| action(settings), cx);
@@ -328,10 +355,18 @@ impl SettingsView {
     }
 
     fn section(&self, label: &'static str) -> Div {
-        div().pt_2().font_semibold().child(label)
+        div()
+            .pt_2()
+            .font_semibold()
+            .child(photag_ui_bridge::i18n::tr(label))
     }
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut row = div().h_flex().gap_1().flex_wrap();
+        let mut row = div()
+            .h_flex()
+            .gap(px(8.))
+            .px(px(14.))
+            .h(px(28.))
+            .flex_shrink_0();
         for (tab, name) in [
             (Tab::Appearance, "Appearance"),
             (Tab::Toolbar, "Toolbar"),
@@ -341,15 +376,30 @@ impl SettingsView {
             (Tab::Updates, "Updates"),
         ] {
             let label = if self.tab == tab {
-                format!("• {name}")
+                format!("• {}", photag_ui_bridge::i18n::tr(name))
             } else {
-                name.into()
+                photag_ui_bridge::i18n::tr(name)
             };
             row = row.child(
                 Button::new(format!("settings-tab-{name}"))
-                    .label(label)
+                    .ghost()
+                    .compact()
+                    .min_w(px(72.))
+                    .h(px(28.))
+                    .px(px(12.))
+                    .text_size(px(13.))
+                    .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.tab = tab;
+                        let name = match tab {
+                            Tab::Appearance => "appearance",
+                            Tab::Toolbar => "toolbar",
+                            Tab::Shortcuts => "shortcuts",
+                            Tab::Tags => "tags",
+                            Tab::Ai => "ai",
+                            Tab::Updates => "updates",
+                        };
+                        let _ = this.surfaces.set_value("settings.tab", name);
                         cx.notify()
                     })),
             );
@@ -359,16 +409,66 @@ impl SettingsView {
 }
 impl Render for SettingsView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let locale_revision = photag_ui_bridge::i18n::revision();
+        if self.locale_revision != locale_revision {
+            self.locale_revision = locale_revision;
+            self.group_name_input.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Group name"), window, cx)
+            });
+        }
+
         if !self.surface_visible {
             return self.render_update_offer(window, cx).into_any_element();
         }
+        if let Some(tab) = self.surfaces.value("settings.tab") {
+            self.tab = match tab.as_str() {
+                "toolbar" => Tab::Toolbar,
+                "shortcuts" => Tab::Shortcuts,
+                "tags" => Tab::Tags,
+                "ai" => Tab::Ai,
+                "updates" => Tab::Updates,
+                _ => Tab::Appearance,
+            };
+        }
         let viewport = window.bounds().size;
-        let card_height = (f32::from(viewport.height) - 24.0).clamp(100.0, 520.0);
+        // Source adds six non-wrapping tabs with minimum width 360/5.
+        // Intrinsic text + theme button padding can expand the egui window.
+        let tab_names = [
+            "Appearance",
+            "Toolbar",
+            "Shortcuts",
+            "Tags",
+            "AI",
+            "Updates",
+        ];
+        let card_width = tab_names
+            .iter()
+            .map(|label| {
+                let text = photag_ui_bridge::i18n::tr(label);
+                let line = window.text_system().shape_line(
+                    text.clone().into(),
+                    px(13.),
+                    &[TextRun {
+                        len: text.len(),
+                        font: font(theme::UI_FONT_FAMILY),
+                        color: rgb(theme::TEXT_PRIMARY).into(),
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    }],
+                    None,
+                );
+                (f32::from(line.width) + 24.).max(72.)
+            })
+            .sum::<f32>()
+            + 40.
+            + 28.;
+        let card_height = (f32::from(viewport.height) - 24.).max(100.);
         let (left, top) = self.window_position.unwrap_or((
             (f32::from(viewport.width) - 360.).max(0.) / 2.,
             (f32::from(viewport.height) / 2. - 200.).max(24.),
         ));
-        let left = left.clamp(0., (f32::from(viewport.width) - 360.).max(0.));
+        let left = left.clamp(0., (f32::from(viewport.width) - card_width).max(0.));
         let top = top.clamp(0., (f32::from(viewport.height) - 100.).max(0.));
         self.window_position = Some((left, top));
         let drag_start = cx.listener(move |this, event: &MouseDownEvent, _, _| {
@@ -386,7 +486,7 @@ impl Render for SettingsView {
                 let next_x = origin_x + f32::from(event.position.x) - start_x;
                 let next_y = origin_y + f32::from(event.position.y) - start_y;
                 this.window_position = Some((
-                    next_x.clamp(0., (f32::from(viewport.width) - 360.).max(0.)),
+                    next_x.clamp(0., (f32::from(viewport.width) - card_width).max(0.)),
                     next_y.clamp(0., (f32::from(viewport.height) - 100.).max(0.)),
                 ));
                 cx.notify();
@@ -403,10 +503,15 @@ impl Render for SettingsView {
             .on_mouse_down(MouseButton::Left, drag_start)
             .on_mouse_move(drag_move)
             .on_mouse_up(MouseButton::Left, drag_end)
-            .child(div().text_lg().font_semibold().child("Settings"))
+            .child(
+                div()
+                    .text_lg()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Settings")),
+            )
             .child(
                 Button::new("settings-close")
-                    .label("Close ×")
+                    .label(photag_ui_bridge::i18n::tr("Close ×"))
                     .on_click(close),
             );
         let mut card = div()
@@ -414,8 +519,10 @@ impl Render for SettingsView {
             .left(px(left))
             .top(px(top))
             .v_flex()
-            .w(px(360.))
-            .h(px(card_height))
+            .w(px(card_width))
+            .h(px(
+                (f32::from(viewport.height) - top - 14.).clamp(100., 520.)
+            ))
             .max_h(px(card_height))
             .rounded_md()
             .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
@@ -424,7 +531,14 @@ impl Render for SettingsView {
             .border_color(rgba(theme::HAIRLINE.to_rgba()))
             .track_focus(&self.focus_handle)
             .child(header)
-            .child(self.tabs(cx));
+            .child(self.tabs(cx))
+            .child(
+                div()
+                    .h(px(1.))
+                    .mx(px(14.))
+                    .mt(px(4.))
+                    .bg(rgba(theme::HAIRLINE.to_rgba())),
+            );
         match self.service.snapshot() {
             Ok(s) => {
                 card = card.child(
@@ -440,7 +554,7 @@ impl Render for SettingsView {
         card = card.child(
             div().h_flex().justify_end().p_2().child(
                 Button::new("settings-close-footer")
-                    .label("Close")
+                    .label(photag_ui_bridge::i18n::tr("Close"))
                     .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
             ),
         );

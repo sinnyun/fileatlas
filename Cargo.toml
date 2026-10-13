@@ -12,6 +12,7 @@ members = [
     "crates/photag-plugin-navigation",
     "crates/photag-plugin-tagging",
     "crates/photag-plugin-settings",
+    "crates/photag-plugin-i18n",
     "crates/photag-plugin-updater",
     "crates/photag-plugin-session",
     "crates/photag-plugin-metadata-export",

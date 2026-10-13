@@ -20,3 +20,13 @@ The bridge also exposes shared PhoTag design tokens and accent state from `theme
 Use globally unique stable contribution IDs and stable slot names; menu/keybinding items refer to command IDs. Register only after bridge publication and do not cache a view instance across plugin generations. If a view is missing, check owner name, slot name, duplicate registration, bridge startup ordering, and catalog cleanup.
 
 Appearance debugging: verify the settings consumer called `set_accent_name`, confirm the installed system family names with `font_availability`, and inspect `Backdrop` returned for the real HWND. Registry probing, font resolution, title-bar material and transparency still require Windows runtime validation. The shared bridge does not yet provide per-plugin theme cleanup because tokens and the accent are application-wide shell state.
+
+## Translation and surface-value contracts (2026-10-13)
+
+`i18n::Translator` is the public rendering boundary; the i18n plugin supplies a
+weak implementation. `tr(source)` and `tr_args(source, named_strings)` use it,
+falling back to source text when absent. install/changed/revision support plugin
+cleanup and GPUI refresh without retaining the provider. UiSurfaceState value /
+set_value carry Settings' tab request alongside existing open/closed state.
+`theme::apply_components(App)` applies source ghost-control surfaces and
+Segoe typography to GPUI Kit controls, avoiding the earlier light/gray defaults.

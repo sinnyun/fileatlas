@@ -33,3 +33,5 @@ photag-plugin-mcp = { path = "../photag-plugin-mcp" }
 photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }
 gpui-kit.workspace = true
 raw-window-handle = "0.6.2"
+
+photag-plugin-i18n = { path = "../photag-plugin-i18n" }

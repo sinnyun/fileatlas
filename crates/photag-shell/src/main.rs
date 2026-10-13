@@ -50,225 +50,8 @@ use photag_ui_bridge::{
     ContributionKind, OwnedContribution, UiBridgeService, UiCatalog, UiCommandInvoked, theme,
 };
 
-struct PhoTagShell {
-    catalog: Arc<UiCatalog>,
-    views: Vec<(String, gpui_kit::AnyView)>,
-    cordis: CordisContext,
-    executor: tokio::runtime::Handle,
-    session: Arc<photag_plugin_session::SessionService>,
-    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
-    sidebar_width: f32,
-    resizing_sidebar: bool,
-    tools_open: bool,
-}
-
-impl Render for PhoTagShell {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let contributions = self.catalog.snapshot().unwrap_or_default();
-        let mut sidebar_views = Vec::new();
-        let mut content_views = Vec::new();
-        let mut context_views = Vec::new();
-        let mut auxiliary_views = Vec::new();
-        let mut modal_views = Vec::new();
-        for (slot, view) in &self.views {
-            match slot.as_str() {
-                "workspace.sidebar" => sidebar_views.push(view.clone()),
-                "gallery.content" => content_views.push(view.clone()),
-                "workspace.main" => context_views.push(view.clone()),
-                "workspace.modal" => modal_views.push(view.clone()),
-                _ => auxiliary_views.push(view.clone()),
-            }
-        }
-        let commands = contributions.iter().filter_map(|owned| {
-            let ContributionKind::Command { label } = &owned.contribution.kind else {
-                return None;
-            };
-            let command_id = owned.contribution.id.clone();
-            let cordis = self.cordis.clone();
-            let executor = self.executor.clone();
-            Some(
-                Button::new(command_id.clone())
-                    .label(label.clone())
-                    .on_click(move |_, _, _| {
-                        let cordis = cordis.clone();
-                        let command_id = command_id.clone();
-                        executor.spawn(async move {
-                            if let Err(error) = cordis
-                                .emit::<UiCommandInvoked>(Routing::Unscoped, command_id)
-                                .await
-                            {
-                                eprintln!("command dispatch failed: {error}");
-                            }
-                        });
-                    }),
-            )
-        });
-        let mut shell = div()
-            .v_flex()
-            .size_full()
-            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
-            .text_color(rgb(theme::TEXT_PRIMARY))
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
-                if !event.keystroke.key.eq_ignore_ascii_case("escape") {
-                    return;
-                }
-                if this.surfaces.take_suppressed_escape("settings") {
-                    return;
-                }
-                if this.surfaces.is_open("settings") && !this.surfaces.is_capturing_key("settings")
-                {
-                    if let Err(error) = this.surfaces.set_open("settings", false) {
-                        eprintln!("could not close Settings surface: {error}");
-                    }
-                    cx.notify();
-                }
-            }))
-            .child(
-                div()
-                    .h_flex()
-                    .w_full()
-                    .items_center()
-                    .gap_2()
-                    .px_4()
-                    .py_3()
-                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
-                    .child(div().text_lg().font_semibold().child("PhoTag"))
-                    .child(div().flex_1())
-                    .children(commands)
-                    .child(
-                        Button::new("shell-tools")
-                            .label(if self.tools_open {
-                                "Hide tools"
-                            } else {
-                                "Tools"
-                            })
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.tools_open = !this.tools_open;
-                                cx.notify();
-                            })),
-                    ),
-            )
-            .child(
-                div()
-                    .h_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .child(
-                        div()
-                            .v_flex()
-                            .w(px(self.sidebar_width))
-                            .h_full()
-                            .border_r_1()
-                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                            .overflow_y_scrollbar()
-                            .children(sidebar_views),
-                    )
-                    .child(
-                        div()
-                            .w(px(4.))
-                            .h_full()
-                            .bg(rgba(theme::HAIRLINE.to_rgba()))
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, _| {
-                                    this.resizing_sidebar = true;
-                                }),
-                            )
-                            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
-                                if this.resizing_sidebar {
-                                    let next = f32::from(event.position.x)
-                                        .clamp(theme::SIDEBAR_MIN_WIDTH, theme::SIDEBAR_MAX_WIDTH);
-                                    if (next - this.sidebar_width).abs() > 0.5 {
-                                        this.sidebar_width = next;
-                                        cx.notify();
-                                    }
-                                }
-                            }))
-                            .on_mouse_up(
-                                MouseButton::Left,
-                                cx.listener(|this, _, _, _| {
-                                    if this.resizing_sidebar {
-                                        this.resizing_sidebar = false;
-                                        if let Ok(mut saved) = this.session.snapshot() {
-                                            saved.sidebar_width = this.sidebar_width;
-                                            if let Err(error) = this.session.replace(saved) {
-                                                eprintln!(
-                                                    "sidebar width session save failed: {error}"
-                                                );
-                                            }
-                                        }
-                                    }
-                                }),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .v_flex()
-                            .flex_1()
-                            .h_full()
-                            .min_h_0()
-                            .min_w_0()
-                            .relative()
-                            .overflow_hidden()
-                            .child(
-                                div()
-                                    .v_flex()
-                                    .flex_1()
-                                    .size_full()
-                                    .min_h_0()
-                                    .min_w_0()
-                                    .overflow_hidden()
-                                    .children(content_views),
-                            )
-                            .child(
-                                div()
-                                    .absolute()
-                                    .inset_0()
-                                    .v_flex()
-                                    .justify_end()
-                                    .children(context_views),
-                            )
-                            .when(self.tools_open, |content| {
-                                content.child(
-                                    div()
-                                        .v_flex()
-                                        .max_h(px(300.))
-                                        .min_h_0()
-                                        .gap_2()
-                                        .border_t_1()
-                                        .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                                        .overflow_y_scrollbar()
-                                        .p_2()
-                                        .children(auxiliary_views),
-                                )
-                            }),
-                    ),
-            );
-        if self.views.is_empty() {
-            shell = shell.child(
-                div()
-                    .v_flex()
-                    .flex_1()
-                    .gap_2()
-                    .overflow_y_scrollbar()
-                    .p_4()
-                    .children(contributions.iter().map(render_contribution))
-                    .when(contributions.is_empty(), |body| {
-                        body.child(
-                            div()
-                                .text_sm()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("No feature plugins are active."),
-                        )
-                    }),
-            );
-        }
-        if !modal_views.is_empty() {
-            shell = shell.child(div().absolute().inset_0().children(modal_views));
-        }
-        shell
-    }
-}
+mod shell;
+use shell::PhoTagShell;
 
 fn render_contribution(owned: &OwnedContribution) -> Div {
     let contribution = &owned.contribution;
@@ -401,6 +184,15 @@ fn main() {
                 std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/dev-test")
             })
     });
+    let i18n_plugin = photag_plugin_i18n::I18nPlugin;
+    let i18n_input = i18n_plugin
+        .prepare(photag_plugin_i18n::I18nConfig {
+            path: dev_test_dir.as_ref().map(|path| path.join("language.json")),
+        })
+        .expect("prepare i18n plugin");
+    let i18n_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(i18n_plugin, i18n_input)))
+        .expect("start i18n plugin");
     let session_plugin = photag_plugin_session::SessionPlugin;
     let session_config = photag_plugin_session::SessionConfig {
         path: dev_test_dir.as_ref().map(|path| path.join("session.json")),
@@ -651,6 +443,7 @@ fn main() {
 
     gpui_kit::application().run(move |cx| {
         gpui_kit::init(cx);
+        photag_ui_bridge::theme::apply_components(cx);
         let catalog = Arc::clone(&catalog);
         let views = Arc::clone(&bridge.views);
         let cordis = app_cordis.clone();
@@ -684,6 +477,7 @@ fn main() {
             ..WindowOptions::default()
         };
         gpui_kit::open_window(window_options, cx, move |window, cx| {
+            window.set_window_title("PhoTag");
             #[cfg(target_os = "windows")]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -709,22 +503,44 @@ fn main() {
                 .snapshot()
                 .unwrap_or_default()
                 .into_iter()
+                .filter(|entry| entry.contribution.slot != "settings.language")
                 .map(|entry| {
                     let slot = entry.contribution.slot.clone();
                     let view = (entry.contribution.factory)(window, cx);
                     (slot, view)
                 })
                 .collect();
-            cx.new(|_| PhoTagShell {
-                catalog,
-                views: mounted_views,
-                cordis,
-                executor,
-                session: session_for_shell,
-                surfaces: Arc::clone(&bridge.surfaces),
-                sidebar_width,
-                resizing_sidebar: false,
-                tools_open: false,
+            cx.new(|cx| {
+                cx.spawn(async move |this, cx| {
+                    let mut revision = photag_ui_bridge::i18n::revision();
+                    loop {
+                        cx.background_executor()
+                            .timer(std::time::Duration::from_millis(100))
+                            .await;
+                        let next = photag_ui_bridge::i18n::revision();
+                        if next != revision {
+                            revision = next;
+                            if this.update(cx, |_, cx| cx.refresh_windows()).is_err() {
+                                break;
+                            }
+                        }
+                        if this.upgrade().is_none() {
+                            break;
+                        }
+                    }
+                })
+                .detach();
+                PhoTagShell {
+                    catalog,
+                    views: mounted_views,
+                    cordis,
+                    executor,
+                    session: session_for_shell,
+                    surfaces: Arc::clone(&bridge.surfaces),
+                    sidebar_width,
+                    resizing_sidebar: false,
+                    tools_open: false,
+                }
             })
         })
         .expect("open PhoTag window");
@@ -841,4 +657,7 @@ fn main() {
     runtime
         .block_on(session_fiber.dispose())
         .expect("stop session plugin");
+    runtime
+        .block_on(i18n_fiber.dispose())
+        .expect("stop i18n plugin");
 }

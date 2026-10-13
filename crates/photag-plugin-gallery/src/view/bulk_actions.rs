@@ -195,11 +195,14 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         .p_3()
         .child(
             Button::new("gallery-bulk-toggle")
-                .label(if view.bulk_action.is_some() {
-                    "Close bulk actions"
-                } else {
-                    "Bulk actions… (Ctrl+Shift+D)"
-                })
+                .label(photag_ui_bridge::i18n::tr(
+                    &(if view.bulk_action.is_some() {
+                        "Close bulk actions"
+                    } else {
+                        "Bulk actions… (Ctrl+Shift+D)"
+                    })
+                    .to_string(),
+                ))
                 .on_click(cx.listener(|this, _, window, cx| {
                     let closing = this.bulk_action.is_some();
                     if !closing {
@@ -215,7 +218,12 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
     };
-    panel = panel.child(div().text_sm().font_semibold().child("Action"));
+    panel = panel.child(
+        div()
+            .text_sm()
+            .font_semibold()
+            .child(photag_ui_bridge::i18n::tr("Action")),
+    );
     panel = panel.child(
         div().h_flex().gap_2().children(
             [
@@ -226,7 +234,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             .into_iter()
             .map(|choice| {
                 Button::new(format!("gallery-bulk-action-{}", choice.verb()))
-                    .label(choice.label())
+                    .label(photag_ui_bridge::i18n::tr(choice.label()))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.bulk_action = Some(choice);
                         this.confirm_bulk_action = false;
@@ -236,11 +244,16 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             }),
         ),
     );
-    panel = panel.child(div().text_sm().font_semibold().child("Source"));
+    panel = panel.child(
+        div()
+            .text_sm()
+            .font_semibold()
+            .child(photag_ui_bridge::i18n::tr("Source")),
+    );
     panel = panel.child(div().h_flex().flex_wrap().gap_2().children(
         BulkActionSource::ALL.into_iter().map(|choice| {
             Button::new(format!("gallery-bulk-source-{}", choice.label()))
-                .label(choice.label())
+                .label(photag_ui_bridge::i18n::tr(choice.label()))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.bulk_source = choice;
                     this.confirm_bulk_action = false;
@@ -250,7 +263,12 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         }),
     ));
     if view.bulk_source != BulkActionSource::CurrentSelection {
-        panel = panel.child(div().text_sm().font_semibold().child("Filters (AND)"));
+        panel = panel.child(
+            div()
+                .text_sm()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Filters (AND)")),
+        );
         panel = panel.child(date_row(view, true, cx));
         panel = panel.child(date_row(view, false, cx));
         panel = panel.child(
@@ -266,7 +284,9 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             div()
                 .text_xs()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("Current selection uses its selected items directly; filters are skipped."),
+                .child(photag_ui_bridge::i18n::tr(
+                    "Current selection uses its selected items directly; filters are skipped.",
+                )),
         );
     }
     let matching = matching_ids(view, cx);
@@ -291,31 +311,43 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             .h_flex()
             .items_center()
             .justify_between()
-            .child(div().text_sm().child(format!(
-                "Matches: {count} item{}",
-                if count == 1 { "" } else { "s" }
+            .child(div().text_sm().child(photag_ui_bridge::i18n::tr_args(
+                "Matches: {count} items",
+                &[("count", count.to_string())],
             )))
             .child(
                 div()
                     .h_flex()
                     .gap_2()
-                    .child(Button::new("gallery-bulk-cancel").label("Cancel").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.bulk_action = None;
-                            this.confirm_bulk_action = false;
-                            this.confirm_bulk_action_ids = None;
-                            cx.notify();
-                        }),
-                    ))
+                    .child(
+                        Button::new("gallery-bulk-cancel")
+                            .label(photag_ui_bridge::i18n::tr("Cancel"))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.bulk_action = None;
+                                this.confirm_bulk_action = false;
+                                this.confirm_bulk_action_ids = None;
+                                cx.notify();
+                            })),
+                    )
                     .child(
                         Button::new("gallery-bulk-run")
-                            .label(
-                                if action == BulkActionKind::Delete && view.confirm_bulk_action {
-                                    format!("Confirm delete {count}")
+                            .label(photag_ui_bridge::i18n::tr(
+                                &(if action == BulkActionKind::Delete && view.confirm_bulk_action {
+                                    photag_ui_bridge::i18n::tr_args(
+                                        "Confirm delete {count}",
+                                        &[("count", count.to_string())],
+                                    )
                                 } else {
-                                    format!("{} {count}", action.verb())
-                                },
-                            )
+                                    photag_ui_bridge::i18n::tr_args(
+                                        "{action} {count}",
+                                        &[
+                                            ("action", photag_ui_bridge::i18n::tr(action.verb())),
+                                            ("count", count.to_string()),
+                                        ],
+                                    )
+                                })
+                                .to_string(),
+                            ))
                             .disabled(count == 0 || has_filter_error)
                             .on_click(cx.listener(|this, _, window, cx| execute(this, window, cx))),
                     ),
@@ -342,8 +374,13 @@ fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Di
         .h_flex()
         .items_center()
         .gap_2()
-        .child(div().w(px(150.)).text_sm().child(label))
-        .child(DatePicker::new(picker).placeholder("Choose date"));
+        .child(
+            div()
+                .w(px(150.))
+                .text_sm()
+                .child(photag_ui_bridge::i18n::tr(label)),
+        )
+        .child(DatePicker::new(picker).placeholder(photag_ui_bridge::i18n::tr("Choose date")));
     if has_value {
         row = row.child(
             Button::new(if from {
@@ -351,7 +388,7 @@ fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Di
             } else {
                 "gallery-bulk-clear-date-to"
             })
-            .label("×")
+            .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
             .on_click(cx.listener(move |this, _, window, cx| {
                 if from {
                     this.bulk_date_from_value = None;

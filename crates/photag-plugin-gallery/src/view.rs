@@ -7,7 +7,10 @@ mod controls;
 mod file_actions;
 mod filter_actions;
 mod keyboard;
+mod regions;
 mod render;
+mod selection_panel;
+mod sliders;
 mod statistics;
 mod tagging_picker;
 
@@ -144,104 +147,112 @@ pub(super) fn gallery(
     history: Option<Arc<HistoryService>>,
     settings: Option<Arc<SettingsService>>,
     tagging: Option<Arc<TaggingService>>,
-) -> UiViewContribution {
-    UiViewContribution::new(
-        "gallery/media-grid-view",
-        "gallery.content",
-        0,
-        move |window, app| {
-            let view_service = Arc::clone(&service);
-            let view_file_operations = Arc::clone(&file_operations);
-            let view_drag_drop = Arc::clone(&drag_drop);
-            let view_preview = Arc::clone(&preview);
-            let view_playback = Arc::clone(&playback);
-            let view_runtime = runtime.clone();
-            let view_selection = Arc::clone(&selected_folder);
-            let view_tag_selection = Arc::clone(&selected_tag);
-            let view_path_selection = Arc::clone(&selected_path);
-            let view_index_revision = Arc::clone(&index_revision);
-            let view_session = Arc::clone(&session);
-            let view_history = history.clone();
-            let view_settings = settings.clone();
-            let view_tagging = tagging.clone();
-            let saved = view_session.snapshot().unwrap_or_default();
-            let search =
-                app.new(|cx| InputState::new(window, cx).placeholder("Search your library"));
-            let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-            let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-            let tag_picker_search =
-                app.new(|cx| InputState::new(window, cx).placeholder("Find tags to assign"));
-            search.update(app, |input, cx| {
-                input.set_value(&saved.search_query, window, cx)
-            });
-            if let Some(date) = saved
-                .date_from
-                .as_deref()
-                .and_then(parse_date_input)
-                .flatten()
-            {
-                date_from.update(app, |picker, cx| picker.set_date(date, window, cx));
-            }
-            if let Some(date) = saved
-                .date_to
-                .as_deref()
-                .and_then(parse_date_input)
-                .flatten()
-            {
-                date_to.update(app, |picker, cx| picker.set_date(date, window, cx));
-            }
-            let rename_input =
-                app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
-            let bulk_date_from =
-                app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-            let bulk_date_to =
-                app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-            let bulk_inputs = [
-                "Older than days",
-                "Newer than days",
-                "Rating min 0-5",
-                "Rating max 0-5",
-                "Name contains",
-                "Extension",
-                "Size min MB",
-                "Size max MB",
-            ]
-            .into_iter()
-            .map(|placeholder| app.new(|cx| InputState::new(window, cx).placeholder(placeholder)))
-            .collect();
-            app.new(|cx| {
-                GalleryView::new(
-                    view_service,
-                    view_file_operations,
-                    view_drag_drop,
-                    view_preview,
-                    view_playback,
-                    view_runtime,
-                    view_selection,
-                    view_tag_selection,
-                    view_path_selection,
-                    view_index_revision,
-                    view_session,
-                    view_history,
-                    view_settings,
-                    view_tagging,
-                    tag_picker_search,
-                    search,
-                    date_from,
-                    date_to,
-                    bulk_date_from,
-                    bulk_date_to,
-                    rename_input,
-                    bulk_inputs,
-                    cx,
-                )
-            })
-            .into()
-        },
-    )
+) -> Vec<UiViewContribution> {
+    // All regions share one entity. A filter or selection change invalidates
+    // every projection; no independent state, workers or session writers.
+    let cached = Arc::new(std::sync::Mutex::new(None::<Entity<GalleryView>>));
+    let create = Arc::new(move |window: &mut Window, app: &mut App| {
+        let mut cached = cached.lock().expect("Gallery factory lock");
+        if let Some(view) = cached.as_ref() {
+            return view.clone();
+        }
+        let view_service = Arc::clone(&service);
+        let view_file_operations = Arc::clone(&file_operations);
+        let view_drag_drop = Arc::clone(&drag_drop);
+        let view_preview = Arc::clone(&preview);
+        let view_playback = Arc::clone(&playback);
+        let view_runtime = runtime.clone();
+        let view_selection = Arc::clone(&selected_folder);
+        let view_tag_selection = Arc::clone(&selected_tag);
+        let view_path_selection = Arc::clone(&selected_path);
+        let view_index_revision = Arc::clone(&index_revision);
+        let view_session = Arc::clone(&session);
+        let view_history = history.clone();
+        let view_settings = settings.clone();
+        let view_tagging = tagging.clone();
+        let saved = view_session.snapshot().unwrap_or_default();
+        let search = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Search your library"))
+        });
+        let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+        let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+        let tag_picker_search = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
+        });
+        search.update(app, |input, cx| {
+            input.set_value(&saved.search_query, window, cx)
+        });
+        if let Some(date) = saved
+            .date_from
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten()
+        {
+            date_from.update(app, |picker, cx| picker.set_date(date, window, cx));
+        }
+        if let Some(date) = saved
+            .date_to
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten()
+        {
+            date_to.update(app, |picker, cx| picker.set_date(date, window, cx));
+        }
+        let rename_input = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
+        });
+        let bulk_date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+        let bulk_date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+        let bulk_inputs = [
+            "Older than days",
+            "Newer than days",
+            "Rating min 0-5",
+            "Rating max 0-5",
+            "Name contains",
+            "Extension",
+            "Size min MB",
+            "Size max MB",
+        ]
+        .into_iter()
+        .map(|placeholder| app.new(|cx| InputState::new(window, cx).placeholder(placeholder)))
+        .collect();
+        let view = app.new(|cx| {
+            GalleryView::new(
+                view_service,
+                view_file_operations,
+                view_drag_drop,
+                view_preview,
+                view_playback,
+                view_runtime,
+                view_selection,
+                view_tag_selection,
+                view_path_selection,
+                view_index_revision,
+                view_session,
+                view_history,
+                view_settings,
+                view_tagging,
+                tag_picker_search,
+                search,
+                date_from,
+                date_to,
+                bulk_date_from,
+                bulk_date_to,
+                rename_input,
+                bulk_inputs,
+                cx,
+            )
+        });
+        *cached = Some(view.clone());
+        view
+    });
+    regions::contributions(create)
 }
 
 struct GalleryView {
+    locale_revision: u64,
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
     drag_drop: Arc<DragDropService>,
@@ -281,7 +292,9 @@ struct GalleryView {
     row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
     thumb_size: f32,
     group_by_month: bool,
-    show_advanced_filters: bool,
+    show_selection_details: bool,
+    show_tag_picker: bool,
+    slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
     collapsed_months: HashSet<String>,
     extension_exclude_mode: bool,
@@ -498,6 +511,9 @@ impl GalleryView {
                     .await;
                 let changed = this
                     .update(cx, |view, cx| {
+                        if view.service.has_ui_request() {
+                            cx.notify();
+                        }
                         let selected = view
                             .selected_folder
                             .0
@@ -567,6 +583,7 @@ impl GalleryView {
         })
         .detach();
         Self {
+            locale_revision: u64::MAX,
             service,
             file_operations,
             drag_drop,
@@ -612,7 +629,9 @@ impl GalleryView {
                 })
                 .unwrap_or(theme::THUMB_SIZE_DEFAULT),
             group_by_month,
-            show_advanced_filters: false,
+            show_selection_details: false,
+            show_tag_picker: false,
+            slider_drag: None,
             show_statistics: false,
             collapsed_months: saved.collapsed_months.clone(),
             extension_exclude_mode: saved.ext_click_mode

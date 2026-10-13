@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use cordis::{Event, Service};
 
+pub mod i18n;
 pub mod theme;
 mod views;
 pub mod winfx;
@@ -24,12 +25,27 @@ pub struct UiBridgeService {
 
 #[derive(Debug, Default)]
 pub struct UiSurfaceState {
+    values: RwLock<BTreeMap<String, String>>,
     open: RwLock<HashSet<String>>,
     key_capture: RwLock<HashSet<String>>,
     suppressed_escape: RwLock<HashSet<String>>,
 }
 
 impl UiSurfaceState {
+    pub fn value(&self, id: &str) -> Option<String> {
+        self.values
+            .read()
+            .ok()
+            .and_then(|values| values.get(id).cloned())
+    }
+
+    pub fn set_value(&self, id: &str, value: &str) -> Result<(), String> {
+        self.values
+            .write()
+            .map_err(|_| "UI value lock is poisoned".to_owned())?
+            .insert(id.to_owned(), value.to_owned());
+        Ok(())
+    }
     pub fn is_open(&self, id: &str) -> bool {
         self.open.read().is_ok_and(|open| open.contains(id))
     }

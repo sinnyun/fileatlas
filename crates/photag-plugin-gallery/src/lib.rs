@@ -54,6 +54,17 @@ pub struct GalleryWindow {
 
 pub struct GalleryService {
     database: Arc<DatabaseService>,
+    ui_request: Mutex<Option<GalleryUiRequest>>,
+}
+
+/// Requests consumed by the live Gallery view, using its existing actions.
+#[derive(Clone, Copy)]
+pub enum GalleryUiRequest {
+    Statistics,
+    BulkActions,
+    CloseDialogs,
+    Select(i64),
+    Deselect,
 }
 
 #[derive(Default)]
@@ -90,7 +101,27 @@ impl Service for GalleryService {
 
 impl GalleryService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
-        Self { database }
+        Self {
+            database,
+            ui_request: Mutex::new(None),
+        }
+    }
+
+    pub fn request_ui(&self, request: GalleryUiRequest) {
+        *self.ui_request.lock().expect("Gallery UI request lock") = Some(request);
+    }
+
+    fn has_ui_request(&self) -> bool {
+        self.ui_request
+            .lock()
+            .is_ok_and(|request| request.is_some())
+    }
+
+    fn take_ui_request(&self) -> Option<GalleryUiRequest> {
+        self.ui_request
+            .lock()
+            .ok()
+            .and_then(|mut request| request.take())
     }
 
     /// Load compact rows for the whole result, plus the first 200 rich media rows.
@@ -432,7 +463,7 @@ impl Plugin for GalleryPlugin {
         register_views_for_plugin(
             &context,
             "photag.gallery",
-            [view::gallery(
+            view::gallery(
                 service,
                 file_operations,
                 drag_drop,
@@ -447,7 +478,7 @@ impl Plugin for GalleryPlugin {
                 history,
                 settings,
                 tagging,
-            )],
+            ),
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
         Ok(())

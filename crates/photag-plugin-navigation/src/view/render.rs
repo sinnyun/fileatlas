@@ -1,11 +1,36 @@
 use super::*;
+use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement;
 
 mod tag_render;
 use tag_render::{render_subdirectory, render_tag};
 
 impl Render for SidebarView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let locale_revision = photag_ui_bridge::i18n::revision();
+        if self.locale_revision != locale_revision {
+            self.locale_revision = locale_revision;
+            self.folder_path.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Folder path"), window, cx)
+            });
+            self.new_folder_name.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Folder name"), window, cx)
+            });
+            self.tag_name.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Tag name"), window, cx)
+            });
+            self.tag_search.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Search tags…"), window, cx)
+            });
+            self.merge_search.update(cx, |input, cx| {
+                input.set_placeholder(
+                    photag_ui_bridge::i18n::tr("Filter target tags…"),
+                    window,
+                    cx,
+                )
+            });
+        }
+
         if self.restore_selection_pending {
             self.restore_selection_pending = false;
             let cordis = self.cordis.clone();
@@ -27,40 +52,53 @@ impl Render for SidebarView {
             })
             .detach();
         }
+        // Source main.rs:1282-1296 and sidebar.rs:228-275.
         let mut panel = div()
             .v_flex()
             .size_full()
-            .gap_1()
-            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
-            .p_3()
-            .child(div().text_sm().font_semibold().child("LIBRARY"));
-        panel = panel.child(
-            div()
-                .h_flex()
-                .gap_1()
-                .child(
-                    Button::new("navigation-tab-folders")
-                        .label(if self.active_tab == SidebarTab::Folders {
-                            "Folders ✓"
-                        } else {
-                            "Folders"
-                        })
-                        .on_click(cx.listener(|this, _, window, cx| {
-                            this.switch_tab(SidebarTab::Folders, window, cx)
-                        })),
-                )
-                .child(
-                    Button::new("navigation-tab-tags")
-                        .label(if self.active_tab == SidebarTab::Tags {
-                            "Tags ✓"
-                        } else {
-                            "Tags"
-                        })
-                        .on_click(cx.listener(|this, _, window, cx| {
-                            this.switch_tab(SidebarTab::Tags, window, cx)
-                        })),
+            .gap(px(1.))
+            .pl(px(10.))
+            .pr(px(6.))
+            .pt(px(2.))
+            .pb(px(8.))
+            .child(div().h_flex().w_full().gap_0().h(px(32.)).children(
+                [(SidebarTab::Folders, "Folders"), (SidebarTab::Tags, "Tags")].map(
+                    |(tab, name)| {
+                        let active = self.active_tab == tab;
+                        let mut pivot = div().relative().flex_1().min_w(px(60.)).h(px(32.)).child(
+                            Button::new(format!("navigation-tab-{name}"))
+                                .ghost()
+                                .compact()
+                                .w_full()
+                                .h(px(32.))
+                                .text_size(px(13.))
+                                .label(photag_ui_bridge::i18n::tr(name))
+                                .text_color(rgb(if active {
+                                    theme::TEXT_PRIMARY
+                                } else {
+                                    theme::TEXT_SECONDARY
+                                }))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.switch_tab(tab, window, cx)
+                                })),
+                        );
+                        if active {
+                            pivot = pivot.child(
+                                div()
+                                    .absolute()
+                                    .bottom_0()
+                                    .left(relative(0.28))
+                                    .right(relative(0.28))
+                                    .h(px(3.))
+                                    .rounded(px(1.5))
+                                    .bg(rgb(theme::accent())),
+                            );
+                        }
+                        pivot
+                    },
                 ),
-        );
+            ))
+            .child(div().h(px(6.)));
         match &self.snapshot {
             Ok(snapshot) => {
                 if self.active_tab == SidebarTab::Folders {
@@ -74,7 +112,7 @@ impl Render for SidebarView {
                                 div()
                                     .text_xs()
                                     .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child("Folders"),
+                                    .child(photag_ui_bridge::i18n::tr("Folders")),
                             )
                             .child(
                                 div()
@@ -82,11 +120,14 @@ impl Render for SidebarView {
                                     .gap_1()
                                     .child(
                                         Button::new("navigation-folder-path-toggle")
-                                            .label(if self.show_folder_path_entry {
-                                                "Cancel"
-                                            } else {
-                                                "Path"
-                                            })
+                                            .label(photag_ui_bridge::i18n::tr(
+                                                &(if self.show_folder_path_entry {
+                                                    "Cancel"
+                                                } else {
+                                                    "Path"
+                                                })
+                                                .to_string(),
+                                            ))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.show_folder_path_entry =
                                                     !this.show_folder_path_entry;
@@ -94,16 +135,25 @@ impl Render for SidebarView {
                                             })),
                                     )
                                     .child(
-                                        Button::new("navigation-add-folder").label("+").on_click(
-                                            cx.listener(|this, _, _, cx| this.pick_folder(cx)),
-                                        ),
+                                        Button::new("navigation-add-folder")
+                                            .compact()
+                                            .w(px(22.))
+                                            .h(px(22.))
+                                            .rounded(px(5.))
+                                            .bg(rgb(theme::accent()))
+                                            .label(photag_ui_bridge::i18n::tr(&("+").to_string()))
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| this.pick_folder(cx)),
+                                            ),
                                     )
-                                    .child(Button::new("navigation-refresh").label("↻").on_click(
-                                        cx.listener(|this, _, _, cx| {
-                                            this.refresh();
-                                            cx.notify();
-                                        }),
-                                    )),
+                                    .child(
+                                        Button::new("navigation-refresh")
+                                            .label(photag_ui_bridge::i18n::tr(&("↻").to_string()))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.refresh();
+                                                cx.notify();
+                                            })),
+                                    ),
                             ),
                     );
                     if self.show_folder_path_entry {
@@ -114,14 +164,14 @@ impl Render for SidebarView {
                                 .child(Input::new(&self.folder_path).flex_1())
                                 .child(
                                     Button::new("navigation-browse-folder")
-                                        .label("Browse…")
+                                        .label(photag_ui_bridge::i18n::tr("Browse…"))
                                         .on_click(
                                             cx.listener(|this, _, _, cx| this.pick_folder(cx)),
                                         ),
                                 )
                                 .child(
                                     Button::new("navigation-add-folder-path")
-                                        .label("Add")
+                                        .label(photag_ui_bridge::i18n::tr("Add"))
                                         .on_click(
                                             cx.listener(|this, _, _, cx| this.add_folder(cx)),
                                         ),
@@ -141,14 +191,14 @@ impl Render for SidebarView {
                                         .gap_1()
                                         .child(
                                             Button::new("navigation-create-subfolder")
-                                                .label("Create")
+                                                .label(photag_ui_bridge::i18n::tr("Create"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.create_subfolder(cx)
                                                 })),
                                         )
                                         .child(
                                             Button::new("navigation-cancel-subfolder")
-                                                .label("Cancel")
+                                                .label(photag_ui_bridge::i18n::tr("Cancel"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.new_folder_parent = None;
                                                     cx.notify();
@@ -159,7 +209,7 @@ impl Render for SidebarView {
                     }
                     panel = panel.child(
                         Button::new("navigation-all-media")
-                            .label("All Media")
+                            .label(photag_ui_bridge::i18n::tr("All Media"))
                             .on_click(cx.listener(|this, _, _, cx| this.select_folder(None, cx))),
                     );
                     for node in &snapshot.folders {
@@ -175,7 +225,9 @@ impl Render for SidebarView {
                                         "navigation-expand-root-{}",
                                         node.folder.id
                                     ))
-                                    .label(if expanded.is_some() { "⌄" } else { "›" })
+                                    .label(photag_ui_bridge::i18n::tr(
+                                        &(if expanded.is_some() { "⌄" } else { "›" }).to_string(),
+                                    ))
                                     // Source: sidebar::arrow_slot (16×16) inside a 26 px row.
                                     .w(px(theme::SIDEBAR_ARROW_SLOT))
                                     .h(px(theme::SIDEBAR_ROW_HEIGHT))
@@ -189,9 +241,12 @@ impl Render for SidebarView {
                                 )
                                 .child(
                                     Button::new(format!("navigation-select-{}", node.folder.id))
-                                        .label(format!(
-                                            "{}  {}",
-                                            node.folder.name, node.media_count
+                                        .label(photag_ui_bridge::i18n::tr(
+                                            &(format!(
+                                                "{}  {}",
+                                                node.folder.name, node.media_count
+                                            ))
+                                            .to_string(),
                                         ))
                                         // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
                                         .flex_1()
@@ -210,56 +265,62 @@ impl Render for SidebarView {
                                     let folder_path = node.folder.path.clone();
                                     let folder_view = cx.entity().downgrade();
                                     Button::new(format!("navigation-folder-menu-{folder_id}"))
-                                        .label("⋯")
+                                        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
                                         .w(px(theme::SIDEBAR_ROW_HEIGHT))
                                         .h(px(theme::SIDEBAR_ROW_HEIGHT))
                                         .dropdown_menu(move |mut menu, _, _| {
                                             let create_path = folder_path.clone();
                                             let create_view = folder_view.clone();
                                             menu = menu.item(
-                                                PopupMenuItem::new("New subfolder…").on_click(
-                                                    move |_, window, cx| {
-                                                        let _ =
-                                                            create_view.update(cx, |this, cx| {
-                                                                this.request_new_subfolder(
-                                                                    create_path.clone(),
-                                                                    window,
-                                                                    cx,
-                                                                )
-                                                            });
-                                                    },
-                                                ),
+                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                                                    "New subfolder…",
+                                                ))
+                                                .on_click(move |_, window, cx| {
+                                                    let _ = create_view.update(cx, |this, cx| {
+                                                        this.request_new_subfolder(
+                                                            create_path.clone(),
+                                                            window,
+                                                            cx,
+                                                        )
+                                                    });
+                                                }),
                                             );
                                             let rescan_view = folder_view.clone();
-                                            menu =
-                                                menu.item(PopupMenuItem::new("Rescan").on_click(
-                                                    move |_, _, cx| {
-                                                        let _ =
-                                                            rescan_view.update(cx, |this, cx| {
-                                                                this.rescan(folder_id, cx);
-                                                                cx.notify();
-                                                            });
-                                                    },
-                                                ));
+                                            menu = menu.item(
+                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                                                    "Rescan",
+                                                ))
+                                                .on_click(move |_, _, cx| {
+                                                    let _ = rescan_view.update(cx, |this, cx| {
+                                                        this.rescan(folder_id, cx);
+                                                        cx.notify();
+                                                    });
+                                                }),
+                                            );
                                             let open_path = folder_path.clone();
                                             let open_view = folder_view.clone();
                                             menu = menu.item(
-                                                PopupMenuItem::new("Open in file manager")
-                                                    .on_click(move |_, _, cx| {
-                                                        let _ = open_view.update(cx, |this, _| {
-                                                            this.open_folder_in_explorer(&open_path)
-                                                        });
-                                                    }),
+                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                                                    "Open in file manager",
+                                                ))
+                                                .on_click(move |_, _, cx| {
+                                                    let _ = open_view.update(cx, |this, _| {
+                                                        this.open_folder_in_explorer(&open_path)
+                                                    });
+                                                }),
                                             );
                                             let remove_view = folder_view.clone();
-                                            menu.item(PopupMenuItem::new("Remove").on_click(
-                                                move |_, _, cx| {
+                                            menu.item(
+                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                                                    "Remove",
+                                                ))
+                                                .on_click(move |_, _, cx| {
                                                     let _ = remove_view.update(cx, |this, cx| {
                                                         this.remove_folder(folder_id, cx);
                                                         cx.notify();
                                                     });
-                                                },
-                                            ))
+                                                }),
+                                            )
                                         })
                                 }),
                         );
@@ -291,11 +352,11 @@ impl Render for SidebarView {
                                 div()
                                     .text_xs()
                                     .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child("Tags"),
+                                    .child(photag_ui_bridge::i18n::tr("Tags")),
                             )
                             .child(
                                 Button::new("navigation-clear-tag-filter")
-                                    .label("Clear")
+                                    .label(photag_ui_bridge::i18n::tr("Clear"))
                                     .on_click(
                                         cx.listener(|this, _, _, cx| this.select_tag(None, cx)),
                                     ),
@@ -314,29 +375,35 @@ impl Render for SidebarView {
                             .gap_1()
                             .child(
                                 Button::new("navigation-tag-mode-select")
-                                    .label(if self.exclude_mode {
-                                        "Select"
-                                    } else {
-                                        "✓ Select"
-                                    })
+                                    .label(photag_ui_bridge::i18n::tr(
+                                        &(if self.exclude_mode {
+                                            "Select"
+                                        } else {
+                                            "✓ Select"
+                                        })
+                                        .to_string(),
+                                    ))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.set_tag_click_mode(false, cx);
                                     })),
                             )
                             .child(
                                 Button::new("navigation-tag-mode-exclude")
-                                    .label(if self.exclude_mode {
-                                        "⊘ Exclude"
-                                    } else {
-                                        "Exclude"
-                                    })
+                                    .label(photag_ui_bridge::i18n::tr(
+                                        &(if self.exclude_mode {
+                                            "⊘ Exclude"
+                                        } else {
+                                            "Exclude"
+                                        })
+                                        .to_string(),
+                                    ))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.set_tag_click_mode(true, cx);
                                     })),
                             )
                             .child(
                                 Button::new("navigation-tag-select-all")
-                                    .label("All")
+                                    .label(photag_ui_bridge::i18n::tr("All"))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         let tags = this
                                             .snapshot
@@ -360,7 +427,10 @@ impl Render for SidebarView {
                                 .gap_1()
                                 .child(
                                     Button::new("navigation-tag-clear-included")
-                                        .label(format!("Clear ✓ ({})", self.included_tags.len()))
+                                        .label(photag_ui_bridge::i18n::tr(
+                                            &(format!("Clear ✓ ({})", self.included_tags.len()))
+                                                .to_string(),
+                                        ))
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.included_tags.clear();
                                             this.emit_tag_selection(cx);
@@ -369,7 +439,10 @@ impl Render for SidebarView {
                                 )
                                 .child(
                                     Button::new("navigation-tag-clear-excluded")
-                                        .label(format!("Clear ⊘ ({})", self.excluded_tags.len()))
+                                        .label(photag_ui_bridge::i18n::tr(
+                                            &(format!("Clear ⊘ ({})", self.excluded_tags.len()))
+                                                .to_string(),
+                                        ))
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.excluded_tags.clear();
                                             this.emit_tag_selection(cx);
@@ -382,7 +455,7 @@ impl Render for SidebarView {
                         div()
                             .text_xs()
                             .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("Tag management"),
+                            .child(photag_ui_bridge::i18n::tr("Tag management")),
                     );
                     panel = panel.child(
                         div()
@@ -392,7 +465,7 @@ impl Render for SidebarView {
                             .child(Input::new(&self.tag_parent).flex_1())
                             .child(
                                 Button::new("navigation-create-tag")
-                                    .label("Create")
+                                    .label(photag_ui_bridge::i18n::tr("Create"))
                                     .on_click(cx.listener(|this, _, _, cx| this.create_tag(cx))),
                             ),
                     );
@@ -412,12 +485,17 @@ impl Render for SidebarView {
                             .gap_1()
                             .max_h(px(120.))
                             .overflow_y_scrollbar()
-                            .child("Associated tags: assigning this tag also assigns:");
+                            .child(photag_ui_bridge::i18n::tr(
+                                "Associated tags: assigning this tag also assigns:",
+                            ));
                         for (id, path) in rows {
                             let checked = self.associated_tag_ids.contains(&id);
                             associations = associations.child(
                                 Button::new(format!("navigation-associated-tag-{id}"))
-                                    .label(format!("{} {path}", if checked { "☑" } else { "☐" }))
+                                    .label(photag_ui_bridge::i18n::tr(
+                                        &(format!("{} {path}", if checked { "☑" } else { "☐" }))
+                                            .to_string(),
+                                    ))
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.toggle_associated_tag(id, cx)
                                     })),
@@ -431,11 +509,14 @@ impl Render for SidebarView {
                             .gap_1()
                             .child(
                                 Button::new("navigation-tag-appearance-children")
-                                    .label(if self.apply_tag_appearance_to_children {
-                                        "✓ Apply to children"
-                                    } else {
-                                        "Apply to children"
-                                    })
+                                    .label(photag_ui_bridge::i18n::tr(
+                                        &(if self.apply_tag_appearance_to_children {
+                                            "✓ Apply to children"
+                                        } else {
+                                            "Apply to children"
+                                        })
+                                        .to_string(),
+                                    ))
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.apply_tag_appearance_to_children =
                                             !this.apply_tag_appearance_to_children;
@@ -445,11 +526,14 @@ impl Render for SidebarView {
                             .when(self.apply_tag_appearance_to_children, |panel| {
                                 panel.child(
                                     Button::new("navigation-tag-appearance-skip-edited")
-                                        .label(if self.exclude_edited_tag_children {
-                                            "✓ Skip edited children"
-                                        } else {
-                                            "Skip edited children"
-                                        })
+                                        .label(photag_ui_bridge::i18n::tr(
+                                            &(if self.exclude_edited_tag_children {
+                                                "✓ Skip edited children"
+                                            } else {
+                                                "Skip edited children"
+                                            })
+                                            .to_string(),
+                                        ))
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.exclude_edited_tag_children =
                                                 !this.exclude_edited_tag_children;
@@ -467,7 +551,9 @@ impl Render for SidebarView {
                                 div()
                                     .text_xs()
                                     .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child("Set fields, then use a tag row action"),
+                                    .child(photag_ui_bridge::i18n::tr(
+                                        "Set fields, then use a tag row action",
+                                    )),
                             ),
                     );
                     if let Some((tag_id, tag_name, count)) = self.confirm_delete.clone() {
@@ -479,14 +565,18 @@ impl Render for SidebarView {
                                 .child(format!(
                                     "Delete ‘{tag_name}’? It is assigned to {count} media items."
                                 ))
-                                .child("Also remove parent tags from those media?")
+                                .child(photag_ui_bridge::i18n::tr(
+                                    "Also remove parent tags from those media?",
+                                ))
                                 .child(
                                     div()
                                         .h_flex()
                                         .gap_1()
                                         .child(
                                             Button::new("navigation-delete-tag-clean")
-                                                .label("Remove parent tags too")
+                                                .label(photag_ui_bridge::i18n::tr(
+                                                    &("Remove parent tags too").to_string(),
+                                                ))
                                                 .on_click(cx.listener(move |this, _, _, cx| {
                                                     this.confirm_delete = None;
                                                     this.delete_tag(tag_id, true, cx);
@@ -494,7 +584,9 @@ impl Render for SidebarView {
                                         )
                                         .child(
                                             Button::new("navigation-delete-tag-keep")
-                                                .label("Keep parent tags")
+                                                .label(photag_ui_bridge::i18n::tr(
+                                                    &("Keep parent tags").to_string(),
+                                                ))
                                                 .on_click(cx.listener(move |this, _, _, cx| {
                                                     this.confirm_delete = None;
                                                     this.delete_tag(tag_id, false, cx);
@@ -502,7 +594,7 @@ impl Render for SidebarView {
                                         )
                                         .child(
                                             Button::new("navigation-delete-tag-cancel")
-                                                .label("Cancel")
+                                                .label(photag_ui_bridge::i18n::tr("Cancel"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.confirm_delete = None;
                                                     cx.notify();
@@ -528,11 +620,14 @@ impl Render for SidebarView {
                                 .child(Input::new(&self.merge_search))
                                 .child(
                                     Button::new("navigation-merge-children-mode")
-                                        .label(if self.merge_reparent_children {
-                                            "Children will be re-parented under target"
-                                        } else {
-                                            "Children will be deleted"
-                                        })
+                                        .label(photag_ui_bridge::i18n::tr(
+                                            &(if self.merge_reparent_children {
+                                                "Children will be re-parented under target"
+                                            } else {
+                                                "Children will be deleted"
+                                            })
+                                            .to_string(),
+                                        ))
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.merge_reparent_children =
                                                 !this.merge_reparent_children;
@@ -542,7 +637,7 @@ impl Render for SidebarView {
                                 .children(merge_target_buttons(self, source_id, cx))
                                 .child(
                                     Button::new("navigation-merge-cancel")
-                                        .label("Cancel")
+                                        .label(photag_ui_bridge::i18n::tr("Cancel"))
                                         .on_click(cx.listener(|this, _, _, cx| {
                                             this.merge_source = None;
                                             cx.notify();
@@ -639,14 +734,18 @@ fn merge_target_buttons(
         &mut targets,
     );
     if targets.is_empty() {
-        return vec![div().text_xs().child("No matching tags")];
+        return vec![
+            div()
+                .text_xs()
+                .child(photag_ui_bridge::i18n::tr("No matching tags")),
+        ];
     }
     targets
         .into_iter()
         .map(|(id, label)| {
             div().child(
                 Button::new(format!("navigation-merge-target-{id}"))
-                    .label(label)
+                    .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
                     .w_full()
                     .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
             )

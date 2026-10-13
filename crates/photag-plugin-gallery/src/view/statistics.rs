@@ -9,22 +9,48 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
         .rounded_md()
         .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_3()
-        .child(div().text_lg().font_semibold().child("Library Statistics"));
+        .child(
+            div()
+                .text_lg()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Library Statistics")),
+        );
     match view.service.statistics() {
         Ok(stats) => {
             panel = panel
-                .child(div().text_sm().font_semibold().child("Overview"))
-                .child(format!(
-                    "Photos: {}    Videos: {}    Total: {}",
-                    stats.total_photos,
-                    stats.total_videos,
-                    stats.total_photos + stats.total_videos
+                .child(
+                    div()
+                        .text_sm()
+                        .font_semibold()
+                        .child(photag_ui_bridge::i18n::tr("Overview")),
+                )
+                .child(photag_ui_bridge::i18n::tr_args(
+                    "Photos: {photos}    Videos: {videos}    Total: {total}",
+                    &[
+                        ("photos", stats.total_photos.to_string()),
+                        ("videos", stats.total_videos.to_string()),
+                        (
+                            "total",
+                            (stats.total_photos + stats.total_videos).to_string(),
+                        ),
+                    ],
                 ))
-                .child(format!(
-                    "Total storage: {:.2} GB",
-                    stats.total_size_bytes as f64 / (1024.0 * 1024.0 * 1024.0)
+                .child(photag_ui_bridge::i18n::tr_args(
+                    "Total storage: {size} GB",
+                    &[(
+                        "size",
+                        format!(
+                            "{:.2}",
+                            stats.total_size_bytes as f64 / (1024. * 1024. * 1024.)
+                        ),
+                    )],
                 ))
-                .child(div().text_sm().font_semibold().child("Rating Distribution"));
+                .child(
+                    div()
+                        .text_sm()
+                        .font_semibold()
+                        .child(photag_ui_bridge::i18n::tr("Rating Distribution")),
+                );
             let max_rating = stats
                 .rating_counts
                 .iter()
@@ -41,11 +67,22 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
                 let color = (((60 + rating as u32 * 35).min(255)) << 16)
                     | (((130 + rating as u32 * 20).min(255)) << 8)
                     | 80;
-                panel = panel.child(bar_row(label, count, max_rating, color, 200.));
+                panel = panel.child(bar_row(
+                    photag_ui_bridge::i18n::tr(&label),
+                    count,
+                    max_rating,
+                    color,
+                    200.,
+                ));
             }
-            panel = panel.child(div().text_sm().font_semibold().child("Top 10 Tags"));
+            panel = panel.child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Top 10 Tags")),
+            );
             if stats.top_tags.is_empty() {
-                panel = panel.child("No tags assigned yet.");
+                panel = panel.child(photag_ui_bridge::i18n::tr("No tags assigned yet."));
             } else {
                 let max_tags = stats
                     .top_tags
@@ -57,9 +94,14 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
                     panel = panel.child(bar_row(name, count, max_tags, theme::accent(), 180.));
                 }
             }
-            panel = panel.child(div().text_sm().font_semibold().child("Photos per Month"));
+            panel = panel.child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Photos per Month")),
+            );
             if stats.monthly_counts.is_empty() {
-                panel = panel.child("No date information available.");
+                panel = panel.child(photag_ui_bridge::i18n::tr("No date information available."));
             } else {
                 let max_month = stats
                     .monthly_counts

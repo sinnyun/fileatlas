@@ -42,3 +42,13 @@ The preview information panel and status messages use photag-ui-bridge::theme fo
 - `src/view/render.rs` implements the Preview GPUI layout and stage; `src/view/actions.rs`, `context_menu.rs`, `keyboard.rs`, and `tag_picker.rs` own their respective action, input, and menu surfaces.
 - `src/view/support.rs` contains shared button and toolbar-position helpers; metadata rendering is in `src/info.rs`.
 
+
+## Localization integration (2026-10-13)
+
+Visible control labels consume the public UI Bridge translator supplied by
+photag.i18n. Stable commands, source settings/schema values, media paths and
+user-created tag data are unchanged. Missing translations fall back to English;
+OS/backend errors and some generated diagnostics are not fully localized.
+The real MCP-only validation coverage and remaining source layout differences
+are recorded in docs/validation-report.md; screenshots do not prove pointer
+interaction or animation parity.

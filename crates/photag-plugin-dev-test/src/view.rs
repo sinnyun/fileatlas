@@ -77,7 +77,7 @@ impl Render for DevTestPanel {
                     .gap_2()
                     .child(
                         Button::new("dev-test-scan-fixtures")
-                            .label("扫描样例目录")
+                            .label(photag_ui_bridge::i18n::tr(&("扫描样例目录").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.scan_fixture();
                                 this.watch_status(cx);
@@ -85,7 +85,7 @@ impl Render for DevTestPanel {
                     )
                     .child(
                         Button::new("dev-test-seed-1k")
-                            .label("注入 1 千")
+                            .label(photag_ui_bridge::i18n::tr(&("注入 1 千").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(1_000);
                                 this.watch_status(cx);
@@ -93,7 +93,7 @@ impl Render for DevTestPanel {
                     )
                     .child(
                         Button::new("dev-test-seed-10k")
-                            .label("注入 1 万")
+                            .label(photag_ui_bridge::i18n::tr(&("注入 1 万").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(10_000);
                                 this.watch_status(cx);
@@ -101,7 +101,7 @@ impl Render for DevTestPanel {
                     )
                     .child(
                         Button::new("dev-test-seed-100k")
-                            .label("注入 10 万")
+                            .label(photag_ui_bridge::i18n::tr(&("注入 10 万").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(100_000);
                                 this.watch_status(cx);
@@ -109,7 +109,7 @@ impl Render for DevTestPanel {
                     )
                     .child(
                         Button::new("dev-test-clear-virtual")
-                            .label("清理虚拟记录")
+                            .label(photag_ui_bridge::i18n::tr(&("清理虚拟记录").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.clear_virtual();
                                 this.watch_status(cx);

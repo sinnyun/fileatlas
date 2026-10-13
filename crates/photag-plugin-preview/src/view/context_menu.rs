@@ -15,10 +15,15 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         .rounded_md()
         .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_2()
-        .child(div().text_sm().font_semibold().child("Preview actions"))
+        .child(
+            div()
+                .text_sm()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Preview actions")),
+        )
         .child(
             Button::new("preview-context-open")
-                .label("Open externally")
+                .label(photag_ui_bridge::i18n::tr("Open externally"))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.context_menu_open = false;
                     this.open_in_default_app(cx);
@@ -26,7 +31,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         )
         .child(
             Button::new("preview-context-reveal")
-                .label("Show in folder")
+                .label(photag_ui_bridge::i18n::tr("Show in folder"))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.context_menu_open = false;
                     this.reveal_in_file_manager(cx);
@@ -35,7 +40,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
     if let Some(media_id) = view.service.snapshot().media_id {
         menu = menu.child(
             Button::new("preview-context-ai-tags")
-                .label("AI Suggest Tags")
+                .label(photag_ui_bridge::i18n::tr("AI Suggest Tags"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.service.request_ai_suggestions(media_id);
                     this.context_menu_open = false;
@@ -46,7 +51,9 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         for rating in 0..=5 {
             menu = menu.child(
                 Button::new(format!("preview-context-rating-{rating}"))
-                    .label(format!("{rating}★"))
+                    .label(photag_ui_bridge::i18n::tr(
+                        &(format!("{rating}★")).to_string(),
+                    ))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.context_menu_open = false;
                         this.apply_rating_shortcut(rating, cx);
@@ -55,7 +62,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         }
         menu = menu.child(
             Button::new("preview-context-delete")
-                .label("Delete…")
+                .label(photag_ui_bridge::i18n::tr("Delete…"))
                 .on_click(cx.listener(|this, _, window, cx| {
                     this.context_menu_open = false;
                     this.request_delete(window, cx);
@@ -64,7 +71,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
     }
     menu.child(
         Button::new("preview-context-close")
-            .label("Close menu")
+            .label(photag_ui_bridge::i18n::tr(&("Close menu").to_string()))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.context_menu_open = false;
                 cx.notify();

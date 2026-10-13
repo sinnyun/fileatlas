@@ -51,3 +51,13 @@ Tests scan the checked-in generated formats using the production indexer and
 exercise a 100,000-row replace/cleanup cycle against a temporary SQLite file.
 Interactive GPUI performance and scrolling still require launching the desktop
 app with the `dev-test` profile on Windows.
+
+## Localization integration (2026-10-13)
+
+Visible control labels consume the public UI Bridge translator supplied by
+photag.i18n. Stable commands, source settings/schema values, media paths and
+user-created tag data are unchanged. Missing translations fall back to English;
+OS/backend errors and some generated diagnostics are not fully localized.
+The real MCP-only validation coverage and remaining source layout differences
+are recorded in docs/validation-report.md; screenshots do not prove pointer
+interaction or animation parity.

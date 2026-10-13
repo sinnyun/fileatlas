@@ -2,17 +2,16 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::date_picker::{DatePicker, DatePickerState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::SortOrder;
 use photag_plugin_database::db::queries::Tag;
 
 use super::GalleryView;
 use crate::filter::{GalleryFilter, MediaTypeFilter, SearchScope};
+use gpui_kit::component::button::ButtonVariants;
 
 pub(super) fn search_scope_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {
-    div().h_flex().gap_1().children([
+    div().v_flex().gap_1().children([
         scope_button("filenames", "Filenames", SearchScope::Filenames, filter, cx),
         scope_button("paths", "Paths", SearchScope::Paths, filter, cx),
         scope_button("tags", "Tags", SearchScope::Tags, filter, cx),
@@ -21,7 +20,7 @@ pub(super) fn search_scope_row(filter: &GalleryFilter, cx: &mut Context<GalleryV
 
 pub(super) fn clear_filters_button(cx: &mut Context<GalleryView>) -> Button {
     Button::new("gallery-clear-filters")
-        .label("Clear filters")
+        .label(photag_ui_bridge::i18n::tr("Clear filters"))
         .on_click(cx.listener(|this, _, window, cx| this.clear_filters(window, cx)))
 }
 
@@ -34,7 +33,13 @@ pub(super) fn active_filter_row(
     if !filter.search.trim().is_empty() {
         row = row.child(
             Button::new("gallery-clear-search-filter")
-                .label(format!("Search: {} ×", filter.search))
+                .ghost()
+                .compact()
+                .h(px(22.))
+                .rounded(px(11.))
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("Search: {} ×", filter.search)).to_string(),
+                ))
                 .on_click(cx.listener(|this, _, window, cx| this.clear_search_filter(window, cx))),
         );
     }
@@ -47,16 +52,18 @@ pub(super) fn active_filter_row(
         };
         row = row.child(
             Button::new("gallery-clear-type-filter")
-                .label(format!("Type: {label} ×"))
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("Type: {label} ×")).to_string(),
+                ))
                 .on_click(cx.listener(|this, _, _, cx| this.clear_type_filter(cx))),
         );
     }
     if filter.rating_min > 0 || filter.rating_max < 5 {
         row = row.child(
             Button::new("gallery-clear-rating-filter")
-                .label(format!(
-                    "Rating: {}–{}★ ×",
-                    filter.rating_min, filter.rating_max
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("Rating: {}–{}★ ×", filter.rating_min, filter.rating_max))
+                        .to_string(),
                 ))
                 .on_click(cx.listener(|this, _, _, cx| this.clear_rating_filter(cx))),
         );
@@ -65,7 +72,9 @@ pub(super) fn active_filter_row(
         let from = filter.date_from.expect("checked above").format("%Y-%m-%d");
         row = row.child(
             Button::new("gallery-clear-date-from-filter")
-                .label(format!("From: {from} ×"))
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("From: {from} ×")).to_string(),
+                ))
                 .on_click(
                     cx.listener(|this, _, window, cx| this.clear_date_filter(true, window, cx)),
                 ),
@@ -75,7 +84,9 @@ pub(super) fn active_filter_row(
         let to = filter.date_to.expect("checked above").format("%Y-%m-%d");
         row = row.child(
             Button::new("gallery-clear-date-to-filter")
-                .label(format!("To: {to} ×"))
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("To: {to} ×")).to_string(),
+                ))
                 .on_click(
                     cx.listener(|this, _, window, cx| this.clear_date_filter(false, window, cx)),
                 ),
@@ -95,7 +106,7 @@ pub(super) fn active_filter_row(
         );
         row = row.child(
             Button::new(format!("gallery-clear-extension-{extension}"))
-                .label(label)
+                .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.clear_extension_filter(extension.clone(), cx)
                 })),
@@ -114,9 +125,9 @@ pub(super) fn active_filter_row(
                     "gallery-clear-tag-filter-{}-{tag_id}",
                     if included { "include" } else { "exclude" }
                 ))
-                .label(format!(
-                    "{} {name} ×",
-                    if included { "Include" } else { "Exclude" }
+                .label(photag_ui_bridge::i18n::tr(
+                    &(format!("{} {name} ×", if included { "Include" } else { "Exclude" }))
+                        .to_string(),
                 ))
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.clear_tag_filter(tag_id, included, cx)),
@@ -152,174 +163,49 @@ fn scope_button(
         SearchScope::Tags => filter.search_scopes.tags,
     };
     Button::new(format!("gallery-search-scope-{id}"))
-        .label(format!("{} {label}", if active { "✓" } else { "○" }))
+        .label(photag_ui_bridge::i18n::tr(
+            &(format!(
+                "{} {}",
+                if active { "✓" } else { "○" },
+                photag_ui_bridge::i18n::tr(label)
+            ))
+            .to_string(),
+        ))
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_search_scope(scope, cx)))
 }
 
-pub(super) fn date_row(from: &Entity<DatePickerState>, to: &Entity<DatePickerState>) -> Div {
-    div()
-        .h_flex()
-        .items_center()
-        .gap_1()
-        .child(div().text_sm().child("Date"))
-        .child(DatePicker::new(from).placeholder("From date"))
-        .child(div().text_sm().child("to"))
-        .child(DatePicker::new(to).placeholder("To date"))
-}
-
 pub(super) fn media_type_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {
-    div().h_flex().gap_1().children([
-        media_type_button("all", "All", MediaTypeFilter::All, filter.media_type, cx),
-        media_type_button(
-            "photos",
-            "Photos",
-            MediaTypeFilter::Photos,
-            filter.media_type,
-            cx,
-        ),
-        media_type_button(
-            "videos",
-            "Videos",
-            MediaTypeFilter::Videos,
-            filter.media_type,
-            cx,
-        ),
-        media_type_button(
-            "audio",
-            "Audio",
-            MediaTypeFilter::Audio,
-            filter.media_type,
-            cx,
-        ),
-    ])
-}
-
-pub(super) fn sort_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> impl IntoElement {
-    let mut row = div().h_flex().gap_1().overflow_x_scrollbar();
-    for (id, order) in [
-        ("newest", SortOrder::NewestFirst),
-        ("oldest", SortOrder::OldestFirst),
-        ("largest", SortOrder::BiggestFirst),
-        ("smallest", SortOrder::SmallestFirst),
-        ("name-asc", SortOrder::NameAsc),
-        ("name-desc", SortOrder::NameDesc),
-        ("highest-rated", SortOrder::HighestRated),
-        ("lowest-rated", SortOrder::LowestRated),
-    ] {
-        row = row.child(sort_button(id, order, filter.sort, cx));
-    }
-    row
-}
-
-pub(super) fn rating_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) -> Div {
     div()
         .h_flex()
-        .items_center()
-        .gap_1()
-        .child(div().text_sm().child("Rating"))
-        .child(
-            Button::new("rating-min-down")
-                .label("−")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.set_rating_bound(true, this.filter.rating_min - 1, cx)
-                })),
-        )
-        .child(
-            div()
-                .text_sm()
-                .child(format!("{}–{}★", filter.rating_min, filter.rating_max)),
-        )
-        .child(
-            Button::new("rating-min-up")
-                .label("+")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.set_rating_bound(true, this.filter.rating_min + 1, cx)
-                })),
-        )
-        .child(div().text_sm().child("through"))
-        .child(
-            Button::new("rating-max-down")
-                .label("−")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.set_rating_bound(false, this.filter.rating_max - 1, cx)
-                })),
-        )
-        .child(
-            Button::new("rating-max-up")
-                .label("+")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.set_rating_bound(false, this.filter.rating_max + 1, cx)
-                })),
-        )
-        .child(
-            Button::new("rating-reset")
-                .label("Reset")
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.filter.rating_min = 0;
-                    this.filter.rating_max = 5;
-                    this.reload();
-                    cx.notify();
-                })),
-        )
-}
-
-pub(super) fn extension_row(
-    filter: &GalleryFilter,
-    extensions: &[String],
-    exclude_mode: bool,
-    cx: &mut Context<GalleryView>,
-) -> impl IntoElement {
-    let mut row = div()
-        .h_flex()
-        .items_center()
-        .gap_1()
-        .overflow_x_scrollbar()
-        .child(div().text_sm().child("Extensions"))
-        .child(
-            Button::new("gallery-extension-mode-select")
-                .label(if !exclude_mode {
-                    "✓ Select"
-                } else {
-                    "Select"
-                })
-                .on_click(cx.listener(|this, _, _, cx| this.set_extension_click_mode(false, cx))),
-        )
-        .child(
-            Button::new("gallery-extension-mode-exclude")
-                .label(if exclude_mode {
-                    "⊘ Exclude"
-                } else {
-                    "Exclude"
-                })
-                .on_click(cx.listener(|this, _, _, cx| this.set_extension_click_mode(true, cx))),
-        );
-    for extension in extensions {
-        let selected = filter.extensions.contains(extension);
-        let excluded = filter.excluded_extensions.contains(extension);
-        let label = if selected {
-            format!("• .{extension}")
-        } else if excluded {
-            format!("− .{extension}")
-        } else {
-            format!(".{extension}")
-        };
-        let extension = extension.clone();
-        row = row.child(
-            Button::new(format!("gallery-extension-{}", extension))
-                .label(label)
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.cycle_extension(extension.clone(), cx)),
-                ),
-        );
-    }
-    if !filter.extensions.is_empty() || !filter.excluded_extensions.is_empty() {
-        row = row.child(
-            Button::new("gallery-extension-clear")
-                .label("Clear")
-                .on_click(cx.listener(|this, _, _, cx| this.clear_extensions(cx))),
-        );
-    }
-    row
+        .gap_0()
+        .p(px(3.))
+        .h(px(26.))
+        .rounded(px(13.))
+        .bg(rgba(0xffffff06))
+        .children([
+            media_type_button("all", "All", MediaTypeFilter::All, filter.media_type, cx),
+            media_type_button(
+                "photos",
+                "Photos",
+                MediaTypeFilter::Photos,
+                filter.media_type,
+                cx,
+            ),
+            media_type_button(
+                "videos",
+                "Videos",
+                MediaTypeFilter::Videos,
+                filter.media_type,
+                cx,
+            ),
+            media_type_button(
+                "audio",
+                "Audio",
+                MediaTypeFilter::Audio,
+                filter.media_type,
+                cx,
+            ),
+        ])
 }
 
 fn media_type_button(
@@ -329,28 +215,13 @@ fn media_type_button(
     active: MediaTypeFilter,
     cx: &mut Context<GalleryView>,
 ) -> Button {
-    let selected_label = if media_type == active {
-        format!("• {label}")
-    } else {
-        label.to_owned()
-    };
-    Button::new(format!("gallery-media-type-{id}"))
-        .label(selected_label)
-        .on_click(cx.listener(move |this, _, _, cx| this.set_media_type(media_type, cx)))
-}
-
-fn sort_button(
-    id: &str,
-    sort: SortOrder,
-    active: SortOrder,
-    cx: &mut Context<GalleryView>,
-) -> Button {
-    let label = if sort == active {
-        format!("• {}", sort.label())
-    } else {
-        sort.label().to_owned()
-    };
-    Button::new(format!("gallery-sort-{id}"))
-        .label(label)
-        .on_click(cx.listener(move |this, _, _, cx| this.set_sort(sort, cx)))
+    super::regions::chip(
+        format!("gallery-media-type-{id}"),
+        label.to_owned(),
+        media_type == active,
+    )
+    .px(px(13.))
+    .h(px(20.))
+    .rounded(px(10.))
+    .on_click(cx.listener(move |this, _, _, cx| this.set_media_type(media_type, cx)))
 }

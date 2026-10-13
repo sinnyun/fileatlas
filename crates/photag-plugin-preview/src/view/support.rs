@@ -12,7 +12,7 @@ pub(super) fn clamp_toolbar_offset(x: f32, y: f32, width: f32, height: f32) -> (
 }
 
 pub(super) fn button(label: &'static str) -> Button {
-    Button::new(format!("preview-{label}")).label(label)
+    Button::new(format!("preview-{label}")).label(photag_ui_bridge::i18n::tr(&(label).to_string()))
 }
 
 pub(super) fn title(text: String, alpha: f32) -> Div {

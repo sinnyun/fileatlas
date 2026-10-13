@@ -158,7 +158,12 @@ impl Render for ExportPanel {
             .p_3()
             .border_t_1()
             .border_color(rgb(theme::SURFACE_FAINT))
-            .child(div().text_sm().font_semibold().child("Metadata backup"))
+            .child(
+                div()
+                    .text_sm()
+                    .font_semibold()
+                    .child(photag_ui_bridge::i18n::tr("Metadata backup")),
+            )
             .child(
                 div()
                     .h_flex()
@@ -166,14 +171,14 @@ impl Render for ExportPanel {
                     .child(Input::new(&self.path).flex_1())
                     .child(
                         Button::new("metadata-export-browse")
-                            .label("Browse…")
+                            .label(photag_ui_bridge::i18n::tr("Browse…"))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.choose_destination(window, cx)
                             })),
                     )
                     .child(
                         Button::new("metadata-export-run")
-                            .label("Export JSON")
+                            .label(photag_ui_bridge::i18n::tr(&("Export JSON").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| this.export(cx))),
                     ),
             )

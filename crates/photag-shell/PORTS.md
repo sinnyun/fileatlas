@@ -19,3 +19,15 @@ Database → FileOperations → DragDrop → Gallery; Database → Preview → G
 ## Boundaries
 
 The shell must not absorb scanning, SQL, filtering, tagging, or file operations. It publishes the actual GPUI HWND through `photag-plugin-mcp::CaptureWindowHandle`; the MCP adapter captures only this PhoTag window on Windows. Stop plugin fibers before dropping shared runtime resources so Cordis cleanup can remove published services and UI contributions. Source-backed behavior is mapped in `docs/source-feature-audit.md`; Windows runtime and visual parity still require native validation.
+
+## Source window bands and localization (2026-10-13)
+
+The host composes `command.search`, `command.size`, `command.filters`,
+`workspace.sidebar`, `gallery.content`, `workspace.status`, `command.tools`,
+and `workspace.modal`. Gallery owns all filter/selection controls; Shell only
+places the full-width command/status bands and single elevated Gallery card.
+`settings.language` is mounted by Settings, not as a workspace panel. The i18n
+plugin starts before views; translation revisions refresh native windows.
+Reference geometry: source main.rs:1007-1367. Live MCP screenshots confirm
+these regions render; detailed control, scan-status and hover parity remain
+incomplete. See the current validation record.

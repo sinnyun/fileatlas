@@ -25,3 +25,13 @@ Status: FFmpeg-backed video and PCM audio playback, transport, volume, draggable
 - No Cordis events are currently produced. Gallery obtains `MediaPlaybackService`, calls `open` for selected video media, and closes it when returning to the gallery. Audio-only media is not supported by this FFmpeg video-frame service and should be handed to the operating system's default player by the caller. Shell startup owns plugin registration; Windows decoder/runtime behavior remains to be verified.
 - Source behavior uses independent FFmpeg video and PCM streams with rodio audio resampling and sink timing. Device startup failure falls back to silent playback. Audio codec availability, actual device synchronization, seek/drag behavior, volume output, and cache cleanup behavior require Windows runtime validation. FFmpeg availability and codec support vary by installation; probe failures return `PlaybackError::ProbeFailed` and Preview launches the source path in the system default app. Decoder process failures remain visible as `PlaybackError` in Preview.
 - To inspect failures, check FFmpeg/FFprobe process availability and path first, then inspect `PlaybackError` at the service caller. Decoder output currently suppresses FFmpeg stderr, so codec-specific diagnostics are limited.
+
+## Localization integration (2026-10-13)
+
+Visible control labels consume the public UI Bridge translator supplied by
+photag.i18n. Stable commands, source settings/schema values, media paths and
+user-created tag data are unchanged. Missing translations fall back to English;
+OS/backend errors and some generated diagnostics are not fully localized.
+The real MCP-only validation coverage and remaining source layout differences
+are recorded in docs/validation-report.md; screenshots do not prove pointer
+interaction or animation parity.

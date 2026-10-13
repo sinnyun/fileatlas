@@ -1,0 +1,99 @@
+//! Service-level UI validation; no OS pointer/keyboard injection.
+use super::*;
+use rmcp::schemars;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct UiRequest {
+    /// settings_open/close/tab, language, statistics, bulk_actions,
+    /// gallery_dialogs_close, select_media, or deselect.
+    action: String,
+    /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
+    value: Option<String>,
+}
+
+#[tool_router(router = ui_tool_router, vis = "pub(super)")]
+impl PhoTagMcpServer {
+    #[tool(
+        description = "Read settings visibility/tab, application language and preview chrome opacity without changing state."
+    )]
+    fn get_ui_state(&self) -> String {
+        json!({
+            "settings_open": self.surfaces.is_open("settings"),
+            "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "appearance".into()),
+            "language": self.i18n.as_ref().map(|service| service.language().code()),
+            "translation_revision": photag_ui_bridge::i18n::revision(),
+            "preview_chrome_alpha": self.preview.chrome_alpha(),
+        }).to_string()
+    }
+
+    #[tool(
+        description = "Control PhoTag Settings and language through public services; requires PHOTAG_MCP_ALLOW_MUTATIONS=1. Does not inject mouse/keyboard events."
+    )]
+    fn control_ui(&self, Parameters(request): Parameters<UiRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let result = match request.action.as_str() {
+            "settings_open" => self.surfaces.set_open("settings", true),
+            "settings_close" => self.surfaces.set_open("settings", false),
+            "statistics"
+            | "bulk_actions"
+            | "gallery_dialogs_close"
+            | "select_media"
+            | "deselect" => {
+                use photag_plugin_gallery::GalleryUiRequest;
+                let action = match request.action.as_str() {
+                    "statistics" => GalleryUiRequest::Statistics,
+                    "bulk_actions" => GalleryUiRequest::BulkActions,
+                    "deselect" => GalleryUiRequest::Deselect,
+                    "select_media" => {
+                        let Some(id) = request
+                            .value
+                            .as_deref()
+                            .and_then(|value| value.parse::<i64>().ok())
+                        else {
+                            return error_json("select_media requires a media ID");
+                        };
+                        if self.gallery.media_by_id(id).ok().flatten().is_none() {
+                            return error_json("media not found");
+                        }
+                        GalleryUiRequest::Select(id)
+                    }
+                    _ => GalleryUiRequest::CloseDialogs,
+                };
+                self.gallery.request_ui(action);
+                Ok(())
+            }
+            "settings_tab" => {
+                let value = request.value.as_deref().unwrap_or("");
+                if ![
+                    "appearance",
+                    "toolbar",
+                    "shortcuts",
+                    "tags",
+                    "ai",
+                    "updates",
+                ]
+                .contains(&value)
+                {
+                    return error_json("unsupported Settings tab");
+                }
+                self.surfaces.set_value("settings.tab", value)
+            }
+            "language" => {
+                let Some(service) = &self.i18n else {
+                    return error_json("i18n plugin unavailable");
+                };
+                photag_plugin_i18n::Language::parse(request.value.as_deref().unwrap_or(""))
+                    .and_then(|language| service.set_language(language))
+                    .map_err(|error| error.to_string())
+            }
+            _ => return error_json("unsupported UI action"),
+        };
+        match result {
+            Ok(()) => self.get_ui_state(),
+            Err(error) => error_json(&error),
+        }
+    }
+}

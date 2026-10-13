@@ -122,15 +122,16 @@ impl SettingsView {
         let downloading = self.update_download.is_some();
         let staged = self.update_staged.is_some();
         let viewport = window.bounds().size;
-        let mut offer_header = div()
-            .h_flex()
-            .items_center()
-            .justify_between()
-            .child(div().text_lg().font_semibold().child("Update available"));
+        let mut offer_header = div().h_flex().items_center().justify_between().child(
+            div()
+                .text_lg()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Update available")),
+        );
         if !downloading {
             offer_header = offer_header.child(
                 Button::new("settings-update-offer-close")
-                    .label("×")
+                    .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.update_offer_open = false;
                         this.update_offer_dismissed = true;
@@ -208,7 +209,9 @@ impl SettingsView {
             actions = actions
                 .child(
                     Button::new("settings-update-offer-restart")
-                        .label("Restart & install")
+                        .label(photag_ui_bridge::i18n::tr(
+                            &("Restart & install").to_string(),
+                        ))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.confirm_install = true;
                             this.install_update(cx);
@@ -216,7 +219,7 @@ impl SettingsView {
                 )
                 .child(
                     Button::new("settings-update-offer-later")
-                        .label("Later")
+                        .label(photag_ui_bridge::i18n::tr(&("Later").to_string()))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.update_offer_open = false;
                             this.update_offer_dismissed = true;
@@ -224,17 +227,14 @@ impl SettingsView {
                         })),
                 );
         } else if downloading {
-            actions = actions.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::TEXT_MUTED))
-                    .child("The update offer stays open while downloading."),
-            );
+            actions = actions.child(div().text_sm().text_color(rgb(theme::TEXT_MUTED)).child(
+                photag_ui_bridge::i18n::tr("The update offer stays open while downloading."),
+            ));
         } else {
             actions = actions
                 .child(
                     Button::new("settings-update-offer-download")
-                        .label("Update now")
+                        .label(photag_ui_bridge::i18n::tr("Update now"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.begin_update_download();
                             this.monitor_updates(cx);
@@ -242,7 +242,7 @@ impl SettingsView {
                 )
                 .child(
                     Button::new("settings-update-offer-later")
-                        .label("Not now")
+                        .label(photag_ui_bridge::i18n::tr("Not now"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.update_offer_open = false;
                             this.update_offer_dismissed = true;
@@ -258,7 +258,7 @@ impl SettingsView {
         if !downloading {
             actions = actions.child(
                 Button::new("settings-update-offer-github")
-                    .label("View on GitHub")
+                    .label(photag_ui_bridge::i18n::tr("View on GitHub"))
                     .on_click(move |_, _, _| {
                         let _ = open::that_detached(&url);
                     }),

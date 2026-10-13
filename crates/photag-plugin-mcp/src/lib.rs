@@ -4,6 +4,7 @@ mod params;
 mod screenshot;
 mod tools_dev_test;
 mod tools_read;
+mod tools_ui;
 mod tools_write;
 
 use std::sync::Arc;
@@ -90,6 +91,14 @@ impl Plugin for McpPlugin {
             .try_service::<CaptureWindowHandle>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
         let dev_test = context.try_service::<DevTestService>().ok();
+        let i18n = context
+            .try_service::<photag_plugin_i18n::I18nService>()
+            .ok();
+        let surfaces = context
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?
+            .surfaces
+            .clone();
 
         let server = PhoTagMcpServer::new(
             gallery,
@@ -101,6 +110,8 @@ impl Plugin for McpPlugin {
             file_operations,
             capture,
             dev_test,
+            i18n,
+            surfaces,
         );
         let task = tokio::spawn(async move {
             match server.serve(stdio()).await {
@@ -156,6 +167,8 @@ struct PhoTagMcpServer {
     file_operations: Arc<FileOperationsService>,
     capture: Arc<CaptureWindowHandle>,
     dev_test: Option<Arc<DevTestService>>,
+    i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     mutations_enabled: bool,
 }
 
@@ -170,11 +183,16 @@ impl PhoTagMcpServer {
         file_operations: Arc<FileOperationsService>,
         capture: Arc<CaptureWindowHandle>,
         dev_test: Option<Arc<DevTestService>>,
+        i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
+        surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     ) -> Self {
         Self {
             tool_router: Self::read_tool_router()
                 + Self::write_tool_router()
-                + Self::dev_test_tool_router(),
+                + Self::dev_test_tool_router()
+                + Self::ui_tool_router(),
+            i18n,
+            surfaces,
             gallery,
             navigation,
             tagging,

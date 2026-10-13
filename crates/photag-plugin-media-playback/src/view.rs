@@ -213,7 +213,7 @@ impl Render for PlaybackView {
             .child(button("Next frame").on_click(next_frame))
             .child(button("+5s").on_click(forward))
             .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup))
-            .child(div().text_xs().child("Volume"))
+            .child(div().text_xs().child(photag_ui_bridge::i18n::tr("Volume")))
             .child(Slider::new(&self.volume).w_32())
             .child(button("Close").on_click(close));
 
@@ -226,12 +226,12 @@ impl Render for PlaybackView {
             None if snapshot.path.is_some() => div()
                 .text_sm()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("Decoding video frame…")
+                .child(photag_ui_bridge::i18n::tr("Decoding video frame…"))
                 .into_any_element(),
             None => div()
                 .text_sm()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child("Open a video to play it.")
+                .child(photag_ui_bridge::i18n::tr("Open a video to play it."))
                 .into_any_element(),
         };
         let title = snapshot
@@ -291,7 +291,7 @@ impl Render for PlaybackView {
                         .h_flex()
                         .items_center()
                         .gap_2()
-                        .child(div().text_xs().child("Speed"))
+                        .child(div().text_xs().child(photag_ui_bridge::i18n::tr("Speed")))
                         .child(Slider::new(&self.speed).w_48())
                         .child(format!("{:.2}×", snapshot.speed)),
                 )
@@ -357,7 +357,8 @@ impl Render for PlaybackView {
 
 fn button(label: impl Into<String>) -> Button {
     let label = label.into();
-    Button::new(format!("media-playback-{label}")).label(label)
+    Button::new(format!("media-playback-{label}"))
+        .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
 }
 fn format_time(seconds: f64) -> String {
     let total = seconds.max(0.0) as u64;

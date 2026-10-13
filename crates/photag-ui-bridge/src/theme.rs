@@ -146,6 +146,40 @@ pub const UI_FONT_FAMILY: &str = "Segoe UI";
 pub const SEMIBOLD_FONT_FAMILY: &str = "Segoe UI Semibold";
 pub const ICON_FONT_FAMILY: &str = "Segoe MDL2 Assets";
 
+/// Apply the pinned theme to GPUI Kit's native controls as well as our paints.
+/// Source theme.rs:408-534: ghost controls, borderless inputs, Segoe typography.
+pub fn apply_components(cx: &mut gpui_kit::App) {
+    use gpui_kit::component::{Theme, ThemeMode};
+    use gpui_kit::{px, rgb, rgba};
+    Theme::change(ThemeMode::Dark, None, cx);
+    let theme = Theme::global_mut(cx);
+    theme.font_family = UI_FONT_FAMILY.into();
+    theme.font_size = px(FONT_SIZE_BODY);
+    theme.radius = px(ROUND_SM + 1.);
+    theme.radius_lg = px(ROUND_LG);
+    theme.colors.background = rgb(SURFACE_BASE).into();
+    theme.colors.foreground = rgb(TEXT_PRIMARY).into();
+    theme.colors.button = rgba(CONTROL_GHOST.to_rgba()).into();
+    theme.colors.button_hover = rgba(CONTROL_GHOST_HOVER.to_rgba()).into();
+    theme.colors.button_active = rgba(CONTROL_GHOST_PRESSED.to_rgba()).into();
+    theme.colors.button_foreground = rgb(TEXT_PRIMARY).into();
+    theme.colors.border = rgba(0).into();
+    theme.colors.input = rgba(0).into();
+    theme.colors.secondary = rgb(SURFACE_PANEL).into();
+    theme.colors.secondary_foreground = rgb(TEXT_PRIMARY).into();
+    theme.colors.muted_foreground = rgb(TEXT_MUTED).into();
+    theme.colors.popover = rgb(SURFACE_MODAL).into();
+    theme.colors.popover_foreground = rgb(TEXT_PRIMARY).into();
+    theme.colors.list = rgb(SURFACE_MODAL).into();
+    theme.colors.list_hover = rgba(CONTROL_HOVER.to_rgba()).into();
+    theme.colors.accent = rgba((accent() << 8) | 64).into();
+    theme.colors.accent_foreground = rgb(TEXT_PRIMARY).into();
+    theme.colors.selection = rgba((accent() << 8) | 64).into();
+    theme.colors.primary = rgb(accent()).into();
+    theme.colors.caret = rgb(TEXT_PRIMARY).into();
+    theme.colors.ring = rgba(0).into();
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AccentPreset {
     pub name: &'static str,

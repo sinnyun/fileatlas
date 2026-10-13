@@ -1,0 +1,378 @@
+{
+  "profile": "target/mcp-ui-validation",
+  "screenshots": [
+    {
+      "label": "en-gallery",
+      "path": "target/mcp-ui-screenshots/en-gallery.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-appearance",
+      "path": "target/mcp-ui-screenshots/en-settings-appearance.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-toolbar",
+      "path": "target/mcp-ui-screenshots/en-settings-toolbar.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-shortcuts",
+      "path": "target/mcp-ui-screenshots/en-settings-shortcuts.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-tags",
+      "path": "target/mcp-ui-screenshots/en-settings-tags.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-ai",
+      "path": "target/mcp-ui-screenshots/en-settings-ai.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-settings-updates",
+      "path": "target/mcp-ui-screenshots/en-settings-updates.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-statistics",
+      "path": "target/mcp-ui-screenshots/en-statistics.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-bulk",
+      "path": "target/mcp-ui-screenshots/en-bulk.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-selected",
+      "path": "target/mcp-ui-screenshots/en-selected.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "en-preview-info",
+      "path": "target/mcp-ui-screenshots/en-preview-info.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-gallery",
+      "path": "target/mcp-ui-screenshots/zh-CN-gallery.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-appearance",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-appearance.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-toolbar",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-toolbar.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-shortcuts",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-shortcuts.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-tags",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-tags.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-ai",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-ai.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-settings-updates",
+      "path": "target/mcp-ui-screenshots/zh-CN-settings-updates.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-statistics",
+      "path": "target/mcp-ui-screenshots/zh-CN-statistics.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-bulk",
+      "path": "target/mcp-ui-screenshots/zh-CN-bulk.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-selected",
+      "path": "target/mcp-ui-screenshots/zh-CN-selected.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "zh-CN-preview-info",
+      "path": "target/mcp-ui-screenshots/zh-CN-preview-info.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    },
+    {
+      "label": "preview-chrome-hidden",
+      "path": "target/mcp-ui-screenshots/preview-chrome-hidden.png",
+      "metadata": [
+        {
+          "type": "text",
+          "text": "PhoTag 窗口截图，1942 × 1256 像素。"
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "preview": {
+        "source": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\small.png",
+        "quarter_turns": 0,
+        "flip_horizontal": false,
+        "flip_vertical": false,
+        "fit_to_window": true,
+        "zoom_percent": 100,
+        "zoom_scale": 1,
+        "show_info": true,
+        "revision": 3
+      },
+      "playback": {
+        "path": null,
+        "playing": false,
+        "position_seconds": 0,
+        "duration_seconds": 0,
+        "width": 0,
+        "height": 0,
+        "speed": 1,
+        "audio_available": false,
+        "error": null,
+        "revision": 0
+      }
+    },
+    {
+      "preview": {
+        "source": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\small.png",
+        "quarter_turns": 0,
+        "flip_horizontal": false,
+        "flip_vertical": false,
+        "fit_to_window": true,
+        "zoom_percent": 100,
+        "zoom_scale": 1,
+        "show_info": true,
+        "revision": 6
+      },
+      "playback": {
+        "path": null,
+        "playing": false,
+        "position_seconds": 0,
+        "duration_seconds": 0,
+        "width": 0,
+        "height": 0,
+        "speed": 1,
+        "audio_available": false,
+        "error": null,
+        "revision": 0
+      }
+    }
+  ],
+  "tools": [
+    "add_folder",
+    "assign_tags",
+    "cancel_scan",
+    "control_playback",
+    "control_preview",
+    "control_ui",
+    "copy_media",
+    "create_tag",
+    "delete_media",
+    "delete_tag",
+    "dev_test_clear_virtual",
+    "dev_test_inject_virtual",
+    "dev_test_scan_fixture",
+    "dev_test_status",
+    "export_metadata",
+    "get_media",
+    "get_ui_state",
+    "get_view_state",
+    "list_library",
+    "move_media",
+    "open_media",
+    "remove_folder",
+    "remove_tags",
+    "rename_media",
+    "rename_tag",
+    "rescan_folder",
+    "screenshot_window",
+    "search_media",
+    "set_rating"
+  ],
+  "initial": {
+    "settings_open": false,
+    "settings_tab": "appearance",
+    "language": "en",
+    "translation_revision": 1,
+    "preview_chrome_alpha": 1
+  },
+  "library": {
+    "folders": [
+      {
+        "id": 1,
+        "path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library",
+        "name": "photag-library",
+        "last_scan": 1791889587,
+        "media_count": 9
+      }
+    ],
+    "tags": []
+  },
+  "fade": [
+    {
+      "elapsedMs": 2,
+      "settings_open": false,
+      "settings_tab": "updates",
+      "language": "zh-CN",
+      "translation_revision": 3,
+      "preview_chrome_alpha": 1
+    },
+    {
+      "elapsedMs": 2061,
+      "settings_open": false,
+      "settings_tab": "updates",
+      "language": "zh-CN",
+      "translation_revision": 3,
+      "preview_chrome_alpha": 0.9232789874076843
+    },
+    {
+      "elapsedMs": 2355,
+      "settings_open": false,
+      "settings_tab": "updates",
+      "language": "zh-CN",
+      "translation_revision": 3,
+      "preview_chrome_alpha": 0.5551866292953491
+    },
+    {
+      "elapsedMs": 2903,
+      "settings_open": false,
+      "settings_tab": "updates",
+      "language": "zh-CN",
+      "translation_revision": 3,
+      "preview_chrome_alpha": 0
+    }
+  ],
+  "final": {
+    "settings_open": false,
+    "settings_tab": "updates",
+    "language": "en",
+    "translation_revision": 4,
+    "preview_chrome_alpha": 1
+  }
+}

@@ -14,17 +14,19 @@ pub(super) fn button(
         .map(|(_, label)| label.clone())
         .unwrap_or_else(|| {
             if selected.is_some() {
-                "(deleted tag)".to_owned()
+                photag_ui_bridge::i18n::tr("(deleted tag)")
             } else {
-                "None".to_owned()
+                photag_ui_bridge::i18n::tr("None")
             }
         });
     Button::new(format!("settings-tag-hotkey-{key}"))
-        .label(format!("{key}: {label}"))
+        .label(photag_ui_bridge::i18n::tr(
+            &(format!("{key}: {label}")).to_string(),
+        ))
         .dropdown_menu(move |mut menu, _, _| {
             let none_view = view.clone();
             menu = menu.item(
-                PopupMenuItem::new("None")
+                PopupMenuItem::new(photag_ui_bridge::i18n::tr("None"))
                     .checked(selected.is_none())
                     .on_click(move |_, _, cx| {
                         let _ = none_view.update(cx, |this, cx| {

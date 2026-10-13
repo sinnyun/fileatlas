@@ -713,3 +713,103 @@ and `migrated-preview-info.png`).
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` after this UI fix | Passed | 49 passed, 0 failed, 3 ignored (two live network checksum downloads and the optional FFmpeg smoke test). |
 | `cargo +1.97.1 fmt --all -- --check` | Passed | Workspace formatting check after all local validation changes. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Includes the MCP close action and Preview modal/wrapping changes. |
+
+
+### Window bands, Fluent localization and MCP-only UI validation (2026-10-13)
+
+This change continues the interrupted window-framework work, then adds the
+requested independent English/Chinese plugin. The user's latest instruction
+requires MCP testing/screenshots and excludes direct computer control. The
+final validation below uses only the same-process stdio MCP endpoint; no OS
+mouse/keyboard injection or Computer Use is involved. Earlier reference-window
+observations are retained as earlier evidence, not repeated pointer tests.
+
+**Environment:** Windows/MSVC; Rust +1.97.1; Cargo jobs2/incremental enabled;
+source viewport1280×800, sidebar220 and initial thumbs150; generated 9-media
+fixture. The observed PrintWindow PNG size is1942×1256 physical pixels including
+native frame/DPI scaling. Reference and migration use the same fixture files;
+identical modified-date ties can yield different item order because independent
+scans assign different IDs. No pixel-perfect or whole-source acceptance is claimed.
+
+**Source rules inspected:** main.rs:1007-1097 full-width commands/search/filters;
+1099-1277 status modes;1282-1367 sidebar/resizer and single elevated Gallery;
+filterbar.rs:15-155 search/scope and600-821 sliders/dates; sidebar.rs:181-193,
+228-275 pivot tabs; main.rs:2111-2175 Settings geometry/tabs and2187-2246 swatches;
+gallery.rs:1383-1590 square cards/hover/selection/overlays; preview.rs:940-1002
+and chrome state rules. Source dimensions come from code, not PNG measurement.
+
+Changes and actual observations:
+
+- Gallery contributes command.search/size/filters/tools, workspace.status/modal
+  and gallery.content as projections of one entity. Shell composes the full-width
+  command band, two-column body, one panel card and full-width status. Duplicate
+  Gallery heading/options/search/action rows are gone. Selecting small.png via
+  MCP produces the real bottom action bar and selected inset card. Existing
+  ratings/details/rename/copy/move remain under extra selected actions.
+- Thumbnail/rating controls use the source continuous80–300 and nearest-thumb
+  range interaction. Their rendering was inspected; pointer drag/edge clamping
+  was not exercised by MCP. Statistics and Bulk actions now open as overlays,
+  not permanent rows. No destructive or copy/move operation was executed.
+- Sidebar pivot tabs use equal halves, height32 and the source underline.
+  Appearance has22×22 palette swatches. Six Settings tabs do not wrap; the width
+  uses source min72 plus intrinsic text/button spacing. A live auto-height
+  attempt collapsed GPUI scroll content to zero; fixed bounded scroll height
+  was restored and all six pages were captured again. The520-point cap is still
+  a source difference, as are checkbox presentation and section grouping.
+- photag.i18n uses fluent-bundle0.16, embedded en/zh-CN resources, English default
+  and English fallback. Language is saved in a separate language.json; normal
+  source settings/session/SQLite are not migrated. Live language changes update
+  labels, month/count/Statistics text and existing input placeholders without
+  clearing typed values. A separate isolated child restart returned zh-CN after
+  it had been selected; validation resets its own profile to English afterward.
+- MCP adds get_ui_state and control_ui for Settings tabs, language, Gallery
+  Statistics/Bulk/selection/deselection. Requests use public services and the
+  existing GPUI actions, and are asynchronous. Four i18n tests cover all Fluent
+  messages and arguments/plurals, persistence, failed writes, and Cordis cleanup.
+
+Exact reproducible commands:
+
+```powershell
+$env:CARGO_BUILD_JOBS='2'
+$env:CARGO_INCREMENTAL='1'
+cargo +1.97.1 fmt --all -- --check
+cargo +1.97.1 check -p photag-shell --locked -j 2
+cargo +1.97.1 build -p photag-shell --locked -j 2
+cargo +1.97.1 test --workspace --locked -j 2
+node scripts/validate-ui-mcp.cjs
+```
+
+The Node client launches target/debug/photag-shell.exe --mcp with
+PHOTAG_DEV_PLUGINS=dev-test, PHOTAG_DEV_TEST_DIR=target/mcp-ui-validation,
+LOCALAPPDATA=target/mcp-ui-validation/local and PHOTAG_MCP_ALLOW_MUTATIONS=1.
+Mutation opt-in is needed for fixture scan, language persistence and UI state
+requests; the script never executes delete/copy/move/export/update tools.
+Updates are disabled only in its isolated settings. The client initializes the
+protocol, scans through the production service, verifies9 records, requests
+screenshots, writes its report and terminates its child. All23 PNGs and the
+protocol report are under target/mcp-ui-screenshots; selected captures are
+retained under docs/validation-ui/2026-10-13.
+
+| Verification | Outcome / limit |
+|---|---|
+| Locked formatting/check/build | Passed on the Windows host. |
+| Workspace tests | 53 passed,0 failed,3 ignored; ignored network/FFmpeg cases remain as documented earlier. |
+| MCP Gallery and selection | Passed for9 synthetic records, both languages; no pointer selection test. |
+| MCP Settings | Captured Appearance,Toolbar,Shortcuts,Tags,AI,Updates in English and Chinese; language service/refresh observed. Mouse activation and save of every individual option were not tested. |
+| MCP Statistics/Bulk | Both overlays captured in both languages; count query rendered. File execution/native confirmations were not invoked. Source Statistics photo/video total excludes audio, so its8 total differs from9 indexed library rows. |
+| MCP Preview Info | small.png decoded/centered, left Info fields rendered and translated; get_view_state show_info true. Remaining toolbar position/order/filmstrip/EXIF and media-device differences persist. |
+| Preview time fade | Real service sampled near0,2.05,2.35,2.9s: opacity1,about0.93,about0.56,0. Hidden-chrome PNG captured. This checks idle fade, not mouse-triggered reappearance or GPU frame cadence. |
+| i18n persistence/cleanup/failure | Four targeted tests passed; live isolated restart confirmed saved Chinese; default missing preference is English. |
+
+**Remaining differences:** Gallery filename/tag hover overlays and the120ms
+hover scale/shadow/brightness,140ms selection transition and220ms decode fade
+are not established as matching the reference. Cards retain always-visible
+migration action affordances and placeholder differences; month typography,
+sidebar folder/tag rows/context menus, source scan-progress status priority,
+Settings default tab/checkbox/group layout, Preview tool ordering/position, and dialogs
+still require restoration. Some generated status/error text, backend/native
+messages and external release notes may remain English. No pointer hover,
+tooltip activation, native dialogs, drag/drop, Recycle Bin, Explorer actions,
+real codec/audio device or metadata interoperability were tested in this pass.
+The complete UI migration remains incomplete; these screenshots and checks
+only establish the listed states.
