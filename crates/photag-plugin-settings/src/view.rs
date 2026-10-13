@@ -45,7 +45,7 @@ pub(super) fn settings(
 }
 struct SettingsView {
     service: Arc<SettingsService>,
-    navigation: Option<Arc<NavigationService>>,
+    navigation: Option<Weak<NavigationService>>,
     tab: Tab,
     error: Option<String>,
     capturing_open_key: bool,

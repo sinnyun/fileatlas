@@ -1,6 +1,6 @@
 # History plugin ports / 历史操作对接
 
-Status: Cordis service and executable undo/redo handlers are implemented for the five undoable operation types present in PhoTag's source. The shell has not yet wired mutation callers to record entries or invoke this service.
+Status: Cordis service and executable undo/redo handlers are implemented for the five undoable operation types present in PhoTag's source. Gallery records rating, tag-hotkey, and confirmed single-item rename mutations and invokes undo/redo on Ctrl+Z/Ctrl+Y; clear-tags and file-operation history producers remain unwired.
 
 ## Lifecycle and dependencies
 
@@ -22,7 +22,7 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 
 - As in PhoTag, operation failures are best-effort and do not stop the entry from moving to the opposite stack. A new push always clears redo.
 - Stack transfer performed by undo/redo does not trim the destination stack, matching the source handlers.
-- File operation success/failure is currently not exposed to the caller as a result; UI refresh/toast integration belongs to the shell.
+- File operation success/failure is currently not exposed to the caller as a result; Gallery shows the returned history status and refreshes its query after undo/redo.
 - Pending UI actions outside the five source `UndoEntry` variants are not undoable here. Folder/tag tree edits, delete/copy/move/bulk operations remain outside history.
 
 ## Debugging

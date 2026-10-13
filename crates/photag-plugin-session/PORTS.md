@@ -15,4 +15,4 @@ Status: the pinned PhoTag `session.json` schema and Cordis service are migrated.
 
 ## Debugging
 
-Check `session.json` keys and values against `vendor/photag-source/src/session.rs`; inspect startup restore and shutdown save integration separately. Current shell starts the service, but does not yet apply the saved state to views.
+Check `session.json` keys and values against `vendor/photag-source/src/session.rs`. Gallery restores and persists query filters; Navigation restores and persists folder/path selection and expanded directories. Gallery scroll/selection, sidebar dimensions, preview state, and lifecycle-wide save remain incomplete.

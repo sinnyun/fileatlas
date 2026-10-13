@@ -14,8 +14,8 @@ and displays the record count/path or failure.
 - Also requires the host-published `photag/ui-bridge` service for lifecycle
   registration of the panel and command.
 - Uses the source project's `rfd` 0.15 native file-dialog library for Save File
-  selection. This crate-local dependency is not yet represented in the root
-  Cargo.lock; workspace integration must resolve/pin it before a locked build.
+  selection. It is included in the workspace lockfile with default portal
+  features disabled; Windows uses the native Windows dialog backend.
 - Plugin ID: `photag.metadata-export`; command ID:
   `metadata-export/export`; panel view ID: `metadata-export/panel-view`.
 - `photag.metadata-export` removes its catalog entries, view, and command

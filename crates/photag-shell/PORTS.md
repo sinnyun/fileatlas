@@ -4,7 +4,7 @@
 
 ## Current runtime dependency order
 
-Database → Preview → Gallery; Database → FileOperations → DragDrop → Gallery; Database → Thumbnails → Indexing → Watcher; Navigation depends on Database/Indexing and optionally Watcher; Tagging depends on Database; History starts after Database, FileOperations, and Tagging. MediaPlayback is independent. Preserve service availability before dependent plugin startup. Preview is started with Gallery and its UI opens selected images from the gallery; media playback and drag-drop services are registered but their Gallery gestures are not yet connected.
+Database → FileOperations → DragDrop → Gallery; Database → Preview → Gallery; Database → MediaPlayback → Gallery; Database → Thumbnails → Indexing → Watcher; Navigation depends on Database/Indexing and optionally Watcher; Settings optionally reads Navigation; Tagging depends on Database; History starts after Database, FileOperations, and Tagging. Shell starts Gallery after all required providers and the optional Settings/Tagging/History providers. On shutdown it stops Gallery and History before those services, then stops Navigation before Watcher, Indexing, and Thumbnails. Preserve service availability before dependent plugin startup and stop consumers before providers. Gallery opens images in Preview, routes videos to MediaPlayback, calls DragDrop from card drag gestures, and optionally consumes Settings, Tagging, and History services.
 
 ## Boundaries
 

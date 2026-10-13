@@ -19,7 +19,7 @@ Status: FFmpeg-backed video decode and transport controls are implemented. PhoTa
 
 ## Events, consumers, and limits
 
-- No Cordis events are currently produced. The gallery/preview caller should obtain `MediaPlaybackService`, call `open` for selected video media, and close it when leaving that item. Shell startup owns plugin registration; selected-video handoff from the gallery remains to be wired.
+- No Cordis events are currently produced. Gallery obtains `MediaPlaybackService`, calls `open` for selected video media, and closes it when returning to the gallery. Shell startup owns plugin registration; Windows decoder/runtime behavior remains to be verified.
 - Source PhoTag keeps video and audio synchronized using independent FFmpeg video/PCM streams and a rodio sink; this port currently decodes video only. Audio codec availability, device selection, PCM synchronization, and volume output are therefore not migrated. The `audio_available` field remains false.
 - This view currently does not implement a draggable seek bar, source speed popup/presets, boost rates, or cleanup of aged cached PNG frames. FFmpeg availability and codec support vary by installation; failures are returned by `open` as `PlaybackError`.
 - To inspect failures, check FFmpeg/FFprobe process availability and path first, then inspect `PlaybackError` at the service caller. Decoder output currently suppresses FFmpeg stderr, so codec-specific diagnostics are limited.

@@ -235,7 +235,7 @@ requirements and Windows UI coverage before attempting it.
 
 `start-dev.bat [plugin-list]` checks `photag-shell`, then runs the native GPUI development window. It takes no port argument because this desktop application has no development HTTP port.
 
-The shell enables `settings`, `session`, and `database` by default, with the UI bridge published by the host. `PHOTAG_DEV_PLUGINS` defaults to `core`. Pass a comma-separated plugin name as the optional argument (or set the environment variable) to enable plugins incrementally. `gallery` brings in file operations; `navigation` brings in thumbnails, indexing, and watcher; `indexing` brings in thumbnails; `watcher` brings in indexing and thumbnails. `all` enables all feature plugins. Supported names: `gallery`, `navigation`, `metadata-export`, `file-operations`, `thumbnails`, `indexing`, `watcher`, and `tagging`.
+The shell enables `settings`, `session`, and `database` by default, with the UI bridge published by the host. `PHOTAG_DEV_PLUGINS` defaults to `core`. Pass a comma-separated plugin name as the optional argument (or set the environment variable) to enable plugins incrementally. `gallery` brings in file operations; `navigation` brings in thumbnails, indexing, and watcher; `indexing` brings in thumbnails; `watcher` brings in indexing and thumbnails. `all` enables all feature plugins. Supported names: `gallery`, `navigation`, `metadata-export`, `file-operations`, `thumbnails`, `indexing`, `watcher`, `tagging`, `history`, `media-playback`, and `drag-drop`. Preview starts with Gallery; Settings and Session start in core.
 
 | Check | Result | Notes |
 |---|---|---|
@@ -256,3 +256,16 @@ Some initial runs exited with a GPUI debug panic (`Duplicate a11y node id`) duri
 | `cargo +1.97.1 check -p photag-shell --locked` | Failed during lock resolution | Newly added native dialogs and EXIF/date dependencies bring a transitive graph that conflicts with pinned versions (currently `futures-util` 0.3.32 vs 0.3.34). No Rust compilation was reached. Lock graph requires a coherent regeneration/reconciliation before this migration is validated. |
 | Tests | Not run | Repository instructions reserve tests for the concentrated second-round debugging pass. |
 | Windows UI/native dialogs/OLE | Unverified | Requires real Windows runtime validation. |
+
+## Lockfile reconciliation and focused second-round debugging (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update` | Passed | Reconciled the workspace lock graph with current manifests and the workspace Rust 1.95 MSRV. Removed orphaned lock records from the imported dialog dependency closure and unified duplicate transitive versions. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Windows MSVC toolchain. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked` | Passed | Windows MSVC; full shell dependency graph compiled after fixing missing GPUI traits, the settings navigation weak-reference type, metadata path input conversion, and GPUI click-count access. |
+| Focused tests for preview, settings, gallery, navigation, metadata-export, history, media-playback, and drag-drop | Passed on rerun | 17 unit tests passed (13 Gallery, 4 Navigation); remaining selected crates have no unit tests. The initial Navigation lifecycle test exposed a missing SessionService test fixture, which was added before rerunning. All selected doc-tests passed (zero defined). |
+| `PHOTAG_DEV_PLUGINS=gallery cargo +1.97.1 run -p photag-shell --locked` | Passed twice after UI ID fix | After moving Gallery after its providers and prefixing Preview/MediaPlayback button IDs, two consecutive starts kept a responsive main window with a nonzero HWND for over 40 seconds each and closed cleanly. Earlier launches reproduced a duplicate `Close` accessibility node and `0xc0000409`; plugin-specific button IDs removed that failure in the two follow-up launches. Test data used a temporary `LOCALAPPDATA` directory. |
+| Windows UI/OLE/dialog/watcher interactions | Partially verified | Native UI automation is unavailable in this environment. The Gallery window starts and responds, but visual inspection, Explorer drag, native dialog interaction, and filesystem notification exercise were not performed. |
+
+The shell provider-order audit found that Gallery was started before MediaPlayback, Tagging, and History despite requiring or optionally consuming those services. Startup now starts Gallery after its providers, and shutdown stops Gallery and History before those dependencies. The duplicate accessibility node came from both Preview and MediaPlayback using the same `Close` button ID; plugin-specific button IDs fixed it in two consecutive Gallery profile launches.

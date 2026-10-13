@@ -190,7 +190,7 @@ impl Render for PlaybackView {
 }
 
 fn button(label: &'static str) -> Button {
-    Button::new(label).label(label)
+    Button::new(format!("media-playback-{label}")).label(label)
 }
 fn format_time(seconds: f64) -> String {
     let total = seconds.max(0.0) as u64;

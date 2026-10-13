@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_ui_bridge::UiViewContribution;
 
@@ -303,5 +302,5 @@ impl Render for PreviewView {
 }
 
 fn button(label: &'static str) -> Button {
-    Button::new(label).label(label)
+    Button::new(format!("preview-{label}")).label(label)
 }

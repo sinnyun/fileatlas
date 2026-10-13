@@ -4,9 +4,11 @@
 
 use std::path::Path;
 
+use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 
-pub(super) fn info_panel(path: &Path) -> Div {
+pub(super) fn info_panel(path: &Path) -> impl IntoElement {
     let name = path
         .file_name()
         .map(|value| value.to_string_lossy().into_owned())

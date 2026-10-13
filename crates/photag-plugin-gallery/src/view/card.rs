@@ -82,7 +82,7 @@ pub(super) fn render_media_card(
         )
         .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
             this.select_media(media_id, event.modifiers(), window, cx);
-            if event.down.click_count >= 2 {
+            if event.click_count() >= 2 {
                 this.preview_media(media_id, cx);
             }
         }))

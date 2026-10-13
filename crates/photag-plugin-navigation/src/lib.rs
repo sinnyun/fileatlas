@@ -550,6 +550,11 @@ mod tests {
         let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
         let _db = context.provide(database).unwrap();
         let _index = context.provide(indexing).unwrap();
+        let _session = context
+            .provide(Arc::new(photag_plugin_session::SessionService::open_at(
+                root.join("session.json"),
+            )))
+            .unwrap();
 
         let watcher = WatcherPlugin;
         let watcher_input = watcher.prepare(WatcherConfig).unwrap();

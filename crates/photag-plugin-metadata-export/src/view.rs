@@ -62,7 +62,7 @@ impl ExportPanel {
             .save_file()
         {
             self.path.update(cx, |state, cx| {
-                state.set_value(&path.to_string_lossy(), window, cx)
+                state.set_value(path.to_string_lossy().into_owned(), window, cx)
             });
             self.input_error = None;
             cx.notify();
