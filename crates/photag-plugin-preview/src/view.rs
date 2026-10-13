@@ -1,23 +1,34 @@
 //! GPUI presentation for the source preview controls.
 
 mod actions;
+mod context_menu;
+mod keyboard;
+mod support;
+mod tag_picker;
 
 use std::sync::Arc;
 
+use cordis::Context as CordisContext;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_plugin_file_operations::FileOperationsService;
+use photag_plugin_history::HistoryService;
 use photag_plugin_settings::SettingsService;
+use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
-use crate::PreviewService;
+use crate::{PreviewMediaKind, PreviewService, classify_media_path};
+use support::{button, clamp_toolbar_offset};
 
 pub fn preview_view(
     service: Arc<PreviewService>,
     settings: Arc<SettingsService>,
+    tagging: Arc<TaggingService>,
+    history: Option<Arc<HistoryService>>,
+    cordis: CordisContext,
     file_operations: Arc<FileOperationsService>,
     runtime: tokio::runtime::Handle,
 ) -> UiViewContribution {
@@ -29,6 +40,8 @@ pub fn preview_view(
             let service = Arc::clone(&service);
             let rename_input =
                 app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
+            let tag_picker_search =
+                app.new(|cx| InputState::new(window, cx).placeholder("Find tags to assign"));
             app.new(|cx| {
                 let view_service = Arc::clone(&service);
                 let focus_handle = cx.focus_handle();
@@ -40,12 +53,14 @@ pub fn preview_view(
                     .as_deref()
                     .and_then(|source| service.progressive_path(source))
                     .is_some();
+                let mut chrome_alpha = service.chrome_alpha();
                 let decode_service = Arc::clone(&service);
                 cx.spawn(async move |this, cx| {
                     loop {
                         cx.background_executor()
                             .timer(std::time::Duration::from_millis(150))
                             .await;
+                        decode_service.advance_wheel_animation();
                         let next_decode_revision = decode_service.decode_revision();
                         let snapshot = decode_service.snapshot();
                         let next_showing_progressive = snapshot
@@ -56,13 +71,18 @@ pub fn preview_view(
                         let changed = this
                             .update(cx, |view: &mut PreviewView, cx| {
                                 let next = view.service.snapshot().revision;
+                                let next_chrome_alpha = view.service.chrome_alpha();
+                                let chrome_changed =
+                                    (next_chrome_alpha - chrome_alpha).abs() > 0.01;
                                 if next != revision
                                     || next_decode_revision != decode_revision
                                     || next_showing_progressive != showing_progressive
+                                    || chrome_changed
                                 {
                                     revision = next;
                                     decode_revision = next_decode_revision;
                                     showing_progressive = next_showing_progressive;
+                                    chrome_alpha = next_chrome_alpha;
                                     cx.notify();
                                 }
                             })
@@ -76,6 +96,9 @@ pub fn preview_view(
                 PreviewView {
                     service: view_service,
                     settings: Arc::clone(&settings),
+                    tagging: Arc::clone(&tagging),
+                    history: history.clone(),
+                    cordis: cordis.clone(),
                     last_drag_position: None,
                     toolbar_drag_origin: None,
                     toolbar_drag_offset: None,
@@ -88,16 +111,27 @@ pub fn preview_view(
                     operation_status: None,
                     operation_busy: false,
                     focus_handle,
+                    tag_picker_search: tag_picker_search.clone(),
+                    tag_picker_open: false,
+                    context_menu_open: false,
+                    show_filmstrip: settings
+                        .snapshot()
+                        .map(|settings| settings.show_filmstrip)
+                        .unwrap_or(false),
+                    last_playback_source: None,
+                    last_seen_source: service.snapshot().source,
                 }
             })
             .into()
         },
     )
 }
-
 struct PreviewView {
     service: Arc<PreviewService>,
     settings: Arc<SettingsService>,
+    tagging: Arc<TaggingService>,
+    history: Option<Arc<HistoryService>>,
+    cordis: CordisContext,
     last_drag_position: Option<(f32, f32)>,
     toolbar_drag_origin: Option<(f32, f32, f32, f32)>,
     toolbar_drag_offset: Option<(f32, f32)>,
@@ -110,18 +144,60 @@ struct PreviewView {
     operation_status: Option<String>,
     operation_busy: bool,
     focus_handle: FocusHandle,
+    tag_picker_search: gpui::Entity<InputState>,
+    tag_picker_open: bool,
+    context_menu_open: bool,
+    show_filmstrip: bool,
+    last_playback_source: Option<std::path::PathBuf>,
+    last_seen_source: Option<std::path::PathBuf>,
 }
 
 impl Render for PreviewView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let snapshot = self.service.snapshot();
-        let display = self.service.display_path();
+        let chrome_alpha = self.service.chrome_alpha();
+        if snapshot.source != self.last_seen_source {
+            self.last_seen_source = snapshot.source.clone();
+            if snapshot.source.is_some() {
+                window.focus(&self.focus_handle, cx);
+            }
+        }
+        if snapshot.media_kind == Some(PreviewMediaKind::Video) {
+            if let Some(path) = snapshot.source.as_ref() {
+                if self.last_playback_source.as_ref() != Some(path) {
+                    self.last_playback_source = Some(path.clone());
+                    match self.service.playback() {
+                        Some(playback) => {
+                            if let Err(error) = playback.open(path) {
+                                self.operation_status = Some(error.to_string());
+                            }
+                        }
+                        None => {
+                            self.operation_status =
+                                Some("Media playback service is unavailable.".into());
+                        }
+                    }
+                }
+            }
+        } else if self.last_playback_source.take().is_some() {
+            if let Some(playback) = self.service.playback() {
+                playback.close();
+            }
+        }
+        let display = if matches!(
+            snapshot.media_kind,
+            Some(PreviewMediaKind::Audio | PreviewMediaKind::Video)
+        ) {
+            Ok(None)
+        } else {
+            self.service.display_path()
+        };
         let title = snapshot
             .source
             .as_ref()
             .and_then(|path| path.file_name())
             .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| "No image selected".into());
+            .unwrap_or_else(|| "No media selected".into());
         let service = Arc::clone(&self.service);
         let close = cx.listener(move |this, _: &ClickEvent, _, cx| {
             this.rename_target = None;
@@ -196,29 +272,88 @@ impl Render for PreviewView {
             service.toggle_zoom_at_cursor();
             cx.notify();
         });
+        let media_kind = snapshot.media_kind;
+        let is_image = media_kind == Some(PreviewMediaKind::Image);
+        let toolbar_settings = self
+            .settings
+            .snapshot()
+            .map(|settings| settings.toolbar)
+            .unwrap_or_default();
         let controls = div()
             .h_flex()
             .items_center()
             .gap_2()
-            .child(button("Rotate left").on_click(rotate_left))
-            .child(button("Rotate right").on_click(rotate_right))
-            .child(button("Flip H").on_click(flip_h))
-            .child(button("Flip V").on_click(flip_v))
-            .child(button("Fit").on_click(fit))
-            .child(button("25%").on_click(zoom_25))
-            .child(button("50%").on_click(zoom_50))
-            .child(button("100%").on_click(zoom_100))
-            .child(button("125%").on_click(zoom_125))
-            .child(button("150%").on_click(zoom_150))
-            .child(button("200%").on_click(zoom_200))
-            .child(
-                button(if snapshot.zoom_at_cursor {
-                    "Zoom: cursor"
-                } else {
-                    "Zoom: center"
-                })
-                .on_click(zoom_mode),
-            )
+            .when(is_image && toolbar_settings.rotate_buttons, |controls| {
+                controls
+                    .child(button("Rotate left").on_click(rotate_left))
+                    .child(button("Rotate right").on_click(rotate_right))
+            })
+            .when(is_image && toolbar_settings.flip_buttons, |controls| {
+                controls
+                    .child(button("Flip H").on_click(flip_h))
+                    .child(button("Flip V").on_click(flip_v))
+            })
+            .when(is_image && toolbar_settings.zoom_reset_button, |controls| {
+                controls.child(button("Fit").on_click(fit))
+            })
+            .when(toolbar_settings.tags_button, |controls| {
+                controls.child(
+                    button(if self.tag_picker_open {
+                        "Hide tags"
+                    } else {
+                        "Tags"
+                    })
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        this.tag_picker_open = !this.tag_picker_open;
+                        cx.notify();
+                    })),
+                )
+            })
+            .when(is_image && toolbar_settings.zoom_presets, |controls| {
+                controls
+                    .child(button("25%").on_click(zoom_25))
+                    .child(button("50%").on_click(zoom_50))
+                    .child(button("100%").on_click(zoom_100))
+                    .child(button("125%").on_click(zoom_125))
+                    .child(button("150%").on_click(zoom_150))
+                    .child(button("200%").on_click(zoom_200))
+            })
+            .when(is_image && toolbar_settings.zoom_mode_button, |controls| {
+                controls.child(
+                    button(if snapshot.zoom_at_cursor {
+                        "Zoom: cursor"
+                    } else {
+                        "Zoom: center"
+                    })
+                    .on_click(zoom_mode),
+                )
+            })
+            .when(toolbar_settings.filmstrip_toggle, |controls| {
+                controls.child(
+                    button(if self.show_filmstrip {
+                        "Hide filmstrip"
+                    } else {
+                        "Show filmstrip"
+                    })
+                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
+                        let show = !this.show_filmstrip;
+                        match this
+                            .settings
+                            .update(|settings| settings.show_filmstrip = show)
+                        {
+                            Ok(_) => {
+                                this.show_filmstrip = show;
+                                this.toolbar_error = None;
+                            }
+                            Err(error) => {
+                                this.operation_status =
+                                    Some(format!("Could not save filmstrip visibility: {error}"))
+                            }
+                        }
+                        cx.notify();
+                    })),
+                )
+            })
             .child(
                 button(if snapshot.show_info {
                     "Hide info"
@@ -228,7 +363,19 @@ impl Render for PreviewView {
                 .on_click(info),
             )
             .child(button("Rename (F2)").on_click(rename))
-            .child(button("Delete").on_click(delete))
+            .when(toolbar_settings.open_external_button, |controls| {
+                controls.child(button("Open externally").on_click(
+                    cx.listener(|this, _: &ClickEvent, _, cx| this.open_in_default_app(cx)),
+                ))
+            })
+            .when(toolbar_settings.explorer_button, |controls| {
+                controls.child(button("Show in folder").on_click(
+                    cx.listener(|this, _: &ClickEvent, _, cx| this.reveal_in_file_manager(cx)),
+                ))
+            })
+            .when(toolbar_settings.delete_button, |controls| {
+                controls.child(button("Delete").on_click(delete))
+            })
             .child(button("Close").on_click(close));
         let bounds = window.bounds().size;
         let viewport_width = (f32::from(bounds.width) - 32.0).max(1.0);
@@ -271,6 +418,49 @@ impl Render for PreviewView {
                 };
                 (image, fit_scale)
             }
+            Ok(None) if media_kind == Some(PreviewMediaKind::Audio) => {
+                let open = cx.listener(|this, _: &ClickEvent, _, cx| {
+                    this.open_in_default_app(cx);
+                });
+                let ratings = (0..=5).map(|rating| {
+                    Button::new(format!("preview-audio-rating-{rating}"))
+                        .label(if rating == 0 {
+                            "No rating".into()
+                        } else {
+                            format!("{rating}★")
+                        })
+                        .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                            this.apply_rating_shortcut(rating, cx);
+                        }))
+                });
+                (
+                    div()
+                        .v_flex()
+                        .items_center()
+                        .justify_center()
+                        .gap_3()
+                        .text_color(rgb(theme::TEXT_PRIMARY))
+                        .child(div().text_2xl().child("♫"))
+                        .child(div().text_lg().font_medium().child(title.clone()))
+                        .child(button("▶  Open in default player").on_click(open))
+                        .child(div().h_flex().gap_1().children(ratings))
+                        .into_any_element(),
+                    1.0,
+                )
+            }
+            Ok(None) if media_kind == Some(PreviewMediaKind::Video) => (
+                div()
+                    .v_flex()
+                    .items_center()
+                    .justify_center()
+                    .gap_2()
+                    .text_color(rgb(theme::TEXT_PRIMARY))
+                    .child(div().text_2xl().child("▶"))
+                    .child(div().text_lg().font_medium().child(title.clone()))
+                    .child("Video is playing in Media Playback.")
+                    .into_any_element(),
+                1.0,
+            ),
             Ok(None) => (
                 div()
                     .text_sm()
@@ -315,6 +505,7 @@ impl Render for PreviewView {
         });
         let can_pan = has_image;
         let moved = cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
+            this.service.mark_activity();
             if !can_pan || !event.dragging() {
                 this.last_drag_position = None;
                 return;
@@ -334,7 +525,11 @@ impl Render for PreviewView {
             .flex_1()
             .min_h_0()
             .w_full()
-            .bg(rgb(theme::SURFACE_BASE))
+            .bg(rgb(if media_kind == Some(PreviewMediaKind::Audio) {
+                0x181818
+            } else {
+                theme::SURFACE_BASE
+            }))
             .overflow_hidden();
         stage = stage.child(
             div()
@@ -346,19 +541,29 @@ impl Render for PreviewView {
                 .overflow_hidden()
                 .on_scroll_wheel(wheel)
                 .on_mouse_down(MouseButton::Left, down)
+                .on_mouse_down(
+                    MouseButton::Right,
+                    cx.listener(|this, _: &MouseDownEvent, _, cx| {
+                        this.context_menu_open = true;
+                        cx.notify();
+                    }),
+                )
                 .on_mouse_move(moved)
                 .on_mouse_up(MouseButton::Left, up)
                 .child(image),
         );
         if snapshot.show_info {
             if let Some(path) = snapshot.source.as_deref() {
+                let indexed = snapshot
+                    .media_id
+                    .and_then(|media_id| support::indexed_info(&self.service, media_id));
                 stage = stage.child(
                     div()
                         .absolute()
                         .left(px(12.0))
                         .top(px(12.0))
                         .max_h_full()
-                        .child(crate::info::info_panel(path)),
+                        .child(crate::info::info_panel(path, indexed)),
                 );
             }
         }
@@ -390,6 +595,7 @@ impl Render for PreviewView {
             }
         });
         let drag_move = cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
+            this.service.mark_activity();
             if !event.dragging() {
                 return;
             }
@@ -444,11 +650,24 @@ impl Render for PreviewView {
                     })
                     .on_mouse_down(MouseButton::Left, drag_start),
             )
-            .child(controls);
+            .child(controls)
+            .on_scroll_wheel(cx.listener(|this, _: &ScrollWheelEvent, _, _| {
+                this.service.mark_activity();
+            }));
         stage = stage
             .on_mouse_move(drag_move)
             .on_mouse_up(MouseButton::Left, drag_end)
-            .child(toolbar);
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _: &MouseDownEvent, _, _| this.service.mark_activity()),
+            )
+            .on_mouse_down(
+                MouseButton::Right,
+                cx.listener(|this, _: &MouseDownEvent, _, _| this.service.mark_activity()),
+            )
+            .when(chrome_alpha > 0.01, |stage| {
+                stage.child(toolbar.opacity(chrome_alpha))
+            });
         if let Some(error) = &self.toolbar_error {
             stage = stage.child(
                 div()
@@ -466,7 +685,7 @@ impl Render for PreviewView {
             .source
             .as_ref()
             .and_then(|source| paths.iter().position(|path| path == source));
-        let strip = if paths.len() > 1 {
+        let strip = if self.show_filmstrip && paths.len() > 1 && chrome_alpha > 0.01 {
             let center = current.unwrap_or(0);
             let start = center.saturating_sub(3);
             let end = (start + 7).min(paths.len());
@@ -475,6 +694,7 @@ impl Render for PreviewView {
                 .enumerate()
                 .map(|(offset, path)| {
                     let path = path.clone();
+                    let media_kind = classify_media_path(&path);
                     let media_id = items[start + offset].1;
                     let service = Arc::clone(&self.service);
                     let selected = start + offset == center;
@@ -509,7 +729,11 @@ impl Render for PreviewView {
                                 .items_center()
                                 .justify_center()
                                 .text_xs()
-                                .child("…")
+                                .child(match media_kind {
+                                    PreviewMediaKind::Audio => "♫",
+                                    PreviewMediaKind::Video => "▶",
+                                    _ => "…",
+                                })
                                 .into_any_element(),
                         })
                 })
@@ -519,11 +743,16 @@ impl Render for PreviewView {
                 .justify_center()
                 .gap_1()
                 .children(items)
+                .opacity(chrome_alpha)
                 .into_any_element()
         } else {
             div().into_any_element()
         };
-        let key_service = Arc::clone(&self.service);
+        let tag_picker_panel = (toolbar_settings.tags_button && self.tag_picker_open)
+            .then(|| tag_picker::render(self, cx));
+        let context_menu_panel = self
+            .context_menu_open
+            .then(|| context_menu::render(self, cx));
         div()
             .v_flex()
             .flex_1()
@@ -531,78 +760,15 @@ impl Render for PreviewView {
             .gap_2()
             .p_3()
             .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
-                if this.rename_target.is_some() {
-                    match event.keystroke.key.as_str() {
-                        "enter" | "Enter" => this.commit_rename(cx),
-                        "escape" | "Escape" => {
-                            this.rename_target = None;
-                            cx.notify();
-                        }
-                        _ => {}
-                    }
-                    return;
-                }
-                if this.delete_confirmation_open {
-                    return;
-                }
-                match event.keystroke.key.as_str() {
-                    "left" | "ArrowLeft" => {
-                        if !this.operation_busy {
-                            key_service.navigate_filmstrip(-1);
-                        }
-                        cx.notify();
-                    }
-                    "right" | "ArrowRight" => {
-                        if !this.operation_busy {
-                            key_service.navigate_filmstrip(1);
-                        }
-                        cx.notify();
-                    }
-                    "escape" | "Escape" => {
-                        key_service.close();
-                        cx.notify();
-                    }
-                    "i" | "I" => {
-                        key_service.toggle_info();
-                        cx.notify();
-                    }
-                    "r" | "R" => {
-                        key_service.rotate_clockwise();
-                        cx.notify();
-                    }
-                    "f" | "F" | "0" => {
-                        key_service.set_fit();
-                        cx.notify();
-                    }
-                    "+" | "=" => {
-                        let zoom = key_service.snapshot().zoom_percent;
-                        let next = [25, 50, 100, 125, 150, 200]
-                            .into_iter()
-                            .find(|preset| *preset > zoom)
-                            .unwrap_or(200);
-                        key_service.set_zoom_percent(next);
-                        cx.notify();
-                    }
-                    "-" => {
-                        let zoom = key_service.snapshot().zoom_percent;
-                        let next = [200, 150, 125, 100, 50, 25]
-                            .into_iter()
-                            .find(|preset| *preset < zoom)
-                            .unwrap_or(25);
-                        key_service.set_zoom_percent(next);
-                        cx.notify();
-                    }
-                    "f2" | "F2" if !this.operation_busy => this.begin_rename(window, cx),
-                    "delete" | "Delete" | "backspace" | "Backspace" => {
-                        if !this.operation_busy {
-                            this.request_delete(window, cx)
-                        }
-                    }
-                    _ => {}
-                }
+            .on_mouse_move(cx.listener(|this, _: &MouseMoveEvent, _, _| {
+                this.service.mark_activity();
             }))
-            .child(div().text_sm().font_medium().child(title))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                this.handle_key(event, window, cx)
+            }))
+            .child(support::title(title, chrome_alpha))
+            .when_some(context_menu_panel, |root, panel| root.child(panel))
+            .when_some(tag_picker_panel, |root, panel| root.child(panel))
             .when_some(self.rename_target, |root, _| {
                 root.child(
                     div()
@@ -630,15 +796,4 @@ impl Render for PreviewView {
             .child(stage)
             .child(strip)
     }
-}
-
-fn button(label: &'static str) -> Button {
-    Button::new(format!("preview-{label}")).label(label)
-}
-
-fn clamp_toolbar_offset(x: f32, y: f32, width: f32, height: f32) -> (f32, f32) {
-    const TOOLBAR_CONTENT_WIDTH: f32 = 920.0;
-    let max_x = ((width - TOOLBAR_CONTENT_WIDTH) / 2.0).max(0.0);
-    let min_y = -(height - 72.0).max(0.0);
-    (x.clamp(-max_x, max_x), y.clamp(min_y, 16.0))
 }

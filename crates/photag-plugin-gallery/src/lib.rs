@@ -14,7 +14,8 @@ pub mod selection;
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
 use photag_contracts::{
-    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
+    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagFilterSelection,
+    TagFilterSelectionChanged, TagSelectionChanged,
 };
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, MediaItem, MediaQuery, MediaSkeleton, Tag};
@@ -63,7 +64,7 @@ impl Service for SelectedFolder {
 }
 
 #[derive(Default)]
-struct SelectedTag(Mutex<Option<i64>>);
+struct SelectedTag(Mutex<TagFilterSelection>);
 
 impl Service for SelectedTag {
     const NAME: &'static str = "photag/gallery-selected-tag";
@@ -275,6 +276,7 @@ impl Plugin for GalleryPlugin {
         let preview = context
             .try_service::<PreviewService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        preview.configure_playback(Arc::clone(&playback));
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
@@ -316,7 +318,7 @@ impl Plugin for GalleryPlugin {
                     *selected = folder_id;
                 }
                 if let Ok(mut selected) = selection_tag_state.0.lock() {
-                    *selected = None;
+                    *selected = TagFilterSelection::default();
                 }
                 if let Ok(mut selected) = selection_path_state.0.lock() {
                     *selected = None;
@@ -328,9 +330,12 @@ impl Plugin for GalleryPlugin {
         let tag_folder_state = Arc::clone(&selected_folder);
         let tag_path_state = Arc::clone(&selected_path);
         let _tag_selection_listener = context
-            .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id| {
+            .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id: Option<i64>| {
                 if let Ok(mut selected) = tag_state.0.lock() {
-                    *selected = tag_id;
+                    *selected = TagFilterSelection {
+                        included: tag_id.into_iter().collect(),
+                        excluded: Vec::new(),
+                    };
                 }
                 if tag_id.is_some() {
                     if let Ok(mut selected) = tag_folder_state.0.lock() {
@@ -342,6 +347,27 @@ impl Plugin for GalleryPlugin {
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))
+            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
+        let tag_filter_state = Arc::clone(&selected_tag);
+        let tag_filter_folder = Arc::clone(&selected_folder);
+        let tag_filter_path = Arc::clone(&selected_path);
+        let _tag_filter_selection_listener = context
+            .on::<TagFilterSelectionChanged, _>(observer_sync(
+                move |_, selection: TagFilterSelection| {
+                    if let Ok(mut selected) = tag_filter_state.0.lock() {
+                        *selected = selection.clone();
+                    }
+                    if !selection.included.is_empty() || !selection.excluded.is_empty() {
+                        if let Ok(mut selected) = tag_filter_folder.0.lock() {
+                            *selected = None;
+                        }
+                        if let Ok(mut selected) = tag_filter_path.0.lock() {
+                            *selected = None;
+                        }
+                    }
+                    Ok::<_, std::convert::Infallible>(())
+                },
+            ))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let path_state = Arc::clone(&selected_path);
         let path_folder_state = Arc::clone(&selected_folder);
@@ -355,7 +381,7 @@ impl Plugin for GalleryPlugin {
                     *selected = None;
                 }
                 if let Ok(mut selected) = path_tag_state.0.lock() {
-                    *selected = None;
+                    *selected = TagFilterSelection::default();
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -600,7 +626,7 @@ mod tests {
             .await
             .unwrap();
         let selected_tag = context.try_service::<SelectedTag>().unwrap();
-        assert_eq!(*selected_tag.0.lock().unwrap(), Some(8));
+        assert_eq!(selected_tag.0.lock().unwrap().included, vec![8]);
         assert_eq!(
             *context
                 .try_service::<SelectedFolder>()

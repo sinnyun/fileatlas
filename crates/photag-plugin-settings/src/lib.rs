@@ -3,7 +3,11 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
+use cordis::Routing;
 use cordis::{Context, Plugin, Service};
+use photag_contracts::{
+    TagExcludeModifier, TagInteractionPreferences, TagInteractionPreferencesChanged,
+};
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
 };
@@ -145,6 +149,13 @@ impl Plugin for SettingsPlugin {
         let publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        context
+            .emit::<TagInteractionPreferencesChanged>(
+                Routing::Unscoped,
+                interaction_preferences(&settings),
+            )
+            .await
+            .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,
             "photag.settings",
@@ -185,11 +196,33 @@ impl Plugin for SettingsPlugin {
         register_views_for_plugin(
             &context,
             "photag.settings",
-            [view::settings(service, navigation, updater, session)],
+            [view::settings(
+                service,
+                navigation,
+                updater,
+                session,
+                context.clone(),
+            )],
         )
         .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         drop(publication);
         Ok(())
+    }
+}
+
+pub(crate) fn interaction_preferences(settings: &Settings) -> TagInteractionPreferences {
+    TagInteractionPreferences {
+        exclude_modifier: match settings.exclude_modifier {
+            crate::ExcludeModifier::None => TagExcludeModifier::None,
+            crate::ExcludeModifier::Ctrl => TagExcludeModifier::Ctrl,
+            crate::ExcludeModifier::Shift => TagExcludeModifier::Shift,
+            crate::ExcludeModifier::Alt => TagExcludeModifier::Alt,
+        },
+        search_match: match settings.tag_search_match {
+            crate::TagSearchMatch::Contains => photag_contracts::TagSearchMatch::Contains,
+            crate::TagSearchMatch::StartsWith => photag_contracts::TagSearchMatch::StartsWith,
+        },
+        search_persist: settings.tag_search_persist,
     }
 }
 

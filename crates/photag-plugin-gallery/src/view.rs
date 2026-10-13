@@ -1,11 +1,13 @@
 //! Native GPUI rendering for the windowed media gallery.
 
+mod behavior;
 mod bulk_actions;
 mod card;
 mod controls;
 mod file_actions;
 mod filter_actions;
 mod keyboard;
+mod render;
 mod tagging_picker;
 
 use std::sync::Arc;
@@ -14,7 +16,10 @@ use std::time::Duration;
 use std::{future::Future, path::PathBuf};
 
 use ::gpui::InteractiveElement as _;
-use ::gpui::{ScrollStrategy, UniformListScrollHandle, uniform_list};
+use ::gpui::{
+    Bounds, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
+    ScrollStrategy, UniformListScrollHandle, point, px, size, uniform_list,
+};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTime};
@@ -53,6 +58,17 @@ fn writeback_failure_signature() -> Vec<(String, String)> {
 struct GalleryVisualRow {
     media_range: std::ops::Range<usize>,
     month_label: Option<String>,
+}
+
+#[derive(Clone)]
+struct GalleryRubberband {
+    start: Point<Pixels>,
+    end: Point<Pixels>,
+    initial_selection: Vec<i64>,
+    initial_anchor: Option<i64>,
+    add: bool,
+    clear_on_click: bool,
+    dragged: bool,
 }
 
 fn build_gallery_rows(
@@ -155,9 +171,11 @@ pub(super) fn gallery(
             }
             let rename_input =
                 app.new(|cx| InputState::new(window, cx).placeholder("New filename"));
+            let bulk_date_from =
+                app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
+            let bulk_date_to =
+                app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
             let bulk_inputs = [
-                "From YYYY-MM-DD",
-                "To YYYY-MM-DD",
                 "Older than days",
                 "Newer than days",
                 "Rating min 0-5",
@@ -190,6 +208,8 @@ pub(super) fn gallery(
                     search,
                     date_from,
                     date_to,
+                    bulk_date_from,
+                    bulk_date_to,
                     rename_input,
                     bulk_inputs,
                     cx,
@@ -220,6 +240,10 @@ struct GalleryView {
     search: Entity<InputState>,
     date_from: Entity<DatePickerState>,
     date_to: Entity<DatePickerState>,
+    bulk_date_from: Entity<DatePickerState>,
+    bulk_date_to: Entity<DatePickerState>,
+    bulk_date_from_value: Option<chrono::NaiveDate>,
+    bulk_date_to_value: Option<chrono::NaiveDate>,
     rename_input: Entity<InputState>,
     bulk_inputs: Vec<Entity<InputState>>,
     bulk_action: Option<BulkActionKind>,
@@ -229,6 +253,7 @@ struct GalleryView {
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
+    rubberband: Option<GalleryRubberband>,
     scroll: UniformListScrollHandle,
     columns: usize,
     row_layout: Arc<Vec<GalleryVisualRow>>,
@@ -266,6 +291,8 @@ impl GalleryView {
         search: Entity<InputState>,
         date_from: Entity<DatePickerState>,
         date_to: Entity<DatePickerState>,
+        bulk_date_from: Entity<DatePickerState>,
+        bulk_date_to: Entity<DatePickerState>,
         rename_input: Entity<InputState>,
         bulk_inputs: Vec<Entity<InputState>>,
         cx: &mut Context<Self>,
@@ -301,6 +328,12 @@ impl GalleryView {
         filter.rating_max = saved.rating_max.unwrap_or(5).clamp(filter.rating_min, 5);
         filter.selected_tag_ids = saved.selected_tag_ids.clone();
         filter.excluded_tag_ids = saved.excluded_tag_ids.clone();
+        if let Ok(mut selected_tags) = selected_tag.0.lock() {
+            if selected_tags.included.is_empty() && selected_tags.excluded.is_empty() {
+                selected_tags.included = saved.selected_tag_ids.clone();
+                selected_tags.excluded = saved.excluded_tag_ids.clone();
+            }
+        }
         let focus_handle = cx.focus_handle();
         let mut _subscriptions = vec![
             cx.subscribe(&tag_picker_search, |_, _, event, cx| {
@@ -329,6 +362,22 @@ impl GalleryView {
                     cx.notify();
                 }
             }),
+            cx.subscribe(&bulk_date_from, |this, _, event, cx| {
+                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
+                    this.bulk_date_from_value = date.map(|value| value.date());
+                    this.confirm_bulk_action = false;
+                    this.confirm_bulk_action_ids = None;
+                    cx.notify();
+                }
+            }),
+            cx.subscribe(&bulk_date_to, |this, _, event, cx| {
+                if let DatePickerEvent::Change(DateTime::Single(date)) = event {
+                    this.bulk_date_to_value = date.map(|value| value.date());
+                    this.confirm_bulk_action = false;
+                    this.confirm_bulk_action_ids = None;
+                    cx.notify();
+                }
+            }),
         ];
         _subscriptions.extend(bulk_inputs.iter().map(|input| {
             cx.subscribe(input, |_, _, event, cx| {
@@ -345,9 +394,8 @@ impl GalleryView {
             .or(saved.selected_folder_id);
         filter.folder_id = selected;
         if let Ok(selected_tag) = selected_tag.0.lock() {
-            if let Some(tag_id) = *selected_tag {
-                filter.selected_tag_ids = vec![tag_id];
-            }
+            filter.selected_tag_ids = selected_tag.included.clone();
+            filter.excluded_tag_ids = selected_tag.excluded.clone();
         }
         filter.path_prefix = selected_path
             .0
@@ -403,11 +451,11 @@ impl GalleryView {
                             .lock()
                             .map(|selected| *selected)
                             .unwrap_or(None);
-                        let selected_tag = view
+                        let selected_tags = view
                             .selected_tag
                             .0
                             .lock()
-                            .map(|selected| selected.iter().copied().collect::<Vec<_>>())
+                            .map(|selected| selected.clone())
                             .unwrap_or_default();
                         let selected_path = view
                             .selected_path
@@ -416,14 +464,16 @@ impl GalleryView {
                             .map(|selected| selected.clone())
                             .unwrap_or(None);
                         let changed = view.filter.folder_id != selected
-                            || view.filter.selected_tag_ids != selected_tag
+                            || view.filter.selected_tag_ids != selected_tags.included
+                            || view.filter.excluded_tag_ids != selected_tags.excluded
                             || view.filter.path_prefix != selected_path;
                         let revision = view.index_revision.0.load(Ordering::Acquire);
                         let index_changed = revision != observed_revision;
                         observed_revision = revision;
                         if changed || index_changed {
                             view.filter.folder_id = selected;
-                            view.filter.selected_tag_ids = selected_tag;
+                            view.filter.selected_tag_ids = selected_tags.included;
+                            view.filter.excluded_tag_ids = selected_tags.excluded;
                             view.filter.path_prefix = selected_path;
                             view.reload();
                             cx.notify();
@@ -471,6 +521,10 @@ impl GalleryView {
             search,
             date_from,
             date_to,
+            bulk_date_from,
+            bulk_date_to,
+            bulk_date_from_value: None,
+            bulk_date_to_value: None,
             rename_input,
             bulk_inputs,
             bulk_action: None,
@@ -480,6 +534,7 @@ impl GalleryView {
             focus_handle,
             filter,
             selection,
+            rubberband: None,
             scroll,
             columns: 4,
             row_layout: Arc::new(Vec::new()),
@@ -556,748 +611,6 @@ impl GalleryView {
         saved.thumb_size = Some(self.thumb_size.clamp(100., 300.));
         saved.group_by_month = Some(self.group_by_month);
         let _ = self.session.replace(saved);
-    }
-
-    fn select_media(
-        &mut self,
-        media_id: i64,
-        modifiers: Modifiers,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        window.focus(&self.focus_handle, cx);
-        let Ok(snapshot) = &self.snapshot else {
-            return;
-        };
-        self.selection.select_click(
-            &snapshot.skeletons,
-            media_id,
-            SelectionModifiers {
-                ctrl: modifiers.control,
-                alt: modifiers.alt,
-                shift: modifiers.shift,
-            },
-        );
-        self.show_exif = false;
-        self.exif_cache = None;
-        self.confirm_delete = false;
-        self.persist_filter_session();
-        cx.notify();
-    }
-
-    fn toggle_exif(&mut self, cx: &mut Context<Self>) {
-        self.show_exif = !self.show_exif;
-        if self.show_exif {
-            let selected_path = self
-                .selection
-                .selected_media_ids
-                .first()
-                .and_then(|&media_id| {
-                    self.snapshot
-                        .as_ref()
-                        .ok()?
-                        .media
-                        .iter()
-                        .find(|media| media.id == media_id)
-                        .map(|media| (media_id, media.full_path.clone()))
-                });
-            if let Some((media_id, path)) = selected_path {
-                self.exif_cache = Some((
-                    media_id,
-                    card::read_exif_fields(&path).map_err(str::to_string),
-                ));
-            }
-        }
-        cx.notify();
-    }
-
-    fn start_operation<F>(&mut self, operation: F, refresh: bool, cx: &mut Context<Self>)
-    where
-        F: Future<Output = String> + Send + 'static,
-    {
-        self.operation_status = Some("Working…".to_string());
-        self.confirm_delete = false;
-        let operation = self.runtime.spawn(operation);
-        cx.spawn(async move |this, cx| {
-            let status = operation
-                .await
-                .unwrap_or_else(|error| format!("Operation task failed: {error}"));
-            let _ = this.update(cx, |this, cx| {
-                if refresh {
-                    this.reload();
-                }
-                this.operation_status = Some(status);
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
-    fn open_selected(&mut self, reveal: bool, cx: &mut Context<Self>) {
-        let Some(&media_id) = self.selection.selected_media_ids.first() else {
-            return;
-        };
-        let operations = Arc::clone(&self.file_operations);
-        self.start_operation(
-            async move {
-                let result = if reveal {
-                    operations.reveal_in_file_manager(media_id).await
-                } else {
-                    operations.open_external(media_id).await
-                };
-                result.map_or_else(
-                    |error| format!("File action failed: {error}"),
-                    |_| {
-                        if reveal {
-                            "Opened containing folder.".to_string()
-                        } else {
-                            "Opened with the system default application.".to_string()
-                        }
-                    },
-                )
-            },
-            false,
-            cx,
-        );
-    }
-
-    fn preview_selected(&mut self, cx: &mut Context<Self>) {
-        let Some(&media_id) = self.selection.selected_media_ids.first() else {
-            return;
-        };
-        self.preview_media(media_id, cx);
-    }
-
-    fn preview_media(&mut self, media_id: i64, cx: &mut Context<Self>) {
-        match self.service.media_by_id(media_id) {
-            Ok(Some(media)) if media.media_type == "image" => {
-                let filmstrip = self
-                    .snapshot
-                    .as_ref()
-                    .map(|snapshot| {
-                        let image_ids = snapshot
-                            .skeletons
-                            .iter()
-                            .filter(|item| !item.is_video && !item.is_audio)
-                            .map(|item| item.id)
-                            .collect::<Vec<_>>();
-                        self.service
-                            .media_path_pairs_by_ids(&image_ids)
-                            .unwrap_or_default()
-                    })
-                    .unwrap_or_default();
-                self.preview.set_filmstrip_media(filmstrip);
-                match self.preview.open_media(media.full_path, Some(media_id)) {
-                    Ok(()) => self.operation_status = Some("Image preview opened.".into()),
-                    Err(error) => self.operation_status = Some(error.to_string()),
-                }
-            }
-            Ok(Some(media)) if media.media_type == "video" => {
-                match self.playback.open(media.full_path) {
-                    Ok(()) => {
-                        self.video_preview_open = true;
-                        self.operation_status = Some("Video playback opened.".into());
-                    }
-                    Err(error) => self.operation_status = Some(error.to_string()),
-                }
-            }
-            Ok(Some(_)) => {
-                self.operation_status = Some("Preview supports images and video.".into())
-            }
-            Ok(None) => self.operation_status = Some("Selected media is no longer indexed.".into()),
-            Err(error) => self.operation_status = Some(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn close_video_preview(&mut self, cx: &mut Context<Self>) {
-        self.playback.close();
-        self.video_preview_open = false;
-        self.operation_status = Some("Returned to the gallery.".into());
-        cx.notify();
-    }
-
-    fn apply_rating(&mut self, rating: u8, cx: &mut Context<Self>) {
-        let media_ids = self.selection.selected_media_ids.clone();
-        self.apply_rating_to(&media_ids, rating);
-        cx.notify();
-    }
-
-    pub(super) fn apply_rating_to(&mut self, media_ids: &[i64], rating: u8) {
-        if media_ids.is_empty() {
-            return;
-        }
-        let old_rating = media_ids
-            .first()
-            .and_then(|id| self.service.media_by_id(*id).ok().flatten())
-            .map(|media| media.rating);
-        match self.service.apply_rating(media_ids, rating) {
-            Ok(()) => {
-                let new_rating = i32::from(rating.min(5));
-                if let (Some(history), Some(old_rating)) = (&self.history, old_rating) {
-                    if old_rating != new_rating {
-                        history.push(UndoEntry::RatingChanged {
-                            media_ids: media_ids.to_vec(),
-                            old_rating,
-                            new_rating,
-                        });
-                    }
-                }
-                self.reload();
-            }
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-    }
-
-    fn set_media_type(&mut self, media_type: MediaTypeFilter, cx: &mut Context<Self>) {
-        if self.filter.media_type != media_type {
-            self.filter.media_type = media_type;
-            self.reload();
-            cx.notify();
-        }
-    }
-
-    fn toggle_search_scope(&mut self, scope: SearchScope, cx: &mut Context<Self>) {
-        self.filter.toggle_search_scope(scope);
-        if let Some(settings) = &self.settings {
-            let scopes = self.filter.search_scopes;
-            if let Err(error) = settings.update(|preferences| {
-                preferences.search_scopes = scopes.into();
-            }) {
-                self.operation_status = Some(format!("Couldn't save search scope: {error}"));
-            }
-        }
-        self.reload();
-        cx.notify();
-    }
-
-    fn set_sort(&mut self, sort: SortOrder, cx: &mut Context<Self>) {
-        if self.filter.sort != sort {
-            self.filter.sort = sort;
-            self.reload();
-            cx.notify();
-        }
-    }
-
-    fn set_rating_bound(&mut self, minimum: bool, value: i32, cx: &mut Context<Self>) {
-        let old_range = (self.filter.rating_min, self.filter.rating_max);
-        self.filter.set_rating_bound(minimum, value);
-        if old_range == (self.filter.rating_min, self.filter.rating_max) {
-            return;
-        }
-        self.reload();
-        cx.notify();
-    }
-
-    fn cycle_extension(&mut self, extension: String, cx: &mut Context<Self>) {
-        self.filter.cycle_extension(&extension);
-        self.reload();
-        cx.notify();
-    }
-
-    fn clear_extensions(&mut self, cx: &mut Context<Self>) {
-        self.filter.clear_extensions();
-        self.reload();
-        cx.notify();
-    }
-
-    pub(super) fn scroll_to_gallery_item(&self, index: usize) {
-        let row_index = self
-            .row_layout
-            .iter()
-            .position(|row| row.media_range.contains(&index))
-            .unwrap_or(index / self.columns.max(1));
-        self.scroll
-            .scroll_to_item(row_index, ScrollStrategy::Nearest);
-    }
-}
-
-impl Render for GalleryView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let columns = ((f32::from(window.bounds().size.width) - 24.) / (self.thumb_size + 44.))
-            .floor()
-            .clamp(1., 4.) as usize;
-        self.columns = columns;
-        let group_by_month = self.group_by_month
-            && matches!(
-                self.filter.sort,
-                SortOrder::NewestFirst | SortOrder::OldestFirst
-            );
-        let row_layout_key = (columns, group_by_month, self.filter.sort);
-        if self.row_layout_key != Some(row_layout_key) {
-            self.row_layout = Arc::new(
-                self.snapshot
-                    .as_ref()
-                    .map(|snapshot| {
-                        build_gallery_rows(&snapshot.skeletons, columns, group_by_month)
-                    })
-                    .unwrap_or_default(),
-            );
-            self.row_layout_key = Some(row_layout_key);
-        }
-        let row_layout = Arc::clone(&self.row_layout);
-        let row_count = row_layout.len();
-        let tag_picker = if self.tagging.is_some() && !self.selection.selected_media_ids.is_empty()
-        {
-            Some(tagging_picker::render(self, cx))
-        } else {
-            None
-        };
-        match &self.snapshot {
-            Ok(snapshot) => {
-                let list_scroll = self.scroll.clone();
-                let card_size = self.thumb_size;
-                let row_layout = Arc::clone(&row_layout);
-                let mut grid = div()
-                    .id("gallery-grid-root")
-                    .track_focus(&self.focus_handle)
-                    .on_key_down(
-                        cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),
-                    )
-                    .v_flex()
-                    .size_full()
-                    .gap_3()
-                    .bg(rgb(theme::SURFACE_PANEL))
-                    .p_4()
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .justify_between()
-                            .child(div().text_lg().font_semibold().child(
-                                if !self.filter.selected_tag_ids.is_empty() {
-                                    "Tagged Media"
-                                } else if self.filter.folder_id.is_some() {
-                                    "Selected Folder"
-                                } else {
-                                    "All Media"
-                                },
-                            ))
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(format!("{} items", snapshot.media_count)),
-                            ),
-                    );
-                let mut gallery_options =
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("Thumbnail size"),
-                        )
-                        .child(Button::new("gallery-thumb-smaller").label("−").on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.thumb_size = (this.thumb_size - 20.).max(100.);
-                                cx.notify();
-                            }),
-                        ))
-                        .child(
-                            div()
-                                .text_xs()
-                                .child(format!("{} px", self.thumb_size as u32)),
-                        )
-                        .child(Button::new("gallery-thumb-larger").label("+").on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.thumb_size = (this.thumb_size + 20.).min(300.);
-                                cx.notify();
-                            }),
-                        ));
-                if matches!(
-                    self.filter.sort,
-                    SortOrder::NewestFirst | SortOrder::OldestFirst
-                ) {
-                    gallery_options = gallery_options.child(
-                        Button::new("gallery-month-groups")
-                            .label(if self.group_by_month {
-                                "Months: on"
-                            } else {
-                                "Months: off"
-                            })
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.group_by_month = !this.group_by_month;
-                                cx.notify();
-                            })),
-                    );
-                }
-                grid = grid.child(gallery_options);
-                if self.video_preview_open {
-                    grid = grid.child(
-                        Button::new("gallery-return-from-video")
-                            .label("Return to gallery")
-                            .on_click(cx.listener(|this, _, _, cx| this.close_video_preview(cx))),
-                    );
-                }
-                grid = grid.child(Input::new(&self.search).w_full());
-                grid = grid.child(controls::search_scope_row(&self.filter, cx));
-                grid = grid.child(controls::clear_filters_button(cx));
-                grid = grid.child(controls::active_filter_row(
-                    &self.filter,
-                    &snapshot.tag_tree,
-                    cx,
-                ));
-                grid = grid.child(controls::media_type_row(&self.filter, cx));
-                grid = grid.child(controls::sort_row(&self.filter, cx));
-                grid = grid.child(controls::rating_row(&self.filter, cx));
-                grid = grid.child(controls::date_row(&self.date_from, &self.date_to));
-                grid = grid.child(controls::extension_row(
-                    &self.filter,
-                    &snapshot.available_extensions,
-                    cx,
-                ));
-                if let Some(tag_picker) = tag_picker {
-                    grid = grid.child(tag_picker);
-                }
-                grid = grid.child(bulk_actions::render(self, cx));
-                if let Some(status) = &self.operation_status {
-                    grid = grid.child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(status.clone()),
-                    );
-                }
-                if self.tagging.is_some() {
-                    for failure in photag_plugin_tagging::writeback::failures() {
-                        let path = failure.path.clone();
-                        let label = failure
-                            .path
-                            .file_name()
-                            .and_then(|name| name.to_str())
-                            .unwrap_or("media")
-                            .to_string();
-                        grid = grid.child(
-                            div()
-                                .h_flex()
-                                .items_center()
-                                .justify_between()
-                                .gap_2()
-                                .rounded_md()
-                                .bg(rgb(theme::SURFACE_FAINT))
-                                .p_2()
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .text_sm()
-                                        .text_color(rgb(theme::TEXT_SECONDARY))
-                                        .child(format!(
-                                            "Tag metadata writeback failed for {label}: {}",
-                                            failure.error
-                                        )),
-                                )
-                                .child(
-                                    Button::new(format!(
-                                        "gallery-clear-writeback-{}",
-                                        failure.path.display()
-                                    ))
-                                    .label("Dismiss")
-                                    .on_click(cx.listener(
-                                        move |_, _, _, cx| {
-                                            photag_plugin_tagging::writeback::clear_failure(&path);
-                                            cx.notify();
-                                        },
-                                    )),
-                                ),
-                        );
-                    }
-                }
-                grid = grid.child(div().h_1().w_full().bg(rgb(theme::SURFACE_FAINT)));
-                grid = grid.child(
-                    div()
-                        .flex_1()
-                        .relative()
-                        .child(
-                            uniform_list(
-                                "gallery-media-rows",
-                                row_count,
-                                cx.processor(
-                                    move |this, range: std::ops::Range<usize>, _window, cx| {
-                                        let mut rows = Vec::with_capacity(range.len());
-                                        let requested_start = row_layout
-                                            .get(range.start)
-                                            .map(|row| row.media_range.start)
-                                            .unwrap_or(0);
-                                        let requested_end = range
-                                            .end
-                                            .checked_sub(1)
-                                            .and_then(|row| row_layout.get(row))
-                                            .map(|row| row.media_range.end)
-                                            .unwrap_or(requested_start);
-                                        let window_range = requested_start
-                                            .saturating_sub(columns * 2)
-                                            ..requested_end.saturating_add(columns * 2);
-                                        let shifted_window = match &this.snapshot {
-                                            Ok(snapshot) => {
-                                                this.service.ensure_window(snapshot, window_range)
-                                            }
-                                            Err(_) => Ok(None),
-                                        };
-                                        match shifted_window {
-                                            Ok(Some(window)) => {
-                                                if let Ok(snapshot) = &mut this.snapshot {
-                                                    snapshot.window_offset = window.offset;
-                                                    snapshot.media = window.media;
-                                                    snapshot.media_tags = window.media_tags;
-                                                }
-                                            }
-                                            Ok(None) => {}
-                                            Err(error) => this.snapshot = Err(error.to_string()),
-                                        }
-                                        if let Ok(snapshot) = &this.snapshot {
-                                            let selected_drag_paths =
-                                                if this.selection.selected_media_ids.is_empty() {
-                                                    Vec::new()
-                                                } else {
-                                                    this.service
-                                                        .media_paths_by_ids(
-                                                            &this.selection.selected_media_ids,
-                                                        )
-                                                        .unwrap_or_default()
-                                                };
-                                            for row_index in range {
-                                                let Some(layout_row) = row_layout.get(row_index)
-                                                else {
-                                                    continue;
-                                                };
-                                                let first = layout_row.media_range.start;
-                                                let end = layout_row.media_range.end;
-                                                let month_label = layout_row.month_label.clone();
-                                                let mut cards = Vec::with_capacity(end - first);
-                                                for skeleton in &snapshot.skeletons[first..end] {
-                                                    if let Some(media) = snapshot
-                                                        .media
-                                                        .iter()
-                                                        .find(|item| item.id == skeleton.id)
-                                                    {
-                                                        let selected = this
-                                                            .selection
-                                                            .selected_media_ids
-                                                            .contains(&media.id);
-                                                        let rating_target_ids = if selected {
-                                                            this.selection
-                                                                .selected_media_ids
-                                                                .clone()
-                                                        } else {
-                                                            vec![media.id]
-                                                        };
-                                                        let drag_paths = if selected
-                                                            && !selected_drag_paths.is_empty()
-                                                        {
-                                                            selected_drag_paths.clone()
-                                                        } else {
-                                                            vec![PathBuf::from(
-                                                                media.full_path.as_str(),
-                                                            )]
-                                                        };
-                                                        cards.push(
-                                                            render_media_card(
-                                                                media,
-                                                                selected,
-                                                                Arc::clone(&this.drag_drop),
-                                                                drag_paths,
-                                                                Arc::clone(&this.drag_allowed),
-                                                                card_size,
-                                                                media.micro_thumb.as_deref(),
-                                                                rating_target_ids,
-                                                                cx,
-                                                            )
-                                                            .into_any_element(),
-                                                        );
-                                                    } else {
-                                                        cards.push(
-                                                            div()
-                                                                .w(px(card_size + 32.))
-                                                                .h(px(card_size + 64.))
-                                                                .rounded_md()
-                                                                .bg(rgb(theme::SURFACE_PANEL))
-                                                                .into_any_element(),
-                                                        );
-                                                    }
-                                                }
-                                                let header = month_label
-                                                    .map(|label| {
-                                                        div()
-                                                            .h(px(20.))
-                                                            .text_sm()
-                                                            .font_semibold()
-                                                            .text_color(rgb(theme::TEXT_SECONDARY))
-                                                            .child(label)
-                                                    })
-                                                    .unwrap_or_else(|| div().h(px(20.)));
-                                                rows.push(
-                                                    div()
-                                                        .id(format!("gallery-row-{row_index}"))
-                                                        .v_flex()
-                                                        .w_full()
-                                                        .h(px(card_size + 92.))
-                                                        .gap_2()
-                                                        .child(header)
-                                                        .child(
-                                                            div().h_flex().gap_3().children(cards),
-                                                        ),
-                                                );
-                                            }
-                                        }
-                                        rows
-                                    },
-                                ),
-                            )
-                            .track_scroll(&list_scroll)
-                            .size_full(),
-                        )
-                        .vertical_scrollbar(&list_scroll),
-                );
-                if snapshot.media.is_empty() {
-                    grid = grid.child(
-                        div()
-                            .flex_1()
-                            .w_full()
-                            .items_center()
-                            .justify_center()
-                            .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("No indexed media in this view."),
-                    );
-                }
-                if !self.selection.selected_media_ids.is_empty() {
-                    grid = grid.child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap_1()
-                            .child(div().text_sm().child(format!(
-                                "{} selected · Rate",
-                                self.selection.selected_media_ids.len()
-                            )))
-                            .children((0..=5).map(|rating| {
-                                Button::new(format!("gallery-rating-{rating}"))
-                                    .label(format!("{rating}★"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.apply_rating(rating, cx)
-                                    }))
-                            }))
-                            .child(
-                                Button::new("gallery-clear-selection")
-                                    .label("Clear")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.selection = GallerySelection::default();
-                                        this.persist_filter_session();
-                                        cx.notify();
-                                    })),
-                            ),
-                    );
-                    let mut actions = div()
-                        .v_flex()
-                        .gap_2()
-                        .rounded_md()
-                        .bg(rgb(theme::SURFACE_PANEL))
-                        .p_3()
-                        .child(div().text_sm().font_semibold().child("File actions"));
-                    if self.selection.selected_media_ids.len() == 1 {
-                        actions = actions.child(
-                            div()
-                                .h_flex()
-                                .gap_2()
-                                .child(
-                                    Button::new("gallery-preview-selected")
-                                        .label("Preview")
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| this.preview_selected(cx)),
-                                        ),
-                                )
-                                .child(Button::new("gallery-open-selected").label("Open").on_click(
-                                    cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
-                                ))
-                                .child(
-                                    Button::new("gallery-reveal-selected")
-                                        .label("Reveal")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.open_selected(true, cx)
-                                        })),
-                                ),
-                        );
-                        actions = actions.child(
-                            div()
-                                .h_flex()
-                                .gap_2()
-                                .child(Input::new(&self.rename_input).w(px(240.)))
-                                .child(
-                                    Button::new("gallery-rename-selected")
-                                        .label("Rename")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.rename_selected_with_repair(cx)
-                                        })),
-                                ),
-                        );
-                    }
-                    actions = actions.child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .child(
-                                Button::new("gallery-copy-selected")
-                                    .label("Copy…")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.copy_selected_with_dialog(cx)
-                                    })),
-                            )
-                            .child(
-                                Button::new("gallery-move-selected")
-                                    .label("Move…")
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.move_selected_with_dialog(cx)
-                                    })),
-                            )
-                            .child(
-                                Button::new("gallery-delete-selected")
-                                    .label("Delete selected")
-                                    .on_click(cx.listener(|this, _, window, cx| {
-                                        this.request_delete_confirmation(window, cx)
-                                    })),
-                            ),
-                    );
-                    grid = grid.child(actions);
-                }
-                if self.selection.selected_media_ids.len() == 1 {
-                    let selected_id = self.selection.selected_media_ids[0];
-                    if let Some(media) = snapshot.media.iter().find(|media| media.id == selected_id)
-                    {
-                        let tags = snapshot
-                            .media_tags
-                            .get(&selected_id)
-                            .map(Vec::as_slice)
-                            .unwrap_or_default();
-                        let open_count = self.service.open_count(selected_id).unwrap_or(0);
-                        let exif_fields = self
-                            .exif_cache
-                            .as_ref()
-                            .filter(|(media_id, _)| *media_id == selected_id)
-                            .map(|(_, fields)| fields);
-                        grid = grid.child(render_media_details(
-                            media,
-                            tags,
-                            open_count,
-                            self.show_exif,
-                            exif_fields,
-                            cx,
-                        ));
-                    }
-                }
-                grid.into_any_element()
-            }
-            Err(error) => div()
-                .size_full()
-                .bg(rgb(theme::SURFACE_PANEL))
-                .p_4()
-                .text_color(rgb(theme::DANGER))
-                .child(format!("Could not load media: {error}"))
-                .into_any_element(),
-        }
     }
 }
 

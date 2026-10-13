@@ -5,7 +5,9 @@
 //! original path remains the identity used by callers.
 
 mod ai_suggestions;
+mod chrome;
 mod info;
+mod plugin;
 mod view;
 
 use std::collections::{HashSet, VecDeque};
@@ -14,23 +16,20 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
-use cordis::{Context, Plugin, Service};
-use photag_plugin_ai::AiService;
-use photag_plugin_file_operations::FileOperationsService;
-use photag_plugin_history::HistoryService;
+use cordis::Service;
+use image::ImageDecoder as _;
+use photag_plugin_database::DatabaseService;
+use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_session::SessionService;
-use photag_plugin_settings::SettingsService;
-use photag_plugin_tagging::TaggingService;
-use photag_ui_bridge::{
-    ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
-};
 
+pub use plugin::{PreviewConfig, PreviewError, PreviewPlugin};
 pub use view::preview_view;
 
 /// Current preview item and the source transform controls.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PreviewSnapshot {
     pub source: Option<PathBuf>,
+    pub media_kind: Option<PreviewMediaKind>,
     /// Database identity when opened by a caller that has an indexed media row.
     pub media_id: Option<i64>,
     /// Clockwise quarter-turn count, normalized to 0..=3.
@@ -48,13 +47,54 @@ pub struct PreviewSnapshot {
     /// Source default is center-anchored wheel zoom; cursor mode preserves the point under the cursor.
     pub zoom_at_cursor: bool,
     pub show_info: bool,
+    /// One-shot request from Gallery's AI Suggest Tags action.
+    pub ai_request_media_id: Option<i64>,
     pub revision: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PreviewMediaKind {
+    Image,
+    Video,
+    Audio,
+    Other,
+}
+
+pub fn classify_media_path(path: &std::path::Path) -> PreviewMediaKind {
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if [
+        "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif", "svg", "ico", "heic", "heif",
+        "avif",
+    ]
+    .contains(&extension.as_str())
+    {
+        PreviewMediaKind::Image
+    } else if [
+        "mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "3gp",
+    ]
+    .contains(&extension.as_str())
+    {
+        PreviewMediaKind::Video
+    } else if [
+        "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a", "opus", "ape", "aiff", "aif",
+    ]
+    .contains(&extension.as_str())
+    {
+        PreviewMediaKind::Audio
+    } else {
+        PreviewMediaKind::Other
+    }
 }
 
 impl Default for PreviewSnapshot {
     fn default() -> Self {
         Self {
             source: None,
+            media_kind: None,
             media_id: None,
             quarter_turns: 0,
             flip_horizontal: false,
@@ -66,6 +106,7 @@ impl Default for PreviewSnapshot {
             pan_y: 0.0,
             zoom_at_cursor: false,
             show_info: false,
+            ai_request_media_id: None,
             revision: 0,
         }
     }
@@ -81,6 +122,18 @@ pub struct PreviewService {
     decode_queue: Arc<DecodeQueue>,
     pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32)>>>,
     decode_revision: Arc<AtomicU64>,
+    database: Mutex<Option<Arc<DatabaseService>>>,
+    last_opened_id: Mutex<Option<i64>>,
+    playback: Mutex<Option<Arc<MediaPlaybackService>>>,
+    wheel_animation: Mutex<WheelAnimation>,
+    last_activity: Mutex<std::time::Instant>,
+}
+
+struct WheelAnimation {
+    target_zoom: f32,
+    target_pan_x: f32,
+    target_pan_y: f32,
+    last_tick: std::time::Instant,
 }
 
 struct DecodeJob {
@@ -145,7 +198,7 @@ impl PreviewService {
             std::thread::spawn(move || {
                 while let Some(job) = queue.pop() {
                     let key = (job.source.clone(), job.max_dim);
-                    let decoded = image::open(&job.source)
+                    let decoded = Self::open_oriented(&job.source)
                         .ok()
                         .map(|image| image.thumbnail(job.max_dim, job.max_dim));
                     let written = decoded.is_some_and(|image| {
@@ -181,6 +234,16 @@ impl PreviewService {
             decode_queue,
             pending_decodes,
             decode_revision,
+            database: Mutex::new(None),
+            last_opened_id: Mutex::new(None),
+            playback: Mutex::new(None),
+            wheel_animation: Mutex::new(WheelAnimation {
+                target_zoom: 1.0,
+                target_pan_x: 0.0,
+                target_pan_y: 0.0,
+                last_tick: std::time::Instant::now(),
+            }),
+            last_activity: Mutex::new(std::time::Instant::now()),
         })
     }
 
@@ -210,8 +273,40 @@ impl PreviewService {
         self.state.lock().map(|s| s.clone()).unwrap_or_default()
     }
 
+    /// Queue an explicit AI suggestions request for the active preview consumer.
+    pub fn request_ai_suggestions(&self, media_id: i64) {
+        if let Ok(mut state) = self.state.lock() {
+            state.ai_request_media_id = Some(media_id);
+        }
+    }
+
+    /// Consume the one-shot AI suggestions request from the preview surface.
+    pub fn take_ai_suggestion_request(&self) -> Option<i64> {
+        self.state.lock().ok()?.ai_request_media_id.take()
+    }
+
     pub fn decode_revision(&self) -> u64 {
         self.decode_revision.load(Ordering::Acquire)
+    }
+
+    pub fn configure_database(&self, database: Arc<DatabaseService>) {
+        if let Ok(mut current) = self.database.lock() {
+            *current = Some(database);
+        }
+    }
+
+    pub fn configure_playback(&self, playback: Arc<MediaPlaybackService>) {
+        if let Ok(mut current) = self.playback.lock() {
+            *current = Some(playback);
+        }
+    }
+
+    pub fn playback(&self) -> Option<Arc<MediaPlaybackService>> {
+        self.playback.lock().ok()?.as_ref().map(Arc::clone)
+    }
+
+    pub fn database(&self) -> Option<Arc<DatabaseService>> {
+        self.database.lock().ok()?.as_ref().map(Arc::clone)
     }
 
     pub fn open(&self, path: impl Into<PathBuf>) -> Result<(), PreviewError> {
@@ -230,6 +325,7 @@ impl PreviewService {
         }
         let mut state = self.state.lock().map_err(|_| PreviewError::StatePoisoned)?;
         state.source = Some(path.clone());
+        state.media_kind = Some(classify_media_path(&path));
         state.media_id = media_id;
         state.quarter_turns = 0;
         state.flip_horizontal = false;
@@ -239,19 +335,37 @@ impl PreviewService {
         state.zoom_scale = 1.0;
         state.pan_x = 0.0;
         state.pan_y = 0.0;
+        state.ai_request_media_id = None;
         state.revision = state.revision.wrapping_add(1);
         drop(state);
         self.restore_preview_transform(&path);
+        self.sync_wheel_animation();
         self.save_preview_path(Some(path));
         self.save_preview_transform();
+        self.mark_activity();
+        if let (Some(media_id), Ok(mut last_id)) = (media_id, self.last_opened_id.lock()) {
+            if *last_id != Some(media_id) {
+                *last_id = Some(media_id);
+                if let Some(database) = self.database() {
+                    let _ = database.with_writer(|connection| {
+                        photag_plugin_database::db::increment_open_count(connection, media_id);
+                        Ok(())
+                    });
+                }
+            }
+        }
         if let Some(source) = self.snapshot().source {
-            self.prewarm_image(&source, 1600);
+            if classify_media_path(&source) == PreviewMediaKind::Image {
+                self.prewarm_image(&source, 1600);
+            }
             let paths = self.filmstrip();
             if let Some(index) = paths.iter().position(|path| path == &source) {
                 for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
-                    self.prewarm_image(path, 96);
-                    if path != &source {
-                        self.prewarm_image(path, 1600);
+                    if classify_media_path(path) == PreviewMediaKind::Image {
+                        self.prewarm_image(path, 96);
+                        if path != &source {
+                            self.prewarm_image(path, 1600);
+                        }
                     }
                 }
             }
@@ -259,7 +373,7 @@ impl PreviewService {
         Ok(())
     }
 
-    /// Set the ordered image paths used by the preview filmstrip and arrow-key navigation.
+    /// Set ordered media paths used by the preview filmstrip and arrow-key navigation.
     /// Only a small neighborhood is decoded ahead, so filtered libraries do not fan out work.
     pub fn set_filmstrip(&self, paths: impl IntoIterator<Item = PathBuf>) {
         let paths: Vec<_> = paths.into_iter().filter(|path| path.is_file()).collect();
@@ -274,7 +388,9 @@ impl PreviewService {
             current.and_then(|path| paths.iter().position(|candidate| candidate == &path))
         {
             for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
-                self.prewarm_image(path, 96);
+                if classify_media_path(path) == PreviewMediaKind::Image {
+                    self.prewarm_image(path, 96);
+                }
             }
         }
     }
@@ -418,9 +534,11 @@ impl PreviewService {
         if let Ok(mut s) = self.state.lock() {
             s.source = None;
             s.media_id = None;
+            s.media_kind = None;
             s.revision = s.revision.wrapping_add(1);
         }
         self.save_preview_path(None);
+        self.mark_activity();
     }
     pub fn rotate_clockwise(&self) {
         self.change(|s| s.quarter_turns = (s.quarter_turns + 1) % 4);
@@ -466,22 +584,39 @@ impl PreviewService {
         if scroll_delta == 0.0 || !scroll_delta.is_finite() || !fit_scale.is_finite() {
             return;
         }
-        self.change(|s| {
-            let old_scale = if s.fit_to_window {
-                fit_scale
-            } else {
-                s.zoom_scale
-            };
-            let new_scale = (old_scale * (1.0 + scroll_delta * 0.0025)).clamp(0.05, 16.0);
-            if s.zoom_at_cursor {
-                let ratio = new_scale / old_scale;
-                s.pan_x = cursor_delta.0 * (1.0 - ratio) + s.pan_x * ratio;
-                s.pan_y = cursor_delta.1 * (1.0 - ratio) + s.pan_y * ratio;
-            }
-            s.fit_to_window = false;
-            s.zoom_scale = new_scale;
-            s.zoom_percent = (new_scale * 100.0).round().clamp(5.0, 1600.0) as u16;
-        });
+        let Ok(mut state) = self.state.lock() else {
+            return;
+        };
+        let Ok(mut animation) = self.wheel_animation.lock() else {
+            return;
+        };
+        let old_target = if state.fit_to_window {
+            state.zoom_scale = fit_scale;
+            state.pan_x = 0.0;
+            state.pan_y = 0.0;
+            animation.target_zoom = fit_scale;
+            animation.target_pan_x = 0.0;
+            animation.target_pan_y = 0.0;
+            fit_scale
+        } else {
+            animation.target_zoom
+        };
+        let new_target = (old_target * (1.0 + scroll_delta * 0.0025)).clamp(0.05, 16.0);
+        if state.zoom_at_cursor {
+            let ratio = new_target / old_target;
+            animation.target_pan_x =
+                cursor_delta.0 * (1.0 - ratio) + animation.target_pan_x * ratio;
+            animation.target_pan_y =
+                cursor_delta.1 * (1.0 - ratio) + animation.target_pan_y * ratio;
+        }
+        animation.target_zoom = new_target;
+        animation.last_tick = std::time::Instant::now();
+        state.fit_to_window = false;
+        state.zoom_percent = (new_target * 100.0).round().clamp(5.0, 1600.0) as u16;
+        state.revision = state.revision.wrapping_add(1);
+        drop(animation);
+        drop(state);
+        self.mark_activity();
     }
 
     pub fn pan_by(&self, dx: f32, dy: f32) {
@@ -497,14 +632,26 @@ impl PreviewService {
     /// Return the original path for the identity transform, otherwise make a cached oriented copy.
     pub fn display_path(&self) -> Result<Option<PathBuf>, PreviewError> {
         let s = self.snapshot();
+        if matches!(
+            s.media_kind,
+            Some(PreviewMediaKind::Audio | PreviewMediaKind::Video)
+        ) {
+            return Ok(None);
+        }
         let Some(source) = s.source else {
             return Ok(None);
         };
-        if s.quarter_turns == 0 && !s.flip_horizontal && !s.flip_vertical {
+        let orientation = Self::read_orientation(&source);
+        let user_transform = s.quarter_turns != 0 || s.flip_horizontal || s.flip_vertical;
+        if !user_transform && orientation == image::metadata::Orientation::NoTransforms {
             return Ok(Some(source));
         }
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         source.hash(&mut hasher);
+        if let Ok(metadata) = std::fs::metadata(&source) {
+            metadata.len().hash(&mut hasher);
+            metadata.modified().ok().hash(&mut hasher);
+        }
         s.quarter_turns.hash(&mut hasher);
         s.flip_horizontal.hash(&mut hasher);
         s.flip_vertical.hash(&mut hasher);
@@ -514,8 +661,8 @@ impl PreviewService {
         if target.is_file() {
             return Ok(Some(target));
         }
-        let mut image = image::open(&source)
-            .map_err(|error| PreviewError::Decode(source.clone(), error.to_string()))?;
+        let mut image = Self::open_oriented(&source)
+            .map_err(|error| PreviewError::Decode(source.clone(), error))?;
         image = match s.quarter_turns {
             1 => image.rotate90(),
             2 => image.rotate180(),
@@ -534,10 +681,36 @@ impl PreviewService {
         Ok(Some(target))
     }
 
+    fn open_oriented(path: &std::path::Path) -> Result<image::DynamicImage, String> {
+        let reader = image::ImageReader::open(path).map_err(|error| error.to_string())?;
+        let mut decoder = reader.into_decoder().map_err(|error| error.to_string())?;
+        let orientation = decoder
+            .orientation()
+            .unwrap_or(image::metadata::Orientation::NoTransforms);
+        let mut decoded =
+            image::DynamicImage::from_decoder(decoder).map_err(|error| error.to_string())?;
+        decoded.apply_orientation(orientation);
+        Ok(decoded)
+    }
+
+    fn read_orientation(path: &std::path::Path) -> image::metadata::Orientation {
+        image::ImageReader::open(path)
+            .ok()
+            .and_then(|reader| reader.into_decoder().ok())
+            .and_then(|mut decoder| decoder.orientation().ok())
+            .unwrap_or(image::metadata::Orientation::NoTransforms)
+    }
+
     fn change(&self, update: impl FnOnce(&mut PreviewSnapshot)) {
         if let Ok(mut state) = self.state.lock() {
             update(&mut state);
             state.revision = state.revision.wrapping_add(1);
+            if let Ok(mut animation) = self.wheel_animation.lock() {
+                animation.target_zoom = state.zoom_scale;
+                animation.target_pan_x = state.pan_x;
+                animation.target_pan_y = state.pan_y;
+                animation.last_tick = std::time::Instant::now();
+            }
         }
         self.save_preview_transform();
     }
@@ -605,118 +778,4 @@ impl PreviewService {
             }
         }
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum PreviewError {
-    #[error("preview source does not exist: {0}")]
-    MissingSource(PathBuf),
-    #[error("preview state lock is poisoned")]
-    StatePoisoned,
-    #[error("could not decode preview image {0}: {1}")]
-    Decode(PathBuf, String),
-    #[error("could not write transformed preview {0}: {1}")]
-    Write(PathBuf, String),
-    #[error("could not initialize preview cache: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("could not publish preview service: {0}")]
-    Publish(String),
-    #[error("session service is unavailable")]
-    SessionUnavailable,
-    #[error("required preview integration service is unavailable: {0}")]
-    IntegrationServiceUnavailable(&'static str),
-    #[error("could not register preview UI: {0}")]
-    Ui(String),
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct PreviewConfig {
-    pub cache_dir: Option<PathBuf>,
-}
-
-pub struct PreviewPlugin;
-impl Plugin for PreviewPlugin {
-    type Config = PreviewConfig;
-    type Input = PreviewConfig;
-    type PrepareError = std::convert::Infallible;
-    type ApplyError = PreviewError;
-    fn name(&self) -> std::borrow::Cow<'_, str> {
-        "photag.preview".into()
-    }
-    fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
-        Ok(config)
-    }
-    async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
-        let directory = config.cache_dir.clone().unwrap_or_else(default_cache_dir);
-        let session = context
-            .try_service::<SessionService>()
-            .map_err(|_| PreviewError::SessionUnavailable)?;
-        let ai = context
-            .try_service::<AiService>()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/ai"))?;
-        let settings = context
-            .try_service::<SettingsService>()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/settings"))?;
-        let tagging = context
-            .try_service::<TaggingService>()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/tagging"))?;
-        let history = context
-            .try_service::<HistoryService>()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/history"))?;
-        let file_operations = context
-            .try_service::<FileOperationsService>()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/file-operations"))?;
-        let runtime = tokio::runtime::Handle::try_current()
-            .map_err(|_| PreviewError::IntegrationServiceUnavailable("tokio runtime"))?;
-        let service = Arc::new(PreviewService::open_with_session_at(directory, session)?);
-        let _publication = context
-            .provide(Arc::clone(&service))
-            .map_err(|error| PreviewError::Publish(error.to_string()))?;
-        register_for_plugin(
-            &context,
-            "photag.preview",
-            [
-                UiContribution::new(
-                    "preview/image",
-                    ContributionKind::Panel {
-                        label: "Image preview".into(),
-                        slot: "workspace.main".into(),
-                        order: 0,
-                    },
-                ),
-                UiContribution::new(
-                    "preview/ai-suggestions",
-                    ContributionKind::Panel {
-                        label: "AI tag suggestions".into(),
-                        slot: "workspace.main".into(),
-                        order: 1,
-                    },
-                ),
-            ],
-        )
-        .map_err(|error| PreviewError::Ui(error.to_string()))?;
-        register_views_for_plugin(
-            &context,
-            "photag.preview",
-            [
-                preview_view(
-                    Arc::clone(&service),
-                    Arc::clone(&settings),
-                    file_operations,
-                    runtime,
-                ),
-                ai_suggestions::view(service, ai, settings, tagging, history),
-            ],
-        )
-        .map_err(|error| PreviewError::Ui(error.to_string()))
-    }
-}
-
-fn default_cache_dir() -> PathBuf {
-    dirs_cache_dir().join("PhoTag").join("preview")
-}
-fn dirs_cache_dir() -> PathBuf {
-    std::env::var_os("LOCALAPPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir)
 }

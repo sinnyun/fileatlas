@@ -15,13 +15,76 @@ impl Event for FolderSelectionChanged {
     type Output = ();
 }
 
-/// Toggle the selected library tag in the gallery; `None` clears tag filtering.
+/// Set a legacy single-tag gallery filter; `None` clears tag filtering.
 pub struct TagSelectionChanged;
 
 impl Event for TagSelectionChanged {
     const NAME: &'static str = "photag/navigation/tag-selection-changed";
     type Args = Option<i64>;
     type Output = ();
+}
+
+/// Replace the gallery's complete tag include/exclude filter from the sidebar.
+/// `TagSelectionChanged` remains available for older single-tag callers.
+pub struct TagFilterSelectionChanged;
+
+impl Event for TagFilterSelectionChanged {
+    const NAME: &'static str = "photag/navigation/tag-filter-selection-changed";
+    type Args = TagFilterSelection;
+    type Output = ();
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TagFilterSelection {
+    pub included: Vec<i64>,
+    pub excluded: Vec<i64>,
+}
+
+/// Settings shared with the tag sidebar without creating a settings/navigation
+/// crate dependency cycle.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TagInteractionPreferences {
+    pub exclude_modifier: TagExcludeModifier,
+    pub search_match: TagSearchMatch,
+    pub search_persist: bool,
+}
+
+impl Default for TagInteractionPreferences {
+    fn default() -> Self {
+        Self {
+            exclude_modifier: TagExcludeModifier::Ctrl,
+            search_match: TagSearchMatch::Contains,
+            search_persist: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagExcludeModifier {
+    None,
+    Ctrl,
+    Shift,
+    Alt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagSearchMatch {
+    Contains,
+    StartsWith,
+}
+
+pub struct TagInteractionPreferencesChanged;
+
+impl Event for TagInteractionPreferencesChanged {
+    const NAME: &'static str = "photag/settings/tag-interaction-preferences-changed";
+    type Args = TagInteractionPreferences;
+    type Output = ();
+}
+
+/// Drag payload for assigning a sidebar tag to a gallery media card.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TagDragPayload {
+    pub source_id: i64,
 }
 
 /// Notify feature views that indexed media rows have changed.

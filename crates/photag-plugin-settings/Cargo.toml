@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 cordis.workspace = true
+photag-contracts = { path = "../photag-contracts" }
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }

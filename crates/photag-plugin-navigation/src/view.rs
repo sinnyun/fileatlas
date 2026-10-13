@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use cordis::{Context as CordisContext, Routing};
@@ -13,15 +13,48 @@ use gpui_kit::component::input::{Input, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::gpui::InteractiveElement as _;
 use gpui_kit::gpui::StatefulInteractiveElement as _;
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_contracts::{
-    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagSelectionChanged,
+    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagDragPayload,
+    TagExcludeModifier, TagFilterSelection, TagFilterSelectionChanged, TagInteractionPreferences,
+    TagSearchMatch,
 };
 use photag_plugin_indexing::scan::ScanProgress;
 use photag_plugin_session::SessionService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
+
+mod render;
+mod support;
+
+use support::{
+    collect_tag_appearance_descendants, collect_tag_ids, find_tag, restore_expanded_directories,
+    tag_matches,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SidebarTab {
+    Folders,
+    Tags,
+}
+
+impl SidebarTab {
+    fn from_session(value: &str) -> Self {
+        match value {
+            "Tags" => Self::Tags,
+            _ => Self::Folders,
+        }
+    }
+
+    fn session_value(self) -> &'static str {
+        match self {
+            Self::Folders => "Folders",
+            Self::Tags => "Tags",
+        }
+    }
+}
 
 pub(super) fn sidebar(
     service: Arc<NavigationService>,
@@ -30,6 +63,7 @@ pub(super) fn sidebar(
     selected_folder_id: Option<i64>,
     selected_path: Option<String>,
     expanded_subdirs: HashSet<String>,
+    preferences: Arc<RwLock<TagInteractionPreferences>>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "navigation/sidebar-view",
@@ -43,7 +77,10 @@ pub(super) fn sidebar(
             let view_selected_folder_id = selected_folder_id;
             let view_selected_path = selected_path.clone();
             let view_expanded_subdirs = expanded_subdirs.clone();
+            let view_preferences = Arc::clone(&preferences);
             let folder_path = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
+            let new_folder_name =
+                app.new(|cx| InputState::new(window, cx).placeholder("Folder name"));
             let tag_name = app.new(|cx| InputState::new(window, cx).placeholder("New tag name"));
             let tag_parent =
                 app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID (optional)"));
@@ -56,6 +93,7 @@ pub(super) fn sidebar(
             });
             let tag_move_target =
                 app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID"));
+            let tag_search = app.new(|cx| InputState::new(window, cx).placeholder("Search tags…"));
             app.new(|_| {
                 SidebarView::new(
                     view_service,
@@ -65,13 +103,19 @@ pub(super) fn sidebar(
                     view_selected_path,
                     view_expanded_subdirs,
                     saved.expanded_tag_ids,
+                    saved.selected_tag_ids,
+                    saved.excluded_tag_ids,
+                    SidebarTab::from_session(&saved.sidebar_tab),
                     folder_path,
+                    new_folder_name,
                     tag_name,
                     tag_parent,
                     tag_edit_name,
                     tag_color,
                     tag_icon,
                     tag_move_target,
+                    tag_search,
+                    view_preferences,
                 )
             })
             .into()
@@ -84,12 +128,14 @@ struct SidebarView {
     cordis: CordisContext,
     session: Arc<SessionService>,
     folder_path: Entity<InputState>,
+    new_folder_name: Entity<InputState>,
     tag_name: Entity<InputState>,
     tag_parent: Entity<InputState>,
     tag_edit_name: Entity<InputState>,
     tag_color: Entity<InputState>,
     tag_icon: Entity<InputState>,
     tag_move_target: Entity<InputState>,
+    tag_search: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
@@ -98,6 +144,15 @@ struct SidebarView {
     restored_folder_id: Option<i64>,
     restored_path: Option<String>,
     restore_selection_pending: bool,
+    preferences: Arc<RwLock<TagInteractionPreferences>>,
+    included_tags: Vec<i64>,
+    excluded_tags: Vec<i64>,
+    active_tab: SidebarTab,
+    new_folder_parent: Option<String>,
+    exclude_mode: bool,
+    tag_search_match: TagSearchMatch,
+    apply_tag_appearance_to_children: bool,
+    exclude_edited_tag_children: bool,
 }
 
 impl SidebarView {
@@ -109,13 +164,19 @@ impl SidebarView {
         restored_path: Option<String>,
         expanded_subdirs: HashSet<String>,
         expanded_tags: HashSet<i64>,
+        included_tags: Vec<i64>,
+        excluded_tags: Vec<i64>,
+        active_tab: SidebarTab,
         folder_path: Entity<InputState>,
+        new_folder_name: Entity<InputState>,
         tag_name: Entity<InputState>,
         tag_parent: Entity<InputState>,
         tag_edit_name: Entity<InputState>,
         tag_color: Entity<InputState>,
         tag_icon: Entity<InputState>,
         tag_move_target: Entity<InputState>,
+        tag_search: Entity<InputState>,
+        preferences: Arc<RwLock<TagInteractionPreferences>>,
     ) -> Self {
         let snapshot = service.snapshot().map_err(|error| error.to_string());
         let mut expanded_tags = expanded_tags;
@@ -144,12 +205,14 @@ impl SidebarView {
             cordis,
             session,
             folder_path,
+            new_folder_name,
             tag_name,
             tag_parent,
             tag_edit_name,
             tag_color,
             tag_icon,
             tag_move_target,
+            tag_search,
             snapshot,
             active_scan: None,
             scan_progress: None,
@@ -158,6 +221,15 @@ impl SidebarView {
             restored_folder_id,
             restored_path,
             restore_selection_pending: true,
+            preferences,
+            included_tags,
+            excluded_tags,
+            active_tab,
+            new_folder_parent: None,
+            exclude_mode: false,
+            tag_search_match: TagSearchMatch::Contains,
+            apply_tag_appearance_to_children: false,
+            exclude_edited_tag_children: true,
         }
     }
 
@@ -297,17 +369,167 @@ impl SidebarView {
         .detach();
     }
 
-    fn select_tag(&self, tag_id: Option<i64>, cx: &mut Context<Self>) {
+    fn switch_tab(&mut self, tab: SidebarTab, window: &mut Window, cx: &mut Context<Self>) {
+        if self.active_tab == tab {
+            return;
+        }
+        if self.active_tab == SidebarTab::Tags {
+            let clear_search = self
+                .preferences
+                .read()
+                .map(|preferences| !preferences.search_persist)
+                .unwrap_or(false);
+            if clear_search {
+                self.tag_search
+                    .update(cx, |state, cx| state.set_value("", window, cx));
+            }
+        }
+        self.active_tab = tab;
+        if let Ok(mut session) = self.session.snapshot() {
+            session.sidebar_tab = tab.session_value().to_owned();
+            if let Err(error) = self.session.replace(session) {
+                eprintln!("sidebar tab session save failed: {error}");
+            }
+        }
+        cx.notify();
+    }
+
+    fn request_new_subfolder(
+        &mut self,
+        parent: String,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.new_folder_name
+            .update(cx, |state, cx| state.set_value("", window, cx));
+        self.new_folder_parent = Some(parent);
+        cx.notify();
+    }
+
+    fn create_subfolder(&mut self, cx: &mut Context<Self>) {
+        let Some(parent) = self.new_folder_parent.clone() else {
+            return;
+        };
+        let name = self.new_folder_name.read(cx).value().trim().to_owned();
+        if name.is_empty() || name.contains(['/', '\\', ':', '*', '?', '"', '<', '>', '|']) {
+            self.snapshot = Err("Folder name is empty or contains an invalid character".into());
+            cx.notify();
+            return;
+        }
+        let target = Path::new(&parent).join(&name);
+        if target.exists() {
+            self.snapshot = Err(format!("Folder already exists: {}", target.display()));
+            cx.notify();
+            return;
+        }
+        if let Err(error) = std::fs::create_dir(&target) {
+            self.snapshot = Err(format!("Could not create folder: {error}"));
+            cx.notify();
+            return;
+        }
+        if self.expanded_directories.contains_key(&parent) {
+            let children = self.service.subdirectories(&parent);
+            self.expanded_directories.insert(parent, children);
+        }
+        self.new_folder_parent = None;
+        self.refresh();
+        cx.notify();
+    }
+
+    fn open_folder_in_explorer(&self, path: &str) {
+        #[cfg(target_os = "windows")]
+        let result = std::process::Command::new("explorer").arg(path).spawn();
+        #[cfg(target_os = "linux")]
+        let result = std::process::Command::new("xdg-open").arg(path).spawn();
+        #[cfg(target_os = "macos")]
+        let result = std::process::Command::new("open").arg(path).spawn();
+        if let Err(error) = result {
+            eprintln!("open folder in file manager failed: {error}");
+        }
+    }
+
+    fn select_tag(&mut self, tag_id: Option<i64>, cx: &mut Context<Self>) {
+        if let Some(tag_id) = tag_id {
+            self.included_tags.clear();
+            self.excluded_tags.clear();
+            self.included_tags.push(tag_id);
+        } else {
+            self.included_tags.clear();
+            self.excluded_tags.clear();
+        }
+        self.emit_tag_selection(cx);
+    }
+
+    fn emit_tag_selection(&self, cx: &mut Context<Self>) {
         let cordis = self.cordis.clone();
+        let selection = TagFilterSelection {
+            included: self.included_tags.clone(),
+            excluded: self.excluded_tags.clone(),
+        };
         cx.spawn(async move |_, _| {
             if let Err(error) = cordis
-                .emit::<TagSelectionChanged>(Routing::Unscoped, tag_id)
+                .emit::<TagFilterSelectionChanged>(Routing::Unscoped, selection)
                 .await
             {
                 eprintln!("tag selection dispatch failed: {error}");
             }
         })
         .detach();
+    }
+
+    fn toggle_tag_selection(&mut self, tag_id: i64, modifiers: Modifiers, cx: &mut Context<Self>) {
+        let prefs = self
+            .preferences
+            .read()
+            .map(|prefs| *prefs)
+            .unwrap_or_default();
+        let modifier_held = match prefs.exclude_modifier {
+            TagExcludeModifier::None => false,
+            TagExcludeModifier::Ctrl => modifiers.control,
+            TagExcludeModifier::Shift => modifiers.shift,
+            TagExcludeModifier::Alt => modifiers.alt,
+        };
+        let exclude = self.exclude_mode ^ modifier_held;
+        let (target, other) = if exclude {
+            (&mut self.excluded_tags, &mut self.included_tags)
+        } else {
+            (&mut self.included_tags, &mut self.excluded_tags)
+        };
+        other.retain(|id| *id != tag_id);
+        if target.contains(&tag_id) {
+            target.retain(|id| *id != tag_id);
+        } else {
+            target.push(tag_id);
+        }
+        self.emit_tag_selection(cx);
+        cx.notify();
+    }
+
+    fn select_all_tags(
+        &mut self,
+        tags: &[photag_plugin_database::db::queries::Tag],
+        cx: &mut Context<Self>,
+    ) {
+        fn collect(tags: &[photag_plugin_database::db::queries::Tag], ids: &mut Vec<i64>) {
+            for tag in tags {
+                ids.push(tag.id);
+                collect(&tag.children, ids);
+            }
+        }
+        let mut all = Vec::new();
+        collect(tags, &mut all);
+        let target = if self.exclude_mode {
+            &mut self.excluded_tags
+        } else {
+            &mut self.included_tags
+        };
+        if target.len() == all.len() {
+            target.clear();
+        } else {
+            *target = all;
+        }
+        self.emit_tag_selection(cx);
+        cx.notify();
     }
 
     fn toggle_directory(&mut self, path: &str) {
@@ -407,11 +629,37 @@ impl SidebarView {
         }
         let color = if color.is_empty() { None } else { Some(color) };
         let icon = if icon.is_empty() { None } else { Some(icon) };
+        let mut descendants = Vec::new();
+        if self.apply_tag_appearance_to_children {
+            if let Ok(snapshot) = &self.snapshot {
+                if let Some(tag) = find_tag(&snapshot.tags, id) {
+                    collect_tag_appearance_descendants(tag, &mut descendants);
+                }
+            }
+        }
         match self
             .service
             .set_tag_appearance(id, color.as_deref(), icon.as_deref())
         {
-            Ok(()) => self.refresh(),
+            Ok(()) => {
+                let mut propagation_error = None;
+                for (child_id, has_explicit_appearance) in descendants {
+                    if self.exclude_edited_tag_children && has_explicit_appearance {
+                        continue;
+                    }
+                    if let Err(error) =
+                        self.service
+                            .set_tag_appearance(child_id, color.as_deref(), icon.as_deref())
+                    {
+                        propagation_error = Some(error.to_string());
+                        break;
+                    }
+                }
+                self.refresh();
+                if let Some(error) = propagation_error {
+                    self.snapshot = Err(error);
+                }
+            }
             Err(error) => self.snapshot = Err(error.to_string()),
         }
         cx.notify();
@@ -421,7 +669,9 @@ impl SidebarView {
         match self.service.delete_tag(id) {
             Ok(()) => {
                 self.refresh();
-                self.select_tag(None, cx);
+                self.included_tags.retain(|tag_id| *tag_id != id);
+                self.excluded_tags.retain(|tag_id| *tag_id != id);
+                self.emit_tag_selection(cx);
                 self.notify_media_index(cx);
             }
             Err(error) => self.snapshot = Err(error.to_string()),
@@ -488,629 +738,4 @@ impl SidebarView {
             state.set_value(&id.to_string(), window, cx);
         });
     }
-}
-
-impl Render for SidebarView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.restore_selection_pending {
-            self.restore_selection_pending = false;
-            let cordis = self.cordis.clone();
-            let folder_id = self.restored_folder_id;
-            let path = self.restored_path.clone();
-            cx.spawn(async move |_, _| {
-                if let Err(error) = cordis
-                    .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
-                    .await
-                {
-                    eprintln!("restored folder selection dispatch failed: {error}");
-                }
-                if let Err(error) = cordis
-                    .emit::<DirectoryPathSelected>(Routing::Unscoped, path)
-                    .await
-                {
-                    eprintln!("restored directory selection dispatch failed: {error}");
-                }
-            })
-            .detach();
-        }
-        let mut panel = div()
-            .v_flex()
-            .size_full()
-            .gap_1()
-            .bg(rgb(theme::SURFACE_BASE))
-            .p_3()
-            .child(div().text_sm().font_semibold().child("LIBRARY"));
-        match &self.snapshot {
-            Ok(snapshot) => {
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .justify_between()
-                        .pt_2()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("Folders"),
-                        )
-                        .child(Button::new("navigation-refresh").label("Refresh").on_click(
-                            cx.listener(|this, _, _, cx| {
-                                this.refresh();
-                                cx.notify();
-                            }),
-                        )),
-                );
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .gap_1()
-                        .child(Input::new(&self.folder_path).flex_1())
-                        .child(
-                            Button::new("navigation-browse-folder")
-                                .label("Browse…")
-                                .on_click(cx.listener(|this, _, _, cx| this.pick_folder(cx))),
-                        )
-                        .child(
-                            Button::new("navigation-add-folder")
-                                .label("Add")
-                                .on_click(cx.listener(|this, _, _, cx| this.add_folder(cx))),
-                        ),
-                );
-                panel = panel.child(
-                    Button::new("navigation-all-media")
-                        .label("All Media")
-                        .on_click(cx.listener(|this, _, _, cx| this.select_folder(None, cx))),
-                );
-                for node in &snapshot.folders {
-                    let expanded = self.expanded_directories.get(&node.folder.path);
-                    panel =
-                        panel.child(
-                            div()
-                                .v_flex()
-                                .gap_1()
-                                .child(
-                                    div().w_full().rounded_md().px_2().py_1().text_sm().child(
-                                        format!("{}  {}", node.folder.name, node.media_count),
-                                    ),
-                                )
-                                .child(
-                                    div()
-                                        .h_flex()
-                                        .gap_1()
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-expand-root-{}",
-                                                node.folder.id
-                                            ))
-                                            .label(if expanded.is_some() {
-                                                "Collapse"
-                                            } else {
-                                                "Expand"
-                                            })
-                                            .on_click(cx.listener({
-                                                let path = node.folder.path.clone();
-                                                move |this, _, _, cx| {
-                                                    this.toggle_directory(&path);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-select-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Open")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.select_folder(Some(folder_id), cx)
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-rescan-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Rescan")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.rescan(folder_id, cx);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        )
-                                        .child(
-                                            Button::new(format!(
-                                                "navigation-remove-{}",
-                                                node.folder.id
-                                            ))
-                                            .label("Remove")
-                                            .on_click(cx.listener({
-                                                let folder_id = node.folder.id;
-                                                move |this, _, _, cx| {
-                                                    this.remove_folder(folder_id, cx);
-                                                    cx.notify();
-                                                }
-                                            })),
-                                        ),
-                                ),
-                        );
-                    if let Some(children) = expanded {
-                        panel = panel.children(children.iter().map(|child| {
-                            render_subdirectory(child, &self.expanded_directories, cx)
-                        }));
-                    }
-                }
-                if let Some(progress) = &self.scan_progress {
-                    panel = panel.child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(format!(
-                                "{}: {} / {} files",
-                                progress.phase, progress.scanned, progress.total
-                            )),
-                    );
-                }
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .justify_between()
-                        .pt_3()
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("Tags"),
-                        )
-                        .child(
-                            Button::new("navigation-clear-tag-filter")
-                                .label("Clear")
-                                .on_click(cx.listener(|this, _, _, cx| this.select_tag(None, cx))),
-                        ),
-                );
-                panel = panel.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child("Tag management"),
-                );
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .gap_1()
-                        .child(Input::new(&self.tag_name).flex_1())
-                        .child(Input::new(&self.tag_parent).flex_1())
-                        .child(
-                            Button::new("navigation-create-tag")
-                                .label("Create")
-                                .on_click(cx.listener(|this, _, _, cx| this.create_tag(cx))),
-                        ),
-                );
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .gap_1()
-                        .child(Input::new(&self.tag_edit_name).flex_1())
-                        .child(Input::new(&self.tag_color).flex_1())
-                        .child(Input::new(&self.tag_icon).flex_1()),
-                );
-                panel = panel.child(
-                    div()
-                        .h_flex()
-                        .gap_1()
-                        .child(Input::new(&self.tag_move_target).flex_1())
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child("Set fields, then use a tag row action"),
-                        ),
-                );
-                panel.children(
-                    snapshot
-                        .tags
-                        .iter()
-                        .map(|tag| render_tag(tag, &self.expanded_tags, cx)),
-                )
-            }
-            Err(error) => panel.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::DANGER))
-                    .child(format!("Could not load library: {error}")),
-            ),
-        }
-    }
-}
-
-fn collect_tag_ids(tag: &photag_plugin_database::db::queries::Tag, output: &mut HashSet<i64>) {
-    output.insert(tag.id);
-    for child in &tag.children {
-        collect_tag_ids(child, output);
-    }
-}
-
-fn restore_expanded_directories(
-    service: &NavigationService,
-    snapshot: &NavigationSnapshot,
-    requested: &HashSet<String>,
-) -> HashMap<String, Vec<SubdirectoryNode>> {
-    let mut expanded = HashMap::new();
-    for path in requested {
-        let target = Path::new(path);
-        if !target.is_dir() {
-            continue;
-        }
-        let Some(folder) = snapshot
-            .folders
-            .iter()
-            .find(|folder| target.starts_with(Path::new(&folder.folder.path)))
-        else {
-            continue;
-        };
-        let root = Path::new(&folder.folder.path);
-        let Ok(relative) = target.strip_prefix(root) else {
-            continue;
-        };
-        let mut current = root.to_path_buf();
-        let mut reachable = true;
-        for component in relative.components() {
-            let children = service.subdirectories(&current.to_string_lossy());
-            let next = current.join(component);
-            if requested.contains(&current.to_string_lossy().into_owned()) {
-                expanded.insert(current.to_string_lossy().into_owned(), children.clone());
-            }
-            if !children.iter().any(|child| Path::new(&child.path) == next) {
-                reachable = false;
-                break;
-            }
-            current = next;
-        }
-        if reachable && requested.contains(path) {
-            let children = service.subdirectories(path);
-            expanded.insert(path.clone(), children);
-        }
-    }
-    expanded
-}
-
-fn render_tag(
-    tag: &photag_plugin_database::db::queries::Tag,
-    expanded: &HashSet<i64>,
-    cx: &mut Context<SidebarView>,
-) -> Div {
-    let indent = "  ".repeat(tag.full_path.matches('>').count());
-    let tag_id = tag.id;
-    let select = Button::new(format!("navigation-tag-{}", tag.id))
-        .label("Filter")
-        .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(tag_id), cx)));
-    let tag_name = tag.name.clone();
-    let tag_color = tag.color.clone().unwrap_or_default();
-    let tag_icon = tag.icon.clone().unwrap_or_default();
-    let [red, green, blue] = tag
-        .color
-        .as_deref()
-        .and_then(crate::parse_hex_color)
-        .unwrap_or([120, 120, 130]);
-    let select_name_id = tag.id;
-    let name = Button::new(format!("navigation-tag-name-{}", tag.id))
-        .label(format!(
-            "{indent}{} {}  {}",
-            tag.icon
-                .as_deref()
-                .filter(|icon| !icon.is_empty())
-                .unwrap_or("🏷"),
-            tag.name,
-            tag.media_count
-        ))
-        .on_click(cx.listener(move |this, _, _, cx| this.select_tag(Some(select_name_id), cx)));
-    let drag_name = div()
-        .id(format!("navigation-tag-drag-{}", tag.id))
-        .on_drag(TagDragPayload { source_id: tag.id }, |payload, _, _, cx| {
-            cx.new(|_| TagDragGhost {
-                label: format!("Move tag {}", payload.source_id),
-            })
-        })
-        .child(name);
-    let edit_name = tag_name;
-    let edit_color = tag_color;
-    let edit_icon = tag_icon;
-    let edit_id = tag.id;
-    let edit = Button::new(format!("navigation-tag-edit-{edit_id}"))
-        .label("Edit fields")
-        .on_click(cx.listener(move |this, _, window, cx| {
-            let name = edit_name.clone();
-            let color = edit_color.clone();
-            let icon = edit_icon.clone();
-            this.tag_edit_name
-                .update(cx, |state, cx| state.set_value(&name, window, cx));
-            this.tag_color
-                .update(cx, |state, cx| state.set_value(&color, window, cx));
-            this.tag_icon
-                .update(cx, |state, cx| state.set_value(&icon, window, cx));
-        }));
-    let rename = Button::new(format!("navigation-tag-rename-{edit_id}"))
-        .label("Rename")
-        .on_click(cx.listener(move |this, _, _, cx| this.rename_tag(edit_id, cx)));
-    let appearance_id = tag.id;
-    let appearance = Button::new(format!("navigation-tag-appearance-{appearance_id}"))
-        .label("Save style")
-        .on_click(cx.listener(move |this, _, _, cx| this.update_tag_appearance(appearance_id, cx)));
-    let display_id = tag.id;
-    let was_displayed = tag.display;
-    let display = Button::new(format!("navigation-tag-display-{display_id}"))
-        .label(if was_displayed {
-            "Hide chips"
-        } else {
-            "Show chips"
-        })
-        .on_click(cx.listener(move |this, _, _, cx| {
-            this.toggle_tag_display(display_id, !was_displayed, cx)
-        }));
-    let delete_id = tag.id;
-    let delete = Button::new(format!("navigation-tag-delete-{delete_id}"))
-        .label("Delete")
-        .on_click(cx.listener(move |this, _, _, cx| this.delete_tag(delete_id, cx)));
-    let move_id = tag.id;
-    let move_into = Button::new(format!("navigation-tag-move-{move_id}"))
-        .label("Move into ID")
-        .on_click(cx.listener(move |this, _, _, cx| this.move_tag_into(move_id, cx)));
-    let parent_id = tag.id;
-    let use_parent = Button::new(format!("navigation-tag-parent-{parent_id}"))
-        .label("Use as parent")
-        .on_click(cx.listener(move |this, _, window, cx| {
-            this.use_tag_as_parent(parent_id, window, cx);
-            cx.notify();
-        }));
-    let is_expanded = expanded.contains(&tag.id);
-    let toggle_id = tag.id;
-    let toggle = Button::new(format!("navigation-tag-expand-{toggle_id}"))
-        .label(if is_expanded { "−" } else { "+" })
-        .on_click(cx.listener(move |this, _, _, cx| {
-            this.toggle_tag(toggle_id);
-            cx.notify();
-        }));
-    let menu_id = tag.id;
-    let menu_name = tag.name.clone();
-    let menu_color = tag.color.clone().unwrap_or_default();
-    let menu_icon = tag.icon.clone().unwrap_or_default();
-    let menu_display = tag.display;
-    let view = cx.entity().downgrade();
-    let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
-        .label("⋯")
-        .dropdown_menu(move |mut menu, _, _| {
-            let edit_view = view.clone();
-            let edit_name = menu_name.clone();
-            let edit_color = menu_color.clone();
-            let edit_icon = menu_icon.clone();
-            menu = menu.item(
-                PopupMenuItem::new("Edit fields").on_click(move |_, window, cx| {
-                    let _ = edit_view.update(cx, |this, cx| {
-                        this.tag_edit_name
-                            .update(cx, |state, cx| state.set_value(&edit_name, window, cx));
-                        this.tag_color
-                            .update(cx, |state, cx| state.set_value(&edit_color, window, cx));
-                        this.tag_icon
-                            .update(cx, |state, cx| state.set_value(&edit_icon, window, cx));
-                        cx.notify();
-                    });
-                }),
-            );
-            let rename_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new("Rename from editor").on_click(move |_, _, cx| {
-                    let _ = rename_view.update(cx, |this, cx| {
-                        this.rename_tag(menu_id, cx);
-                        cx.notify();
-                    });
-                }),
-            );
-            let display_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(if menu_display {
-                    "Hide chips"
-                } else {
-                    "Show chips"
-                })
-                .on_click(move |_, _, cx| {
-                    let _ = display_view.update(cx, |this, cx| {
-                        this.toggle_tag_display(menu_id, !menu_display, cx);
-                        cx.notify();
-                    });
-                }),
-            );
-            let parent_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new("Use as parent").on_click(move |_, window, cx| {
-                    let _ = parent_view.update(cx, |this, cx| {
-                        this.use_tag_as_parent(menu_id, window, cx);
-                        cx.notify();
-                    });
-                }),
-            );
-            let style_view = view.clone();
-            menu = menu.item(PopupMenuItem::new("Save style").on_click(move |_, _, cx| {
-                let _ = style_view.update(cx, |this, cx| {
-                    this.update_tag_appearance(menu_id, cx);
-                    cx.notify();
-                });
-            }));
-            let delete_view = view.clone();
-            let delete_name = menu_name.clone();
-            menu.item(
-                PopupMenuItem::new(format!("Delete {delete_name}")).on_click(move |_, _, cx| {
-                    let _ = delete_view.update(cx, |this, cx| {
-                        this.delete_tag(menu_id, cx);
-                        cx.notify();
-                    });
-                }),
-            )
-        });
-    let children = if is_expanded {
-        tag.children
-            .iter()
-            .map(|child| render_tag(child, expanded, cx))
-            .collect::<Vec<_>>()
-    } else {
-        Vec::new()
-    };
-    let before_id = tag.id;
-    let before = div()
-        .w_full()
-        .h(px(20.))
-        .items_center()
-        .justify_center()
-        .text_xs()
-        .text_color(rgb(theme::TEXT_MUTED))
-        .child("Drop above to place before")
-        .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
-        })
-        .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
-            this.move_tag_to(
-                payload.source_id,
-                photag_plugin_database::db::queries::TagDropPos::Before(before_id),
-                cx,
-            );
-        }));
-    let into_id = tag.id;
-    let row = div()
-        .v_flex()
-        .child(
-            div()
-                .h_flex()
-                .justify_between()
-                .child(
-                    div()
-                        .h_flex()
-                        .gap_1()
-                        .child(toggle)
-                        .child(div().w_2().h_2().rounded_sm().bg(rgb((u32::from(red) << 16)
-                            | (u32::from(green) << 8)
-                            | u32::from(blue))))
-                        .child(drag_name)
-                        .drag_over::<TagDragPayload>(|style, _, _, _| {
-                            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
-                        })
-                        .on_drop::<TagDragPayload>(cx.listener(
-                            move |this, payload: &TagDragPayload, _, cx| {
-                                this.move_tag_to(
-                                    payload.source_id,
-                                    photag_plugin_database::db::queries::TagDropPos::Into(into_id),
-                                    cx,
-                                );
-                            },
-                        )),
-                )
-                .child(select)
-                .child(actions),
-        )
-        .child(
-            div()
-                .h_flex()
-                .gap_1()
-                .child(edit)
-                .child(rename)
-                .child(appearance)
-                .child(display)
-                .child(use_parent)
-                .child(move_into)
-                .child(delete),
-        )
-        .children(children);
-    let after_id = tag.id;
-    let after = div()
-        .w_full()
-        .h(px(20.))
-        .items_center()
-        .justify_center()
-        .text_xs()
-        .text_color(rgb(theme::TEXT_MUTED))
-        .child("Drop below to place after")
-        .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
-        })
-        .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
-            this.move_tag_to(
-                payload.source_id,
-                photag_plugin_database::db::queries::TagDropPos::After(after_id),
-                cx,
-            );
-        }));
-    div().v_flex().child(before).child(row).child(after)
-}
-
-#[derive(Clone, Copy)]
-struct TagDragPayload {
-    source_id: i64,
-}
-
-struct TagDragGhost {
-    label: String,
-}
-
-impl Render for TagDragGhost {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .px_2()
-            .py_1()
-            .rounded_md()
-            .bg(rgb(theme::SURFACE_PANEL))
-            .text_sm()
-            .child(self.label.clone())
-    }
-}
-
-fn render_subdirectory(
-    node: &SubdirectoryNode,
-    expanded: &HashMap<String, Vec<SubdirectoryNode>>,
-    cx: &mut Context<SidebarView>,
-) -> Div {
-    let children = expanded
-        .get(&node.path)
-        .map(|children| {
-            children
-                .iter()
-                .map(|child| render_subdirectory(child, expanded, cx))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let selected_path = node.path.clone();
-    let mut row = div()
-        .h_flex()
-        .pl_3()
-        .gap_1()
-        .child(
-            div()
-                .flex_1()
-                .text_xs()
-                .child(format!("{}  {}", node.name, node.media_count)),
-        )
-        .child(
-            Button::new(format!("navigation-open-dir-{}", node.path))
-                .label("Open")
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
-                ),
-        );
-    if node.has_children {
-        let directory_path = node.path.clone();
-        row = row.child(
-            Button::new(format!("navigation-expand-dir-{}", node.path))
-                .label(if expanded.contains_key(&node.path) {
-                    "−"
-                } else {
-                    "+"
-                })
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.toggle_directory(&directory_path);
-                    cx.notify();
-                })),
-        );
-    }
-    row.children(children)
 }

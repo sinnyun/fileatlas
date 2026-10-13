@@ -97,6 +97,32 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
 }
 
 impl GalleryView {
+    pub(super) fn assign_context_tag(
+        &mut self,
+        media_ids: &[i64],
+        tag_id: i64,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(tagging) = &self.tagging else {
+            return;
+        };
+        match tagging.assign(media_ids, &[tag_id]) {
+            Ok(()) => {
+                if let Some(history) = &self.history {
+                    history.push(UndoEntry::AssignedTags {
+                        media_ids: media_ids.to_vec(),
+                        tag_ids: vec![tag_id],
+                    });
+                }
+                self.operation_status = Some("Tag assigned.".into());
+                self.reload();
+                self.restore_selection(media_ids.to_vec());
+            }
+            Err(error) => self.operation_status = Some(format!("Tag update failed: {error}")),
+        }
+        cx.notify();
+    }
+
     fn apply_picker_tags(&mut self, assign: bool, cx: &mut Context<Self>) {
         let ids: Vec<_> = self.tag_picker_selected.iter().copied().collect();
         let media_ids = self.selection.selected_media_ids.clone();

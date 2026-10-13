@@ -108,6 +108,15 @@ impl AiSuggestionsView {
             self.inference = None;
             self.download = None;
         }
+        if let Some(requested_media_id) = preview.take_ai_suggestion_request() {
+            if self
+                .key
+                .as_ref()
+                .is_some_and(|(_, media_id)| *media_id == requested_media_id)
+            {
+                self.request();
+            }
+        }
         let download_result = self.download.as_ref().map(|receiver| receiver.try_recv());
         if let Some(result) = download_result {
             match result {

@@ -1,9 +1,11 @@
 //! Source-compatible filter-driven bulk file actions.
 use super::{GalleryView, format_bulk_outcome};
-use chrono::{NaiveDate, Utc};
+use chrono::Utc;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::calendar::Date;
+use gpui_kit::component::date_picker::DatePicker;
 use gpui_kit::component::input::Input;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::MediaQuery;
@@ -59,10 +61,22 @@ fn read(view: &GalleryView, index: usize, cx: &Context<GalleryView>) -> String {
     view.bulk_inputs[index].read(cx).value().to_string()
 }
 
-pub(super) fn reset_inputs(view: &GalleryView, window: &mut Window, cx: &mut Context<GalleryView>) {
+pub(super) fn reset_inputs(
+    view: &mut GalleryView,
+    window: &mut Window,
+    cx: &mut Context<GalleryView>,
+) {
     for input in &view.bulk_inputs {
         input.update(cx, |state, cx| state.set_value("", window, cx));
     }
+    view.bulk_date_from_value = None;
+    view.bulk_date_to_value = None;
+    view.bulk_date_from.update(cx, |picker, cx| {
+        picker.set_date(Date::Single(None), window, cx)
+    });
+    view.bulk_date_to.update(cx, |picker, cx| {
+        picker.set_date(Date::Single(None), window, cx)
+    });
 }
 
 fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64>, String> {
@@ -84,26 +98,17 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         }
         BulkActionSource::CurrentSelection => unreachable!(),
     }
-    let fields = (0..10).map(|i| read(view, i, cx)).collect::<Vec<_>>();
-    let date = |index: usize| -> Result<Option<i64>, String> {
-        if fields[index].trim().is_empty() {
-            return Ok(None);
-        }
-        let day = NaiveDate::parse_from_str(fields[index].trim(), "%Y-%m-%d")
-            .map_err(|_| format!("Invalid date: {}", fields[index]))?;
-        Ok(day
-            .and_hms_opt(
-                if index == 0 { 0 } else { 23 },
-                if index == 0 { 0 } else { 59 },
-                if index == 0 { 0 } else { 59 },
-            )
-            .map(|dt| dt.and_utc().timestamp()))
-    };
-    query.date_from = date(0)?;
-    query.date_to = date(1)?;
+    let fields = (0..8).map(|i| read(view, i, cx)).collect::<Vec<_>>();
+    query.date_from = view
+        .bulk_date_from_value
+        .and_then(|day| day.and_hms_opt(0, 0, 0).map(|dt| dt.and_utc().timestamp()));
+    query.date_to = view.bulk_date_to_value.and_then(|day| {
+        day.and_hms_opt(23, 59, 59)
+            .map(|dt| dt.and_utc().timestamp())
+    });
     let now = Utc::now().timestamp();
-    if !fields[2].trim().is_empty() {
-        let days: i64 = fields[2]
+    if !fields[0].trim().is_empty() {
+        let days: i64 = fields[0]
             .trim()
             .parse()
             .map_err(|_| "Older-than days must be a non-negative integer".to_string())?;
@@ -113,8 +118,8 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         let cutoff = now.saturating_sub(days.saturating_mul(86_400));
         query.date_to = Some(query.date_to.map_or(cutoff, |bound| bound.min(cutoff)));
     }
-    if !fields[3].trim().is_empty() {
-        let days: i64 = fields[3]
+    if !fields[1].trim().is_empty() {
+        let days: i64 = fields[1]
             .trim()
             .parse()
             .map_err(|_| "Newer-than days must be a non-negative integer".to_string())?;
@@ -124,18 +129,18 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         let cutoff = now.saturating_sub(days.saturating_mul(86_400));
         query.date_from = Some(query.date_from.map_or(cutoff, |bound| bound.max(cutoff)));
     }
-    let min_rating = if fields[4].trim().is_empty() {
+    let min_rating = if fields[2].trim().is_empty() {
         0
     } else {
-        fields[4]
+        fields[2]
             .trim()
             .parse::<i32>()
             .map_err(|_| "Rating bounds must be from 0 to 5".to_string())?
     };
-    let max_rating = if fields[5].trim().is_empty() {
+    let max_rating = if fields[3].trim().is_empty() {
         5
     } else {
-        fields[5]
+        fields[3]
             .trim()
             .parse::<i32>()
             .map_err(|_| "Rating bounds must be from 0 to 5".to_string())?
@@ -145,15 +150,15 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
     }
     query.rating_min = (min_rating > 0).then_some(min_rating);
     query.rating_max = (max_rating < 5).then_some(max_rating);
-    if !fields[6].trim().is_empty() {
-        query.search = Some(fields[6].trim().to_string());
+    if !fields[4].trim().is_empty() {
+        query.search = Some(fields[4].trim().to_string());
         query.search_in_filenames = true;
         query.search_in_paths = false;
         query.search_in_tags = false;
     }
-    if !fields[7].trim().is_empty() {
+    if !fields[5].trim().is_empty() {
         query.extensions = Some(vec![
-            fields[7].trim().trim_start_matches('.').to_lowercase(),
+            fields[5].trim().trim_start_matches('.').to_lowercase(),
         ]);
     }
     let size = |index: usize| -> Result<Option<i64>, String> {
@@ -169,8 +174,8 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
         }
         Ok(Some((mb * 1_048_576.0) as i64))
     };
-    query.size_min = size(8)?;
-    query.size_max = size(9)?;
+    query.size_min = size(6)?;
+    query.size_max = size(7)?;
     if matches!((query.size_min, query.size_max), (Some(min), Some(max)) if min > max) {
         return Err("Minimum file size cannot exceed maximum file size".into());
     }
@@ -246,6 +251,8 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     ));
     if view.bulk_source != BulkActionSource::CurrentSelection {
         panel = panel.child(div().text_sm().font_semibold().child("Filters (AND)"));
+        panel = panel.child(date_row(view, true, cx));
+        panel = panel.child(date_row(view, false, cx));
         panel = panel.child(
             div().h_flex().flex_wrap().gap_2().children(
                 view.bulk_inputs
@@ -315,6 +322,55 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             ),
     );
     panel.into_any_element()
+}
+
+fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Div {
+    let (label, picker, has_value) = if from {
+        (
+            "Date from:",
+            &view.bulk_date_from,
+            view.bulk_date_from_value.is_some(),
+        )
+    } else {
+        (
+            "Date to:",
+            &view.bulk_date_to,
+            view.bulk_date_to_value.is_some(),
+        )
+    };
+    let mut row = div()
+        .h_flex()
+        .items_center()
+        .gap_2()
+        .child(div().w(px(150.)).text_sm().child(label))
+        .child(DatePicker::new(picker).placeholder("Choose date"));
+    if has_value {
+        row = row.child(
+            Button::new(if from {
+                "gallery-bulk-clear-date-from"
+            } else {
+                "gallery-bulk-clear-date-to"
+            })
+            .label("×")
+            .on_click(cx.listener(move |this, _, window, cx| {
+                if from {
+                    this.bulk_date_from_value = None;
+                    this.bulk_date_from.update(cx, |picker, cx| {
+                        picker.set_date(Date::Single(None), window, cx)
+                    });
+                } else {
+                    this.bulk_date_to_value = None;
+                    this.bulk_date_to.update(cx, |picker, cx| {
+                        picker.set_date(Date::Single(None), window, cx)
+                    });
+                }
+                this.confirm_bulk_action = false;
+                this.confirm_bulk_action_ids = None;
+                cx.notify();
+            })),
+        );
+    }
+    row
 }
 
 fn execute(view: &mut GalleryView, _window: &mut Window, cx: &mut Context<GalleryView>) {

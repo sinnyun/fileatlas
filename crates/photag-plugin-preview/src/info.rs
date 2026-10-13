@@ -1,6 +1,5 @@
 //! Preview information panel adapted from PhoTag's `src/ui/info.rs`.
-//! The path-only preview contract can provide filesystem and image/EXIF facts;
-//! database-backed tags and engagement counts are intentionally omitted.
+//! Combines filesystem/image metadata with the indexed media details retained by Preview.
 
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
@@ -10,7 +9,13 @@ use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_ui_bridge::theme;
 
-pub(super) fn info_panel(path: &Path) -> impl IntoElement {
+pub(super) struct IndexedInfo {
+    pub date_taken: Option<i64>,
+    pub open_count: i64,
+    pub tags: Vec<String>,
+}
+
+pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl IntoElement {
     let name = path
         .file_name()
         .map(|value| value.to_string_lossy().into_owned())
@@ -34,6 +39,25 @@ pub(super) fn info_panel(path: &Path) -> impl IntoElement {
             "Type",
             if is_video(path) { "video" } else { "image" },
         ));
+
+    if let Some(indexed) = &indexed {
+        panel = panel
+            .child(section_title("Library"))
+            .child(detail("Times opened", &indexed.open_count.to_string()))
+            .child(detail(
+                "Date taken",
+                &indexed
+                    .date_taken
+                    .map(format_unix)
+                    .unwrap_or_else(|| "—".into()),
+            ))
+            .child(section_title("Assigned tags"));
+        if indexed.tags.is_empty() {
+            panel = panel.child(mut_text("No tags assigned."));
+        } else {
+            panel = panel.child(detail("Tags", &indexed.tags.join(", ")));
+        }
+    }
 
     if let Some(extension) = path.extension().and_then(|value| value.to_str()) {
         panel = panel.child(detail(
@@ -340,6 +364,15 @@ fn format_time(time: Option<std::time::SystemTime>) -> String {
         })
         .map(|time| time.format("%Y-%m-%d %H:%M:%S").to_string())
         .unwrap_or_else(|| "—".to_string())
+}
+
+fn format_unix(seconds: i64) -> String {
+    use chrono::TimeZone;
+    chrono::Local
+        .timestamp_opt(seconds, 0)
+        .single()
+        .map(|time| time.format("%Y-%m-%d %H:%M:%S").to_string())
+        .unwrap_or_else(|| "—".into())
 }
 
 fn aspect_ratio(width: u32, height: u32) -> String {

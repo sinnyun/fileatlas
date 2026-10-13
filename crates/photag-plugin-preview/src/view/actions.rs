@@ -9,6 +9,65 @@ use gpui_kit::*;
 use super::PreviewView;
 
 impl PreviewView {
+    pub(super) fn open_in_default_app(&mut self, cx: &mut Context<Self>) {
+        self.launch_file_action(true, cx);
+    }
+
+    pub(super) fn reveal_in_file_manager(&mut self, cx: &mut Context<Self>) {
+        self.launch_file_action(false, cx);
+    }
+
+    fn launch_file_action(&mut self, open: bool, cx: &mut Context<Self>) {
+        if self.operation_busy {
+            return;
+        }
+        let Some(media_id) = self.service.snapshot().media_id else {
+            self.operation_status = Some("This action requires an indexed media item.".into());
+            cx.notify();
+            return;
+        };
+        let operations = Arc::clone(&self.file_operations);
+        let runtime = self.runtime.clone();
+        let task = runtime.spawn(async move {
+            if open {
+                operations.open_external(media_id).await
+            } else {
+                operations.reveal_in_file_manager(media_id).await
+            }
+        });
+        self.operation_busy = true;
+        self.operation_status = Some(
+            if open {
+                "Opening in the default app…"
+            } else {
+                "Opening the containing folder…"
+            }
+            .into(),
+        );
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            let _ = this.update(cx, |this: &mut PreviewView, cx| {
+                this.operation_busy = false;
+                this.operation_status = Some(match result {
+                    Ok(Ok(())) if open => "Opened in the default app.".into(),
+                    Ok(Ok(())) => "Opened the containing folder.".into(),
+                    Ok(Err(error)) => format!(
+                        "Could not {}: {error}",
+                        if open {
+                            "open the file"
+                        } else {
+                            "show the file"
+                        }
+                    ),
+                    Err(error) => format!("File action failed: {error}"),
+                });
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
     pub(super) fn begin_rename(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.operation_busy {
             return;

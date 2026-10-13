@@ -84,6 +84,7 @@ impl MediaPlaybackService {
     pub fn new(cache_dir: impl Into<PathBuf>) -> Result<Self, PlaybackError> {
         let cache = cache_dir.into();
         std::fs::create_dir_all(&cache)?;
+        cleanup_aged_frames(&cache);
         Ok(Self {
             state: Mutex::new(PlaybackState {
                 snapshot: PlaybackSnapshot::default(),
@@ -589,6 +590,52 @@ fn default_cache_dir() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
         .join("PhoTag")
         .join("playback")
+}
+
+/// Remove only this player's frame files that have been inactive for a week.
+/// The cache is shared by app instances, so recent frames are left untouched.
+fn cleanup_aged_frames(cache: &Path) {
+    let Ok(entries) = std::fs::read_dir(cache) else {
+        return;
+    };
+    let cutoff = Duration::from_secs(7 * 24 * 60 * 60);
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !is_frame_cache_file(&path) {
+            continue;
+        }
+        let Ok(metadata) = entry.metadata() else {
+            continue;
+        };
+        if !metadata.is_file() {
+            continue;
+        }
+        let Ok(modified) = metadata.modified() else {
+            continue;
+        };
+        if modified.elapsed().is_ok_and(|age| age >= cutoff) {
+            let _ = std::fs::remove_file(path);
+        }
+    }
+}
+
+fn is_frame_cache_file(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    let Some(stem) = name.strip_suffix(".png") else {
+        return false;
+    };
+    let Some(rest) = stem.strip_prefix("frame-") else {
+        return false;
+    };
+    let Some((process_id, index)) = rest.split_once('-') else {
+        return false;
+    };
+    !process_id.is_empty()
+        && process_id.bytes().all(|byte| byte.is_ascii_digit())
+        && !index.is_empty()
+        && index.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 // Keep idle playback views from outliving the Cordis service.

@@ -316,10 +316,13 @@ the remaining parity limits.
 | Plugin/workspace tests | Not run | Per repository instructions, tests remain reserved for a separate concentrated debugging pass. |
 | Windows visual, shell, media, and filesystem behavior | Unverified | The compile does not validate UI interactions, model download/runtime inference, native dialogs, OLE, Recycle Bin, real-media metadata, or filesystem races. |
 
-Rubber-band selection remains incomplete because GPUI's current virtual-list
-callbacks do not provide stable per-card bounds mapped to scrolled media IDs.
-Full source card/preview context menus, non-image Preview, and several Windows
-visual/native behaviors also remain incomplete or unverified.
+The integrated Gallery supports rubber-band selection, AI Suggest Tags card
+actions, sidebar-tag drop assignment, and card/Preview action menus. Preview
+now renders audio with filename, tags, rating and default-player action; its
+filmstrip follows image/video/audio query order, and video opens through
+MediaPlayback. Windows visual/native behavior—including pointer interactions,
+dialogs, OLE, Recycle Bin, media devices, real-media metadata and filesystem
+reconciliation—remains unverified.
 
 ## Migration audit and documentation reconciliation (2026-10-13)
 
@@ -341,3 +344,54 @@ Selected high-impact tools also require `confirm: true`; this acknowledges the
 call but does not prove a human reviewed it. Configure a trusted MCP client to
 request user confirmation before mutation, and do not treat tool descriptions
 as an application-enforced safety boundary.
+
+## Consolidation repair and source parity review (2026-10-13)
+
+This pass compared changed Gallery, Navigation, Preview and Settings behavior
+with the pinned source and repaired stale parity notes. It added a shared typed
+`TagDragPayload` so dropping a Navigation tag onto a Gallery card assigns that
+tag to the card or its current selection. Gallery and Navigation view code was
+split into behavioral/rendering submodules to keep each Rust source file below
+800 lines. The source feature audit now reflects the implemented rubber-band
+selection, AI Suggest Tags, context actions, drag assignment and calendar bulk
+date controls. Source behavior that does not exist, such as a pick/reject action
+handler, remains identified as absent in the source.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update --offline` | Passed | Reconciled the local workspace dependency edges without changing package versions. This was required before the prescribed `--locked` check would run. |
+| Initial `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Failed, then repaired | First rejected the stale lock file; after lock reconciliation, found missing Navigation event type/FluentBuilder declarations, Settings/Preview GPUI async closure arity, Preview `ImageDecoder` trait import/mutability, and Gallery event payload annotations. |
+| Final `cargo +1.97.1 fmt --all -- --check` | Passed | Ran after Gallery/Navigation module splits and source parity changes. |
+| Final `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Windows MSVC host shell dependency graph compiled successfully after the repairs. |
+| Tests | Not run | Per the repository code-generation pass restriction. |
+| Windows UI/media/filesystem behavior | Unverified | Build success does not verify native drag/drop, selection geometry, menus, playback devices, filesystem operations or full-format media behavior. |
+
+
+### Audio Preview and full media sequence (2026-10-13)
+
+Source review of `vendor/photag-source/src/ui/preview.rs` confirmed the audio
+stage, filename, default-player action, tag chips, 0–5 rating, close and arrow
+controls. Preview now provides the audio stage and routes the default-player
+action through File Operations. Gallery supplies the complete ordered
+image/video/audio sequence; arrows navigate across media kinds, and video
+entries hand off to Media Playback. Audio/video image-only transforms are not
+shown as content behavior. Windows media-device and visual interaction behavior
+remains unverified.
+
+### Final post-audio verification (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Ran after adding Audio Preview and splitting Preview toolbar support. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Incremental shell dependency check completed successfully after the final media-sequence changes. |
+| Tests | Not run | Prohibited during this migration pass by the workspace instructions. |
+| Windows UI/media/filesystem behavior | Unverified | This compile does not validate native focus/navigation, default-player launch, playback devices, dialogs, or visual parity. |
+
+### Preview final split compile repair (2026-10-13)
+
+| Check | Result | Notes |
+|---|---|---|
+| Initial `cargo +1.97.1 check -p photag-shell --locked -j 2` | Failed, then repaired | The Preview module split left `DatabaseService` and `SessionService` imports out of scope and omitted `StyledExt` for `font_medium`; added the imports to the owning modules. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Ran after import fixes. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | The shell dependency graph compiled successfully after Preview repair. |
+| Tests / Windows validation | Not run / unverified | Tests remain prohibited in this pass; no Windows UI or media behavior is claimed as verified. |

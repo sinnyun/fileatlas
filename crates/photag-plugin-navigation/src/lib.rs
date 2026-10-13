@@ -307,6 +307,22 @@ impl Plugin for NavigationPlugin {
         Ok(config)
     }
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
+        let preferences = Arc::new(std::sync::RwLock::new(
+            photag_contracts::TagInteractionPreferences::default(),
+        ));
+        let preference_state = Arc::clone(&preferences);
+        let _preference_listener = context
+            .on::<photag_contracts::TagInteractionPreferencesChanged, _>(
+                cordis::event::observer_sync(
+                    move |_, updated: photag_contracts::TagInteractionPreferences| {
+                        if let Ok(mut preferences) = preference_state.write() {
+                            *preferences = updated;
+                        }
+                        Ok::<_, std::convert::Infallible>(())
+                    },
+                ),
+            )
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
@@ -389,6 +405,7 @@ impl Plugin for NavigationPlugin {
                 selected_folder_id,
                 selected_path,
                 expanded_subdirs,
+                preferences,
             )],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;

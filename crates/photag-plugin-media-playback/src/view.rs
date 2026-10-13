@@ -33,6 +33,13 @@ pub fn media_playback_view(service: Arc<MediaPlaybackService>) -> UiViewContribu
                         .step(0.01)
                         .default_value(service.snapshot().volume)
                 });
+                let speed = cx.new(|_| {
+                    SliderState::new()
+                        .min(0.1)
+                        .max(2.0)
+                        .step(0.05)
+                        .default_value(service.snapshot().speed.clamp(0.1, 2.0))
+                });
                 let playhead_subscription = cx.subscribe(
                     &playhead,
                     |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
@@ -55,6 +62,17 @@ pub fn media_playback_view(service: Arc<MediaPlaybackService>) -> UiViewContribu
                         SliderEvent::Change(SliderValue::Single(value))
                         | SliderEvent::Release(SliderValue::Single(value)) => {
                             view.service.set_volume(*value);
+                            cx.notify();
+                        }
+                        _ => {}
+                    },
+                );
+                let speed_subscription = cx.subscribe(
+                    &speed,
+                    |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
+                        SliderEvent::Change(SliderValue::Single(value))
+                        | SliderEvent::Release(SliderValue::Single(value)) => {
+                            let _ = view.service.set_speed(*value);
                             cx.notify();
                         }
                         _ => {}
@@ -84,10 +102,12 @@ pub fn media_playback_view(service: Arc<MediaPlaybackService>) -> UiViewContribu
                     service: view_service,
                     playhead,
                     volume,
+                    speed,
                     playhead_value: None,
                     speed_popup_open: false,
                     _playhead_subscription: playhead_subscription,
                     _volume_subscription: volume_subscription,
+                    _speed_subscription: speed_subscription,
                 }
             })
             .into()
@@ -99,10 +119,12 @@ struct PlaybackView {
     service: Arc<MediaPlaybackService>,
     playhead: Entity<SliderState>,
     volume: Entity<SliderState>,
+    speed: Entity<SliderState>,
     playhead_value: Option<f32>,
     speed_popup_open: bool,
     _playhead_subscription: Subscription,
     _volume_subscription: Subscription,
+    _speed_subscription: Subscription,
 }
 
 impl Render for PlaybackView {
@@ -131,6 +153,15 @@ impl Render for PlaybackView {
         if (current_volume - volume_value).abs() > 0.005 {
             self.volume
                 .update(cx, |state, cx| state.set_value(volume_value, window, cx));
+        }
+        let speed_value = snapshot.speed.clamp(0.1, 2.0);
+        let current_speed = match self.speed.read(cx).value() {
+            SliderValue::Single(value) => value,
+            SliderValue::Range(_, end) => end,
+        };
+        if (current_speed - speed_value).abs() > 0.005 {
+            self.speed
+                .update(cx, |state, cx| state.set_value(speed_value, window, cx));
         }
         let toggle_service = Arc::clone(&self.service);
         let toggle = cx.listener(move |_, _: &ClickEvent, _, cx| {
@@ -249,15 +280,28 @@ impl Render for PlaybackView {
                 let _ = faster_service.set_speed(speed);
                 cx.notify();
             });
-            div().v_flex().gap_1().child(presets).child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .gap_1()
-                    .child(button("−0.05×").on_click(slower))
-                    .child(button("+0.05×").on_click(faster))
-                    .child(boosts),
-            )
+            div()
+                .v_flex()
+                .gap_1()
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap_2()
+                        .child(div().text_xs().child("Speed"))
+                        .child(Slider::new(&self.speed).w_48())
+                        .child(format!("{:.2}×", snapshot.speed)),
+                )
+                .child(presets)
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap_1()
+                        .child(button("−0.05×").on_click(slower))
+                        .child(button("+0.05×").on_click(faster))
+                        .child(boosts),
+                )
         } else {
             div()
         };

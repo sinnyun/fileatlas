@@ -4,6 +4,7 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
+use photag_contracts::TagDragPayload;
 use photag_plugin_drag_drop::DragDropService;
 use photag_ui_bridge::theme;
 use std::path::PathBuf;
@@ -21,6 +22,7 @@ pub(super) fn render_media_card(
     thumb_size: f32,
     micro_thumb: Option<&[u8]>,
     rating_target_ids: Vec<i64>,
+    tag_tree: Arc<Vec<photag_plugin_database::db::queries::Tag>>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
@@ -90,15 +92,83 @@ pub(super) fn render_media_card(
             .child(media.media_type.to_uppercase());
     }
     let menu_view = cx.entity().downgrade();
+    let menu_targets = rating_target_ids.clone();
+    let drop_targets = rating_target_ids.clone();
     let menu = Button::new(format!("gallery-card-actions-{media_id}"))
         .label("⋯")
         .dropdown_menu(move |mut menu, _, _| {
+            let ai_view = menu_view.clone();
+            menu = menu.item(
+                PopupMenuItem::new("AI Suggest Tags").on_click(move |_, _, cx| {
+                    let _ = ai_view.update(cx, |this, cx| {
+                        this.suggest_tags(media_id, cx);
+                    });
+                }),
+            );
             let preview_view = menu_view.clone();
             menu = menu.item(PopupMenuItem::new("Preview").on_click(move |_, _, cx| {
                 let _ = preview_view.update(cx, |this, cx| {
                     this.preview_media(media_id, cx);
                 });
             }));
+            let open_view = menu_view.clone();
+            menu = menu.item(PopupMenuItem::new("Open in default app").on_click(
+                move |_, _, cx| {
+                    let _ = open_view.update(cx, |this, cx| {
+                        this.open_media_action(media_id, false, cx);
+                    });
+                },
+            ));
+            let reveal_view = menu_view.clone();
+            menu = menu.item(PopupMenuItem::new("Show in File Explorer").on_click(
+                move |_, _, cx| {
+                    let _ = reveal_view.update(cx, |this, cx| {
+                        this.open_media_action(media_id, true, cx);
+                    });
+                },
+            ));
+            menu = menu.item(PopupMenuItem::separator());
+            for tag in flatten_tags(&tag_tree) {
+                let tag_view = menu_view.clone();
+                let tag_targets = menu_targets.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(format!("Assign tag: {}", tag.label)).on_click(
+                        move |_, _, cx| {
+                            let _ = tag_view.update(cx, |this, cx| {
+                                this.assign_context_tag(&tag_targets, tag.id, cx);
+                            });
+                        },
+                    ),
+                );
+            }
+            menu = menu.item(PopupMenuItem::separator());
+            let copy_view = menu_view.clone();
+            let copy_targets = menu_targets.clone();
+            menu = menu.item(PopupMenuItem::new("Copy to…").on_click(move |_, _, cx| {
+                let _ = copy_view.update(cx, |this, cx| {
+                    this.selection.selected_media_ids = copy_targets.clone();
+                    this.copy_selected_with_dialog(cx);
+                });
+            }));
+            let move_view = menu_view.clone();
+            let move_targets = menu_targets.clone();
+            menu = menu.item(PopupMenuItem::new("Move to…").on_click(move |_, _, cx| {
+                let _ = move_view.update(cx, |this, cx| {
+                    this.selection.selected_media_ids = move_targets.clone();
+                    this.move_selected_with_dialog(cx);
+                });
+            }));
+            let delete_view = menu_view.clone();
+            let delete_targets = menu_targets.clone();
+            menu = menu.item(
+                PopupMenuItem::new("Delete…").on_click(move |_, window, cx| {
+                    let _ = delete_view.update(cx, |this, cx| {
+                        this.selection.selected_media_ids = delete_targets.clone();
+                        this.selection.anchor_id = delete_targets.first().copied();
+                        this.request_delete_confirmation(window, cx);
+                    });
+                }),
+            );
             menu = menu.item(PopupMenuItem::separator());
             for rating in 0..=5 {
                 let rating_view = menu_view.clone();
@@ -120,13 +190,25 @@ pub(super) fn render_media_card(
     thumbnail = thumbnail.child(div().absolute().top(px(4.)).right(px(4.)).child(menu));
     card = card.child(thumbnail);
     card.id(format!("gallery-media-{media_id}"))
+        .drag_over::<TagDragPayload>(|style, _, _, _| {
+            style.border_color(rgb(theme::accent_hover()))
+        })
+        .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
+            let targets = if drop_targets.is_empty() {
+                vec![media_id]
+            } else {
+                drop_targets.clone()
+            };
+            this.assign_context_tag(&targets, payload.source_id, cx);
+        }))
         .on_mouse_down(
             MouseButton::Left,
-            cx.listener(move |_, event: &MouseDownEvent, _, _| {
+            cx.listener(move |_, event: &MouseDownEvent, _, cx| {
                 drag_allowed.store(
                     !event.modifiers.control && !event.modifiers.shift,
                     Ordering::Release,
                 );
+                cx.stop_propagation();
             }),
         )
         .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
@@ -148,6 +230,30 @@ pub(super) fn render_media_card(
                 .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(format!("{}  ·  ★ {}", media.media_type, media.rating)),
         )
+}
+
+fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMenuEntry> {
+    fn visit(
+        tags: &[photag_plugin_database::db::queries::Tag],
+        depth: usize,
+        entries: &mut Vec<TagMenuEntry>,
+    ) {
+        for tag in tags {
+            entries.push(TagMenuEntry {
+                id: tag.id,
+                label: format!("{}{}", "  ".repeat(depth), tag.full_path),
+            });
+            visit(&tag.children, depth + 1, entries);
+        }
+    }
+    let mut entries = Vec::new();
+    visit(tags, 0, &mut entries);
+    entries
+}
+
+struct TagMenuEntry {
+    id: i64,
+    label: String,
 }
 
 fn micro_render_image(data: &[u8]) -> Option<Arc<::gpui::RenderImage>> {
