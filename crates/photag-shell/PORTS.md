@@ -6,6 +6,12 @@ The host chrome and contribution fallback view use `photag_ui_bridge::theme` sur
 
 The shell restores `SessionState.sidebar_width` when it is between 160 and 500 pixels (otherwise 288 px) and saves the width when the sidebar divider drag ends. The updater is started before Settings. When Settings confirms an update it persists the current session snapshot, queues the staged path, and quits GPUI; after the application loop returns, the shell installs and relaunches the staged build before disposing the updater service. This update shutdown path still needs interactive Windows validation.
 
+The explicit `dev-test` profile starts `photag-plugin-dev-test` after Gallery and
+its providers. It redirects the database, Settings, Session and thumbnail cache
+to `target/dev-test/` (or `PHOTAG_DEV_TEST_DIR`); `PHOTAG_DEV_TEST_DB` can
+override only the database file. This profile keeps local media-load checks out
+of the user's normal PhoTag database and settings.
+
 ## Current runtime dependency order
 
 Database → FileOperations → DragDrop → Gallery; Database → Preview → Gallery; Database → MediaPlayback → Gallery; Database → Thumbnails → Indexing → Watcher; Navigation depends on Database/Indexing and optionally Watcher; Settings reads Updater and Session and optionally reads Navigation; Tagging depends on Database; History starts after Database, FileOperations, and Tagging. Session and Updater start before Settings; AI starts after Settings when Gallery, MCP, all plugins, or the explicit `ai` development plugin is enabled. Shell starts Gallery after all required providers and the optional Settings/Tagging/History providers. Preview consumes AI suggestions through Cordis. In `--mcp` mode it also starts all required feature providers, publishes the Shell-owned `CaptureWindowHandle`, and starts `photag.mcp` after Gallery, Navigation, Tagging, Preview, MediaPlayback, and FileOperations. After GPUI exits, Shell consumes any queued updater install before disposing Updater. On shutdown it stops MCP before Gallery, then Preview before History, AI, Settings, Tagging, and MediaPlayback; Navigation stops before Watcher, Indexing, and Thumbnails. Preserve service availability before dependent plugin startup and stop consumers before providers. Gallery opens images in Preview, routes videos to MediaPlayback, calls DragDrop from card drag gestures, and optionally consumes Settings, Tagging, and History services.

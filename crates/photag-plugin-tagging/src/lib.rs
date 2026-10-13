@@ -236,7 +236,9 @@ pub enum TaggingPluginError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::writeback::{TEST_LOCK, wait_until_idle};
     use photag_plugin_database::db::queries;
+    use std::time::Duration;
 
     fn temp_root() -> std::path::PathBuf {
         std::env::temp_dir().join(format!(
@@ -251,6 +253,8 @@ mod tests {
 
     #[test]
     fn assignment_preserves_associations_ancestors_and_manual_flags() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|error| error.into_inner());
+        assert!(wait_until_idle(Duration::from_secs(5)));
         let root = temp_root();
         let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
         let (media_id, parent_id, child_id, associated_id) = database
@@ -307,6 +311,7 @@ mod tests {
         );
         tagging.clear(&[media_id]).unwrap();
         assert!(tagging.for_media(media_id).unwrap().is_empty());
+        assert!(wait_until_idle(Duration::from_secs(5)));
         let _ = std::fs::remove_dir_all(root);
     }
 }

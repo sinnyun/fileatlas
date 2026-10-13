@@ -7,10 +7,15 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
+#[cfg(test)]
+use std::time::Duration;
 
 use photag_plugin_database::{DatabaseService, db::queries};
 
 const MAX_RECORDED_FAILURES: usize = 100;
+
+#[cfg(test)]
+pub(crate) static TEST_LOCK: Mutex<()> = Mutex::new(());
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WritebackFailure {
@@ -219,18 +224,37 @@ fn path_key(path: &std::path::Path) -> PathBuf {
 }
 
 #[cfg(test)]
+pub(crate) fn wait_until_idle(timeout: Duration) -> bool {
+    let started = std::time::Instant::now();
+    loop {
+        let idle = state()
+            .lock()
+            .map(|state| !state.worker_running && state.queue.is_empty())
+            .unwrap_or(false);
+        if idle {
+            return true;
+        }
+        if started.elapsed() >= timeout {
+            return false;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[cfg(test)]
 mod tests {
-    use super::{clear_failure, failures, schedule, schedule_with_writer, state};
+    use super::{
+        TEST_LOCK, clear_failure, failures, schedule, schedule_with_writer, state, wait_until_idle,
+    };
     use photag_plugin_database::{DatabaseService, db::queries};
     use std::path::Path;
     use std::sync::{Arc, Mutex, mpsc};
     use std::time::{Duration, SystemTime};
 
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
     #[test]
     fn failed_background_write_is_visible_and_can_be_cleared() {
-        let _guard = TEST_LOCK.lock().unwrap();
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|error| error.into_inner());
+        assert!(wait_until_idle(Duration::from_secs(5)));
         let root = std::env::temp_dir().join(format!(
             "photag-writeback-{}-{}",
             std::process::id(),
@@ -285,7 +309,8 @@ mod tests {
 
     #[test]
     fn queued_writes_for_a_path_coalesce_to_the_latest_tags() {
-        let _guard = TEST_LOCK.lock().unwrap();
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|error| error.into_inner());
+        assert!(wait_until_idle(Duration::from_secs(5)));
         let root = std::env::temp_dir().join(format!(
             "photag-writeback-coalesce-{}-{}",
             std::process::id(),

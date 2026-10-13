@@ -506,3 +506,24 @@ media row and its assignment.
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Host shell dependency graph compiles after the writer seam and test changes. |
 | `git diff --check` | Passed | No whitespace errors. |
 | Real camera/editor interoperability | Not tested in this slice | Requires representative photos and Windows applications; the deterministic queue test is not a substitute for metadata interoperability. |
+
+### Development media library and scale-test plugin (2026-10-13)
+
+Added `test-data/photag-library/` with 11 generated files (about 6.32 MB):
+JPEG, PNG, WebP, GIF, TIFF, BMP, WAV, an intentionally invalid JPEG, nested
+directories, and a hidden support thumbnail. The opt-in
+`photag-plugin-dev-test` panel uses the production indexer to scan the checked-in
+folder and transactionally injects/replaces/cleans 1K, 10K, or 100K virtual
+media rows for Gallery and SQLite load checks. Virtual rows do not create files.
+The dev-test profile redirects database, settings, session and thumbnail cache
+to `target/dev-test/` by default; it does not touch the regular PhoTag database.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 run -p photag-plugin-dev-test --example generate_test_media --locked` | Passed | Generated the reproducible local fixture set. |
+| `cargo +1.97.1 test -p photag-plugin-dev-test --locked -- --nocapture` | Passed | 2 tests: production scanner indexes nested real fixtures and sees both generated and missing thumbnails; temporary SQLite database replaces 100,000 rows, validates type/thumbnail distribution, then clears all virtual rows without creating physical files. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 49 passed, 0 failed, 3 ignored (two live network checksum tests and the optional FFmpeg smoke test, separately passed above). |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Workspace formatting check. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Host and opt-in plugin compile together. |
+| `git diff --check` | Passed | No whitespace errors. |
+| Interactive Windows profile and 100K Gallery scrolling | Not run | Launch with `start-dev.bat dev-test` to inspect real GPUI rendering, database response and scrolling; automated tests do not measure user-visible frame rate. |

@@ -5464,6 +5464,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-dev-test"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "image",
+ "photag-contracts",
+ "photag-plugin-database",
+ "photag-plugin-indexing",
+ "photag-plugin-thumbnails",
+ "photag-ui-bridge",
+ "rusqlite",
+ "thiserror 2.0.21",
+ "tokio",
+]
+
+[[package]]
 name = "photag-plugin-drag-drop"
 version = "0.1.0"
 dependencies = [
@@ -5726,6 +5743,7 @@ dependencies = [
  "photag-contracts",
  "photag-plugin-ai",
  "photag-plugin-database",
+ "photag-plugin-dev-test",
  "photag-plugin-drag-drop",
  "photag-plugin-file-operations",
  "photag-plugin-gallery",

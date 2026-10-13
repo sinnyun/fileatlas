@@ -22,6 +22,7 @@ members = [
     "crates/photag-plugin-media-playback",
     "crates/photag-plugin-drag-drop",
     "crates/photag-plugin-mcp",
+    "crates/photag-plugin-dev-test",
 ]
 default-members = ["crates/photag-shell"]
 

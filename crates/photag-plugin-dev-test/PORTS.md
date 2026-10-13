@@ -1,0 +1,49 @@
+# Development test plugin ports / 开发测试插件对接
+
+Status: an opt-in GPUI panel scans generated on-disk media fixtures and injects
+or removes 1,000, 10,000, or 100,000 virtual media rows for Gallery/SQLite
+scale checks. It is development tooling and is not enabled by `core` or `all`.
+
+## Lifecycle and dependencies
+
+- Select with `PHOTAG_DEV_PLUGINS=dev-test` or `start-dev.bat dev-test`.
+- Cordis plugin name: `photag.dev-test`; service: `photag/dev-test`.
+- Requires `DatabaseService`, `IndexingService`, and the shell's `UiBridgeService`.
+- Owns a GPUI panel in `workspace.dev-test`; Cordis removes its service and view
+  contribution when the plugin stops.
+- The shell enables Gallery, Navigation, Thumbnails, Indexing, Preview, and
+  their required providers for this profile.
+
+## Panel actions and data
+
+- **Scan sample directory** registers `test-data/photag-library` and calls the
+  real recursive `IndexingService::scan_folder`; progress and indexed row count
+  are shown in the panel. `PHOTAG_TEST_LIBRARY` can select another directory.
+- **Inject 1K / 10K / 100K** transactionally replaces only the hidden
+  `.photag-virtual-benchmark` path prefix under the fixture folder. Rows vary
+  image/video/audio types, file sizes, dimensions and ratings. One quarter point
+  to `.dev-support/preview.png`; virtual paths never create physical files.
+- **Clear virtual rows** deletes only that reserved path prefix. The real
+  scanned fixture rows and physical files remain intact.
+- Operations run off the GPUI thread and emit `MediaIndexChanged(())` after
+  completion so Gallery reloads the database.
+
+## Data isolation and debugging
+
+When enabled, the shell uses `target/dev-test/photag.db`, `settings.json`,
+`session.json`, and `thumbs/` instead of normal PhoTag user data. Override the
+root with `PHOTAG_DEV_TEST_DIR` or only the DB file with `PHOTAG_DEV_TEST_DB`.
+Check the panel status first; then inspect the isolated database and thumbnail
+cache. The fixture assets and reproducible generator are documented in
+`test-data/README.md`.
+
+Run the repeatable checks with:
+
+```powershell
+cargo +1.97.1 test -p photag-plugin-dev-test --locked
+```
+
+Tests scan the checked-in generated formats using the production indexer and
+exercise a 100,000-row replace/cleanup cycle against a temporary SQLite file.
+Interactive GPUI performance and scrolling still require launching the desktop
+app with the `dev-test` profile on Windows.

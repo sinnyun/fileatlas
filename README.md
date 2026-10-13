@@ -20,11 +20,12 @@
 - `crates/photag-plugin-watcher`：监视已注册目录，防抖后协调 SQLite 数据，并发送 Cordis 媒体索引变更事件。
 - `crates/photag-plugin-gallery`：提供紧凑查询结果、每页 200 条的窗口化媒体加载、可视行渲染、筛选与选择、月份分组、橡皮筋选择、命名标签筛选、统计、卡片操作、批量文件操作、撤销/重做、媒体详情和预览交接。Windows 交互和视觉一致性仍待实机验证。
 - `crates/photag-plugin-navigation`：提供文件夹/标签树、惰性子目录加载、标签编辑菜单与关联/合并/删除操作、拖放排序、原生文件夹选择、文件夹添加/重扫/移除，以及选择和展开状态恢复。Windows 交互和视觉一致性仍待实机验证。
-- `crates/photag-plugin-tagging`：通过 Cordis 服务提供媒体标签分配、关联标签、祖先关系、移除、清空、合并、重设父级，以及 JPEG IPTC/XMP 写回；Gallery 提供可搜索的标签选择和写回失败重试/忽略。写回回归验证仍待补充。
+- `crates/photag-plugin-tagging`：通过 Cordis 服务提供媒体标签分配、关联标签、祖先关系、移除、清空、合并、重设父级，以及 JPEG IPTC/XMP 写回；Gallery 提供可搜索的标签选择和写回失败重试/忽略。临时样本、队列合并与错误反馈有自动化覆盖，真实相机和编辑器互通仍待验证。
 - `crates/photag-plugin-settings` 与 `crates/photag-plugin-session`：提供兼容 PhoTag 的 JSON 设置/会话结构及 Cordis 持久化服务；设置面板和活动视图的设置/会话应用路径已接入。完整回归覆盖及 Windows 视觉验证见[功能审计](docs/source-feature-audit.md)。
 - `crates/photag-plugin-metadata-export`：通过 Cordis 服务封装原版元数据查询和 JSON 写入；命令、原生 JSON 保存对话框、进度、完成结果和错误反馈已接入，Windows 交互仍待验证。
 - `crates/photag-plugin-file-operations`：通过 Cordis 服务提供单项/批量回收、复制、移动、重命名、新建文件夹、打开和定位操作；Gallery/Preview 集成目标选择、确认、批量结果、选择修复和胶片条跟进。Windows Shell 行为仍待实机验证。
 - `crates/photag-plugin-mcp`：通过 Cordis 服务向 MCP 客户端提供本机 stdio 接口，包括 PhoTag 窗口截图、图库/媒体读取、预览和视频播放控制、扫描操作、评分/标签修改及受控文件操作。修改工具默认关闭；Windows 截图画面尚待真实窗口验证。
+- `crates/photag-plugin-dev-test`：仅在开发配置下启用的媒体测试面板，可递归扫描仓库样例媒体，并往隔离的 SQLite 开发库注入/清理 1 千、1 万、10 万条虚拟媒体记录，用于实测图库查询、分页、滚动和数据库负载。
 - `crates/photag-plugin-preview`、`crates/photag-plugin-media-playback`、`crates/photag-plugin-history` 与 `crates/photag-plugin-drag-drop`：提供图像预览与渐进解码、胶片条、音频/视频播放、源码支持的撤销/重做，以及 Gallery 卡片拖出。媒体设备、Explorer/OLE 和 Windows 原生交互仍待验证。
 - `crates/photag-contracts`：预留稳定的领域契约，仍在迁移中。
 - `vendor/photag-source`：保留未修改的上游源码镜像。
@@ -43,6 +44,10 @@ MCP 客户端需要将 PhoTag 作为 stdio 子进程启动，Shell 会同时打�
 也可以将 `command` 指向已构建的 `photag-shell.exe`，并设置 `args` 为 `["--mcp"]`。MCP 服务默认只开放读取、截图、预览和播放控制。若需要修改评分、标签、文件或索引，请在 MCP 子进程环境显式设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1`，并配置 MCP 客户端对修改工具逐次询问用户；破坏性工具还要求 `confirm: true`。不要将此 stdio 服务交给不可信客户端。
 
 可用工具和当前限制见 [MCP 对接说明](crates/photag-plugin-mcp/PORTS.md)。
+
+## 开发媒体库规模测试
+
+运行 `start-dev.bat dev-test`，或设置 `PHOTAG_DEV_PLUGINS=dev-test` 后启动 Shell。开发测试面板可扫描[样例媒体目录](test-data/README.md)，以及注入/清理 1,000、10,000、100,000 条虚拟媒体记录。开发数据库、设置、会话和缩略图缓存均放在 `target/dev-test/`，不会使用日常 PhoTag 数据库；可用 `PHOTAG_DEV_TEST_DIR` 指定开发数据目录、`PHOTAG_DEV_TEST_DB` 单独覆盖数据库路径、`PHOTAG_TEST_LIBRARY` 指定扫描目录。虚拟行只写数据库，不会生成同等数量的实体文件。插件细节和验证入口见[开发测试插件对接说明](crates/photag-plugin-dev-test/PORTS.md)。
 
 ## 构建状态
 

@@ -25,6 +25,7 @@ fn dev_plugin_config() -> String {
         "media-playback",
         "drag-drop",
         "mcp",
+        "dev-test",
     ];
     for plugin in config
         .split(',')
@@ -277,13 +278,19 @@ fn main() {
             .split(',')
             .any(|plugin| plugin.trim() == "mcp");
     let enable_all = dev_plugin_enabled(&plugin_config, "all");
+    let enable_dev_test = dev_plugin_enabled(&plugin_config, "dev-test");
     let enable_history = enable_all || dev_plugin_enabled(&plugin_config, "history");
-    let enable_gallery =
-        enable_all || enable_mcp || enable_history || dev_plugin_enabled(&plugin_config, "gallery");
+    let enable_gallery = enable_all
+        || enable_mcp
+        || enable_history
+        || enable_dev_test
+        || dev_plugin_enabled(&plugin_config, "gallery");
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
-    let enable_navigation =
-        enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "navigation");
+    let enable_navigation = enable_all
+        || enable_mcp
+        || enable_dev_test
+        || dev_plugin_enabled(&plugin_config, "navigation");
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -293,12 +300,13 @@ fn main() {
     let enable_thumbnails = enable_all
         || enable_mcp
         || enable_navigation
+        || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "thumbnails")
-        || dev_plugin_enabled(&plugin_config, "indexing")
         || dev_plugin_enabled(&plugin_config, "watcher");
     let enable_indexing = enable_all
         || enable_mcp
         || enable_navigation
+        || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "indexing")
         || dev_plugin_enabled(&plugin_config, "watcher");
     let enable_watcher = enable_all
@@ -335,9 +343,19 @@ fn main() {
         .provide(Arc::clone(&bridge))
         .expect("publish UI bridge service");
 
+    let dev_test_dir = enable_dev_test.then(|| {
+        std::env::var_os("PHOTAG_DEV_TEST_DIR")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/dev-test")
+            })
+    });
     let session_plugin = photag_plugin_session::SessionPlugin;
+    let session_config = photag_plugin_session::SessionConfig {
+        path: dev_test_dir.as_ref().map(|path| path.join("session.json")),
+    };
     let session_input = session_plugin
-        .prepare(photag_plugin_session::SessionConfig::default())
+        .prepare(session_config)
         .expect("prepare session plugin");
     let session_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(session_plugin, session_input)))
@@ -350,8 +368,15 @@ fn main() {
         .block_on(cordis.spawn(PreparedPlugin::from_input(updater_plugin, updater_input)))
         .expect("start updater plugin");
     let database_plugin = photag_plugin_database::DatabasePlugin;
+    let database_path = dev_test_dir.as_ref().map(|path| {
+        std::env::var_os("PHOTAG_DEV_TEST_DB")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| path.join("photag.db"))
+    });
     let database_input = database_plugin
-        .prepare(photag_plugin_database::DatabaseConfig::default())
+        .prepare(photag_plugin_database::DatabaseConfig {
+            path: database_path,
+        })
         .expect("prepare database plugin");
     let database_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(database_plugin, database_input)))
@@ -397,8 +422,11 @@ fn main() {
     };
     let thumbnail_fiber = if enable_thumbnails {
         let plugin = photag_plugin_thumbnails::ThumbnailPlugin;
+        let thumbnail_config = photag_plugin_thumbnails::ThumbnailConfig {
+            directory: dev_test_dir.as_ref().map(|path| path.join("thumbs")),
+        };
         let input = plugin
-            .prepare(photag_plugin_thumbnails::ThumbnailConfig::default())
+            .prepare(thumbnail_config)
             .expect("prepare thumbnail plugin");
         Some(
             runtime
@@ -450,8 +478,11 @@ fn main() {
     // Settings can read the live tag tree from NavigationService when the
     // navigation plugin is enabled, so start it after Navigation.
     let settings_plugin = photag_plugin_settings::SettingsPlugin;
+    let settings_config = photag_plugin_settings::SettingsConfig {
+        path: dev_test_dir.as_ref().map(|path| path.join("settings.json")),
+    };
     let settings_input = settings_plugin
-        .prepare(photag_plugin_settings::SettingsConfig::default())
+        .prepare(settings_config)
         .expect("prepare settings plugin");
     let settings_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
@@ -536,6 +567,19 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start gallery plugin"),
+        )
+    } else {
+        None
+    };
+    let dev_test_fiber = if enable_dev_test {
+        let plugin = photag_plugin_dev_test::DevTestPlugin;
+        let input = plugin
+            .prepare(photag_plugin_dev_test::DevTestConfig)
+            .expect("prepare development test plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start development test plugin"),
         )
     } else {
         None
@@ -647,6 +691,11 @@ fn main() {
 
     if let Some(fiber) = mcp_fiber {
         runtime.block_on(fiber.dispose()).expect("stop MCP plugin");
+    }
+    if let Some(fiber) = dev_test_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop development test plugin");
     }
     if let Some(fiber) = gallery_fiber {
         runtime

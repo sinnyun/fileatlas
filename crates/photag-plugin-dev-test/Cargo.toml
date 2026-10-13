@@ -1,0 +1,24 @@
+[package]
+name = "photag-plugin-dev-test"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+photag-contracts = { path = "../photag-contracts" }
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+gpui-kit.workspace = true
+rusqlite = { version = "0.31", features = ["bundled"] }
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+image = "0.25"
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+
+[lints]
+workspace = true

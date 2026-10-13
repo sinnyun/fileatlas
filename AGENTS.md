@@ -50,8 +50,9 @@ Windows, media-corpus, or regression validation.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge/
   reparent commands through source database queries. It reuses PhoTag's XMP/
   IPTC writer, schedules metadata rewrites after mutations, and exposes
-  writeback failures for retry or dismissal in Gallery. Regression validation
-  and Windows writeback behavior remain outstanding.
+  writeback failures for retry or dismissal in Gallery. Temporary-media tests
+  cover IPTC/XMP updates, timestamps, writeback failures and queue coalescing;
+  real camera/editor interoperability remains unverified.
 - `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
   models and paths as Cordis services. Settings controls and active-view state
   restore/save paths are integrated; see the audit for remaining validation
@@ -64,6 +65,10 @@ Windows, media-corpus, or regression validation.
   Gallery and Preview integrate destination/confirmation dialogs, bulk actions,
   selection repair, and filmstrip follow-through; native Windows behavior
   remains unverified.
+- `photag-plugin-dev-test` is opt-in development tooling, not product behavior.
+  It scans `test-data/photag-library` through the production Indexing service
+  and seeds up to 100,000 virtual rows in an isolated DB. Its profile must keep
+  the normal PhoTag DB, settings, session and thumbnail cache untouched.
 - Reuse the pinned PhoTag implementation and data semantics. Never replace
   working behavior with placeholder behavior or report partial parity as full.
 
