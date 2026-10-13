@@ -1,6 +1,6 @@
 //! Lifecycle-owned UI contribution metadata and GPUI view mounts for Cordis plugins.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{Arc, RwLock};
 
 use cordis::{Event, Service};
@@ -18,6 +18,83 @@ pub struct UiBridgeService {
     pub catalog: Arc<UiCatalog>,
     /// Plugin-owned GPUI views mounted by the native shell.
     pub views: Arc<UiViewCatalog>,
+    /// Shared open/closed state for lifecycle-owned floating UI surfaces.
+    pub surfaces: Arc<UiSurfaceState>,
+}
+
+#[derive(Debug, Default)]
+pub struct UiSurfaceState {
+    open: RwLock<HashSet<String>>,
+    key_capture: RwLock<HashSet<String>>,
+    suppressed_escape: RwLock<HashSet<String>>,
+}
+
+impl UiSurfaceState {
+    pub fn is_open(&self, id: &str) -> bool {
+        self.open.read().is_ok_and(|open| open.contains(id))
+    }
+
+    pub fn set_open(&self, id: impl Into<String>, open: bool) -> Result<(), String> {
+        let mut surfaces = self
+            .open
+            .write()
+            .map_err(|_| "UI surface state lock is poisoned".to_owned())?;
+        let id = id.into();
+        if open {
+            surfaces.insert(id);
+        } else {
+            surfaces.remove(&id);
+        }
+        Ok(())
+    }
+
+    pub fn toggle(&self, id: impl Into<String>) -> Result<bool, String> {
+        let mut surfaces = self
+            .open
+            .write()
+            .map_err(|_| "UI surface state lock is poisoned".to_owned())?;
+        let id = id.into();
+        if surfaces.remove(&id) {
+            Ok(false)
+        } else {
+            surfaces.insert(id);
+            Ok(true)
+        }
+    }
+
+    pub fn is_capturing_key(&self, id: &str) -> bool {
+        self.key_capture
+            .read()
+            .is_ok_and(|capturing| capturing.contains(id))
+    }
+
+    pub fn set_capturing_key(&self, id: impl Into<String>, active: bool) -> Result<(), String> {
+        let mut capturing = self
+            .key_capture
+            .write()
+            .map_err(|_| "UI key-capture state lock is poisoned".to_owned())?;
+        let id = id.into();
+        if active {
+            capturing.insert(id);
+        } else {
+            capturing.remove(&id);
+        }
+        Ok(())
+    }
+
+    pub fn suppress_next_escape(&self, id: impl Into<String>) -> Result<(), String> {
+        self.suppressed_escape
+            .write()
+            .map_err(|_| "UI Escape state lock is poisoned".to_owned())?
+            .insert(id.into());
+        Ok(())
+    }
+
+    pub fn take_suppressed_escape(&self, id: &str) -> bool {
+        self.suppressed_escape
+            .write()
+            .is_ok_and(|mut suppressed| suppressed.remove(id))
+    }
 }
 
 impl UiBridgeService {
@@ -26,6 +103,7 @@ impl UiBridgeService {
         Self {
             catalog,
             views: Arc::new(UiViewCatalog::default()),
+            surfaces: Arc::new(UiSurfaceState::default()),
         }
     }
 }

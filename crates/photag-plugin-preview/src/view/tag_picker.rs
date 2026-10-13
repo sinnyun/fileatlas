@@ -24,21 +24,76 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
     let assigned_ids: std::collections::HashSet<_> = assigned.iter().map(|tag| tag.id).collect();
     let tags = view.tagging.tag_tree().unwrap_or_default();
     let mut rows = Vec::new();
-    flatten(&tags, 0, &query, &mut rows);
+    flatten(
+        &tags,
+        0,
+        &query,
+        &view.collapsed_dropdown_tag_ids,
+        &mut rows,
+    );
     let mut panel = div()
         .v_flex()
         .gap_1()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_MODAL))
+        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_2()
         .child(div().text_sm().font_semibold().child("Tags for this item"))
         .child(Input::new(&view.tag_picker_search).w_full());
+    if query.is_empty() {
+        let recent_ids = view.tagging.recent_tags();
+        let mut recent = div().h_flex().flex_wrap().gap_1();
+        let mut has_recent = false;
+        for id in recent_ids.into_iter().take(6) {
+            if let Some(tag) = find_tag(&tags, id) {
+                has_recent = true;
+                let is_assigned = assigned_ids.contains(&id);
+                let icon = tag
+                    .icon
+                    .as_deref()
+                    .filter(|icon| !icon.is_empty())
+                    .unwrap_or("🏷");
+                recent = recent.child(
+                    Button::new(format!("preview-recent-tag-{id}"))
+                        .label(format!(
+                            "{icon} {} {}",
+                            if is_assigned { "☑" } else { "☐" },
+                            tag.name
+                        ))
+                        .on_click(
+                            cx.listener(move |this, _, _, cx| this.toggle_preview_tag(id, cx)),
+                        ),
+                );
+            }
+        }
+        if has_recent {
+            panel = panel.child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child("Recent"),
+            );
+            panel = panel.child(recent);
+        }
+    }
     let mut choices = div().h_flex().flex_wrap().gap_1();
-    for (id, label) in rows.into_iter().take(160) {
+    for (id, label, has_children, collapsed) in rows.into_iter().take(160) {
         let is_assigned = assigned_ids.contains(&id);
+        if has_children {
+            choices = choices.child(
+                Button::new(format!("preview-tag-expand-{id}"))
+                    .label(if collapsed { "▸" } else { "▾" })
+                    .on_click(cx.listener(move |this, _, _, cx| this.toggle_tag_dropdown(id, cx))),
+            );
+        } else {
+            choices = choices.child(div().w(px(28.)));
+        }
         choices = choices.child(
             Button::new(format!("preview-tag-{id}"))
-                .label(format!("{} {label}", if is_assigned { "✓" } else { "+" }))
+                .label(format!(
+                    "{}{} {label}",
+                    "  ".repeat(label.matches('/').count()),
+                    if is_assigned { "✓" } else { "+" }
+                ))
                 .on_click(cx.listener(move |this, _, _, cx| this.toggle_preview_tag(id, cx))),
         );
     }
@@ -67,6 +122,24 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
 }
 
 impl PreviewView {
+    fn toggle_tag_dropdown(&mut self, id: i64, cx: &mut Context<Self>) {
+        if !self.collapsed_dropdown_tag_ids.insert(id) {
+            self.collapsed_dropdown_tag_ids.remove(&id);
+        }
+        match self.session.snapshot() {
+            Ok(mut session) => {
+                session.collapsed_dropdown_tag_ids = self.collapsed_dropdown_tag_ids.clone();
+                if let Err(error) = self.session.replace(session) {
+                    self.operation_status = Some(format!("Could not save tag tree state: {error}"));
+                }
+            }
+            Err(error) => {
+                self.operation_status = Some(format!("Could not read session state: {error}"))
+            }
+        }
+        cx.notify();
+    }
+
     pub(super) fn handle_tag_hotkey(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
         let configured = self.settings.snapshot().ok().and_then(|settings| {
             settings
@@ -187,16 +260,24 @@ fn flatten(
     tags: &[photag_plugin_database::db::queries::Tag],
     depth: usize,
     query: &str,
-    rows: &mut Vec<(i64, String)>,
+    collapsed_ids: &std::collections::HashSet<i64>,
+    rows: &mut Vec<(i64, String, bool, bool)>,
 ) {
     for tag in tags {
         if query.is_empty()
             || tag.name.to_lowercase().contains(query)
             || tag.full_path.to_lowercase().contains(query)
         {
-            rows.push((tag.id, format!("{}{}", "  ".repeat(depth), tag.full_path)));
+            rows.push((
+                tag.id,
+                tag.full_path.clone(),
+                !tag.children.is_empty(),
+                collapsed_ids.contains(&tag.id),
+            ));
         }
-        flatten(&tag.children, depth + 1, query, rows);
+        if !query.is_empty() || !collapsed_ids.contains(&tag.id) {
+            flatten(&tag.children, depth + 1, query, collapsed_ids, rows);
+        }
     }
 }
 
@@ -207,4 +288,19 @@ fn choices_empty(tags: &[photag_plugin_database::db::queries::Tag], query: &str)
             || tag.full_path.to_lowercase().contains(query)
             || !choices_empty(&tag.children, query)
     })
+}
+
+fn find_tag(
+    tags: &[photag_plugin_database::db::queries::Tag],
+    id: i64,
+) -> Option<&photag_plugin_database::db::queries::Tag> {
+    for tag in tags {
+        if tag.id == id {
+            return Some(tag);
+        }
+        if let Some(found) = find_tag(&tag.children, id) {
+            return Some(found);
+        }
+    }
+    None
 }

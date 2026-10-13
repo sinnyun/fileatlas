@@ -47,6 +47,7 @@ pub struct TagInteractionPreferences {
     pub exclude_modifier: TagExcludeModifier,
     pub search_match: TagSearchMatch,
     pub search_persist: bool,
+    pub merge_reparent_children: bool,
 }
 
 impl Default for TagInteractionPreferences {
@@ -55,6 +56,7 @@ impl Default for TagInteractionPreferences {
             exclude_modifier: TagExcludeModifier::Ctrl,
             search_match: TagSearchMatch::Contains,
             search_persist: true,
+            merge_reparent_children: true,
         }
     }
 }

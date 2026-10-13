@@ -1,6 +1,6 @@
 //! PhoTag media-tag assignments and tag associations, owned by Cordis.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
@@ -12,6 +12,7 @@ pub mod xmp;
 
 pub struct TaggingService {
     database: Arc<DatabaseService>,
+    recent_tag_ids: Mutex<Vec<i64>>,
 }
 
 impl Service for TaggingService {
@@ -20,16 +21,52 @@ impl Service for TaggingService {
 
 impl TaggingService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
-        Self { database }
+        Self {
+            database,
+            recent_tag_ids: Mutex::new(Vec::new()),
+        }
     }
 
     /// Assign source tags, their one-way associated tags, and required ancestors.
     /// The database query preserves PhoTag's manual-versus-auto-applied flags.
     pub fn assign(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
+        self.assign_impl(media_ids, tag_ids, true)
+    }
+
+    /// Restore an assignment while replaying history without changing recency.
+    pub fn restore_assignment(
+        &self,
+        media_ids: &[i64],
+        tag_ids: &[i64],
+    ) -> Result<(), TaggingError> {
+        self.assign_impl(media_ids, tag_ids, false)
+    }
+
+    fn assign_impl(
+        &self,
+        media_ids: &[i64],
+        tag_ids: &[i64],
+        track_recent: bool,
+    ) -> Result<(), TaggingError> {
         self.database
             .with_writer(|connection| queries::assign_tags(connection, media_ids, tag_ids))?;
+        if track_recent && let Ok(mut recent) = self.recent_tag_ids.lock() {
+            for &tag_id in tag_ids.iter().rev() {
+                recent.retain(|id| *id != tag_id);
+                recent.insert(0, tag_id);
+            }
+            recent.truncate(8);
+        }
         self.schedule_xmp_sync(media_ids);
         Ok(())
+    }
+
+    /// Recently assigned tag IDs, newest first, shared by Gallery and Preview.
+    pub fn recent_tags(&self) -> Vec<i64> {
+        self.recent_tag_ids
+            .lock()
+            .map(|recent| recent.clone())
+            .unwrap_or_default()
     }
 
     pub fn remove(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {

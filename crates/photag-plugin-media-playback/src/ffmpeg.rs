@@ -31,11 +31,13 @@ pub(crate) fn probe(path: &Path) -> Result<Info, super::PlaybackError> {
             "json",
             &path.to_string_lossy(),
         ])
-        .output()?;
+        .output()
+        .map_err(|_| super::PlaybackError::ProbeFailed(path.to_path_buf()))?;
     if !output.status.success() {
         return Err(super::PlaybackError::ProbeFailed(path.to_path_buf()));
     }
-    let json: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+    let json: serde_json::Value = serde_json::from_slice(&output.stdout)
+        .map_err(|_| super::PlaybackError::ProbeFailed(path.to_path_buf()))?;
     let stream = json["streams"]
         .as_array()
         .and_then(|items| items.first())

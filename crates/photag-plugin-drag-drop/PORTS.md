@@ -6,7 +6,7 @@ Status: the Windows CF_HDROP/OLE drag service is registered in the workspace and
 
 - Plugin: `photag.drag-drop` (`DragDropPlugin`, `DragDropConfig`).
 - Service: `photag/drag-drop` (`DragDropService`). It has no plugin dependencies and publishes its service while active. Cordis owns the publication and removes it when the plugin stops; it registers no UI contributions or long-lived native resources.
-- Shell includes this crate in the Cargo workspace and starts `DragDropPlugin` before Gallery. The remaining host integration is to call `DragDropService` from the card drag gesture.
+- Shell includes this crate in the Cargo workspace and starts `DragDropPlugin` before Gallery. Gallery resolves the service during setup and calls it from the card drag gesture.
 
 ## Public operation
 
@@ -23,5 +23,5 @@ Status: the Windows CF_HDROP/OLE drag service is registered in the workspace and
 ## Source mapping and remaining integration
 
 - Source: `vendor/photag-source/src/drag.rs`; its only source caller is the gallery card drag-start handler in `vendor/photag-source/src/ui/gallery.rs` (around line 1666). It constructs paths from selected IDs and calls `start_file_drag` on the UI thread.
-- This crate preserves that call's copy-only `DROPEFFECT_COPY` contract and selected-path payload. Gallery invokes the service from the GPUI card drag gesture; verify pointer-drag timing while the OLE modal loop is active and exercise Explorer, desktop, and a `CF_HDROP` consumer on Windows.
+- This crate preserves that call's copy-only `DROPEFFECT_COPY` contract and selected-path payload. Gallery invokes the service from the GPUI card drag gesture. The migration is wired end to end; verify pointer-drag timing while the OLE modal loop is active and exercise Explorer, desktop, and a `CF_HDROP` consumer on Windows.
 - Current implementation adds explicit OLE initialization error handling and balances successful `OleInitialize` calls with `OleUninitialize`. Shell application lifecycle and actual native drag delivery are not yet verified.

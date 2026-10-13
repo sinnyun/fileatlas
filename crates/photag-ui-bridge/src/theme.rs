@@ -11,6 +11,8 @@ pub const SURFACE_PANEL: u32 = 0x252525;
 pub const SURFACE_ELEVATED: u32 = 0x2e2e2e;
 pub const SURFACE_MODAL: u32 = 0x2b2b2b;
 pub const SURFACE_FAINT: u32 = 0x1f1f1f;
+/// Source audio-preview stage background (`Color32::from_gray(24)`).
+pub const SURFACE_AUDIO: u32 = 0x181818;
 /// Lowest contrast surface used for egui's extreme/faint backgrounds.
 pub const SURFACE_EXTREME: u32 = 0x131313;
 pub const TEXT_PRIMARY: u32 = 0xebebeb;
@@ -173,18 +175,21 @@ pub fn preset_by_name(name: &str) -> &'static AccentPreset {
 
 pub fn normalize_accent(color: u32) -> u32 {
     let [r, g, b] = channels(color);
-    let luma = 0.299 * f32::from(r) + 0.587 * f32::from(g) + 0.114 * f32::from(b);
-    if luma >= 112.0 {
+    // Match PhoTag's winfx brightness lift: preserve the source hue by
+    // scaling all channels until the brightest channel reaches 150.
+    const MIN_BRIGHTEST_CHANNEL: u32 = 150;
+    let brightest = u32::from(r.max(g).max(b));
+    if brightest >= MIN_BRIGHTEST_CHANNEL {
         return color;
     }
-    if luma < 1.0 {
-        return preset_by_name(FALLBACK_ACCENT_NAME).color;
+    if brightest == 0 {
+        return 0x969696;
     }
-    let scale = 112.0 / luma;
+    let scale = MIN_BRIGHTEST_CHANNEL;
     pack(
-        (f32::from(r) * scale).min(255.0) as u8,
-        (f32::from(g) * scale).min(255.0) as u8,
-        (f32::from(b) * scale).min(255.0) as u8,
+        ((u32::from(r) * scale) / brightest).min(255) as u8,
+        ((u32::from(g) * scale) / brightest).min(255) as u8,
+        ((u32::from(b) * scale) / brightest).min(255) as u8,
     )
 }
 
@@ -215,6 +220,21 @@ pub fn set_backdrop_active(active: bool) {
 /// Source card opacity (232/255 with Mica/Acrylic, opaque otherwise).
 pub fn panel_alpha() -> u8 {
     if backdrop_active() { 0xe8 } else { 0xff }
+}
+
+/// Source base-panel opacity (222/255 with Mica/Acrylic, opaque otherwise).
+pub fn base_rgba(color: u32) -> u32 {
+    (color << 8) | if backdrop_active() { 0xde } else { 0xff }
+}
+
+/// Source modal/window opacity (244/255 with Mica/Acrylic, opaque otherwise).
+pub fn modal_rgba(color: u32) -> u32 {
+    (color << 8) | if backdrop_active() { 0xf4 } else { 0xff }
+}
+
+/// Pack an RGB surface token with the application backdrop-aware panel alpha.
+pub fn panel_rgba(color: u32) -> u32 {
+    (color << 8) | u32::from(panel_alpha())
 }
 
 pub fn accent_hover() -> u32 {

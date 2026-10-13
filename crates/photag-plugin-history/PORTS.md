@@ -18,6 +18,7 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 - `history/undo` and `history/redo` are registered as commands with Edit menu entries. The `UiCommandInvoked` listener runs the matching stack action and emits `MediaIndexChanged` after a non-empty action so Gallery refreshes.
 - `UndoEntry` matches the source data model: `AssignedTags`, `RemovedTags`, `ClearedTags`, `RatingChanged`, `Renamed`.
 - Tag changes use `TaggingService` (including source XMP metadata synchronization); ratings use the original database bulk query; rename uses `FileOperationsService`, which emits `MediaIndexChanged`.
+- Undo/redo restores tag assignments through `TaggingService::restore_assignment`, so history replay does not change the source-compatible recent-tag list.
 
 ## Source action map and semantics
 
@@ -25,11 +26,11 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
   `AssignedTags`, `RemovedTags`, `ClearedTags`, `RatingChanged`, and `Renamed`.
   Its producers are pending-action handling in `vendor/photag-source/src/app.rs`
   (tag assignment/removal/clear, rating, rename, and AI suggestion acceptance).
-- In this migration, Gallery produces the first four action families and
-  confirmed rename. AI suggestion acceptance currently assigns tags without
-  recording `AssignedTags` in `HistoryService`; that source producer remains
-  unported. File copy/move/delete and folder/tag-tree edits are not undoable in
-  the source model and must not be represented as history entries.
+- Gallery produces tag-hotkey/picker assignment and removal, clear, rating,
+  and confirmed rename entries. Preview's AI suggestion Apply actions also
+  record `AssignedTags` after a successful assignment. File copy/move/delete
+  and folder/tag-tree edits are not undoable in the source model and must not
+  be represented as history entries.
 
 - As in PhoTag, operation failures are best-effort and do not stop the entry from moving to the opposite stack. A new push always clears redo.
 - Stack transfer performed by undo/redo does not trim the destination stack, matching the source handlers.
@@ -39,7 +40,7 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 
 ## Debugging
 
-- Check service startup ordering: database, tagging and file operations must be published before history.
+- Check service startup ordering: database, tagging and file operations must be published before history; Preview must stop before the History, AI, Settings, Tagging, and MediaPlayback providers it consumes.
 - Inspect `undo_description` / `redo_description` when keyboard actions appear inert; `None` means the respective stack is empty.
 - Inspect the `history/undo` and `history/redo` command IDs and `UiCommandInvoked` delivery when Edit commands appear inert. Command actions refresh subscribers through `MediaIndexChanged`.
 - A rename that cannot be performed still transfers its entry, as the original caller did. Check the media row, target filename collision, filesystem permissions, and `MediaIndexChanged` delivery.

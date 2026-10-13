@@ -395,3 +395,24 @@ remains unverified.
 | `cargo +1.97.1 fmt --all -- --check` | Passed | Ran after import fixes. |
 | `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | The shell dependency graph compiled successfully after Preview repair. |
 | Tests / Windows validation | Not run / unverified | Tests remain prohibited in this pass; no Windows UI or media behavior is claimed as verified. |
+
+### Full source-parity and consolidation pass (2026-10-13)
+
+Ten subagents reviewed separate feature groups in parallel batches, followed by
+a distinct full-table source review and repair pass. The pass migrated the
+remaining code-backed interactions found in source comparison, including
+Statistics, tag associations/merge/delete flows, recent and collapsed tag
+picker state, filter modes, date grouping persistence, Settings modal/update
+offers, video controls/fallback, theme alpha consumption, and service shutdown
+ordering. It also synchronized the crate `PORTS.md` guides and this feature map.
+
+| Check | Result | Notes |
+|---|---|---|
+| `cargo +1.97.1 update --offline` | Passed | Reconciled the added local crate edge and `open` dependency without changing third-party package versions. |
+| `cargo +1.97.1 fmt --all` | Passed | Applied rustfmt after the final module splits and UI integration changes. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Final workspace formatting check after the UI integration repairs. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Final Windows host shell dependency graph compiled after this check exposed and the pass repaired type/import/ownership errors in the contributed UI paths. |
+| Modified Rust source file size | Passed | All modified Rust files are below 800 lines; Navigation, Preview and Settings views were split by behavior. |
+| `git diff --check` | Passed | No whitespace errors in the consolidated changes. |
+| Tests | Not run | Reserved for the user's second-round concentrated debugging per workspace instructions. |
+| Windows UI/media/filesystem behavior | Unverified | Native modal/keyboard behavior, update replacement, codecs/audio devices, FFmpeg corpus, OLE, shell dialogs, watcher delivery and visual parity require real Windows validation. |

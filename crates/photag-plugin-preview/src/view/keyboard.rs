@@ -39,6 +39,39 @@ impl PreviewView {
             }
             return;
         }
+        if self.service.snapshot().media_kind == Some(crate::PreviewMediaKind::Video) {
+            match key {
+                "space" | "Space" | " " => {
+                    if let Some(playback) = self.service.playback() {
+                        let _ = playback.toggle_play_pause();
+                    }
+                    cx.notify();
+                    return;
+                }
+                "left" | "ArrowLeft" => {
+                    if let Some(playback) = self.service.playback() {
+                        let position = playback.snapshot().position_seconds;
+                        let _ = playback.seek(position - 5.0);
+                    }
+                    cx.notify();
+                    return;
+                }
+                "right" | "ArrowRight" => {
+                    if let Some(playback) = self.service.playback() {
+                        let position = playback.snapshot().position_seconds;
+                        let _ = playback.seek(position + 5.0);
+                    }
+                    cx.notify();
+                    return;
+                }
+                "escape" | "Escape" => {
+                    self.service.close();
+                    cx.notify();
+                    return;
+                }
+                _ => {}
+            }
+        }
         if let Some(rating) = match key {
             "0" => Some(0),
             "1" => Some(1),

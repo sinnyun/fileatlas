@@ -55,6 +55,7 @@ struct PhoTagShell {
     cordis: CordisContext,
     executor: tokio::runtime::Handle,
     session: Arc<photag_plugin_session::SessionService>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     sidebar_width: f32,
     resizing_sidebar: bool,
 }
@@ -65,10 +66,12 @@ impl Render for PhoTagShell {
         let mut sidebar_views = Vec::new();
         let mut content_views = Vec::new();
         let mut auxiliary_views = Vec::new();
+        let mut modal_views = Vec::new();
         for (slot, view) in &self.views {
             match slot.as_str() {
                 "workspace.sidebar" => sidebar_views.push(view.clone()),
                 "gallery.content" | "workspace.main" => content_views.push(view.clone()),
+                "workspace.modal" => modal_views.push(view.clone()),
                 _ => auxiliary_views.push(view.clone()),
             }
         }
@@ -99,8 +102,23 @@ impl Render for PhoTagShell {
         let mut shell = div()
             .v_flex()
             .size_full()
-            .bg(rgb(theme::SURFACE_BASE))
+            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
             .text_color(rgb(theme::TEXT_PRIMARY))
+            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
+                if !event.keystroke.key.eq_ignore_ascii_case("escape") {
+                    return;
+                }
+                if this.surfaces.take_suppressed_escape("settings") {
+                    return;
+                }
+                if this.surfaces.is_open("settings") && !this.surfaces.is_capturing_key("settings")
+                {
+                    if let Err(error) = this.surfaces.set_open("settings", false) {
+                        eprintln!("could not close Settings surface: {error}");
+                    }
+                    cx.notify();
+                }
+            }))
             .child(
                 div()
                     .h_flex()
@@ -109,7 +127,7 @@ impl Render for PhoTagShell {
                     .gap_2()
                     .px_4()
                     .py_3()
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .child(div().text_lg().font_semibold().child("PhoTag"))
                     .children(commands),
             )
@@ -192,6 +210,9 @@ impl Render for PhoTagShell {
                         )
                     }),
             );
+        }
+        if !modal_views.is_empty() {
+            shell = shell.child(div().absolute().inset_0().children(modal_views));
         }
         shell
     }
@@ -588,6 +609,7 @@ fn main() {
                 cordis,
                 executor,
                 session: session_for_shell,
+                surfaces: Arc::clone(&bridge.surfaces),
                 sidebar_width,
                 resizing_sidebar: false,
             })
@@ -630,6 +652,11 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = preview_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop image preview plugin");
     }
     if let Some(fiber) = history_fiber {
         runtime
@@ -686,11 +713,6 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop drag-drop plugin");
-    }
-    if let Some(fiber) = preview_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop image preview plugin");
     }
     runtime
         .block_on(database_fiber.dispose())

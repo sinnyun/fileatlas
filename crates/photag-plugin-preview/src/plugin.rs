@@ -77,7 +77,10 @@ impl Plugin for PreviewPlugin {
             .map_err(|_| PreviewError::IntegrationServiceUnavailable("photag/database"))?;
         let runtime = tokio::runtime::Handle::try_current()
             .map_err(|_| PreviewError::IntegrationServiceUnavailable("tokio runtime"))?;
-        let service = Arc::new(PreviewService::open_with_session_at(directory, session)?);
+        let service = Arc::new(PreviewService::open_with_session_at(
+            directory,
+            Arc::clone(&session),
+        )?);
         service.configure_database(database);
         let _publication = context
             .provide(Arc::clone(&service))
@@ -112,6 +115,7 @@ impl Plugin for PreviewPlugin {
                 preview_view(
                     Arc::clone(&service),
                     Arc::clone(&settings),
+                    Arc::clone(&session),
                     Arc::clone(&tagging),
                     Some(Arc::clone(&history)),
                     context.clone(),

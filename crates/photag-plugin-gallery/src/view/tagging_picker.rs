@@ -28,7 +28,7 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
         .v_flex()
         .gap_1()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_BASE))
+        .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
         .p_2()
         .child(
             div()

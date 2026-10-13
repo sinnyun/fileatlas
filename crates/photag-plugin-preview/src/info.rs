@@ -26,7 +26,7 @@ pub(super) fn info_panel(path: &Path, indexed: Option<IndexedInfo>) -> impl Into
         .w(px(310.0))
         .max_h_full()
         .p_3()
-        .bg(rgb(theme::SURFACE_MODAL))
+        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .border_1()
         .border_color(rgb(theme::SURFACE_FAINT))
         .rounded_md()

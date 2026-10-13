@@ -400,8 +400,40 @@ impl GalleryView {
     }
 
     pub(super) fn cycle_extension(&mut self, extension: String, cx: &mut Context<Self>) {
-        self.filter.cycle_extension(&extension);
+        let (active, opposite) = if self.extension_exclude_mode {
+            (
+                &mut self.filter.excluded_extensions,
+                &mut self.filter.extensions,
+            )
+        } else {
+            (
+                &mut self.filter.extensions,
+                &mut self.filter.excluded_extensions,
+            )
+        };
+        if active.contains(&extension) {
+            active.retain(|value| value != &extension);
+        } else {
+            opposite.retain(|value| value != &extension);
+            active.push(extension);
+        }
         self.reload();
+        cx.notify();
+    }
+
+    pub(super) fn set_extension_click_mode(&mut self, exclude: bool, cx: &mut Context<Self>) {
+        self.extension_exclude_mode = exclude;
+        if let Ok(mut session) = self.session.snapshot() {
+            session.ext_click_mode = Some(if exclude {
+                photag_plugin_session::TagClickMode::Exclude
+            } else {
+                photag_plugin_session::TagClickMode::Select
+            });
+            if let Err(error) = self.session.replace(session) {
+                self.operation_status =
+                    Some(format!("Could not save extension filter mode: {error}"));
+            }
+        }
         cx.notify();
     }
 

@@ -24,9 +24,6 @@ pub(super) fn render_tag(
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(tag_id, event.modifiers(), cx)
         }));
-    let tag_name = tag.name.clone();
-    let tag_color = tag.color.clone().unwrap_or_default();
-    let tag_icon = tag.icon.clone().unwrap_or_default();
     let [red, green, blue] = tag
         .color
         .as_deref()
@@ -61,22 +58,11 @@ pub(super) fn render_tag(
             })
         })
         .child(name);
-    let edit_name = tag_name;
-    let edit_color = tag_color;
-    let edit_icon = tag_icon;
     let edit_id = tag.id;
     let edit = Button::new(format!("navigation-tag-edit-{edit_id}"))
         .label("Edit fields")
         .on_click(cx.listener(move |this, _, window, cx| {
-            let name = edit_name.clone();
-            let color = edit_color.clone();
-            let icon = edit_icon.clone();
-            this.tag_edit_name
-                .update(cx, |state, cx| state.set_value(&name, window, cx));
-            this.tag_color
-                .update(cx, |state, cx| state.set_value(&color, window, cx));
-            this.tag_icon
-                .update(cx, |state, cx| state.set_value(&icon, window, cx));
+            this.begin_edit_tag(edit_id, window, cx);
         }));
     let rename = Button::new(format!("navigation-tag-rename-{edit_id}"))
         .label("Rename")
@@ -99,7 +85,11 @@ pub(super) fn render_tag(
     let delete_id = tag.id;
     let delete = Button::new(format!("navigation-tag-delete-{delete_id}"))
         .label("Delete")
-        .on_click(cx.listener(move |this, _, _, cx| this.delete_tag(delete_id, cx)));
+        .on_click(cx.listener(move |this, _, _, cx| this.request_delete_tag(delete_id, cx)));
+    let merge_id = tag.id;
+    let merge = Button::new(format!("navigation-tag-merge-{merge_id}"))
+        .label("Merge into…")
+        .on_click(cx.listener(move |this, _, window, cx| this.begin_merge(merge_id, window, cx)));
     let move_id = tag.id;
     let move_into = Button::new(format!("navigation-tag-move-{move_id}"))
         .label("Move into ID")
@@ -121,8 +111,6 @@ pub(super) fn render_tag(
         }));
     let menu_id = tag.id;
     let menu_name = tag.name.clone();
-    let menu_color = tag.color.clone().unwrap_or_default();
-    let menu_icon = tag.icon.clone().unwrap_or_default();
     let menu_display = tag.display;
     let view = cx.entity().downgrade();
     let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
@@ -141,20 +129,19 @@ pub(super) fn render_tag(
                     });
                 },
             ));
+            let merge_view = view.clone();
+            menu = menu.item(
+                PopupMenuItem::new("Merge into…").on_click(move |_, window, cx| {
+                    let _ = merge_view.update(cx, |this, cx| {
+                        this.begin_merge(menu_id, window, cx);
+                    });
+                }),
+            );
             let edit_view = view.clone();
-            let edit_name = menu_name.clone();
-            let edit_color = menu_color.clone();
-            let edit_icon = menu_icon.clone();
             menu = menu.item(
                 PopupMenuItem::new("Edit fields").on_click(move |_, window, cx| {
                     let _ = edit_view.update(cx, |this, cx| {
-                        this.tag_edit_name
-                            .update(cx, |state, cx| state.set_value(&edit_name, window, cx));
-                        this.tag_color
-                            .update(cx, |state, cx| state.set_value(&edit_color, window, cx));
-                        this.tag_icon
-                            .update(cx, |state, cx| state.set_value(&edit_icon, window, cx));
-                        cx.notify();
+                        this.begin_edit_tag(menu_id, window, cx);
                     });
                 }),
             );
@@ -202,7 +189,7 @@ pub(super) fn render_tag(
             menu.item(
                 PopupMenuItem::new(format!("Delete {delete_name}")).on_click(move |_, _, cx| {
                     let _ = delete_view.update(cx, |this, cx| {
-                        this.delete_tag(menu_id, cx);
+                        this.request_delete_tag(menu_id, cx);
                         cx.notify();
                     });
                 }),
@@ -274,6 +261,7 @@ pub(super) fn render_tag(
                 .gap_1()
                 .child(edit)
                 .child(rename)
+                .child(merge)
                 .child(appearance)
                 .child(display)
                 .child(use_parent)

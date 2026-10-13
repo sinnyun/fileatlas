@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::component::scroll::ScrollableElement;
 
 mod tag_render;
 use tag_render::{render_subdirectory, render_tag};
@@ -30,7 +31,7 @@ impl Render for SidebarView {
             .v_flex()
             .size_full()
             .gap_1()
-            .bg(rgb(theme::SURFACE_BASE))
+            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
             .p_3()
             .child(div().text_sm().font_semibold().child("LIBRARY"));
         panel = panel.child(
@@ -330,8 +331,7 @@ impl Render for SidebarView {
                                         "✓ Select"
                                     })
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        this.exclude_mode = false;
-                                        cx.notify();
+                                        this.set_tag_click_mode(false, cx);
                                     })),
                             )
                             .child(
@@ -342,8 +342,7 @@ impl Render for SidebarView {
                                         "Exclude"
                                     })
                                     .on_click(cx.listener(|this, _, _, cx| {
-                                        this.exclude_mode = true;
-                                        cx.notify();
+                                        this.set_tag_click_mode(true, cx);
                                     })),
                             )
                             .child(
@@ -416,6 +415,27 @@ impl Render for SidebarView {
                             .child(Input::new(&self.tag_color).flex_1())
                             .child(Input::new(&self.tag_icon).flex_1()),
                     );
+                    if let Some(edited_id) = self.associated_edit_tag {
+                        let mut rows = Vec::new();
+                        collect_association_rows(&snapshot.tags, edited_id, &mut rows);
+                        let mut associations = div()
+                            .v_flex()
+                            .gap_1()
+                            .max_h(px(120.))
+                            .overflow_y_scrollbar()
+                            .child("Associated tags: assigning this tag also assigns:");
+                        for (id, path) in rows {
+                            let checked = self.associated_tag_ids.contains(&id);
+                            associations = associations.child(
+                                Button::new(format!("navigation-associated-tag-{id}"))
+                                    .label(format!("{} {path}", if checked { "☑" } else { "☐" }))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.toggle_associated_tag(id, cx)
+                                    })),
+                            );
+                        }
+                        panel = panel.child(associations);
+                    }
                     panel = panel.child(
                         div()
                             .h_flex()
@@ -461,6 +481,86 @@ impl Render for SidebarView {
                                     .child("Set fields, then use a tag row action"),
                             ),
                     );
+                    if let Some((tag_id, tag_name, count)) = self.confirm_delete.clone() {
+                        panel = panel.child(
+                            div()
+                                .v_flex()
+                                .gap_1()
+                                .p_2()
+                                .child(format!(
+                                    "Delete ‘{tag_name}’? It is assigned to {count} media items."
+                                ))
+                                .child("Also remove parent tags from those media?")
+                                .child(
+                                    div()
+                                        .h_flex()
+                                        .gap_1()
+                                        .child(
+                                            Button::new("navigation-delete-tag-clean")
+                                                .label("Remove parent tags too")
+                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.confirm_delete = None;
+                                                    this.delete_tag(tag_id, true, cx);
+                                                })),
+                                        )
+                                        .child(
+                                            Button::new("navigation-delete-tag-keep")
+                                                .label("Keep parent tags")
+                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.confirm_delete = None;
+                                                    this.delete_tag(tag_id, false, cx);
+                                                })),
+                                        )
+                                        .child(
+                                            Button::new("navigation-delete-tag-cancel")
+                                                .label("Cancel")
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.confirm_delete = None;
+                                                    cx.notify();
+                                                })),
+                                        ),
+                                ),
+                        );
+                    }
+                    if let Some(source_id) = self.merge_source {
+                        let source_name = self
+                            .snapshot
+                            .as_ref()
+                            .ok()
+                            .and_then(|snapshot| find_tag(&snapshot.tags, source_id))
+                            .map(|tag| tag.name.clone())
+                            .unwrap_or_else(|| "tag".into());
+                        panel = panel.child(
+                            div()
+                                .v_flex()
+                                .gap_1()
+                                .p_2()
+                                .child(format!("Merge ‘{source_name}’ into…"))
+                                .child(Input::new(&self.merge_search))
+                                .child(
+                                    Button::new("navigation-merge-children-mode")
+                                        .label(if self.merge_reparent_children {
+                                            "Children will be re-parented under target"
+                                        } else {
+                                            "Children will be deleted"
+                                        })
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.merge_reparent_children =
+                                                !this.merge_reparent_children;
+                                            cx.notify();
+                                        })),
+                                )
+                                .children(merge_target_buttons(self, source_id, cx))
+                                .child(
+                                    Button::new("navigation-merge-cancel")
+                                        .label("Cancel")
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.merge_source = None;
+                                            cx.notify();
+                                        })),
+                                ),
+                        );
+                    }
                     let query = self.tag_search.read(cx).value().trim().to_owned();
                     panel.children(
                         snapshot
@@ -491,4 +591,76 @@ impl Render for SidebarView {
             ),
         }
     }
+}
+
+fn collect_association_rows(
+    tags: &[photag_plugin_database::db::queries::Tag],
+    excluded_id: i64,
+    rows: &mut Vec<(i64, String)>,
+) {
+    for tag in tags {
+        if tag.id != excluded_id {
+            rows.push((tag.id, tag.full_path.replace('>', " > ")));
+        }
+        collect_association_rows(&tag.children, excluded_id, rows);
+    }
+}
+
+fn merge_target_buttons(
+    view: &SidebarView,
+    source_id: i64,
+    cx: &mut Context<SidebarView>,
+) -> Vec<Div> {
+    let Some(snapshot) = view.snapshot.as_ref().ok() else {
+        return Vec::new();
+    };
+    let mut excluded = HashSet::new();
+    if let Some(source) = find_tag(&snapshot.tags, source_id) {
+        collect_tag_ids(source, &mut excluded);
+    }
+    let query = view.merge_search.read(cx).value().trim().to_owned();
+    let mut targets = Vec::new();
+    fn walk(
+        tags: &[photag_plugin_database::db::queries::Tag],
+        excluded: &HashSet<i64>,
+        query: &str,
+        mode: TagSearchMatch,
+        output: &mut Vec<(i64, String)>,
+    ) {
+        for tag in tags {
+            if !excluded.contains(&tag.id) && tag_matches(tag, query, mode) {
+                output.push((
+                    tag.id,
+                    format!(
+                        "{}{}  ({})",
+                        "  ".repeat(tag.full_path.matches('>').count()),
+                        tag.name,
+                        tag.media_count
+                    ),
+                ));
+            }
+            walk(&tag.children, excluded, query, mode, output);
+        }
+    }
+    walk(
+        &snapshot.tags,
+        &excluded,
+        &query,
+        view.tag_search_match,
+        &mut targets,
+    );
+    if targets.is_empty() {
+        return vec![div().text_xs().child("No matching tags")];
+    }
+    targets
+        .into_iter()
+        .map(|(id, label)| {
+            div().child(
+                Button::new(format!("navigation-merge-target-{id}"))
+                    .label(label)
+                    .w_full()
+                    .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
+            )
+        })
+        .collect()
 }

@@ -7,7 +7,7 @@ This crate contains UI-framework-neutral Cordis events. Keep names and argument 
 | `FolderSelectionChanged` | `photag/navigation/folder-selection-changed` | `Option<i64>` | Navigation → Gallery |
 | `TagSelectionChanged` | `photag/navigation/tag-selection-changed` | `Option<i64>` | Legacy single-tag Navigation → Gallery |
 | `TagFilterSelectionChanged` | `photag/navigation/tag-filter-selection-changed` | `TagFilterSelection { included, excluded }` | Navigation → Gallery |
-| `TagInteractionPreferencesChanged` | `photag/settings/tag-interaction-preferences-changed` | `TagInteractionPreferences` | Settings → Navigation |
+| `TagInteractionPreferencesChanged` | `photag/settings/tag-interaction-preferences-changed` | `TagInteractionPreferences { exclude_modifier, search_match, search_persist, merge_reparent_children }` | Settings → Navigation |
 | `DirectoryPathSelected` | `photag/navigation/directory-path-selected` | `Option<String>` | Navigation → Gallery |
 | `TagDragPayload` | GPUI typed drag payload | `source_id: i64` | Navigation → Gallery card assignment |
 | `MediaIndexChanged` | `photag/indexing/media-index-changed` | `()` | Watcher/Indexing → Gallery |

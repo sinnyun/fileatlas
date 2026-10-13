@@ -8,8 +8,10 @@ mod file_actions;
 mod filter_actions;
 mod keyboard;
 mod render;
+mod statistics;
 mod tagging_picker;
 
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -58,6 +60,7 @@ fn writeback_failure_signature() -> Vec<(String, String)> {
 struct GalleryVisualRow {
     media_range: std::ops::Range<usize>,
     month_label: Option<String>,
+    collapsed: bool,
 }
 
 #[derive(Clone)]
@@ -75,6 +78,7 @@ fn build_gallery_rows(
     skeletons: &[photag_plugin_database::db::queries::MediaSkeleton],
     columns: usize,
     group_by_month: bool,
+    collapsed_months: &HashSet<String>,
 ) -> Vec<GalleryVisualRow> {
     let columns = columns.max(1);
     let mut rows = Vec::new();
@@ -86,6 +90,27 @@ fn build_gallery_rows(
                 .map(|date| date.format("%B %Y").to_string())
         };
         let month = group_by_month.then(|| month_at(start)).flatten();
+        let month_label = if group_by_month && month.is_some() && month != previous_month {
+            month.clone()
+        } else {
+            None
+        };
+        if let Some(label) = month_label.as_ref()
+            && collapsed_months.contains(label)
+        {
+            let mut end = start + 1;
+            while end < skeletons.len() && month_at(end) == month {
+                end += 1;
+            }
+            rows.push(GalleryVisualRow {
+                media_range: start..end,
+                month_label: Some(label.clone()),
+                collapsed: true,
+            });
+            previous_month = month;
+            start = end;
+            continue;
+        }
         let mut end = (start + columns).min(skeletons.len());
         if group_by_month {
             end = start + 1;
@@ -93,14 +118,10 @@ fn build_gallery_rows(
                 end += 1;
             }
         }
-        let month_label = if group_by_month && month.is_some() && month != previous_month {
-            month.clone()
-        } else {
-            None
-        };
         rows.push(GalleryVisualRow {
             media_range: start..end,
             month_label,
+            collapsed: false,
         });
         previous_month = month;
         start = end;
@@ -257,9 +278,12 @@ struct GalleryView {
     scroll: UniformListScrollHandle,
     columns: usize,
     row_layout: Arc<Vec<GalleryVisualRow>>,
-    row_layout_key: Option<(usize, bool, SortOrder)>,
+    row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
     thumb_size: f32,
     group_by_month: bool,
+    show_statistics: bool,
+    collapsed_months: HashSet<String>,
+    extension_exclude_mode: bool,
     drag_allowed: Arc<AtomicBool>,
     video_preview_open: bool,
     show_exif: bool,
@@ -272,6 +296,28 @@ struct GalleryView {
 }
 
 impl GalleryView {
+    pub(super) fn set_month_grouping(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.group_by_month = enabled;
+        self.row_layout_key = None;
+        if let Some(settings) = &self.settings {
+            if let Err(error) = settings.update(|settings| settings.show_date_dividers = enabled) {
+                self.operation_status =
+                    Some(format!("Month grouping preference save failed: {error}"));
+            }
+        }
+        self.persist_filter_session();
+        cx.notify();
+    }
+
+    pub(super) fn toggle_month_collapsed(&mut self, month: String, cx: &mut Context<Self>) {
+        if !self.collapsed_months.insert(month.clone()) {
+            self.collapsed_months.remove(&month);
+        }
+        self.row_layout_key = None;
+        self.persist_filter_session();
+        cx.notify();
+    }
+
     fn new(
         service: Arc<GalleryService>,
         file_operations: Arc<FileOperationsService>,
@@ -433,6 +479,12 @@ impl GalleryView {
             .base_handle
             .set_offset(point(px(0.), px(-restored_scroll)));
         let scroll_for_monitor = scroll.clone();
+        let settings_group_by_month = settings
+            .as_ref()
+            .and_then(|settings| settings.snapshot().ok())
+            .map(|settings| settings.show_date_dividers);
+        let group_by_month =
+            settings_group_by_month.unwrap_or_else(|| saved.group_by_month.unwrap_or(true));
         let initial_writeback_failures = tagging
             .as_ref()
             .map(|_| writeback_failure_signature())
@@ -484,6 +536,18 @@ impl GalleryView {
                                 view.writeback_failure_signature = current;
                                 cx.notify();
                             }
+                        }
+                        if let Some(group_by_month) = view
+                            .settings
+                            .as_ref()
+                            .and_then(|settings| settings.snapshot().ok())
+                            .map(|settings| settings.show_date_dividers)
+                            && group_by_month != view.group_by_month
+                        {
+                            view.group_by_month = group_by_month;
+                            view.row_layout_key = None;
+                            view.persist_filter_session();
+                            cx.notify();
                         }
                         let current_scroll =
                             (-f32::from(scroll_for_monitor.0.borrow().base_handle.offset().y))
@@ -543,7 +607,11 @@ impl GalleryView {
                 .thumb_size
                 .filter(|size| size.is_finite() && (100.0..=300.0).contains(size))
                 .unwrap_or(160.),
-            group_by_month: saved.group_by_month.unwrap_or(true),
+            group_by_month,
+            show_statistics: false,
+            collapsed_months: saved.collapsed_months.clone(),
+            extension_exclude_mode: saved.ext_click_mode
+                == Some(photag_plugin_session::TagClickMode::Exclude),
             drag_allowed: Arc::new(AtomicBool::new(true)),
             video_preview_open: false,
             show_exif: false,
@@ -610,6 +678,7 @@ impl GalleryView {
         saved.gallery_scroll = (-f32::from(self.scroll.0.borrow().base_handle.offset().y)).max(0.);
         saved.thumb_size = Some(self.thumb_size.clamp(100., 300.));
         saved.group_by_month = Some(self.group_by_month);
+        saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);
     }
 }

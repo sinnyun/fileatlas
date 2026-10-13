@@ -332,8 +332,8 @@ impl super::PhoTagMcpServer {
         if !request.confirm {
             return error_json("删除标签需要 confirm=true。 ");
         }
-        match self.navigation.delete_tag(request.tag_id) {
-            Ok(()) => "{\"ok\":true}".into(),
+        match self.navigation.delete_tag(request.tag_id, false) {
+            Ok(_affected_media_ids) => "{\"ok\":true}".into(),
             Err(error) => error_json(&error.to_string()),
         }
     }

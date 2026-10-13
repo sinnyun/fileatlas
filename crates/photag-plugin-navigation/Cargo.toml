@@ -16,6 +16,7 @@ photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 photag-plugin-session = { path = "../photag-plugin-session" }
+photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"

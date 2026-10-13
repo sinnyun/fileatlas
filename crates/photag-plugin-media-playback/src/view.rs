@@ -331,7 +331,7 @@ impl Render for PlaybackView {
                     .w_full()
                     .items_center()
                     .justify_center()
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .child(frame),
             )
             .child(Slider::new(&self.playhead).w_full().h_2())

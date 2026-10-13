@@ -43,11 +43,11 @@ pub(super) fn render_media_card(
         } else {
             rgb(theme::SURFACE_FAINT)
         })
-        .bg(if selected {
-            rgb(theme::accent_alpha(theme::accent(), 0.42))
+        .bg(rgba(if selected {
+            theme::accent_alpha(theme::accent(), 0.42)
         } else {
-            rgb(theme::SURFACE_PANEL)
-        })
+            theme::panel_rgba(theme::SURFACE_PANEL)
+        }))
         .p_2();
     let thumb_height = thumb_size - 35.;
     let mut thumbnail = div().relative().w_full().h(px(thumb_height));
@@ -88,7 +88,7 @@ pub(super) fn render_media_card(
             .justify_center()
             .text_xs()
             .text_color(rgb(theme::TEXT_MUTED))
-            .bg(rgb(theme::SURFACE_PANEL))
+            .bg(rgba(theme::panel_rgba(theme::SURFACE_PANEL)))
             .child(media.media_type.to_uppercase());
     }
     let menu_view = cx.entity().downgrade();

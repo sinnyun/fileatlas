@@ -144,10 +144,25 @@ impl MediaPlaybackService {
         if !path.is_file() {
             return Err(PlaybackError::MissingMedia(path));
         }
-        let info = ffmpeg::probe(&path)?;
         let mut state = self.lock()?;
         stop(&mut state);
         state.pause_after_frame = false;
+        let volume = state.snapshot.volume;
+        let speed = state.snapshot.speed;
+        let revision = state.snapshot.revision;
+        state.snapshot = PlaybackSnapshot {
+            volume,
+            speed,
+            revision,
+            ..PlaybackSnapshot::default()
+        };
+        let info = match ffmpeg::probe(&path) {
+            Ok(info) => info,
+            Err(error) => {
+                state.snapshot.revision = revision.wrapping_add(1);
+                return Err(error);
+            }
+        };
         state.snapshot.path = Some(path);
         state.snapshot.frame_path = None;
         state.snapshot.duration_seconds = info.duration;

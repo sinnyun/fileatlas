@@ -191,7 +191,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
         .v_flex()
         .gap_2()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_PANEL))
+        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_3()
         .child(
             Button::new("gallery-bulk-toggle")

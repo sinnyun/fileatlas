@@ -16,10 +16,9 @@ have not been runtime-validated.
   Cordis and passes the current `Settings::ai` snapshot into `suggest_tags`.
   Shell starts these providers before Preview.
 - Integration dependencies: `cordis`, `photag-plugin-settings`, `dirs`,
-  `image`, `ndarray`, `tract-onnx`, `ureq`, and `thiserror`. These are declared
-  in this crate's manifest; `ndarray` and `tract-onnx` are not yet present in
-  the checked-in lockfile, so resolve dependencies before a `--locked` shell
-  check can succeed. No `tokio` API is used.
+  `image`, `ndarray`, `tract-onnx`, `ureq`, and `thiserror`. All are declared
+  in this crate's manifest and represented in the checked-in lockfile. No
+  `tokio` API is used.
 - Model path: `%LOCALAPPDATA%/PhoTag/models/mobilenetv2-7.onnx` (with the
   platform data-local directory fallback used by `dirs`).
 

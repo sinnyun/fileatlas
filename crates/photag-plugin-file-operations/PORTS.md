@@ -3,8 +3,10 @@
 Status: source-compatible single-item and bulk copy/move/delete, rename,
 create-folder, Recycle Bin delete, open, reveal, and database follow-through
 are available. Gallery owns destination dialogs, Delete confirmation, operation
-feedback, and preview/selection repair after mutations. This migration slice
-has not been compiled or tested in this cloud pass.
+feedback, and preview/selection repair after mutations. The shell dependency
+graph compiled in the migration pass; file-system behavior still requires
+Windows runtime validation. Tests remain deferred to the concentrated debugging
+pass.
 
 ## Lifecycle and dependencies
 

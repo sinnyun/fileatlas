@@ -3,8 +3,9 @@
 Status: the source updater's release check, numeric version comparison, staged
 asset download, SHA-256 verification, executable swap with rollback, relaunch,
 and startup cleanup are exposed by a Cordis feature crate. Shell registration
-and a Settings UI for checking, downloading, progress, and install are wired.
-Windows executable replacement and relaunch remain unverified.
+and the Settings-owned UI for checking, automatic release offer, downloading,
+progress, and install are wired. Windows executable replacement and relaunch
+remain unverified.
 
 ## Lifecycle and dependencies
 
@@ -20,7 +21,8 @@ Windows executable replacement and relaunch remain unverified.
   PhoTag manifest also declares `ureq = "2"` and `sha2 = "0.10"`.
 - The shell starts the updater plugin before Settings. Applying the updater
   plugin runs best-effort startup cleanup and publishes the service. Settings
-  receives that service through Cordis and owns the user-triggered update UI.
+  receives that service through Cordis and owns the update UI, including the
+  source-style floating offer and session-scoped “Not now” dismissal.
 
 ## Inputs, outputs, and behavior
 

@@ -197,8 +197,20 @@ impl NavigationService {
             .database
             .with_writer(|c| queries::rename_tag(c, id, name))?)
     }
-    pub fn delete_tag(&self, id: i64) -> Result<(), NavigationError> {
-        Ok(self.database.with_writer(|c| queries::delete_tag(c, id))?)
+    /// Delete a tag and optionally remove its ancestors from media that had
+    /// the tag, matching PhoTag's explicit "clean parents" confirmation.
+    pub fn delete_tag(&self, id: i64, clean_parents: bool) -> Result<Vec<i64>, NavigationError> {
+        Ok(self.database.with_writer(|connection| {
+            let affected = queries::get_media_ids_with_tag(connection, id)?;
+            if clean_parents && !affected.is_empty() {
+                let ancestors = queries::get_ancestor_ids(connection, id)?;
+                if !ancestors.is_empty() {
+                    queries::remove_tags(connection, &affected, &ancestors)?;
+                }
+            }
+            queries::delete_tag(connection, id)?;
+            Ok(affected)
+        })?)
     }
     pub fn move_tag(&self, id: i64, drop: TagDropPos) -> Result<Vec<i64>, NavigationError> {
         Ok(self
@@ -495,7 +507,7 @@ mod tests {
             service.snapshot().unwrap().tags[0].children[0].name,
             "Vacation"
         );
-        service.delete_tag(parent.id).unwrap();
+        service.delete_tag(parent.id, false).unwrap();
         assert!(service.snapshot().unwrap().tags.is_empty());
         let _ = std::fs::remove_dir_all(root);
     }

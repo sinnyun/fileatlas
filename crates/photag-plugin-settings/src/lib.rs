@@ -4,12 +4,14 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use cordis::Routing;
+use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
 use photag_contracts::{
     TagExcludeModifier, TagInteractionPreferences, TagInteractionPreferencesChanged,
 };
 use photag_ui_bridge::{
-    ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
+    ContributionKind, UiBridgeService, UiCommandInvoked, UiContribution, register_for_plugin,
+    register_views_for_plugin,
 };
 
 pub mod settings;
@@ -135,6 +137,22 @@ impl Plugin for SettingsPlugin {
         let settings = service
             .snapshot()
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;
+        let surfaces = context
+            .try_service::<UiBridgeService>()
+            .map_err(|error| SettingsPluginError::Publish(error.to_string()))?
+            .surfaces
+            .clone();
+        let command_surfaces = Arc::clone(&surfaces);
+        let _settings_command = context
+            .on::<UiCommandInvoked, _>(observer_sync(move |_, command_id: String| {
+                if command_id == "settings/toggle"
+                    && let Err(error) = command_surfaces.toggle("settings")
+                {
+                    eprintln!("could not toggle Settings surface: {error}");
+                }
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| SettingsPluginError::EventRegistration(error.to_string()))?;
         let navigation = context
             .try_service::<photag_plugin_navigation::NavigationService>()
             .ok()
@@ -170,7 +188,7 @@ impl Plugin for SettingsPlugin {
                 UiContribution::new(
                     "settings/slot",
                     ContributionKind::Slot {
-                        label: "workspace.settings".into(),
+                        label: "workspace.modal".into(),
                         order: 0,
                     },
                 ),
@@ -178,7 +196,7 @@ impl Plugin for SettingsPlugin {
                     "settings/panel",
                     ContributionKind::Panel {
                         label: "Settings".into(),
-                        slot: "workspace.settings".into(),
+                        slot: "workspace.modal".into(),
                         order: 0,
                     },
                 ),
@@ -186,7 +204,22 @@ impl Plugin for SettingsPlugin {
                     "settings/view",
                     ContributionKind::Widget {
                         label: "PhoTag Settings".into(),
-                        slot: "workspace.settings".into(),
+                        slot: "workspace.modal".into(),
+                        order: 0,
+                    },
+                ),
+                UiContribution::new(
+                    "settings/toggle",
+                    ContributionKind::Command {
+                        label: "Settings".into(),
+                    },
+                ),
+                UiContribution::new(
+                    "settings/menu-window",
+                    ContributionKind::MenuItem {
+                        label: "Settings…".into(),
+                        menu: "Window".into(),
+                        command_id: "settings/toggle".into(),
                         order: 0,
                     },
                 ),
@@ -201,6 +234,7 @@ impl Plugin for SettingsPlugin {
                 navigation,
                 updater,
                 session,
+                surfaces,
                 context.clone(),
             )],
         )
@@ -223,6 +257,7 @@ pub(crate) fn interaction_preferences(settings: &Settings) -> TagInteractionPref
             crate::TagSearchMatch::StartsWith => photag_contracts::TagSearchMatch::StartsWith,
         },
         search_persist: settings.tag_search_persist,
+        merge_reparent_children: settings.tag_merge_children == crate::TagMergeChildren::Reparent,
     }
 }
 
@@ -232,4 +267,6 @@ pub enum SettingsPluginError {
     Publish(String),
     #[error("settings UI registration failed: {0}")]
     UiRegistration(String),
+    #[error("settings command registration failed: {0}")]
+    EventRegistration(String),
 }

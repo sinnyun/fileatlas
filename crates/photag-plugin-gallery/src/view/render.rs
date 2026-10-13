@@ -11,13 +11,23 @@ impl Render for GalleryView {
                 self.filter.sort,
                 SortOrder::NewestFirst | SortOrder::OldestFirst
             );
-        let row_layout_key = (columns, group_by_month, self.filter.sort);
-        if self.row_layout_key != Some(row_layout_key) {
+        let row_layout_key = (
+            columns,
+            group_by_month,
+            self.filter.sort,
+            self.collapsed_months.clone(),
+        );
+        if self.row_layout_key.as_ref() != Some(&row_layout_key) {
             self.row_layout = Arc::new(
                 self.snapshot
                     .as_ref()
                     .map(|snapshot| {
-                        build_gallery_rows(&snapshot.skeletons, columns, group_by_month)
+                        build_gallery_rows(
+                            &snapshot.skeletons,
+                            columns,
+                            group_by_month,
+                            &self.collapsed_months,
+                        )
                     })
                     .unwrap_or_default(),
             );
@@ -45,7 +55,7 @@ impl Render for GalleryView {
                     .v_flex()
                     .size_full()
                     .gap_3()
-                    .bg(rgb(theme::SURFACE_PANEL))
+                    .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                     .p_4()
                     .child(
                         div()
@@ -108,12 +118,26 @@ impl Render for GalleryView {
                                 "Months: off"
                             })
                             .on_click(cx.listener(|this, _, _, cx| {
-                                this.group_by_month = !this.group_by_month;
-                                cx.notify();
+                                this.set_month_grouping(!this.group_by_month, cx);
                             })),
                     );
                 }
                 grid = grid.child(gallery_options);
+                grid = grid.child(
+                    Button::new("gallery-statistics")
+                        .label(if self.show_statistics {
+                            "Hide statistics"
+                        } else {
+                            "Statistics"
+                        })
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.show_statistics = !this.show_statistics;
+                            cx.notify();
+                        })),
+                );
+                if self.show_statistics {
+                    grid = grid.child(super::statistics::render(self, cx));
+                }
                 if self.video_preview_open {
                     grid = grid.child(
                         Button::new("gallery-return-from-video")
@@ -136,6 +160,7 @@ impl Render for GalleryView {
                 grid = grid.child(controls::extension_row(
                     &self.filter,
                     &snapshot.available_extensions,
+                    self.extension_exclude_mode,
                     cx,
                 ));
                 if let Some(tag_picker) = tag_picker {
@@ -294,66 +319,87 @@ impl Render for GalleryView {
                                                 let end = layout_row.media_range.end;
                                                 let month_label = layout_row.month_label.clone();
                                                 let mut cards = Vec::with_capacity(end - first);
-                                                for skeleton in &snapshot.skeletons[first..end] {
-                                                    if let Some(media) = snapshot
-                                                        .media
-                                                        .iter()
-                                                        .find(|item| item.id == skeleton.id)
+                                                if !layout_row.collapsed {
+                                                    for skeleton in &snapshot.skeletons[first..end]
                                                     {
-                                                        let selected = this
-                                                            .selection
-                                                            .selected_media_ids
-                                                            .contains(&media.id);
-                                                        let rating_target_ids = if selected {
-                                                            this.selection
-                                                                .selected_media_ids
-                                                                .clone()
-                                                        } else {
-                                                            vec![media.id]
-                                                        };
-                                                        let drag_paths = if selected
-                                                            && !selected_drag_paths.is_empty()
+                                                        if let Some(media) = snapshot
+                                                            .media
+                                                            .iter()
+                                                            .find(|item| item.id == skeleton.id)
                                                         {
-                                                            selected_drag_paths.clone()
-                                                        } else {
-                                                            vec![PathBuf::from(
-                                                                media.full_path.as_str(),
-                                                            )]
-                                                        };
-                                                        cards.push(
-                                                            render_media_card(
-                                                                media,
-                                                                selected,
-                                                                Arc::clone(&this.drag_drop),
-                                                                drag_paths,
-                                                                Arc::clone(&this.drag_allowed),
-                                                                card_size,
-                                                                media.micro_thumb.as_deref(),
-                                                                rating_target_ids,
-                                                                Arc::clone(&card_tag_tree),
-                                                                cx,
-                                                            )
-                                                            .into_any_element(),
-                                                        );
-                                                    } else {
-                                                        cards.push(
-                                                            div()
-                                                                .w(px(card_size + 32.))
-                                                                .h(px(card_size + 64.))
-                                                                .rounded_md()
-                                                                .bg(rgb(theme::SURFACE_PANEL))
+                                                            let selected = this
+                                                                .selection
+                                                                .selected_media_ids
+                                                                .contains(&media.id);
+                                                            let rating_target_ids = if selected {
+                                                                this.selection
+                                                                    .selected_media_ids
+                                                                    .clone()
+                                                            } else {
+                                                                vec![media.id]
+                                                            };
+                                                            let drag_paths = if selected
+                                                                && !selected_drag_paths.is_empty()
+                                                            {
+                                                                selected_drag_paths.clone()
+                                                            } else {
+                                                                vec![PathBuf::from(
+                                                                    media.full_path.as_str(),
+                                                                )]
+                                                            };
+                                                            cards.push(
+                                                                render_media_card(
+                                                                    media,
+                                                                    selected,
+                                                                    Arc::clone(&this.drag_drop),
+                                                                    drag_paths,
+                                                                    Arc::clone(&this.drag_allowed),
+                                                                    card_size,
+                                                                    media.micro_thumb.as_deref(),
+                                                                    rating_target_ids,
+                                                                    Arc::clone(&card_tag_tree),
+                                                                    cx,
+                                                                )
                                                                 .into_any_element(),
-                                                        );
+                                                            );
+                                                        } else {
+                                                            cards.push(
+                                                                div()
+                                                                    .w(px(card_size + 32.))
+                                                                    .h(px(card_size + 64.))
+                                                                    .rounded_md()
+                                                                    .bg(rgba(theme::panel_rgba(
+                                                                        theme::SURFACE_PANEL,
+                                                                    )))
+                                                                    .into_any_element(),
+                                                            );
+                                                        }
                                                     }
                                                 }
                                                 let header = month_label
                                                     .map(|label| {
-                                                        div()
-                                                            .h(px(20.))
-                                                            .text_sm()
-                                                            .font_semibold()
-                                                            .text_color(rgb(theme::TEXT_SECONDARY))
-                                                            .child(label)
+                                                        let collapsed = layout_row.collapsed;
+                                                        div().h_flex().h(px(20.)).child(
+                                                            Button::new(format!(
+                                                                "gallery-month-{label}"
+                                                            ))
+                                                            .label(format!(
+                                                                "{} {label}",
+                                                                if collapsed {
+                                                                    "▸"
+                                                                } else {
+                                                                    "▾"
+                                                                }
+                                                            ))
+                                                            .on_click(cx.listener(
+                                                                move |this, _, _, cx| {
+                                                                    this.toggle_month_collapsed(
+                                                                        label.clone(),
+                                                                        cx,
+                                                                    );
+                                                                },
+                                                            )),
+                                                        )
                                                     })
                                                     .unwrap_or_else(|| div().h(px(20.)));
                                                 rows.push(
@@ -361,7 +407,11 @@ impl Render for GalleryView {
                                                         .id(format!("gallery-row-{row_index}"))
                                                         .v_flex()
                                                         .w_full()
-                                                        .h(px(card_size + 92.))
+                                                        .h(px(if layout_row.collapsed {
+                                                            48.
+                                                        } else {
+                                                            card_size + 92.
+                                                        }))
                                                         .gap_2()
                                                         .child(header)
                                                         .child(
@@ -530,7 +580,7 @@ impl Render for GalleryView {
             }
             Err(error) => div()
                 .size_full()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
                 .p_4()
                 .text_color(rgb(theme::DANGER))
                 .child(format!("Could not load media: {error}"))

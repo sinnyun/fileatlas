@@ -28,6 +28,7 @@ use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
 mod render;
 mod support;
+mod tag_actions;
 
 use support::{
     collect_tag_appearance_descendants, collect_tag_ids, find_tag, restore_expanded_directories,
@@ -72,6 +73,9 @@ pub(super) fn sidebar(
         move |window, app| {
             let view_service = Arc::clone(&service);
             let view_cordis = cordis.clone();
+            let tagging = view_cordis
+                .try_service::<photag_plugin_tagging::TaggingService>()
+                .ok();
             let view_session = Arc::clone(&session);
             let saved = view_session.snapshot().unwrap_or_default();
             let view_selected_folder_id = selected_folder_id;
@@ -94,10 +98,13 @@ pub(super) fn sidebar(
             let tag_move_target =
                 app.new(|cx| InputState::new(window, cx).placeholder("Parent tag ID"));
             let tag_search = app.new(|cx| InputState::new(window, cx).placeholder("Search tags…"));
+            let merge_search =
+                app.new(|cx| InputState::new(window, cx).placeholder("Filter target tags…"));
             app.new(|_| {
                 SidebarView::new(
                     view_service,
                     view_cordis,
+                    tagging,
                     view_session,
                     view_selected_folder_id,
                     view_selected_path,
@@ -105,6 +112,7 @@ pub(super) fn sidebar(
                     saved.expanded_tag_ids,
                     saved.selected_tag_ids,
                     saved.excluded_tag_ids,
+                    saved.tag_click_mode,
                     SidebarTab::from_session(&saved.sidebar_tab),
                     folder_path,
                     new_folder_name,
@@ -115,6 +123,7 @@ pub(super) fn sidebar(
                     tag_icon,
                     tag_move_target,
                     tag_search,
+                    merge_search,
                     view_preferences,
                 )
             })
@@ -126,6 +135,7 @@ pub(super) fn sidebar(
 struct SidebarView {
     service: Arc<NavigationService>,
     cordis: CordisContext,
+    tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
     session: Arc<SessionService>,
     folder_path: Entity<InputState>,
     new_folder_name: Entity<InputState>,
@@ -136,6 +146,7 @@ struct SidebarView {
     tag_icon: Entity<InputState>,
     tag_move_target: Entity<InputState>,
     tag_search: Entity<InputState>,
+    merge_search: Entity<InputState>,
     snapshot: Result<NavigationSnapshot, String>,
     active_scan: Option<std::sync::mpsc::Receiver<Option<ScanProgress>>>,
     scan_progress: Option<ScanProgress>,
@@ -153,12 +164,18 @@ struct SidebarView {
     tag_search_match: TagSearchMatch,
     apply_tag_appearance_to_children: bool,
     exclude_edited_tag_children: bool,
+    associated_edit_tag: Option<i64>,
+    associated_tag_ids: Vec<i64>,
+    merge_source: Option<i64>,
+    merge_reparent_children: bool,
+    confirm_delete: Option<(i64, String, usize)>,
 }
 
 impl SidebarView {
     fn new(
         service: Arc<NavigationService>,
         cordis: CordisContext,
+        tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
         session: Arc<SessionService>,
         restored_folder_id: Option<i64>,
         restored_path: Option<String>,
@@ -166,6 +183,7 @@ impl SidebarView {
         expanded_tags: HashSet<i64>,
         included_tags: Vec<i64>,
         excluded_tags: Vec<i64>,
+        saved_tag_click_mode: Option<photag_plugin_session::TagClickMode>,
         active_tab: SidebarTab,
         folder_path: Entity<InputState>,
         new_folder_name: Entity<InputState>,
@@ -176,6 +194,7 @@ impl SidebarView {
         tag_icon: Entity<InputState>,
         tag_move_target: Entity<InputState>,
         tag_search: Entity<InputState>,
+        merge_search: Entity<InputState>,
         preferences: Arc<RwLock<TagInteractionPreferences>>,
     ) -> Self {
         let snapshot = service.snapshot().map_err(|error| error.to_string());
@@ -203,6 +222,7 @@ impl SidebarView {
         Self {
             service: Arc::clone(&service),
             cordis,
+            tagging,
             session,
             folder_path,
             new_folder_name,
@@ -213,6 +233,7 @@ impl SidebarView {
             tag_icon,
             tag_move_target,
             tag_search,
+            merge_search,
             snapshot,
             active_scan: None,
             scan_progress: None,
@@ -226,10 +247,16 @@ impl SidebarView {
             excluded_tags,
             active_tab,
             new_folder_parent: None,
-            exclude_mode: false,
+            exclude_mode: saved_tag_click_mode
+                == Some(photag_plugin_session::TagClickMode::Exclude),
             tag_search_match: TagSearchMatch::Contains,
             apply_tag_appearance_to_children: false,
             exclude_edited_tag_children: true,
+            associated_edit_tag: None,
+            associated_tag_ids: Vec::new(),
+            merge_source: None,
+            merge_reparent_children: true,
+            confirm_delete: None,
         }
     }
 
@@ -505,6 +532,21 @@ impl SidebarView {
         cx.notify();
     }
 
+    fn set_tag_click_mode(&mut self, exclude: bool, cx: &mut Context<Self>) {
+        self.exclude_mode = exclude;
+        if let Ok(mut session) = self.session.snapshot() {
+            session.tag_click_mode = Some(if exclude {
+                photag_plugin_session::TagClickMode::Exclude
+            } else {
+                photag_plugin_session::TagClickMode::Select
+            });
+            if let Err(error) = self.session.replace(session) {
+                eprintln!("could not save tag click mode: {error}");
+            }
+        }
+        cx.notify();
+    }
+
     fn select_all_tags(
         &mut self,
         tags: &[photag_plugin_database::db::queries::Tag],
@@ -575,167 +617,5 @@ impl SidebarView {
             }
         })
         .detach();
-    }
-
-    fn create_tag(&mut self, cx: &mut Context<Self>) {
-        let name = self.tag_name.read(cx).value().trim().to_owned();
-        if name.is_empty() {
-            return;
-        }
-        let parent_text = self.tag_parent.read(cx).value().trim().to_owned();
-        let parent = if parent_text.is_empty() {
-            None
-        } else {
-            parent_text.parse::<i64>().ok()
-        };
-        if !parent_text.is_empty() && parent.is_none() {
-            self.snapshot = Err("Parent tag ID must be an integer".into());
-            return;
-        }
-        match self.service.create_tag(&name, parent) {
-            Ok(_) => self.refresh(),
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn rename_tag(&mut self, id: i64, cx: &mut Context<Self>) {
-        let name = self.tag_edit_name.read(cx).value().trim().to_owned();
-        if name.is_empty() {
-            return;
-        }
-        match self.service.rename_tag(id, &name) {
-            Ok(()) => self.refresh(),
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn update_tag_appearance(&mut self, id: i64, cx: &mut Context<Self>) {
-        let name = self.tag_edit_name.read(cx).value().trim().to_owned();
-        let color = self.tag_color.read(cx).value().trim().to_owned();
-        let icon = self.tag_icon.read(cx).value().trim().to_owned();
-        if !color.is_empty() && crate::parse_hex_color(&color).is_none() {
-            self.snapshot = Err("Tag color must use #RRGGBB format".into());
-            cx.notify();
-            return;
-        }
-        if !name.is_empty() {
-            if let Err(error) = self.service.rename_tag(id, &name) {
-                self.snapshot = Err(error.to_string());
-                cx.notify();
-                return;
-            }
-        }
-        let color = if color.is_empty() { None } else { Some(color) };
-        let icon = if icon.is_empty() { None } else { Some(icon) };
-        let mut descendants = Vec::new();
-        if self.apply_tag_appearance_to_children {
-            if let Ok(snapshot) = &self.snapshot {
-                if let Some(tag) = find_tag(&snapshot.tags, id) {
-                    collect_tag_appearance_descendants(tag, &mut descendants);
-                }
-            }
-        }
-        match self
-            .service
-            .set_tag_appearance(id, color.as_deref(), icon.as_deref())
-        {
-            Ok(()) => {
-                let mut propagation_error = None;
-                for (child_id, has_explicit_appearance) in descendants {
-                    if self.exclude_edited_tag_children && has_explicit_appearance {
-                        continue;
-                    }
-                    if let Err(error) =
-                        self.service
-                            .set_tag_appearance(child_id, color.as_deref(), icon.as_deref())
-                    {
-                        propagation_error = Some(error.to_string());
-                        break;
-                    }
-                }
-                self.refresh();
-                if let Some(error) = propagation_error {
-                    self.snapshot = Err(error);
-                }
-            }
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn delete_tag(&mut self, id: i64, cx: &mut Context<Self>) {
-        match self.service.delete_tag(id) {
-            Ok(()) => {
-                self.refresh();
-                self.included_tags.retain(|tag_id| *tag_id != id);
-                self.excluded_tags.retain(|tag_id| *tag_id != id);
-                self.emit_tag_selection(cx);
-                self.notify_media_index(cx);
-            }
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn move_tag_into(&mut self, id: i64, cx: &mut Context<Self>) {
-        let target = self.tag_move_target.read(cx).value().trim().parse::<i64>();
-        match target {
-            Ok(target) => match self.service.move_tag(
-                id,
-                photag_plugin_database::db::queries::TagDropPos::Into(target),
-            ) {
-                Ok(affected) => {
-                    self.refresh();
-                    if !affected.is_empty() {
-                        self.notify_media_index(cx);
-                    }
-                }
-                Err(error) => self.snapshot = Err(error.to_string()),
-            },
-            Err(_) => self.snapshot = Err("Parent tag ID must be an integer".into()),
-        }
-        cx.notify();
-    }
-
-    fn move_tag_to(
-        &mut self,
-        source: i64,
-        drop: photag_plugin_database::db::queries::TagDropPos,
-        cx: &mut Context<Self>,
-    ) {
-        let target = match drop {
-            photag_plugin_database::db::queries::TagDropPos::Before(id)
-            | photag_plugin_database::db::queries::TagDropPos::After(id)
-            | photag_plugin_database::db::queries::TagDropPos::Into(id) => id,
-        };
-        if source == target {
-            return;
-        }
-        match self.service.move_tag(source, drop) {
-            Ok(affected) => {
-                self.refresh();
-                if !affected.is_empty() {
-                    self.notify_media_index(cx);
-                }
-            }
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn toggle_tag_display(&mut self, id: i64, display: bool, cx: &mut Context<Self>) {
-        match self.service.set_tag_display(id, display) {
-            Ok(()) => self.refresh(),
-            Err(error) => self.snapshot = Err(error.to_string()),
-        }
-        cx.notify();
-    }
-
-    fn use_tag_as_parent(&self, id: i64, window: &mut Window, cx: &mut Context<Self>) {
-        self.tag_parent.update(cx, |state, cx| {
-            state.set_value(&id.to_string(), window, cx);
-        });
     }
 }

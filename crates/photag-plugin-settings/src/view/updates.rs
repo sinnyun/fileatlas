@@ -1,13 +1,17 @@
 //! Update-check/download lifecycle for the settings surface.
 
+use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::button::Button;
+use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
+use photag_ui_bridge::theme;
 use std::sync::Arc;
 use std::time::Duration;
 
 use super::SettingsView;
 
 impl SettingsView {
-    pub(super) fn begin_update_check(&mut self, manual: bool) {
+    pub(super) fn begin_update_check(&mut self, _manual: bool) {
         let Some(updater) = &self.updater else {
             self.update_error = Some("Updater service is unavailable.".into());
             return;
@@ -15,9 +19,6 @@ impl SettingsView {
         self.update_error = None;
         self.update_status = Some("Checking GitHub for a newer release…".into());
         self.update_check = Some(updater.check_async());
-        if manual {
-            self.update_info = None;
-        }
     }
 
     pub(super) fn begin_update_download(&mut self) {
@@ -68,6 +69,9 @@ impl SettingsView {
                         info.size_mb()
                     ));
                     self.update_info = Some(info);
+                    if !self.update_offer_dismissed {
+                        self.update_offer_open = true;
+                    }
                 }
                 Ok(None) => {
                     self.update_info = None;
@@ -101,6 +105,174 @@ impl SettingsView {
                 }
             }
         }
+    }
+
+    pub(super) fn render_update_offer(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        if !self.update_offer_open {
+            return div();
+        }
+        let Some(info) = self.update_info.clone() else {
+            self.update_offer_open = false;
+            return div();
+        };
+        let downloading = self.update_download.is_some();
+        let staged = self.update_staged.is_some();
+        let viewport = window.bounds().size;
+        let mut offer_header = div()
+            .h_flex()
+            .items_center()
+            .justify_between()
+            .child(div().text_lg().font_semibold().child("Update available"));
+        if !downloading {
+            offer_header = offer_header.child(
+                Button::new("settings-update-offer-close")
+                    .label("×")
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.update_offer_open = false;
+                        this.update_offer_dismissed = true;
+                        cx.notify();
+                    })),
+            );
+        }
+        let mut dialog = div()
+            .v_flex()
+            .gap_2()
+            .w(px(440.))
+            .max_h(px((f32::from(viewport.height) - 32.).max(180.)))
+            .rounded_md()
+            .border_1()
+            .border_color(rgba(theme::HAIRLINE.to_rgba()))
+            .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+            .text_color(rgb(theme::TEXT_PRIMARY))
+            .p_4()
+            .child(offer_header)
+            .child(div().child(format!(
+                "PhoTag {} · {:.1} MB",
+                info.version,
+                info.size_mb()
+            )))
+            .child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(format!(
+                        "You're running PhoTag {}.",
+                        photag_plugin_updater::current_version()
+                    )),
+            );
+        if !info.notes_plain().is_empty() {
+            dialog = dialog.child(
+                div()
+                    .max_h(px(180.))
+                    .overflow_y_scrollbar()
+                    .text_sm()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(info.notes_plain()),
+            );
+        }
+        if let Some(error) = &self.update_error {
+            dialog = dialog.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::DANGER))
+                    .child(error.clone()),
+            );
+        }
+        if downloading {
+            let done = self
+                .update_progress
+                .load(std::sync::atomic::Ordering::Relaxed);
+            let total = info.asset_size;
+            dialog = dialog.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(format!(
+                        "Downloading… {:.1} of {:.1} MB ({:.0}%)",
+                        done as f64 / 1_048_576.0,
+                        info.size_mb(),
+                        if total == 0 {
+                            0.0
+                        } else {
+                            done as f64 * 100.0 / total as f64
+                        }
+                    )),
+            );
+        }
+        let mut actions = div().h_flex().gap_2();
+        if staged {
+            actions = actions
+                .child(
+                    Button::new("settings-update-offer-restart")
+                        .label("Restart & install")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.confirm_install = true;
+                            this.install_update(cx);
+                        })),
+                )
+                .child(
+                    Button::new("settings-update-offer-later")
+                        .label("Later")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.update_offer_open = false;
+                            this.update_offer_dismissed = true;
+                            cx.notify();
+                        })),
+                );
+        } else if downloading {
+            actions = actions.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::TEXT_MUTED))
+                    .child("The update offer stays open while downloading."),
+            );
+        } else {
+            actions = actions
+                .child(
+                    Button::new("settings-update-offer-download")
+                        .label("Update now")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.begin_update_download();
+                            this.monitor_updates(cx);
+                        })),
+                )
+                .child(
+                    Button::new("settings-update-offer-later")
+                        .label("Not now")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.update_offer_open = false;
+                            this.update_offer_dismissed = true;
+                            cx.notify();
+                        })),
+                );
+        }
+        let url = if info.html_url.is_empty() {
+            photag_plugin_updater::releases_url()
+        } else {
+            info.html_url
+        };
+        if !downloading {
+            actions = actions.child(
+                Button::new("settings-update-offer-github")
+                    .label("View on GitHub")
+                    .on_click(move |_, _, _| {
+                        let _ = open::that_detached(&url);
+                    }),
+            );
+        }
+        dialog = dialog.child(actions);
+        div()
+            .absolute()
+            .inset_0()
+            .h_flex()
+            .items_center()
+            .justify_center()
+            .child(div().absolute().inset_0().bg(rgba(0x0000_00a6)))
+            .child(dialog)
     }
 
     pub(super) fn install_update(&mut self, cx: &mut Context<Self>) {

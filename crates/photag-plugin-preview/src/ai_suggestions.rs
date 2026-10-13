@@ -366,7 +366,7 @@ impl Render for AiSuggestionsView {
             .gap_2()
             .p_3()
             .rounded_md()
-            .bg(rgb(theme::SURFACE_MODAL));
+            .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)));
         content = content.child(
             div()
                 .h_flex()

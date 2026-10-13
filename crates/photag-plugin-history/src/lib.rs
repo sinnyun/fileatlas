@@ -126,12 +126,12 @@ impl HistoryService {
                 let _ = self.tagging.remove(media_ids, tag_ids);
             }
             UndoEntry::RemovedTags { media_ids, tag_ids } => {
-                let _ = self.tagging.assign(media_ids, tag_ids);
+                let _ = self.tagging.restore_assignment(media_ids, tag_ids);
             }
             UndoEntry::ClearedTags { previous_tags, .. } => {
                 for (media_id, tag_ids) in previous_tags {
                     if !tag_ids.is_empty() {
-                        let _ = self.tagging.assign(&[*media_id], tag_ids);
+                        let _ = self.tagging.restore_assignment(&[*media_id], tag_ids);
                     }
                 }
             }
@@ -173,7 +173,7 @@ impl HistoryService {
         let message = format!("Redo: {}", describe(&entry));
         match &entry {
             UndoEntry::AssignedTags { media_ids, tag_ids } => {
-                let _ = self.tagging.assign(media_ids, tag_ids);
+                let _ = self.tagging.restore_assignment(media_ids, tag_ids);
             }
             UndoEntry::RemovedTags { media_ids, tag_ids } => {
                 let _ = self.tagging.remove(media_ids, tag_ids);

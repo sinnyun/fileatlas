@@ -227,6 +227,10 @@ impl GalleryService {
         })?)
     }
 
+    pub fn statistics(&self) -> Result<queries::LibraryStats, GalleryError> {
+        Ok(self.database.with_reader(queries::get_statistics)?)
+    }
+
     /// Persist a selection rating using PhoTag's clamped bulk update query.
     pub fn apply_rating(&self, media_ids: &[i64], rating: u8) -> Result<(), GalleryError> {
         Ok(self.database.with_writer(|connection| {

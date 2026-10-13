@@ -266,6 +266,7 @@ pub(super) fn rating_row(filter: &GalleryFilter, cx: &mut Context<GalleryView>) 
 pub(super) fn extension_row(
     filter: &GalleryFilter,
     extensions: &[String],
+    exclude_mode: bool,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement {
     let mut row = div()
@@ -273,7 +274,25 @@ pub(super) fn extension_row(
         .items_center()
         .gap_1()
         .overflow_x_scrollbar()
-        .child(div().text_sm().child("Extensions"));
+        .child(div().text_sm().child("Extensions"))
+        .child(
+            Button::new("gallery-extension-mode-select")
+                .label(if !exclude_mode {
+                    "✓ Select"
+                } else {
+                    "Select"
+                })
+                .on_click(cx.listener(|this, _, _, cx| this.set_extension_click_mode(false, cx))),
+        )
+        .child(
+            Button::new("gallery-extension-mode-exclude")
+                .label(if exclude_mode {
+                    "⊘ Exclude"
+                } else {
+                    "Exclude"
+                })
+                .on_click(cx.listener(|this, _, _, cx| this.set_extension_click_mode(true, cx))),
+        );
     for extension in extensions {
         let selected = filter.extensions.contains(extension);
         let excluded = filter.excluded_extensions.contains(extension);

@@ -13,7 +13,7 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         .items_center()
         .gap_1()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_MODAL))
+        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
         .p_2()
         .child(div().text_sm().font_semibold().child("Preview actions"))
         .child(

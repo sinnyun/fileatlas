@@ -108,9 +108,13 @@ impl Plugin for McpPlugin {
                 Err(error) => eprintln!("PhoTag MCP server failed: {error}"),
             }
         });
-        let _publication = context
-            .provide(Arc::new(McpTaskGuard(task.abort_handle())))
-            .map_err(|error| McpPluginError::Publish(error.to_string()))?;
+        let abort = task.abort_handle();
+        if let Err(error) = context.provide(Arc::new(McpTaskGuard(abort.clone()))) {
+            // The transport task must not outlive a plugin whose lifecycle
+            // guard could not be registered with Cordis.
+            abort.abort();
+            return Err(McpPluginError::Publish(error.to_string()));
+        }
         Ok(())
     }
 }
