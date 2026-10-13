@@ -99,6 +99,26 @@ Windows, media-corpus, or regression validation.
 - No dynamic DLL loading, plugin store, sandbox, or cloud sync.
 - Do not add TODOs, mocks, or empty handlers as substitutes for functionality.
 
+## Local Rust toolchain selection
+
+This Windows host already has Rust toolchains above the workspace MSRV installed.
+Its default `stable` is Rust 1.94.1, while `Cargo.toml` requires Rust 1.95.
+Do not repeatedly run unqualified Cargo build/check/test commands on this host:
+they select the old default and fail before checking the project.
+
+- At the start of a build/validation session, inspect `rustup toolchain list`.
+- Use the installed `1.97.1-x86_64-pc-windows-msvc` explicitly here:
+  `cargo +1.97.1 ...`, including fmt, check, build, test, run, clippy and tree.
+- Keep `--locked`, bounded jobs (`-j 2` for builds/tests) and incremental settings.
+- If installed toolchains change, choose an already-installed Windows MSVC
+  toolchain meeting the current workspace `rust-version`; verify with
+  `rustc +<toolchain> --version`. Only install a toolchain if none is suitable.
+- An old default is not evidence that Rust is missing or that the project/GPUI
+  Kit is incompatible. Select the suitable installed toolchain first; do not
+  lower `rust-version`, change the global default or bypass the version check.
+
+See `docs/rust-toolchain.md` for exact local commands and MCP configuration.
+
 ## Verification
 
 The project is in the local validation phase. Run the checks needed for the

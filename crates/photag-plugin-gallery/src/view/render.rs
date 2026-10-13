@@ -31,6 +31,12 @@ impl Render for GalleryView {
                     self.selection = GallerySelection::default();
                     self.persist_filter_session();
                 }
+                crate::GalleryUiRequest::Hover(id) => {
+                    self.hovered_cards.clear();
+                    if let Some(id) = id {
+                        self.set_card_hover(id, true, cx);
+                    }
+                }
             }
             cx.notify();
         }
@@ -152,7 +158,7 @@ impl Render for GalleryView {
                                 "gallery-media-rows",
                                 row_count,
                                 cx.processor(
-                                    move |this, range: std::ops::Range<usize>, _window, cx| {
+                                    move |this, range: std::ops::Range<usize>, window, cx| {
                                         let mut rows = Vec::with_capacity(range.len());
                                         let requested_start = row_layout
                                             .get(range.start)
@@ -184,7 +190,11 @@ impl Render for GalleryView {
                                             Ok(None) => {}
                                             Err(error) => this.snapshot = Err(error.to_string()),
                                         }
+                                        let mut states = Vec::new();
+                                        let loaded: HashSet<_> = this.snapshot.as_ref().map(|snapshot| snapshot.media.iter().map(|media| media.id).collect()).unwrap_or_default();
                                         if let Ok(snapshot) = &this.snapshot {
+                                            this.card_motion.retain(|id, _| loaded.contains(id));
+                                            this.hovered_cards.retain(|id| loaded.contains(id));
                                             let card_tag_tree = Arc::new(snapshot.tag_tree.clone());
                                             let selected_drag_paths =
                                                 if this.selection.selected_media_ids.is_empty() {
@@ -234,10 +244,20 @@ impl Render for GalleryView {
                                                                     media.full_path.as_str(),
                                                                 )]
                                                             };
+                                                            let now = std::time::Instant::now();
+                                                            let motion = this.card_motion.entry(media.id)
+                                                                .or_insert_with(|| super::card_motion::CardMotion::new(selected, now));
+                                                            let (hover, selection, moving) = motion.sample(
+                                                                this.hovered_cards.contains(&media.id), selected, now, cx.reduce_motion());
+                                                            if moving && !cx.reduce_motion() { window.request_animation_frame(); }
+                                                            states.push(crate::GalleryCardState { media_id: media.id, hover, selection,
+                                                                timestamp_ms: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis() as u64 });
                                                             cards.push(
                                                                 render_media_card(
                                                                     media,
                                                                     selected,
+                                                                    hover,
+                                                                    selection,
                                                                     Arc::clone(&this.drag_drop),
                                                                     drag_paths,
                                                                     Arc::clone(&this.drag_allowed),
@@ -263,39 +283,15 @@ impl Render for GalleryView {
                                                         }
                                                     }
                                                 }
-                                                let header = month_label
-                                                    .clone()
-                                                    .map(|label| {
-                                                        let collapsed = layout_row.collapsed;
-                                                        let display_label = label.rsplit_once(' ').map(|(month, year)| {
-                                                            photag_ui_bridge::i18n::tr_args("{month} {year}", &[("month", photag_ui_bridge::i18n::tr(month)), ("year", year.to_owned())])
-                                                        }).unwrap_or_else(|| label.clone());
-                                                        div().h_flex().h(px(40.)).child(
-                                                            Button::new(format!(
-                                                                "gallery-month-{label}"
-                                                            ))
-                                                            .label(photag_ui_bridge::i18n::tr(
-                                                                &(format!(
-                                                                    "{} {display_label}",
-                                                                    if collapsed {
-                                                                        "▸"
-                                                                    } else {
-                                                                        "▾"
-                                                                    }
-                                                                ))
-                                                                .to_string(),
-                                                            ))
-                                                            .on_click(cx.listener(
-                                                                move |this, _, _, cx| {
-                                                                    this.toggle_month_collapsed(
-                                                                        label.clone(),
-                                                                        cx,
-                                                                    );
-                                                                },
-                                                            )),
-                                                        )
-                                                    })
-                                                    .unwrap_or_else(|| div());
+                                                let header = month_label.clone().map(|label| {
+                                                    let collapsed = layout_row.collapsed;
+                                                    let now = std::time::Instant::now();
+                                                    let motion = this.month_motion.entry(label.clone()).or_insert_with(||
+                                                        super::card_motion::CardMotion::new(!collapsed, now).with_selection_seconds(0.15));
+                                                    let (_, expanded, moving) = motion.sample(false, !collapsed, now, cx.reduce_motion());
+                                                    if moving { window.request_animation_frame(); }
+                                                    super::month_header::render(label, layout_row.month_count, expanded, cx).into_any_element()
+                                                }).unwrap_or_else(|| div().into_any_element());
                                                 let month_top_gap =
                                                     if row_index > 0 && has_month_label {
                                                         14.0
@@ -328,6 +324,7 @@ impl Render for GalleryView {
                                                 );
                                             }
                                         }
+                                        this.service.publish_card_states(states, &loaded);
                                         rows
                                     },
                                 ),

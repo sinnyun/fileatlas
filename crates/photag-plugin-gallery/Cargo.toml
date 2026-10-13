@@ -11,6 +11,7 @@ gpui-kit.workspace = true
 gpui = { package = "gpui-pre", version = "=0.3.8" }
 tokio.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 rfd = { version = "0.15", default-features = false }

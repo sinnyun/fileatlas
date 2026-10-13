@@ -13,6 +13,8 @@
 
 ## 当前基线
 
+- **本机工具链前置规则**：默认 Rust 1.94.1 低于项目要求，但已安装可用的 1.96.0/1.97.1。先运行 `rustup toolchain list`，本机统一使用 `cargo +1.97.1 ...`；下文通用 `cargo` 命令在本机执行时均需加此工具链选择。版本拦截不能作为构建性能或代码编译结果。详见[工具链说明](rust-toolchain.md)。
+
 - 根 `Cargo.toml` 将 `photag-shell` 设为 `default-members`，日常根目录 `cargo check` 只选择 shell 及其依赖图；Shell 会带入注册的插件。
 - `[profile.dev]` 已设置 `debug = 0`、`incremental = true`。`codegen-units` 未设置，沿用 Cargo 开发 profile 默认值（当前默认 256）。
 - `[profile.release]` 使用 `opt-level = 3`、`lto = "thin"`、`codegen-units = 1`；这是发布优化配置，不适合作为日常迭代构建。

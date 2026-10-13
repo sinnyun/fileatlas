@@ -10,12 +10,14 @@ use std::sync::mpsc;
 
 mod ffmpeg;
 mod maintenance;
+mod progress;
 pub mod scan;
 
 /// Cordis service exposing the migrated original scan workflows.
 pub struct IndexingService {
     pub(crate) database: Arc<DatabaseService>,
     pub(crate) thumbnails: Arc<ThumbnailService>,
+    progress: progress::ProgressRegistry,
 }
 
 impl Service for IndexingService {
@@ -28,6 +30,7 @@ impl IndexingService {
         Self {
             database,
             thumbnails,
+            progress: progress::ProgressRegistry::default(),
         }
     }
 
@@ -38,7 +41,12 @@ impl IndexingService {
         folder_path: String,
         cancel: Arc<AtomicBool>,
     ) -> mpsc::Receiver<Option<scan::ScanProgress>> {
-        scan::scan_folder_async(Arc::clone(self), folder_id, folder_path, cancel)
+        self.progress.track(scan::scan_folder_async(
+            Arc::clone(self),
+            folder_id,
+            folder_path,
+            cancel,
+        ))
     }
 
     /// Generate caches for indexed image/video rows that do not have thumbnails.
@@ -47,7 +55,17 @@ impl IndexingService {
         items: Vec<(String, String)>,
         cancel: Arc<AtomicBool>,
     ) -> mpsc::Receiver<Option<scan::ScanProgress>> {
-        maintenance::generate_missing_thumbnails_async(Arc::clone(self), items, cancel)
+        self.progress
+            .track(maintenance::generate_missing_thumbnails_async(
+                Arc::clone(self),
+                items,
+                cancel,
+            ))
+    }
+
+    /// Latest active scan/backfill, including scans started outside Navigation.
+    pub fn current_progress(&self) -> Option<scan::ScanProgress> {
+        self.progress.current()
     }
 
     /// List immediate child directories using the original PhoTag filtering.

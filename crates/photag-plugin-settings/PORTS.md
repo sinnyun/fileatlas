@@ -40,6 +40,11 @@ The floating Settings panel uses the shared backdrop-aware base and modal surfac
 
 ## Localization and live Settings validation (2026-10-13)
 
+Successful preference edits call UI Bridge `set_accent_name` followed by
+`apply_accent_components(&mut gpui_kit::App)` so self-painted highlights and
+GPUI Kit controls share the runtime accent. The existing source preset resolution,
+settings persistence, control placement and event payloads are preserved.
+
 Settings mounts lifecycle-owned `settings.language` view contributions in
 Appearance. The i18n provider owns the language preference and controls.
 `UiSurfaceState` settings.tab accepts appearance/toolbar/shortcuts/tags/ai/updates;

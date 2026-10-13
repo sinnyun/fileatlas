@@ -6,7 +6,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
 pub(super) struct UiRequest {
     /// settings_open/close/tab, language, statistics, bulk_actions,
-    /// gallery_dialogs_close, select_media, or deselect.
+    /// gallery_dialogs_close, select_media, deselect, hover_media, hover_clear.
     action: String,
     /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
@@ -15,20 +15,30 @@ pub(super) struct UiRequest {
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Read settings visibility/tab, application language and preview chrome opacity without changing state."
+        description = "Read Settings, language, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
     )]
     fn get_ui_state(&self) -> String {
         json!({
             "settings_open": self.surfaces.is_open("settings"),
-            "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "appearance".into()),
+            "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
             "language": self.i18n.as_ref().map(|service| service.language().code()),
             "translation_revision": photag_ui_bridge::i18n::revision(),
             "preview_chrome_alpha": self.preview.chrome_alpha(),
-        }).to_string()
+            "gallery_cards": self.gallery.card_states().iter().map(|state| json!({
+                "media_id": state.media_id, "hover": state.hover, "selection": state.selection,
+            })).collect::<Vec<_>>(),
+            "gallery_animation_frames": self.gallery.card_animation_frames().iter().map(|state| json!({
+                "media_id": state.media_id, "hover": state.hover, "selection": state.selection, "timestamp_ms": state.timestamp_ms,
+            })).collect::<Vec<_>>(),
+            "scan_progress": self.gallery.scan_progress().map(|p| json!({
+                "phase": p.phase, "scanned": p.scanned, "total": p.total,
+            })),
+        })
+        .to_string()
     }
 
     #[tool(
-        description = "Control PhoTag Settings and language through public services; requires PHOTAG_MCP_ALLOW_MUTATIONS=1. Does not inject mouse/keyboard events."
+        description = "Control Settings, language and Gallery service states; hover_media injects a Gallery hover target, not an OS pointer. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1."
     )]
     fn control_ui(&self, Parameters(request): Parameters<UiRequest>) -> String {
         if let Err(error) = self.mutation_guard() {
@@ -41,12 +51,28 @@ impl PhoTagMcpServer {
             | "bulk_actions"
             | "gallery_dialogs_close"
             | "select_media"
+            | "hover_media"
+            | "hover_clear"
             | "deselect" => {
                 use photag_plugin_gallery::GalleryUiRequest;
                 let action = match request.action.as_str() {
                     "statistics" => GalleryUiRequest::Statistics,
                     "bulk_actions" => GalleryUiRequest::BulkActions,
                     "deselect" => GalleryUiRequest::Deselect,
+                    "hover_clear" => GalleryUiRequest::Hover(None),
+                    "hover_media" => {
+                        let Some(id) = request
+                            .value
+                            .as_deref()
+                            .and_then(|value| value.parse::<i64>().ok())
+                        else {
+                            return error_json("hover_media requires a media ID");
+                        };
+                        if self.gallery.media_by_id(id).ok().flatten().is_none() {
+                            return error_json("media not found");
+                        }
+                        GalleryUiRequest::Hover(Some(id))
+                    }
                     "select_media" => {
                         let Some(id) = request
                             .value

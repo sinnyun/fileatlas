@@ -2,7 +2,7 @@ use super::*;
 
 impl SettingsView {
     pub(super) fn render_tab(&self, s: &Settings, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut b = div().v_flex().gap_2().p_3();
+        let mut b = div().v_flex().gap_2().p_3().line_height(relative(1.));
         match self.tab {
             Tab::Appearance => {
                 b = b.children(self.language_views.clone());
@@ -60,38 +60,66 @@ impl SettingsView {
                 ));
             }
             Tab::Toolbar => {
-                b = b.child(self.section("Preview toolbar controls"));
-                for (k, n, v) in [
+                for (group, controls) in [
                     (
-                        "tb.zoom_mode",
-                        "Zoom mode toggle",
-                        s.toolbar.zoom_mode_button,
-                    ),
-                    ("tb.zoom_reset", "Reset zoom", s.toolbar.zoom_reset_button),
-                    ("tb.zoom_presets", "Zoom presets", s.toolbar.zoom_presets),
-                    ("tb.rotate", "Rotation controls", s.toolbar.rotate_buttons),
-                    ("tb.flip", "Mirror controls", s.toolbar.flip_buttons),
-                    ("tb.tags", "Tags dropdown", s.toolbar.tags_button),
-                    (
-                        "tb.delete",
-                        "Delete to recycle bin",
-                        s.toolbar.delete_button,
-                    ),
-                    ("tb.copy", "Copy to…", s.toolbar.copy_button),
-                    ("tb.move", "Move to…", s.toolbar.move_button),
-                    ("tb.explorer", "Show in Explorer", s.toolbar.explorer_button),
-                    (
-                        "tb.external",
-                        "Open in default app",
-                        s.toolbar.open_external_button,
+                        "Zoom controls",
+                        vec![
+                            (
+                                "tb.zoom_mode",
+                                "Zoom mode toggle",
+                                s.toolbar.zoom_mode_button,
+                            ),
+                            ("tb.zoom_reset", "Reset zoom", s.toolbar.zoom_reset_button),
+                            ("tb.zoom_presets", "Zoom presets", s.toolbar.zoom_presets),
+                        ],
                     ),
                     (
-                        "tb.filmstrip",
-                        "Filmstrip toggle",
-                        s.toolbar.filmstrip_toggle,
+                        "Photo manipulation",
+                        vec![
+                            ("tb.rotate", "Rotation controls", s.toolbar.rotate_buttons),
+                            ("tb.flip", "Mirror controls", s.toolbar.flip_buttons),
+                        ],
+                    ),
+                    (
+                        "Tags",
+                        vec![("tb.tags", "Tags dropdown", s.toolbar.tags_button)],
+                    ),
+                    (
+                        "File",
+                        vec![
+                            (
+                                "tb.delete",
+                                "Delete to recycle bin",
+                                s.toolbar.delete_button,
+                            ),
+                            ("tb.copy", "Copy to…", s.toolbar.copy_button),
+                            ("tb.move", "Move to…", s.toolbar.move_button),
+                            ("tb.explorer", "Show in Explorer", s.toolbar.explorer_button),
+                            (
+                                "tb.external",
+                                "Open in default app",
+                                s.toolbar.open_external_button,
+                            ),
+                        ],
+                    ),
+                    (
+                        "View",
+                        vec![(
+                            "tb.filmstrip",
+                            "Filmstrip toggle",
+                            s.toolbar.filmstrip_toggle,
+                        )],
                     ),
                 ] {
-                    b = b.child(self.toggle_button(k, n, v, cx));
+                    let mut section = div().v_flex().gap(px(6.)).child(
+                        div()
+                            .font_semibold()
+                            .child(photag_ui_bridge::i18n::tr(group)),
+                    );
+                    for (k, n, v) in controls {
+                        section = section.child(self.toggle_button(k, n, v, cx));
+                    }
+                    b = b.child(section);
                 }
                 b = b
                     .child(self.toggle_button(

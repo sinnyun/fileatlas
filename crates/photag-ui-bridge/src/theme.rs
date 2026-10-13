@@ -152,32 +152,46 @@ pub fn apply_components(cx: &mut gpui_kit::App) {
     use gpui_kit::component::{Theme, ThemeMode};
     use gpui_kit::{px, rgb, rgba};
     Theme::change(ThemeMode::Dark, None, cx);
-    let theme = Theme::global_mut(cx);
-    theme.font_family = UI_FONT_FAMILY.into();
-    theme.font_size = px(FONT_SIZE_BODY);
-    theme.radius = px(ROUND_SM + 1.);
-    theme.radius_lg = px(ROUND_LG);
-    theme.colors.background = rgb(SURFACE_BASE).into();
-    theme.colors.foreground = rgb(TEXT_PRIMARY).into();
-    theme.colors.button = rgba(CONTROL_GHOST.to_rgba()).into();
-    theme.colors.button_hover = rgba(CONTROL_GHOST_HOVER.to_rgba()).into();
-    theme.colors.button_active = rgba(CONTROL_GHOST_PRESSED.to_rgba()).into();
-    theme.colors.button_foreground = rgb(TEXT_PRIMARY).into();
-    theme.colors.border = rgba(0).into();
-    theme.colors.input = rgba(0).into();
-    theme.colors.secondary = rgb(SURFACE_PANEL).into();
-    theme.colors.secondary_foreground = rgb(TEXT_PRIMARY).into();
-    theme.colors.muted_foreground = rgb(TEXT_MUTED).into();
-    theme.colors.popover = rgb(SURFACE_MODAL).into();
-    theme.colors.popover_foreground = rgb(TEXT_PRIMARY).into();
-    theme.colors.list = rgb(SURFACE_MODAL).into();
-    theme.colors.list_hover = rgba(CONTROL_HOVER.to_rgba()).into();
-    theme.colors.accent = rgba((accent() << 8) | 64).into();
-    theme.colors.accent_foreground = rgb(TEXT_PRIMARY).into();
-    theme.colors.selection = rgba((accent() << 8) | 64).into();
-    theme.colors.primary = rgb(accent()).into();
-    theme.colors.caret = rgb(TEXT_PRIMARY).into();
-    theme.colors.ring = rgba(0).into();
+    // GPUI Kit keeps colors, renderable tokens and Base projections. Its
+    // supported update path synchronizes all three (not just legacy colors).
+    Theme::update(cx, |theme| {
+        theme.font_family = UI_FONT_FAMILY.into();
+        theme.font_size = px(FONT_SIZE_BODY);
+        theme.radius = px(ROUND_SM + 1.);
+        theme.radius_lg = px(ROUND_LG);
+        theme.colors.background = rgb(SURFACE_BASE).into();
+        theme.colors.foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.button = rgba(CONTROL_GHOST.to_rgba()).into();
+        theme.colors.button_hover = rgba(CONTROL_GHOST_HOVER.to_rgba()).into();
+        theme.colors.button_active = rgba(CONTROL_GHOST_PRESSED.to_rgba()).into();
+        theme.colors.button_foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.border = rgba(0).into();
+        theme.colors.input = rgba(0).into();
+        theme.colors.secondary = rgb(SURFACE_PANEL).into();
+        theme.colors.secondary_foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.muted_foreground = rgb(TEXT_MUTED).into();
+        theme.colors.popover = rgb(SURFACE_MODAL).into();
+        theme.colors.popover_foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.list = rgb(SURFACE_MODAL).into();
+        theme.colors.list_hover = rgba(CONTROL_HOVER.to_rgba()).into();
+        theme.colors.accent = rgba((accent() << 8) | 64).into();
+        theme.colors.accent_foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.selection = rgba((accent() << 8) | 64).into();
+        theme.colors.primary = rgb(accent()).into();
+        theme.colors.primary_foreground = rgb(TEXT_PRIMARY).into();
+        theme.colors.caret = rgb(TEXT_PRIMARY).into();
+        theme.colors.ring = rgba(0).into();
+    });
+}
+
+/// Keep native controls synchronized with the runtime source accent token.
+pub fn apply_accent_components(cx: &mut gpui_kit::App) {
+    use gpui_kit::{component::Theme, rgb, rgba};
+    Theme::update(cx, |theme| {
+        theme.colors.primary = rgb(accent()).into();
+        theme.colors.accent = rgba((accent() << 8) | 64).into();
+        theme.colors.selection = rgba((accent() << 8) | 64).into();
+    });
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -320,6 +334,28 @@ pub fn accent_alpha(color: u32, alpha: f32) -> u32 {
 
 pub fn channels(color: u32) -> [u8; 3] {
     [(color >> 16) as u8, (color >> 8) as u8, color as u8]
+}
+
+/// Parse "#RRGGBB" → `[r, g, b]`; `None` on malformed input.
+/// `vendor/photag-source/src/ui/sidebar.rs:8-15`.
+pub fn parse_hex_color(value: &str) -> Option<[u8; 3]> {
+    let value = value.trim().trim_start_matches('#');
+    if value.len() != 6 {
+        return None;
+    }
+    Some([
+        u8::from_str_radix(&value[0..2], 16).ok()?,
+        u8::from_str_radix(&value[2..4], 16).ok()?,
+        u8::from_str_radix(&value[4..6], 16).ok()?,
+    ])
+}
+
+/// `vendor/photag-source/src/ui/sidebar.rs:44-50`: per-tag icon tint,
+/// falling back to the neutral gray used when a tag has no color.
+pub fn tag_tint(color: Option<&str>) -> u32 {
+    color
+        .and_then(parse_hex_color)
+        .map_or(0x78787a, |[r, g, b]| pack(r, g, b))
 }
 
 const fn pack(r: u8, g: u8, b: u8) -> u32 {

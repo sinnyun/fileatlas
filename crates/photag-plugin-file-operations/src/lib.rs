@@ -525,13 +525,17 @@ mod tests {
     use super::*;
 
     fn setup() -> (PathBuf, Arc<FileOperationsService>, i64) {
+        // Windows SystemTime granularity is ~100 ns, so parallel tests can read
+        // the same timestamp and share a root; the counter keeps each one unique.
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
-            "photag-file-ops-{}-{}",
+            "photag-file-ops-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         let library = root.join("library");
         std::fs::create_dir_all(&library).unwrap();

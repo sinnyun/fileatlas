@@ -187,9 +187,25 @@ impl super::PhoTagMcpServer {
             Ok(None) => return error_json("没有找到该媒体记录。"),
             Err(error) => return error_json(&error.to_string()),
         };
+        // `behavior.rs:228-294`: Gallery seeds the filmstrip from the current
+        // page before opening, so an MCP open behaves like a gallery double-click
+        // instead of leaving the strip band empty.
+        let filmstrip = self
+            .gallery
+            .load(Default::default())
+            .and_then(|snapshot| {
+                let ids = snapshot
+                    .skeletons
+                    .iter()
+                    .map(|item| item.id)
+                    .collect::<Vec<_>>();
+                self.gallery.media_path_pairs_by_ids(&ids)
+            })
+            .unwrap_or_default();
         let view = match media.media_type.as_str() {
             "image" => {
-                if let Err(error) = self.preview.open(&media.full_path) {
+                self.preview.set_filmstrip_media(filmstrip);
+                if let Err(error) = self.preview.open_media(&media.full_path, Some(media.id)) {
                     return error_json(&error.to_string());
                 }
                 "preview"
@@ -221,6 +237,8 @@ impl super::PhoTagMcpServer {
                 "zoom_percent": preview.zoom_percent,
                 "zoom_scale": preview.zoom_scale,
                 "show_info": preview.show_info,
+                "media_id": preview.media_id,
+                "filmstrip": self.preview.filmstrip_items(),
                 "revision": preview.revision,
             },
             "playback": {
@@ -260,6 +278,10 @@ impl super::PhoTagMcpServer {
             }
             _ => return error_json("不支持的预览操作。"),
         }
+        // A toolbar click or key press restarts the source's chrome fade timer
+        // (`preview.rs:1696` gate plus the per-frame activity reset), so the
+        // service clock is advanced here as the real pointer input would.
+        self.preview.mark_activity();
         self.get_view_state()
     }
 

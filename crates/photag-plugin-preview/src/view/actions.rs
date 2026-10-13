@@ -174,6 +174,178 @@ impl PreviewView {
         cx.notify();
     }
 
+    /// `preview.rs:2630` → `app.rs:1776-1792`: copy the current file through a
+    /// native Save File dialog; a copy inside a registered folder is picked up
+    /// by the watcher, so the library itself is not touched here.
+    pub(super) fn copy_current_to_file(&mut self, cx: &mut Context<Self>) {
+        if self.operation_busy {
+            return;
+        }
+        let Some((media_id, item)) = self.current_item(cx) else {
+            return;
+        };
+        let Some(destination) = rfd::FileDialog::new()
+            .set_file_name(&item.filename)
+            .save_file()
+        else {
+            return;
+        };
+        let operations = Arc::clone(&self.file_operations);
+        let runtime = self.runtime.clone();
+        let task = runtime.spawn(async move { operations.copy_to(media_id, destination).await });
+        self.operation_busy = true;
+        self.operation_status = Some("Copying…".into());
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            let _ = this.update(cx, |this: &mut PreviewView, cx| {
+                this.operation_busy = false;
+                this.operation_status = Some(match result {
+                    Err(error) => format!("Copy worker failed: {error}"),
+                    Ok(Err(error)) => format!("Copy failed: {error}"),
+                    Ok(Ok(_)) => "Copied the file.".into(),
+                });
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
+    /// `preview.rs:2634` → `app.rs:1794-1842`: move the current file through a
+    /// native Save File dialog, then re-home the row when the destination is
+    /// inside a registered folder, otherwise drop it and advance the preview.
+    pub(super) fn move_current_to_file(&mut self, cx: &mut Context<Self>) {
+        if self.operation_busy {
+            return;
+        }
+        let Some((media_id, item)) = self.current_item(cx) else {
+            return;
+        };
+        let Some(destination) = rfd::FileDialog::new()
+            .set_file_name(&item.filename)
+            .save_file()
+        else {
+            return;
+        };
+        let operations = Arc::clone(&self.file_operations);
+        let verification = Arc::clone(&self.file_operations);
+        let runtime = self.runtime.clone();
+        let old_path = PathBuf::from(&item.full_path);
+        let ordered = self.service.filmstrip_items();
+        let index = ordered.iter().position(|(path, _)| path == &old_path);
+        let next = index.and_then(|index| {
+            ordered
+                .get(index + 1)
+                .or_else(|| {
+                    index
+                        .checked_sub(1)
+                        .and_then(|previous| ordered.get(previous))
+                })
+                .cloned()
+        });
+        let task = runtime.spawn(async move {
+            let result = operations.move_to_with_outcome(media_id, destination).await;
+            let current = verification.media_by_id(media_id);
+            (result, current)
+        });
+        self.operation_busy = true;
+        self.operation_status = Some("Moving…".into());
+        let service = Arc::clone(&self.service);
+        cx.spawn(async move |this, cx| {
+            let task_result = task.await;
+            let _ = this.update(cx, |this: &mut PreviewView, cx| {
+                this.operation_busy = false;
+                match task_result {
+                    Err(error) => {
+                        this.operation_status = Some(format!("Move worker failed: {error}"))
+                    }
+                    Ok((Err(error), _)) => {
+                        this.operation_status = Some(format!("Move failed: {error}"))
+                    }
+                    Ok((Ok(false), _)) => this.operation_status = Some(
+                        "Move was skipped because the destination conflicts or the file could not \
+                         be moved."
+                            .into(),
+                    ),
+                    Ok((Ok(true), current)) => {
+                        let moved_path = match current {
+                            Err(error) => {
+                                this.operation_status = Some(format!(
+                                    "Moved the file, but the library row could not be verified: \
+                                     {error}"
+                                ));
+                                None
+                            }
+                            Ok(Some(item)) => Some(PathBuf::from(&item.full_path)),
+                            Ok(None) => None,
+                        };
+                        if let Some(new_path) = moved_path {
+                            // The row stayed in the library under a registered folder.
+                            service.replace_media_path(&old_path, new_path, media_id);
+                            this.operation_status = Some("Moved the file.".into());
+                        } else {
+                            // `app.rs:1838`: the item left the library, so the
+                            // preview advances to its neighbour.
+                            let remaining = service
+                                .filmstrip_items()
+                                .into_iter()
+                                .filter(|(path, _)| path != &old_path)
+                                .collect::<Vec<_>>();
+                            service.set_filmstrip(remaining.into_iter().map(|(path, _)| path));
+                            if let Some((next_path, next_id)) =
+                                next.filter(|(path, _)| path != &old_path && path.is_file())
+                            {
+                                if let Err(error) = service.open_media(next_path, next_id) {
+                                    service.close();
+                                    this.operation_status = Some(format!(
+                                        "Moved the file, but could not open the next item: {error}"
+                                    ));
+                                } else {
+                                    this.operation_status =
+                                        Some("Moved the file out of the library.".into());
+                                }
+                            } else {
+                                service.close();
+                                this.operation_status = Some(
+                                    "Moved the file out of the library; preview closed.".into(),
+                                );
+                            }
+                        }
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
+    /// Resolve the previewed row before a dialog opens, reporting the source's
+    /// "no indexed item" bail-outs through the status line.
+    fn current_item(
+        &mut self,
+        cx: &mut Context<Self>,
+    ) -> Option<(i64, photag_plugin_database::db::queries::MediaItem)> {
+        let Some(media_id) = self.service.snapshot().media_id else {
+            self.operation_status = Some("This action requires an indexed media item.".into());
+            cx.notify();
+            return None;
+        };
+        match self.file_operations.media_by_id(media_id) {
+            Ok(Some(item)) => Some((media_id, item)),
+            Ok(None) => {
+                self.operation_status = Some("This item is no longer indexed.".into());
+                cx.notify();
+                None
+            }
+            Err(error) => {
+                self.operation_status = Some(format!("Could not read the indexed row: {error}"));
+                cx.notify();
+                None
+            }
+        }
+    }
+
     pub(super) fn request_delete(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.operation_busy || self.delete_confirmation_open {
             return;

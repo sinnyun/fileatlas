@@ -408,6 +408,31 @@ impl GalleryView {
             .items_center()
             .gap(px(8.))
             .text_size(px(12.));
+        if let Some(progress) = self.service.scan_progress() {
+            let fraction = progress.scanned as f32 / progress.total.max(1) as f32;
+            return row
+                .child(gpui_kit::component::spinner::Spinner::new())
+                .child(
+                    div()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(&progress.phase)),
+                )
+                .child(
+                    div()
+                        .w(px(180.))
+                        .h(px(6.))
+                        .rounded(px(3.))
+                        .bg(rgb(theme::SURFACE_ELEVATED))
+                        .child(
+                            div()
+                                .w(relative(fraction.clamp(0., 1.)))
+                                .h_full()
+                                .rounded(px(3.))
+                                .bg(rgb(theme::accent())),
+                        ),
+                )
+                .into_any_element();
+        }
         if n == 0 {
             row = row.child(
                 div()

@@ -2,18 +2,20 @@
 
 mod actions;
 mod context_menu;
+mod filmstrip;
 mod keyboard;
+mod overlays;
 mod render;
 mod support;
 mod tag_picker;
+mod toolbar;
 
 use std::sync::Arc;
 
 use cordis::Context as CordisContext;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::prelude::FluentBuilder as _;
+use gpui_kit::component::input::InputState;
 use gpui_kit::*;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_history::HistoryService;
@@ -22,8 +24,8 @@ use photag_plugin_settings::SettingsService;
 use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
-use crate::{PreviewMediaKind, PreviewService, classify_media_path};
-use support::{button, clamp_toolbar_offset};
+use crate::{PreviewMediaKind, PreviewService};
+use support::button;
 
 pub fn preview_view(
     service: Arc<PreviewService>,
@@ -46,8 +48,7 @@ pub fn preview_view(
                 InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
             });
             let tag_picker_search = app.new(|cx| {
-                InputState::new(window, cx)
-                    .placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
+                InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Filter tags…"))
             });
             app.new(|cx| {
                 let view_service = Arc::clone(&service);
@@ -116,6 +117,7 @@ pub fn preview_view(
                     toolbar_drag_origin: None,
                     toolbar_drag_offset: None,
                     toolbar_error: None,
+                    toolbar_handle_hover: false,
                     file_operations: Arc::clone(&file_operations),
                     runtime: runtime.clone(),
                     rename_input,
@@ -128,10 +130,8 @@ pub fn preview_view(
                     tag_picker_open: false,
                     collapsed_dropdown_tag_ids,
                     context_menu_open: false,
-                    show_filmstrip: settings
-                        .snapshot()
-                        .map(|settings| settings.show_filmstrip)
-                        .unwrap_or(false),
+                    context_menu_anchor: None,
+                    title_click_generation: 0,
                     last_playback_source: None,
                     last_seen_source: service.snapshot().source,
                 }
@@ -151,6 +151,7 @@ struct PreviewView {
     last_drag_position: Option<(f32, f32)>,
     toolbar_drag_origin: Option<(f32, f32, f32, f32)>,
     toolbar_drag_offset: Option<(f32, f32)>,
+    toolbar_handle_hover: bool,
     toolbar_error: Option<String>,
     file_operations: Arc<FileOperationsService>,
     runtime: tokio::runtime::Handle,
@@ -164,7 +165,8 @@ struct PreviewView {
     tag_picker_open: bool,
     collapsed_dropdown_tag_ids: std::collections::HashSet<i64>,
     context_menu_open: bool,
-    show_filmstrip: bool,
+    context_menu_anchor: Option<(f32, f32)>,
+    title_click_generation: u64,
     last_playback_source: Option<std::path::PathBuf>,
     last_seen_source: Option<std::path::PathBuf>,
 }

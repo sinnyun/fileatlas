@@ -2,7 +2,9 @@ use super::*;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement;
 
+mod folder_row;
 mod tag_render;
+use folder_row::folder_row;
 use tag_render::{render_subdirectory, render_tag};
 
 impl Render for SidebarView {
@@ -104,15 +106,17 @@ impl Render for SidebarView {
                 if self.active_tab == SidebarTab::Folders {
                     panel = panel.child(
                         div()
+                            .group("folder-header")
                             .h_flex()
                             .items_center()
                             .justify_between()
-                            .pt_2()
+                            .pt(px(2.))
+                            .pb(px(4.))
                             .child(
                                 div()
-                                    .text_xs()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(photag_ui_bridge::i18n::tr("Folders")),
+                                    .text_size(px(10.5))
+                                    .text_color(rgb(theme::TEXT_MUTED))
+                                    .child(photag_ui_bridge::i18n::tr("Folders").to_uppercase()),
                             )
                             .child(
                                 div()
@@ -120,6 +124,8 @@ impl Render for SidebarView {
                                     .gap_1()
                                     .child(
                                         Button::new("navigation-folder-path-toggle")
+                                            .opacity(0.)
+                                            .group_hover("folder-header", |style| style.opacity(1.))
                                             .label(photag_ui_bridge::i18n::tr(
                                                 &(if self.show_folder_path_entry {
                                                     "Cancel"
@@ -148,6 +154,8 @@ impl Render for SidebarView {
                                     )
                                     .child(
                                         Button::new("navigation-refresh")
+                                            .opacity(0.)
+                                            .group_hover("folder-header", |style| style.opacity(1.))
                                             .label(photag_ui_bridge::i18n::tr(&("↻").to_string()))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.refresh();
@@ -208,9 +216,22 @@ impl Render for SidebarView {
                         );
                     }
                     panel = panel.child(
-                        Button::new("navigation-all-media")
-                            .label(photag_ui_bridge::i18n::tr("All Media"))
-                            .on_click(cx.listener(|this, _, _, cx| this.select_folder(None, cx))),
+                        folder_row(
+                            "navigation-all-media".into(),
+                            photag_ui_bridge::i18n::tr("All files"),
+                            snapshot.folders.iter().map(|node| node.media_count).sum(),
+                            self.session
+                                .snapshot()
+                                .map(|s| {
+                                    s.selected_folder_id.is_none() && s.selected_path.is_none()
+                                })
+                                .unwrap_or(true),
+                            theme::icons::LIBRARY,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.select_folder(None, cx);
+                            cx.notify();
+                        })),
                     );
                     for node in &snapshot.folders {
                         let expanded = self.expanded_directories.get(&node.folder.path);
@@ -225,8 +246,18 @@ impl Render for SidebarView {
                                         "navigation-expand-root-{}",
                                         node.folder.id
                                     ))
+                                    .ghost()
+                                    .compact()
+                                    .p_0()
+                                    .font_family(theme::ICON_FONT_FAMILY)
+                                    .text_size(px(8.))
                                     .label(photag_ui_bridge::i18n::tr(
-                                        &(if expanded.is_some() { "⌄" } else { "›" }).to_string(),
+                                        &(if expanded.is_some() {
+                                            theme::icons::CHEVRON_DOWN
+                                        } else {
+                                            theme::icons::CHEVRON_RIGHT
+                                        })
+                                        .to_string(),
                                     ))
                                     // Source: sidebar::arrow_slot (16×16) inside a 26 px row.
                                     .w(px(theme::SIDEBAR_ARROW_SLOT))
@@ -240,25 +271,35 @@ impl Render for SidebarView {
                                     })),
                                 )
                                 .child(
-                                    Button::new(format!("navigation-select-{}", node.folder.id))
-                                        .label(photag_ui_bridge::i18n::tr(
-                                            &(format!(
-                                                "{}  {}",
-                                                node.folder.name, node.media_count
-                                            ))
-                                            .to_string(),
-                                        ))
-                                        // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
-                                        .flex_1()
-                                        .min_w_0()
-                                        .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                                        .text_size(px(theme::SOURCE_FONT_SIZE_BUTTON))
-                                        .on_click(cx.listener({
-                                            let folder_id = node.folder.id;
-                                            move |this, _, _, cx| {
-                                                this.select_folder(Some(folder_id), cx)
-                                            }
-                                        })),
+                                    folder_row(
+                                        format!("navigation-select-{}", node.folder.id),
+                                        node.folder.name.clone(),
+                                        node.media_count,
+                                        self.session
+                                            .snapshot()
+                                            .map(|s| {
+                                                s.selected_folder_id == Some(node.folder.id)
+                                                    && s.selected_path.is_none()
+                                            })
+                                            .unwrap_or(false),
+                                        if expanded.is_some() {
+                                            theme::icons::FOLDER_OPEN
+                                        } else {
+                                            theme::icons::FOLDER
+                                        },
+                                    )
+                                    // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
+                                    .flex_1()
+                                    .min_w_0()
+                                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                                    .text_size(px(theme::SOURCE_FONT_SIZE_BUTTON))
+                                    .on_click(cx.listener({
+                                        let folder_id = node.folder.id;
+                                        move |this, _, _, cx| {
+                                            this.select_folder(Some(folder_id), cx);
+                                            cx.notify();
+                                        }
+                                    })),
                                 )
                                 .child({
                                     let folder_id = node.folder.id;
@@ -329,17 +370,6 @@ impl Render for SidebarView {
                                 render_subdirectory(child, &self.expanded_directories, cx)
                             }));
                         }
-                    }
-                    if let Some(progress) = &self.scan_progress {
-                        panel = panel.child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child(format!(
-                                    "{}: {} / {} files",
-                                    progress.phase, progress.scanned, progress.total
-                                )),
-                        );
                     }
                 }
                 if self.active_tab == SidebarTab::Tags {

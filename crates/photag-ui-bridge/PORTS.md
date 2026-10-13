@@ -30,3 +30,9 @@ cleanup and GPUI refresh without retaining the provider. UiSurfaceState value /
 set_value carry Settings' tab request alongside existing open/closed state.
 `theme::apply_components(App)` applies source ghost-control surfaces and
 Segoe typography to GPUI Kit controls, avoiding the earlier light/gray defaults.
+
+`theme::apply_accent_components(&mut gpui_kit::App)` is the GPUI-thread runtime
+accent synchronization entry point. Call after `set_accent_name` in Settings;
+it updates only primary/accent/selection using the existing solid/64-alpha rules.
+`Theme::update` reconciles component tokens and Base projections and refreshes
+windows; the runtime helper does not reset typography, geometry or other colors.

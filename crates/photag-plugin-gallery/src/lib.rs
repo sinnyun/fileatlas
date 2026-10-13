@@ -54,7 +54,19 @@ pub struct GalleryWindow {
 
 pub struct GalleryService {
     database: Arc<DatabaseService>,
+    indexing: Option<Arc<photag_plugin_indexing::IndexingService>>,
     ui_request: Mutex<Option<GalleryUiRequest>>,
+    card_states: Mutex<Vec<GalleryCardState>>,
+    card_frames: Mutex<std::collections::VecDeque<GalleryCardState>>,
+}
+
+/// Last rendered card state, for same-process MCP animation diagnostics.
+#[derive(Clone, Copy)]
+pub struct GalleryCardState {
+    pub media_id: i64,
+    pub hover: f32,
+    pub selection: f32,
+    pub timestamp_ms: u64,
 }
 
 /// Requests consumed by the live Gallery view, using its existing actions.
@@ -65,6 +77,7 @@ pub enum GalleryUiRequest {
     CloseDialogs,
     Select(i64),
     Deselect,
+    Hover(Option<i64>),
 }
 
 #[derive(Default)]
@@ -103,12 +116,68 @@ impl GalleryService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
         Self {
             database,
+            indexing: None,
             ui_request: Mutex::new(None),
+            card_states: Mutex::new(Vec::new()),
+            card_frames: Mutex::new(std::collections::VecDeque::new()),
         }
     }
 
     pub fn request_ui(&self, request: GalleryUiRequest) {
         *self.ui_request.lock().expect("Gallery UI request lock") = Some(request);
+    }
+
+    pub fn card_states(&self) -> Vec<GalleryCardState> {
+        self.card_states
+            .lock()
+            .map(|states| states.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn scan_progress(&self) -> Option<photag_plugin_indexing::scan::ScanProgress> {
+        self.indexing.as_ref()?.current_progress()
+    }
+
+    /// Bounded record of changed values produced by actual GPUI frames.
+    pub fn card_animation_frames(&self) -> Vec<GalleryCardState> {
+        self.card_frames
+            .lock()
+            .map(|frames| frames.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
+    fn publish_card_states(
+        &self,
+        states: Vec<GalleryCardState>,
+        loaded: &std::collections::HashSet<i64>,
+    ) {
+        if let Ok(mut previous) = self.card_states.lock() {
+            previous.retain(|old| loaded.contains(&old.media_id));
+            if let Ok(mut frames) = self.card_frames.lock() {
+                for state in &states {
+                    if !previous.iter().any(|old| {
+                        old.media_id == state.media_id
+                            && old.hover == state.hover
+                            && old.selection == state.selection
+                    }) {
+                        frames.push_back(*state);
+                    }
+                }
+                while frames.len() > 256 {
+                    frames.pop_front();
+                }
+            }
+            for state in states {
+                if let Some(old) = previous
+                    .iter_mut()
+                    .find(|old| old.media_id == state.media_id)
+                {
+                    *old = state;
+                } else {
+                    previous.push(state);
+                }
+            }
+        }
     }
 
     fn has_ui_request(&self) -> bool {
@@ -327,7 +396,11 @@ impl Plugin for GalleryPlugin {
             .try_service::<photag_plugin_tagging::TaggingService>()
             .ok();
         let runtime = tokio::runtime::Handle::current();
-        let service = Arc::new(GalleryService::new(database));
+        let mut service = GalleryService::new(database);
+        service.indexing = context
+            .try_service::<photag_plugin_indexing::IndexingService>()
+            .ok();
+        let service = Arc::new(service);
         let selected_folder = Arc::new(SelectedFolder::default());
         let selected_tag = Arc::new(SelectedTag::default());
         let selected_path = Arc::new(SelectedPath::default());

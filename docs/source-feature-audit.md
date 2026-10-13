@@ -55,6 +55,13 @@ parity.
 
 ## Crate port documents and status source
 
+2026-10-13 GPUI Kit integration follow-up: Shell registers the bundled component
+Assets at startup; Settings synchronizes the runtime accent through UI Bridge
+`apply_accent_components(&mut gpui_kit::App)` and Kit `Theme::update`.
+Existing source dimensions/palette rules and plugin ownership remain in place.
+This repairs resource/theme plumbing; native icon rendering and interactive
+accent-switch parity still require Windows workflow validation.
+
 Every workspace crate has a `PORTS.md` describing its Cordis identity, public
 inputs/outputs, dependencies, event relationships, limits, and debugging points.
 That includes the AI, MCP, updater, history, playback, preview, and drag/drop

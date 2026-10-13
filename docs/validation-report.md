@@ -813,3 +813,51 @@ tooltip activation, native dialogs, drag/drop, Recycle Bin, Explorer actions,
 real codec/audio device or metadata interoperability were tested in this pass.
 The complete UI migration remains incomplete; these screenshots and checks
 only establish the listed states.
+
+## 2026-10-13 GPUI Kit integration audit
+
+Read-only code/API review on Windows/PowerShell in F:\AI\geren\pho_cordis.
+Application code was not changed. See
+[integration audit](gpui-kit-integration-audit-2026-10-13.md) for source references,
+dependency versions, findings and verification limits.
+
+- `cargo fmt --all -- --check`: passed.
+- `cargo check --locked -p photag-shell -j 2`: stopped because default rustc1.94.1
+  is below workspace requirement1.95; this is not a Kit API compilation result.
+- `cargo +1.97.1 check --locked -p photag-shell -j 2`: passed using an installed toolchain.
+- `cargo +1.97.1 test --locked -p photag-ui-bridge --lib -j 2`: passed,3 tests.
+- `cargo +1.97.1 tree --locked -p gpui-kit --depth 1 --prefix none`: Kit0.7.1,
+  Base/Component/Assets0.7.2, GPUI/platform0.3.8.
+
+Static findings: missing application asset-source registration and runtime accent
+updates not synchronized to Kit Theme. Custom controls' focus/accessibility and UI
+interaction test coverage remain incomplete. No GUI launch or mouse/keyboard/native
+workflow was exercised in this audit; build/ownership tests do not prove visual parity.
+
+## 2026-10-13 GPUI Kit resource and runtime accent fixes
+
+The two audit findings are resolved in the working tree: Shell registers
+`gpui_kit::assets::Assets` before run, and successful Settings edits call
+`theme::apply_accent_components(&mut gpui_kit::App)` after updating the source
+accent token. The runtime helper uses Kit `Theme::update` to reconcile colors,
+renderable tokens and Base projections and refresh windows; it changes only
+primary/accent/selection, retaining the existing 64-alpha selection rule. No
+control placement, feature workflow or settings schema was redesigned.
+Source references: vendor/photag-source/src/theme.rs:408-534 and
+src/main.rs:2187-2246. Existing parallel working-tree changes were preserved.
+
+Environment: Windows PowerShell, F:/AI/geren/pho_cordis; explicitly installed
+Rust1.97.1, bounded build/test jobs2, existing incremental profiles.
+
+- `cargo +1.97.1 fmt --all -- --check`: passed.
+- `cargo +1.97.1 check --locked -p photag-shell -j 2`: passed.
+- `cargo +1.97.1 test --locked -p photag-ui-bridge -p photag-plugin-settings --lib -j 2`:
+  passed (UI Bridge3 tests; Settings has0 lib tests).
+- `cargo +1.97.1 test --locked -p photag-ui-bridge -p photag-plugin-settings -j 2`:
+  passed (same3 tests, doc-tests0).
+- `git diff --check` on relevant code and integration docs: passed.
+
+These are compilation and existing lifecycle tests, not runtime theme or SVG
+rendering tests. This fix pass did not exercise native windows, accent swatch
+clicks, menu/calendar icons, keyboard, codecs or file operations. Windows
+interaction and visual parity remain unverified by this pass.

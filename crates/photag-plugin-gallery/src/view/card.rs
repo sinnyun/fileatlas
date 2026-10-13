@@ -15,7 +15,9 @@ use super::GalleryView;
 
 pub(super) fn render_media_card(
     media: &photag_plugin_database::db::queries::MediaItem,
-    selected: bool,
+    _selected: bool,
+    hover: f32,
+    selection: f32,
     drag_drop: Arc<DragDropService>,
     drag_paths: Vec<PathBuf>,
     drag_allowed: Arc<AtomicBool>,
@@ -31,20 +33,30 @@ pub(super) fn render_media_card(
         paths: drag_paths,
         allowed: drag_allowed.clone(),
     };
+    // The hit target keeps its original square; only the painted child grows.
+    let lift = thumb_size * 0.018 * hover / 2.;
+    let visual_size = thumb_size + 2. * lift;
     let mut card = div()
         .relative()
-        .w(px(thumb_size))
-        .h(px(thumb_size))
+        .absolute()
+        .left(px(-lift))
+        .top(px(-lift))
+        .w(px(visual_size))
+        .h(px(visual_size))
         .rounded(px(theme::THUMB_ROUND))
         .overflow_hidden()
-        .bg(rgba(if selected {
-            theme::accent_alpha(theme::accent(), 0.42)
-        } else {
-            theme::base_rgba(theme::SURFACE_ELEVATED)
-        }));
+        .shadow(vec![
+            BoxShadow::new(
+                px(0.),
+                px(2. + 3. * hover),
+                rgba((42. + 60. * hover) as u32).into(),
+            )
+            .blur_radius(px(10. + 8. * hover)),
+        ])
+        .bg(rgba(theme::accent_alpha(theme::accent(), 0.22 * selection)));
     // PhoTag paints a square image target. Selection reveals the accent
     // backplate by insetting the image seven source points on every edge.
-    let image_inset = if selected { 7.0 } else { 0.0 };
+    let image_inset = 7. * selection;
     let mut thumbnail = div()
         .relative()
         .absolute()
@@ -58,6 +70,7 @@ pub(super) fn render_media_card(
     if let Some(image) = micro_image.clone() {
         thumbnail = thumbnail.child(
             img(image)
+                .rounded(px(theme::THUMB_ROUND))
                 .absolute()
                 .top(px(0.))
                 .left(px(0.))
@@ -69,6 +82,7 @@ pub(super) fn render_media_card(
     if let Some(path) = media.thumb_path.as_ref() {
         thumbnail = thumbnail.child(
             img(std::path::PathBuf::from(path))
+                .rounded(px(theme::THUMB_ROUND))
                 .absolute()
                 .top(px(0.))
                 .left(px(0.))
@@ -89,10 +103,19 @@ pub(super) fn render_media_card(
         thumbnail = thumbnail
             .items_center()
             .justify_center()
-            .text_xs()
-            .text_color(rgb(theme::TEXT_MUTED))
-            .bg(rgba(theme::panel_rgba(theme::SURFACE_PANEL)))
-            .child(media.media_type.to_uppercase());
+            .flex()
+            .font_family(theme::ICON_FONT_FAMILY)
+            .text_size(px(22.))
+            .text_color(rgba(0xffffff22))
+            .bg(rgb(theme::SURFACE_ELEVATED))
+            .child(
+                match media.media_type.as_str() {
+                    "video" => theme::icons::VIDEO,
+                    "audio" => theme::icons::AUDIO,
+                    _ => theme::icons::PICTURE,
+                }
+                .to_string(),
+            );
     }
     let menu_view = cx.entity().downgrade();
     let menu_targets = rating_target_ids.clone();
@@ -210,7 +233,17 @@ pub(super) fn render_media_card(
             }
             menu
         });
-    thumbnail = thumbnail.child(div().absolute().top(px(7.)).right(px(7.)).child(menu));
+    // Retain migration actions, reveal on hover; selected badge owns this corner.
+    if hover > 0.01 {
+        thumbnail = thumbnail.child(
+            div()
+                .absolute()
+                .top(px(7.))
+                .right(px(7. + 24. * selection))
+                .opacity(hover)
+                .child(menu),
+        );
+    }
     if media.rating > 0 {
         thumbnail = thumbnail.child(
             div()
@@ -238,17 +271,80 @@ pub(super) fn render_media_card(
                 .bg(rgba(0x00000096))
                 .items_center()
                 .justify_center()
-                .text_xs()
+                .font_family(theme::ICON_FONT_FAMILY)
+                .text_size(px(9.5))
                 .text_color(rgb(theme::TEXT_PRIMARY))
                 .child(if media.media_type == "video" {
-                    "▶"
+                    theme::icons::PLAY.to_string()
                 } else {
-                    "♪"
+                    theme::icons::AUDIO.to_string()
                 }),
         );
     }
+    if hover > 0.01 {
+        thumbnail = thumbnail
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .bg(rgba(0xffffff00 | (9. * hover) as u32)),
+            )
+            .child(super::card_motion::hover_overlay(
+                media,
+                visual_size - image_inset * 2.,
+                hover,
+            ));
+    }
     card = card.child(thumbnail);
-    card.id(format!("gallery-media-{media_id}"))
+    if selection > 0.01 {
+        card = card
+            .child(
+                div()
+                    .absolute()
+                    .inset_0()
+                    .rounded(px(theme::THUMB_ROUND))
+                    .border_2()
+                    .border_color(rgba(theme::accent_alpha(theme::accent(), 0.95 * selection))),
+            )
+            .child(
+                div()
+                    .absolute()
+                    .top(px(13. - 12. * selection))
+                    .right(px(13. - 12. * selection))
+                    .size(px(24. * selection))
+                    .rounded_full()
+                    .bg(rgba((110. * selection) as u32))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .child(
+                        div()
+                            .size(px(20. * selection))
+                            .rounded_full()
+                            .bg(rgb(theme::accent()))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .font_family(theme::ICON_FONT_FAMILY)
+                            .text_size(px(10. * selection))
+                            .text_color(rgb(0xffffff))
+                            .child(if selection > 0.5 {
+                                theme::icons::CHECK.to_string()
+                            } else {
+                                String::new()
+                            }),
+                    ),
+            );
+    }
+    div()
+        .relative()
+        .w(px(thumb_size))
+        .h(px(thumb_size))
+        .child(card)
+        .id(format!("gallery-media-{media_id}"))
+        .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
+            this.set_card_hover(media_id, *hovered, cx)
+        }))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
             style.border_color(rgb(theme::accent_hover()))
         })

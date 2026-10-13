@@ -3,10 +3,12 @@
 mod behavior;
 mod bulk_actions;
 mod card;
+mod card_motion;
 mod controls;
 mod file_actions;
 mod filter_actions;
 mod keyboard;
+mod month_header;
 mod regions;
 mod render;
 mod selection_panel;
@@ -64,6 +66,7 @@ struct GalleryVisualRow {
     media_range: std::ops::Range<usize>,
     month_label: Option<String>,
     collapsed: bool,
+    month_count: usize,
 }
 
 #[derive(Clone)]
@@ -89,14 +92,29 @@ fn build_gallery_rows(
     let mut previous_month: Option<String> = None;
     while start < skeletons.len() {
         let month_at = |index: usize| {
-            chrono::DateTime::<chrono::Utc>::from_timestamp(skeletons[index].effective_date, 0)
-                .map(|date| date.format("%B %Y").to_string())
+            if skeletons[index].effective_date <= 0 {
+                return Some("Unknown date".into());
+            }
+            chrono::DateTime::<chrono::Utc>::from_timestamp(skeletons[index].effective_date, 0).map(
+                |date| {
+                    date.with_timezone(&chrono::Local)
+                        .format("%B %Y")
+                        .to_string()
+                },
+            )
         };
         let month = group_by_month.then(|| month_at(start)).flatten();
         let month_label = if group_by_month && month.is_some() && month != previous_month {
             month.clone()
         } else {
             None
+        };
+        let month_count = if month_label.is_some() {
+            (start..skeletons.len())
+                .take_while(|&index| month_at(index) == month)
+                .count()
+        } else {
+            0
         };
         if let Some(label) = month_label.as_ref()
             && collapsed_months.contains(label)
@@ -109,6 +127,7 @@ fn build_gallery_rows(
                 media_range: start..end,
                 month_label: Some(label.clone()),
                 collapsed: true,
+                month_count,
             });
             previous_month = month;
             start = end;
@@ -125,6 +144,7 @@ fn build_gallery_rows(
             media_range: start..end,
             month_label,
             collapsed: false,
+            month_count,
         });
         previous_month = month;
         start = end;
@@ -252,6 +272,9 @@ pub(super) fn gallery(
 }
 
 struct GalleryView {
+    month_motion: std::collections::HashMap<String, card_motion::CardMotion>,
+    hovered_cards: HashSet<i64>,
+    card_motion: std::collections::HashMap<i64, card_motion::CardMotion>,
     locale_revision: u64,
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
@@ -504,6 +527,7 @@ impl GalleryView {
             .map(|_| writeback_failure_signature())
             .unwrap_or_default();
         let mut last_saved_scroll = restored_scroll;
+        let mut previous_progress = None;
         cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor()
@@ -511,6 +535,14 @@ impl GalleryView {
                     .await;
                 let changed = this
                     .update(cx, |view, cx| {
+                        let progress = view
+                            .service
+                            .scan_progress()
+                            .map(|p| (p.scanned, p.total, p.phase));
+                        if previous_progress != progress {
+                            previous_progress = progress;
+                            cx.notify();
+                        }
                         if view.service.has_ui_request() {
                             cx.notify();
                         }
@@ -583,6 +615,9 @@ impl GalleryView {
         })
         .detach();
         Self {
+            month_motion: std::collections::HashMap::new(),
+            hovered_cards: HashSet::new(),
+            card_motion: std::collections::HashMap::new(),
             locale_revision: u64::MAX,
             service,
             file_operations,

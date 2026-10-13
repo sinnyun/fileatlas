@@ -18,6 +18,11 @@ Database → FileOperations → DragDrop → Gallery; Database → Preview → G
 
 ## Boundaries
 
+Application startup registers `gpui_kit::assets::Assets` with `with_assets` before
+`run/init/open_window`. This supplies SVGs used internally by native components
+(for example DatePicker calendar and menu check/chevron icons); it does not replace
+PhoTag's source MDL2 glyphs or change window layout or feature ownership.
+
 The shell must not absorb scanning, SQL, filtering, tagging, or file operations. It publishes the actual GPUI HWND through `photag-plugin-mcp::CaptureWindowHandle`; the MCP adapter captures only this PhoTag window on Windows. Stop plugin fibers before dropping shared runtime resources so Cordis cleanup can remove published services and UI contributions. Source-backed behavior is mapped in `docs/source-feature-audit.md`; Windows runtime and visual parity still require native validation.
 
 ## Source window bands and localization (2026-10-13)

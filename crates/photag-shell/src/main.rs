@@ -441,7 +441,8 @@ fn main() {
     let executor = runtime.handle().clone();
     let app_cordis = cordis.clone();
 
-    gpui_kit::application().run(move |cx| {
+    let application = gpui_kit::application().with_assets(gpui_kit::assets::Assets);
+    application.run(move |cx| {
         gpui_kit::init(cx);
         photag_ui_bridge::theme::apply_components(cx);
         let catalog = Arc::clone(&catalog);

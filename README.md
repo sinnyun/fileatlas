@@ -37,7 +37,7 @@ MCP 客户端需要将 PhoTag 作为 stdio 子进程启动，Shell 会同时打�
 ```json
 {
   "command": "cargo",
-  "args": ["run", "--locked", "-p", "photag-shell", "--", "--mcp"],
+  "args": ["+1.97.1", "run", "--locked", "-p", "photag-shell", "-j", "2", "--", "--mcp"],
   "env": {
     "PHOTAG_DEV_PLUGINS": "dev-test"
   }
@@ -53,5 +53,7 @@ MCP 客户端需要将 PhoTag 作为 stdio 子进程启动，Shell 会同时打�
 运行 `start-dev.bat dev-test`，或设置 `PHOTAG_DEV_PLUGINS=dev-test` 后启动 Shell。开发测试面板可扫描[样例媒体目录](test-data/README.md)，以及注入/清理 1,000、10,000、100,000 条虚拟媒体记录。开发数据库、设置、会话和缩略图缓存均放在 `target/dev-test/`，不会使用日常 PhoTag 数据库；可用 `PHOTAG_DEV_TEST_DIR` 指定开发数据目录、`PHOTAG_DEV_TEST_DB` 单独覆盖数据库路径、`PHOTAG_TEST_LIBRARY` 指定扫描目录。虚拟行只写数据库，不会生成同等数量的实体文件。插件细节和验证入口见[开发测试插件对接说明](crates/photag-plugin-dev-test/PORTS.md)。
 
 ## 构建状态
+
+本机默认 `stable` 是 Rust 1.94.1，但已安装 1.96.0 和 1.97.1；项目要求 Rust ≥1.95。执行 Cargo 时请显式使用已安装的 `cargo +1.97.1 ...`，避免旧默认版本提前拦截。无需重复安装 Rust 或修改全局默认版本。具体命令见[本地工具链说明](docs/rust-toolchain.md)。
 
 当前验证结论及准确命令见[验证报告](docs/validation-report.md)。格式检查和锁定模式 shell 编译检查已在最新迁移整合记录中通过；迁移期间的 UI 启动观察和较早失败记录保留为历史。Windows 交互、真实媒体与文件系统行为仍需集中实机验证。

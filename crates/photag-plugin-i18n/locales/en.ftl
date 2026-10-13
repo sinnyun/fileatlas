@@ -372,3 +372,28 @@ msg-9d09ab941fa1 = Confirm delete { $count }
 msg-45c391321007 = { $action } { $count }
 msg-e21f935f11d7 = Copy
 msg-6ecc3df6bffd = Move
+gallery-month-count =
+    { $count ->
+        [one] { $count } item
+       *[other] { $count } items
+    }
+gallery-unknown-date = Unknown date
+msg-3971eba7cef1 = Zoom: Center
+msg-8af5f44420e1 = Zoom: Cursor
+msg-fb594c58c73d = Rotate clockwise
+msg-ea2b30624797 = Rotate counter-clockwise
+msg-cdee39ee853f = Mirror horizontally
+msg-7d199d373c7c = Mirror vertically
+msg-905cb14ffe93 = Delete (Del/Backspace)
+msg-fe102b68d4d0 = Delete (Del)
+msg-dc195abed774 = Remove every tag from this item
+msg-759297b6938b = Remove all tags
+msg-20cd3751f574 = Lock position
+msg-18538f72a316 = Unlock position
+msg-bc5b45ae7b60 = Reset to default
+msg-2ab0e4e9e884 = Filter tags…
+msg-6ccd5c785604 = Close menu
+msg-47d2a515ef2f = Loading...
+msg-936f84ca4413 = No rating
+msg-e0a8c76e48c2 = Save (Enter)
+msg-862c2324686b = Cancel (Esc)

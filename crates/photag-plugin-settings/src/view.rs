@@ -19,6 +19,8 @@ use std::sync::{
 
 #[path = "view/ai_groups.rs"]
 mod ai_groups;
+#[path = "view/checkbox.rs"]
+mod checkbox;
 #[path = "view/tabs.rs"]
 mod tabs;
 #[path = "view/tag_hotkeys.rs"]
@@ -84,7 +86,8 @@ pub(super) fn settings(
                     confirm_install: false,
                     group_name_input: group_name_input.clone(),
                     editing_group: None,
-                    tab: Tab::Appearance,
+                    // Pinned main.rs:130 starts Settings on Toolbar.
+                    tab: Tab::Toolbar,
                     error: None,
                     capturing_open_key: false,
                     focus_handle: cx.focus_handle(),
@@ -266,6 +269,7 @@ impl SettingsView {
         match self.service.update(f) {
             Ok(settings) => {
                 photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+                photag_ui_bridge::theme::apply_accent_components(cx);
                 let new_preferences = (
                     settings.exclude_modifier,
                     settings.tag_search_match,
@@ -319,24 +323,6 @@ impl SettingsView {
             },
             cx,
         );
-    }
-    fn toggle_button(
-        &self,
-        key: &'static str,
-        label: &str,
-        value: bool,
-        cx: &mut Context<Self>,
-    ) -> Button {
-        Button::new(format!("settings-{key}"))
-            .label(photag_ui_bridge::i18n::tr(
-                &(format!(
-                    "{}  [{}]",
-                    photag_ui_bridge::i18n::tr(label),
-                    photag_ui_bridge::i18n::tr(if value { "On" } else { "Off" })
-                ))
-                .to_string(),
-            ))
-            .on_click(cx.listener(move |this, _, _, cx| this.toggle(key, cx)))
     }
     fn enum_button(
         &self,

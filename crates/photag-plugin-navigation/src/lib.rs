@@ -274,17 +274,8 @@ impl Drop for NavigationService {
     }
 }
 
-pub fn parse_hex_color(value: &str) -> Option<[u8; 3]> {
-    let value = value.trim().trim_start_matches('#');
-    if value.len() != 6 {
-        return None;
-    }
-    Some([
-        u8::from_str_radix(&value[0..2], 16).ok()?,
-        u8::from_str_radix(&value[2..4], 16).ok()?,
-        u8::from_str_radix(&value[4..6], 16).ok()?,
-    ])
-}
+/// The `#RRGGBB` parser is a shared theme token facility in the UI bridge.
+pub use photag_ui_bridge::theme::parse_hex_color;
 
 pub fn format_hex_color(rgb: [u8; 3]) -> String {
     format!("#{:02X}{:02X}{:02X}", rgb[0], rgb[1], rgb[2])

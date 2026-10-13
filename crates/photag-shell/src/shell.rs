@@ -192,15 +192,28 @@ impl Render for PhoTagShell {
                         div()
                             .absolute()
                             .left(px(self.sidebar_width - 4.))
+                            .group("sidebar-resizer")
                             .top_0()
                             .w(px(8.))
                             .h_full()
                             .cursor_col_resize()
-                            .hover(|s| s.bg(rgba(0xffffff1a)))
+                            .child(
+                                div()
+                                    .absolute()
+                                    .left(px(4.))
+                                    .top(px(72.))
+                                    .bottom(px(14.))
+                                    .w(px(1.))
+                                    .bg(rgba(if self.resizing_sidebar { 0xffffff1a } else { 0 }))
+                                    .group_hover("sidebar-resizer", |style| {
+                                        style.bg(rgba(0xffffff1a))
+                                    }),
+                            )
                             .on_mouse_down(
                                 MouseButton::Left,
-                                cx.listener(|this, _, _, _| {
+                                cx.listener(|this, _, _, cx| {
                                     this.resizing_sidebar = true;
+                                    cx.notify();
                                 }),
                             )
                             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
@@ -215,9 +228,10 @@ impl Render for PhoTagShell {
                             }))
                             .on_mouse_up(
                                 MouseButton::Left,
-                                cx.listener(|this, _, _, _| {
+                                cx.listener(|this, _, _, cx| {
                                     if this.resizing_sidebar {
                                         this.resizing_sidebar = false;
+                                        cx.notify();
                                         if let Ok(mut saved) = this.session.snapshot() {
                                             saved.sidebar_width = this.sidebar_width;
                                             if let Err(error) = this.session.replace(saved) {
