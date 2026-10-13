@@ -5,7 +5,7 @@
 //! them and users can retry after fixing the underlying file problem.
 
 use std::collections::{BTreeMap, VecDeque};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 use photag_plugin_database::{DatabaseService, db::queries};
@@ -35,6 +35,8 @@ struct Job {
     generation: u64,
 }
 
+type MetadataWriter = std::sync::Arc<dyn Fn(&Path, &[String]) -> std::io::Result<()> + Send + Sync>;
+
 fn state() -> &'static Mutex<State> {
     static STATE: OnceLock<Mutex<State>> = OnceLock::new();
     STATE.get_or_init(|| Mutex::new(State::default()))
@@ -43,6 +45,18 @@ fn state() -> &'static Mutex<State> {
 /// Schedule writeback for media IDs after their tag mutation has committed.
 /// Database lookup errors are returned to the caller instead of disappearing.
 pub(crate) fn schedule(database: &DatabaseService, media_ids: &[i64]) -> Result<(), ScheduleError> {
+    schedule_with_writer(
+        database,
+        media_ids,
+        std::sync::Arc::new(|path, tags| super::xmp::write_metadata(&path.to_string_lossy(), tags)),
+    )
+}
+
+fn schedule_with_writer(
+    database: &DatabaseService,
+    media_ids: &[i64],
+    writer: MetadataWriter,
+) -> Result<(), ScheduleError> {
     if media_ids.is_empty() {
         return Ok(());
     }
@@ -83,7 +97,7 @@ pub(crate) fn schedule(database: &DatabaseService, media_ids: &[i64]) -> Result<
     if start_worker {
         if let Err(error) = std::thread::Builder::new()
             .name("photag-tag-writeback".into())
-            .spawn(run_worker)
+            .spawn(move || run_worker(writer))
         {
             if let Ok(mut state) = state().lock() {
                 state.worker_running = false;
@@ -106,7 +120,7 @@ pub(crate) fn schedule(database: &DatabaseService, media_ids: &[i64]) -> Result<
     Ok(())
 }
 
-fn run_worker() {
+fn run_worker(writer: MetadataWriter) {
     loop {
         let job = {
             let Ok(mut state) = state().lock() else {
@@ -127,7 +141,7 @@ fn run_worker() {
         };
 
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            super::xmp::write_metadata(&job.path.to_string_lossy(), &job.tags)
+            writer(&job.path, &job.tags)
         }))
         .unwrap_or_else(|_| {
             Err(std::io::Error::other(
@@ -206,13 +220,17 @@ fn path_key(path: &std::path::Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{clear_failure, failures, schedule};
+    use super::{clear_failure, failures, schedule, schedule_with_writer, state};
     use photag_plugin_database::{DatabaseService, db::queries};
-    use std::sync::Arc;
+    use std::path::Path;
+    use std::sync::{Arc, Mutex, mpsc};
     use std::time::{Duration, SystemTime};
+
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn failed_background_write_is_visible_and_can_be_cleared() {
+        let _guard = TEST_LOCK.lock().unwrap();
         let root = std::env::temp_dir().join(format!(
             "photag-writeback-{}-{}",
             std::process::id(),
@@ -261,6 +279,105 @@ mod tests {
 
         clear_failure(&missing_photo);
         assert!(!failures().iter().any(|item| item.path == missing_photo));
+        drop(database);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn queued_writes_for_a_path_coalesce_to_the_latest_tags() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let root = std::env::temp_dir().join(format!(
+            "photag-writeback-coalesce-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+        let photo = root.join("sample.bin");
+        let (media_id, old_tag, middle_tag, latest_tag) = database
+            .with_writer(|connection| {
+                let folder = queries::add_folder(connection, root.to_str().unwrap())?;
+                let media_id = queries::insert_media(
+                    connection,
+                    folder.id,
+                    "sample.bin",
+                    photo.to_str().unwrap(),
+                    "image",
+                    0,
+                    1_700_000_000,
+                    None,
+                    None,
+                    None,
+                )?;
+                let old = queries::create_tag(connection, "Old", None)?;
+                let middle = queries::create_tag(connection, "Middle", None)?;
+                let latest = queries::create_tag(connection, "Latest", None)?;
+                queries::assign_tags(connection, &[media_id], &[old.id])?;
+                Ok((media_id, old.id, middle.id, latest.id))
+            })
+            .unwrap();
+
+        let (started_tx, started_rx) = mpsc::sync_channel(1);
+        let (release_tx, release_rx) = mpsc::sync_channel(1);
+        let release_rx = Mutex::new(release_rx);
+        let writes = Arc::new(Mutex::new(Vec::<Vec<String>>::new()));
+        let observed_writes = Arc::clone(&writes);
+        let writer = Arc::new(move |path: &Path, tags: &[String]| {
+            observed_writes.lock().unwrap().push(tags.to_vec());
+            if tags == ["Old"] {
+                started_tx.send(()).unwrap();
+                release_rx
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(Duration::from_secs(5))
+                    .map_err(std::io::Error::other)?;
+            }
+            std::fs::write(path, tags.join(","))
+        });
+
+        schedule_with_writer(&database, &[media_id], writer).unwrap();
+        started_rx
+            .recv_timeout(Duration::from_secs(5))
+            .expect("first write should start before newer jobs are queued");
+
+        database
+            .with_writer(|connection| {
+                queries::remove_tags(connection, &[media_id], &[old_tag])?;
+                queries::assign_tags(connection, &[media_id], &[middle_tag])?;
+                Ok(())
+            })
+            .unwrap();
+        schedule(&database, &[media_id]).unwrap();
+        database
+            .with_writer(|connection| {
+                queries::remove_tags(connection, &[media_id], &[middle_tag])?;
+                queries::assign_tags(connection, &[media_id], &[latest_tag])?;
+                Ok(())
+            })
+            .unwrap();
+        schedule(&database, &[media_id]).unwrap();
+        release_tx.send(()).unwrap();
+
+        let finished = (0..500).any(|_| {
+            let worker_idle = state()
+                .lock()
+                .map(|state| !state.worker_running && state.queue.is_empty())
+                .unwrap_or(false);
+            if !worker_idle {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            worker_idle
+        });
+        assert!(finished, "writeback worker should drain and stop");
+        assert_eq!(
+            &*writes.lock().unwrap(),
+            &[vec!["Old".to_string()], vec!["Latest".to_string()],]
+        );
+        assert_eq!(std::fs::read_to_string(&photo).unwrap(), "Latest");
+
         drop(database);
         let _ = std::fs::remove_dir_all(root);
     }

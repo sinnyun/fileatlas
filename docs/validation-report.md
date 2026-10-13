@@ -499,6 +499,10 @@ media row and its assignment.
 |---|---|---|
 | `cargo +1.97.1 test -p photag-plugin-tagging --locked xmp::tests -- --nocapture` | Passed | 2 isolated temporary-file tests. |
 | `cargo +1.97.1 test -p photag-plugin-database --locked folder_and_tag_foreign_keys_cascade_through_related_rows -- --nocapture` | Passed | Exercises foreign-key cascades on a disposable database. |
-| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 46 passed, 0 failed, 3 ignored (two live network checksum tests and the optional FFmpeg smoke test, which passed separately in the previous section). |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 test --workspace --locked -j 2` | Passed | 47 passed, 0 failed, 3 ignored (two live network checksum tests and the optional FFmpeg smoke test, which passed separately in the previous section). |
 | `cargo +1.97.1 test -p photag-plugin-tagging --locked failed_background_write_is_visible_and_can_be_cleared -- --nocapture` | Passed | A missing temporary media file drives the actual worker error branch; the failure is observable and acknowledgeable. |
-| Detached metadata writer coalescing | Not tested in this slice | Coalescing races and editor interoperability still need focused concurrency tests and Windows/media validation. |
+| `cargo +1.97.1 test -p photag-plugin-tagging --locked queued_writes_for_a_path_coalesce_to_the_latest_tags -- --nocapture` | Passed | A channel gate holds the first write while two newer states are scheduled; the queued middle state is discarded and the last state is written. |
+| `cargo +1.97.1 fmt --all -- --check` | Passed | Workspace formatting check after the deterministic worker test. |
+| `$env:CARGO_INCREMENTAL='1'; $env:CARGO_BUILD_JOBS='2'; cargo +1.97.1 check -p photag-shell --locked -j 2` | Passed | Host shell dependency graph compiles after the writer seam and test changes. |
+| `git diff --check` | Passed | No whitespace errors. |
+| Real camera/editor interoperability | Not tested in this slice | Requires representative photos and Windows applications; the deterministic queue test is not a substitute for metadata interoperability. |

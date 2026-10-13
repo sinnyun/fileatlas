@@ -5,9 +5,9 @@ source-compatible JPEG IPTC/non-JPEG XMP metadata writeback are available.
 The gallery now provides a searchable hierarchical tag picker for assigning or
 removing tags from the current selection, plus clear-all. Temporary-file tests
 cover XMP sidecar escaping/removal, source-byte preservation, JPEG IPTC
-insertion/removal, best-effort mtime restoration, and visibility/clearing of a
-background write failure. Worker coalescing and Windows interoperability with
-real photo editors remain unverified.
+insertion/removal, best-effort mtime restoration, visibility/clearing of a
+background write failure, and same-path pending-job coalescing to the latest
+tags. Windows interoperability with real photo editors remains unverified.
 
 ## Lifecycle and dependencies
 
