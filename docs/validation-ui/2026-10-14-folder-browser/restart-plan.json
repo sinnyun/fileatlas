@@ -1,0 +1,11 @@
+[
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
+    },
+    "wait_ms": 500,
+    "capture": "restart-directory"
+  }
+]

@@ -1,0 +1,20 @@
+[package]
+name = "photag-plugin-grouping"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+serde.workspace = true
+chrono = "0.4"
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

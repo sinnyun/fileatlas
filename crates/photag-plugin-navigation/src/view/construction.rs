@@ -41,7 +41,7 @@ impl SidebarView {
                 if let Ok(mut saved) = session.snapshot() {
                     saved.expanded_tag_ids = expanded_tags.clone();
                     if let Err(error) = session.replace(saved) {
-                        eprintln!("stale tag expansion cleanup failed: {error}");
+                        tracing::error!("stale tag expansion cleanup failed: {error}");
                     }
                 }
             }

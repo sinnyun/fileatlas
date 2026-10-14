@@ -44,3 +44,7 @@ windows; the runtime helper does not reset typography, geometry or other colors.
 `UiBridgeService.panels: Arc<PanelCatalog>` exposes register/open/close/unregister_owner. `register_panel_for_plugin(Context, owner, PanelDefinition)` binds cleanup to Cordis. Definitions contain options, Single/Multiple policy and the real GPUI factory. Single open returns/focuses its existing ID; Multiple returns a new ID and creates independent content entities when mounted. Close removes the instance contribution; owner stop removes definitions, instances, open flags and views. UiViewCatalog attaches a monotonically allocated registration generation; host mounts compare ID plus generation to avoid retaining entities across plugin restart. Service-driven existing views use mount and retain their original service semantics.
 
 Window-internal geometry persists only for each entity lifetime; native detached windows and automatic geometry persistence are not supplied. Builtin Preview/Playback remain single-session services. See docs/floating-panels.md and docs/validation-ui/2026-10-14-panels for runtime evidence.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime debug integration: workspace.bottom is the shell bottom dock slot and workspace.debug-status is the footer suffix. UiSurfaceState::set_open logs only actual visibility transitions. Registration, generation and Cordis-owned cleanup semantics are unchanged.

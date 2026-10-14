@@ -83,6 +83,7 @@ impl Plugin for AiPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let _publication = context
             .provide(Arc::new(AiService))

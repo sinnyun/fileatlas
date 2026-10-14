@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct GalleryControl {
-    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll.
+    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll.
     action: String,
     /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
     value: Option<String>,
@@ -37,6 +37,7 @@ impl PhoTagMcpServer {
         description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Actions: all, create, edit, delete, merge, move, close. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
     )]
     fn control_navigation(&self, Parameters(request): Parameters<NavigationControl>) -> String {
+        tracing::info!(?request, "MCP control request");
         if let Err(error) = self.mutation_guard() {
             return error_json(&error);
         }
@@ -105,9 +106,10 @@ impl PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Control live Gallery filters, popovers, bulk configuration and the Gallery-owned media action surface through feature requests. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
+        description = "Control live Gallery filters, popovers, bulk configuration and the Gallery-owned media action surface through feature requests. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
     )]
     fn control_gallery(&self, Parameters(request): Parameters<GalleryControl>) -> String {
+        tracing::info!(?request, "MCP control request");
         if let Err(error) = self.mutation_guard() {
             return error_json(&error);
         }
@@ -163,6 +165,7 @@ impl PhoTagMcpServer {
                     "date",
                     "rating",
                     "sort",
+                    "grouping",
                     "close",
                 ]
                 .contains(&value)
@@ -282,6 +285,34 @@ impl PhoTagMcpServer {
                 _ => return error_json("unsupported inspector section"),
             }),
             "tag_picker" => R::TagPicker,
+            "directory_up" => {
+                if !self
+                    .gallery
+                    .ui_snapshot()
+                    .is_some_and(|s| s.browsing && s.current_directory.is_some())
+                {
+                    return error_json("no parent in the current view");
+                }
+                R::DirectoryUp
+            }
+            "refresh" => R::Refresh,
+            "open_directory" => {
+                if !self
+                    .gallery
+                    .ui_snapshot()
+                    .is_some_and(|s| s.browsing && s.directories.iter().any(|f| f.path == value))
+                {
+                    return error_json("directory must be a visible folder card");
+                }
+                R::OpenDirectory(value.to_string())
+            }
+            "grouping" => {
+                let Some(mode) = photag_plugin_gallery::GroupingMode::parse(value) else {
+                    return error_json("unsupported grouping mode");
+                };
+                R::Grouping(mode)
+            }
+            "toggle_group" => R::ToggleGroup(value.to_string()),
             "month_grouping" => R::MonthGrouping(request.enabled.unwrap_or(true)),
             _ => return error_json("unsupported gallery action"),
         };

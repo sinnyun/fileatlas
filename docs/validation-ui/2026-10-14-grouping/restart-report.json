@@ -1,0 +1,240 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-grouping.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation",
+  "started": "2026-10-14T14:41:35.113Z",
+  "steps": [
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 800,
+      "until": {
+        "field": "gallery.grouping_mode",
+        "equals": "file_type"
+      },
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "file_type",
+          "groups": [
+            [
+              "PDF",
+              122
+            ],
+            [
+              "PNG",
+              1
+            ],
+            [
+              "TXT",
+              125
+            ]
+          ],
+          "collapsed_groups": [
+            "PDF"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": true,
+        "update_available": false,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": null,
+        "inspector_width": null,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896062
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896064
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988896065
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896066
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896066
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896067
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896067
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896068
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896069
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988896069
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\restart-restored-final.png"
+    }
+  ]
+}

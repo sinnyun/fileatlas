@@ -62,6 +62,7 @@ impl MetadataExportService {
     ///
     /// Invoke this away from the GPUI render thread for large libraries. The
     /// caller owns path selection and reports completion/errors to the user.
+    #[tracing::instrument(skip_all, err)]
     pub fn write_to(&self, path: impl AsRef<Path>) -> Result<(), MetadataExportError> {
         std::fs::write(path, self.to_pretty_json()?)?;
         Ok(())
@@ -93,6 +94,7 @@ impl MetadataExportService {
 
     /// Start the same lifecycle-owned export state machine consumed by the
     /// visible panel and command. This is the public entry for MCP callers.
+    #[tracing::instrument(skip_all, err)]
     pub fn request_export(self: &Arc<Self>) -> Result<(), MetadataExportError> {
         self.start_export()
     }
@@ -188,6 +190,7 @@ impl Plugin for MetadataExportPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()

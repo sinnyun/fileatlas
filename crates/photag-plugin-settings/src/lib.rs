@@ -129,6 +129,7 @@ impl Plugin for SettingsPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let service = Arc::new(match &config.path {
             Some(path) => SettingsService::open_at(path.clone()),
@@ -148,7 +149,7 @@ impl Plugin for SettingsPlugin {
                 if command_id == "settings/toggle"
                     && let Err(error) = command_surfaces.toggle("settings")
                 {
-                    eprintln!("could not toggle Settings surface: {error}");
+                    tracing::error!("could not toggle Settings surface: {error}");
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))

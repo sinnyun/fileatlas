@@ -157,6 +157,7 @@ impl MediaPlaybackService {
     }
 
     /// Open media while preserving its indexed identity for Tags/More actions.
+    #[tracing::instrument(skip_all, err)]
     pub fn open_media(
         &self,
         path: impl AsRef<Path>,
@@ -201,6 +202,7 @@ impl MediaPlaybackService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn toggle_play_pause(&self) -> Result<(), PlaybackError> {
         let mut state = self.lock()?;
         if state.snapshot.path.is_none() {
@@ -223,6 +225,7 @@ impl MediaPlaybackService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn seek(&self, seconds: f64) -> Result<(), PlaybackError> {
         let mut state = self.lock()?;
         let pos = seconds.clamp(0.0, state.snapshot.duration_seconds.max(0.0));
@@ -242,6 +245,7 @@ impl MediaPlaybackService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn step_frames(&self, frames: i32) -> Result<(), PlaybackError> {
         let s = self.snapshot();
         if !s.has_video {
@@ -256,6 +260,7 @@ impl MediaPlaybackService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn set_speed(&self, speed: f32) -> Result<(), PlaybackError> {
         let mut state = self.lock()?;
         let value = speed.clamp(0.1, 8.0);
@@ -275,6 +280,7 @@ impl MediaPlaybackService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn set_volume(&self, volume: f32) {
         if let Ok(mut state) = self.state.lock() {
             state.snapshot.volume = volume.clamp(0.0, 1.5);
@@ -287,6 +293,7 @@ impl MediaPlaybackService {
         }
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn close(&self) {
         if let Ok(mut state) = self.state.lock() {
             stop(&mut state);
@@ -612,6 +619,7 @@ impl Plugin for MediaPlaybackPlugin {
     fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
         Ok(config)
     }
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let cache = config.cache_dir.clone().unwrap_or_else(default_cache_dir);
         let service = Arc::new(MediaPlaybackService::new(cache)?);

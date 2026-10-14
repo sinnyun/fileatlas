@@ -22,11 +22,7 @@ pub(super) fn chip(
     let trailing = clear.unwrap_or_else(|| {
         div()
             .ml(px(2.))
-            .child(
-                Icon::new(IconName::ChevronDown)
-                    .size(px(12.))
-                    .text_color(rgb(theme::TEXT_MUTED)),
-            )
+            .child(theme::small_icon(IconName::ChevronDown).text_color(rgb(theme::TEXT_MUTED)))
             .into_any_element()
     });
     Button::new(id)
@@ -43,7 +39,7 @@ pub(super) fn chip(
                 .h_flex()
                 .items_center()
                 .gap(px(4.))
-                .child(Icon::new(icon).size(px(14.)).text_color(rgb(if active {
+                .child(theme::small_icon(icon).text_color(rgb(if active {
                     theme::accent()
                 } else {
                     theme::TEXT_MUTED
@@ -64,11 +60,7 @@ pub(super) fn clear_control(
         .ml(px(2.))
         .cursor_pointer()
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(
-            Icon::new(IconName::X)
-                .size(px(12.))
-                .text_color(rgb(theme::accent())),
-        )
+        .child(theme::small_icon(IconName::X).text_color(rgb(theme::accent())))
         .on_click(move |event, window, cx| {
             cx.stop_propagation();
             clear(event, window, cx);
@@ -308,7 +300,7 @@ pub(super) fn controlled_popover(
             let _ = weak.update(cx, |this, cx| {
                 let value = if *open { name } else { "" };
                 if let Err(error) = this.surfaces.set_value("gallery.popover", value) {
-                    eprintln!("popover state failed: {error}");
+                    tracing::error!("popover state failed: {error}");
                 }
                 cx.notify();
             });

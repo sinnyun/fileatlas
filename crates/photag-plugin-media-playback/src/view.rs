@@ -5,7 +5,6 @@ use std::sync::Arc;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::Icon;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
@@ -284,7 +283,7 @@ impl Render for PlaybackView {
                 .justify_center()
                 .gap_3()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(div().text_2xl().text_color(rgb(theme::accent())).child("♫"))
+                .child(theme::large_icon(IconName::Music).text_color(rgb(theme::accent())))
                 .child(
                     div()
                         .text_sm()
@@ -380,7 +379,12 @@ impl Render for PlaybackView {
             .items_center()
             .gap_2()
             .child(
-                button(if snapshot.playing { "Ⅱ" } else { "▶" })
+                Button::new("media-playback-toggle")
+                    .icon(theme::icon(if snapshot.playing {
+                        IconName::Pause
+                    } else {
+                        IconName::Play
+                    }))
                     .tooltip(photag_ui_bridge::i18n::tr(if snapshot.playing {
                         "Pause"
                     } else {
@@ -389,7 +393,8 @@ impl Render for PlaybackView {
                     .on_click(toggle),
             )
             .child(
-                button("‹")
+                Button::new("media-playback-previous-frame")
+                    .icon(theme::small_icon(IconName::ChevronLeft))
                     .tooltip(photag_ui_bridge::i18n::tr("Previous frame"))
                     .disabled(!snapshot.has_video)
                     .on_click(previous_frame),
@@ -410,7 +415,8 @@ impl Render for PlaybackView {
             )
             .child(button("+5s").on_click(forward))
             .child(
-                button("›")
+                Button::new("media-playback-next-frame")
+                    .icon(theme::small_icon(IconName::ChevronRight))
                     .tooltip(photag_ui_bridge::i18n::tr("Next frame"))
                     .disabled(!snapshot.has_video)
                     .on_click(next_frame),
@@ -423,10 +429,14 @@ impl Render for PlaybackView {
                     .child(Slider::new(&self.volume).w_full()),
             )
             .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup))
-            .child(button("Tags").icon(IconName::Tag).on_click(toggle_tags))
+            .child(
+                button("Tags")
+                    .icon(theme::icon(IconName::Tag))
+                    .on_click(toggle_tags),
+            )
             .child(
                 button("More")
-                    .icon(IconName::Ellipsis)
+                    .icon(theme::icon(IconName::Ellipsis))
                     .on_click(toggle_more),
             );
         let error = snapshot
@@ -481,7 +491,7 @@ impl Render for PlaybackView {
                             .px_3()
                             .border_b_1()
                             .border_color(rgba(theme::SEPARATOR_LIGHT))
-                            .child(Icon::new(IconName::Aperture).text_color(rgb(theme::accent())))
+                            .child(theme::icon(IconName::Aperture).text_color(rgb(theme::accent())))
                             .child(div().text_sm().font_medium().child("PhoTag"))
                             .child(
                                 div()
@@ -490,7 +500,11 @@ impl Render for PlaybackView {
                                     .bg(rgba(theme::SEPARATOR_LIGHT)),
                             )
                             .child(div().flex_1().text_sm().child(title))
-                            .child(button("Close").icon(IconName::Close).on_click(close)),
+                            .child(
+                                button("Close")
+                                    .icon(theme::icon(IconName::Close))
+                                    .on_click(close),
+                            ),
                     )
                     .when(self.tags_open, |panel| {
                         panel.child(

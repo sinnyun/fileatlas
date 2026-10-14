@@ -1,6 +1,7 @@
 use super::*;
 
 impl GalleryView {
+    #[tracing::instrument(skip_all, fields(list=?list))]
     pub(super) fn set_layout(&mut self, list: bool, cx: &mut Context<Self>) {
         if self.list_layout != list {
             self.list_layout = list;
@@ -12,6 +13,7 @@ impl GalleryView {
         }
     }
 
+    #[tracing::instrument(skip_all, fields(media_id=?media_id))]
     pub(super) fn select_media(
         &mut self,
         media_id: i64,
@@ -19,6 +21,7 @@ impl GalleryView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.selected_directory = None;
         window.focus(&self.focus_handle, cx);
         let Ok(snapshot) = &self.snapshot else {
             return;
@@ -40,6 +43,7 @@ impl GalleryView {
     }
 
     pub(super) fn start_rubberband(&mut self, event: &MouseDownEvent, cx: &mut Context<Self>) {
+        self.selected_directory = None;
         let viewport = self.scroll.viewport_bounds();
         if !viewport.contains(&event.position) {
             return;
@@ -128,7 +132,9 @@ impl GalleryView {
                 for (column, media_index) in row.media_range.clone().enumerate() {
                     let card_bounds = Bounds::new(
                         point(
-                            viewport.origin.x + px(16.) + card_step * column as f32,
+                            viewport.origin.x
+                                + px(16.)
+                                + card_step * (column + row.directory_range.len()) as f32,
                             card_y,
                         ),
                         size(card_width, card_height),
@@ -147,6 +153,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn finish_rubberband(&mut self, _: &MouseUpEvent, cx: &mut Context<Self>) {
         if let Some(rubberband) = self.rubberband.take() {
             if !rubberband.dragged && rubberband.clear_on_click {
@@ -204,11 +211,14 @@ impl GalleryView {
     {
         self.operation_status = Some("Working…".to_string());
         self.confirm_delete = false;
+        let started = std::time::Instant::now();
+        tracing::info!("gallery operation started");
         let operation = self.runtime.spawn(operation);
         cx.spawn(async move |this, cx| {
             let status = operation
                 .await
                 .unwrap_or_else(|error| format!("Operation task failed: {error}"));
+            tracing::info!(duration_ms=started.elapsed().as_secs_f64()*1000.,%status,"gallery operation finished");
             let _ = this.update(cx, |this, cx| {
                 if refresh {
                     this.reload();
@@ -264,6 +274,7 @@ impl GalleryView {
         self.preview_media(media_id, cx);
     }
 
+    #[tracing::instrument(skip_all, fields(media_id=?media_id))]
     pub(super) fn preview_media(&mut self, media_id: i64, cx: &mut Context<Self>) -> bool {
         let opened = match self.service.media_by_id(media_id) {
             Ok(Some(media)) if media.media_type == "image" => {
@@ -372,6 +383,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all, fields(rating=?rating))]
     pub(super) fn apply_rating_to(&mut self, media_ids: &[i64], rating: u8) {
         if media_ids.is_empty() {
             return;
@@ -398,6 +410,7 @@ impl GalleryView {
         }
     }
 
+    #[tracing::instrument(skip_all, fields(media_type=?media_type))]
     pub(super) fn set_media_type(&mut self, media_type: MediaTypeFilter, cx: &mut Context<Self>) {
         if self.filter.media_type != media_type {
             self.filter.media_type = media_type;
@@ -420,6 +433,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all, fields(sort=?sort))]
     pub(super) fn set_sort(&mut self, sort: SortOrder, cx: &mut Context<Self>) {
         if self.filter.sort != sort {
             self.filter.sort = sort;
@@ -428,6 +442,7 @@ impl GalleryView {
         }
     }
 
+    #[tracing::instrument(skip_all, fields(minimum=?minimum,value=?value))]
     pub(super) fn set_rating_bound(&mut self, minimum: bool, value: i32, cx: &mut Context<Self>) {
         let old_range = (self.filter.rating_min, self.filter.rating_max);
         self.filter.set_rating_bound(minimum, value);
@@ -438,6 +453,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all, fields(extension=?extension))]
     pub(super) fn cycle_extension(&mut self, extension: String, cx: &mut Context<Self>) {
         let (active, opposite) = if self.extension_exclude_mode {
             (
@@ -460,6 +476,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn set_extension_click_mode(&mut self, exclude: bool, cx: &mut Context<Self>) {
         self.extension_exclude_mode = exclude;
         if let Ok(mut session) = self.session.snapshot() {
@@ -476,6 +493,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn clear_extensions(&mut self, cx: &mut Context<Self>) {
         self.filter.clear_extensions();
         self.reload();

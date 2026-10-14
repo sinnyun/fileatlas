@@ -1,10 +1,8 @@
 //! v5 empty states for the gallery grid (mockup 08): library-empty with an
 //! "Add folder" action and filtered no-results with "Clear filters".
 
-use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
-
 use super::*;
+use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 
 pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElement {
@@ -20,8 +18,7 @@ pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElem
         )
     };
     let emblem = if no_results {
-        Icon::new(IconName::Search)
-            .size(px(40.))
+        theme::empty_state_icon(IconName::Search)
             .text_color(rgb(theme::TEXT_MUTED))
             .into_any_element()
     } else {
@@ -32,11 +29,7 @@ pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElem
             .flex()
             .items_center()
             .justify_center()
-            .child(
-                Icon::new(IconName::Image)
-                    .size(px(40.))
-                    .text_color(rgb(theme::TEXT_MUTED)),
-            )
+            .child(theme::empty_state_icon(IconName::Image).text_color(rgb(theme::TEXT_MUTED)))
             .into_any_element()
     };
     let action = if no_results {
@@ -51,7 +44,7 @@ pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElem
         Button::new("gallery-empty-add-folder")
             .primary()
             .label(photag_ui_bridge::i18n::tr("Add folder"))
-            .icon(IconName::FolderPlus)
+            .icon(theme::icon(IconName::FolderPlus))
             .on_click(cx.listener(|this, _, _, _| {
                 this.dispatch_command("navigation/add-folder");
             }))

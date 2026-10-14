@@ -5,7 +5,6 @@
 //! 05-filters-menus.png.
 
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::date_picker::DatePicker;
@@ -22,19 +21,22 @@ use multi_select::{extensions_chip, tags_chip};
 
 pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
     let weak = cx.entity().downgrade();
-    let mut row = div().h_flex().w_full().items_center().gap(px(4.));
+    let mut row = div()
+        .id("gallery-filter-row")
+        .h(px(theme::FILTER_CHIP_HEIGHT))
+        .min_w_0()
+        .h_flex()
+        .w_full()
+        .items_center()
+        .gap(px(4.))
+        .overflow_x_scroll();
     row = row.child(type_chip(view, weak.clone(), cx));
     row = row.child(tags_chip(view, weak.clone(), cx));
     row = row.child(extensions_chip(view, weak.clone(), cx));
     row = row.child(date_chip(view, weak.clone(), cx));
     row = row.child(rating_chip(view, weak.clone(), cx));
     row = row.child(sort_chip(view, weak.clone(), cx));
-    if matches!(
-        view.filter.sort,
-        SortOrder::NewestFirst | SortOrder::OldestFirst
-    ) {
-        row = row.child(month_toggle_chip(view, cx));
-    }
+    row = row.child(grouping_chip(view, cx));
     row.into_any_element()
 }
 
@@ -146,11 +148,7 @@ fn type_chip(
                             Radio::new(format!("gallery-filter-type-radio-{}", value as u8))
                                 .checked(value == selected),
                         )
-                        .child(
-                            Icon::new(icon)
-                                .size(px(14.))
-                                .text_color(rgb(theme::TEXT_MUTED)),
-                        )
+                        .child(theme::small_icon(icon).text_color(rgb(theme::TEXT_MUTED)))
                         .child(row_label(photag_ui_bridge::i18n::tr(label).to_string()))
                         .on_click(move |_, window, cx| {
                             let _ = weak.update(cx, |this, cx| this.set_media_type(value, cx));
@@ -299,18 +297,19 @@ fn rating_chip(
                 div()
                     .id(format!("gallery-filter-rating-star-{star}"))
                     .cursor_pointer()
-                    .text_size(px(18.))
                     .text_color(rgb(if i32::from(star) <= rating_min {
                         theme::STAR
                     } else {
                         theme::TEXT_MUTED
                     }))
                     .hover(|style| style.text_color(rgb(theme::STAR)))
-                    .child(if i32::from(star) <= rating_min {
-                        "★"
-                    } else {
-                        "☆"
-                    })
+                    .child(theme::icon(IconName::Star).text_color(rgb(
+                        if i32::from(star) <= rating_min {
+                            theme::STAR
+                        } else {
+                            theme::TEXT_MUTED
+                        },
+                    )))
                     .on_click(cx.listener(move |_, _, _, cx| {
                         let _ = weak.update(cx, |this, cx| {
                             let next = i32::from(star);
@@ -394,11 +393,7 @@ fn sort_chip(
                             Radio::new(format!("gallery-filter-sort-radio-{}", order as u8))
                                 .checked(order == selected),
                         )
-                        .child(
-                            Icon::new(icon)
-                                .size(px(14.))
-                                .text_color(rgb(theme::TEXT_MUTED)),
-                        )
+                        .child(theme::small_icon(icon).text_color(rgb(theme::TEXT_MUTED)))
                         .child(row_label(
                             photag_ui_bridge::i18n::tr(order.label()).to_string(),
                         ))
@@ -413,26 +408,45 @@ fn sort_chip(
         .into_any_element()
 }
 
-fn month_toggle_chip(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
-    let active = view.group_by_month;
-    chip(
-        "gallery-filter-months",
-        IconName::CalendarRange,
-        "Group by month".into(),
-        active,
-        Some(
-            div()
-                .ml(px(2.))
-                .child(
-                    Icon::new(IconName::Check)
-                        .size(px(12.))
-                        .text_color(rgb(theme::accent())),
-                )
-                .into_any_element(),
-        ),
-    )
-    .on_click(cx.listener(|this, _, _, cx| this.set_month_grouping(!this.group_by_month, cx)))
-    .into_any_element()
+pub(super) fn grouping_chip(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
+    let selected = view.grouping_mode;
+    let weak = cx.entity().downgrade();
+    controlled_popover(view, weak.clone(), "gallery-grouping-popover", "grouping")
+        .trigger(chip(
+            "gallery-filter-months",
+            IconName::CalendarRange,
+            photag_ui_bridge::i18n::tr(selected.label()).to_string(),
+            selected != photag_plugin_grouping::GroupingMode::None,
+            None,
+        ))
+        .content(move |_, _, cx| {
+            let popover = cx.entity();
+            let mut panel = div()
+                .v_flex()
+                .w(px(280.))
+                .gap(px(2.))
+                .child(popover_title("Group by"));
+            for mode in photag_plugin_grouping::GroupingMode::ALL {
+                let weak = weak.clone();
+                let popover = popover.clone();
+                panel = panel.child(
+                    menu_row(format!("grouping-{}", mode.key()))
+                        .child(
+                            Radio::new(format!("grouping-radio-{}", mode.key()))
+                                .checked(mode == selected),
+                        )
+                        .child(row_label(
+                            photag_ui_bridge::i18n::tr(mode.label()).to_string(),
+                        ))
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |this, cx| this.set_grouping(mode, cx));
+                            popover.update(cx, |state, cx| state.dismiss(window, cx));
+                        }),
+                );
+            }
+            panel
+        })
+        .into_any_element()
 }
 
 fn media_type_label(media_type: MediaTypeFilter) -> &'static str {

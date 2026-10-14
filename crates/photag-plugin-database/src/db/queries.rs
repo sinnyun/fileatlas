@@ -120,6 +120,8 @@ pub struct MediaQuery {
     /// Media that has ANY of these tags is excluded from results.
     pub excluded_tag_ids: Option<Vec<i64>>,
     pub path_prefix: Option<String>,
+    /// Only immediate files of this directory (native folder-browser scope).
+    pub direct_directory: Option<String>,
     /// Case-insensitive substring match. Which fields are matched is
     /// controlled by the `search_in_*` flags below; if every flag is false
     /// the search clause is dropped entirely.
@@ -174,6 +176,15 @@ fn build_filters(
         let i = param_values.len() + 1;
         conditions.push(format!("m.folder_id = ?{}", i));
         param_values.push(Box::new(folder_id));
+    }
+    if let Some(directory) = &query.direct_directory {
+        let i = param_values.len() + 1;
+        let prefix = format!("{}/", directory.replace('\\', "/").trim_end_matches('/'));
+        conditions.push(format!(
+            "substr(replace(m.full_path, char(92), '/'), 1, length(?{i})) = ?{i} COLLATE NOCASE \
+             AND instr(substr(replace(m.full_path, char(92), '/'), length(?{i}) + 1), '/') = 0"
+        ));
+        param_values.push(Box::new(prefix));
     }
     if let Some(ref prefix) = query.path_prefix {
         let i = param_values.len() + 1;
@@ -320,3 +331,6 @@ pub use media_ops::*;
 pub use metadata::*;
 pub use tag_links::*;
 pub use tags::*;
+
+mod grouping;
+pub use grouping::*;

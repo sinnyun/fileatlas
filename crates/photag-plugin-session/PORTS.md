@@ -24,3 +24,11 @@ SessionState.inspector_width:f32 is serde(default); zero uses300pt. Existing sid
 ## Additive gallery layout preference (2026-10-14)
 
 `SessionState.gallery_list_layout: bool` is serde-defaulted false; older PhoTag JSON remains readable and keeps the grid default. Gallery restores and saves it with the existing complete session object. The compatibility regression now round-trips a list preference alongside legacy folder/selection/sidebar fields. SQLite schema and other existing paths are unchanged.
+
+## Grouping compatibility (2026-10-14)
+
+`SessionState.grouping_mode: Option<String>` is serde-defaulted None for old JSON; the Grouping consumer resolves none/month/file_type/modified/created/folder/subfolder. Existing group_by_month and collapsed_months fields stay compatible. Gallery uses the new mode first, falls back to original settings/session booleans, and maps old English month collapse labels. Current-mode collapse state persists; switching modes clears it. Compatibility test preserves selection and round-trips file_type.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

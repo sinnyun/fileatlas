@@ -29,11 +29,13 @@ impl TaggingService {
 
     /// Assign source tags, their one-way associated tags, and required ancestors.
     /// The database query preserves PhoTag's manual-versus-auto-applied flags.
+    #[tracing::instrument(skip_all, err)]
     pub fn assign(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
         self.assign_impl(media_ids, tag_ids, true)
     }
 
     /// Restore an assignment while replaying history without changing recency.
+    #[tracing::instrument(skip_all, err)]
     pub fn restore_assignment(
         &self,
         media_ids: &[i64],
@@ -69,6 +71,7 @@ impl TaggingService {
             .unwrap_or_default()
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn remove(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
         self.database
             .with_writer(|connection| queries::remove_tags(connection, media_ids, tag_ids))?;
@@ -76,6 +79,7 @@ impl TaggingService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn clear(&self, media_ids: &[i64]) -> Result<(), TaggingError> {
         self.database
             .with_writer(|connection| queries::remove_all_tags(connection, media_ids))?;
@@ -85,6 +89,7 @@ impl TaggingService {
 
     /// Create missing AI suggestion tags beneath PhoTag's source-compatible
     /// `AI Suggested` group and assign all requested labels to one item.
+    #[tracing::instrument(skip_all, err)]
     pub fn apply_ai_suggestions(
         &self,
         media_id: i64,
@@ -123,6 +128,7 @@ impl TaggingService {
             .with_reader(|connection| queries::get_associated_tags(connection, tag_id))?)
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn set_associations(
         &self,
         tag_id: i64,
@@ -133,6 +139,7 @@ impl TaggingService {
         })?)
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub fn merge(
         &self,
         source_id: i64,
@@ -151,6 +158,7 @@ impl TaggingService {
 
     /// Reparent a tag and let the query report media whose implicit ancestor
     /// assignments changed; those media receive a fresh metadata write.
+    #[tracing::instrument(skip_all, err)]
     pub fn move_tag(
         &self,
         source_id: i64,
@@ -170,7 +178,7 @@ impl TaggingService {
             return;
         }
         if let Err(error) = writeback::schedule(&self.database, media_ids) {
-            eprintln!("tag metadata writeback could not be scheduled: {error}");
+            tracing::error!("tag metadata writeback could not be scheduled: {error}");
         }
     }
 }
@@ -199,6 +207,7 @@ impl Plugin for TaggingPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()

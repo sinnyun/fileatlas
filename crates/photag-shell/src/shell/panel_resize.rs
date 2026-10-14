@@ -132,7 +132,7 @@ impl PhoTagShell {
             saved.sidebar_width = self.sidebar_width;
             saved.inspector_width = self.inspector_width;
             if let Err(error) = self.session.replace(saved) {
-                eprintln!("panel widths session save failed: {error}");
+                tracing::error!("panel widths session save failed: {error}");
             }
         }
     }
@@ -163,16 +163,22 @@ impl PhoTagShell {
             window.defer(cx, move |window, cx| {
                 let position = point(px(input.x), px(input.y));
                 let event = match input.kind {
-                    "down" | "right_down" => PlatformInput::MouseDown(MouseDownEvent {
-                        button: if input.kind == "right_down" {
-                            MouseButton::Right
-                        } else {
-                            MouseButton::Left
-                        },
-                        position,
-                        click_count: 1,
-                        ..Default::default()
-                    }),
+                    "down" | "right_down" | "double_down" => {
+                        PlatformInput::MouseDown(MouseDownEvent {
+                            button: if input.kind == "right_down" {
+                                MouseButton::Right
+                            } else {
+                                MouseButton::Left
+                            },
+                            position,
+                            click_count: if input.kind.starts_with("double_") {
+                                2
+                            } else {
+                                1
+                            },
+                            ..Default::default()
+                        })
+                    }
                     "drag" | "move" => PlatformInput::MouseMove(MouseMoveEvent {
                         position,
                         pressed_button: if input.kind == "drag" {
@@ -189,7 +195,11 @@ impl PhoTagShell {
                             MouseButton::Left
                         },
                         position,
-                        click_count: 1,
+                        click_count: if input.kind.starts_with("double_") {
+                            2
+                        } else {
+                            1
+                        },
                         ..Default::default()
                     }),
                 };

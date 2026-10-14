@@ -1,0 +1,5969 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-grouping.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation",
+  "started": "2026-10-14T14:41:11.666Z",
+  "steps": [
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 2000,
+      "result": {
+        "library_refresh": {
+          "running": true,
+          "total_folders": 2,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": null,
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": false,
+        "update_checking": false,
+        "update_available": false,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": null,
+        "inspector_width": null,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": {
+          "phase": "Scanning…",
+          "scanned": 0,
+          "total": 0,
+          "error": null
+        },
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "resize_window",
+      "arguments": {
+        "width": 1942,
+        "height": 1256
+      },
+      "wait_ms": 500,
+      "result": {
+        "ok": true,
+        "requested_width": 1942,
+        "requested_height": 1256,
+        "actual_width": 1942,
+        "actual_height": 1256
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "popover",
+        "value": "grouping"
+      },
+      "wait_ms": 400,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "900,246"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "grouping",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "file_type",
+          "groups": [
+            [
+              "PDF",
+              122
+            ],
+            [
+              "PNG",
+              1
+            ],
+            [
+              "TXT",
+              125
+            ]
+          ],
+          "collapsed_groups": [
+            "PDF"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "900,246"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "grouping",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "file_type",
+          "groups": [
+            [
+              "PDF",
+              122
+            ],
+            [
+              "PNG",
+              1
+            ],
+            [
+              "TXT",
+              125
+            ]
+          ],
+          "collapsed_groups": [
+            "PDF"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "until": {
+        "field": "gallery.grouping_mode",
+        "equals": "modified"
+      },
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "modified",
+          "groups": [
+            [
+              "2026-10",
+              3
+            ],
+            [
+              "2025-04",
+              122
+            ],
+            [
+              "2024-04",
+              123
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\native-modified-click.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "320,140"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "modified",
+          "groups": [
+            [
+              "2026-10",
+              3
+            ],
+            [
+              "2025-04",
+              122
+            ],
+            [
+              "2024-04",
+              123
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "320,140"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "modified",
+          "groups": [
+            [
+              "2026-10",
+              3
+            ],
+            [
+              "2025-04",
+              122
+            ],
+            [
+              "2024-04",
+              123
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "modified",
+          "groups": [
+            [
+              "2026-10",
+              3
+            ],
+            [
+              "2025-04",
+              122
+            ],
+            [
+              "2024-04",
+              123
+            ]
+          ],
+          "collapsed_groups": [
+            "2026-10"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\native-header-collapse.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "select_media",
+        "value": "1"
+      },
+      "wait_ms": 400,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "modified",
+          "groups": [
+            [
+              "2026-10",
+              3
+            ],
+            [
+              "2025-04",
+              122
+            ],
+            [
+              "2024-04",
+              123
+            ]
+          ],
+          "collapsed_groups": [
+            "2026-10"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "grouping",
+        "value": "subfolder"
+      },
+      "wait_ms": 400,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+              83
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-one",
+              82
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-two",
+              81
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+              2
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\selection-retained.png"
+    },
+    {
+      "tool": "resize_window",
+      "arguments": {
+        "width": 1700,
+        "height": 1100
+      },
+      "wait_ms": 500,
+      "result": {
+        "ok": true,
+        "requested_width": 1700,
+        "requested_height": 1100,
+        "actual_width": 1700,
+        "actual_height": 1100
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 600,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+              83
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-one",
+              82
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-two",
+              81
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+              2
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\narrow-closed.png"
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "tools_open"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": true,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+              83
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-one",
+              82
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-two",
+              81
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+              2
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\narrow-tools.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "926,281"
+      },
+      "wait_ms": 200,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": true,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+              83
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-one",
+              82
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-two",
+              81
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+              2
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "926,281"
+      },
+      "wait_ms": 300,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": true,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+              83
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-one",
+              82
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a\\sub-two",
+              81
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+              2
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "until": {
+        "field": "gallery.grouping_mode",
+        "equals": "file_type"
+      },
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": true,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "file_type",
+          "groups": [
+            [
+              "PDF",
+              122
+            ],
+            [
+              "PNG",
+              1
+            ],
+            [
+              "TXT",
+              125
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\native-tools-type-click.png"
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "tools_close"
+      },
+      "wait_ms": 200,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "toggle_group",
+        "value": "PDF"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameAsc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [
+            1
+          ],
+          "layout": "list",
+          "grouping_mode": "file_type",
+          "groups": [
+            [
+              "PDF",
+              122
+            ],
+            [
+              "PNG",
+              1
+            ],
+            [
+              "TXT",
+              125
+            ]
+          ],
+          "collapsed_groups": [
+            "PDF"
+          ],
+          "matched_count": 248,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 200,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 164,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872672
+          },
+          {
+            "media_id": 82,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872674
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 1,
+            "timestamp_ms": 1791988872675
+          },
+          {
+            "media_id": 166,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 84,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872676
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872677
+          },
+          {
+            "media_id": 168,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872678
+          },
+          {
+            "media_id": 86,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872679
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872680
+          },
+          {
+            "media_id": 170,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988872681
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874995
+          },
+          {
+            "media_id": 248,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874996
+          },
+          {
+            "media_id": 165,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874997
+          },
+          {
+            "media_id": 83,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988874999
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875000
+          },
+          {
+            "media_id": 167,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875001
+          },
+          {
+            "media_id": 85,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875002
+          },
+          {
+            "media_id": 169,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 87,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988875003
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2362550050020218,
+            "selection": 0,
+            "timestamp_ms": 1791988875058
+          },
+          {
+            "media_id": 247,
+            "hover": 0.48307085037231445,
+            "selection": 0,
+            "timestamp_ms": 1791988875088
+          },
+          {
+            "media_id": 247,
+            "hover": 0.7188208699226379,
+            "selection": 0,
+            "timestamp_ms": 1791988875116
+          },
+          {
+            "media_id": 247,
+            "hover": 0.9520317316055298,
+            "selection": 0,
+            "timestamp_ms": 1791988875144
+          },
+          {
+            "media_id": 247,
+            "hover": 1,
+            "selection": 0,
+            "timestamp_ms": 1791988875173
+          },
+          {
+            "media_id": 247,
+            "hover": 0.763307511806488,
+            "selection": 0,
+            "timestamp_ms": 1791988876601
+          },
+          {
+            "media_id": 247,
+            "hover": 0.5259824991226196,
+            "selection": 0,
+            "timestamp_ms": 1791988876629
+          },
+          {
+            "media_id": 247,
+            "hover": 0.2966724932193756,
+            "selection": 0,
+            "timestamp_ms": 1791988876657
+          },
+          {
+            "media_id": 247,
+            "hover": 0.06230415403842926,
+            "selection": 0,
+            "timestamp_ms": 1791988876685
+          },
+          {
+            "media_id": 247,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876715
+          },
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876751
+          },
+          {
+            "media_id": 171,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 89,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988876752
+          },
+          {
+            "media_id": 88,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878796
+          },
+          {
+            "media_id": 90,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878797
+          },
+          {
+            "media_id": 91,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878798
+          },
+          {
+            "media_id": 92,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          },
+          {
+            "media_id": 93,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791988878799
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-validation\\screenshots\\final-collapsed-type.png"
+    }
+  ]
+}

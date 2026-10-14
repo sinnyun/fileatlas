@@ -151,6 +151,7 @@ impl PreviewService {
     }
 
     /// Open a preview with its indexed media identity for detail and AI consumers.
+    #[tracing::instrument(skip_all, err, fields(media_id=?media_id))]
     pub fn open_media(
         &self,
         path: impl Into<PathBuf>,
@@ -320,6 +321,7 @@ impl PreviewService {
         self.open_media(paths[next].clone(), media_id).is_ok()
     }
 
+    #[tracing::instrument(skip_all)]
     pub fn close(&self) {
         if let Ok(mut s) = self.state.lock() {
             s.source = None;

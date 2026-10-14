@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+tracing.workspace = true
 cordis.workspace = true
 dirs.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }

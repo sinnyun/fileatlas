@@ -1,0 +1,96 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 1500
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "file_type"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "header-grid"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_move",
+      "value": "320,140"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "header-hover"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "320,140"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "320,140"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.collapsed_groups",
+      "equals": [
+        "PDF"
+      ]
+    },
+    "capture": "header-collapsed"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "header-list"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "modified"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "header-date"
+  }
+]

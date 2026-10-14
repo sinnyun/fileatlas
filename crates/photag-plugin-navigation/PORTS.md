@@ -123,3 +123,15 @@ Finalv2 corrections: ExpandPath(String) validates the same registered-root direc
 Sidebar +, Browse and command requests now start rfd::AsyncFileDialog::pick_folder in a GPUI task. The native modal loop runs on rfd's separate Windows STA thread, outside the Sidebar/App borrow. Returned FileHandle paths still call add_folder_path→NavigationService::add_folder→watcher/indexing; None remains a no-op. FolderPickerState and PickerLease enforce one in-flight dialog, disable the picker buttons while pending and reset pending on completion/drop. Sidebar owns the Task so view disposal cancels it; lease drop requests closing its same-process native window when already created.
 
 Public NavigationService::folder_picker_pending()->bool, folder_picker_window()->Option<isize>, cancel_folder_picker()->Result<(),String> support direct plugin MCP validation. Native lookup is limited to this process, #32770 class and the exact current picker title. Cancellation posts WM_CLOSE to that identified dialog, never generates mouse/key input and never chooses/registers a directory. Late window creation during task disposal is not separately exercised. Real Windows button→native dialog→cancel→reopen was verified twice; native folder-selection acceptance remains unverified in this run. See docs/validation-ui/2026-10-14-folder-picker.
+
+## Indexed path spelling in debug requests (2026-10-14)
+
+SelectPath/ExpandPath are still canonicalized for registered-root containment validation by NavigationService::request_ui. Their GPUI consumer preserves the supplied indexed path spelling when selecting/expanding; it no longer adds Windows extended prefixes a second time. This matches native tree clicks and avoids empty Gallery queries for normally spelled indexed paths. Real isolated MCP root/nested selections now return4/2 matches. The folder/tag snapshot regression now expects .hidden as well as nested under the already-established all-file policy.
+
+## Gallery folder-card navigation (2026-10-14)
+
+Gallery consumes public NavigationService::request_ui SelectPath/AllFiles; no private UI imports. SelectPath now reveals and refreshes ancestors under registered roots before applying selection, so folder-card navigation updates the existing tree/breadcrumb/session path. A root selected by path is highlighted like the same root selected by ID. Existing canonical containment validation and indexed input-path spelling remain unchanged. Grid/list actual double-click and multi-level navigation were exercised through PhoTag MCP.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

@@ -5,6 +5,7 @@
 //! 4–6 px corners. Colors are packed `0xRRGGBB` values for direct use with
 //! `gpui_kit::rgb`; overlay fills are packed `0xRRGGBBAA` for `gpui_kit::rgba`.
 
+use gpui_kit::Styled as _;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 /// Window root: title band, sidebar backdrop and status bar.
@@ -177,7 +178,54 @@ pub const FONT_SIZE_HEADING: f32 = 15.0;
 pub const FONT_SIZE_TITLE: f32 = 18.0;
 pub const UI_FONT_FAMILY: &str = "Segoe UI";
 pub const SEMIBOLD_FONT_FAMILY: &str = "Segoe UI Semibold";
-pub const ICON_FONT_FAMILY: &str = "Segoe MDL2 Assets";
+/// Shared icon dimensions in logical pixels. Keep UI icon sizing here so
+/// controls remain visually consistent across feature crates.
+pub const ICON_SIZE_SMALL: f32 = 12.0;
+pub const ICON_SIZE_DEFAULT: f32 = 16.0;
+pub const ICON_SIZE_LARGE: f32 = 20.0;
+pub const ICON_SIZE_EMPTY_STATE: f32 = 40.0;
+
+/// Build a standard-sized icon from the bundled GPUI Kit/Lucide catalog.
+pub fn icon(name: gpui_kit::assets::IconName) -> gpui_kit::component::Icon {
+    gpui_kit::component::Icon::new(name).size(gpui_kit::px(ICON_SIZE_DEFAULT))
+}
+
+/// Build a compact icon for dense rows and popovers.
+pub fn small_icon(name: gpui_kit::assets::IconName) -> gpui_kit::component::Icon {
+    gpui_kit::component::Icon::new(name).size(gpui_kit::px(ICON_SIZE_SMALL))
+}
+
+/// Build a large icon for prominent empty-state or modal feedback.
+pub fn large_icon(name: gpui_kit::assets::IconName) -> gpui_kit::component::Icon {
+    gpui_kit::component::Icon::new(name).size(gpui_kit::px(ICON_SIZE_LARGE))
+}
+
+pub fn empty_state_icon(name: gpui_kit::assets::IconName) -> gpui_kit::component::Icon {
+    gpui_kit::component::Icon::new(name).size(gpui_kit::px(ICON_SIZE_EMPTY_STATE))
+}
+
+/// Resolve persisted tag icon identifiers to bundled icons. Old versions
+/// stored Segoe glyphs and emoji, so unknown legacy values fall back safely.
+pub fn tag_icon(name: Option<&str>) -> gpui_kit::assets::IconName {
+    use gpui_kit::assets::IconName;
+    match name.unwrap_or_default() {
+        "Image" | "\u{e8b9}" => IconName::Image,
+        "Folder" | "\u{e8b7}" => IconName::Folder,
+        "Video" | "\u{e714}" => IconName::Video,
+        "Music" | "\u{e767}" => IconName::Music,
+        "Star" | "\u{e735}" => IconName::Star,
+        "Search" | "\u{e721}" => IconName::Search,
+        "Library" | "\u{e8a9}" => IconName::Library,
+        "Settings" | "\u{e713}" => IconName::Settings,
+        "Puzzle" | "\u{e8a5}" => IconName::Puzzle,
+        "ZoomIn" | "\u{e8a3}" => IconName::ZoomIn,
+        "Eye" | "\u{e7b3}" => IconName::Eye,
+        "Calendar" | "\u{e787}" => IconName::Calendar,
+        "ListFilter" | "\u{e71c}" => IconName::ListFilter,
+        "ArrowUpDown" | "\u{e8cb}" => IconName::ArrowUpDown,
+        _ => IconName::Tag,
+    }
+}
 
 /// Apply the v5 theme to GPUI Kit's native controls as well as our paints.
 /// Keeps buttons ghost-on-graphite, inputs as faint wells and slate-blue
@@ -472,33 +520,4 @@ pub fn tag_tint(color: Option<&str>) -> u32 {
 
 const fn pack(r: u8, g: u8, b: u8) -> u32 {
     ((r as u32) << 16) | ((g as u32) << 8) | b as u32
-}
-
-/// Stable Windows 10/11 Segoe MDL2 glyph codepoints used by the source UI.
-pub mod icons {
-    pub const SEARCH: char = '\u{e721}';
-    pub const SETTINGS: char = '\u{e713}';
-    pub const FILTER: char = '\u{e71c}';
-    pub const SORT: char = '\u{e8cb}';
-    pub const CALENDAR: char = '\u{e787}';
-    pub const FOLDER: char = '\u{e8b7}';
-    pub const FOLDER_OPEN: char = '\u{e838}';
-    pub const TAG: char = '\u{e8ec}';
-    pub const CHEVRON_DOWN: char = '\u{e70d}';
-    pub const CHEVRON_RIGHT: char = '\u{e76c}';
-    pub const PLAY: char = '\u{e768}';
-    pub const CHECK: char = '\u{e73e}';
-    pub const STAR: char = '\u{e735}';
-    pub const CLOSE: char = '\u{e711}';
-    pub const ADD: char = '\u{e710}';
-    pub const PICTURE: char = '\u{e8b9}';
-    pub const VIDEO: char = '\u{e714}';
-    pub const AUDIO: char = '\u{e767}';
-    pub const DELETE: char = '\u{e74d}';
-    pub const ZOOM: char = '\u{e8a3}';
-    pub const VIEW: char = '\u{e7b3}';
-    pub const MORE: char = '\u{e712}';
-    pub const LIBRARY: char = '\u{e8a9}';
-    pub const WARNING: char = '\u{e7ba}';
-    pub const EXTENSION: char = '\u{e8a5}';
 }

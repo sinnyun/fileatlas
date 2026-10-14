@@ -60,3 +60,7 @@ executable is replaced. Install failures are written to
 `%LOCALAPPDATA%/PhoTag/update-error.txt`. This implementation uses the package's
 `CARGO_PKG_VERSION`; the host package version must track the application
 release version. Windows replacement and relaunch need real Windows validation.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

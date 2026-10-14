@@ -199,3 +199,35 @@ Rust1.97.1 Windows MSVC locked shell check/build、fmt check及Navigation/MCP相
 本轮沿用 sidebar-pages-preview-v2 及 final-v5 主界面结构，按用户指示将卡片右上More改为非交互格式角标，Grid/List与Inspector无缩略图时使用文件类型图标。Windows同进程PhoTag MCP隔离验证45步：16文件全部可见、photo筛选5、file查询9；未知/无扩展名/隐藏文件、视频封面独立行、文档/归档图标、真实右键评分子菜单、增量扫描保留ID/评分、watcher未知格式创建/删除及目录排除。fmt、locked shell check、shell备用bin完整编译通过；27相关自动测试通过、1原有FFmpeg测试ignored。证据/命令/环境/启动诊断/未覆盖状态见[验证说明](validation-ui/2026-10-14-all-files/README.md)。正常用户profile没有修改；旧默认exe被运行中窗口占用，新可执行文件为`target/debug/photag-shell-all-files.exe`。
 
 最终补验：缓存命中增量扫描保留图片尺寸/micro，Indexing回归再次通过；重编译后32步PhoTag MCP重测保留ID/评分及24×16尺寸，见同证据目录cache-retention-report.json。
+
+## 独立分组插件（2026-10-14）
+
+保持sidebar-pages-preview-v2/final-v5主布局，按用户新要求把按月规则/分组排序/虚拟分段迁入photag-plugin-grouping，扩展类型、修改月份、创建月份、登记根目录及实际父目录分组。26自动测试、fmt、locked shell check、独立Shell完整编译通过；57步同进程PhoTag MCP验证248文件的全部分组、200行缓存末页、实际菜单/标题鼠标点击、选择保留及只读重启恢复。另修复标题框选冒泡与工具菜单滚动容器定位。环境、命令、截图、报告及网络/大库/横向滚动未验边界见[本轮验证](validation-ui/2026-10-14-grouping/README.md)。默认EXE被旧窗口占用，运行构建是target/debug/photag-shell-grouping.exe，未停止旧窗口或改普通用户profile。
+
+## 分组标题背景增强（2026-10-14）
+
+按用户要求给所有分组标题行加入不透明蓝灰背景、边框、圆角及更亮hover，保留40pt几何、计数与折叠。fmt/locked Shell check及独立Shell编译通过；14步同进程PhoTag MCP验证网格、悬停、标题实际点击折叠、列表及月份标题。依据原v2主结构加本轮明确设计要求；[截图与命令](validation-ui/2026-10-14-group-header/README.md)。新EXE为target/debug/photag-shell-grouping-header.exe，普通用户profile未修改。
+
+## 子文件夹分组根目录优先（2026-10-14）
+
+按用户要求先显示当前目录直属文件，后显示子目录组，保留蓝灰背景。28相关自动测试及19步同进程MCP验证全部/选中根/选中嵌套目录/筛选后无直属文件的顺序和数量。源代码、命令、截图、调试路径拼写修正及边界见[根目录优先验证](validation-ui/2026-10-14-root-first/README.md)。新构建target/debug/photag-shell-root-first.exe。
+
+## 不分组目录浏览与文件夹卡片（2026-10-14）
+
+依用户新指示在原v2/final-v5主结构内增加文件夹卡片，None显示当前目录直属文件/子目录。36相关自动测试通过、1原FFmpeg项ignored；fmt/locked check/独立Shell编译通过。82步最终构建同进程MCP验证网格/列表单双击、上级、空目录、混排框选/图片预览、245文件末页及分组/搜索兼容，另两次只读MCP重启通过，共84步。[命令/截图/报告/边界](validation-ui/2026-10-14-folder-browser/README.md)。独立构建target/debug/photag-shell-folder-browser.exe；未修改普通用户profile或停止原窗口。
+
+## 运行时调试信息插件（2026-10-15）
+
+新增 Cordis-owned `photag-plugin-debug`。主界面底栏提供调试按钮，点击展开可收起的调试抽屉；记录时间、级别、分类、目标、动作、消息、耗时、线程及span关联信息。支持分类/级别/关键词筛选、分页和页长、选中详情、暂停查看/跟随最新及清空。插件订阅应用 tracing/log 与 panic hook，覆盖主要插件操作和数据库/索引耗时；MCP提供共享状态读取与受变更保护的控制接口。每 crate 的 `PORTS.md` 和源行为映射表已更新。
+
+静态验证：Rust1.97.1 MSVC；`cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-debug-panel.exe` 通过；`cargo +1.97.1 test --locked -p photag-plugin-debug -p photag-ui-bridge -j 2` 通过10项；本轮新增 Rust 文件 `rustfmt --edition 2024 --check ...` 通过。当前全工作区 `cargo +1.97.1 fmt --all -- --check` 受到同一工作区中并行的 Gallery/Navigation 图标改动格式差异影响，未对这些文件执行自动格式化，以免覆盖无关改动。
+
+Windows同进程 PhoTag MCP隔离运行验证46步，并以最终窗口构建补验原生分类菜单的滚动边界。验证真实索引记录与110ms扫描耗时、真实文件改名失败及错误详情、过滤/分页/暂停/跟随/清空、最小窗口和抽屉打开关闭。准确命令、报告、日志、截图、隔离配置及限制见[调试插件运行证据](validation-ui/2026-10-14-debug-panel/README.md)。本轮设计沿用 `docs/reference-ui/final-v5/00-main-library.png` 的底部工作区结构，仅增加底栏入口和向上展开的调试抽屉。
+
+边界：缓冲区最多保留最近10000条、进程重启后清空；不替代系统/原生组件日志或崩溃转储，后台线程的span父子上下文并非处处传播。为避免重复捕获自身的查询响应，RMCP传输层DEBUG/TRACE载荷不纳入记录；MCP应用动作和拒绝请求仍有记录。未加入磁盘日志导出或SQL正文捕获。
+
+## 全界面 gpui-kit 图标统一（2026-10-15）
+
+界面内的状态、操作、媒体类型、评分、导航和空状态图标统一改为 gpui-kit 图标目录；图标尺寸通过 UI Bridge 主题 `small_icon` / `icon` / `large_icon` / `empty_state_icon` 配置。标签图标保留旧数据库值兼容解析，旧 MDL2 字符与未知表情显示对应 gpui-kit 图标，不再直接绘制字符。替换图库月份分组的手绘箭头和设置复选框的手绘勾号。界面结构与控制项不变，本次未新增或删减设计状态。
+
+静态验证环境：Windows MSVC Rust 1.97.1。`cargo +1.97.1 fmt --all -- --check` 通过；`cargo +1.97.1 check --locked -p photag-shell -j 2` 通过。扫描 crates Rust 源码确认 `Icon::new` 仅留在主题尺寸 helper，未发现 PathBuilder、SVG 图标绘制或 MDL2 主题字体调用。当前会话没有 PhoTag MCP 工具入口，因此未启动同进程窗口或做运行时 UI 检查；界面呈现留待项目 PhoTag MCP 可用时验证。

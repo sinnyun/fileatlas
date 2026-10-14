@@ -30,3 +30,7 @@ tags. Windows interoperability with real photo editors remains unverified.
 ## Consumers and debugging
 
 Use stable integer media/tag IDs from the database service. The Gallery and Preview pickers search tag name and full path and apply source assignment/removal operations; Gallery/Navigation expose association editing and merge/delete flows. After mutation, consumers reload their views and record source-supported operations in HistoryService. Verify ancestor and association flags when debugging unexpected tags. Metadata writes remain detached and best-effort, matching the source; file-write failures are available through `writeback::failures()` for UI display. A database lookup or worker-start failure is logged by `schedule_xmp_sync`; inspect that diagnostic if no per-file write result appears. Compare `src/xmp.rs` byte behavior with `vendor/photag-source/src/xmp.rs` if local Windows testing exposes IPTC/XMP differences. F1–F9 hotkeys call the service through Settings mappings. Popup placement and visual behavior need Windows validation.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

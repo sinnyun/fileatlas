@@ -5,6 +5,7 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_plugin_history::UndoEntry;
 use photag_ui_bridge::theme;
@@ -84,14 +85,10 @@ pub(super) fn render(
             let selected = view.tag_picker_selected.contains(&id);
             recent_row = recent_row.child(
                 Button::new(format!("gallery-tag-recent-{id}"))
-                    .label(photag_ui_bridge::i18n::tr(
-                        &(if selected {
-                            format!("✓ {label}")
-                        } else {
-                            label
-                        })
-                        .to_string(),
-                    ))
+                    .when(selected, |button| {
+                        button.icon(theme::small_icon(gpui_kit::assets::IconName::Check))
+                    })
+                    .label(photag_ui_bridge::i18n::tr(&label))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         if !this.tag_picker_selected.remove(&id) {
                             this.tag_picker_selected.insert(id);
@@ -147,7 +144,7 @@ pub(super) fn render(
                     Button::new("gallery-tag-picker-close")
                         .ghost()
                         .compact()
-                        .label("×")
+                        .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.show_tag_picker = false;
                             cx.notify();
@@ -252,7 +249,11 @@ fn tag_tree_rows(
                     .pl(px((depth as f32) * 18.))
                     .child(
                         Button::new(format!("gallery-tag-choice-{id}"))
-                            .label(if checked { "☑" } else { "□" })
+                            .icon(theme::small_icon(if checked {
+                                gpui_kit::assets::IconName::Check
+                            } else {
+                                gpui_kit::assets::IconName::Square
+                            }))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 if !this.tag_picker_selected.remove(&id) {
                                     this.tag_picker_selected.insert(id);
@@ -339,14 +340,13 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
                     .items_center()
                     .justify_center()
                     .text_color(rgb(theme::TEXT_MUTED))
-                    .text_size(px(28.))
-                    .child(if media.media_type == "video" {
-                        "▶"
+                    .child(theme::large_icon(if media.media_type == "video" {
+                        gpui_kit::assets::IconName::FileVideoCamera
                     } else if media.media_type == "audio" {
-                        "♫"
+                        gpui_kit::assets::IconName::FileMusic
                     } else {
-                        "▧"
-                    }),
+                        gpui_kit::assets::IconName::FileImage
+                    })),
             );
         }
         preview = preview.child(

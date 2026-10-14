@@ -99,6 +99,9 @@ impl UiSurfaceState {
             .write()
             .map_err(|_| "UI surface state lock is poisoned".to_owned())?;
         let id = id.into();
+        if surfaces.contains(&id) != open {
+            tracing::info!(surface=%id, open, "surface visibility changed");
+        }
         if open {
             surfaces.insert(id);
         } else {

@@ -375,7 +375,7 @@ impl SettingsView {
                 Button::new("settings-update-offer-close")
                     .w(px(32.))
                     .h(px(32.))
-                    .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
+                    .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.update_offer_open = false;
                         this.update_offer_dismissed = true;

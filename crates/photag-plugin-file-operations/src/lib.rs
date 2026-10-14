@@ -33,6 +33,7 @@ impl FileOperationsService {
         Self { database, cordis }
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub async fn copy_to(
         self: &Arc<Self>,
         media_id: i64,
@@ -50,6 +51,7 @@ impl FileOperationsService {
 
     /// Copy many items into a chosen directory. The source PhoTag bulk-copy
     /// action leaves indexing of in-library destinations to the watcher.
+    #[tracing::instrument(skip_all, err)]
     pub async fn bulk_copy_to_folder(
         self: &Arc<Self>,
         media_ids: Vec<i64>,
@@ -88,6 +90,7 @@ impl FileOperationsService {
 
     /// Move a file to an arbitrary save-dialog destination. Like PhoTag, an
     /// item moved outside indexed library roots is removed from the DB.
+    #[tracing::instrument(skip_all, err)]
     pub async fn move_to(
         self: &Arc<Self>,
         media_id: i64,
@@ -100,6 +103,7 @@ impl FileOperationsService {
 
     /// Move to a caller-selected full path and report whether the file moved.
     /// `false` covers source-compatible collision or filesystem move failure.
+    #[tracing::instrument(skip_all, err)]
     pub async fn move_to_with_outcome(
         self: &Arc<Self>,
         media_id: i64,
@@ -128,6 +132,7 @@ impl FileOperationsService {
     }
 
     /// Move into a registered folder and report collision or move failure.
+    #[tracing::instrument(skip_all, err)]
     pub async fn move_into_folder_with_outcome(
         self: &Arc<Self>,
         media_id: i64,
@@ -147,6 +152,7 @@ impl FileOperationsService {
     /// Move many items to a folder, preserving PhoTag's per-item collision and
     /// cross-volume behavior. Failures are recorded per item and do not stop
     /// later items, as in the original bulk action.
+    #[tracing::instrument(skip_all, err)]
     pub async fn bulk_move_into_folder(
         self: &Arc<Self>,
         media_ids: Vec<i64>,
@@ -186,6 +192,7 @@ impl FileOperationsService {
         Ok(outcomes)
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub async fn rename(
         self: &Arc<Self>,
         media_id: i64,
@@ -197,6 +204,7 @@ impl FileOperationsService {
     }
 
     /// Rename an item and report a no-op such as an unchanged or colliding name.
+    #[tracing::instrument(skip_all, err)]
     pub async fn rename_with_outcome(
         self: &Arc<Self>,
         media_id: i64,
@@ -212,6 +220,7 @@ impl FileOperationsService {
         Ok(changed)
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub async fn create_folder(
         self: &Arc<Self>,
         parent: PathBuf,
@@ -234,6 +243,7 @@ impl FileOperationsService {
 
     /// Send a file to the OS Recycle Bin, then remove its PhoTag row even if
     /// the recycle operation fails, matching the original single-delete path.
+    #[tracing::instrument(skip_all, err)]
     pub async fn delete_to_recycle_bin(
         self: &Arc<Self>,
         media_id: i64,
@@ -256,6 +266,7 @@ impl FileOperationsService {
     /// Bulk delete follows PhoTag's best-effort contract: trash every
     /// available path, clean thumbnails, remove indexed rows and emit one
     /// refresh event. A broken item does not stop the rest of the batch.
+    #[tracing::instrument(skip_all, err)]
     pub async fn bulk_delete_to_recycle_bin(
         self: &Arc<Self>,
         media_ids: Vec<i64>,
@@ -322,6 +333,7 @@ impl FileOperationsService {
         Ok(outcomes.0)
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub async fn open_external(self: &Arc<Self>, media_id: i64) -> Result<(), FileOperationError> {
         let service = Arc::clone(self);
         tokio::task::spawn_blocking(move || {
@@ -336,6 +348,7 @@ impl FileOperationsService {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, err)]
     pub async fn reveal_in_file_manager(
         self: &Arc<Self>,
         media_id: i64,

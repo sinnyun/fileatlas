@@ -5,6 +5,7 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
 use gpui_kit::*;
 use photag_ui_bridge::i18n::tr;
+use photag_ui_bridge::theme;
 
 use super::PreviewView;
 
@@ -44,14 +45,14 @@ pub(super) fn rename_editor(view: &PreviewView, cx: &mut Context<PreviewView>) -
         .child(
             Button::new("preview-rename-commit")
                 .compact()
-                .label("✓")
+                .icon(theme::small_icon(gpui_kit::assets::IconName::Check))
                 .tooltip(tr("Save (Enter)"))
                 .on_click(cx.listener(|this, _: &ClickEvent, _, cx| this.commit_rename(cx))),
         )
         .child(
             Button::new("preview-rename-cancel")
                 .compact()
-                .label("✕")
+                .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                 .tooltip(tr("Cancel (Esc)"))
                 .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
                     this.rename_target = None;

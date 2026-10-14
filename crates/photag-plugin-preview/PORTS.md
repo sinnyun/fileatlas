@@ -70,3 +70,7 @@ Reference02 rendered with real image info/ratings, fixed opaque toolbar, filenam
 ## Shared floating frame (2026-10-14)
 
 Image preview content is mounted in the UI Bridge frame ID preview, default1100×760, with drag/resize/maximize/restore/close. Existing PreviewService ownership, transforms, filmstrip, tag/file/AI controls remain unchanged. `panels::content_bounds` reads measured GPUI content geometry; fit sizing uses that area, cursor zoom and right-click menu coordinates subtract its actual origin. Earlier whole-window viewport estimates above are historical for this path. Preview and Playback services still hold one active media each; the generic panel catalog does not imply multi-session decoding.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

@@ -1,5 +1,6 @@
 //! GPUI media tile rendering and click selection.
 
+use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::ContextMenuExt;
@@ -85,7 +86,8 @@ pub(super) fn render_media_card(
                 .items_center()
                 .text_xs()
                 .text_color(rgb(theme::STAR))
-                .child(format!("★ {}", media.rating)),
+                .child(theme::small_icon(IconName::Star).text_color(rgb(theme::STAR)))
+                .child(media.rating.to_string()),
         );
     }
     if media_type == "video" {
@@ -100,10 +102,8 @@ pub(super) fn render_media_card(
                 .px_2()
                 .flex()
                 .items_center()
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(9.5))
                 .text_color(rgb(theme::TEXT_PRIMARY))
-                .child(theme::icons::PLAY.to_string()),
+                .child(theme::small_icon(IconName::Play)),
         );
     }
     if hover > 0.01 {
@@ -183,7 +183,7 @@ pub(super) fn render_media_card(
             metadata.push(dimensions);
         }
         metadata.push(format_bytes(media.file_size));
-        metadata.push(format!("★ {}", media.rating));
+        metadata.push(format!("Rating {}", media.rating));
         caption = div()
             .flex_1()
             .min_w_0()

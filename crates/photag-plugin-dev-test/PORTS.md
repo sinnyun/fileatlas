@@ -69,3 +69,7 @@ In the existing opt-in isolated dev-test profile, definitions dev-test/status(Si
 ## All-file fixture expectations (2026-10-14)
 
 The production scan regression now expects all 12 ordinary files in `test-data/photag-library`, including README.txt, the XMP sidecar and `.dev-support/preview.png`. Virtual-record generation and profile isolation remain unchanged.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

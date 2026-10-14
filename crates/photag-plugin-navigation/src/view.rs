@@ -341,13 +341,13 @@ impl SidebarView {
             .try_service::<photag_ui_bridge::UiBridgeService>()
         {
             if let Err(error) = bridge.surfaces.set_value("navigation.tab", page.key()) {
-                eprintln!("navigation tab surface update failed: {error}");
+                tracing::error!("navigation tab surface update failed: {error}");
             }
         }
         if let Ok(mut state) = self.session.snapshot() {
             state.sidebar_tab = page.key().to_owned();
             if let Err(error) = self.session.replace(state) {
-                eprintln!("navigation tab session update failed: {error}");
+                tracing::error!("navigation tab session update failed: {error}");
             }
         }
     }
@@ -506,7 +506,7 @@ impl SidebarView {
                 .emit::<MediaIndexChanged>(Routing::Unscoped, ())
                 .await
             {
-                eprintln!("media index change dispatch failed: {error}");
+                tracing::error!("media index change dispatch failed: {error}");
             }
         })
         .detach();
@@ -517,7 +517,7 @@ impl SidebarView {
             session.selected_folder_id = folder_id;
             session.selected_path = None;
             if let Err(error) = self.session.replace(session) {
-                eprintln!("folder selection session save failed: {error}");
+                tracing::error!("folder selection session save failed: {error}");
             }
         }
         let cordis = self.cordis.clone();
@@ -526,7 +526,7 @@ impl SidebarView {
                 .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
                 .await
             {
-                eprintln!("folder selection dispatch failed: {error}");
+                tracing::error!("folder selection dispatch failed: {error}");
             }
         })
         .detach();
@@ -582,7 +582,7 @@ impl SidebarView {
         #[cfg(target_os = "macos")]
         let result = std::process::Command::new("open").arg(path).spawn();
         if let Err(error) = result {
-            eprintln!("open folder in file manager failed: {error}");
+            tracing::error!("open folder in file manager failed: {error}");
         }
     }
 
@@ -609,7 +609,7 @@ impl SidebarView {
                 .emit::<TagFilterSelectionChanged>(Routing::Unscoped, selection)
                 .await
             {
-                eprintln!("tag selection dispatch failed: {error}");
+                tracing::error!("tag selection dispatch failed: {error}");
             }
         })
         .detach();
@@ -652,7 +652,7 @@ impl SidebarView {
                 photag_plugin_session::TagClickMode::Select
             });
             if let Err(error) = self.session.replace(session) {
-                eprintln!("could not save tag click mode: {error}");
+                tracing::error!("could not save tag click mode: {error}");
             }
         }
         cx.notify();
@@ -705,7 +705,7 @@ impl SidebarView {
         if let Ok(mut session) = self.session.snapshot() {
             session.expanded_subdirs = self.expanded_directories.keys().cloned().collect();
             if let Err(error) = self.session.replace(session) {
-                eprintln!("directory expansion session save failed: {error}");
+                tracing::error!("directory expansion session save failed: {error}");
             }
         }
     }
@@ -717,7 +717,7 @@ impl SidebarView {
         if let Ok(mut saved) = self.session.snapshot() {
             saved.expanded_tag_ids = self.expanded_tags.clone();
             if let Err(error) = self.session.replace(saved) {
-                eprintln!("tag expansion session save failed: {error}");
+                tracing::error!("tag expansion session save failed: {error}");
             }
         }
     }
@@ -727,7 +727,7 @@ impl SidebarView {
             session.selected_folder_id = None;
             session.selected_path = Some(path.clone());
             if let Err(error) = self.session.replace(session) {
-                eprintln!("path selection session save failed: {error}");
+                tracing::error!("path selection session save failed: {error}");
             }
         }
         let cordis = self.cordis.clone();
@@ -736,7 +736,7 @@ impl SidebarView {
                 .emit::<DirectoryPathSelected>(Routing::Unscoped, Some(path))
                 .await
             {
-                eprintln!("directory selection dispatch failed: {error}");
+                tracing::error!("directory selection dispatch failed: {error}");
             }
         })
         .detach();

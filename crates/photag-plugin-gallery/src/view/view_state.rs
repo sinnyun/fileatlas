@@ -232,8 +232,23 @@ impl GalleryView {
             .unwrap_or(None)
             .or(saved.selected_path.clone());
         let observed_index_revision = index_revision.0.load(Ordering::Acquire);
+        let settings_group_by_month = settings
+            .as_ref()
+            .and_then(|settings| settings.snapshot().ok())
+            .map(|settings| settings.show_date_dividers);
+        let grouping_mode = saved
+            .grouping_mode
+            .as_deref()
+            .and_then(photag_plugin_grouping::GroupingMode::parse)
+            .unwrap_or_else(|| {
+                if settings_group_by_month.unwrap_or_else(|| saved.group_by_month.unwrap_or(true)) {
+                    photag_plugin_grouping::GroupingMode::Month
+                } else {
+                    photag_plugin_grouping::GroupingMode::None
+                }
+            });
         let snapshot = service
-            .load(filter.to_query())
+            .load_grouped(filter.to_query(), grouping_mode)
             .map_err(|error| error.to_string());
         let mut selection = GallerySelection::default();
         if let Ok(snapshot) = &snapshot {
@@ -255,12 +270,6 @@ impl GalleryView {
         } else {
             0.
         };
-        let settings_group_by_month = settings
-            .as_ref()
-            .and_then(|settings| settings.snapshot().ok())
-            .map(|settings| settings.show_date_dividers);
-        let group_by_month =
-            settings_group_by_month.unwrap_or_else(|| saved.group_by_month.unwrap_or(true));
         let initial_writeback_failures = tagging
             .as_ref()
             .map(|_| writeback_failure_signature())
@@ -309,6 +318,7 @@ impl GalleryView {
             focus_handle,
             filter,
             selection,
+            selected_directory: None,
             rubberband: None,
             scroll,
             pending_scroll_restore: Some(restored_scroll),
@@ -322,14 +332,17 @@ impl GalleryView {
                         && (theme::THUMB_SIZE_MIN..=theme::THUMB_SIZE_MAX).contains(size)
                 })
                 .unwrap_or(theme::THUMB_SIZE_DEFAULT),
-            group_by_month,
+            grouping_mode,
             list_layout: saved.gallery_list_layout,
             show_selection_details: false,
             show_tag_picker: false,
             media_actions_id: None,
             slider_drag: None,
             show_statistics: false,
-            collapsed_months: saved.collapsed_months.clone(),
+            collapsed_months: photag_plugin_grouping::restore_collapsed(
+                &saved.collapsed_months,
+                grouping_mode,
+            ),
             inspector_expanded: ["basic", "tags"].into_iter().collect(),
             tag_filter_exclude_mode: false,
             extension_exclude_mode: saved.ext_click_mode
@@ -372,15 +385,17 @@ impl GalleryView {
         self.persist_filter_session();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn reload(&mut self) {
         self.persist_filter_session();
         self.snapshot = self
             .service
-            .load(self.filter.to_query())
+            .load_grouped(self.filter.to_query(), self.grouping_mode)
             .map_err(|error| error.to_string());
         self.row_layout = Arc::new(Vec::new());
         self.row_layout_key = None;
         self.selection = GallerySelection::default();
+        self.selected_directory = None;
         self.scroll.reset(0);
         self.pending_scroll_restore = None;
         self.persist_filter_session();
@@ -425,7 +440,9 @@ impl GalleryView {
             self.thumb_size
                 .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),
         );
-        saved.group_by_month = Some(self.group_by_month);
+        saved.group_by_month =
+            Some(self.grouping_mode == photag_plugin_grouping::GroupingMode::Month);
+        saved.grouping_mode = Some(self.grouping_mode.key().into());
         saved.gallery_list_layout = self.list_layout;
         saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);

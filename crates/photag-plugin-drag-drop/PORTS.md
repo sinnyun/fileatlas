@@ -25,3 +25,7 @@ Status: the Windows CF_HDROP/OLE drag service is registered in the workspace and
 - Source: `vendor/photag-source/src/drag.rs`; its only source caller is the gallery card drag-start handler in `vendor/photag-source/src/ui/gallery.rs` (around line 1666). It constructs paths from selected IDs and calls `start_file_drag` on the UI thread.
 - This crate preserves that call's copy-only `DROPEFFECT_COPY` contract and selected-path payload. Gallery invokes the service from the GPUI card drag gesture. The migration is wired end to end; verify pointer-drag timing while the OLE modal loop is active and exercise Explorer, desktop, and a `CF_HDROP` consumer on Windows.
 - Current implementation adds explicit OLE initialization error handling and balances successful `OleInitialize` calls with `OleUninitialize`. Shell application lifecycle and actual native drag delivery are not yet verified.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

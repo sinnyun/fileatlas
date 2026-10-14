@@ -131,10 +131,8 @@ pub(super) fn thumbnail(view: &GalleryView, cx: &mut Context<GalleryView>) -> Di
         .gap(px(8.))
         .child(
             div()
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(13.))
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(theme::icons::ZOOM.to_string()),
+                .child(theme::small_icon(gpui_kit::assets::IconName::ZoomIn)),
         )
         .child(slider(view, false, cx))
 }

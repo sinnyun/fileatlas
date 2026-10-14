@@ -92,11 +92,14 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         .as_ref()
         .and_then(|settings| settings.snapshot().ok())
         .map(|settings| settings.show_date_dividers)
-        && group_by_month != view.group_by_month
+        && matches!(
+            view.grouping_mode,
+            photag_plugin_grouping::GroupingMode::Month
+                | photag_plugin_grouping::GroupingMode::None
+        )
+        && group_by_month != (view.grouping_mode == photag_plugin_grouping::GroupingMode::Month)
     {
-        view.group_by_month = group_by_month;
-        view.row_layout_key = None;
-        view.persist_filter_session();
+        view.set_month_grouping(group_by_month, cx);
         cx.notify();
     }
     let current_scroll = (-f32::from(scroll.scroll_px_offset_for_scrollbar().y)).max(0.);

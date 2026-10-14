@@ -24,6 +24,7 @@ impl Service for DatabaseService {
 
 impl DatabaseService {
     /// Open PhoTag's normal `%LOCALAPPDATA%/PhoTag/photag.db` database.
+    #[tracing::instrument(skip_all, err)]
     pub fn open_default() -> Result<Self, DatabaseOpenError> {
         let writer = db::open_db()?;
         let reader = db::open_read_conn()?;
@@ -36,6 +37,7 @@ impl DatabaseService {
 
     /// Open or create a database at an explicit location, primarily for
     /// isolated tests and portable embedding.
+    #[tracing::instrument(skip_all, err)]
     pub fn open_at(path: impl AsRef<Path>) -> Result<Self, DatabaseOpenError> {
         let path = path.as_ref().to_path_buf();
         if let Some(parent) = path.parent() {
@@ -57,21 +59,31 @@ impl DatabaseService {
 
     /// Run a short read-only SQL operation on the independent UI/read
     /// connection. Callers should offload expensive work from the GUI thread.
+    #[track_caller]
     pub fn with_reader<T>(
         &self,
         operation: impl FnOnce(&Connection) -> rusqlite::Result<T>,
     ) -> Result<T, DatabaseAccessError> {
+        let span = tracing::info_span!("with_reader",caller=%std::panic::Location::caller());
+        let _entered = span.enter();
         let connection = lock(&self.reader)?;
-        operation(&connection).map_err(DatabaseAccessError::Sql)
+        operation(&connection)
+            .map_err(DatabaseAccessError::Sql)
+            .inspect_err(|error| tracing::error!(%error,"database operation failed"))
     }
 
     /// Run a short mutating SQL operation on the serialized writer connection.
+    #[track_caller]
     pub fn with_writer<T>(
         &self,
         operation: impl FnOnce(&Connection) -> rusqlite::Result<T>,
     ) -> Result<T, DatabaseAccessError> {
+        let span = tracing::info_span!("with_writer",caller=%std::panic::Location::caller());
+        let _entered = span.enter();
         let connection = lock(&self.writer)?;
-        operation(&connection).map_err(DatabaseAccessError::Sql)
+        operation(&connection)
+            .map_err(DatabaseAccessError::Sql)
+            .inspect_err(|error| tracing::error!(%error,"database operation failed"))
     }
 }
 
@@ -133,6 +145,7 @@ impl Plugin for DatabasePlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let path = config.path.clone();
         let service = tokio::task::spawn_blocking(move || match path {

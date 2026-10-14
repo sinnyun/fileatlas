@@ -96,6 +96,7 @@ impl Plugin for SessionPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let service = Arc::new(match &config.path {
             Some(path) => SessionService::open_at(path.clone()),

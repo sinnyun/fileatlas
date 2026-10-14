@@ -418,7 +418,7 @@ impl SettingsView {
                             .items_center()
                             .justify_start()
                             .gap_2()
-                            .child(gpui_kit::component::Icon::new(icon))
+                            .child(theme::icon(icon))
                             .child(
                                 div()
                                     .flex_1()

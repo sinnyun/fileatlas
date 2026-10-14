@@ -1,0 +1,130 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 1500
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+      "confirm": true
+    },
+    "wait_ms": 800
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\z-library",
+      "confirm": true
+    },
+    "wait_ms": 800
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "limit": 10
+    },
+    "until": {
+      "field": "total",
+      "equals": 5
+    }
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "all"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "sort",
+      "value": "name_desc"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "subfolder"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "all-roots-first"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "select_path",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "selected-root-first"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "select_path",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "nested-current-first"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "search",
+      "value": "b-deep"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "filtered-no-direct-files"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "clear_filters"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "select_path",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "final-root-first"
+  }
+]

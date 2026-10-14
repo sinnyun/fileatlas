@@ -5,6 +5,7 @@ use super::*;
 #[derive(Clone)]
 pub(super) struct GalleryVisualRow {
     pub media_range: std::ops::Range<usize>,
+    pub directory_range: std::ops::Range<usize>,
     pub month_label: Option<String>,
     pub collapsed: bool,
     pub month_count: usize,
@@ -22,73 +23,54 @@ pub(super) struct GalleryRubberband {
 }
 
 pub(super) fn build_gallery_rows(
-    skeletons: &[photag_plugin_database::db::queries::MediaSkeleton],
+    labels: &[Option<String>],
     columns: usize,
-    group_by_month: bool,
-    collapsed_months: &HashSet<String>,
+    collapsed: &HashSet<String>,
 ) -> Vec<GalleryVisualRow> {
-    let columns = columns.max(1);
-    let mut rows = Vec::new();
-    let mut start = 0;
-    let mut previous_month: Option<String> = None;
-    while start < skeletons.len() {
-        let month_at = |index: usize| {
-            if skeletons[index].effective_date <= 0 {
-                return Some("Unknown date".into());
+    photag_plugin_grouping::GroupingService::rows(labels, columns, collapsed)
+        .into_iter()
+        .map(|row| GalleryVisualRow {
+            media_range: row.media_range,
+            directory_range: 0..0,
+            month_label: row.month_label,
+            collapsed: row.collapsed,
+            month_count: row.month_count,
+        })
+        .collect()
+}
+
+pub(super) fn build_browser_rows(
+    folders: usize,
+    files: usize,
+    columns: usize,
+) -> Vec<GalleryVisualRow> {
+    (0..folders + files)
+        .step_by(columns.max(1))
+        .map(|start| {
+            let end = (start + columns.max(1)).min(folders + files);
+            GalleryVisualRow {
+                directory_range: start.min(folders)..end.min(folders),
+                media_range: start.saturating_sub(folders)..end.saturating_sub(folders),
+                month_label: None,
+                collapsed: false,
+                month_count: 0,
             }
-            chrono::DateTime::<chrono::Utc>::from_timestamp(skeletons[index].effective_date, 0).map(
-                |date| {
-                    date.with_timezone(&chrono::Local)
-                        .format("%B %Y")
-                        .to_string()
-                },
-            )
-        };
-        let month = group_by_month.then(|| month_at(start)).flatten();
-        let month_label = if group_by_month && month.is_some() && month != previous_month {
-            month.clone()
-        } else {
-            None
-        };
-        let month_count = if month_label.is_some() {
-            (start..skeletons.len())
-                .take_while(|&index| month_at(index) == month)
-                .count()
-        } else {
-            0
-        };
-        if let Some(label) = month_label.as_ref()
-            && collapsed_months.contains(label)
-        {
-            let mut end = start + 1;
-            while end < skeletons.len() && month_at(end) == month {
-                end += 1;
-            }
-            rows.push(GalleryVisualRow {
-                media_range: start..end,
-                month_label: Some(label.clone()),
-                collapsed: true,
-                month_count,
-            });
-            previous_month = month;
-            start = end;
-            continue;
-        }
-        let mut end = (start + columns).min(skeletons.len());
-        if group_by_month {
-            end = start + 1;
-            while end < skeletons.len() && end - start < columns && month_at(end) == month {
-                end += 1;
-            }
-        }
-        rows.push(GalleryVisualRow {
-            media_range: start..end,
-            month_label,
-            collapsed: false,
-            month_count,
-        });
-        previous_month = month;
-        start = end;
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_browser_rows;
+    #[test]
+    fn folder_and_file_ranges_share_a_row_without_shifting_file_indices() {
+        let rows = build_browser_rows(3, 5, 4);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].directory_range, 0..3);
+        assert_eq!(rows[0].media_range, 0..1);
+        assert_eq!(rows[1].directory_range, 3..3);
+        assert_eq!(rows[1].media_range, 1..5);
+        assert_eq!(build_browser_rows(2, 0, 1).len(), 2);
+        assert!(build_browser_rows(0, 0, 4).is_empty());
     }
-    rows
 }

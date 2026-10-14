@@ -168,6 +168,7 @@ impl Plugin for I18nPlugin {
     fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
         Ok(config)
     }
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let path = config.path.clone().unwrap_or_else(|| {
             dirs::data_local_dir()

@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+photag-plugin-debug = { path = "../photag-plugin-debug" }
+tracing.workspace = true
 base64 = "0.22"
 cordis.workspace = true
 photag-contracts = { path = "../photag-contracts" }

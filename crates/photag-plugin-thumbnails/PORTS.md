@@ -17,3 +17,7 @@ Status: original image thumbnail pipeline is wrapped as a service and cache reus
 ## Consumers and debugging
 
 Indexing calls this service to generate image caches and fills missing thumbnail rows. Do not call synchronously from GPUI render. For missing thumbnails inspect source path accessibility, decoder result, cache directory permissions, and the indexed `thumb_path`; do not infer video decoding success from this image API.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

@@ -23,6 +23,7 @@ impl Plugin for UpdaterPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         crate::cleanup_previous();
         let _publication = context

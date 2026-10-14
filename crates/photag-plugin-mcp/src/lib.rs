@@ -2,6 +2,7 @@
 
 mod params;
 mod screenshot;
+mod tools_debug;
 mod tools_dev_test;
 mod tools_gallery_ui;
 mod tools_read;
@@ -101,6 +102,7 @@ impl Plugin for McpPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let gallery = context
             .try_service::<GalleryService>()
@@ -154,10 +156,10 @@ impl Plugin for McpPlugin {
             match server.serve(stdio()).await {
                 Ok(server) => {
                     if let Err(error) = server.waiting().await {
-                        eprintln!("PhoTag MCP server stopped: {error}");
+                        tracing::error!("PhoTag MCP server stopped: {error}");
                     }
                 }
-                Err(error) => eprintln!("PhoTag MCP server failed: {error}"),
+                Err(error) => tracing::error!("PhoTag MCP server failed: {error}"),
             }
         });
         let abort = task.abort_handle();
@@ -231,7 +233,8 @@ impl PhoTagMcpServer {
                 + Self::write_tool_router()
                 + Self::dev_test_tool_router()
                 + Self::ui_tool_router()
-                + Self::gallery_ui_tool_router(),
+                + Self::gallery_ui_tool_router()
+                + Self::debug_tool_router(),
             i18n,
             surfaces,
             gallery,
@@ -298,6 +301,7 @@ fn validate_batch(ids: &[i64]) -> Result<(), String> {
 }
 
 fn error_json(error: &str) -> String {
+    tracing::error!(%error,"MCP request rejected");
     serde_json::to_string(&json!({ "error": error }))
         .unwrap_or_else(|_| "{\"error\":\"序列化失败\"}".into())
 }

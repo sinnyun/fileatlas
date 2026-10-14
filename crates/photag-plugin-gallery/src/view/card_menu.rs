@@ -3,6 +3,7 @@ use super::*;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
+use gpui_kit::prelude::FluentBuilder as _;
 
 /// Render an application-owned action menu for explicit MCP or keyboard opens.
 /// Actions delegate to the same GalleryView methods used by the native card menu.
@@ -33,13 +34,14 @@ pub(super) fn render_requested(
             .flex()
             .items_center()
             .justify_center()
-            .text_size(px(22.))
-            .text_color(rgb(theme::TEXT_MUTED))
-            .child(match media.media_type.as_str() {
-                "video" => "▶",
-                "audio" => "♫",
-                _ => "▧",
-            })
+            .child(
+                theme::large_icon(match media.media_type.as_str() {
+                    "video" => IconName::FileVideoCamera,
+                    "audio" => IconName::FileMusic,
+                    _ => IconName::FileImage,
+                })
+                .text_color(rgb(theme::TEXT_MUTED)),
+            )
             .into_any_element()
     };
     let ratings = (0..=5u8)
@@ -50,7 +52,10 @@ pub(super) fn render_requested(
                 .label(if rating == 0 {
                     "—".into()
                 } else {
-                    format!("{rating}★")
+                    rating.to_string()
+                })
+                .when(rating > 0, |button| {
+                    button.icon(theme::small_icon(IconName::Star))
                 })
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.apply_rating_to(&[id], rating);
@@ -111,7 +116,7 @@ pub(super) fn render_requested(
                     Button::new("gallery-requested-menu-close")
                         .ghost()
                         .compact()
-                        .icon(IconName::X)
+                        .icon(theme::icon(IconName::X))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.media_actions_id = None;
                             cx.notify();
@@ -372,9 +377,15 @@ pub(super) fn build(
                 let label = if rating == 0 {
                     photag_ui_bridge::i18n::tr("No rating")
                 } else {
-                    format!("{rating} ★")
+                    rating.to_string()
                 };
-                menu = menu.item(PopupMenuItem::new(label).on_click(move |_, _, cx| {
+                let item = PopupMenuItem::new(label);
+                let item = if rating == 0 {
+                    item
+                } else {
+                    item.icon(theme::small_icon(IconName::Star))
+                };
+                menu = menu.item(item.on_click(move |_, _, cx| {
                     let _ = view.update(cx, |this, cx| {
                         this.apply_rating_to(&targets, rating);
                         cx.notify();
@@ -387,7 +398,7 @@ pub(super) fn build(
     let ai_view = menu_view.clone();
     menu = menu.item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("AI Suggest Tags"))
-            .icon(IconName::Sparkles)
+            .icon(theme::icon(IconName::Sparkles))
             .on_click(move |_, _, cx| {
                 let _ = ai_view.update(cx, |this, cx| this.suggest_tags(media_id, cx));
             }),
@@ -397,7 +408,7 @@ pub(super) fn build(
     let rename_filename = media.filename.clone();
     menu = menu.item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("Rename…"))
-            .icon(IconName::Pencil)
+            .icon(theme::icon(IconName::Pencil))
             .on_click(move |_, window, cx| {
                 let _ = rename_view.update(cx, |this, cx| {
                     this.selection.selected_media_ids = vec![media_id];
@@ -414,7 +425,7 @@ pub(super) fn build(
     let copy_targets = menu_targets.clone();
     menu = menu.item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("Copy to…"))
-            .icon(IconName::Copy)
+            .icon(theme::icon(IconName::Copy))
             .on_click(move |_, _, cx| {
                 let _ = copy_view.update(cx, |this, cx| {
                     this.selection.selected_media_ids = copy_targets.clone();
@@ -426,7 +437,7 @@ pub(super) fn build(
     let move_targets = menu_targets.clone();
     menu = menu.item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("Move to…"))
-            .icon(IconName::Folder)
+            .icon(theme::icon(IconName::Folder))
             .on_click(move |_, _, cx| {
                 let _ = move_view.update(cx, |this, cx| {
                     this.selection.selected_media_ids = move_targets.clone();
@@ -438,7 +449,7 @@ pub(super) fn build(
     let delete_targets = menu_targets;
     menu.item(PopupMenuItem::separator()).item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("Delete…"))
-            .icon(IconName::Trash)
+            .icon(theme::icon(IconName::Trash))
             .on_click(move |_, window, cx| {
                 let _ = delete_view.update(cx, |this, cx| {
                     this.selection.selected_media_ids = delete_targets.clone();

@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+tracing.workspace = true
 cordis.workspace = true
 dirs = "5"
 image = "0.25"

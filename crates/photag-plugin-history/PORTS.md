@@ -44,3 +44,7 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 - Inspect `undo_description` / `redo_description` when keyboard actions appear inert; `None` means the respective stack is empty.
 - Inspect the `history/undo` and `history/redo` command IDs and `UiCommandInvoked` delivery when Edit commands appear inert. Command actions refresh subscribers through `MediaIndexChanged`.
 - A rename that cannot be performed still transfers its entry, as the original caller did. Check the media row, target filename collision, filesystem permissions, and `MediaIndexChanged` delivery.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

@@ -64,7 +64,10 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                         .h_flex()
                         .items_center()
                         .gap_2()
-                        .child(div().text_color(rgb(theme::WARNING)).child("⚠"))
+                        .child(
+                            theme::small_icon(gpui_kit::assets::IconName::TriangleAlert)
+                                .text_color(rgb(theme::WARNING)),
+                        )
                         .child(
                             div()
                                 .flex_1()

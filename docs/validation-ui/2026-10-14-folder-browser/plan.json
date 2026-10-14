@@ -1,0 +1,592 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 1500
+  },
+  {
+    "tool": "control_preview",
+    "arguments": {
+      "action": "close"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library",
+      "confirm": true
+    },
+    "wait_ms": 1000
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "limit": 1
+    },
+    "until": {
+      "field": "total",
+      "equals": 250
+    }
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "all"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "none"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "sort",
+      "value": "name_asc"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "virtual-roots"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "open_directory",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.matched_count",
+      "equals": 2
+    },
+    "capture": "directory-grid"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "355,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "355,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "folder-selected"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "355,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "355,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "double-click-hidden",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\.hidden"
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "675,27"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "675,27"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "native-up-to-root",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "520,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "520,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "520,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "520,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "double-click-photos",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos"
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "610,330"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_drag",
+      "value": "440,125"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "440,125"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "mixed-row-rubberband"
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "search": "photo.png",
+      "limit": 10
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "520,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "520,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "file-preview"
+  },
+  {
+    "tool": "control_preview",
+    "arguments": {
+      "action": "close"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "355,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "355,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "355,200"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "355,200"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "double-click-nested",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos\\nested"
+    }
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "directory_up"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "directory_up"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "open_directory",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\02-Empty"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "empty-folder",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\02-Empty"
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "675,27"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "675,27"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "open_directory",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\03-Many"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "scroll",
+      "value": "240"
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "many-files-last-page"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "directory_up"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "folder-list"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "search",
+      "value": "cover"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "direct-file-search"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "clear_filters"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "subfolder"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "recursive-grouping"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "none"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "final-browser-root"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "all"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "search",
+      "value": "photo.png"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "global-search-preserved"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "clear_filters"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "virtual-roots-restored"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "directory_up"
+    },
+    "expect_error": "no parent"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "open_directory",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "open_directory",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos\\nested"
+    },
+    "expect_error": "visible folder card"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "refresh"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "705,27"
+    },
+    "wait_ms": 160
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "705,27"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "native-refresh-root"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "355,145"
+    },
+    "wait_ms": 160
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "355,145"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "355,145"
+    },
+    "wait_ms": 160
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "355,145"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.current_directory",
+      "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\.hidden"
+    },
+    "capture": "list-folder-double-click"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "675,27"
+    },
+    "wait_ms": 160
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "675,27"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "final-browser-root"
+  }
+]

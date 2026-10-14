@@ -237,7 +237,7 @@ fn scan_folder_impl(
             if let Err(error) = std::fs::remove_file(&stale_thumbnail)
                 && error.kind() != std::io::ErrorKind::NotFound
             {
-                eprintln!(
+                tracing::error!(
                     "could not clear stale thumbnail {}: {error}",
                     stale_thumbnail.display()
                 );

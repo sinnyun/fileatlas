@@ -207,13 +207,13 @@ impl DevTestService {
                 .emit::<FolderSelectionChanged>(cordis::Routing::Unscoped, Some(folder_id))
                 .await
             {
-                eprintln!("dev test folder selection event failed: {error}");
+                tracing::error!("dev test folder selection event failed: {error}");
             }
             if let Err(error) = context
                 .emit::<MediaIndexChanged>(cordis::Routing::Unscoped, ())
                 .await
             {
-                eprintln!("dev test media refresh event failed: {error}");
+                tracing::error!("dev test media refresh event failed: {error}");
             }
         });
     }
@@ -238,6 +238,7 @@ impl Plugin for DevTestPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()

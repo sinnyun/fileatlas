@@ -79,7 +79,9 @@ impl NavigationService {
     }
 
     /// Queue one typed action for the mounted navigation view.
+    #[tracing::instrument(skip_all, err, fields(request=?request))]
     pub fn request_ui(&self, request: NavigationUiRequest) -> Result<(), NavigationUiRequestError> {
+        tracing::info!(?request, "navigation request");
         if let Some(id) = request.target_id() {
             if id <= 0 {
                 return Err(NavigationUiRequestError::InvalidTagId(id));
@@ -179,6 +181,7 @@ impl NavigationService {
     }
 
     /// Register a local folder, begin recursive indexing and watch it for later changes.
+    #[tracing::instrument(skip_all, err)]
     pub fn add_folder(
         self: &Arc<Self>,
         path: impl AsRef<Path>,
@@ -223,6 +226,7 @@ impl NavigationService {
     }
 
     /// Stop indexing and monitoring a folder, then remove its library rows.
+    #[tracing::instrument(skip_all, err)]
     pub fn remove_folder(&self, folder_id: i64) -> Result<Folder, NavigationError> {
         self.cancel_scan(folder_id)?;
         let folder = self.database.with_reader(|connection| {
@@ -255,7 +259,7 @@ impl NavigationService {
         })?)
     }
 
-    /// Expand a directory lazily; hidden dot-directories follow PhoTag's source filter.
+    /// Expand a directory lazily, including dot-directories under the all-file policy.
     pub fn subdirectories(&self, path: &str) -> Vec<SubdirectoryNode> {
         self.indexing
             .list_subdirectories(path)
@@ -402,6 +406,7 @@ impl Plugin for NavigationPlugin {
     fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
         Ok(config)
     }
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let preferences = Arc::new(std::sync::RwLock::new(
             photag_contracts::TagInteractionPreferences::default(),
@@ -605,9 +610,23 @@ mod tests {
         let snapshot = service.snapshot().unwrap();
         assert_eq!(snapshot.folders[0].media_count, 1);
         let children = service.subdirectories(&folder_path);
-        assert_eq!(children.len(), 1);
-        assert_eq!(children[0].name, "nested");
-        assert_eq!(children[0].media_count, 1);
+        assert_eq!(children.len(), 2);
+        assert_eq!(
+            children
+                .iter()
+                .find(|child| child.name == "nested")
+                .unwrap()
+                .media_count,
+            1
+        );
+        assert_eq!(
+            children
+                .iter()
+                .find(|child| child.name == ".hidden")
+                .unwrap()
+                .media_count,
+            0
+        );
         assert_eq!(snapshot.tags[0].children[0].name, "Summer");
         assert!(!snapshot.tags[0].children[0].display);
         service.rename_tag(child.id, "Vacation").unwrap();

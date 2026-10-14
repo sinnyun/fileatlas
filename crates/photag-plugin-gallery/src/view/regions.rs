@@ -31,6 +31,8 @@ impl Render for GalleryRegion {
                 .h_flex()
                 .items_center()
                 .gap_1()
+                .child(directory_browser::up_button(view, cx))
+                .child(directory_browser::refresh_button(cx))
                 .child(
                     Button::new("gallery-layout-grid")
                         .ghost()
@@ -146,12 +148,7 @@ impl GalleryView {
                     .appearance(false)
                     .bordered(false)
                     .cleanable(true)
-                    .prefix(
-                        div()
-                            .font_family(theme::ICON_FONT_FAMILY)
-                            .text_size(px(13.))
-                            .child(theme::icons::SEARCH.to_string()),
-                    )
+                    .prefix(div().child(theme::small_icon(gpui_kit::assets::IconName::Search)))
                     .h(px(32.))
                     .w_full()
                     .text_size(px(13.5)),
@@ -192,12 +189,29 @@ impl GalleryView {
             .as_ref()
             .map(|snapshot| snapshot.skeletons.len())
             .unwrap_or(0);
+        let count_label = self
+            .snapshot
+            .as_ref()
+            .ok()
+            .filter(|s| s.browser.active)
+            .map(|s| {
+                photag_ui_bridge::i18n::tr_args(
+                    "{folders} folders · {files} files",
+                    &[
+                        ("folders", s.browser.directories.len().to_string()),
+                        ("files", count.to_string()),
+                    ],
+                )
+            })
+            .unwrap_or_else(|| {
+                photag_ui_bridge::i18n::tr_args("{count} items", &[("count", count.to_string())])
+            });
         let weak = cx.entity().downgrade();
         let more = Button::new("gallery-selection-more")
             .ghost()
             .compact()
             .label(photag_ui_bridge::i18n::tr("More"))
-            .icon(gpui_kit::assets::IconName::Ellipsis)
+            .icon(theme::icon(gpui_kit::assets::IconName::Ellipsis))
             .disabled(n == 0)
             .dropdown_menu(move |menu, _, _| {
                 let preview = weak.clone();
@@ -266,13 +280,36 @@ impl GalleryView {
             .items_center()
             .gap(px(8.))
             .text_size(px(theme::FONT_SIZE_SMALL))
-            .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                photag_ui_bridge::i18n::tr_args("{count} items", &[("count", count.to_string())]),
-            ))
+            .child(
+                div()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(count_label),
+            )
             .child(div().text_color(rgb(theme::TEXT_MUTED)).child("·"))
             .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                photag_ui_bridge::i18n::tr_args("{count} selected", &[("count", n.to_string())]),
+                photag_ui_bridge::i18n::tr_args(
+                    "{count} selected",
+                    &[(
+                        "count",
+                        (n + usize::from(self.selected_directory.is_some())).to_string(),
+                    )],
+                ),
             ));
+        if let Some(error) = self
+            .snapshot
+            .as_ref()
+            .ok()
+            .and_then(|s| s.browser.error.as_ref())
+        {
+            row = row.child(
+                div()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .text_color(rgb(theme::DANGER))
+                    .child(error.clone()),
+            );
+        }
         if let Some(progress) = self.service.scan_progress() {
             let fraction = progress.scanned as f32 / progress.total.max(1) as f32;
             row = row
@@ -293,7 +330,7 @@ impl GalleryView {
                 Button::new("gallery-selection-tags")
                     .ghost()
                     .compact()
-                    .icon(gpui_kit::assets::IconName::Tag)
+                    .icon(theme::icon(gpui_kit::assets::IconName::Tag))
                     .label(photag_ui_bridge::i18n::tr("Tags"))
                     .disabled(n == 0)
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -356,16 +393,18 @@ impl GalleryView {
                     .text_color(rgb(theme::TEXT_MUTED))
                     .child(photag_ui_bridge::i18n::tr("View")),
             )
-            .child(
-                tool_button(
-                    "gallery-tools-months",
-                    "Group by month",
-                    gpui_kit::assets::IconName::Calendar,
-                )
-                .toggled(self.group_by_month)
-                .on_click(
-                    cx.listener(|this, _, _, cx| this.set_month_grouping(!this.group_by_month, cx)),
-                ),
+            .children(
+                photag_plugin_grouping::GroupingMode::ALL
+                    .into_iter()
+                    .map(|mode| {
+                        tool_button(
+                            mode.key(),
+                            mode.label(),
+                            gpui_kit::assets::IconName::CalendarRange,
+                        )
+                        .toggled(self.grouping_mode == mode)
+                        .on_click(cx.listener(move |this, _, _, cx| this.set_grouping(mode, cx)))
+                    }),
             )
             .into_any_element()
     }
@@ -421,7 +460,7 @@ impl GalleryView {
                             Button::new("gallery-modal-close")
                                 .ghost()
                                 .compact()
-                                .icon(gpui_kit::assets::IconName::X)
+                                .icon(theme::icon(gpui_kit::assets::IconName::X))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.show_statistics = false;
                                     this.bulk_action = None;
@@ -566,6 +605,6 @@ fn tool_button(id: &'static str, label: &str, icon: gpui_kit::assets::IconName) 
         .w_full()
         .h(px(30.))
         .justify_start()
-        .icon(icon)
+        .icon(theme::icon(icon))
         .label(photag_ui_bridge::i18n::tr(label))
 }

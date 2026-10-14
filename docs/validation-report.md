@@ -909,3 +909,15 @@ Source PendingAction::AddFolder optional selection/cancel/register/watch/scan se
 Watcher现于启动时逐目录调用Indexing生产扫描器；索引写入后发事件使Gallery自动查询新结果。Scanner更新文件大小和修改时间、保留ID/评分/日期/标签；同路径图片内容变化时清除旧路径缓存并重建尺寸和缩略图。完整遍历后移除离线删除行；文件夹不可用时保留数据库行并报告失败。Gallery刷新保留有效选择和滚动位置。使用旧档案副本、`PHOTAG_DEV_PLUGINS=all`及同进程MCP验证：两文件夹由40/9条刷新为79/12条，图库选中路径实时显示60条，总计91条，刷新状态`running=false`、2/2目录完成、0失败；原40条路径ID及评分保持，标签样例也保持原媒体ID和评分。第二次启动数量仍为79/12，未重复插入。未改写`target/dev-test`原数据库及用户文件。
 
 `cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -j 2 -p photag-shell`和`cargo +1.97.1 build --locked -j 2 -p photag-shell`通过。Indexing测试3通过/1原FFmpeg测试ignored；Watcher2通过；Gallery16通过。单元覆盖离线删除和不可用根目录保留；Watcher集成覆盖运行中创建/删除。详见[启动刷新证据](validation-ui/2026-10-14-startup-refresh/README.md)。大型/网络库冷启动耗时、Windows原生通知竞态仍待用户规模验证。
+
+## Grouping extraction/extensions (2026-10-14)
+
+Source trace: vendor/photag-source/src/ui/gallery.rs build_gallery_layout/format_month_label and caller around1047–1063; original skeleton/full-row queries and session collapse/settings booleans. New photag-plugin-grouping owns stable ordering/section calculation, retaining effective date fallback; database adds a filtered compact input query without schema changes. Root/parent path, extension, indexed mtime and real filesystem creation month are user-requested additions. Gallery fetches arranged IDs across cache boundaries. 26 automated tests plus57 same-process Windows MCP steps with248 files confirm documented behavior, not all filesystems/large-library performance. See docs/validation-ui/2026-10-14-grouping/README.md for commands, compatibility and remaining limits.
+
+## Subfolder current-directory priority (2026-10-14)
+
+This refines the user-requested grouping extension, beyond upstream date grouping. Scoped Gallery passes the current directory to GroupingService::arrange_in_scope; direct files precede descendants and retain query sort. Unscoped direct registered-root groups are ranked first. No DB rewrite or source query semantic change.28 related tests and19 same-process MCP steps passed (root4, nested2, filtered descendant1). MCP Navigation requests retain supplied indexed path spelling after existing canonical containment validation. Evidence/limits: docs/validation-ui/2026-10-14-root-first/README.md.
+
+## Immediate directory browsing extension (2026-10-14)
+
+Source trace: db/queries.rs build_filters/path_prefix, scan.rs list_subdirectories:466 and app.rs get_subdirs:819. None now uses additive direct_directory filtering plus checked existing directory listing. Original recursive load/query APIs, other grouping modes, global search/tag views, SQLite and persisted paths remain compatible. Folder cards route through Navigation public requests and carry no fabricated media IDs; current-folder bulk scope is immediate.36 related tests pass (1 existing FFmpeg ignored);84 same-process MCP steps include actual GPUI double-click, mixed folder/file rubber-band, preview, empty/ordinary restart and200-record last-page cache. Evidence/limits: docs/validation-ui/2026-10-14-folder-browser/README.md.

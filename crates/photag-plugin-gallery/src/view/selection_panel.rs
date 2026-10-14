@@ -21,9 +21,8 @@ impl GalleryView {
                     )))
                     .children((0..=5).map(|rating| {
                         Button::new(format!("gallery-rating-{rating}"))
-                            .label(photag_ui_bridge::i18n::tr(
-                                &(format!("{rating}★")).to_string(),
-                            ))
+                            .icon(theme::small_icon(gpui_kit::assets::IconName::Star))
+                            .label(rating.to_string())
                             .on_click(
                                 cx.listener(move |this, _, _, cx| this.apply_rating(rating, cx)),
                             )

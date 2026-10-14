@@ -28,6 +28,9 @@ impl PhoTagMcpServer {
             "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
             "tools_open": self.surfaces.is_open("tools"),
             "gallery": self.gallery.ui_snapshot().map(|state| json!({
+                "browsing": state.browsing, "current_directory": state.current_directory, "parent_directory": state.parent_directory,
+                "directories": state.directories.iter().map(|f| json!({"name":f.name,"path":f.path})).collect::<Vec<_>>(),
+                "selected_directory": state.selected_directory, "directory_error": state.directory_error,
                 "search": state.filter.search, "media_type": format!("{:?}", state.filter.media_type),
                 "folder_id": state.filter.folder_id, "path_prefix": state.filter.path_prefix,
                 "sort": format!("{:?}", state.filter.sort), "extensions": state.filter.extensions,
@@ -36,6 +39,7 @@ impl PhoTagMcpServer {
                 "rating_max": state.filter.rating_max, "date_from": state.filter.date_from.map(|d| d.to_string()),
                 "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
                 "layout": if state.list_layout { "list" } else { "grid" },
+                "grouping_mode": state.grouping_mode.key(), "groups": state.groups, "collapsed_groups": state.collapsed_groups,
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
                 "window_offset": state.window_offset, "loaded_count": state.loaded_count,
                 "inspector_sections": state.inspector_sections,
@@ -86,6 +90,7 @@ impl PhoTagMcpServer {
         description = "Control Settings, language and Gallery service states; hover_media injects a Gallery hover target, not an OS pointer. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1."
     )]
     fn control_ui(&self, Parameters(request): Parameters<UiRequest>) -> String {
+        tracing::info!(?request, "MCP control request");
         if let Err(error) = self.mutation_guard() {
             return error_json(&error);
         }
@@ -110,8 +115,14 @@ impl PhoTagMcpServer {
                     }
                 };
             }
-            "pointer_down" | "pointer_drag" | "pointer_move" | "pointer_right_down"
-            | "pointer_right_up" | "pointer_up" => {
+            "pointer_down"
+            | "pointer_drag"
+            | "pointer_move"
+            | "pointer_right_down"
+            | "pointer_right_up"
+            | "pointer_up"
+            | "pointer_double_down"
+            | "pointer_double_up" => {
                 let coordinates = request
                     .value
                     .as_deref()
@@ -132,6 +143,8 @@ impl PhoTagMcpServer {
                 self.capture.queue_pointer(crate::McpPointerInput {
                     kind: match request.action.as_str() {
                         "pointer_down" => "down",
+                        "pointer_double_down" => "double_down",
+                        "pointer_double_up" => "double_up",
                         "pointer_drag" => "drag",
                         "pointer_move" => "move",
                         "pointer_right_down" => "right_down",

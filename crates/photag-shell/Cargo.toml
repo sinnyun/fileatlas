@@ -7,6 +7,9 @@ license.workspace = true
 build = "build.rs"
 
 [dependencies]
+photag-plugin-debug = { path = "../photag-plugin-debug" }
+tracing.workspace = true
+photag-plugin-grouping = { path = "../photag-plugin-grouping" }
 cordis.workspace = true
 tokio.workspace = true
 dirs.workspace = true

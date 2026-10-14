@@ -2,7 +2,6 @@
 
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::Icon;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::*;
@@ -39,7 +38,7 @@ pub(super) fn render(
                 .items_center()
                 .gap_2()
                 .child(
-                    Icon::new(IconName::CircleX)
+                    theme::icon(IconName::CircleX)
                         .size(px(16.))
                         .text_color(rgb(theme::DANGER)),
                 )

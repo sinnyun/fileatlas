@@ -27,3 +27,11 @@ Repeated image thumbnail-cache hits may return no decoded dimensions/micro bytes
 ## Startup refresh (2026-10-14)
 
 Watcher starts one cancellable background refresh over every registered folder using `IndexingService::scan_folder`. This adds file types excluded by older builds and removes offline deletions, then emits `MediaIndexChanged` as rows are committed so Gallery can reload while the refresh proceeds. `WatcherService::library_refresh()` reports running state, folder progress and failures; `get_ui_state` exposes the same snapshot for live diagnostics. Missing/unavailable roots report an error and retain their existing database rows. This is a full recursive traversal at each application start. When file type, size, or modification time changes, the scanner invalidates its old cached thumbnail and regenerates it; unchanged paths reuse the thumbnail cache. Windows traversal and very large-library startup time still need user-scale verification.
+
+## Checked immediate directory reads (2026-10-14)
+
+`IndexingService::try_list_subdirectories(&self, path: &str) -> std::io::Result<Vec<(String,String,bool)>>` returns the same name/path/has_children payload, including dot-directories, but reports read_dir/entry/file_type failures for Gallery's browser error state. Existing list_subdirectories keeps its best-effort skip/error-empty behavior through the shared reader; no scanning/writing/event semantics change. Child-presence probes remain best effort. Used only for immediate directory cards, including empty directories.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics observe tracked production progress streams: phase transitions, errors, scan_id and stream completion with duration_ms, failed and completed flags. Observation still forwards all messages and cleans its active entry even if downstream closes; no fabricated scan result. Stream elapsed includes work/wait, not CPU time.

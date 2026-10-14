@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::assets::IconName;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::ButtonVariants;
 
@@ -47,10 +48,8 @@ impl SidebarView {
             .gap(px(8.))
             .child(
                 div()
-                    .font_family(theme::ICON_FONT_FAMILY)
-                    .text_size(px(13.))
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child(theme::icons::LIBRARY.to_string()),
+                    .child(theme::small_icon(IconName::Library)),
             )
             .child(
                 Button::new("navigation-breadcrumb-all-files")
@@ -126,15 +125,33 @@ impl SidebarView {
                     }
                 }
                 crate::NavigationUiRequest::ExpandPath(path) => {
-                    if let Ok(path) = std::fs::canonicalize(path) {
+                    if std::path::Path::new(&path).is_dir() {
                         self.set_navigation_page(NavigationPage::Folders);
-                        self.expand_directory(&path.to_string_lossy());
+                        self.expand_directory(&path);
                     }
                 }
                 crate::NavigationUiRequest::SelectPath(path) => {
                     self.set_navigation_page(NavigationPage::Folders);
-                    if let Ok(path) = std::fs::canonicalize(path) {
-                        self.select_path(path.to_string_lossy().into_owned(), cx);
+                    if std::path::Path::new(&path).is_dir() {
+                        let ancestors = Path::new(&path)
+                            .ancestors()
+                            .skip(1)
+                            .take_while(|ancestor| {
+                                self.snapshot.as_ref().is_ok_and(|snapshot| {
+                                    snapshot
+                                        .folders
+                                        .iter()
+                                        .any(|node| ancestor.starts_with(&node.folder.path))
+                                })
+                            })
+                            .map(|ancestor| ancestor.to_string_lossy().into_owned())
+                            .collect::<Vec<_>>();
+                        for ancestor in ancestors.into_iter().rev() {
+                            self.expanded_directories
+                                .insert(ancestor.clone(), self.service.subdirectories(&ancestor));
+                        }
+                        self.persist_directory_expansion();
+                        self.select_path(path, cx);
                     }
                 }
                 crate::NavigationUiRequest::CloseModal => self.close_tag_modal(),
@@ -189,13 +206,13 @@ impl Render for SidebarView {
                     .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
                     .await
                 {
-                    eprintln!("restored folder selection dispatch failed: {error}");
+                    tracing::error!("restored folder selection dispatch failed: {error}");
                 }
                 if let Err(error) = cordis
                     .emit::<DirectoryPathSelected>(Routing::Unscoped, path)
                     .await
                 {
-                    eprintln!("restored directory selection dispatch failed: {error}");
+                    tracing::error!("restored directory selection dispatch failed: {error}");
                 }
             })
             .detach();
@@ -252,7 +269,10 @@ impl Render for SidebarView {
                                             .compact()
                                             .w(px(22.))
                                             .h(px(22.))
-                                            .label("+")
+                                            .icon(theme::small_icon(IconName::Plus))
+                                            .accessibility_label(photag_ui_bridge::i18n::tr(
+                                                "Add folder",
+                                            ))
                                             .on_click(
                                                 cx.listener(|this, _, _, cx| this.pick_folder(cx)),
                                             ),
@@ -263,7 +283,7 @@ impl Render for SidebarView {
                                             .compact()
                                             .w(px(22.))
                                             .h(px(22.))
-                                            .label("⋯")
+                                            .icon(theme::small_icon(IconName::Ellipsis))
                                             .dropdown_menu(move |mut menu, _, _| {
                                                 let path_view = folder_view.clone();
                                                 menu = menu.item(
@@ -410,16 +430,11 @@ impl Render for SidebarView {
                                     .ghost()
                                     .compact()
                                     .p_0()
-                                    .font_family(theme::ICON_FONT_FAMILY)
-                                    .text_size(px(8.))
-                                    .label(photag_ui_bridge::i18n::tr(
-                                        &(if expanded.is_some() {
-                                            theme::icons::CHEVRON_DOWN
-                                        } else {
-                                            theme::icons::CHEVRON_RIGHT
-                                        })
-                                        .to_string(),
-                                    ))
+                                    .icon(theme::small_icon(if expanded.is_some() {
+                                        IconName::ChevronDown
+                                    } else {
+                                        IconName::ChevronRight
+                                    }))
                                     // Source: sidebar::arrow_slot (16×16) inside a 26 px row.
                                     .w(px(theme::SIDEBAR_ARROW_SLOT))
                                     .h(px(theme::SIDEBAR_ROW_HEIGHT))
@@ -439,8 +454,10 @@ impl Render for SidebarView {
                                         self.session
                                             .snapshot()
                                             .map(|s| {
-                                                s.selected_folder_id == Some(node.folder.id)
-                                                    && s.selected_path.is_none()
+                                                (s.selected_folder_id == Some(node.folder.id)
+                                                    && s.selected_path.is_none())
+                                                    || s.selected_path.as_deref()
+                                                        == Some(node.folder.path.as_str())
                                             })
                                             .unwrap_or(false),
                                         if expanded.is_some() {
@@ -474,7 +491,10 @@ impl Render for SidebarView {
                                         .compact()
                                         .opacity(0.)
                                         .group_hover(row_group, |style| style.opacity(1.))
-                                        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
+                                        .icon(theme::small_icon(IconName::Ellipsis))
+                                        .accessibility_label(photag_ui_bridge::i18n::tr(
+                                            "Folder actions",
+                                        ))
                                         .w(px(20.))
                                         .h(px(22.))
                                         .bg(rgb(theme::SURFACE_BASE))
@@ -583,11 +603,7 @@ impl Render for SidebarView {
                                     .gap(px(5.))
                                     .text_xs()
                                     .text_color(rgb(theme::TEXT_MUTED))
-                                    .child(
-                                        div()
-                                            .font_family(theme::ICON_FONT_FAMILY)
-                                            .child(theme::icons::TAG.to_string()),
-                                    )
+                                    .child(div().child(theme::small_icon(IconName::Tag)))
                                     .child(photag_ui_bridge::i18n::tr("Tags").to_uppercase()),
                             )
                             .child(
@@ -597,8 +613,7 @@ impl Render for SidebarView {
                                     .child(
                                         Button::new("navigation-toggle-tag-search")
                                             .ghost()
-                                            .font_family(theme::ICON_FONT_FAMILY)
-                                            .label(theme::icons::SEARCH)
+                                            .icon(theme::small_icon(IconName::Search))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.show_tag_search_controls =
                                                     !this.show_tag_search_controls;
@@ -608,7 +623,10 @@ impl Render for SidebarView {
                                     .child(
                                         Button::new("navigation-create-tag")
                                             .ghost()
-                                            .label(photag_ui_bridge::i18n::tr("+"))
+                                            .icon(theme::small_icon(IconName::Plus))
+                                            .accessibility_label(photag_ui_bridge::i18n::tr(
+                                                "Create tag",
+                                            ))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.tag_create_open = true;
                                                 cx.notify();
@@ -635,28 +653,22 @@ impl Render for SidebarView {
                                         .gap_1()
                                         .child(
                                             Button::new("navigation-tag-mode-select")
-                                                .label(photag_ui_bridge::i18n::tr(
-                                                    &(if self.exclude_mode {
-                                                        "Select"
-                                                    } else {
-                                                        "✓ Select"
-                                                    })
-                                                    .to_string(),
-                                                ))
+                                                .when(!self.exclude_mode, |button| {
+                                                    button.icon(theme::small_icon(IconName::Check))
+                                                })
+                                                .label(photag_ui_bridge::i18n::tr("Select"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.set_tag_click_mode(false, cx);
                                                 })),
                                         )
                                         .child(
                                             Button::new("navigation-tag-mode-exclude")
-                                                .label(photag_ui_bridge::i18n::tr(
-                                                    &(if self.exclude_mode {
-                                                        "⊘ Exclude"
-                                                    } else {
-                                                        "Exclude"
-                                                    })
-                                                    .to_string(),
-                                                ))
+                                                .when(self.exclude_mode, |button| {
+                                                    button.icon(theme::small_icon(
+                                                        IconName::CircleSlash,
+                                                    ))
+                                                })
+                                                .label(photag_ui_bridge::i18n::tr("Exclude"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.set_tag_click_mode(true, cx);
                                                 })),

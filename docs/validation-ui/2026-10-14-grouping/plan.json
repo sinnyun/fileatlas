@@ -1,0 +1,255 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1700,
+      "height": 1100
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-a",
+      "confirm": true
+    },
+    "wait_ms": 1500
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-grouping-fixture\\root-b",
+      "confirm": true
+    },
+    "wait_ms": 1500
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "limit": 1
+    },
+    "until": {
+      "field": "total",
+      "equals": 248
+    }
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "all"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "sort",
+      "value": "name_asc"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "file_type"
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "file_type"
+    },
+    "capture": "file-type-grid"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "popover",
+      "value": "grouping"
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "grouping-menu"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "popover",
+      "value": "close"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "toggle_group",
+      "value": "PDF"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "collapsed-pdf"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "toggle_group",
+      "value": "PDF"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "scroll",
+      "value": "240"
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "grouped-list-last-page"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "modified"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "modified"
+    },
+    "capture": "modified"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "created"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "created"
+    },
+    "capture": "created"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "folder"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "folder"
+    },
+    "capture": "folder"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "subfolder"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "subfolder"
+    },
+    "capture": "subfolder"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "month"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "month"
+    },
+    "capture": "month"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "none"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "none"
+    },
+    "capture": "none"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "file_type"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "toggle_group",
+      "value": "PDF"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "before-restart"
+  }
+]

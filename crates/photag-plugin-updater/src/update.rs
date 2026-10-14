@@ -455,7 +455,7 @@ mod tests {
     #[ignore]
     fn live_download_verifies_against_published_checksum() {
         let found = check().expect("check failed");
-        eprintln!(
+        tracing::error!(
             "running {} — check() reported: {}",
             current_version(),
             match found {

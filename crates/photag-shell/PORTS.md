@@ -40,3 +40,15 @@ incomplete. See the current validation record.
 ## v2 paged-panel splitters (2026-10-14)
 
 Shell owns both widths, visible8pt splitter hit regions and24pt grips; feature pages remain Navigation/Gallery-owned. Sidebar defaults264pt, bounds200–400; Inspector defaults300pt, bounds240–480. Drag uses pointer delta from the initial width, root move/up/out-up handling keeps it active across neighboring views, and release saves SessionState.sidebar_width/inspector_width. Resizing reserves320pt center space. MCP width requests use the same setter/save path; shell publishes shell.sidebar-width/shell.inspector-width. CaptureWindowHandle pointer mailbox is drained via Window.defer after the render lease, dispatching native GPUI PlatformInput within this child window (no OS input). Live MCP down/drag/up changed264→304 and300→340; restart restored both. Settings entry sits under the48pt Navigation rail. Source/schema/backend unaffected. See docs/redesign-validation.md latestv2 evidence.
+
+## Grouping composition and Tools scrolling (2026-10-14)
+
+Shell starts `photag-plugin-grouping::GroupingPlugin` whenever Gallery is enabled and disposes it after Gallery; grouping algorithms/state remain feature-owned. Gallery now requires that public service. Tools overlay uses an absolute outer container (300pt wide, bounded available height up to600pt) and an inner GPUI Kit scroll wrapper: the wrapper does not preserve absolute outer positioning, so applying it directly to the positioned panel previously disrupted the shell layout. Existing tool command/view lifecycle registration is unchanged. Isolated same-process MCP verified1700×1100 Tools layout and actual grouping-choice clicks; see docs/validation-ui/2026-10-14-grouping/README.md.
+
+## Directory-browser composition (2026-10-14)
+
+Enabling Gallery also enables Navigation and its Indexing/Watcher dependencies, so ungrouped folder cards route through their public services. Product listing/query/rendering stays in feature crates. The MCP pointer dispatcher recognizes double_down/up with click_count2 alongside the original single/drag/right inputs; it remains a deferred same-process GPUI event. No OS input injection or separately launched debug app.
+
+## Runtime diagnostics (2026-10-14)
+
+Shell now composes the debug plugin before other feature startup, disposes it last, and hosts lifecycle-owned workspace.bottom/workspace.debug-status slots. Diagnostic policy, storage and UI remain in photag-plugin-debug. See its PORTS.md.

@@ -1,0 +1,1120 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-root-first.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation",
+  "started": "2026-10-14T14:54:50.802Z",
+  "steps": [
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 1500,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": null,
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": false,
+        "update_checking": false,
+        "update_available": false,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": null,
+        "inspector_width": null,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "resize_window",
+      "arguments": {
+        "width": 1942,
+        "height": 1256
+      },
+      "wait_ms": 400,
+      "result": {
+        "ok": true,
+        "requested_width": 1942,
+        "requested_height": 1256,
+        "actual_width": 1942,
+        "actual_height": 1256
+      }
+    },
+    {
+      "tool": "add_folder",
+      "arguments": {
+        "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+        "confirm": true
+      },
+      "wait_ms": 800,
+      "result": {
+        "ok": true,
+        "folder": {
+          "id": 1,
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+          "last_scan": null,
+          "name": "a-library"
+        }
+      }
+    },
+    {
+      "tool": "add_folder",
+      "arguments": {
+        "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\z-library",
+        "confirm": true
+      },
+      "wait_ms": 800,
+      "result": {
+        "ok": true,
+        "folder": {
+          "id": 2,
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\z-library",
+          "last_scan": null,
+          "name": "z-library"
+        }
+      }
+    },
+    {
+      "tool": "search_media",
+      "arguments": {
+        "limit": 10
+      },
+      "wait_ms": 0,
+      "until": {
+        "field": "total",
+        "equals": 5
+      },
+      "result": {
+        "total": 5,
+        "offset": 0,
+        "items": [
+          {
+            "id": 5,
+            "folder_id": 2,
+            "filename": "other-root.txt",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\z-library\\other-root.txt",
+            "media_type": "file",
+            "file_size": 27,
+            "modified_at": 1791989596,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 4,
+            "folder_id": 1,
+            "filename": "b-deep.txt",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper\\b-deep.txt",
+            "media_type": "file",
+            "file_size": 27,
+            "modified_at": 1791989596,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 3,
+            "folder_id": 1,
+            "filename": "m-child.txt",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\m-child.txt",
+            "media_type": "file",
+            "file_size": 27,
+            "modified_at": 1791989596,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 2,
+            "folder_id": 1,
+            "filename": "z-root.txt",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\z-root.txt",
+            "media_type": "file",
+            "file_size": 27,
+            "modified_at": 1791989596,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 1,
+            "folder_id": 1,
+            "filename": "a-root.txt",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\a-root.txt",
+            "media_type": "file",
+            "file_size": 27,
+            "modified_at": 1791989596,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          }
+        ]
+      }
+    },
+    {
+      "tool": "control_navigation",
+      "arguments": {
+        "action": "all"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "layout",
+        "value": "list"
+      },
+      "wait_ms": 200,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "sort",
+        "value": "name_desc"
+      },
+      "wait_ms": 200,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "grouping",
+        "value": "subfolder"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NameDesc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+              2
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\z-library",
+              1
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+              1
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper",
+              1
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 5,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 5,
+          "inspector_sections": [
+            "tags",
+            "basic"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694545
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694546
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694547
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694548
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694549
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation\\screenshots\\all-roots-first.png"
+    },
+    {
+      "tool": "control_navigation",
+      "arguments": {
+        "action": "select_path",
+        "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library"
+      },
+      "wait_ms": 350,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+          "sort": "NameDesc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+              2
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+              1
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper",
+              1
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 4,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 4,
+          "inspector_sections": [
+            "tags",
+            "basic"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694545
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694546
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694547
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694548
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694549
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation\\screenshots\\selected-root-first.png"
+    },
+    {
+      "tool": "control_navigation",
+      "arguments": {
+        "action": "select_path",
+        "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside"
+      },
+      "wait_ms": 350,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+          "sort": "NameDesc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+              1
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper",
+              1
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 2,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 2,
+          "inspector_sections": [
+            "tags",
+            "basic"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694545
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694546
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694547
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694548
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694549
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation\\screenshots\\nested-current-first.png"
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "search",
+        "value": "b-deep"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "b-deep",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+          "sort": "NameDesc",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper",
+              1
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 1,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 1,
+          "inspector_sections": [
+            "tags",
+            "basic"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694545
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694546
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694547
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694548
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694549
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation\\screenshots\\filtered-no-direct-files.png"
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "clear_filters"
+      },
+      "wait_ms": 250,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_navigation",
+      "arguments": {
+        "action": "select_path",
+        "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library"
+      },
+      "wait_ms": 300,
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 2,
+          "completed_folders": 2,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "grouping_mode": "subfolder",
+          "groups": [
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library",
+              2
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside",
+              1
+            ],
+            [
+              "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-fixture\\a-library\\inside\\deeper",
+              1
+            ]
+          ],
+          "collapsed_groups": [],
+          "matched_count": 4,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 4,
+          "inspector_sections": [
+            "tags",
+            "basic"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694545
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694546
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694547
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694548
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989694549
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989700648
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989701146
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791989701147
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-root-first-validation\\screenshots\\final-root-first.png"
+    }
+  ]
+}

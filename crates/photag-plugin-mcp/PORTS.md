@@ -150,3 +150,15 @@ get_ui_state.folder_picker returns pending and native_open(the Navigation provid
 ## Startup refresh diagnostics (2026-10-14)
 
 `get_ui_state.library_refresh` returns `running`, `total_folders`, `completed_folders`, and `[path, error]` failures from the Watcher-owned startup scan. The read-only field lets the same-process MCP client wait for reconciliation and inspect failures without invoking a rescan mutation. `list_library` and `search_media` then show current persisted row totals.
+
+## Grouping controls (2026-10-14)
+
+`control_gallery` accepts action `grouping`, value `none|month|file_type|modified|created|folder|subfolder`; `toggle_group` uses an exact get_ui_state group label; `popover` accepts `grouping`. The existing `month_grouping` boolean remains an alias for Month/None. All require PHOTAG_MCP_ALLOW_MUTATIONS=1 and queue the real Gallery actions. get_ui_state.gallery exposes grouping_mode, ordered groups as [label,count], collapsed_groups, window_offset and loaded_count. search_media remains a database query in query sort order; it does not pretend to return grouped UI order. Runtime commands/restart/screenshots are recorded under docs/validation-ui/2026-10-14-grouping.
+
+## Directory-browser controls (2026-10-14)
+
+control_gallery adds open_directory(value=an entry in the current directory-card list), directory_up and refresh. It rejects invisible paths and no-parent views; these queue Gallery's real actions and keep PHOTAG_MCP_ALLOW_MUTATIONS gating. get_ui_state.gallery publishes browsing, directories[{name,path}], current_directory, parent_directory, directory_error and selected_directory; matched_count remains the displayed indexed-file count. Directory cards have no synthetic media IDs. control_ui adds pointer_double_down/pointer_double_up (same x,y logical client coordinates), dispatched by Shell as same-process GPUI MouseDown/MouseUp with click_count2. Single/drag/right-click behavior is unchanged. See docs/validation-ui/2026-10-14-folder-browser for84-step evidence including mouse hit tests and read-only restarts.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics tools: get_debug_info(category?,level?,search?,page?,page_size?) returns actual drawer ui and logs Page from optional photag/debug service. Read-only and deliberately does not log its own query. control_debug(action,value?) shares DebugService::control with native controls and requires PHOTAG_MCP_ALLOW_MUTATIONS=1. Unknown service/action/invalid values return normal error JSON. MCP rejected requests are logged as ERROR; stdout remains reserved for protocol traffic.

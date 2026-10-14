@@ -1,0 +1,153 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "popover",
+      "value": "grouping"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "900,246"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "900,246"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "modified"
+    },
+    "capture": "native-modified-click"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "320,140"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "320,140"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "native-header-collapse"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "select_media",
+      "value": "1"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "subfolder"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "selection-retained"
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1700,
+      "height": 1100
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 600,
+    "capture": "narrow-closed"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "tools_open"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "narrow-tools"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "926,281"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "926,281"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.grouping_mode",
+      "equals": "file_type"
+    },
+    "capture": "native-tools-type-click"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "tools_close"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "toggle_group",
+      "value": "PDF"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "final-collapsed-type"
+  }
+]

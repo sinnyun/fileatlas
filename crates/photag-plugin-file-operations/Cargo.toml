@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+tracing.workspace = true
 cordis.workspace = true
 open = "5"
 photag-contracts = { path = "../photag-contracts" }

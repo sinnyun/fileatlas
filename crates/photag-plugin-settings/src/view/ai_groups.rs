@@ -20,17 +20,7 @@ impl SettingsView {
         {
             let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
             while let Some(tag) = pending.pop() {
-                available_tags.push((
-                    tag.name.clone(),
-                    format!(
-                        "{} {}",
-                        tag.icon
-                            .as_deref()
-                            .filter(|icon| !icon.is_empty())
-                            .unwrap_or("🏷"),
-                        tag.full_path.replace('>', " > ")
-                    ),
-                ));
+                available_tags.push((tag.name.clone(), tag.full_path.replace('>', " > ")));
                 pending.extend(tag.children.into_iter().rev());
             }
         }
@@ -165,11 +155,12 @@ impl SettingsView {
                                 .border_1()
                                 .border_color(rgba(theme::HAIRLINE.to_rgba()))
                                 .bg(rgb(theme::SURFACE_BASE))
-                                .child(format!("🏷 {tag}")),
+                                .child(theme::small_icon(gpui_kit::assets::IconName::Tag))
+                                .child(tag.clone()),
                         )
                         .child(
                             Button::new(format!("settings-group-tag-remove-{index}-{tag_index}"))
-                                .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
+                                .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                                 .on_click(cx.listener(move |view, _, _, cx| {
                                     view.edit(
                                         |settings| {

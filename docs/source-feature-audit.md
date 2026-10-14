@@ -255,3 +255,38 @@ All-file follow-up: the source scan calls `queries::insert_media` (`vendor/phota
 Tracing the launcher's persisted profile exposed the stale-data path: source `AppState::new` loads folder rows and registers watches (`vendor/photag-source/src/app.rs`, `AppState::new`), but does not scan those folders. The source scans after AddFolder and explicit Rescan in `process_pending`; its watcher only reconciles later notifications. Therefore a database created before the all-file change stays incomplete after reopening unless the user manually rescans, and file changes while PhoTag is closed are not reconciled.
 
 Current mapping: Watcher now runs the production Indexing scan once per persisted root at startup, reports per-root errors, and emits `MediaIndexChanged` after index chunks. The scanner preserves IDs, ratings, date and tags while refreshing file size and modification time; unchanged image metadata retains cached dimensions, while changed content invalidates and regenerates its path-keyed thumbnail and dimensions. After a successful traversal it removes missing files. If a registered root is unavailable, its cached rows are retained. Gallery's event reload preserves still-valid selection and scroll position. This is an intentional startup-reconciliation extension to source behavior, with no schema change; explicit Rebuild/Rescan still clears rows per its existing behavior. Validation is recorded in `docs/validation-ui/2026-10-14-startup-refresh/README.md`.
+
+## Grouping extraction and extensions (2026-10-14)
+
+| Source behavior / caller | Current implementation | Compatibility / extension |
+|---|---|---|
+| src/ui/gallery.rs build_gallery_layout (698–769), format_month_label; render_gallery -> layout | photag-plugin-grouping GroupingService::arrange/rows; Gallery render adapter | Keeps effective date COALESCE(date_taken,modified_at), collapse/count/virtual rows. YYYY-MM labels and old English collapse-key conversion. Grouping works with every sort, preserving within-group sort. |
+| src/db/queries.rs get_media_skeletons/get_media; source session.rs collapsed_months and settings.show_date_dividers | Database compact filtered grouping inputs, Gallery arranged-ID rich window fetches, additive Session grouping_mode | Schema, legacy fields and query filters retained. Modified is indexed mtime; Created is real filesystem birth time or Unknown date; no substitution. |
+| No upstream file-type/folder/creation grouping | photag-plugin-grouping FileType/Modified/Created/Folder/Subfolder | User-requested extension; extension groups are case insensitive, Folder is registered root, Subfolder is actual immediate parent path. |
+
+See grouping PORTS and isolated Windows MCP validation for evidence and scale/filesystem limits.
+
+## 子文件夹分组根目录优先（2026-10-14）
+
+上游仅有日期分组（src/ui/gallery.rs build_gallery_layout/其1047–1063调用），本轮细化新增Subfolder：GroupingService::arrange_in_scope以当前query.path_prefix的直属文件组优先，随后子目录；全库优先各登记根目录。旧arrange签名保留，无SQLite或原筛选语义修改。调试请求SelectPath/ExpandPath仍用canonical路径做归属验证，消费端保留已索引输入路径拼写，与原生点击一致，避免MCP额外添加扩展前缀导致空结果。
+
+## None目录浏览扩展（2026-10-14）
+
+| 原行为/调用 | 当前映射 | 本轮差异 |
+|---|---|---|
+| src/db/queries.rs build_filters:145、path_prefix递归条件 | Database MediaQuery/direct_directory、Gallery load_grouped None投影 | 新内存字段提供字面直属文件条件；原递归API和SQLite未改。 |
+| src/scan.rs list_subdirectories:466、app.rs get_subdirs:819 | IndexingService原list_subdirectories及新增try_list_subdirectories | 复用上一轮全文件/隐藏目录策略；新增带错返回，原best-effort语义保留。 |
+| 旧Sidebar目录点击/会话路径 | Gallery文件夹卡片→NavigationService请求→现有选择事件/Session | 新卡片双击、上级、空态、根列表；Nav揭示祖先和当前根path高亮。无目录假媒体ID。 |
+
+本轮None由递归平铺改为当前目录直属文件＋子目录；全库搜索/标签视图及其他分组保持递归。验证见validation-ui/2026-10-14-folder-browser。
+
+## Runtime diagnostics mapping (2026-10-14)
+
+| Source / existing boundary | Current implementation | Semantics |
+|---|---|---|
+| vendor/photag-source/src/db/mod.rs::open_db/open_read_conn; existing DatabaseService::with_reader/with_writer | Same dual WAL connections and closure calls, with caller-tagged tracing spans and SQL error events | No schema/query/locking-order change; timing includes contention |
+| Existing feature plugin apply and error stderr paths | tracing spans and ERROR records via photag.debug weak sink | Original return values and lifecycle remain Cordis-owned |
+| Existing indexing ProgressRegistry stream proxy | phase/error/stream-finish logs plus monotonic elapsed and scan ID | Same input/output stream forwarding and cancellation behavior |
+| User-requested new diagnostic drawer (no upstream counterpart) | photag-plugin-debug + two UI bridge slots + same-process MCP tools | Bounded memory, filtering/pagination, no persistent DB/profile changes |
+
+Backend trace checked pinned DB mod.rs, migrated database wrappers and callers; operation/data semantics are unchanged. Full per-instruction/native/OS tracing and crash persistence are outside this feature; captured records represent actual emitted events and instrumented boundaries.

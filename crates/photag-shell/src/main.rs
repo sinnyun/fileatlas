@@ -33,6 +33,7 @@ fn dev_plugin_config() -> String {
         .filter(|plugin| !plugin.is_empty())
     {
         if !valid.contains(&plugin) {
+            tracing::error!("Unknown PHOTAG_DEV_PLUGINS entry: {plugin}");
             eprintln!("Unknown PHOTAG_DEV_PLUGINS entry: {plugin}");
             eprintln!("Valid entries: {}", valid.join(", "));
             std::process::exit(2);
@@ -105,6 +106,8 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
 }
 
 fn main() {
+    let diagnostics = Arc::new(photag_plugin_debug::DebugService::default());
+    photag_plugin_debug::attach(&diagnostics).expect("install runtime diagnostics");
     let plugin_config = dev_plugin_config();
     let mcp_arg = std::env::args().skip(1).any(|arg| arg == "--mcp");
     let enable_mcp = mcp_arg
@@ -122,6 +125,7 @@ fn main() {
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
     let enable_navigation = enable_all
+        || enable_gallery
         || enable_mcp
         || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "navigation");
@@ -161,7 +165,7 @@ fn main() {
         || enable_mcp
         || enable_gallery
         || dev_plugin_enabled(&plugin_config, "drag-drop");
-    eprintln!("Starting development plugins: {plugin_config}");
+    tracing::info!("Starting development plugins: {plugin_config}");
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -176,6 +180,14 @@ fn main() {
     let _bridge_publication = cordis
         .provide(Arc::clone(&bridge))
         .expect("publish UI bridge service");
+
+    let debug_plugin = photag_plugin_debug::DebugPlugin;
+    let debug_input = debug_plugin
+        .prepare(diagnostics)
+        .expect("prepare debug plugin");
+    let debug_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(debug_plugin, debug_input)))
+        .expect("start debug plugin");
 
     let dev_test_dir = enable_dev_test.then(|| {
         std::env::var_os("PHOTAG_DEV_TEST_DIR")
@@ -401,6 +413,16 @@ fn main() {
     };
     // Gallery requires the media-playback service and optionally consumes
     // tagging/history services, so start it after all of those providers.
+    let grouping_fiber = if enable_gallery {
+        let plugin = photag_plugin_grouping::GroupingPlugin;
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ())))
+                .expect("start grouping plugin"),
+        )
+    } else {
+        None
+    };
     let gallery_fiber = if enable_gallery {
         let plugin = photag_plugin_gallery::GalleryPlugin;
         let input = plugin
@@ -527,7 +549,7 @@ fn main() {
                 })
                 .collect();
             if let Err(error) = bridge.surfaces.set_open("inspector", true) {
-                eprintln!("inspector initialization failed: {error}");
+                tracing::error!("inspector initialization failed: {error}");
             }
             cx.new(|cx| {
                 cx.spawn(async move |this, cx| {
@@ -655,11 +677,11 @@ fn main() {
                             error
                         ),
                     );
-                    eprintln!("update installation failed: {error}; see {}", log.display());
+                    tracing::error!("update installation failed: {error}; see {}", log.display());
                 }
             }
             Ok(None) => {}
-            Err(error) => eprintln!("could not read scheduled update: {error}"),
+            Err(error) => tracing::error!("could not read scheduled update: {error}"),
         }
     }
 
@@ -675,6 +697,11 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = grouping_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop grouping plugin");
     }
     if let Some(fiber) = preview_fiber {
         runtime
@@ -749,4 +776,7 @@ fn main() {
     runtime
         .block_on(i18n_fiber.dispose())
         .expect("stop i18n plugin");
+    runtime
+        .block_on(debug_fiber.dispose())
+        .expect("stop debug plugin");
 }

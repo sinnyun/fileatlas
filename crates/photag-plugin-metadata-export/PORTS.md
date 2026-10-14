@@ -100,3 +100,7 @@ service identity and worker lifecycle are unchanged; the UI contribution now own
 ## 2026-10-14 current implementation and MCP evidence
 
 Reference07 real success12records and filesystemdirectory failure(os5) rendered through PhoTag MCP. Query/schema/order/writer unchanged. Native save/overwrite clicks remain unverified; see docs/redesign-validation.md.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

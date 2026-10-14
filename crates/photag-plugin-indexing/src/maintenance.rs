@@ -301,12 +301,27 @@ pub fn generate_missing_thumbnails_async(
 }
 
 pub fn list_subdirectories(path: &str) -> Vec<(String, String, bool)> {
+    read_subdirectories(path, false).unwrap_or_default()
+}
+
+pub fn try_list_subdirectories(path: &str) -> std::io::Result<Vec<(String, String, bool)>> {
+    read_subdirectories(path, true)
+}
+
+fn read_subdirectories(path: &str, strict: bool) -> std::io::Result<Vec<(String, String, bool)>> {
     let mut subdirs = Vec::new();
-    let Ok(entries) = std::fs::read_dir(path) else {
-        return subdirs;
-    };
-    for entry in entries.flatten() {
-        let Ok(ft) = entry.file_type() else { continue };
+    let entries = std::fs::read_dir(path)?;
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) if strict => return Err(error),
+            Err(_) => continue,
+        };
+        let ft = match entry.file_type() {
+            Ok(kind) => kind,
+            Err(error) if strict => return Err(error),
+            Err(_) => continue,
+        };
         if !ft.is_dir() {
             continue;
         }
@@ -321,5 +336,5 @@ pub fn list_subdirectories(path: &str) -> Vec<(String, String, bool)> {
         subdirs.push((name, full, has_children));
     }
     subdirs.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
-    subdirs
+    Ok(subdirs)
 }

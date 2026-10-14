@@ -36,6 +36,7 @@ impl IndexingService {
     }
 
     /// Scan an already registered PhoTag folder and return its progress stream.
+    #[tracing::instrument(skip_all)]
     pub fn scan_folder(
         self: &Arc<Self>,
         folder_id: i64,
@@ -51,6 +52,7 @@ impl IndexingService {
     }
 
     /// Generate caches for indexed image/video rows that do not have thumbnails.
+    #[tracing::instrument(skip_all)]
     pub fn generate_missing_thumbnails(
         self: &Arc<Self>,
         items: Vec<(String, String)>,
@@ -67,6 +69,15 @@ impl IndexingService {
     /// Latest active scan/backfill, including scans started outside Navigation.
     pub fn current_progress(&self) -> Option<scan::ScanProgress> {
         self.progress.current()
+    }
+
+    /// Checked immediate-directory listing for browser views that must report access errors.
+    #[tracing::instrument(skip_all, err)]
+    pub fn try_list_subdirectories(
+        &self,
+        path: &str,
+    ) -> std::io::Result<Vec<(String, String, bool)>> {
+        maintenance::try_list_subdirectories(path)
     }
 
     /// List immediate child directories including dot-prefixed directories.
@@ -96,6 +107,7 @@ impl Plugin for IndexingPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()

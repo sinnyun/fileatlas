@@ -7,6 +7,7 @@ use super::GalleryView;
 use crate::filter::{GalleryFilter, MediaTypeFilter};
 
 impl GalleryView {
+    #[tracing::instrument(skip_all)]
     pub(super) fn clear_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let folder_id = self.filter.folder_id;
         let path_prefix = self.filter.path_prefix.clone();
@@ -32,6 +33,7 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn clear_date_filter(
         &mut self,
         from: bool,
@@ -58,12 +60,14 @@ impl GalleryView {
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn clear_type_filter(&mut self, cx: &mut Context<Self>) {
         self.filter.media_type = MediaTypeFilter::All;
         self.reload();
         cx.notify();
     }
 
+    #[tracing::instrument(skip_all)]
     pub(super) fn clear_rating_filter(&mut self, cx: &mut Context<Self>) {
         self.filter.rating_min = 0;
         self.filter.rating_max = 5;

@@ -26,6 +26,7 @@ impl Plugin for FileOperationsPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()

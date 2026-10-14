@@ -51,9 +51,8 @@ pub(super) fn render(view: &PreviewView, cx: &mut Context<PreviewView>) -> Div {
         for rating in 0..=5 {
             menu = menu.child(
                 Button::new(format!("preview-context-rating-{rating}"))
-                    .label(photag_ui_bridge::i18n::tr(
-                        &(format!("{rating}★")).to_string(),
-                    ))
+                    .icon(theme::small_icon(gpui_kit::assets::IconName::Star))
+                    .label(rating.to_string())
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.context_menu_open = false;
                         this.apply_rating_shortcut(rating, cx);

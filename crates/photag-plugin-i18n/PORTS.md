@@ -45,3 +45,7 @@ language selector's mouse click itself has not been tested in the MCP-only
 pass. See `docs/validation-report.md` for evidence and visual limitations.
 Catalog parse errors fail plugin startup. Preference-save failures appear in
 the language panel and return `I18nError`; MCP reports them through `control_ui`.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

@@ -127,10 +127,8 @@ impl SettingsView {
                                 .items_center()
                                 .gap_2()
                                 .child(
-                                    gpui_kit::component::Icon::new(
-                                        gpui_kit::assets::IconName::Aperture,
-                                    )
-                                    .text_color(rgb(theme::accent())),
+                                    theme::icon(gpui_kit::assets::IconName::Aperture)
+                                        .text_color(rgb(theme::accent())),
                                 )
                                 .child(div().font_semibold().child("PhoTag")),
                         )
@@ -140,16 +138,10 @@ impl SettingsView {
                                 .h(px(22.))
                                 .bg(rgba(theme::HAIRLINE.to_rgba())),
                         )
-                        .child(gpui_kit::component::Icon::new(
-                            gpui_kit::assets::IconName::House,
-                        ))
-                        .child(gpui_kit::component::Icon::new(
-                            gpui_kit::assets::IconName::Folder,
-                        ))
+                        .child(theme::icon(gpui_kit::assets::IconName::House))
+                        .child(theme::icon(gpui_kit::assets::IconName::Folder))
                         .child(div().flex_1())
-                        .child(gpui_kit::component::Icon::new(
-                            gpui_kit::assets::IconName::Star,
-                        ))
+                        .child(theme::icon(gpui_kit::assets::IconName::Star))
                         .child(
                             div()
                                 .h_flex()
@@ -160,10 +152,8 @@ impl SettingsView {
                                 .border_b_1()
                                 .border_color(rgb(theme::accent()))
                                 .child(
-                                    gpui_kit::component::Icon::new(
-                                        gpui_kit::assets::IconName::Image,
-                                    )
-                                    .text_color(rgb(theme::accent())),
+                                    theme::icon(gpui_kit::assets::IconName::Image)
+                                        .text_color(rgb(theme::accent())),
                                 ),
                         ),
                 );
@@ -263,15 +253,7 @@ impl SettingsView {
                         let mut rows = div().v_flex().gap(px(3.));
                         let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
                         while let Some(tag) = pending.pop() {
-                            let icon = tag
-                                .icon
-                                .as_deref()
-                                .filter(|icon| !icon.is_empty())
-                                .unwrap_or("🏷");
-                            flat_tags.push((
-                                tag.id,
-                                format!("{icon} {}", tag.full_path.replace('>', " > ")),
-                            ));
+                            flat_tags.push((tag.id, tag.full_path.replace('>', " > ")));
                             pending.extend(tag.children.into_iter().rev());
                         }
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
@@ -408,12 +390,18 @@ impl SettingsView {
                 let mut merge_options = div().v_flex().gap_1();
                 for opt in [TagMergeChildren::Reparent, TagMergeChildren::Delete] {
                     let chosen = s.tag_merge_children == opt;
-                    merge_options = merge_options.child(self.enum_button(
-                        format!("tag-merge-{}", opt.label()),
-                        format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
-                        move |s| s.tag_merge_children = opt,
-                        cx,
-                    ));
+                    merge_options = merge_options.child(
+                        Button::new(format!("settings-tag-merge-{}", opt.label()))
+                            .icon(theme::small_icon(if chosen {
+                                gpui_kit::assets::IconName::CircleDot
+                            } else {
+                                gpui_kit::assets::IconName::Circle
+                            }))
+                            .label(photag_ui_bridge::i18n::tr(opt.label()))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.edit(|settings| settings.tag_merge_children = opt, cx);
+                            })),
+                    );
                 }
                 b = b.child(merge_options);
             }

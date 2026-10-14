@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+tracing.workspace = true
+photag-plugin-navigation = { path = "../photag-plugin-navigation" }
+photag-plugin-grouping = { path = "../photag-plugin-grouping" }
 cordis.workspace = true
 gpui-kit.workspace = true
 gpui = { package = "gpui-pre", version = "=0.3.8" }
@@ -31,3 +34,6 @@ kamadak-exif = "0.6.1"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }

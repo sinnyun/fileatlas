@@ -1,4 +1,4 @@
-//! v5 month group header: chevron + title 15 semibold + muted 12 count.
+//! Group section band; user-requested raised background distinguishes it from media rows.
 use super::*;
 
 pub(super) fn render(
@@ -7,34 +7,27 @@ pub(super) fn render(
     expanded: f32,
     cx: &mut Context<GalleryView>,
 ) -> Stateful<Div> {
-    let display = if label == "Unknown date" {
-        photag_ui_bridge::i18n::tr(&label)
-    } else {
-        label
-            .rsplit_once(' ')
-            .map(|(month, year)| {
-                photag_ui_bridge::i18n::tr_args(
-                    "{month} {year}",
-                    &[
-                        ("month", photag_ui_bridge::i18n::tr(month)),
-                        ("year", year.into()),
-                    ],
-                )
-            })
-            .unwrap_or_else(|| label.clone())
-    };
+    let display = photag_ui_bridge::i18n::tr(&label);
     div()
         .id(format!("gallery-month-{label}"))
         .relative()
         .w_full()
         .h(px(40.))
+        .bg(rgb(0x343e49))
+        .border_1()
+        .border_color(rgba(0xffffff24))
+        .rounded(px(theme::ROUND_SM))
         .h_flex()
         .items_center()
         .pl(px(28.))
+        .pr(px(12.))
         .pt(px(4.))
         .gap(px(8.))
         .child(
             div()
+                .min_w_0()
+                .overflow_hidden()
+                .text_ellipsis()
                 .font_family(theme::SEMIBOLD_FONT_FAMILY)
                 .text_size(px(theme::FONT_SIZE_HEADING))
                 .text_color(rgb(theme::TEXT_PRIMARY))
@@ -58,35 +51,24 @@ pub(super) fn render(
                 )),
         )
         .child(
-            canvas(
-                |bounds, _, _| bounds,
-                move |bounds, _, window, _| {
-                    let center = bounds.origin + point(px(12.), px(22.));
-                    let angle = expanded * std::f32::consts::FRAC_PI_2;
-                    let (sin, cos) = angle.sin_cos();
-                    let mut path = PathBuilder::stroke(px(1.6));
-                    for (i, (x, y)) in [(-4.6 * 0.45, -4.6), (4.6 * 0.55, 0.), (-4.6 * 0.45, 4.6)]
-                        .into_iter()
-                        .enumerate()
-                    {
-                        let point = center + point(px(x * cos - y * sin), px(x * sin + y * cos));
-                        if i == 0 {
-                            path.move_to(point);
-                        } else {
-                            path.line_to(point);
-                        }
-                    }
-                    if let Ok(path) = path.build() {
-                        window.paint_path(path, rgb(theme::TEXT_SECONDARY));
-                    }
-                },
-            )
-            .absolute()
-            .inset_0(),
+            div()
+                .absolute()
+                .left(px(8.))
+                .top_0()
+                .h_full()
+                .flex()
+                .items_center()
+                .child(theme::small_icon(if expanded >= 0.5 {
+                    gpui_kit::assets::IconName::ChevronDown
+                } else {
+                    gpui_kit::assets::IconName::ChevronRight
+                })),
         )
+        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
         .on_click(cx.listener(move |this, _, _, cx| {
+            cx.stop_propagation();
             this.toggle_month_collapsed(label.clone(), cx);
         }))
         .cursor_pointer()
-        .hover(|style| style.bg(rgba(0xffffff06)))
+        .hover(|style| style.bg(rgb(0x404d5c)))
 }

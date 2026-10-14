@@ -70,3 +70,7 @@ have not been runtime-validated.
   mapping. Source reference: `vendor/photag-source/src/ai.rs` at PhoTag commit
   `36cee242a78c0a8cd9ac6b0d63b64265aa0add90`; retain its license in
   `vendor/photag-source/LICENSE`.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

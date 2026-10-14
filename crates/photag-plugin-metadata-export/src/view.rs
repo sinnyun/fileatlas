@@ -2,9 +2,9 @@
 use crate::{MetadataExportService, MetadataExportStatus};
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::spinner::Spinner;
-use gpui_kit::component::{Disableable as _, Icon};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_ui_bridge::i18n::{tr, tr_args};
@@ -145,7 +145,7 @@ impl Render for ExportPanel {
                 .h_flex()
                 .items_start()
                 .gap_3()
-                .child(Icon::new(icon).size(px(28.)).text_color(rgb(color)))
+                .child(theme::large_icon(icon).text_color(rgb(color)))
                 .child(
                     div()
                         .v_flex()
@@ -230,7 +230,7 @@ impl Render for ExportPanel {
                             .px_4()
                             .border_b_1()
                             .border_color(rgba(theme::SEPARATOR_LIGHT))
-                            .child(Icon::new(IconName::Upload).text_color(rgb(theme::accent())))
+                            .child(theme::icon(IconName::Upload).text_color(rgb(theme::accent())))
                             .child(
                                 div()
                                     .flex_1()
@@ -241,7 +241,7 @@ impl Render for ExportPanel {
                             .child(
                                 Button::new("export-close-header")
                                     .ghost()
-                                    .icon(IconName::X)
+                                    .icon(theme::icon(IconName::X))
                                     .disabled(exporting)
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         let _ = this.surfaces.set_open("metadata-export", false);

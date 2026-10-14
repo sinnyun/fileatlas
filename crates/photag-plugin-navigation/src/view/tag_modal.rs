@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement;
 
@@ -105,11 +106,12 @@ impl SidebarView {
                             .ghost()
                             .w_full()
                             .pl(px(6. + depth as f32 * 12.))
-                            .label(photag_ui_bridge::i18n::tr(&format!(
-                                "{} {}",
-                                if checked { "☑" } else { "☐" },
-                                path.replace('>', " › ")
-                            )))
+                            .icon(theme::small_icon(if checked {
+                                IconName::Check
+                            } else {
+                                IconName::Square
+                            }))
+                            .label(photag_ui_bridge::i18n::tr(&path.replace('>', " › ")))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.toggle_associated_tag(tag_id, cx)
                             })),
@@ -140,8 +142,9 @@ impl SidebarView {
                             | (u32::from(parsed[1]) << 8)
                             | u32::from(parsed[2]);
                         Button::new(format!("navigation-tag-color-{color}"))
-                            .label(if selected { "✓" } else { " " })
-                            .text_size(px(10.))
+                            .when(selected, |button| {
+                                button.icon(theme::small_icon(IconName::Check))
+                            })
                             .text_color(rgb(0xffffff))
                             .w(px(22.))
                             .h(px(22.))
@@ -161,26 +164,28 @@ impl SidebarView {
             })
             .collect::<Vec<_>>();
             let selected_icon = self.tag_icon.read(cx).value().trim().to_owned();
+            let selected_icon = (!selected_icon.is_empty())
+                .then(|| format!("{:?}", theme::tag_icon(Some(&selected_icon))));
             let icons = [
                 [
-                    theme::icons::TAG,
-                    theme::icons::PICTURE,
-                    theme::icons::FOLDER,
-                    theme::icons::VIDEO,
-                    theme::icons::AUDIO,
-                    theme::icons::STAR,
-                    theme::icons::SEARCH,
-                    theme::icons::LIBRARY,
+                    IconName::Tag,
+                    IconName::Image,
+                    IconName::Folder,
+                    IconName::Video,
+                    IconName::Music,
+                    IconName::Star,
+                    IconName::Search,
+                    IconName::Library,
                 ],
                 [
-                    theme::icons::SETTINGS,
-                    theme::icons::EXTENSION,
-                    theme::icons::ZOOM,
-                    theme::icons::VIEW,
-                    theme::icons::CALENDAR,
-                    theme::icons::FILTER,
-                    theme::icons::SORT,
-                    theme::icons::ADD,
+                    IconName::Settings,
+                    IconName::Puzzle,
+                    IconName::ZoomIn,
+                    IconName::Eye,
+                    IconName::Calendar,
+                    IconName::ListFilter,
+                    IconName::ArrowUpDown,
+                    IconName::Plus,
                 ],
             ]
             .into_iter()
@@ -189,14 +194,12 @@ impl SidebarView {
                     .h_flex()
                     .gap(px(5.))
                     .children(row.into_iter().map(|icon| {
-                        let value = icon.to_string();
-                        let selected = selected_icon == value;
-                        Button::new(format!("navigation-tag-icon-{}", icon as u32))
+                        let value = format!("{icon:?}");
+                        let selected = selected_icon.as_deref() == Some(value.as_str());
+                        Button::new(format!("navigation-tag-icon-{value}"))
                             .w(px(30.))
                             .h(px(30.))
                             .rounded(px(4.))
-                            .font_family(theme::ICON_FONT_FAMILY)
-                            .text_size(px(15.))
                             .text_color(rgb(if selected {
                                 theme::accent_hover()
                             } else {
@@ -213,7 +216,8 @@ impl SidebarView {
                             } else {
                                 theme::SEPARATOR
                             }))
-                            .label(icon.to_string())
+                            .icon(theme::small_icon(icon))
+                            .accessibility_label(value.clone())
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 this.tag_icon
                                     .update(cx, |state, cx| state.set_value(&value, window, cx));
@@ -243,19 +247,17 @@ impl SidebarView {
                                     .child(div().v_flex().gap(px(4.)).children(swatches))
                                     .child(Input::new(&self.tag_color))
                                     .child(field_label("Tag icon"))
-                                    .child(Input::new(&self.tag_icon))
                                     .child(div().v_flex().gap(px(5.)).children(icons))
                                     .child(
                                         Button::new("navigation-tag-edit-display")
                                             .ghost()
                                             .w_full()
                                             .justify_start()
+                                            .when(self.tag_edit_display, |button| {
+                                                button.icon(theme::small_icon(IconName::Check))
+                                            })
                                             .label(photag_ui_bridge::i18n::tr(
-                                                if self.tag_edit_display {
-                                                    "✓ Display on thumbnails"
-                                                } else {
-                                                    "Display on thumbnails"
-                                                },
+                                                "Display on thumbnails",
                                             ))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.tag_edit_display = !this.tag_edit_display;
@@ -286,13 +288,10 @@ impl SidebarView {
                                             .ghost()
                                             .w_full()
                                             .justify_start()
-                                            .label(photag_ui_bridge::i18n::tr(
-                                                if self.apply_tag_appearance_to_children {
-                                                    "✓ Apply to children"
-                                                } else {
-                                                    "Apply to children"
-                                                },
-                                            ))
+                                            .when(self.apply_tag_appearance_to_children, |button| {
+                                                button.icon(theme::small_icon(IconName::Check))
+                                            })
+                                            .label(photag_ui_bridge::i18n::tr("Apply to children"))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.apply_tag_appearance_to_children =
                                                     !this.apply_tag_appearance_to_children;
@@ -305,12 +304,11 @@ impl SidebarView {
                                                 .ghost()
                                                 .w_full()
                                                 .justify_start()
+                                                .when(self.exclude_edited_tag_children, |button| {
+                                                    button.icon(theme::small_icon(IconName::Check))
+                                                })
                                                 .label(photag_ui_bridge::i18n::tr(
-                                                    if self.exclude_edited_tag_children {
-                                                        "✓ Skip edited children"
-                                                    } else {
-                                                        "Skip edited children"
-                                                    },
+                                                    "Skip edited children",
                                                 ))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.exclude_edited_tag_children =
@@ -377,10 +375,8 @@ impl SidebarView {
                             .gap_3()
                             .child(
                                 div()
-                                    .font_family(theme::ICON_FONT_FAMILY)
-                                    .text_size(px(24.))
                                     .text_color(rgb(theme::DANGER))
-                                    .child(theme::icons::WARNING.to_string()),
+                                    .child(theme::large_icon(IconName::TriangleAlert)),
                             )
                             .child(
                                 div()
@@ -406,11 +402,12 @@ impl SidebarView {
                             .ghost()
                             .w_full()
                             .justify_start()
-                            .label(photag_ui_bridge::i18n::tr(if self.delete_clean_parents {
-                                "○ Keep parent tags"
+                            .icon(theme::small_icon(if !self.delete_clean_parents {
+                                IconName::CircleDot
                             } else {
-                                "◉ Keep parent tags"
+                                IconName::Circle
                             }))
+                            .label(photag_ui_bridge::i18n::tr("Keep parent tags"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.delete_clean_parents = false;
                                 cx.notify();
@@ -421,11 +418,12 @@ impl SidebarView {
                             .ghost()
                             .w_full()
                             .justify_start()
-                            .label(photag_ui_bridge::i18n::tr(if self.delete_clean_parents {
-                                "◉ Also remove parent tags"
+                            .icon(theme::small_icon(if self.delete_clean_parents {
+                                IconName::CircleDot
                             } else {
-                                "○ Also remove parent tags"
+                                IconName::Circle
                             }))
+                            .label(photag_ui_bridge::i18n::tr("Also remove parent tags"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.delete_clean_parents = true;
                                 cx.notify();
@@ -552,11 +550,12 @@ impl SidebarView {
                                             .ghost()
                                             .w_full()
                                             .justify_start()
-                                            .label(photag_ui_bridge::i18n::tr(if self.merge_reparent_children {
-                                                "◉ Re-parent children under target"
+                                            .icon(theme::small_icon(if self.merge_reparent_children {
+                                                IconName::CircleDot
                                             } else {
-                                                "○ Re-parent children under target"
+                                                IconName::Circle
                                             }))
+                                            .label(photag_ui_bridge::i18n::tr("Re-parent children under target"))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.merge_reparent_children = true;
                                                 cx.notify();
@@ -570,11 +569,12 @@ impl SidebarView {
                                             .ghost()
                                             .w_full()
                                             .justify_start()
-                                            .label(photag_ui_bridge::i18n::tr(if self.merge_reparent_children {
-                                                "○ Delete child tags"
+                                            .icon(theme::small_icon(if self.merge_reparent_children {
+                                                IconName::Circle
                                             } else {
-                                                "◉ Delete child tags"
+                                                IconName::CircleDot
                                             }))
+                                            .label(photag_ui_bridge::i18n::tr("Delete child tags"))
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.merge_reparent_children = false;
                                                 cx.notify();
@@ -689,8 +689,7 @@ fn modal_close_button(cx: &mut Context<SidebarView>) -> Button {
         .compact()
         .w(px(28.))
         .h(px(28.))
-        .font_family(theme::ICON_FONT_FAMILY)
-        .label(theme::icons::CLOSE.to_string())
+        .icon(theme::small_icon(IconName::X))
         .on_click(cx.listener(|this, _, _, cx| {
             this.close_tag_modal();
             cx.notify();

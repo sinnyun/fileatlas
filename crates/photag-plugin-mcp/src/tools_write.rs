@@ -15,7 +15,7 @@ impl PhoTagMcpServer {
             if let Err(error) = runtime.block_on(
                 context.emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ()),
             ) {
-                eprintln!("MCP scan completion dispatch failed: {error}");
+                tracing::error!("MCP scan completion dispatch failed: {error}");
             }
         });
     }
@@ -306,6 +306,7 @@ impl super::PhoTagMcpServer {
 
     #[tool(description = "控制当前图片预览的旋转、翻转、适配、缩放和信息面板。")]
     fn control_preview(&self, Parameters(request): Parameters<PreviewControlRequest>) -> String {
+        tracing::info!(?request, "MCP control request");
         match request.action.as_str() {
             "more_open" | "more_close" | "tags_open" | "tags_close" => {
                 let key = if request.action.starts_with("more") {
@@ -367,6 +368,7 @@ impl super::PhoTagMcpServer {
 
     #[tool(description = "控制当前视频播放：播放/暂停、定位、逐帧步进、倍速或关闭。")]
     fn control_playback(&self, Parameters(request): Parameters<PlaybackControlRequest>) -> String {
+        tracing::info!(?request, "MCP control request");
         let result = match request.action.as_str() {
             "tags_open" | "tags_close" | "more_open" | "more_close" => {
                 let tags = request.action.starts_with("tags");

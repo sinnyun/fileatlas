@@ -1,0 +1,332 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2500
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_debug_info",
+    "arguments": {
+      "page_size": 200
+    },
+    "capture": "debug-closed"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "1240,779"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "1240,779"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "ui.open",
+      "equals": true
+    },
+    "capture": "debug-open"
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library",
+      "confirm": true
+    },
+    "wait_ms": 1500
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "limit": 1
+    },
+    "until": {
+      "field": "total",
+      "at_least": 250
+    }
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "select_path",
+      "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "grouping",
+      "value": "none"
+    },
+    "wait_ms": 500
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "debug-with-browser"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "category",
+      "value": "indexing"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "arguments": {
+      "page_size": 200
+    },
+    "capture": "debug-indexing"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "search",
+      "value": "scan/backfill stream ended"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "logs.total",
+      "at_least": 1
+    },
+    "capture": "debug-scan-duration"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "search",
+      "value": ""
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "category",
+      "value": ""
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "rename_media",
+    "arguments": {
+      "media_id": 9999999,
+      "new_filename": "debug-missing.png",
+      "confirm": true
+    },
+    "expect_error": "is not indexed"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "level",
+      "value": "ERROR"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "logs.total",
+      "at_least": 1
+    },
+    "capture": "debug-error"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "600,461"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "600,461"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "get_debug_info",
+    "capture": "debug-error-detail"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "level",
+      "value": ""
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "page_size",
+      "value": "25"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "1260,744"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "1260,744"
+    },
+    "wait_ms": 180
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "ui.filter.page",
+      "equals": 1
+    },
+    "capture": "debug-page-2"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "pause"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "capture": "debug-paused"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_debug_info"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "follow"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "ui.filter.through_id",
+      "equals": null
+    },
+    "capture": "debug-follow"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "search",
+      "value": "no-such-log-debug-unique"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "logs.total",
+      "equals": 0
+    },
+    "capture": "debug-empty-filter"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "search",
+      "value": ""
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1462,
+      "height": 956
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_debug_info",
+    "capture": "debug-minimum"
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "close"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "debug-minimum-closed"
+  },
+  {
+    "tool": "get_debug_info",
+    "until": {
+      "field": "ui.open",
+      "equals": false
+    }
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "open"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "clear"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_debug_info",
+    "capture": "debug-cleared"
+  }
+]

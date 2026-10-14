@@ -96,7 +96,7 @@ fn tool_button(id: &str, label: String) -> Button {
 }
 
 /// `preview.rs:2357-2368`: icon-only button whose tooltip shows immediately.
-fn icon_button(id: &str, glyph: &str, tip: &str) -> Button {
+fn icon_button(id: &str, tip: &str) -> Button {
     let icon = match id {
         "rotate-ccw" => IconName::RotateCcw,
         "rotate-cw" => IconName::RotateCw,
@@ -108,9 +108,8 @@ fn icon_button(id: &str, glyph: &str, tip: &str) -> Button {
         "explorer" => IconName::FolderOpen,
         _ => IconName::ExternalLink,
     };
-    let _ = glyph;
     tool_button(id, String::new())
-        .icon(icon)
+        .icon(theme::icon(icon))
         .tooltip(tr(tip))
         .tooltip_show_delay(Duration::ZERO)
 }
@@ -273,15 +272,16 @@ impl PreviewView {
             .context_menu(move |menu, _, _| {
                 let lock_weak = weak.clone();
                 let menu = menu.item(
-                    PopupMenuItem::new(format!(
-                        "{} {}",
-                        if locked { "🔓" } else { "🔒" },
-                        tr(if locked {
-                            "Unlock position"
-                        } else {
-                            "Lock position"
-                        })
-                    ))
+                    PopupMenuItem::new(tr(if locked {
+                        "Unlock position"
+                    } else {
+                        "Lock position"
+                    }))
+                    .icon(theme::small_icon(if locked {
+                        IconName::LockOpen
+                    } else {
+                        IconName::Lock
+                    }))
                     .on_click(move |_, _, app| {
                         let _ = lock_weak.update(app, |this: &mut PreviewView, cx| {
                             let _ = this.settings.update(|settings| {
@@ -293,8 +293,9 @@ impl PreviewView {
                 );
                 let reset_weak = weak.clone();
                 menu.item(
-                    PopupMenuItem::new(format!("↺ {}", tr("Reset to default"))).on_click(
-                        move |_, _, app| {
+                    PopupMenuItem::new(tr("Reset to default"))
+                        .icon(theme::small_icon(IconName::RotateCcw))
+                        .on_click(move |_, _, app| {
                             let _ = reset_weak.update(app, |this: &mut PreviewView, cx| {
                                 this.toolbar_drag_offset = None;
                                 match this.settings.update(|settings| {
@@ -306,8 +307,7 @@ impl PreviewView {
                                 }
                                 cx.notify();
                             });
-                        },
-                    ),
+                        }),
                 )
             })
             .into_any_element()
@@ -391,14 +391,13 @@ impl PreviewView {
             row = row.child(separator());
         }
         if settings.rotate_buttons {
-            for (id, glyph, clockwise) in [("rotate-ccw", "↺", false), ("rotate-cw", "↻", true)]
-            {
+            for (id, clockwise) in [("rotate-ccw", false), ("rotate-cw", true)] {
                 let tip = if clockwise {
                     "Rotate clockwise"
                 } else {
                     "Rotate counter-clockwise"
                 };
-                row = row.child(icon_button(id, glyph, tip).on_click(cx.listener(
+                row = row.child(icon_button(id, tip).on_click(cx.listener(
                     move |this, _: &ClickEvent, _, cx| {
                         if clockwise {
                             this.service.rotate_clockwise();
@@ -411,13 +410,13 @@ impl PreviewView {
             }
         }
         if settings.flip_buttons {
-            for (id, glyph, horizontal) in [("flip-h", "↔", true), ("flip-v", "↕", false)] {
+            for (id, horizontal) in [("flip-h", true), ("flip-v", false)] {
                 let tip = if horizontal {
                     "Mirror horizontally"
                 } else {
                     "Mirror vertically"
                 };
-                row = row.child(icon_button(id, glyph, tip).on_click(cx.listener(
+                row = row.child(icon_button(id, tip).on_click(cx.listener(
                     move |this, _: &ClickEvent, _, cx| {
                         if horizontal {
                             this.service.flip_horizontal();
@@ -438,7 +437,8 @@ impl PreviewView {
         if settings.tags_button {
             row = row.child(tags_button(self, assigned, popup, viewport_height, cx));
             row = row.child(
-                tool_button("clear-tags", format!("✕ {}", tr("Clear tags")))
+                tool_button("clear-tags", tr("Clear tags"))
+                    .icon(theme::small_icon(IconName::X))
                     .tooltip(tr("Remove every tag from this item"))
                     .tooltip_show_delay(Duration::ZERO)
                     .disabled(assigned == 0)
@@ -469,7 +469,7 @@ impl PreviewView {
             let show = self.filmstrip_visible();
             row = row.child(
                 tool_button("filmstrip", String::new())
-                    .icon(IconName::PanelBottom)
+                    .icon(theme::icon(IconName::PanelBottom))
                     .toggled(show)
                     .tooltip(tr(if show {
                         "Hide filmstrip"
@@ -544,7 +544,8 @@ impl PreviewView {
             .gap(px(VIDEO_GAP))
             .child(tags_button(self, assigned, &popup, viewport_height, cx))
             .child(
-                tool_button("video-clear", format!("✕ {}", tr("Clear")))
+                tool_button("video-clear", tr("Clear"))
+                    .icon(theme::small_icon(IconName::X))
                     .tooltip(tr("Remove all tags"))
                     .tooltip_show_delay(Duration::ZERO)
                     .disabled(assigned == 0)
@@ -552,7 +553,7 @@ impl PreviewView {
             )
             .child(separator())
             .child(
-                icon_button("video-delete", "🗑", "Delete (Del)")
+                icon_button("video-delete", "Delete (Del)")
                     .on_click(cx.listener(|this, _, window, cx| this.request_delete(window, cx))),
             );
         div()
@@ -651,7 +652,7 @@ fn tags_button(
     let height = px(geom.height(viewport_height));
     let body = tag_picker::popup(view, geom.min_width, height, cx);
     let trigger = tool_button("tags", format!("{} ({assigned})", tr("Tags")))
-        .icon(IconName::Tag)
+        .icon(theme::icon(IconName::Tag))
         .dropdown_caret(true);
     let weak = cx.entity().downgrade();
     Popover::new("preview-tags-popup")

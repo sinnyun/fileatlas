@@ -1,6 +1,7 @@
 //! Reusable GPUI floating frames. Content and close behavior remain plugin-owned.
 use std::sync::Arc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::*;
@@ -272,7 +273,11 @@ impl Render for FloatingPanel {
                         Button::new(format!("panel-maximize-{}", self.options.id))
                             .ghost()
                             .compact()
-                            .label(if self.restore.is_some() { "❐" } else { "□" })
+                            .icon(theme::icon(if self.restore.is_some() {
+                                IconName::Minimize
+                            } else {
+                                IconName::Maximize
+                            }))
                             .on_click(cx.listener(move |panel, _, _, cx| {
                                 panel.bounds = Some(if let Some(restore) = panel.restore.take() {
                                     restore
@@ -292,7 +297,7 @@ impl Render for FloatingPanel {
                         Button::new(format!("panel-close-{}", self.options.id))
                             .ghost()
                             .compact()
-                            .icon(gpui_kit::assets::IconName::X)
+                            .icon(theme::icon(gpui_kit::assets::IconName::X))
                             .on_click(cx.listener(move |_, _, _, cx| {
                                 close();
                                 cx.notify();

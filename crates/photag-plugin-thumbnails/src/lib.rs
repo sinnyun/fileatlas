@@ -31,6 +31,7 @@ impl ThumbnailService {
 
     /// Run the unchanged PhoTag thumbnail pipeline and return cache path,
     /// source dimensions, and the 8-pixel micro-thumbnail bytes.
+    #[tracing::instrument(skip_all)]
     pub fn generate_image(
         &self,
         source: impl AsRef<Path>,
@@ -62,6 +63,7 @@ impl Plugin for ThumbnailPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let directory = config.directory.clone().unwrap_or_else(default_thumb_dir);
         let service = Arc::new(ThumbnailService::open_at(directory)?);

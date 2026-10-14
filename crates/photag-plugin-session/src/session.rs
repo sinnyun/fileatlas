@@ -73,6 +73,8 @@ pub struct SessionState {
     /// Whether the gallery groups date-sorted results by capture month.
     #[serde(default)]
     pub group_by_month: Option<bool>,
+    #[serde(default)]
+    pub grouping_mode: Option<String>,
     /// Persisted left-sidebar width. 0 means "unset" → use the in-app default.
     #[serde(default)]
     pub sidebar_width: f32,
@@ -141,6 +143,8 @@ mod compatibility_tests {
         ).unwrap();
         assert_eq!(state.inspector_width, 0.);
         assert!(!state.gallery_list_layout);
+        assert_eq!(state.grouping_mode, None);
+        state.grouping_mode = Some("file_type".into());
         state.gallery_list_layout = true;
         state.inspector_width = 350.;
         let restored: SessionState =
@@ -150,6 +154,7 @@ mod compatibility_tests {
         assert_eq!(restored.sidebar_tab, "Tags");
         assert_eq!(restored.inspector_width, 350.);
         assert!(restored.gallery_list_layout);
+        assert_eq!(restored.grouping_mode.as_deref(), Some("file_type"));
     }
 }
 

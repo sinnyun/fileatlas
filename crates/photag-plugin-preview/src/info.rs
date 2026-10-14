@@ -57,7 +57,7 @@ pub(super) fn info_panel(
                     Button::new("preview-info-close")
                         .ghost()
                         .compact()
-                        .icon(gpui_kit::assets::IconName::X)
+                        .icon(theme::icon(gpui_kit::assets::IconName::X))
                         .on_click(cx.listener(|view, _, _, cx| {
                             view.toggle_information(cx);
                         })),
@@ -76,7 +76,7 @@ pub(super) fn info_panel(
                 Button::new(format!("preview-info-rating-{rating}"))
                     .ghost()
                     .compact()
-                    .icon(gpui_kit::assets::IconName::Star)
+                    .icon(theme::icon(gpui_kit::assets::IconName::Star))
                     .text_color(rgb(if active {
                         theme::STAR
                     } else {
@@ -359,7 +359,7 @@ fn section_title(
                 .w_full()
                 .h_flex()
                 .gap_2()
-                .child(gpui_kit::component::Icon::new(if collapsed {
+                .child(theme::icon(if collapsed {
                     gpui_kit::assets::IconName::ChevronRight
                 } else {
                     gpui_kit::assets::IconName::ChevronDown

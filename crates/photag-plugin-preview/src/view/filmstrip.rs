@@ -100,9 +100,9 @@ pub(super) fn plate(
                         .text_size(px(theme::FONT_SIZE_TINY))
                         .text_color(rgba(0xffffff99))
                         .child(match classify_media_path(&path) {
-                            PreviewMediaKind::Audio => "♫",
-                            PreviewMediaKind::Video => "▶",
-                            _ => "…",
+                            PreviewMediaKind::Audio => gpui_kit::assets::IconName::Music,
+                            PreviewMediaKind::Video => gpui_kit::assets::IconName::Play,
+                            _ => gpui_kit::assets::IconName::Image,
                         })
                         .into_any_element(),
                 })
@@ -171,12 +171,11 @@ pub(super) fn plate(
                     .rounded(px(4.0))
                     .bg(rgba(0x20252cdd))
                     .cursor_pointer()
-                    .text_lg()
                     .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
                         this.service.navigate_filmstrip(-1);
                         cx.notify();
                     }))
-                    .child("‹"),
+                    .child(theme::small_icon(gpui_kit::assets::IconName::ChevronLeft)),
             )
             .child(
                 div()
@@ -192,12 +191,11 @@ pub(super) fn plate(
                     .rounded(px(4.0))
                     .bg(rgba(0x20252cdd))
                     .cursor_pointer()
-                    .text_lg()
                     .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
                         this.service.navigate_filmstrip(1);
                         cx.notify();
                     }))
-                    .child("›"),
+                    .child(theme::small_icon(gpui_kit::assets::IconName::ChevronRight)),
             )
             .opacity(view.service.chrome_alpha())
             .into_any_element(),

@@ -1,6 +1,5 @@
 use super::super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 
 pub(super) fn render_tag(
     tag: &photag_plugin_database::db::queries::Tag,
@@ -21,7 +20,7 @@ pub(super) fn render_tag(
         .as_deref()
         .and_then(crate::parse_hex_color)
         .unwrap_or([120, 120, 130]);
-    let tag_icon = tag.icon.as_deref().filter(|icon| !icon.is_empty());
+    let tag_icon = theme::tag_icon(tag.icon.as_deref());
     let row_group = format!("navigation-tag-row-{}", tag.id);
     let select_name_id = tag.id;
     let name = Button::new(format!("navigation-tag-name-{}", tag.id))
@@ -30,17 +29,13 @@ pub(super) fn render_tag(
         .flex_1()
         .min_w_0()
         .text_size(px(12.))
-        .label(format!(
-            "{}{}",
-            tag.name,
-            if is_included {
-                "  ✓"
-            } else if is_excluded {
-                "  ⊘"
-            } else {
-                ""
-            }
-        ))
+        .when(is_included, |button| {
+            button.icon(theme::small_icon(IconName::Check))
+        })
+        .when(is_excluded, |button| {
+            button.icon(theme::small_icon(IconName::CircleSlash))
+        })
+        .label(tag.name.clone())
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(select_name_id, event.modifiers(), cx)
         }));
@@ -58,16 +53,11 @@ pub(super) fn render_tag(
         .ghost()
         .compact()
         .w(px(17.))
-        .label(photag_ui_bridge::i18n::tr(
-            &(if is_expanded {
-                theme::icons::CHEVRON_DOWN
-            } else {
-                theme::icons::CHEVRON_RIGHT
-            })
-            .to_string(),
-        ))
-        .font_family(theme::ICON_FONT_FAMILY)
-        .text_size(px(8.))
+        .icon(theme::small_icon(if is_expanded {
+            IconName::ChevronDown
+        } else {
+            IconName::ChevronRight
+        }))
         .on_click(cx.listener(move |this, _, _, cx| {
             this.toggle_tag(toggle_id);
             cx.notify();
@@ -79,7 +69,8 @@ pub(super) fn render_tag(
         .compact()
         .opacity(0.)
         .group_hover(row_group.clone(), |style| style.opacity(1.))
-        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
+        .icon(theme::small_icon(IconName::Ellipsis))
+        .accessibility_label(photag_ui_bridge::i18n::tr("Tag actions"))
         .dropdown_menu(move |mut menu, _, _| {
             let child_view = view.clone();
             menu = menu.item(
@@ -258,14 +249,7 @@ pub(super) fn render_tag(
                         .child(div().w_2().h_2().rounded_sm().bg(rgb((u32::from(red) << 16)
                             | (u32::from(green) << 8)
                             | u32::from(blue))))
-                        .when_some(tag_icon, |row, icon| {
-                            row.child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(icon.to_owned()),
-                            )
-                        })
+                        .child(theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)))
                         .child(drag_name)
                         .child(
                             div()
@@ -364,7 +348,8 @@ pub(super) fn render_subdirectory(
         .compact()
         .opacity(0.)
         .group_hover(row_group.clone(), |style| style.opacity(1.))
-        .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
+        .icon(theme::small_icon(IconName::Ellipsis))
+        .accessibility_label(photag_ui_bridge::i18n::tr("Folder actions"))
         .w(px(20.))
         .h(px(22.))
         .bg(rgb(theme::SURFACE_BASE))
@@ -398,16 +383,13 @@ pub(super) fn render_subdirectory(
             .ghost()
             .compact()
             .w(px(18.))
-            .label(photag_ui_bridge::i18n::tr(
-                &(if expanded.contains_key(&node.path) || !query.is_empty() {
-                    theme::icons::CHEVRON_DOWN
+            .icon(theme::small_icon(
+                if expanded.contains_key(&node.path) || !query.is_empty() {
+                    IconName::ChevronDown
                 } else {
-                    theme::icons::CHEVRON_RIGHT
-                })
-                .to_string(),
+                    IconName::ChevronRight
+                },
             ))
-            .font_family(theme::ICON_FONT_FAMILY)
-            .text_size(px(8.))
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.toggle_directory(&directory_path);
                 cx.notify();
@@ -445,14 +427,11 @@ pub(super) fn render_subdirectory(
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
                 )
-                .child(
-                    Icon::new(if expanded.contains_key(&node.path) {
-                        IconName::FolderOpen
-                    } else {
-                        IconName::Folder
-                    })
-                    .size(px(14.)),
-                )
+                .child(theme::small_icon(if expanded.contains_key(&node.path) {
+                    IconName::FolderOpen
+                } else {
+                    IconName::Folder
+                }))
                 .child(
                     div()
                         .flex_1()

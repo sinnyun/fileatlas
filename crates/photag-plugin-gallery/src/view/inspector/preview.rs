@@ -178,14 +178,21 @@ impl GalleryView {
                 div()
                     .id(format!("gallery-inspector-preview-star-{media_id}-{star}"))
                     .cursor_pointer()
-                    .text_size(px(17.))
                     .text_color(rgb(if star <= rating {
                         theme::STAR
                     } else {
                         theme::TEXT_MUTED
                     }))
                     .hover(|style| style.text_color(rgb(theme::STAR)))
-                    .child(if star <= rating { "★" } else { "☆" })
+                    .child(
+                        theme::icon(gpui_kit::assets::IconName::Star).text_color(rgb(
+                            if star <= rating {
+                                theme::STAR
+                            } else {
+                                theme::TEXT_MUTED
+                            },
+                        )),
+                    )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         let next = if star == rating { 0 } else { star };
                         let selected = this.selection.selected_media_ids.clone();

@@ -667,3 +667,55 @@ msg-panels-3 = Media playback
 msg-panels-4 = PhoTag · Settings
 
 msg-panels-5 = Development task status
+
+# Grouping plugin
+grouping-none = No grouping
+grouping-file-type = Group by file type
+grouping-modified = Group by modified month
+grouping-created = Group by created month
+grouping-folder = Group by root folder
+grouping-subfolder = Group by subfolder
+grouping-title = Group by
+grouping-no-extension = No extension
+grouping-unknown-folder = Unknown folder
+
+# Directory browsing
+directory-up = Up one folder
+directory-empty = This folder is empty
+directory-counts = { $folders } folders · { $files } files
+directory-refresh = Refresh folder
+directory-folder = Folder
+
+msg-1a03bd2fd107 = Debug
+
+msg-892e412d7f39 = Runtime diagnostics
+
+msg-82e10d7fa547 = Search logs
+
+msg-292c06f0045a = Category
+
+msg-d9c85efd7602 = All levels
+
+msg-6999c9007652 = Pause view
+
+msg-044a73a3586b = Resume live
+
+msg-d3a8a299660b = Clear logs
+
+msg-c2ef72449feb = No matching logs
+
+msg-33b93476cf59 = Time
+
+msg-1709305c9fa9 = Level
+
+msg-4fc52a3c4c55 = Duration
+
+msg-45989de49fb7 = Details
+
+msg-eadc688cd557 = matched
+
+msg-ca67bd59cc41 = retained
+
+msg-48acbb9c630a = evicted
+
+msg-3660315a9af3 = page

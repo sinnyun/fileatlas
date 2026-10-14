@@ -659,3 +659,55 @@ msg-panels-3 = 音视频播放
 msg-panels-4 = PhoTag · 设置
 
 msg-panels-5 = 开发任务状态
+
+# Grouping plugin
+grouping-none = 不分组
+grouping-file-type = 按文件类型分组
+grouping-modified = 按修改时间分组（月）
+grouping-created = 按创建时间分组（月）
+grouping-folder = 按根文件夹分组
+grouping-subfolder = 按子文件夹分组
+grouping-title = 分组方式
+grouping-no-extension = 无扩展名
+grouping-unknown-folder = 未知文件夹
+
+# Directory browsing
+directory-up = 返回上级
+directory-empty = 此文件夹为空
+directory-counts = { $folders } 个文件夹 · { $files } 个文件
+directory-refresh = 刷新文件夹
+directory-folder = 文件夹
+
+msg-1a03bd2fd107 = 调试
+
+msg-892e412d7f39 = 运行调试信息
+
+msg-82e10d7fa547 = 搜索日志
+
+msg-292c06f0045a = 分类
+
+msg-d9c85efd7602 = 全部级别
+
+msg-6999c9007652 = 暂停查看
+
+msg-044a73a3586b = 恢复实时
+
+msg-d3a8a299660b = 清空日志
+
+msg-c2ef72449feb = 没有符合条件的日志
+
+msg-33b93476cf59 = 时间
+
+msg-1709305c9fa9 = 级别
+
+msg-4fc52a3c4c55 = 耗时
+
+msg-45989de49fb7 = 详情
+
+msg-eadc688cd557 = 条匹配
+
+msg-ca67bd59cc41 = 条保留
+
+msg-48acbb9c630a = 条已淘汰
+
+msg-3660315a9af3 = 页

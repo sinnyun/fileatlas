@@ -4,7 +4,7 @@
 //! `preview.rs:2184-2238` (`show_tag_assign_menu` rows), `preview.rs:2167-2171`
 //! (subtree filter) and `preview.rs:2174-2181` (recent id lookup).
 //! Row geometry follows the source: 14 indent per depth, a 20-wide caret slot,
-//! the tag icon in the tag color, and a `☑/☐  name` selectable label.
+//! the tag icon in the tag color, and a check icon beside selected labels.
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::Input;
@@ -58,7 +58,7 @@ pub(super) fn popup(
             .h_flex()
             .items_center()
             .gap(px(theme::SOURCE_ITEM_SPACING_X))
-            .child(div().child("🔍"))
+            .child(theme::small_icon(gpui_kit::assets::IconName::Search))
             .child(Input::new(&view.tag_picker_search).w(px(SEARCH_WIDTH))),
     );
     if tags.is_empty() {
@@ -123,27 +123,24 @@ fn tag_row(
     cx: &mut Context<PreviewView>,
 ) -> AnyElement {
     let id = tag.id;
-    let icon = tag
-        .icon
-        .as_deref()
-        .filter(|icon| !icon.is_empty())
-        .unwrap_or("🏷");
-    let check = if is_assigned { "☑" } else { "☐" };
+    let icon = theme::tag_icon(tag.icon.as_deref());
     div()
         .h_flex()
         .items_center()
         .gap(px(theme::SOURCE_ITEM_SPACING_X))
         .child(
             div()
-                .text_size(px(theme::FONT_SIZE_BUTTON))
                 .text_color(rgb(theme::tag_tint(tag.color.as_deref())))
-                .child(icon.to_string()),
+                .child(theme::small_icon(icon)),
         )
         .child(
             Button::new(format!("preview-{slot}-tag-{id}"))
                 .ghost()
                 .compact()
-                .label(format!("{check}  {}", tag.name))
+                .label(tag.name.clone())
+                .when(is_assigned, |button| {
+                    button.icon(theme::small_icon(gpui_kit::assets::IconName::Check))
+                })
                 .text_size(px(theme::FONT_SIZE_BUTTON))
                 .toggled(is_assigned)
                 .on_click(
@@ -181,8 +178,11 @@ fn assign_rows(
                 Button::new(format!("preview-tag-caret-{id}"))
                     .ghost()
                     .compact()
-                    .label(if expanded { "▼" } else { "▶" })
-                    .text_size(px(theme::FONT_SIZE_TINY))
+                    .icon(theme::small_icon(if expanded {
+                        gpui_kit::assets::IconName::ChevronDown
+                    } else {
+                        gpui_kit::assets::IconName::ChevronRight
+                    }))
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_tag_dropdown(id, cx))),
             );
         } else {

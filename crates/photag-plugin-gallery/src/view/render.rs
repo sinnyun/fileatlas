@@ -7,6 +7,9 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if let Some(request) = self.service.take_ui_request() {
             match request {
+                crate::GalleryUiRequest::OpenDirectory(path) => self.open_directory(path, cx),
+                crate::GalleryUiRequest::DirectoryUp => self.directory_up(cx),
+                crate::GalleryUiRequest::Refresh => self.refresh_index(),
                 crate::GalleryUiRequest::Layout(list) => self.set_layout(list, cx),
                 crate::GalleryUiRequest::Statistics => self.show_statistics = true,
                 crate::GalleryUiRequest::BulkActions => {
@@ -24,6 +27,7 @@ impl Render for GalleryView {
                     self.confirm_bulk_action_ids = None;
                 }
                 crate::GalleryUiRequest::OpenMediaActions(id) => {
+                    self.selected_directory = None;
                     if self.service.media_by_id(id).ok().flatten().is_some() {
                         self.selection.selected_media_ids = vec![id];
                         self.selection.anchor_id = Some(id);
@@ -42,6 +46,7 @@ impl Render for GalleryView {
                     self.confirm_bulk_action_ids = None;
                 }
                 crate::GalleryUiRequest::Select(id) => {
+                    self.selected_directory = None;
                     if self.service.media_by_id(id).ok().flatten().is_some() {
                         self.selection.selected_media_ids = vec![id];
                         self.selection.anchor_id = Some(id);
@@ -49,10 +54,12 @@ impl Render for GalleryView {
                     }
                 }
                 crate::GalleryUiRequest::Deselect => {
+                    self.selected_directory = None;
                     self.selection = GallerySelection::default();
                     self.persist_filter_session();
                 }
                 crate::GalleryUiRequest::SelectMany(ids) => {
+                    self.selected_directory = None;
                     self.selection.selected_media_ids = ids;
                     self.selection.anchor_id = self.selection.selected_media_ids.first().copied();
                     self.persist_filter_session();
@@ -123,6 +130,10 @@ impl Render for GalleryView {
                     self.toggle_inspector_section(section, cx)
                 }
                 crate::GalleryUiRequest::TagPicker => self.show_tag_picker = !self.show_tag_picker,
+                crate::GalleryUiRequest::Grouping(mode) => self.set_grouping(mode, cx),
+                crate::GalleryUiRequest::ToggleGroup(label) => {
+                    self.toggle_month_collapsed(label, cx)
+                }
                 crate::GalleryUiRequest::MonthGrouping(enabled) => {
                     self.set_month_grouping(enabled, cx)
                 }
@@ -136,6 +147,28 @@ impl Render for GalleryView {
             cx.notify();
         }
         self.service.publish_ui_snapshot(crate::GalleryUiSnapshot {
+            browsing: self.snapshot.as_ref().is_ok_and(|s| s.browser.active),
+            directories: self
+                .snapshot
+                .as_ref()
+                .map(|s| s.browser.directories.clone())
+                .unwrap_or_default(),
+            current_directory: self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|s| s.browser.directory.clone()),
+            parent_directory: self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|s| s.browser.parent.clone()),
+            directory_error: self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|s| s.browser.error.clone()),
+            selected_directory: self.selected_directory.clone(),
             filter: self.filter.clone(),
             selected_media_ids: self.selection.selected_media_ids.clone(),
             matched_count: self
@@ -143,7 +176,14 @@ impl Render for GalleryView {
                 .as_ref()
                 .map(|s| s.skeletons.len())
                 .unwrap_or(0),
-            group_by_month: self.group_by_month,
+            group_by_month: self.grouping_mode == photag_plugin_grouping::GroupingMode::Month,
+            grouping_mode: self.grouping_mode,
+            groups: self
+                .snapshot
+                .as_ref()
+                .map(|s| s.groups.clone())
+                .unwrap_or_default(),
+            collapsed_groups: self.collapsed_months.iter().cloned().collect(),
             list_layout: self.list_layout,
             window_offset: self
                 .snapshot
@@ -191,11 +231,7 @@ impl Render for GalleryView {
                 .max(1.0) as usize
         };
         self.columns = columns;
-        let group_by_month = self.group_by_month
-            && matches!(
-                self.filter.sort,
-                SortOrder::NewestFirst | SortOrder::OldestFirst
-            );
+        let group_by_month = self.grouping_mode != photag_plugin_grouping::GroupingMode::None;
         let row_layout_key = (
             columns,
             group_by_month,
@@ -207,12 +243,19 @@ impl Render for GalleryView {
                 self.snapshot
                     .as_ref()
                     .map(|snapshot| {
-                        build_gallery_rows(
-                            &snapshot.skeletons,
-                            columns,
-                            group_by_month,
-                            &self.collapsed_months,
-                        )
+                        if snapshot.browser.active {
+                            super::rows::build_browser_rows(
+                                snapshot.browser.directories.len(),
+                                snapshot.skeletons.len(),
+                                columns,
+                            )
+                        } else {
+                            build_gallery_rows(
+                                &snapshot.group_labels,
+                                columns,
+                                &self.collapsed_months,
+                            )
+                        }
                     })
                     .unwrap_or_default(),
             );
@@ -243,7 +286,18 @@ impl Render for GalleryView {
 
         match &self.snapshot {
             Ok(snapshot) => {
-                if snapshot.skeletons.is_empty() {
+                if snapshot.skeletons.is_empty() && snapshot.browser.directories.is_empty() {
+                    if snapshot.browser.active {
+                        return directory_browser::empty(
+                            self,
+                            snapshot
+                                .browser
+                                .error
+                                .as_deref()
+                                .or_else(|| self.filters_active().then_some("No matching items")),
+                            cx,
+                        );
+                    }
                     return empty_state::render(self.filters_active() || self.scope_active(), cx);
                 }
                 let list_scroll = self.scroll.clone();
@@ -376,7 +430,21 @@ impl Render for GalleryView {
                                             let end = layout_row.media_range.end;
                                             let month_label = layout_row.month_label.clone();
                                             let has_month_label = month_label.is_some();
-                                            let mut cards = Vec::with_capacity(end - first);
+                                            let mut cards = Vec::with_capacity(
+                                                end - first + layout_row.directory_range.len(),
+                                            );
+                                            for folder in &snapshot.browser.directories
+                                                [layout_row.directory_range.clone()]
+                                            {
+                                                cards.push(directory_browser::tile(
+                                                    folder,
+                                                    this.selected_directory.as_deref()
+                                                        == Some(folder.path.as_str()),
+                                                    card_size,
+                                                    list_width,
+                                                    cx,
+                                                ));
+                                            }
                                             if !layout_row.collapsed {
                                                 for skeleton in &snapshot.skeletons[first..end] {
                                                     if let Some(media) = snapshot

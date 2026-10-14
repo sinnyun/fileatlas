@@ -56,7 +56,7 @@ impl PreviewService {
         saved.preview_zoom_at_cursor = Some(state.zoom_at_cursor);
         saved.preview_show_info = Some(state.show_info);
         if let Err(error) = session.replace(saved) {
-            eprintln!("preview transform session save failed: {error}");
+            tracing::error!("preview transform session save failed: {error}");
         }
     }
 
@@ -65,7 +65,7 @@ impl PreviewService {
         if let Ok(mut saved) = session.snapshot() {
             saved.preview_path = path.map(|path| path.to_string_lossy().into_owned());
             if let Err(error) = session.replace(saved) {
-                eprintln!("preview session save failed: {error}");
+                tracing::error!("preview session save failed: {error}");
             }
         }
     }

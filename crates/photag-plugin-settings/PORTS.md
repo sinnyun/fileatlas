@@ -83,3 +83,7 @@ Reference03 six Settings pages and07 update offer were rendered via PhoTag MCP. 
 ## Shared floating frame (2026-10-14)
 
 The existing settings modal content now uses UI Bridge `panels::mount`, ID settings, default900×680/minimum680×360 logical pixels. Header dragging, eight resize handles, maximize/restore and close are shared. Tab rail, automatic settings persistence and native update behavior stay in Settings. Body width/height use actual GPUI content bounds. The frame and host backdrop occlude underlying mouse targets; Settings key capture retains its original surface flags. Runtime pointer tab clicks, blank-area/backdrop isolation and frame drag/resize are recorded in the current validation report.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

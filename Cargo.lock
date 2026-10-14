@@ -5501,6 +5501,7 @@ dependencies = [
  "ndarray",
  "photag-plugin-settings",
  "thiserror 2.0.21",
+ "tracing",
  "tract-onnx",
  "ureq",
 ]
@@ -5515,6 +5516,24 @@ dependencies = [
  "serde",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "photag-plugin-debug"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "gpui-kit",
+ "photag-contracts",
+ "photag-ui-bridge",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5532,6 +5551,7 @@ dependencies = [
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5540,6 +5560,7 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -5552,6 +5573,7 @@ dependencies = [
  "photag-plugin-database",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
  "trash",
 ]
 
@@ -5569,18 +5591,35 @@ dependencies = [
  "photag-plugin-database",
  "photag-plugin-drag-drop",
  "photag-plugin-file-operations",
+ "photag-plugin-grouping",
  "photag-plugin-history",
  "photag-plugin-indexing",
  "photag-plugin-media-playback",
+ "photag-plugin-navigation",
  "photag-plugin-preview",
  "photag-plugin-session",
  "photag-plugin-settings",
  "photag-plugin-tagging",
+ "photag-plugin-thumbnails",
  "photag-ui-bridge",
  "rfd",
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "photag-plugin-grouping"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "photag-plugin-database",
+ "photag-ui-bridge",
+ "serde",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5595,6 +5634,7 @@ dependencies = [
  "photag-ui-bridge",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5610,6 +5650,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
  "unic-langid",
 ]
 
@@ -5623,6 +5664,7 @@ dependencies = [
  "photag-plugin-thumbnails",
  "rusqlite",
  "thiserror 2.0.21",
+ "tracing",
  "walkdir",
 ]
 
@@ -5635,6 +5677,7 @@ dependencies = [
  "image",
  "photag-contracts",
  "photag-plugin-database",
+ "photag-plugin-debug",
  "photag-plugin-dev-test",
  "photag-plugin-file-operations",
  "photag-plugin-gallery",
@@ -5650,6 +5693,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
  "windows-sys 0.61.2",
 ]
 
@@ -5667,6 +5711,7 @@ dependencies = [
  "rodio",
  "serde_json",
  "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -5680,6 +5725,7 @@ dependencies = [
  "rfd",
  "serde_json",
  "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -5700,6 +5746,7 @@ dependencies = [
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5726,6 +5773,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5739,6 +5787,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5758,6 +5807,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5769,6 +5819,7 @@ dependencies = [
  "photag-ui-bridge",
  "rusqlite",
  "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]
@@ -5782,6 +5833,7 @@ dependencies = [
  "sha2 0.10.9",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
  "zune-jpeg 0.5.15",
 ]
 
@@ -5794,6 +5846,7 @@ dependencies = [
  "serde_json",
  "sha2 0.10.9",
  "thiserror 2.0.21",
+ "tracing",
  "ureq",
 ]
 
@@ -5810,6 +5863,7 @@ dependencies = [
  "rusqlite",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5822,10 +5876,12 @@ dependencies = [
  "photag-contracts",
  "photag-plugin-ai",
  "photag-plugin-database",
+ "photag-plugin-debug",
  "photag-plugin-dev-test",
  "photag-plugin-drag-drop",
  "photag-plugin-file-operations",
  "photag-plugin-gallery",
+ "photag-plugin-grouping",
  "photag-plugin-history",
  "photag-plugin-i18n",
  "photag-plugin-indexing",
@@ -5843,6 +5899,7 @@ dependencies = [
  "photag-ui-bridge",
  "raw-window-handle",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5852,6 +5909,7 @@ dependencies = [
  "cordis-rs",
  "gpui-kit",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

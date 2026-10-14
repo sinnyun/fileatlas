@@ -75,6 +75,7 @@ impl HistoryService {
     }
 
     /// Record a completed operation; a fresh operation always discards redo.
+    #[tracing::instrument(skip_all)]
     pub fn push(&self, entry: UndoEntry) {
         let Ok(mut stacks) = self.stacks.lock() else {
             return;
@@ -118,6 +119,7 @@ impl HistoryService {
     }
 
     /// Apply the inverse of the latest action. Returns the source-compatible toast text.
+    #[tracing::instrument(skip_all)]
     pub async fn undo(&self) -> Option<String> {
         let entry = self.stacks.lock().ok()?.undo.pop()?;
         let message = format!("Undo: {}", describe(&entry));
@@ -168,6 +170,7 @@ impl HistoryService {
     }
 
     /// Re-apply the latest undone action.
+    #[tracing::instrument(skip_all)]
     pub async fn redo(&self) -> Option<String> {
         let entry = self.stacks.lock().ok()?.redo.pop()?;
         let message = format!("Redo: {}", describe(&entry));
@@ -275,6 +278,7 @@ impl Plugin for HistoryPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()
@@ -312,7 +316,7 @@ impl Plugin for HistoryPlugin {
                             .emit::<MediaIndexChanged>(Routing::Unscoped, ())
                             .await
                     {
-                        eprintln!("history refresh event failed: {error}");
+                        tracing::error!("history refresh event failed: {error}");
                     }
                 });
                 Ok::<_, std::convert::Infallible>(())

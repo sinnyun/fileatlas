@@ -41,7 +41,24 @@ impl ProgressRegistry {
         }
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
+            let started = std::time::Instant::now();
+            let mut last_phase = String::new();
+            let mut failed = false;
+            let mut completed = false;
+            tracing::info!(scan_id = id, "scan/backfill started");
             while let Ok(message) = input.recv() {
+                if let Some(p) = &message {
+                    if p.phase != last_phase || p.error.is_some() {
+                        tracing::info!(scan_id=id, phase=%p.phase, scanned=p.scanned, total=p.total, "indexing progress");
+                        last_phase = p.phase.clone();
+                    }
+                    if let Some(error) = &p.error {
+                        failed = true;
+                        tracing::error!(scan_id=id,%error,"indexing error");
+                    }
+                } else {
+                    completed = true;
+                }
                 if let Ok(mut scans) = active.lock() {
                     if let Some(progress) = &message {
                         scans.insert(id, progress.clone());
@@ -56,6 +73,13 @@ impl ProgressRegistry {
                     break;
                 }
             }
+            tracing::info!(
+                scan_id = id,
+                duration_ms = started.elapsed().as_secs_f64() * 1000.,
+                failed,
+                completed,
+                "scan/backfill stream ended"
+            );
             if let Ok(mut scans) = active.lock() {
                 scans.remove(&id);
             }

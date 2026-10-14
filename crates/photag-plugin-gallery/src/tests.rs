@@ -1,0 +1,203 @@
+use super::*;
+use photag_plugin_database::db::queries;
+
+#[test]
+fn keeps_full_rows_windowed_and_loads_new_viewport_range() {
+    let root = std::env::temp_dir().join(format!(
+        "photag-gallery-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+    let folder_path = root.join("library").to_string_lossy().into_owned();
+    std::fs::create_dir_all(&folder_path).unwrap();
+    let folder = database
+        .with_writer(|connection| queries::add_folder(connection, &folder_path))
+        .unwrap();
+    database
+        .with_writer(|connection| {
+            for index in 0..245 {
+                let filename = format!("image-{index:03}.png");
+                let path = format!("{folder_path}/{filename}");
+                queries::insert_media(
+                    connection,
+                    folder.id,
+                    &filename,
+                    &path,
+                    "image",
+                    index,
+                    1_700_000_000 + index,
+                    None,
+                    None,
+                    None,
+                )?;
+            }
+            Ok(())
+        })
+        .unwrap();
+
+    let gallery = GalleryService::new(database);
+    let snapshot = gallery.load(MediaQuery::default()).unwrap();
+    assert_eq!(snapshot.media_count, 245);
+    assert_eq!(snapshot.skeletons.len(), 245);
+    assert_eq!(snapshot.media.len(), MEDIA_WINDOW_SIZE);
+    assert_eq!(snapshot.window_offset, 0);
+    assert_eq!(snapshot.media[0].filename, "image-000.png");
+    assert!(gallery.ensure_window(&snapshot, 20..30).unwrap().is_none());
+
+    let window = gallery.ensure_window(&snapshot, 220..235).unwrap().unwrap();
+    assert_eq!(window.media.len(), MEDIA_WINDOW_SIZE);
+    assert!(window.offset <= 220);
+    assert!(window.offset + window.media.len() >= 235);
+    assert_eq!(window.media[220 - window.offset].filename, "image-220.png");
+    let page = gallery
+        .load_page(MediaQuery::default(), MEDIA_WINDOW_SIZE)
+        .unwrap();
+    assert_eq!(page.offset, MEDIA_WINDOW_SIZE);
+    assert_eq!(page.media.len(), 45);
+    assert_eq!(page.media[0].filename, "image-200.png");
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn applies_bulk_rating_with_source_range_clamping() {
+    let root = std::env::temp_dir().join(format!(
+        "photag-gallery-rating-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+    let media_id = database
+        .with_writer(|connection| {
+            let folder = queries::add_folder(connection, "/rating-test")?;
+            queries::insert_media(
+                connection,
+                folder.id,
+                "sample.jpg",
+                "/rating-test/sample.jpg",
+                "image",
+                12,
+                1_700_000_000,
+                None,
+                None,
+                None,
+            )
+        })
+        .unwrap();
+    let gallery = GalleryService::new(Arc::clone(&database));
+    gallery.apply_rating(&[media_id], 6).unwrap();
+    assert_eq!(gallery.media_by_id(media_id).unwrap().unwrap().rating, 5);
+    gallery.apply_rating(&[media_id], 0).unwrap();
+    assert_eq!(gallery.media_by_id(media_id).unwrap().unwrap().rating, 0);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[tokio::test]
+async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
+    use cordis::{Context, Plugin, PreparedPlugin, Routing};
+    use photag_contracts::{DirectoryPathSelected, FolderSelectionChanged, TagSelectionChanged};
+    use photag_ui_bridge::{UiBridgeService, UiCatalog};
+
+    let root = std::env::temp_dir().join(format!(
+        "photag-gallery-plugin-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let context = Context::new();
+    let catalog = Arc::new(UiCatalog::default());
+    let _ui = context
+        .provide(Arc::new(UiBridgeService::new(Arc::clone(&catalog))))
+        .unwrap();
+    let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
+    let _database = context.provide(Arc::clone(&database)).unwrap();
+    let _file_operations = context
+        .provide(Arc::new(FileOperationsService::new(
+            Arc::clone(&database),
+            context.clone(),
+        )))
+        .unwrap();
+    let _drag_drop = context.provide(Arc::new(DragDropService)).unwrap();
+    let _playback = context
+        .provide(Arc::new(
+            MediaPlaybackService::new(root.join("playback")).unwrap(),
+        ))
+        .unwrap();
+    let _preview = context
+        .provide(Arc::new(
+            PreviewService::open_at(root.join("preview")).unwrap(),
+        ))
+        .unwrap();
+    let _session = context
+        .provide(Arc::new(SessionService::open_at(root.join("session.json"))))
+        .unwrap();
+    let _grouping = context
+        .provide(Arc::new(photag_plugin_grouping::GroupingService))
+        .unwrap();
+    let plugin = GalleryPlugin;
+    let input = plugin.prepare(GalleryConfig).unwrap();
+    let fiber = context
+        .spawn(PreparedPlugin::from_input(plugin, input))
+        .await
+        .unwrap();
+    fiber.ready().await.unwrap();
+    assert_eq!(catalog.snapshot().unwrap().len(), 3);
+    context
+        .emit::<FolderSelectionChanged>(Routing::Unscoped, Some(42))
+        .await
+        .unwrap();
+    let selection = context.try_service::<SelectedFolder>().unwrap();
+    assert_eq!(*selection.0.lock().unwrap(), Some(42));
+    context
+        .emit::<TagSelectionChanged>(Routing::Unscoped, Some(8))
+        .await
+        .unwrap();
+    let selected_tag = context.try_service::<SelectedTag>().unwrap();
+    assert_eq!(selected_tag.0.lock().unwrap().included, vec![8]);
+    assert_eq!(
+        *context
+            .try_service::<SelectedFolder>()
+            .unwrap()
+            .0
+            .lock()
+            .unwrap(),
+        None
+    );
+    context
+        .emit::<DirectoryPathSelected>(Routing::Unscoped, Some("/library/trips".into()))
+        .await
+        .unwrap();
+    assert_eq!(
+        context
+            .try_service::<SelectedPath>()
+            .unwrap()
+            .0
+            .lock()
+            .unwrap()
+            .as_deref(),
+        Some("/library/trips")
+    );
+    context
+        .emit::<MediaIndexChanged>(Routing::Unscoped, ())
+        .await
+        .unwrap();
+    assert_eq!(
+        context
+            .try_service::<IndexRevision>()
+            .unwrap()
+            .0
+            .load(Ordering::Acquire),
+        1
+    );
+    fiber.dispose().await.unwrap();
+    assert!(catalog.snapshot().unwrap().is_empty());
+    let _ = std::fs::remove_dir_all(root);
+}

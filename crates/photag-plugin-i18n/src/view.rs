@@ -1,4 +1,5 @@
 use crate::{I18nService, Language};
+use gpui_kit::assets::IconName;
 use gpui_kit::{base::StyledExt, component::button::Button, *};
 use photag_ui_bridge::{UiViewContribution, i18n::tr, theme};
 use std::sync::Weak;
@@ -40,10 +41,12 @@ impl Render for LanguageView {
                     ]
                     .map(|(language, label)| {
                         Button::new(format!("i18n-{}", language.code()))
-                            .label(format!(
-                                "{} {label}",
-                                if selected == language { "●" } else { "○" }
-                            ))
+                            .icon(theme::small_icon(if selected == language {
+                                IconName::CircleDot
+                            } else {
+                                IconName::Circle
+                            }))
+                            .label(label)
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.error = this.service.upgrade().and_then(|service| {
                                     service

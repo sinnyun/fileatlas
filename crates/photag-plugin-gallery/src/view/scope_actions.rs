@@ -12,7 +12,7 @@ impl GalleryView {
                 .emit::<UiCommandInvoked>(Routing::Unscoped, command_id)
                 .await
             {
-                eprintln!("command dispatch failed: {error}");
+                tracing::error!("command dispatch failed: {error}");
             }
         });
     }
@@ -49,7 +49,7 @@ impl GalleryView {
                 .emit::<photag_contracts::TagFilterSelectionChanged>(Routing::Unscoped, selection)
                 .await
             {
-                eprintln!("tag filter dispatch failed: {error}");
+                tracing::error!("tag filter dispatch failed: {error}");
             }
         });
     }
@@ -76,15 +76,34 @@ impl GalleryView {
     }
 
     pub(super) fn set_month_grouping(&mut self, enabled: bool, cx: &mut Context<Self>) {
-        self.group_by_month = enabled;
+        self.set_grouping(
+            if enabled {
+                photag_plugin_grouping::GroupingMode::Month
+            } else {
+                photag_plugin_grouping::GroupingMode::None
+            },
+            cx,
+        );
+    }
+
+    #[tracing::instrument(skip_all, fields(mode=?mode))]
+    pub(super) fn set_grouping(
+        &mut self,
+        mode: photag_plugin_grouping::GroupingMode,
+        cx: &mut Context<Self>,
+    ) {
+        self.grouping_mode = mode;
+        self.collapsed_months.clear();
         self.row_layout_key = None;
         if let Some(settings) = &self.settings {
-            if let Err(error) = settings.update(|settings| settings.show_date_dividers = enabled) {
-                self.operation_status =
-                    Some(format!("Month grouping preference save failed: {error}"));
+            if let Err(error) = settings.update(|s| {
+                s.show_date_dividers = mode == photag_plugin_grouping::GroupingMode::Month
+            }) {
+                self.operation_status = Some(format!("Grouping preference save failed: {error}"));
             }
         }
-        self.persist_filter_session();
+        self.refresh_index();
+        self.pending_scroll_restore = None;
         cx.notify();
     }
 

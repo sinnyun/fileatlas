@@ -1,6 +1,5 @@
 use super::super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 
 pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> Div {
     let items = [
@@ -42,7 +41,7 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
                     this.set_navigation_page(page);
                     cx.notify();
                 }))
-                .child(Icon::new(icon).size(px(17.)))
+                .child(theme::icon(icon))
                 .child(photag_ui_bridge::i18n::tr(label)),
         );
     }
@@ -72,7 +71,7 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
                 .gap(px(6.))
                 .py(px(26.))
                 .text_color(rgb(theme::TEXT_MUTED))
-                .child(Icon::new(IconName::Puzzle).size(px(22.)))
+                .child(theme::large_icon(IconName::Puzzle))
                 .child(photag_ui_bridge::i18n::tr("No available add-ons.")),
         );
     }

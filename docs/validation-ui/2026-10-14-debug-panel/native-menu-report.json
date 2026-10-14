@@ -1,0 +1,2497 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-debug-panel.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus",
+  "started": "2026-10-14T15:51:27.104Z",
+  "steps": [
+    {
+      "tool": "resize_window",
+      "arguments": {
+        "width": 1942,
+        "height": 1256
+      },
+      "wait_ms": 300,
+      "result": {
+        "ok": true,
+        "requested_width": 1942,
+        "requested_height": 1256,
+        "actual_width": 1942,
+        "actual_height": 1256
+      }
+    },
+    {
+      "tool": "control_debug",
+      "arguments": {
+        "action": "open"
+      },
+      "wait_ms": 350,
+      "result": {
+        "ok": true,
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 0,
+            "through_id": null
+          },
+          "selected": null
+        }
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "112,411"
+      },
+      "wait_ms": 150,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "112,411"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-category-menu.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "110,80"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "110,80"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "result": {
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "database",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 0,
+            "through_id": null
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [
+            {
+              "id": 64,
+              "time": "2026-10-14T23:51:27.900+08:00",
+              "elapsed_ms": 762.9951000000001,
+              "level": "INFO",
+              "category": "database",
+              "target": "photag_plugin_database",
+              "action": "with_reader",
+              "message": "completed caller=crates\\photag-plugin-gallery\\src\\lib.rs:233:26 ",
+              "duration_ms": 0.30469999999999997,
+              "span_id": 4503599627370498,
+              "parent_span_id": 49539595901075460,
+              "thread": "ThreadId(1)"
+            }
+          ],
+          "total": 14,
+          "retained": 99,
+          "evicted": 0,
+          "page": 0,
+          "pages": 14,
+          "page_size": 1,
+          "latest_id": 99,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-database-native.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "215,411"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "215,411"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-level-menu.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "215,468"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "215,468"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "result": {
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "database",
+            "level": "ERROR",
+            "search": "",
+            "page": 0,
+            "page_size": 0,
+            "through_id": null
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [],
+          "total": 0,
+          "retained": 103,
+          "evicted": 0,
+          "page": 0,
+          "pages": 1,
+          "page_size": 1,
+          "latest_id": 103,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-error-native-filter.png"
+    },
+    {
+      "tool": "control_debug",
+      "arguments": {
+        "action": "category",
+        "value": ""
+      },
+      "wait_ms": 350,
+      "result": {
+        "ok": true,
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "ERROR",
+            "search": "",
+            "page": 0,
+            "page_size": 0,
+            "through_id": null
+          },
+          "selected": null
+        }
+      }
+    },
+    {
+      "tool": "control_debug",
+      "arguments": {
+        "action": "level",
+        "value": ""
+      },
+      "wait_ms": 350,
+      "result": {
+        "ok": true,
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 0,
+            "through_id": null
+          },
+          "selected": null
+        }
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "1140,744"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "1140,744"
+      },
+      "wait_ms": 250,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-page-size-menu.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "1135,695"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "1135,695"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "until": {
+        "field": "ui.filter.page_size",
+        "equals": 25
+      },
+      "result": {
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 25,
+            "through_id": null
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [
+            {
+              "id": 107,
+              "time": "2026-10-14T23:52:37.023+08:00",
+              "elapsed_ms": 69881.64,
+              "level": "INFO",
+              "category": "mcp",
+              "target": "photag_plugin_mcp::tools_ui",
+              "action": "serve_inner",
+              "message": "message=MCP control request request=UiRequest { action: \"pointer_up\", value: Some(\"1135,695\") } ",
+              "duration_ms": null,
+              "span_id": 824633720833,
+              "parent_span_id": null,
+              "thread": "ThreadId(13)"
+            }
+          ],
+          "total": 107,
+          "retained": 107,
+          "evicted": 0,
+          "page": 0,
+          "pages": 107,
+          "page_size": 1,
+          "latest_id": 107,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-page-size-native.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "477,411"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "477,411"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "result": {
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 25,
+            "through_id": 109
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [
+            {
+              "id": 109,
+              "time": "2026-10-14T23:52:38.676+08:00",
+              "elapsed_ms": 71534.7708,
+              "level": "INFO",
+              "category": "mcp",
+              "target": "photag_plugin_mcp::tools_ui",
+              "action": "serve_inner",
+              "message": "message=MCP control request request=UiRequest { action: \"pointer_up\", value: Some(\"477,411\") } ",
+              "duration_ms": null,
+              "span_id": 824633720833,
+              "parent_span_id": null,
+              "thread": "ThreadId(13)"
+            }
+          ],
+          "total": 109,
+          "retained": 109,
+          "evicted": 0,
+          "page": 0,
+          "pages": 109,
+          "page_size": 1,
+          "latest_id": 109,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-pause-native.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "477,411"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "477,411"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "until": {
+        "field": "ui.filter.through_id",
+        "equals": null
+      },
+      "result": {
+        "ui": {
+          "open": true,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 25,
+            "through_id": null
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [
+            {
+              "id": 111,
+              "time": "2026-10-14T23:53:01.995+08:00",
+              "elapsed_ms": 94852.492,
+              "level": "INFO",
+              "category": "mcp",
+              "target": "photag_plugin_mcp::tools_ui",
+              "action": "serve_inner",
+              "message": "message=MCP control request request=UiRequest { action: \"pointer_up\", value: Some(\"477,411\") } ",
+              "duration_ms": null,
+              "span_id": 824633720833,
+              "parent_span_id": null,
+              "thread": "ThreadId(13)"
+            }
+          ],
+          "total": 111,
+          "retained": 111,
+          "evicted": 0,
+          "page": 0,
+          "pages": 111,
+          "page_size": 1,
+          "latest_id": 111,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "590,411"
+      },
+      "wait_ms": 120,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "590,411"
+      },
+      "wait_ms": 350,
+      "result": {
+        "library_refresh": {
+          "running": false,
+          "total_folders": 0,
+          "completed_folders": 0,
+          "failures": []
+        },
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "browsing": false,
+          "current_directory": null,
+          "parent_directory": null,
+          "directories": [],
+          "selected_directory": null,
+          "directory_error": null,
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "grouping_mode": "month",
+          "groups": [],
+          "collapsed_groups": [],
+          "matched_count": 0,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 0,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [],
+        "gallery_animation_frames": [],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_debug_info",
+      "arguments": {
+        "page_size": 1
+      },
+      "wait_ms": 0,
+      "until": {
+        "field": "ui.open",
+        "equals": false
+      },
+      "result": {
+        "ui": {
+          "open": false,
+          "filter": {
+            "category": "",
+            "level": "",
+            "search": "",
+            "page": 0,
+            "page_size": 25,
+            "through_id": null
+          },
+          "selected": null
+        },
+        "logs": {
+          "records": [
+            {
+              "id": 113,
+              "time": "2026-10-14T23:53:02.492+08:00",
+              "elapsed_ms": 95350.0798,
+              "level": "INFO",
+              "category": "mcp",
+              "target": "photag_plugin_mcp::tools_ui",
+              "action": "serve_inner",
+              "message": "message=MCP control request request=UiRequest { action: \"pointer_up\", value: Some(\"590,411\") } ",
+              "duration_ms": null,
+              "span_id": 824633720833,
+              "parent_span_id": null,
+              "thread": "ThreadId(13)"
+            }
+          ],
+          "total": 113,
+          "retained": 113,
+          "evicted": 0,
+          "page": 0,
+          "pages": 113,
+          "page_size": 1,
+          "latest_id": 113,
+          "categories": [
+            "ai",
+            "database",
+            "debug",
+            "dev_test",
+            "drag_drop",
+            "file_operations",
+            "gallery",
+            "globset",
+            "gpui",
+            "gpui_windows",
+            "grouping",
+            "history",
+            "i18n",
+            "indexing",
+            "mcp",
+            "media_playback",
+            "metadata_export",
+            "navigation",
+            "preview",
+            "rmcp",
+            "rustls",
+            "session",
+            "settings",
+            "shell",
+            "tagging",
+            "thumbnails",
+            "ui_bridge",
+            "updater",
+            "ureq",
+            "watcher"
+          ]
+        }
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-debug-panel-menus\\screenshots\\debug-close-native.png"
+    }
+  ]
+}

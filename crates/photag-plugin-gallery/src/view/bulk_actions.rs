@@ -15,7 +15,7 @@ use photag_plugin_database::db::queries::{MediaItem, MediaQuery};
 use photag_ui_bridge::theme;
 use std::sync::Arc;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BulkActionKind {
     Delete,
     CopyTo,
@@ -37,7 +37,7 @@ impl BulkActionKind {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BulkActionSource {
     WholeLibrary,
     SelectedFolder,
@@ -112,6 +112,15 @@ fn matching_results(
         BulkActionSource::SelectedFolder => {
             query.folder_id = view.filter.folder_id;
             query.path_prefix = view.filter.path_prefix.clone();
+            if let Ok(snapshot) = &view.snapshot {
+                if snapshot.browser.active {
+                    if snapshot.browser.directory.is_none() {
+                        return Err("Select a folder first.".into());
+                    }
+                    query.direct_directory = snapshot.browser.directory.clone();
+                    query.path_prefix = None;
+                }
+            }
         }
         BulkActionSource::SelectedTag => {
             let ids = view.filter.selected_tag_ids.clone();
@@ -536,7 +545,9 @@ fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Di
             } else {
                 "gallery-bulk-clear-date-to"
             })
-            .label(photag_ui_bridge::i18n::tr(&("×").to_string()))
+            .icon(photag_ui_bridge::theme::small_icon(
+                gpui_kit::assets::IconName::X,
+            ))
             .on_click(cx.listener(move |this, _, window, cx| {
                 if from {
                     this.bulk_date_from_value = None;

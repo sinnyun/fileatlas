@@ -16,6 +16,28 @@ impl GalleryView {
         cx: &mut Context<Self>,
     ) {
         let gallery_focused = self.focus_handle.is_focused(window);
+        if gallery_focused && event.keystroke.key.eq_ignore_ascii_case("f5") {
+            self.refresh_index();
+            cx.notify();
+            return;
+        }
+        if gallery_focused && event.keystroke.modifiers.alt && event.keystroke.key == "up" {
+            self.directory_up(cx);
+            return;
+        }
+        if gallery_focused && event.keystroke.key == "enter" {
+            if let Some(path) = self.selected_directory.clone() {
+                self.open_directory(path, cx);
+                return;
+            }
+        }
+        if gallery_focused
+            && event.keystroke.key == "escape"
+            && self.selected_directory.take().is_some()
+        {
+            cx.notify();
+            return;
+        }
         if event.keystroke.modifiers.control
             && !event.keystroke.modifiers.shift
             && event.keystroke.key.eq_ignore_ascii_case("z")

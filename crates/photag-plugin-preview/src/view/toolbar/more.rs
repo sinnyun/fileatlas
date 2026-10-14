@@ -55,7 +55,7 @@ pub(super) fn button(
                         .w_full()
                         .h_flex()
                         .gap_2()
-                        .child(gpui_kit::component::Icon::new(icon))
+                        .child(theme::icon(icon))
                         .child(tr(label)),
                 )
                 .text_color(rgb(if id == "delete" {
@@ -89,7 +89,7 @@ pub(super) fn button(
                 cx.notify();
             });
         })
-        .trigger(tool_button("more", tr("More")).icon(IconName::Ellipsis))
+        .trigger(tool_button("more", tr("More")).icon(theme::icon(IconName::Ellipsis)))
         .child(menu)
         .into_any_element()
 }

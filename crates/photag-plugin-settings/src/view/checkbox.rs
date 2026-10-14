@@ -49,20 +49,8 @@ impl SettingsView {
                     .group_active(group, |style| style.bg(rgb(theme::SURFACE_ELEVATED)))
                     .when(value, |indicator| {
                         indicator.child(
-                            canvas(
-                                |bounds, _, _| bounds,
-                                |bounds, _, window, _| {
-                                    let small = bounds.inset(px(3.));
-                                    let mut path = PathBuilder::stroke(px(1.));
-                                    path.move_to(point(small.left(), small.center().y));
-                                    path.line_to(point(small.center().x, small.bottom()));
-                                    path.line_to(point(small.right(), small.top()));
-                                    if let Ok(path) = path.build() {
-                                        window.paint_path(path, rgb(theme::TEXT_PRIMARY));
-                                    }
-                                },
-                            )
-                            .size_full(),
+                            theme::small_icon(gpui_kit::assets::IconName::Check)
+                                .text_color(rgb(theme::TEXT_PRIMARY)),
                         )
                     }),
             )

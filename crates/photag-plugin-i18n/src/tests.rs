@@ -14,8 +14,10 @@ fn temporary(name: &str) -> PathBuf {
 #[test]
 fn both_catalogs_format_every_message_and_preserve_arguments() {
     let service = I18nService::open(temporary("catalog/language.json")).unwrap();
-    let args: [(&str, String); 15] = [
+    let args: [(&str, String); 17] = [
         ("count", "9".into()),
+        ("folders", "2".into()),
+        ("files", "5".into()),
         ("query", "sample.jpg".into()),
         ("key", "Space".into()),
         ("photos", "8".into()),
@@ -57,6 +59,10 @@ fn both_catalogs_format_every_message_and_preserve_arguments() {
     *service.language.write().unwrap() = Language::Chinese;
     assert_eq!(service.translate("{count} selected", &args), "已选择 9 项");
     assert_eq!(service.translate("✓ Photos", &[]), "✓ 照片");
+    assert_eq!(
+        service.translate("{folders} folders · {files} files", &args),
+        "2 个文件夹 · 5 个文件"
+    );
     assert_eq!(
         service.translate("user-created tag", &[]),
         "user-created tag"

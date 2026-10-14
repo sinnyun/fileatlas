@@ -1,7 +1,6 @@
 use super::*;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::Icon;
 
 impl Render for PreviewView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -137,7 +136,7 @@ impl Render for PreviewView {
                             &(if rating == 0 {
                                 "No rating".into()
                             } else {
-                                format!("{rating}★")
+                                format!("Rating {rating}")
                             })
                             .to_string(),
                         ))
@@ -152,9 +151,14 @@ impl Render for PreviewView {
                         .justify_center()
                         .gap_3()
                         .text_color(rgb(theme::TEXT_PRIMARY))
-                        .child(div().text_2xl().child("♫"))
+                        .child(theme::large_icon(IconName::Music))
                         .child(div().text_lg().font_medium().child(title.clone()))
-                        .child(button("▶  Open in default player").on_click(open))
+                        .child(
+                            Button::new("preview-open-default-player")
+                                .icon(theme::icon(IconName::ExternalLink))
+                                .label(photag_ui_bridge::i18n::tr("Open in default player"))
+                                .on_click(open),
+                        )
                         .child(div().h_flex().gap_1().children(ratings))
                         .into_any_element(),
                     1.0,
@@ -167,7 +171,7 @@ impl Render for PreviewView {
                     .justify_center()
                     .gap_2()
                     .text_color(rgb(theme::TEXT_PRIMARY))
-                    .child(div().text_2xl().child("▶"))
+                    .child(theme::large_icon(IconName::Play))
                     .child(div().text_lg().font_medium().child(title.clone()))
                     .child(photag_ui_bridge::i18n::tr(
                         "Video is playing in Media Playback.",
@@ -363,7 +367,7 @@ impl Render for PreviewView {
                     .border_b_1()
                     .border_color(rgba(theme::SEPARATOR_LIGHT))
                     .opacity(chrome_alpha)
-                    .child(Icon::new(IconName::Aperture).text_color(rgb(theme::accent())))
+                    .child(theme::icon(IconName::Aperture).text_color(rgb(theme::accent())))
                     .child(div().text_sm().font_medium().child("PhoTag"))
                     .child(
                         div()
@@ -372,17 +376,25 @@ impl Render for PreviewView {
                             .bg(rgba(theme::SEPARATOR_LIGHT)),
                     )
                     .child(div().flex_1().min_w_0().text_sm().child(title.clone()))
-                    .child(button("Info").icon(IconName::Info).on_click(info))
+                    .child(
+                        button("Info")
+                            .icon(theme::icon(IconName::Info))
+                            .on_click(info),
+                    )
                     .child(
                         button("AI")
-                            .icon(IconName::Sparkles)
+                            .icon(theme::icon(IconName::Sparkles))
                             .disabled(snapshot.media_id.is_none())
                             .on_click(ai),
                     )
-                    .child(button("EXIF").icon(IconName::Tag).on_click(exif))
+                    .child(
+                        button("EXIF")
+                            .icon(theme::icon(IconName::Tag))
+                            .on_click(exif),
+                    )
                     .child(
                         button("Close")
-                            .icon(IconName::Close)
+                            .icon(theme::icon(IconName::Close))
                             .tooltip(photag_ui_bridge::i18n::tr("Close"))
                             .on_click(close),
                     ),

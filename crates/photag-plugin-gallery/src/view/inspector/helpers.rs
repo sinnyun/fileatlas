@@ -67,12 +67,11 @@ pub(super) fn section_header(
         .h(px(34.))
         .cursor_pointer()
         .child(
-            Icon::new(if expanded {
+            theme::small_icon(if expanded {
                 IconName::ChevronDown
             } else {
                 IconName::ChevronRight
             })
-            .size(px(14.))
             .text_color(rgb(theme::TEXT_MUTED)),
         )
         .child(
@@ -92,7 +91,7 @@ pub(super) fn inspector_empty() -> AnyElement {
         .justify_center()
         .gap(px(8.))
         .child(
-            Icon::new(IconName::Info)
+            theme::icon(IconName::Info)
                 .size(px(24.))
                 .text_color(rgb(theme::TEXT_MUTED)),
         )

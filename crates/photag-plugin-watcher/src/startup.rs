@@ -76,7 +76,7 @@ impl StartupRefresh {
     }
 
     fn failure(&self, path: &str, error: String) {
-        eprintln!("PhoTag startup library refresh failed for {path}: {error}");
+        tracing::error!("PhoTag startup library refresh failed for {path}: {error}");
         if let Ok(mut state) = self.state.lock() {
             state.failures.push((path.into(), error));
         }
@@ -96,7 +96,7 @@ impl StartupRefresh {
             if let Err(error) =
                 runtime.block_on(cordis.emit::<MediaIndexChanged>(Routing::Unscoped, ()))
             {
-                eprintln!("startup index notification failed: {error}");
+                tracing::error!("startup index notification failed: {error}");
             }
         }
     }

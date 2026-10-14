@@ -55,3 +55,7 @@ Reference05 rendered with decoded320x180 H264 frames contained across the stage.
 ## Shared floating frame (2026-10-14)
 
 Playback content uses UI Bridge frame ID playback, default960×640 logical pixels, for both audio and video. Transport/FFmpeg/Tagging/FileOperations contracts remain the feature's existing services; shared title controls call MediaPlaybackService::close. UI frame drag, maximize/restore and real WAV/MP4 rendering were exercised in an isolated profile. Codec corpus, sound quality and concurrent media decoding are not covered.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.

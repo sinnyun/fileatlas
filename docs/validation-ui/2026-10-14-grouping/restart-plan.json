@@ -1,0 +1,1 @@
+[{"tool": "get_ui_state", "until": {"field": "gallery.grouping_mode", "equals": "file_type"}, "wait_ms": 800, "capture": "restart-restored-final"}]

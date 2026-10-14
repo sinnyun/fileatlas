@@ -4,7 +4,6 @@
 
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Disableable;
-use gpui_kit::component::Icon;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 mod helpers;
@@ -44,7 +43,7 @@ impl GalleryView {
                         Button::new("gallery-inspector-open-preview")
                             .ghost()
                             .compact()
-                            .icon(IconName::ExternalLink)
+                            .icon(theme::icon(IconName::ExternalLink))
                             .tooltip(photag_ui_bridge::i18n::tr("Open preview"))
                             .disabled(self.selection.selected_media_ids.is_empty())
                             .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
@@ -53,11 +52,11 @@ impl GalleryView {
                         Button::new("gallery-inspector-close")
                             .ghost()
                             .compact()
-                            .icon(IconName::X)
+                            .icon(theme::icon(IconName::X))
                             .tooltip(photag_ui_bridge::i18n::tr("Close inspector"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 if let Err(error) = this.surfaces.set_open("inspector", false) {
-                                    eprintln!("could not close inspector surface: {error}");
+                                    tracing::error!("could not close inspector surface: {error}");
                                 }
                                 cx.notify();
                             })),
@@ -215,7 +214,7 @@ impl GalleryView {
                             .id(format!("gallery-inspector-tag-remove-{tag_id}"))
                             .cursor_pointer()
                             .child(
-                                Icon::new(IconName::X)
+                                theme::icon(IconName::X)
                                     .size(px(11.))
                                     .text_color(rgb(theme::TEXT_MUTED)),
                             )
@@ -239,7 +238,7 @@ impl GalleryView {
                 .items_center()
                 .justify_center()
                 .child(
-                    Icon::new(IconName::Plus)
+                    theme::icon(IconName::Plus)
                         .size(px(13.))
                         .text_color(rgb(theme::TEXT_SECONDARY)),
                 )
@@ -279,7 +278,7 @@ impl GalleryView {
         let more = Button::new("gallery-inspector-more")
             .ghost()
             .compact()
-            .icon(IconName::Ellipsis)
+            .icon(theme::icon(IconName::Ellipsis))
             .tooltip(photag_ui_bridge::i18n::tr("More"))
             .dropdown_menu(move |mut menu, _, _| {
                 let open_view = menu_view.clone();
@@ -352,7 +351,7 @@ impl GalleryView {
                         .outline()
                         .w_full()
                         .label(photag_ui_bridge::i18n::tr("Show in Explorer"))
-                        .icon(IconName::FolderOpen)
+                        .icon(theme::icon(IconName::FolderOpen))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.open_media_action(media_id, true, cx)
                         })),

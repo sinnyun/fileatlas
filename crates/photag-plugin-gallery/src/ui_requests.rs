@@ -1,9 +1,12 @@
 use super::*;
 
 /// Requests consumed by the live Gallery view, using its existing actions.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum GalleryUiRequest {
     Layout(bool),
+    OpenDirectory(String),
+    DirectoryUp,
+    Refresh,
     Statistics,
     BulkActions,
     ConfigureBulk(crate::BulkActionKind, crate::BulkActionSource),
@@ -28,17 +31,28 @@ pub enum GalleryUiRequest {
     InspectorSection(&'static str),
     TagPicker,
     MonthGrouping(bool),
+    Grouping(photag_plugin_grouping::GroupingMode),
+    ToggleGroup(String),
 }
 
 /// Snapshot published by the rendered Gallery entity, not a separate query.
 #[derive(Clone)]
 pub struct GalleryUiSnapshot {
     pub filter: filter::GalleryFilter,
+    pub browsing: bool,
+    pub directories: Vec<crate::GalleryDirectory>,
+    pub current_directory: Option<String>,
+    pub parent_directory: Option<String>,
+    pub directory_error: Option<String>,
+    pub selected_directory: Option<String>,
     pub selected_media_ids: Vec<i64>,
     pub matched_count: usize,
     pub window_offset: usize,
     pub loaded_count: usize,
     pub group_by_month: bool,
+    pub grouping_mode: photag_plugin_grouping::GroupingMode,
+    pub groups: Vec<(String, usize)>,
+    pub collapsed_groups: Vec<String>,
     pub list_layout: bool,
     pub inspector_sections: Vec<&'static str>,
     pub bulk_action: Option<&'static str>,

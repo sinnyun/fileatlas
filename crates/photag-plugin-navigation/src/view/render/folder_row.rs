@@ -1,7 +1,6 @@
 //! Source sidebar.rs:65-110,164-178 and theme.rs:535-547.
 use super::super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 
 pub(super) fn folder_row(
     id: String,
@@ -22,7 +21,7 @@ pub(super) fn folder_row(
         .pr(px(6.))
         .gap(px(6.))
         .hover(|style| style.bg(rgba(0xffffff10)))
-        .child(Icon::new(icon).size(px(14.)).text_color(rgb(if selected {
+        .child(theme::small_icon(icon).text_color(rgb(if selected {
             theme::accent_hover()
         } else {
             theme::TEXT_SECONDARY

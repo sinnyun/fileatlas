@@ -1,6 +1,5 @@
 use super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Icon;
 use photag_plugin_database::db::queries::MediaQuery;
 
 pub(super) fn render(
@@ -87,7 +86,7 @@ pub(super) fn render(
                     let label = if rating == 0 {
                         "0".to_owned()
                     } else {
-                        format!("{rating}★")
+                        format!("Rating {rating}")
                     };
                     (label, count)
                 })
@@ -190,7 +189,7 @@ fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
                 .items_center()
                 .gap_2()
                 .child(
-                    Icon::new(icon)
+                    theme::icon(icon)
                         .size(px(16.))
                         .text_color(rgb(theme::TEXT_SECONDARY)),
                 )

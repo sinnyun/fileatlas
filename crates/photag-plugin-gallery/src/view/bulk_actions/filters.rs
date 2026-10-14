@@ -213,7 +213,11 @@ fn bulk_tag_rows(
                 .pl(px((depth as f32) * 16.))
                 .child(
                     Button::new(format!("gallery-bulk-tag-{id}"))
-                        .label(if checked { "☑" } else { "□" })
+                        .icon(theme::small_icon(if checked {
+                            gpui_kit::assets::IconName::Check
+                        } else {
+                            gpui_kit::assets::IconName::Square
+                        }))
                         .on_click(cx.listener(move |this, _, _, cx| {
                             if let Some(index) =
                                 this.bulk_tag_ids.iter().position(|tag_id| *tag_id == id)
@@ -288,13 +292,13 @@ pub(super) fn match_results_list(
                         .items_center()
                         .justify_center()
                         .bg(rgb(theme::SURFACE_FAINT))
-                        .child(if item.media_type == "video" {
-                            "▶"
+                        .child(theme::large_icon(if item.media_type == "video" {
+                            gpui_kit::assets::IconName::Play
                         } else if item.media_type == "audio" {
-                            "♫"
+                            gpui_kit::assets::IconName::Music
                         } else {
-                            "▧"
-                        }),
+                            gpui_kit::assets::IconName::Image
+                        })),
                 );
             }
             list = list.child(

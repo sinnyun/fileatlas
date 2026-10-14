@@ -5,6 +5,7 @@ pub(crate) mod bulk_actions;
 mod card;
 mod card_menu;
 mod card_motion;
+mod directory_browser;
 mod empty_state;
 mod factory;
 mod file_actions;
@@ -113,6 +114,7 @@ struct GalleryView {
     focus_handle: FocusHandle,
     filter: GalleryFilter,
     selection: GallerySelection,
+    selected_directory: Option<String>,
     rubberband: Option<GalleryRubberband>,
     scroll: ListState,
     pending_scroll_restore: Option<f32>,
@@ -121,7 +123,7 @@ struct GalleryView {
     row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
     thumb_size: f32,
     list_layout: bool,
-    group_by_month: bool,
+    grouping_mode: photag_plugin_grouping::GroupingMode,
     show_selection_details: bool,
     show_tag_picker: bool,
     media_actions_id: Option<i64>,

@@ -53,7 +53,7 @@ impl WatcherService {
                 while !stop.load(Ordering::Acquire) {
                     if let Some(service) = weak.upgrade() {
                         if let Err(error) = service.poll_and_reconcile() {
-                            eprintln!("PhoTag filesystem reconciliation failed: {error}");
+                            tracing::error!("PhoTag filesystem reconciliation failed: {error}");
                         }
                     } else {
                         break;
@@ -179,7 +179,7 @@ impl WatcherService {
                         .emit::<MediaIndexChanged>(Routing::Unscoped, ())
                         .await
                     {
-                        eprintln!("media index change dispatch failed: {error}");
+                        tracing::error!("media index change dispatch failed: {error}");
                     }
                 });
             }
@@ -221,6 +221,7 @@ impl Plugin for WatcherPlugin {
         Ok(config)
     }
 
+    #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let database = context
             .try_service::<DatabaseService>()
