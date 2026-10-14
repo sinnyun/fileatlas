@@ -23,6 +23,8 @@ impl PhoTagMcpServer {
     )]
     fn get_ui_state(&self) -> String {
         json!({
+            "library_refresh": self.navigation.library_refresh().map(|state| json!({"running":state.running,"total_folders":state.total_folders,"completed_folders":state.completed_folders,"failures":state.failures})),
+            "folder_picker": {"pending": self.navigation.folder_picker_pending(), "native_open": self.navigation.folder_picker_window().is_some()},
             "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
             "tools_open": self.surfaces.is_open("tools"),
             "gallery": self.gallery.ui_snapshot().map(|state| json!({

@@ -8,20 +8,11 @@ use std::path::Path;
 use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
-const MEDIA_EXTENSIONS: &[&str] = &[
-    "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif", "svg", "ico", "heic", "heif",
-    "avif", "mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "m4v", "mpg", "mpeg", "3gp",
-];
-
 /// Maximum number of events to drain from the channel per poll, to avoid
 /// blocking the UI thread when a flood of FS events accumulates.
 const MAX_DRAIN_PER_POLL: usize = 4000;
 /// Maximum number of paths to return per poll, to spread DB work across frames.
 const MAX_EMIT_PER_POLL: usize = 200;
-
-fn is_media_ext(ext: &str) -> bool {
-    MEDIA_EXTENSIONS.contains(&ext)
-}
 
 /// Decide whether an event kind is "interesting" for our purposes.
 /// We accept Create, Remove, and Rename — but ignore generic Modify events,
@@ -110,21 +101,6 @@ impl FolderWatcher {
             };
 
             for path in &event.paths {
-                let ext = path
-                    .extension()
-                    .map(|e| e.to_string_lossy().to_lowercase())
-                    .unwrap_or_default();
-                if !is_media_ext(&ext) {
-                    continue;
-                }
-                if path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().starts_with('.'))
-                    .unwrap_or(false)
-                {
-                    continue;
-                }
-
                 let path_str = path.to_string_lossy().to_string();
                 match class {
                     EventClass::Add => {

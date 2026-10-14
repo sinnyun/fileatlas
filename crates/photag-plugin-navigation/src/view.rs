@@ -28,6 +28,7 @@ use photag_ui_bridge::{UiViewContribution, theme};
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
 mod construction;
+mod folder_picker;
 mod page_state;
 mod projections;
 mod render;
@@ -267,6 +268,7 @@ pub(super) fn sidebar(
 }
 
 struct SidebarView {
+    folder_picker_task: Option<Task<()>>,
     locale_revision: u64,
     service: Arc<NavigationService>,
     cordis: CordisContext,
@@ -398,16 +400,6 @@ impl SidebarView {
                 self.snapshot = Err(message);
             }
         }
-    }
-
-    fn pick_folder(&mut self, cx: &mut Context<Self>) {
-        // Match PhoTag's PendingAction::AddFolder flow: a native directory
-        // dialog returns an optional path, and cancellation is a no-op.
-        let Some(path) = rfd::FileDialog::new().pick_folder() else {
-            return;
-        };
-        let path = path.to_string_lossy().into_owned();
-        self.add_folder_path(path, cx);
     }
 
     fn add_folder(&mut self, cx: &mut Context<Self>) {

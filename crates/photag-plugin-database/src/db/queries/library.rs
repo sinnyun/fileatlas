@@ -112,6 +112,52 @@ pub fn insert_media(
     Ok(conn.last_insert_rowid())
 }
 
+/// Index an ordinary file without replacing its identity or user metadata.
+/// Refresh filesystem metadata while keeping identity, rating, date_taken,
+/// tag links and cached dimensions.
+pub fn scan_upsert_media(
+    conn: &Connection,
+    folder_id: i64,
+    filename: &str,
+    full_path: &str,
+    media_type: &str,
+    file_size: i64,
+    modified_at: i64,
+    poster_path: Option<&str>,
+) -> rusqlite::Result<Option<String>> {
+    let previous: Option<(i64, i64, String, Option<String>)> = conn
+        .query_row(
+            "SELECT file_size, modified_at, media_type, thumb_path FROM media WHERE full_path = ?1",
+            [full_path],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .optional()?;
+    let changed = previous
+        .as_ref()
+        .is_some_and(|(old_size, old_mtime, old_type, _)| {
+            *old_size != file_size || *old_mtime != modified_at || old_type != media_type
+        });
+    let old_thumb_path = changed
+        .then(|| previous.as_ref().and_then(|(_, _, _, path)| path.clone()))
+        .flatten();
+    conn.execute(
+        "INSERT INTO media (folder_id, filename, full_path, media_type, file_size, modified_at, thumb_path)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+         ON CONFLICT(full_path) DO UPDATE SET
+             folder_id = excluded.folder_id,
+             filename = excluded.filename,
+             media_type = excluded.media_type,
+             file_size = excluded.file_size,
+             modified_at = excluded.modified_at,
+             thumb_path = CASE WHEN ?8 THEN excluded.thumb_path ELSE COALESCE(excluded.thumb_path, media.thumb_path) END,
+             width = CASE WHEN ?8 THEN NULL ELSE media.width END,
+             height = CASE WHEN ?8 THEN NULL ELSE media.height END,
+             micro_thumb = CASE WHEN ?8 THEN NULL ELSE media.micro_thumb END",
+        params![folder_id, filename, full_path, media_type, file_size, modified_at, poster_path, changed],
+    )?;
+    Ok(old_thumb_path)
+}
+
 pub fn get_media(conn: &Connection, query: &MediaQuery) -> rusqlite::Result<Vec<MediaItem>> {
     let (joins, conditions, mut param_values) = build_filters(query);
     let mut sql = String::from(

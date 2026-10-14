@@ -1,0 +1,7 @@
+{
+  "steps": 15,
+  "tests_passed": 5,
+  "tests_failed": 0,
+  "binary": "target/debug/photag-shell.exe",
+  "sha256": "c84e6f1afbfc885fad7f12b3fdec13484a072d0cd7917942c16a5c0d8aebcb14"
+}

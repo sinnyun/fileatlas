@@ -1,0 +1,241 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1500,
+      "height": 1000
+    },
+    "wait_ms": 600
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture",
+      "confirm": true
+    },
+    "wait_ms": 1500
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "sort": "name_asc",
+      "limit": 100
+    },
+    "until": {
+      "field": "total",
+      "equals": 16
+    }
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "all"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "clear_filters"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "sort",
+      "value": "name_asc"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "month_grouping",
+      "enabled": false
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.matched_count",
+      "equals": 16
+    },
+    "capture": "all-files-grid"
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "media_type": "file",
+      "sort": "name_asc",
+      "limit": 100
+    }
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "list"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "all-files-list"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "media_type",
+      "value": "photos"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "gallery.matched_count",
+      "equals": 5
+    },
+    "capture": "images-filter"
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "media_type",
+      "value": "all"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "layout",
+      "value": "grid"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_right_down",
+      "value": "360,230"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_right_up",
+      "value": "360,230"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "native-context-menu"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_move",
+      "value": "440,448"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "native-rating-submenu"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_move",
+      "value": "660,532"
+    },
+    "wait_ms": 150
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "660,532"
+    },
+    "wait_ms": 100
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "660,532"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "search": ".config"
+    },
+    "until": {
+      "field": "items.0.rating",
+      "equals": 3
+    }
+  },
+  {
+    "tool": "add_folder",
+    "arguments": {
+      "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture",
+      "confirm": true
+    },
+    "wait_ms": 1800
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "scan_progress",
+      "equals": null
+    }
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "search": ".config"
+    },
+    "until": {
+      "field": "items.0.rating",
+      "equals": 3
+    }
+  },
+  {
+    "tool": "list_library"
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "incremental-preserves-rating"
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "search": "01-photo.jpg"
+    },
+    "until": {
+      "field": "items.0.width",
+      "equals": 24
+    }
+  },
+  {
+    "tool": "search_media",
+    "arguments": {
+      "search": "01-photo.jpg"
+    },
+    "until": {
+      "field": "items.0.height",
+      "equals": 16
+    }
+  }
+]

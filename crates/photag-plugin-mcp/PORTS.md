@@ -138,3 +138,15 @@ control_ui adds navigation_tab(folders/tags/extensions), inspector_tab(informati
 `control_gallery layout` accepts value grid/list through GalleryUiRequest::Layout. `get_ui_state.gallery.layout` is the live rendered choice. `get_ui_state` adds panels(builtin visibility/frame/client bounds), panel_instances(all currently open frame/client bounds), open_panel_ids and active_panel. Bounds are comma-separated logical pixel strings; client_bounds are GPUI-measured, independent of screenshot DPI/nonclient offsets.
 
 Mutation-guarded `control_ui panel_open` accepts a registered definition ID in value and returns instance_id; panel_close accepts that returned instance ID. Both call UI Bridge PanelCatalog; they cannot manufacture unregistered content. dev-test supplies actual task-status definitions for isolated single/multiple checks. pointer_move/pointer_right_down/pointer_right_up additionally queue same-process GPUI events using x,y; existing pointer_down/drag/up remain. No OS injection or separate process attachment. Wait for the host/feature poller before reading screenshots/snapshots.
+
+## Native folder picker validation (2026-10-14)
+
+get_ui_state.folder_picker returns pending and native_open(the Navigation provider actually found its current native window). Mutation-guarded control_navigation folder_picker_cancel calls NavigationService::cancel_folder_picker; it only cancels an open picker. Read-only screenshot_folder_picker captures the identified same-process native picker through existing PrintWindow encoding, with no external attachment. The debug client accepts capture_tool for a planned capture; default remains screenshot_window. Actual Sidebar + pointer clicks, native screenshots, two cancel/reopen cycles and unchanged library were recorded. These controls do not simulate folder acceptance or claim its coverage.
+
+## All-file query contract (2026-10-14)
+
+`search_media.media_type` now accepts `file` in addition to `image`, `video`, and `audio`; omission queries all types. `file` identifies indexed unsupported/extensionless files, not directories. Same-process screenshots, Gallery controls, native GPUI pointer dispatch and Navigation add/rescan tools validate these cards with an isolated profile.
+
+## Startup refresh diagnostics (2026-10-14)
+
+`get_ui_state.library_refresh` returns `running`, `total_folders`, `completed_folders`, and `[path, error]` failures from the Watcher-owned startup scan. The read-only field lets the same-process MCP client wait for reconciliation and inspect failures without invoking a rescan mutation. `list_library` and `search_media` then show current persisted row totals.

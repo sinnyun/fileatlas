@@ -51,6 +51,7 @@ impl SidebarView {
             Err(_) => HashMap::new(),
         };
         Self {
+            folder_picker_task: None,
             locale_revision: u64::MAX,
             service: Arc::clone(&service),
             cordis,

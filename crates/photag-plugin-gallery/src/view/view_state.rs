@@ -351,6 +351,27 @@ impl GalleryView {
         }
     }
 
+    pub(super) fn refresh_index(&mut self) {
+        let selected = self.selection.selected_media_ids.clone();
+        let anchor = self.selection.anchor_id;
+        let scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
+        self.reload();
+        if let Ok(snapshot) = &self.snapshot {
+            let valid = snapshot
+                .skeletons
+                .iter()
+                .map(|item| item.id)
+                .collect::<HashSet<_>>();
+            self.selection.selected_media_ids = selected
+                .into_iter()
+                .filter(|id| valid.contains(id))
+                .collect();
+            self.selection.anchor_id = anchor.filter(|id| valid.contains(id));
+            self.pending_scroll_restore = Some(scroll);
+        }
+        self.persist_filter_session();
+    }
+
     pub(super) fn reload(&mut self) {
         self.persist_filter_session();
         self.snapshot = self

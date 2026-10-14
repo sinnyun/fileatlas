@@ -69,12 +69,15 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
     let revision = view.index_revision.0.load(Ordering::Acquire);
     let index_changed = revision != view.observed_index_revision;
     view.observed_index_revision = revision;
-    if changed || index_changed {
+    if changed {
         view.filter.folder_id = selected;
         view.filter.selected_tag_ids = selected_tags.included;
         view.filter.excluded_tag_ids = selected_tags.excluded;
         view.filter.path_prefix = selected_path;
         view.reload();
+        cx.notify();
+    } else if index_changed {
+        view.refresh_index();
         cx.notify();
     }
     if view.tagging.is_some() {

@@ -2,7 +2,7 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu};
+use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_contracts::TagDragPayload;
@@ -52,84 +52,25 @@ pub(super) fn render_media_card(
         frame = frame.child(img(image).absolute().inset_0().object_fit(ObjectFit::Cover));
     }
     if let Some(path) = media.thumb_path.as_ref() {
+        let filename = media.filename.clone();
+        let kind = media.media_type.clone();
         frame = frame.child(
             img(std::path::PathBuf::from(path))
                 .absolute()
                 .inset_0()
                 .object_fit(ObjectFit::Cover)
-                .with_fallback(|| {
-                    div()
-                        .absolute()
-                        .inset_0()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .font_family(theme::ICON_FONT_FAMILY)
-                        .text_size(px(22.))
-                        .text_color(rgb(theme::WARNING))
-                        .child(theme::icons::WARNING.to_string())
-                        .into_any_element()
+                .with_fallback(move || {
+                    super::file_format::placeholder(&filename, &kind, 32.).into_any_element()
                 }),
         );
     } else if micro_image.is_none() {
-        frame = match media_type {
-            "video" | "audio" => frame
-                .flex()
-                .items_center()
-                .justify_center()
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(24.))
-                .text_color(rgba(0xffffff30))
-                .child(if media_type == "video" {
-                    theme::icons::VIDEO.to_string()
-                } else {
-                    theme::icons::AUDIO.to_string()
-                }),
-            // A missing path does not say whether thumbnail generation is
-            // running or has failed. Keep a stable neutral placeholder until
-            // the real thumbnail becomes available instead of implying load.
-            _ => frame
-                .flex()
-                .items_center()
-                .justify_center()
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(24.))
-                .text_color(rgba(0xffffff42))
-                .child(theme::icons::PICTURE.to_string()),
-        };
+        frame = frame.child(super::file_format::placeholder(
+            &media.filename,
+            media_type,
+            32.,
+        ));
     }
-    let menu_view = cx.entity().downgrade();
-    let menu_targets = rating_target_ids.clone();
     let drop_targets = rating_target_ids.clone();
-    let menu_media = media.clone();
-    let menu_tags = tag_tree.clone();
-    let menu_ratings = rating_target_ids.clone();
-    let menu = Button::new(format!("gallery-card-actions-{media_id}"))
-        .label("⋯")
-        .dropdown_menu(move |menu, window, cx| {
-            super::card_menu::build(
-                menu,
-                menu_media.clone(),
-                menu_targets.clone(),
-                menu_ratings.clone(),
-                menu_tags.clone(),
-                menu_view.clone(),
-                window,
-                cx,
-            )
-        });
-    // Keep the actions menu in the corner; selection is communicated by the
-    // blue outline below without covering the media preview.
-    {
-        frame = frame.child(
-            div()
-                .absolute()
-                .top(px(6.))
-                .right(px(6.))
-                .opacity(hover.max(0.08))
-                .child(menu),
-        );
-    }
     if media.rating > 0 {
         frame = frame.child(
             div()
@@ -173,6 +114,7 @@ pub(super) fn render_media_card(
                 .bg(rgba(0xffffff00 | (18. * hover) as u32)),
         );
     }
+    frame = frame.child(super::file_format::badge(&media.filename, thumb_size));
     let mut image_area = div()
         .relative()
         .w(px(thumb_size))
@@ -233,7 +175,8 @@ pub(super) fn render_media_card(
         let kind = match media.media_type.as_str() {
             "video" => "Video",
             "audio" => "Audio",
-            _ => "Photos",
+            "image" => "Photos",
+            _ => "File",
         };
         let mut metadata = vec![photag_ui_bridge::i18n::tr(kind).to_string()];
         if let Some(dimensions) = caption_metadata(media) {

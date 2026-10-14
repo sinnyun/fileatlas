@@ -11,7 +11,7 @@ pub(super) struct SearchMediaRequest {
     pub(super) folder_id: Option<i64>,
     /// Optional tag IDs; media with any listed tag is included.
     pub(super) tag_ids: Option<Vec<i64>>,
-    /// Optional exact media type: image, video, or audio.
+    /// Optional exact media type: image, video, audio, or file.
     pub(super) media_type: Option<String>,
     /// Result offset, from 0 through 1,000,000.
     pub(super) offset: Option<usize>,

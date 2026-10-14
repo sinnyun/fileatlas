@@ -365,8 +365,8 @@ mod tests {
             })
             .unwrap();
         assert_eq!(
-            total, 9,
-            "seven valid images, one broken image, and one WAV"
+            total, 12,
+            "all images, WAV, README, XMP and hidden support image"
         );
         assert_eq!(audio_count, 1);
         assert!(

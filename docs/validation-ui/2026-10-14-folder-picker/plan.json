@@ -1,0 +1,99 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 3000,
+    "capture": "before"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "215,74"
+    },
+    "wait_ms": 120
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "215,74"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "folder_picker.native_open",
+      "equals": true
+    },
+    "capture": "native-picker",
+    "capture_tool": "screenshot_folder_picker"
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "main-while-picker-open"
+  },
+  {
+    "tool": "list_library"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "folder_picker_cancel"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "folder_picker.pending",
+      "equals": false
+    },
+    "capture": "after-cancel"
+  },
+  {
+    "tool": "list_library"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "215,74"
+    },
+    "wait_ms": 120
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "215,74"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "folder_picker.native_open",
+      "equals": true
+    },
+    "capture": "native-picker",
+    "capture_tool": "screenshot_folder_picker"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "folder_picker_cancel"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "folder_picker.pending",
+      "equals": false
+    }
+  },
+  {
+    "tool": "list_library"
+  }
+]

@@ -1,0 +1,430 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-all-files.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-20261014-pass",
+  "started": "2026-10-14T05:21:57.762Z",
+  "steps": [
+    {
+      "tool": "search_media",
+      "arguments": {
+        "search": ".config"
+      },
+      "wait_ms": 0,
+      "result": {
+        "total": 1,
+        "offset": 0,
+        "items": [
+          {
+            "id": 18,
+            "folder_id": 1,
+            "filename": ".config",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture\\.config",
+            "media_type": "file",
+            "file_size": 33,
+            "modified_at": 1791954795,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          }
+        ]
+      }
+    },
+    {
+      "tool": "set_rating",
+      "arguments": {
+        "media_ids": [
+          18
+        ],
+        "rating": 3
+      },
+      "wait_ms": 300,
+      "result": {
+        "ok": true
+      }
+    },
+    {
+      "tool": "search_media",
+      "arguments": {
+        "search": ".config"
+      },
+      "wait_ms": 0,
+      "until": {
+        "field": "items.0.rating",
+        "equals": 3
+      },
+      "result": {
+        "total": 1,
+        "offset": 0,
+        "items": [
+          {
+            "id": 18,
+            "folder_id": 1,
+            "filename": ".config",
+            "full_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture\\.config",
+            "media_type": "file",
+            "file_size": 33,
+            "modified_at": 1791954795,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 3
+          }
+        ]
+      }
+    },
+    {
+      "tool": "add_folder",
+      "arguments": {
+        "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture",
+        "confirm": true
+      },
+      "wait_ms": 2000,
+      "result": {
+        "ok": true,
+        "folder": {
+          "id": 1,
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture",
+          "last_scan": null,
+          "name": "mcp-all-files-fixture"
+        }
+      }
+    },
+    {
+      "tool": "list_library",
+      "arguments": {},
+      "wait_ms": 0,
+      "result": {
+        "folders": [
+          {
+            "id": 1,
+            "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-fixture",
+            "name": "mcp-all-files-fixture",
+            "last_scan": 1791955366,
+            "media_count": 16
+          }
+        ],
+        "tags": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "wait_ms": 0,
+      "until": {
+        "field": "gallery.matched_count",
+        "equals": 16
+      },
+      "result": {
+        "folder_picker": {
+          "pending": false,
+          "native_open": false
+        },
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "matched_count": 16,
+          "group_by_month": false,
+          "window_offset": 0,
+          "loaded_count": 16,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": null,
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 48,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 47,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 46,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 45,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 44,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 43,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 42,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 41,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 40,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 39,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 38,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 37,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 36,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "gallery_animation_frames": [
+          {
+            "media_id": 32,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318810
+          },
+          {
+            "media_id": 31,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318812
+          },
+          {
+            "media_id": 30,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318813
+          },
+          {
+            "media_id": 29,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318814
+          },
+          {
+            "media_id": 28,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318815
+          },
+          {
+            "media_id": 27,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318815
+          },
+          {
+            "media_id": 26,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318816
+          },
+          {
+            "media_id": 25,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318817
+          },
+          {
+            "media_id": 24,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318818
+          },
+          {
+            "media_id": 23,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318819
+          },
+          {
+            "media_id": 22,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318820
+          },
+          {
+            "media_id": 21,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318821
+          },
+          {
+            "media_id": 20,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955318822
+          },
+          {
+            "media_id": 48,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366445
+          },
+          {
+            "media_id": 47,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366446
+          },
+          {
+            "media_id": 46,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366447
+          },
+          {
+            "media_id": 45,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366448
+          },
+          {
+            "media_id": 44,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366449
+          },
+          {
+            "media_id": 43,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366449
+          },
+          {
+            "media_id": 42,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366450
+          },
+          {
+            "media_id": 41,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366451
+          },
+          {
+            "media_id": 40,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366452
+          },
+          {
+            "media_id": 39,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366453
+          },
+          {
+            "media_id": 38,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366453
+          },
+          {
+            "media_id": 37,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366455
+          },
+          {
+            "media_id": 36,
+            "hover": 0,
+            "selection": 0,
+            "timestamp_ms": 1791955366456
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "capture_tool": "screenshot_window",
+      "screenshot": "F:\\AI\\geren\\pho_cordis\\target\\mcp-all-files-20261014-pass\\screenshots\\incremental-preserves-rating.png"
+    }
+  ]
+}

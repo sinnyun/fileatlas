@@ -13,7 +13,7 @@ function option(name, fallback) {
   return index < 0 ? fallback : argv[index + 1];
 }
 if (!option('--exe')) {
-  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile target/mcp-handoff] [--plan <json>] [--interactive] [--allow-mutations]');
+  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile target/mcp-handoff] [--plugins dev-test] [--plan <json>] [--interactive] [--allow-mutations]');
   process.exit(2);
 }
 const exe = path.resolve(root, option('--exe'));
@@ -37,7 +37,7 @@ const child = spawn(exe, ['--mcp'], {
   cwd: root,
   env: {
     ...process.env,
-    PHOTAG_DEV_PLUGINS: 'dev-test',
+    PHOTAG_DEV_PLUGINS: option('--plugins', 'dev-test'),
     PHOTAG_DEV_TEST_DIR: profile,
     LOCALAPPDATA: path.join(profile, 'local'),
     PHOTAG_MCP_ALLOW_MUTATIONS: argv.includes('--allow-mutations') ? '1' : '0',
@@ -122,9 +122,10 @@ async function step(command) {
   const record = { tool: command.tool, arguments: command.arguments ?? {}, wait_ms: command.wait_ms ?? 0, ...(command.until ? { until: command.until } : {}), result: expectedError ? { expected_error: expectedError } : payload(result) };
   if (command.capture) {
     if (!/^[a-zA-Z0-9_-]+$/.test(command.capture)) throw Error('Capture name must be a simple file stem.');
-    const screenshot = await call('screenshot_window');
+    const screenshot = await call(command.capture_tool ?? 'screenshot_window');
     const image = screenshot.content.find(item => item.type === 'image');
     assert(image, 'MCP screenshot returned no image');
+    record.capture_tool = command.capture_tool ?? 'screenshot_window';
     record.screenshot = path.join(output, command.capture + '.png');
     fs.writeFileSync(record.screenshot, Buffer.from(image.data, 'base64'));
   }

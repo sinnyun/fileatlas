@@ -187,3 +187,15 @@ MCP扩展：control_ui navigation_tab/inspector_tab、sidebar_width/inspector_wi
 Rust1.97.1 MSVC fmt/check/标准locked shell build通过；相关26项测试通过，最后UI Bridge5项清理回归通过。真实GPUI设置拖动100×50、缩放900×680→800×580、tab点击与外层隔离；菜单进入和预览ID6、单实例复用、多实例独立移动／关闭；真实图片/WAV/MP4解码及面板max/restore；List实际选择ID9与下一进程恢复；100009项列表末页offset99809/cache200；只读拒绝。正常用户数据未用于测试。
 
 SQLite与既有后端动作语义不改；源Session serde-default与Gallery grid/context-action语义已追踪，映射追加于source-feature-audit.md；gallery_list_layout字段为兼容的新增偏好。新组件使用说明见[floating-panels](floating-panels.md)。七个未逐项实测resize把手、窗口外捕获、不同DPI、列表修饰键/框选/OS拖出、全codec及听感、现有服务多媒体并行仍未覆盖，不将这些记为通过。
+
+## 2026-10-14 添加文件夹点击退出修复
+
+通过项目同进程MCP pointer_down/up(215,74)复现旧版Sidebar +点击退出：main线程在gpui-pre/app/async_context.rs:66报告RefCell already borrowed。同步rfd文件夹选择器的Windows消息循环重入GPUI App借用。已改为AsyncFileDialog的独立STA/native循环，选择完成再this.update→原add_folder_path路径，取消保持无操作；单实例guard和pending禁用避免重复打开。
+
+Rust1.97.1 Windows MSVC locked shell check/build、fmt check及Navigation/MCP相关5项测试通过。15步隔离profile MCP实测：真实按钮点击、native_open=true、原生选择器PrintWindow截图、主窗口持续get_ui_state响应、cancel/reset、第二次重新打开/取消、library始终为空；修复日志无panic。准确命令/参数/截图见[运行记录](validation-ui/2026-10-14-folder-picker/README.md)。设计仍为sidebar-pages-preview-v2的相同标题按钮；Windows选择器委托系统，不改变页面布局。实际native accept及窗口创建期间卸载竞态未覆盖；不能将service测试等同native选择成功。
+
+## 全文件卡片与格式角标（2026-10-14）
+
+本轮沿用 sidebar-pages-preview-v2 及 final-v5 主界面结构，按用户指示将卡片右上More改为非交互格式角标，Grid/List与Inspector无缩略图时使用文件类型图标。Windows同进程PhoTag MCP隔离验证45步：16文件全部可见、photo筛选5、file查询9；未知/无扩展名/隐藏文件、视频封面独立行、文档/归档图标、真实右键评分子菜单、增量扫描保留ID/评分、watcher未知格式创建/删除及目录排除。fmt、locked shell check、shell备用bin完整编译通过；27相关自动测试通过、1原有FFmpeg测试ignored。证据/命令/环境/启动诊断/未覆盖状态见[验证说明](validation-ui/2026-10-14-all-files/README.md)。正常用户profile没有修改；旧默认exe被运行中窗口占用，新可执行文件为`target/debug/photag-shell-all-files.exe`。
+
+最终补验：缓存命中增量扫描保留图片尺寸/micro，Indexing回归再次通过；重编译后32步PhoTag MCP重测保留ID/评分及24×16尺寸，见同证据目录cache-retention-report.json。

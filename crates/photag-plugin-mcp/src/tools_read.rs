@@ -3,6 +3,26 @@ use super::*;
 #[tool_router(router = read_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
     #[tool(
+        description = "Capture this PhoTag process's currently open native folder picker. No external window attachment."
+    )]
+    async fn screenshot_folder_picker(&self) -> Result<CallToolResult, McpError> {
+        let Some(handle) = self.navigation.folder_picker_window() else {
+            return Ok(CallToolResult::error(vec![ContentBlock::text(
+                "No native folder picker is open",
+            )]));
+        };
+        match screenshot::capture_png(handle) {
+            Ok((png, width, height)) => Ok(CallToolResult::success(vec![
+                ContentBlock::text(format!("Folder picker, {width} × {height} pixels")),
+                ContentBlock::image(
+                    base64::Engine::encode(&base64::engine::general_purpose::STANDARD, png),
+                    "image/png",
+                ),
+            ])),
+            Err(error) => Ok(CallToolResult::error(vec![ContentBlock::text(error)])),
+        }
+    }
+    #[tool(
         description = "调整当前 PhoTag 原生窗口外框尺寸（像素），用于隔离档案的布局验证。范围：640×480 至 4096×2160。"
     )]
     fn resize_window(&self, Parameters(request): Parameters<WindowSizeRequest>) -> String {
@@ -84,9 +104,9 @@ impl super::PhoTagMcpServer {
         if request
             .media_type
             .as_ref()
-            .is_some_and(|value| !["image", "video", "audio"].contains(&value.as_str()))
+            .is_some_and(|value| !["image", "video", "audio", "file"].contains(&value.as_str()))
         {
-            return error_json("media_type 只支持 image、video 或 audio。");
+            return error_json("media_type 只支持 image、video、audio 或 file。");
         }
         let query = photag_plugin_database::db::queries::MediaQuery {
             folder_id: request.folder_id,

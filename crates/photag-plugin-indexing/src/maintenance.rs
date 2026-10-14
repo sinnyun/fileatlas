@@ -311,20 +311,11 @@ pub fn list_subdirectories(path: &str) -> Vec<(String, String, bool)> {
             continue;
         }
         let name = entry.file_name().to_string_lossy().to_string();
-        if name.starts_with('.') {
-            continue;
-        }
         let full = entry.path().to_string_lossy().to_string();
-        // Mirror the dot-prefix filter used above so a folder containing
-        // only `.git` (or similar) doesn't get an expand arrow that opens
-        // to an empty list.
         let has_children = std::fs::read_dir(entry.path())
             .map(|rd| {
-                rd.flatten().any(|e| {
-                    let is_dir = e.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
-                    let n = e.file_name().to_string_lossy().to_string();
-                    is_dir && !n.starts_with('.')
-                })
+                rd.flatten()
+                    .any(|e| e.file_type().map(|ft| ft.is_dir()).unwrap_or(false))
             })
             .unwrap_or(false);
         subdirs.push((name, full, has_children));

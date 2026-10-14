@@ -1,5 +1,6 @@
 //! PhoTag library sidebar data and tag tree operations, owned by Cordis.
 
+mod folder_picker;
 mod ui_requests;
 mod view;
 pub use ui_requests::{NavigationUiRequest, NavigationUiRequestError};
@@ -44,6 +45,7 @@ pub struct NavigationService {
     watcher: Option<Arc<WatcherService>>,
     scans: Mutex<HashMap<i64, Arc<AtomicBool>>>,
     ui_request: Mutex<Option<NavigationUiRequest>>,
+    picker: Arc<folder_picker::FolderPickerState>,
 }
 
 impl Service for NavigationService {
@@ -58,7 +60,22 @@ impl NavigationService {
             watcher: None,
             scans: Mutex::new(HashMap::new()),
             ui_request: Mutex::new(None),
+            picker: Arc::default(),
         }
+    }
+    pub fn library_refresh(&self) -> Option<photag_plugin_watcher::LibraryRefreshState> {
+        self.watcher
+            .as_ref()
+            .map(|watcher| watcher.library_refresh())
+    }
+    pub fn folder_picker_pending(&self) -> bool {
+        self.picker.pending()
+    }
+    pub fn folder_picker_window(&self) -> Option<isize> {
+        self.picker.window()
+    }
+    pub fn cancel_folder_picker(&self) -> Result<(), String> {
+        self.picker.cancel()
     }
 
     /// Queue one typed action for the mounted navigation view.

@@ -1,0 +1,82 @@
+[
+  {
+    "path": ".config",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": ".hidden\\13-nested.custom",
+    "size": 21,
+    "sha256": "c974ace1f2fd5c56be8aa79ae9c17fd4625dacbe00147cb5fb5e250393868fd5"
+  },
+  {
+    "path": "01-photo.jpg",
+    "size": 800,
+    "sha256": "d01a8677e5e02ca9f66abaa4ed19c23dc279ab95c8be0ecef86a994d614da192"
+  },
+  {
+    "path": "02-photo.png",
+    "size": 32654,
+    "sha256": "15f095b8be6c5fec062b1a9c15cebd44e242a0941bc4bcf33cba83535a59f8c7"
+  },
+  {
+    "path": "03-photo.webp",
+    "size": 1302,
+    "sha256": "13e94f17fbc71f031761103d9d88079b19d1120d760aa988845bd4f990bf1ac8"
+  },
+  {
+    "path": "04-broken.jpg",
+    "size": 64,
+    "sha256": "e415d432c9d9907cc54080f4eb1c2a8f04486176cabd979eb7ad1e207e048239"
+  },
+  {
+    "path": "05-audio.wav",
+    "size": 4044,
+    "sha256": "719525a258015f17e1a9bc516925aba56d0d0b61e0bb854679dea4fc575b05aa"
+  },
+  {
+    "path": "06-document.PDF",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "07-archive.zip",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "08-source.rs",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "09-special.uniqueformat",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "10-LICENSE",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "11-design.psd",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "12-font.otf",
+    "size": 33,
+    "sha256": "dd0b8d8d23875c5643a36e10a5840f476b87badb5c0bfe508650f8cfda82900f"
+  },
+  {
+    "path": "14-video.mp4",
+    "size": 25,
+    "sha256": "9a8247956b540f5afd721e280feccf80a34e3fc3cb644744fdbfe3dce91eefb1"
+  },
+  {
+    "path": "14-video.png",
+    "size": 32654,
+    "sha256": "15f095b8be6c5fec062b1a9c15cebd44e242a0941bc4bcf33cba83535a59f8c7"
+  }
+]

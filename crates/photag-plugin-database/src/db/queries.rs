@@ -1,4 +1,4 @@
-use rusqlite::{Connection, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -15,6 +15,7 @@ pub struct MediaItem {
     pub folder_id: i64,
     pub filename: String,
     pub full_path: String,
+    /// image/video/audio/file; `file` retains unsupported and extensionless files.
     pub media_type: String,
     pub file_size: i64,
     pub modified_at: i64,
@@ -126,7 +127,7 @@ pub struct MediaQuery {
     pub search_in_filenames: bool,
     pub search_in_paths: bool,
     pub search_in_tags: bool,
-    /// "photo" | "video" — None means both.
+    /// "image" | "video" | "audio" | "file" — None means all.
     pub media_type: Option<String>,
     /// Lower-case extensions WITHOUT a leading dot (e.g. "jpg", "mp4"). Items
     /// must match ANY of these. None / empty disables the filter.

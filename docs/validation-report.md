@@ -891,3 +891,21 @@ Shell1.97.1 locked build/check pass; relevant11crate tests36 pass/1 ignored, sep
 Rust1.97.1 MSVC fmt/check/标准locked shell build通过；相关26项测试通过，最后UI Bridge5项清理回归通过。真实GPUI设置拖动100×50、缩放900×680→800×580、tab点击与外层隔离；菜单进入和预览ID6、单实例复用、多实例独立移动／关闭；真实图片/WAV/MP4解码及面板max/restore；List实际选择ID9与下一进程恢复；100009项列表末页offset99809/cache200；只读拒绝。正常用户数据未用于测试。
 
 SQLite与既有后端动作语义不改；源Session serde-default与Gallery grid/context-action语义已追踪，映射追加于source-feature-audit.md；gallery_list_layout字段为兼容的新增偏好。新组件使用说明见[floating-panels](floating-panels.md)。七个未逐项实测resize把手、窗口外捕获、不同DPI、列表修饰键/框选/OS拖出、全codec及听感、现有服务多媒体并行仍未覆盖，不将这些记为通过。
+
+## 2026-10-14 Native AddFolder reentry fix
+
+Source PendingAction::AddFolder optional selection/cancel/register/watch/scan semantics are unchanged. Navigation now awaits rfd::AsyncFileDialog before acquiring GPUI view state; the former synchronous click reproducibly panicked with RefCell already borrowed in gpui-pre async_context.rs:66. Native picker state/capture/cancellation via PhoTag MCP showed two actual open/cancel/reopen cycles without process exit or library mutation. Navigation tests5 passed, locked shell build/check and fmt passed. Full evidence and remaining native-accept boundary: docs/validation-ui/2026-10-14-folder-picker/README.md.
+
+## 全文件收录及增量记录保留（2026-10-14）
+
+追踪source scan.rs的扩展名/隐藏/封面排除和db/queries.rs的INSERT OR REPLACE，按用户新需求扩大为所有普通文件；`file`复用已有text列。Watcher共享Indexing公开分类器，保留800ms及4000/200限制，排除目录行。为补入旧漏文件，scanner改用数据库公开scan_upsert_media，不替换ID、不清空评分/标签/日期；原insert_media其他消费者不变。自动回归验证两次扫描间新增文件和已有用户数据保留；27测试通过1ignored，Windows同进程MCP实际右键评分后增量扫描ID/评分保留、目录无重复，新增/删除未知文件通知生效。显式Rebuild/Rescan的历史清空语义仍在，增量补扫采用Add同目录。详见[全文件验证](validation-ui/2026-10-14-all-files/README.md)；未扩充codec支持或宣称全平台覆盖。
+
+最终补验：缓存命中增量扫描保留图片尺寸/micro，Indexing回归再次通过；重编译后32步PhoTag MCP重测保留ID/评分及24×16尺寸，见同证据目录cache-retention-report.json。
+
+## 2026-10-14 启动数据未刷新的原因与修复
+
+用户通过`start-dev.bat`启动仍只看到旧内容。确认脚本会执行最新源码的`cargo run`，但默认载入的是持久化隔离档案`target/dev-test`。旧版索引创建后，启动流程只读出SQLite并注册文件监听，没有调用扫描器；扫描器新增全文件支持后，已有SQLite记录不会自行迁移。Watcher此前仅收集运行期间的创建/删除/重命名通知，所以文件夹中的旧漏项在退出重开后仍留在旧索引。
+
+Watcher现于启动时逐目录调用Indexing生产扫描器；索引写入后发事件使Gallery自动查询新结果。Scanner更新文件大小和修改时间、保留ID/评分/日期/标签；同路径图片内容变化时清除旧路径缓存并重建尺寸和缩略图。完整遍历后移除离线删除行；文件夹不可用时保留数据库行并报告失败。Gallery刷新保留有效选择和滚动位置。使用旧档案副本、`PHOTAG_DEV_PLUGINS=all`及同进程MCP验证：两文件夹由40/9条刷新为79/12条，图库选中路径实时显示60条，总计91条，刷新状态`running=false`、2/2目录完成、0失败；原40条路径ID及评分保持，标签样例也保持原媒体ID和评分。第二次启动数量仍为79/12，未重复插入。未改写`target/dev-test`原数据库及用户文件。
+
+`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -j 2 -p photag-shell`和`cargo +1.97.1 build --locked -j 2 -p photag-shell`通过。Indexing测试3通过/1原FFmpeg测试ignored；Watcher2通过；Gallery16通过。单元覆盖离线删除和不可用根目录保留；Watcher集成覆盖运行中创建/删除。详见[启动刷新证据](validation-ui/2026-10-14-startup-refresh/README.md)。大型/网络库冷启动耗时、Windows原生通知竞态仍待用户规模验证。

@@ -94,15 +94,23 @@ impl GalleryView {
                 .justify_center();
             if let Some(path) = &media.thumb_path {
                 let fallback_type = media_type.clone();
+                let filename = media.filename.clone();
                 thumbnail = thumbnail.child(
                     img(std::path::PathBuf::from(path))
                         .w_full()
                         .h_full()
                         .object_fit(ObjectFit::Contain)
-                        .with_fallback(move || preview_placeholder(&fallback_type)),
+                        .with_fallback(move || {
+                            super::super::file_format::placeholder(&filename, &fallback_type, 40.)
+                                .into_any_element()
+                        }),
                 );
             } else {
-                thumbnail = thumbnail.child(preview_placeholder(&media_type));
+                thumbnail = thumbnail.child(super::super::file_format::placeholder(
+                    &media.filename,
+                    &media_type,
+                    40.,
+                ));
             }
             preview = preview.child(
                 thumbnail
@@ -189,22 +197,4 @@ impl GalleryView {
         }
         stars
     }
-}
-
-fn preview_placeholder(media_type: &str) -> AnyElement {
-    let icon = match media_type {
-        "video" => theme::icons::VIDEO,
-        "audio" => theme::icons::AUDIO,
-        _ => theme::icons::PICTURE,
-    };
-    div()
-        .size_full()
-        .flex()
-        .items_center()
-        .justify_center()
-        .font_family(theme::ICON_FONT_FAMILY)
-        .text_size(px(32.))
-        .text_color(rgb(theme::TEXT_MUTED))
-        .child(icon.to_string())
-        .into_any_element()
 }

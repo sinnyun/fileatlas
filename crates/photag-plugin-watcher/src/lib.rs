@@ -9,9 +9,11 @@ use std::time::Duration;
 use cordis::{Context, Plugin, Routing, Service};
 use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::{DatabaseService, db::queries};
-use photag_plugin_indexing::IndexingService;
+use photag_plugin_indexing::{IndexingService, scan::classify_media_type};
 
+mod startup;
 mod watcher;
+pub use startup::LibraryRefreshState;
 
 /// Counts of filesystem changes synchronized into the PhoTag database.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +27,7 @@ pub struct WatcherService {
     database: Arc<DatabaseService>,
     indexing: Arc<IndexingService>,
     watcher: Mutex<watcher::FolderWatcher>,
+    refresh_state: Arc<Mutex<LibraryRefreshState>>,
     stop: Arc<AtomicBool>,
     poller: Mutex<Option<JoinHandle<()>>>,
     cordis: Option<Context>,
@@ -37,11 +40,16 @@ impl Service for WatcherService {
 
 impl WatcherService {
     fn start_background_reconciliation(service: &Arc<Self>) -> std::io::Result<()> {
+        let refresh = startup::StartupRefresh::new(service);
+        if let Ok(mut state) = service.refresh_state.lock() {
+            state.running = true;
+        }
         let weak: Weak<Self> = Arc::downgrade(service);
         let stop = Arc::clone(&service.stop);
         let worker = std::thread::Builder::new()
             .name("photag-fs-reconcile".into())
             .spawn(move || {
+                refresh.run();
                 while !stop.load(Ordering::Acquire) {
                     if let Some(service) = weak.upgrade() {
                         if let Err(error) = service.poll_and_reconcile() {
@@ -58,6 +66,14 @@ impl WatcherService {
             .lock()
             .map_err(|_| std::io::Error::other("watcher worker lock poisoned"))? = Some(worker);
         Ok(())
+    }
+
+    /// Startup reconciliation progress/errors; no UI or filesystem work occurs here.
+    pub fn library_refresh(&self) -> LibraryRefreshState {
+        self.refresh_state
+            .lock()
+            .map(|state| state.clone())
+            .unwrap_or_default()
     }
 
     /// Schedule a recursive directory watch without blocking the caller.
@@ -115,6 +131,9 @@ impl WatcherService {
                 let Ok(metadata) = std::fs::metadata(path) else {
                     continue;
                 };
+                if !metadata.is_file() {
+                    continue;
+                }
                 let filename = path
                     .file_name()
                     .unwrap_or_default()
@@ -183,15 +202,6 @@ impl Drop for WatcherService {
     }
 }
 
-fn classify_media_type(extension: &str) -> &'static str {
-    match extension {
-        "mp4" | "mov" | "avi" | "mkv" | "wmv" | "flv" | "webm" | "m4v" | "mpg" | "mpeg" | "3gp" => {
-            "video"
-        }
-        _ => "image",
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 pub struct WatcherConfig;
 
@@ -234,6 +244,7 @@ impl Plugin for WatcherPlugin {
             database,
             indexing,
             watcher: Mutex::new(watcher),
+            refresh_state: Arc::default(),
             stop: Arc::new(AtomicBool::new(false)),
             poller: Mutex::new(None),
             cordis: Some(context.clone()),
@@ -286,6 +297,9 @@ mod tests {
     fn media_classification_matches_watched_extensions() {
         assert_eq!(classify_media_type("mp4"), "video");
         assert_eq!(classify_media_type("png"), "image");
+        assert_eq!(classify_media_type("WAV"), "audio");
+        assert_eq!(classify_media_type("custom"), "file");
+        assert_eq!(classify_media_type(""), "file");
     }
 
     #[test]
@@ -303,7 +317,9 @@ mod tests {
         ));
         std::fs::create_dir_all(&root).unwrap();
         let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
-        let folder_path = root.to_string_lossy().into_owned();
+        let library = root.join("library");
+        std::fs::create_dir_all(&library).unwrap();
+        let folder_path = library.to_string_lossy().into_owned();
         database
             .with_writer(|connection| queries::add_folder(connection, &folder_path))
             .unwrap();
@@ -330,13 +346,14 @@ mod tests {
             database: Arc::clone(&database),
             indexing,
             watcher: Mutex::new(watcher),
+            refresh_state: Arc::default(),
             stop: Arc::new(AtomicBool::new(true)),
             poller: Mutex::new(None),
             cordis: Some(cordis),
             runtime: Some(runtime.handle().clone()),
         };
 
-        let media = root.join("arriving.png");
+        let media = library.join(".arriving.custom");
         std::fs::write(&media, b"watcher fixture").unwrap();
         wait_until(|| {
             let _ = service.poll_and_reconcile();
@@ -352,6 +369,51 @@ mod tests {
                 == 1
         });
         assert_media_index_events(&runtime, &event_count, 1);
+        let kind = database
+            .with_reader(|connection| {
+                connection.query_row(
+                    "SELECT media_type FROM media WHERE full_path = ?1",
+                    [media.to_string_lossy().as_ref()],
+                    |row| row.get::<_, String>(0),
+                )
+            })
+            .unwrap();
+        assert_eq!(kind, "file");
+        let plain = library.join("LICENSE");
+        let audio = library.join("sound.WAV");
+        std::fs::write(&plain, b"extensionless").unwrap();
+        std::fs::write(&audio, b"audio fixture").unwrap();
+        std::fs::create_dir(library.join("empty.custom")).unwrap();
+        wait_until(|| {
+            let _ = service.poll_and_reconcile();
+            database
+                .with_reader(|connection| {
+                    connection
+                        .query_row("SELECT COUNT(*) FROM media", [], |row| row.get::<_, i64>(0))
+                })
+                .unwrap()
+                == 3
+        });
+        let audio_kind = database
+            .with_reader(|connection| {
+                connection.query_row(
+                    "SELECT media_type FROM media WHERE filename = 'sound.WAV'",
+                    [],
+                    |row| row.get::<_, String>(0),
+                )
+            })
+            .unwrap();
+        assert_eq!(audio_kind, "audio");
+        let directories = database
+            .with_reader(|connection| {
+                connection.query_row(
+                    "SELECT COUNT(*) FROM media WHERE filename = 'empty.custom'",
+                    [],
+                    |row| row.get::<_, i64>(0),
+                )
+            })
+            .unwrap();
+        assert_eq!(directories, 0);
 
         std::fs::remove_file(&media).unwrap();
         wait_until(|| {

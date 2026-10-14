@@ -25,21 +25,18 @@ const AUDIO_EXTENSIONS: &[&str] = &[
     "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a", "opus", "ape", "aiff", "aif",
 ];
 
-fn get_media_type(ext: &str) -> Option<&'static str> {
+/// Classify every extension; unsupported and extensionless files remain indexed as `file`.
+pub fn classify_media_type(ext: &str) -> &'static str {
     let lower = ext.to_lowercase();
     if IMAGE_EXTENSIONS.contains(&lower.as_str()) {
-        Some("image")
+        "image"
     } else if VIDEO_EXTENSIONS.contains(&lower.as_str()) {
-        Some("video")
+        "video"
     } else if AUDIO_EXTENSIONS.contains(&lower.as_str()) {
-        Some("audio")
+        "audio"
     } else {
-        None
+        "file"
     }
-}
-
-fn is_hidden(name: &std::ffi::OsStr) -> bool {
-    name.to_string_lossy().starts_with('.')
 }
 
 #[derive(Clone)]
@@ -94,25 +91,26 @@ fn scan_folder_impl(
     for entry in walkdir::WalkDir::new(folder_path)
         .follow_links(true)
         .into_iter()
-        .filter_entry(|e| e.depth() == 0 || !is_hidden(e.file_name()))
         .map(|entry| entry.map_err(|error| error.to_string()))
     {
+        if cancel.load(Ordering::Relaxed) {
+            return Ok(());
+        }
         let entry = entry?;
         if !entry.file_type().is_file() {
             continue;
         }
-        if is_hidden(entry.file_name()) {
-            continue;
-        }
-        if let Some(ext) = entry.path().extension() {
-            if let Some(media_type) = get_media_type(&ext.to_string_lossy()) {
-                let parent = entry.path().parent().unwrap_or(entry.path()).to_path_buf();
-                dir_groups
-                    .entry(parent)
-                    .or_default()
-                    .push((entry.path().to_path_buf(), media_type));
-            }
-        }
+        let ext = entry
+            .path()
+            .extension()
+            .unwrap_or_default()
+            .to_string_lossy();
+        let media_type = classify_media_type(&ext);
+        let parent = entry.path().parent().unwrap_or(entry.path()).to_path_buf();
+        dir_groups
+            .entry(parent)
+            .or_default()
+            .push((entry.path().to_path_buf(), media_type));
     }
 
     let mut entries: Vec<MediaEntry> = Vec::new();
@@ -139,9 +137,6 @@ fn scan_folder_impl(
 
     for (_dir, items) in &dir_groups {
         for (path, media_type) in items {
-            if *media_type == "image" && consumed_images.contains(path) {
-                continue;
-            }
             let thumb_image = if *media_type == "video" {
                 let stem = path.file_stem().map(|s| s.to_string_lossy().to_string());
                 stem.and_then(|s| {
@@ -167,7 +162,7 @@ fn scan_folder_impl(
 
     let total = entries.len();
     if total == 0 {
-        return Ok(());
+        return crate::reconcile::finish_scan(db, folder_id, folder_path, cancel);
     }
 
     // Phase 1: Index files into DB
@@ -176,6 +171,7 @@ fn scan_folder_impl(
         if cancel.load(Ordering::Relaxed) {
             return Ok(());
         }
+        let mut invalidated_thumbnails = Vec::new();
         db.database
             .with_writer(|conn| {
                 conn.execute_batch("BEGIN")?;
@@ -193,7 +189,7 @@ fn scan_folder_impl(
                             .unwrap_or_default()
                             .to_string_lossy()
                             .to_string();
-                        let media_type = get_media_type(&ext).unwrap_or(entry.media_type);
+                        let media_type = classify_media_type(&ext);
                         let metadata = std::fs::metadata(path).ok();
                         let file_size = metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
                         let modified_at = metadata
@@ -206,7 +202,7 @@ fn scan_folder_impl(
                             .thumb_image
                             .as_ref()
                             .map(|p| p.to_string_lossy().to_string());
-                        queries::insert_media(
+                        let old_thumb_path = queries::scan_upsert_media(
                             conn,
                             folder_id,
                             &filename,
@@ -214,10 +210,17 @@ fn scan_folder_impl(
                             media_type,
                             file_size,
                             modified_at,
-                            None,
-                            None,
                             thumb_path_str.as_deref(),
                         )?;
+                        let paired_poster_path = entry
+                            .thumb_image
+                            .as_ref()
+                            .map(|poster| poster.to_string_lossy());
+                        if let Some(old_thumb_path) = old_thumb_path
+                            && paired_poster_path.as_deref() != Some(old_thumb_path.as_str())
+                        {
+                            invalidated_thumbnails.push(PathBuf::from(old_thumb_path));
+                        }
                     }
                     Ok::<(), rusqlite::Error>(())
                 })();
@@ -230,6 +233,16 @@ fn scan_folder_impl(
                 }
             })
             .map_err(|error| error.to_string())?;
+        for stale_thumbnail in invalidated_thumbnails {
+            if let Err(error) = std::fs::remove_file(&stale_thumbnail)
+                && error.kind() != std::io::ErrorKind::NotFound
+            {
+                eprintln!(
+                    "could not clear stale thumbnail {}: {error}",
+                    stale_thumbnail.display()
+                );
+            }
+        }
         let scanned = ((chunk_idx + 1) * chunk_size).min(total);
         tx.send(Some(ScanProgress {
             scanned,
@@ -319,7 +332,7 @@ fn scan_folder_impl(
                     conn.execute_batch("BEGIN")?;
                     let updates = (|| {
                         let mut stmt = conn.prepare_cached(
-                            "UPDATE media SET thumb_path = ?1, width = ?2, height = ?3, micro_thumb = ?4 WHERE full_path = ?5"
+                            "UPDATE media SET thumb_path = ?1, width = COALESCE(?2, width), height = COALESCE(?3, height), micro_thumb = COALESCE(?4, micro_thumb) WHERE full_path = ?5"
                         )?;
                         for (full_path, thumb_path, w, h, micro) in batch.iter() {
                             let micro_ref: Option<&[u8]> = micro.as_deref();
@@ -380,8 +393,5 @@ fn scan_folder_impl(
         )?;
     }
 
-    db.database
-        .with_writer(|conn| queries::update_folder_scan_time(conn, folder_id))
-        .map_err(|error| error.to_string())?;
-    Ok(())
+    crate::reconcile::finish_scan(db, folder_id, folder_path, cancel)
 }

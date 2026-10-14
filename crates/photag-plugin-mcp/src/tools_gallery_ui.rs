@@ -77,6 +77,12 @@ impl PhoTagMcpServer {
                     }
                 }
                 "all" => R::AllFiles,
+                "folder_picker_cancel" => {
+                    return match self.navigation.cancel_folder_picker() {
+                        Ok(()) => json!({"accepted":true}).to_string(),
+                        Err(error) => error_json(&error),
+                    };
+                }
                 "create" => R::OpenCreate,
                 "close" => R::CloseModal,
                 "edit" | "delete" | "merge" | "move" => {

@@ -8,6 +8,7 @@ mod card_motion;
 mod empty_state;
 mod factory;
 mod file_actions;
+mod file_format;
 mod filter_actions;
 mod filter_row;
 mod inspector;

@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::ButtonVariants;
 
 mod folder_row;
@@ -246,6 +247,7 @@ impl Render for SidebarView {
                                     .gap_1()
                                     .child(
                                         Button::new("navigation-add-folder")
+                                            .disabled(self.service.folder_picker_pending())
                                             .ghost()
                                             .compact()
                                             .w(px(22.))
@@ -322,6 +324,7 @@ impl Render for SidebarView {
                                 .child(Input::new(&self.folder_path).flex_1())
                                 .child(
                                     Button::new("navigation-browse-folder")
+                                        .disabled(self.service.folder_picker_pending())
                                         .label(photag_ui_bridge::i18n::tr("Browse…"))
                                         .on_click(
                                             cx.listener(|this, _, _, cx| this.pick_folder(cx)),
