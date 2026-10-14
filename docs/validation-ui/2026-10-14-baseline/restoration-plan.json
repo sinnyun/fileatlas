@@ -1,0 +1,37 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "sidebar_width",
+      "equals": 304,
+      "attempts": 40,
+      "interval_ms": 250
+    }
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "inspector_width",
+      "equals": 340,
+      "attempts": 40,
+      "interval_ms": 250
+    },
+    "capture": "v2-restored-final"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "304,350"
+    },
+    "expect_error": "PHOTAG_MCP_ALLOW_MUTATIONS"
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "v2-readonly-final"
+  }
+]

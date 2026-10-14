@@ -73,6 +73,9 @@ pub struct SessionState {
     /// Persisted left-sidebar width. 0 means "unset" → use the in-app default.
     #[serde(default)]
     pub sidebar_width: f32,
+    /// Right inspector width. Zero retains the default for older session files.
+    #[serde(default)]
+    pub inspector_width: f32,
 
     // ── Filter state ──────────────────────────────────────────────────
     #[serde(default)]
@@ -122,6 +125,26 @@ pub fn default_session_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
         .join("PhoTag")
         .join("session.json")
+}
+
+#[cfg(test)]
+mod compatibility_tests {
+    use super::*;
+
+    #[test]
+    fn old_session_keeps_selection_when_inspector_width_is_added() {
+        let mut state: SessionState = serde_json::from_str(
+            r#"{"selected_folder_id":7,"selected_media_ids":[12],"sidebar_width":264,"sidebar_tab":"Tags"}"#,
+        ).unwrap();
+        assert_eq!(state.inspector_width, 0.);
+        state.inspector_width = 350.;
+        let restored: SessionState =
+            serde_json::from_str(&serde_json::to_string(&state).unwrap()).unwrap();
+        assert_eq!(restored.selected_folder_id, Some(7));
+        assert_eq!(restored.selected_media_ids, vec![12]);
+        assert_eq!(restored.sidebar_tab, "Tags");
+        assert_eq!(restored.inspector_width, 350.);
+    }
 }
 
 impl SessionState {

@@ -28,6 +28,11 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         view.previous_popover = popover;
         cx.notify();
     }
+    let inspector_tab = view.surfaces.value("gallery.inspector.tab");
+    if view.previous_inspector_tab != inspector_tab {
+        view.previous_inspector_tab = inspector_tab;
+        cx.notify();
+    }
     let progress = view
         .service
         .scan_progress()

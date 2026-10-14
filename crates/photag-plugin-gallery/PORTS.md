@@ -132,6 +132,21 @@ compilation fails on 19 missing type/trait/visibility errors in these new
 panels. See docs/development-handoff-2026-10-14.md for exact diagnostics and
 pending public-interface/runtime validation; do not claim this work complete.
 
+The right Inspector keeps the selected item's thumbnail preview, filename and
+editable rating fixed above independently scrollable Information, History and
+Extensions tabs. Clicking the thumbnail calls the existing `PreviewService`
+route. The Extensions tab reads executable contributions from
+`UiViewCatalog::snapshot()` whose slot begins `gallery.inspector`; an empty
+catalog shows an explicit unavailable state. History only displays actual
+`HistoryService` undo/redo descriptions and labels them global, since the
+service does not expose per-media history. The active tab is stored in
+`UiSurfaceState` as `gallery.inspector.tab` with values `information`,
+`history`, and `extensions`; MCP can set this key through the shared surface
+state. The inspector layout and new copy still require the final PhoTag MCP
+visual pass.
+
 ## 2026-10-14 current implementation and MCP evidence
 
 UI requests SelectMany(Vec<i64>) and ScrollTo(usize) support explicit indexed selections and zero-based current-result scrolling. GalleryUiSnapshot publishes window_offset/loaded_count. Unmeasured virtual rows use logical ListOffset, measured visible rows retain reveal behavior. Scroll page changes notify publication; production page size remains200. Reference00/01/04/06/07/08 layouts and real 100012-row last-page200, cross-page bulk2, compact writeback os32/retry/dismiss were checked through PhoTag MCP. Native pointer/drag/window restore remain unverified. Earlier19error notes are historical; current Shell build passes.
+
+Finalv2: Inspector pages controlled by gallery.inspector.tab(information/history/extensions), watched every200ms. Preview fixed220pt and basic/tag/exif/path content independently scrolls; preview/open uses existing service. New Add-ons labels preserve Extensions meaning for filenamefilter. Thumbnail selected check overlay removed; blue border now packs realRGBA alpha. Runtime matched3/selected7, preview retained during page switches and minwindow; history is existing globalundo/redo summary, right extension slot presently empty.

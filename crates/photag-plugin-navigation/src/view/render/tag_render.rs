@@ -1,4 +1,6 @@
 use super::super::*;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 
 pub(super) fn render_tag(
     tag: &photag_plugin_database::db::queries::Tag,
@@ -331,14 +333,22 @@ impl Render for TagDragGhost {
 pub(super) fn render_subdirectory(
     node: &SubdirectoryNode,
     expanded: &HashMap<String, Vec<SubdirectoryNode>>,
+    query: &str,
+    selected_directory: Option<&str>,
     cx: &mut Context<SidebarView>,
-) -> Div {
+) -> Option<Div> {
+    let query = query.trim().to_lowercase();
+    if !query.is_empty() && !directory_matches(node, expanded, &query) {
+        return None;
+    }
     let children = expanded
         .get(&node.path)
         .map(|children| {
             children
                 .iter()
-                .map(|child| render_subdirectory(child, expanded, cx))
+                .filter_map(|child| {
+                    render_subdirectory(child, expanded, &query, selected_directory, cx)
+                })
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
@@ -347,9 +357,17 @@ pub(super) fn render_subdirectory(
     let row_group = format!("navigation-directory-row-{}", node.path);
     let view = cx.entity().downgrade();
     let menu = Button::new(format!("navigation-directory-menu-{}", node.path))
+        .absolute()
+        .right(px(2.))
+        .top(px(2.))
+        .ghost()
+        .compact()
         .opacity(0.)
         .group_hover(row_group.clone(), |style| style.opacity(1.))
         .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
+        .w(px(20.))
+        .h(px(22.))
+        .bg(rgb(theme::SURFACE_BASE))
         .dropdown_menu(move |mut menu, _, _| {
             let create_path = menu_path.clone();
             let create_view = view.clone();
@@ -373,40 +391,179 @@ pub(super) fn render_subdirectory(
                 ),
             )
         });
-    let mut row = div().group(row_group).h_flex().pl_3().gap_1().child(
-        Button::new(format!("navigation-open-dir-{}", node.path))
+    let selected = selected_directory == Some(node.path.as_str());
+    let expand = if node.has_children {
+        let directory_path = node.path.clone();
+        Button::new(format!("navigation-expand-dir-{}", node.path))
             .ghost()
             .compact()
-            .flex_1()
-            .min_w_0()
-            .text_xs()
-            .label(format!("{}  {}", node.name, node.media_count))
-            .on_click(
-                cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
-            ),
-    );
-    row = row.child(menu);
-    if node.has_children {
-        let directory_path = node.path.clone();
-        row = row.child(
-            Button::new(format!("navigation-expand-dir-{}", node.path))
-                .ghost()
-                .compact()
-                .label(photag_ui_bridge::i18n::tr(
-                    &(if expanded.contains_key(&node.path) {
-                        theme::icons::CHEVRON_DOWN
+            .w(px(18.))
+            .label(photag_ui_bridge::i18n::tr(
+                &(if expanded.contains_key(&node.path) || !query.is_empty() {
+                    theme::icons::CHEVRON_DOWN
+                } else {
+                    theme::icons::CHEVRON_RIGHT
+                })
+                .to_string(),
+            ))
+            .font_family(theme::ICON_FONT_FAMILY)
+            .text_size(px(8.))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.toggle_directory(&directory_path);
+                cx.notify();
+            }))
+    } else {
+        Button::new(format!("navigation-expand-dir-{}", node.path))
+            .ghost()
+            .compact()
+            .w(px(18.))
+            .label(" ")
+    };
+    let row = div()
+        .group(row_group)
+        .relative()
+        .h_flex()
+        .w_full()
+        .h(px(26.))
+        .items_center()
+        .gap(px(3.))
+        .rounded(px(4.))
+        .px(px(3.))
+        .hover(|style| style.bg(rgba(0xffffff10)))
+        .when(selected, |row| row.bg(rgba((theme::accent() << 8) | 70)))
+        .child(div().w(px(8.)).h(px(1.)).bg(rgba(0xffffff38)))
+        .child(expand)
+        .child(
+            div()
+                .id(format!("navigation-open-dir-{}", node.path))
+                .h_flex()
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .items_center()
+                .gap(px(6.))
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
+                )
+                .child(
+                    Icon::new(if expanded.contains_key(&node.path) {
+                        IconName::FolderOpen
                     } else {
-                        theme::icons::CHEVRON_RIGHT
+                        IconName::Folder
                     })
-                    .to_string(),
-                ))
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(8.))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.toggle_directory(&directory_path);
-                    cx.notify();
-                })),
+                    .size(px(14.)),
+                )
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .text_xs()
+                        .text_ellipsis()
+                        .child(node.name.clone()),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_MUTED))
+                        .child(node.media_count.to_string()),
+                ),
+        );
+    let row = row.child(menu);
+    let mut subtree = div().v_flex().child(row);
+    if !children.is_empty() {
+        subtree = subtree.child(
+            div()
+                .v_flex()
+                .ml(px(9.))
+                .pl(px(9.))
+                .border_l_1()
+                .border_color(rgba(0xffffff38))
+                .children(children),
         );
     }
-    row.children(children)
+    Some(subtree)
+}
+
+pub(super) fn directory_children_match(
+    path: &str,
+    expanded: &HashMap<String, Vec<SubdirectoryNode>>,
+    query: &str,
+) -> bool {
+    expanded.get(path).is_some_and(|children| {
+        children
+            .iter()
+            .any(|child| directory_matches(child, expanded, query))
+    })
+}
+
+fn directory_matches(
+    node: &SubdirectoryNode,
+    expanded: &HashMap<String, Vec<SubdirectoryNode>>,
+    query: &str,
+) -> bool {
+    node.name.to_lowercase().contains(query)
+        || node.path.to_lowercase().contains(query)
+        || directory_children_match(&node.path, expanded, query)
+}
+
+pub(in crate::view) fn merge_target_buttons(
+    view: &SidebarView,
+    source_id: i64,
+    cx: &mut Context<SidebarView>,
+) -> Vec<Div> {
+    let Some(snapshot) = view.snapshot.as_ref().ok() else {
+        return Vec::new();
+    };
+    let mut excluded = HashSet::new();
+    if let Some(source) = find_tag(&snapshot.tags, source_id) {
+        collect_tag_ids(source, &mut excluded);
+    }
+    let query = view.merge_search.read(cx).value().trim().to_owned();
+    let mut targets = Vec::new();
+    fn walk(
+        tags: &[photag_plugin_database::db::queries::Tag],
+        excluded: &HashSet<i64>,
+        query: &str,
+        mode: TagSearchMatch,
+        output: &mut Vec<(i64, String, usize, i64)>,
+    ) {
+        for tag in tags {
+            if !excluded.contains(&tag.id) && tag_matches(tag, query, mode) {
+                output.push((
+                    tag.id,
+                    tag.name.clone(),
+                    tag.full_path.matches('>').count(),
+                    tag.media_count,
+                ));
+            }
+            walk(&tag.children, excluded, query, mode, output);
+        }
+    }
+    walk(
+        &snapshot.tags,
+        &excluded,
+        &query,
+        view.tag_search_match,
+        &mut targets,
+    );
+    if targets.is_empty() {
+        return vec![
+            div()
+                .text_xs()
+                .child(photag_ui_bridge::i18n::tr("No matching tags")),
+        ];
+    }
+    targets
+        .into_iter()
+        .map(|(id, name, depth, count)| {
+            div().child(
+                Button::new(format!("navigation-merge-target-{id}"))
+                    .ghost()
+                    .w_full()
+                    .pl(px(8. + depth as f32 * 14.))
+                    .label(photag_ui_bridge::i18n::tr(&format!("{}  ({count})", name)))
+                    .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
+            )
+        })
+        .collect()
 }

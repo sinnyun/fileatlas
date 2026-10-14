@@ -27,11 +27,17 @@ use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
+mod construction;
+mod page_state;
+mod projections;
 mod render;
 mod support;
 mod tag_actions;
 mod tag_modal;
 mod tag_picker;
+
+use page_state::NavigationPage;
+use projections::{breadcrumb_view, tag_modal_view};
 
 use support::{
     collect_tag_appearance_descendants, collect_tag_ids, find_tag, restore_expanded_directories,
@@ -62,12 +68,40 @@ pub(super) fn sidebar(
             .ok();
         let view_session = Arc::clone(&session);
         let saved = view_session.snapshot().unwrap_or_default();
+        let saved_page = NavigationPage::from_key(&saved.sidebar_tab).unwrap_or_default();
+        let bridge = view_cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .ok();
+        let extension_views = bridge
+            .as_ref()
+            .and_then(|bridge| bridge.views.snapshot().ok())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|entry| entry.contribution.slot == "navigation.extensions")
+            .map(|entry| (entry.contribution.factory)(window, app))
+            .collect::<Vec<_>>();
+        let active_page = bridge
+            .as_ref()
+            .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
+            .and_then(|value| NavigationPage::from_key(&value))
+            .unwrap_or(saved_page);
+        if let Some(bridge) = bridge.as_ref() {
+            let _ = bridge
+                .surfaces
+                .set_value("navigation.tab", active_page.key());
+            if bridge.surfaces.value("navigation.folder-search").is_none() {
+                let _ = bridge.surfaces.set_value("navigation.folder-search", "");
+            }
+        }
         let view_selected_folder_id = selected_folder_id;
         let view_selected_path = selected_path.clone();
         let view_expanded_subdirs = expanded_subdirs.clone();
         let view_preferences = Arc::clone(&preferences);
         let folder_path = app.new(|cx| {
             InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
+        });
+        let folder_search = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search folders…"))
         });
         let new_folder_name = app.new(|cx| {
             InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder name"))
@@ -116,10 +150,53 @@ pub(super) fn sidebar(
                                 pending.swap(false, std::sync::atomic::Ordering::AcqRel);
                             let ui_requested = view.service.has_ui_request();
                             let changed = dirty.swap(false, std::sync::atomic::Ordering::AcqRel);
+                            let bridge = view
+                                .cordis
+                                .try_service::<photag_ui_bridge::UiBridgeService>()
+                                .ok();
+                            let surface_page = bridge
+                                .as_ref()
+                                .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
+                                .and_then(|value| NavigationPage::from_key(&value));
+                            let page_changed =
+                                surface_page.is_some_and(|page| page != view.active_page);
+                            if let Some(page) = surface_page {
+                                if page != view.active_page {
+                                    view.set_navigation_page(page);
+                                }
+                            }
+                            let folder_search = bridge
+                                .as_ref()
+                                .and_then(|bridge| {
+                                    bridge.surfaces.value("navigation.folder-search")
+                                })
+                                .unwrap_or_default();
+                            let input_search = view.folder_search.read(cx).value().to_string();
+                            let search_changed = if folder_search != view.last_folder_search_surface
+                            {
+                                view.pending_folder_search = Some(folder_search.clone());
+                                view.last_folder_search_surface = folder_search;
+                                true
+                            } else if input_search != view.last_folder_search_surface {
+                                if let Some(bridge) = bridge.as_ref() {
+                                    let _ = bridge
+                                        .surfaces
+                                        .set_value("navigation.folder-search", &input_search);
+                                }
+                                view.last_folder_search_surface = input_search;
+                                false
+                            } else {
+                                false
+                            };
                             if changed {
                                 view.refresh();
                             }
-                            if requested || ui_requested || changed {
+                            if requested
+                                || ui_requested
+                                || changed
+                                || page_changed
+                                || search_changed
+                            {
                                 if requested {
                                     view.pick_folder(cx);
                                 }
@@ -138,6 +215,7 @@ pub(super) fn sidebar(
                 view_cordis,
                 tagging,
                 view_session,
+                extension_views,
                 view_selected_folder_id,
                 view_selected_path,
                 view_expanded_subdirs,
@@ -145,7 +223,9 @@ pub(super) fn sidebar(
                 saved.selected_tag_ids,
                 saved.excluded_tag_ids,
                 saved.tag_click_mode,
+                active_page,
                 folder_path,
+                folder_search,
                 new_folder_name,
                 tag_name,
                 tag_parent,
@@ -175,72 +255,15 @@ pub(super) fn sidebar(
             "navigation/breadcrumb-view",
             "command.breadcrumb",
             0,
-            move |window, app| {
-                let sidebar = breadcrumb(window, app);
-                app.new(|cx| {
-                    let subscription = cx.observe(&sidebar, |_, _, cx| cx.notify());
-                    SidebarBreadcrumb {
-                        sidebar,
-                        _subscription: subscription,
-                    }
-                })
-                .into()
-            },
+            move |window, app| breadcrumb_view(breadcrumb(window, app), app).into(),
         ),
         UiViewContribution::new(
             "navigation/tag-management-modal",
             "workspace.modal",
             0,
-            move |window, app| {
-                let sidebar = modal(window, app);
-                app.new(|cx| {
-                    let subscription = cx.observe(&sidebar, |_, _, cx| cx.notify());
-                    SidebarTagModal {
-                        sidebar,
-                        _subscription: subscription,
-                    }
-                })
-                .into()
-            },
+            move |window, app| tag_modal_view(modal(window, app), app).into(),
         ),
     ]
-}
-
-struct SidebarBreadcrumb {
-    sidebar: Entity<SidebarView>,
-    _subscription: Subscription,
-}
-
-impl Render for SidebarBreadcrumb {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sidebar
-            .update(cx, |sidebar, cx| sidebar.render_breadcrumb(cx))
-    }
-}
-
-struct SidebarTagModal {
-    sidebar: Entity<SidebarView>,
-    _subscription: Subscription,
-}
-
-impl Render for SidebarTagModal {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sidebar
-            .update(cx, |sidebar, cx| {
-                sidebar.consume_ui_request(window, cx);
-                sidebar.render_tag_modal(cx)
-            })
-            .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
-                if event.keystroke.key.eq_ignore_ascii_case("escape") {
-                    let sidebar = this.sidebar.clone();
-                    let _ = sidebar.update(cx, |sidebar, cx| {
-                        sidebar.close_tag_modal();
-                        cx.notify();
-                    });
-                    cx.notify();
-                }
-            }))
-    }
 }
 
 struct SidebarView {
@@ -249,7 +272,12 @@ struct SidebarView {
     cordis: CordisContext,
     tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
     session: Arc<SessionService>,
+    extension_views: Vec<AnyView>,
+    active_page: NavigationPage,
     folder_path: Entity<InputState>,
+    folder_search: Entity<InputState>,
+    last_folder_search_surface: String,
+    pending_folder_search: Option<String>,
     new_folder_name: Entity<InputState>,
     tag_name: Entity<InputState>,
     tag_parent: Entity<InputState>,
@@ -300,106 +328,26 @@ enum ScanRetryTarget {
 }
 
 impl SidebarView {
-    fn new(
-        service: Arc<NavigationService>,
-        cordis: CordisContext,
-        tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
-        session: Arc<SessionService>,
-        restored_folder_id: Option<i64>,
-        restored_path: Option<String>,
-        expanded_subdirs: HashSet<String>,
-        expanded_tags: HashSet<i64>,
-        included_tags: Vec<i64>,
-        excluded_tags: Vec<i64>,
-        saved_tag_click_mode: Option<photag_plugin_session::TagClickMode>,
-        folder_path: Entity<InputState>,
-        new_folder_name: Entity<InputState>,
-        tag_name: Entity<InputState>,
-        tag_parent: Entity<InputState>,
-        tag_edit_name: Entity<InputState>,
-        tag_color: Entity<InputState>,
-        tag_icon: Entity<InputState>,
-        tag_move_target: Entity<InputState>,
-        tag_search: Entity<InputState>,
-        merge_search: Entity<InputState>,
-        preferences: Arc<RwLock<TagInteractionPreferences>>,
-    ) -> Self {
-        let snapshot = service.snapshot().map_err(|error| error.to_string());
-        let mut expanded_tags = expanded_tags;
-        if let Ok(snapshot) = &snapshot {
-            let mut live_tag_ids = HashSet::new();
-            for tag in &snapshot.tags {
-                collect_tag_ids(tag, &mut live_tag_ids);
-            }
-            let saved_count = expanded_tags.len();
-            expanded_tags.retain(|id| live_tag_ids.contains(id));
-            if expanded_tags.len() != saved_count {
-                if let Ok(mut saved) = session.snapshot() {
-                    saved.expanded_tag_ids = expanded_tags.clone();
-                    if let Err(error) = session.replace(saved) {
-                        eprintln!("stale tag expansion cleanup failed: {error}");
-                    }
-                }
-            }
-        }
-        let expanded_directories = match &snapshot {
-            Ok(snapshot) => restore_expanded_directories(&service, snapshot, &expanded_subdirs),
-            Err(_) => HashMap::new(),
-        };
-        Self {
-            locale_revision: u64::MAX,
-            service: Arc::clone(&service),
-            cordis,
-            tagging,
-            session,
-            folder_path,
-            new_folder_name,
-            tag_name,
-            tag_parent,
-            parent_tag_id: None,
-            tag_edit_name,
-            tag_color,
-            tag_icon,
-            tag_edit_display: false,
-            tag_edit_name_only: false,
-            tag_move_target,
-            move_target_tag_id: None,
-            tag_search,
-            merge_search,
-            snapshot,
-            active_scan: None,
-            active_scan_folder_id: None,
-            scan_failure: None,
-            scan_progress: None,
-            expanded_directories,
-            expanded_tags,
-            restored_folder_id,
-            restored_path,
-            restore_selection_pending: true,
-            preferences,
-            included_tags,
-            excluded_tags,
-            show_folder_path_entry: false,
-            show_tag_search_controls: false,
-            new_folder_parent: None,
-            exclude_mode: saved_tag_click_mode
-                == Some(photag_plugin_session::TagClickMode::Exclude),
-            tag_search_match: TagSearchMatch::Contains,
-            apply_tag_appearance_to_children: false,
-            exclude_edited_tag_children: true,
-            associated_edit_tag: None,
-            associated_tag_ids: Vec::new(),
-            merge_source: None,
-            move_source_id: None,
-            merge_reparent_children: true,
-            confirm_delete: None,
-            delete_clean_parents: false,
-            tag_create_open: false,
-        }
-    }
-
     fn refresh(&mut self) {
         self.snapshot = self.service.snapshot().map_err(|error| error.to_string());
+    }
+
+    fn set_navigation_page(&mut self, page: NavigationPage) {
+        self.active_page = page;
+        if let Ok(bridge) = self
+            .cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+        {
+            if let Err(error) = bridge.surfaces.set_value("navigation.tab", page.key()) {
+                eprintln!("navigation tab surface update failed: {error}");
+            }
+        }
+        if let Ok(mut state) = self.session.snapshot() {
+            state.sidebar_tab = page.key().to_owned();
+            if let Err(error) = self.session.replace(state) {
+                eprintln!("navigation tab session update failed: {error}");
+            }
+        }
     }
 
     fn close_tag_modal(&mut self) {
@@ -750,6 +698,18 @@ impl SidebarView {
             self.expanded_directories
                 .insert(path.to_owned(), self.service.subdirectories(path));
         }
+        self.persist_directory_expansion();
+    }
+
+    fn expand_directory(&mut self, path: &str) {
+        if !self.expanded_directories.contains_key(path) {
+            let children = self.service.subdirectories(path);
+            self.expanded_directories.insert(path.to_owned(), children);
+        }
+        self.persist_directory_expansion();
+    }
+
+    fn persist_directory_expansion(&self) {
         if let Ok(mut session) = self.session.snapshot() {
             session.expanded_subdirs = self.expanded_directories.keys().cloned().collect();
             if let Err(error) = self.session.replace(session) {

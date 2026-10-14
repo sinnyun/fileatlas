@@ -9,6 +9,8 @@ pub(super) struct UiRequest {
     /// gallery_dialogs_close, select_media, deselect, hover_media, hover_clear,
     /// inspector_open/close, sidebar_open/close, export_open/close,
     /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
+    /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
+    /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
     action: String,
     /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
@@ -46,6 +48,10 @@ impl PhoTagMcpServer {
             "update_available": self.surfaces.is_open("settings.update-available"),
             "update_offer_open": self.surfaces.is_open("settings.update-offer"),
             "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
+            "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
+            "inspector_tab": self.surfaces.value("gallery.inspector.tab").unwrap_or_else(|| "information".into()),
+            "sidebar_width": self.surfaces.value("shell.sidebar-width").and_then(|value| value.parse::<f32>().ok()),
+            "inspector_width": self.surfaces.value("shell.inspector-width").and_then(|value| value.parse::<f32>().ok()),
             "language": self.i18n.as_ref().map(|service| service.language().code()),
             "translation_revision": photag_ui_bridge::i18n::revision(),
             "preview_chrome_alpha": self.preview.chrome_alpha(),
@@ -77,6 +83,34 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "pointer_down" | "pointer_drag" | "pointer_up" => {
+                let coordinates = request
+                    .value
+                    .as_deref()
+                    .unwrap_or("")
+                    .split(',')
+                    .map(|value| value.trim().parse::<f32>())
+                    .collect::<Result<Vec<_>, _>>();
+                let Ok(coordinates) = coordinates else {
+                    return error_json("pointer requires x,y logical client coordinates");
+                };
+                if coordinates.len() != 2
+                    || coordinates
+                        .iter()
+                        .any(|value| !value.is_finite() || !(0. ..=4096.).contains(value))
+                {
+                    return error_json("pointer coordinates must be finite and bounded 0–4096");
+                }
+                self.capture.queue_pointer(crate::McpPointerInput {
+                    kind: match request.action.as_str() {
+                        "pointer_down" => "down",
+                        "pointer_drag" => "drag",
+                        _ => "up",
+                    },
+                    x: coordinates[0],
+                    y: coordinates[1],
+                })
+            }
             "writeback_retry" | "writeback_dismiss" => {
                 let Some(path) = request.value.as_deref() else {
                     return error_json("writeback action requires a recorded failure path");
@@ -104,6 +138,47 @@ impl PhoTagMcpServer {
             "sidebar_close" => self.surfaces.set_value("sidebar.visible", "false"),
             "inspector_open" => self.surfaces.set_open("inspector", true),
             "inspector_close" => self.surfaces.set_open("inspector", false),
+            "sidebar_width" | "inspector_width" => {
+                let Some(width) = request
+                    .value
+                    .as_deref()
+                    .and_then(|value| value.parse::<f32>().ok())
+                    .filter(|width| width.is_finite() && (100. ..=1000.).contains(width))
+                else {
+                    return error_json(
+                        "panel width requires finite logical pixels from 100 to 1000",
+                    );
+                };
+                self.surfaces.set_value(
+                    if request.action == "sidebar_width" {
+                        "shell.sidebar-width.request"
+                    } else {
+                        "shell.inspector-width.request"
+                    },
+                    &width.to_string(),
+                )
+            }
+            "navigation_tab" => {
+                let value = request.value.as_deref().unwrap_or("");
+                if !["folders", "tags", "extensions"].contains(&value) {
+                    return error_json("navigation_tab requires folders/tags/extensions");
+                }
+                self.surfaces.set_value("navigation.tab", value)
+            }
+            "inspector_tab" => {
+                let value = request.value.as_deref().unwrap_or("");
+                if !["info", "information", "history", "extensions"].contains(&value) {
+                    return error_json("inspector_tab requires information/history/extensions");
+                }
+                self.surfaces.set_value(
+                    "gallery.inspector.tab",
+                    if value == "info" {
+                        "information"
+                    } else {
+                        value
+                    },
+                )
+            }
             "settings_check_updates" => self.surfaces.set_open("settings.check-updates", true),
             "statistics"
             | "bulk_actions"

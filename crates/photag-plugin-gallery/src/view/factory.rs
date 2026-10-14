@@ -19,6 +19,7 @@ pub(crate) fn gallery(
     settings: Option<Arc<SettingsService>>,
     tagging: Option<Arc<TaggingService>>,
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
+    ui_views: Arc<photag_ui_bridge::UiViewCatalog>,
 ) -> Vec<UiViewContribution> {
     // All regions share one entity. A filter or selection change invalidates
     // every projection; no independent state, workers or session writers.
@@ -47,6 +48,7 @@ pub(crate) fn gallery(
                 settings.clone(),
                 tagging.clone(),
                 Arc::clone(&surfaces),
+                Arc::clone(&ui_views),
                 inputs,
                 cx,
             )

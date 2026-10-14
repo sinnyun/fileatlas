@@ -32,7 +32,18 @@ use serde_json::json;
 
 /// Native PhoTag window handle, supplied by the Shell once GPUI creates it.
 #[derive(Default)]
-pub struct CaptureWindowHandle(std::sync::atomic::AtomicIsize);
+pub struct CaptureWindowHandle {
+    native: std::sync::atomic::AtomicIsize,
+    pointer: std::sync::Mutex<Option<McpPointerInput>>,
+}
+
+/// Same-process GPUI input, dispatched by the shell after its render lease ends.
+#[derive(Clone, Copy)]
+pub struct McpPointerInput {
+    pub kind: &'static str,
+    pub x: f32,
+    pub y: f32,
+}
 
 impl Service for CaptureWindowHandle {
     const NAME: &'static str = "photag/mcp-window-handle";
@@ -40,11 +51,35 @@ impl Service for CaptureWindowHandle {
 
 impl CaptureWindowHandle {
     pub fn set(&self, handle: isize) {
-        self.0.store(handle, std::sync::atomic::Ordering::Release);
+        self.native
+            .store(handle, std::sync::atomic::Ordering::Release);
     }
 
     fn get(&self) -> isize {
-        self.0.load(std::sync::atomic::Ordering::Acquire)
+        self.native.load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    pub fn queue_pointer(&self, input: McpPointerInput) -> Result<(), String> {
+        let mut pending = self
+            .pointer
+            .lock()
+            .map_err(|_| "MCP pointer queue is unavailable")?;
+        if pending.is_some() {
+            return Err("MCP pointer request is still pending".into());
+        }
+        *pending = Some(input);
+        Ok(())
+    }
+
+    pub fn pointer_pending(&self) -> bool {
+        self.pointer.lock().is_ok_and(|pending| pending.is_some())
+    }
+
+    pub fn take_pointer(&self) -> Option<McpPointerInput> {
+        self.pointer
+            .lock()
+            .ok()
+            .and_then(|mut pending| pending.take())
     }
 }
 

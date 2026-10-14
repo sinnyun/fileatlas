@@ -106,6 +106,7 @@ impl GalleryView {
         settings: Option<Arc<SettingsService>>,
         tagging: Option<Arc<TaggingService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
+        ui_views: Arc<photag_ui_bridge::UiViewCatalog>,
         inputs: GalleryViewInputs,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -121,6 +122,10 @@ impl GalleryView {
             bulk_inputs,
         } = inputs;
         let saved = session.snapshot().unwrap_or_default();
+        if surfaces.value("gallery.inspector.tab").is_none() {
+            let _ = surfaces.set_value("gallery.inspector.tab", "information");
+        }
+        let initial_inspector_tab = surfaces.value("gallery.inspector.tab");
         let mut filter = GalleryFilter::default();
         if let Some(settings) = &settings
             && let Ok(settings_snapshot) = settings.snapshot()
@@ -281,6 +286,7 @@ impl GalleryView {
             settings,
             tagging,
             surfaces: Arc::clone(&surfaces),
+            ui_views,
             tag_picker_search,
             tag_picker_selected: Default::default(),
             search,
@@ -333,6 +339,7 @@ impl GalleryView {
             exif_cache: None,
             operation_status: None,
             writeback_failure_signature: initial_writeback_failures,
+            previous_inspector_tab: initial_inspector_tab,
             confirm_delete: false,
             snapshot,
             observed_index_revision,

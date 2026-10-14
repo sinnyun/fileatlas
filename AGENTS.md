@@ -2,39 +2,37 @@
 
 ## Status
 
-### Current development handoff (2026-10-14)
+### Development baseline and current phase (2026-10-14)
+
+The user accepted the current interface as development baseline
+`dev-baseline-2026-10-14`. The current phase is **functional operation
+optimization and feature development**, not continued wholesale UI redesign.
+Read `docs/development-baseline-2026-10-14.md` and
+`docs/functional-development-plan.md` before continuing. Preserve the accepted
+layout unless the user requests a change or a feature needs a targeted update.
 
 **Automatic continuation:** when the user says “continue” without naming a
-section, read the handoff ledger and advance to the next incomplete phase in
-order: finish incomplete C0–C4 coding first, then begin/continue V1–V4
-verification. Skip only items whose current code or verification evidence
-confirms completion. An explicit user scope overrides this default. For C0–C4,
-write code and implementation notes only; do not run Cargo
-fmt/check/build/test/clippy, launch the app, run MCP, capture screenshots, scan
-fixtures, or perform runtime checks. Writing test code and MCP interfaces is
-allowed. Mark this work unverified and list follow-up checks. For V1–V4, execute
-the named checks; runtime debugging and UI screenshots must use the project
-PhoTag MCP. See
-[`docs/development-handoff-2026-10-14.md`](docs/development-handoff-2026-10-14.md)
-for task lists, ordering, and current state. When C0–C4 are all complete but
-verification remains, a generic “continue” means start V1–V4 automatically.
+section, advance the first incomplete F0–F3 item in the functional development
+plan. Start F0 with real folder/filter/selection/preview flows, then tagging,
+undo/redo, file operations and indexing feedback. New feature specifics follow
+the user's requirements; do not infer a plugin store or dynamic extension
+platform from “feature development”. Existing architecture limits remain.
 
-Before continuing the v5 redesign, read the handoff document above. It records
-the current uncommitted worktree, 19 Gallery compilation errors,
-the older last runnable executable, actual plugin MCP screenshots, pending
-localization, and the next small development steps. Do not treat an older
-successful build or screenshot as verification of the latest source.
-`scripts/photag-mcp-debug.cjs` provides a reproducible same-process plugin MCP
-client with isolated profiles and screenshot capture; its usage is in that
-handoff. Automatic startup update offers must remain suppressed; explicit
-manual update checks and installation remain available.
+The C0–C4/V1–V4 ledger in
+`docs/development-handoff-2026-10-14.md` is historical UI-phase context. Its
+coding-only restrictions and old 19-error build snapshot do not define the
+current work. Carry remaining unverified operations into F0; do not call them
+passed merely because the layout was accepted. See
+`docs/redesign-validation.md` for current evidence. Static checks use the
+installed Rust1.97.1; live debugging, input and screenshots use same-process
+PhoTag MCP with isolated test profiles. The client is
+`scripts/photag-mcp-debug.cjs`.
 
-The project is in the **interface redesign phase**: the user owns the UI
-design, and the workspace now implements that design rather than reproducing
-the PhoTag (egui) interface. Design references live in
-`docs/reference-ui/final-v5/` with its companion notes in
-`docs/reference-ui/concepts/`; static mockups are visual direction only, not
-pixel measurements.
+Automatic startup update offers remain suppressed; explicit manual checks and
+installation remain available. Main-window panel design is
+`docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png` plus its
+companion notes. Other screens follow `docs/reference-ui/final-v5/` and
+concepts notes. Mockups are visual direction, not pixel measurements.
 
 `vendor/photag-source/` remains the reference for backend behavior, data
 semantics and queries. The migration-phase documents

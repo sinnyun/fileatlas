@@ -23,9 +23,12 @@ pub(super) struct GalleryControl {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct NavigationControl {
-    /// all: select All files; create/edit/delete/merge/move/close: control the real tag dialogs.
+    /// all, expand_folder, expand_path, select_path, folder_search, or create/edit/delete/merge/move/close.
     action: String,
     tag_id: Option<i64>,
+    folder_id: Option<i64>,
+    /// Existing directory for select_path, or a search term for folder_search.
+    value: Option<String>,
 }
 
 #[tool_router(router = gallery_ui_tool_router, vis = "pub(super)")]
@@ -38,23 +41,57 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         use photag_plugin_navigation::NavigationUiRequest as R;
-        let action = match request.action.as_str() {
-            "all" => R::AllFiles,
-            "create" => R::OpenCreate,
-            "close" => R::CloseModal,
-            "edit" | "delete" | "merge" | "move" => {
-                let Some(id) = request.tag_id else {
-                    return error_json("tag_id required");
-                };
-                match request.action.as_str() {
-                    "edit" => R::OpenEdit(id),
-                    "delete" => R::OpenDelete(id),
-                    "merge" => R::OpenMerge(id),
-                    _ => R::OpenMove(id),
+        let action =
+            match request.action.as_str() {
+                "folder_search" => {
+                    return match self.surfaces.set_value(
+                        "navigation.folder-search",
+                        request.value.as_deref().unwrap_or(""),
+                    ) {
+                        Ok(()) => json!({"accepted": true}).to_string(),
+                        Err(error) => error_json(&error),
+                    };
                 }
-            }
-            _ => return error_json("unsupported navigation UI action"),
-        };
+                "expand_folder" => {
+                    let Some(id) = request.folder_id.filter(|id| *id > 0) else {
+                        return error_json("expand_folder requires positive folder_id");
+                    };
+                    if !self.navigation.snapshot().is_ok_and(|snapshot| {
+                        snapshot.folders.iter().any(|node| node.folder.id == id)
+                    }) {
+                        return error_json("folder not found");
+                    }
+                    R::ExpandFolder(id)
+                }
+                "select_path" | "expand_path" => {
+                    let Some(path) = request.value.filter(|value| !value.is_empty()) else {
+                        return error_json("select_path requires directory value");
+                    };
+                    if !std::path::Path::new(&path).is_dir() {
+                        return error_json("directory does not exist");
+                    }
+                    if request.action == "expand_path" {
+                        R::ExpandPath(path)
+                    } else {
+                        R::SelectPath(path)
+                    }
+                }
+                "all" => R::AllFiles,
+                "create" => R::OpenCreate,
+                "close" => R::CloseModal,
+                "edit" | "delete" | "merge" | "move" => {
+                    let Some(id) = request.tag_id else {
+                        return error_json("tag_id required");
+                    };
+                    match request.action.as_str() {
+                        "edit" => R::OpenEdit(id),
+                        "delete" => R::OpenDelete(id),
+                        "merge" => R::OpenMerge(id),
+                        _ => R::OpenMove(id),
+                    }
+                }
+                _ => return error_json("unsupported navigation UI action"),
+            };
         match self.navigation.request_ui(action) {
             Ok(()) => json!({"accepted": true}).to_string(),
             Err(e) => error_json(&e.to_string()),

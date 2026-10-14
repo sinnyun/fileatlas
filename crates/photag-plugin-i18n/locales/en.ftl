@@ -631,3 +631,27 @@ msg-43b254d8352f = Metadata writeback failed
 msg-9f5cd8a2e880 = Retry
 
 msg-c177e4b0aa9f = Downloading…
+
+msg-7a3aa87267c7 = Open preview
+
+msg-90ccd6497400 = History
+
+msg-7dffe6dda85c = History service is unavailable.
+
+msg-ecb0fd43e845 = No available media history.
+
+msg-3428c6a2e113 = Recent actions are global and are not tied to a single file.
+
+msg-6520c6aa2e24 = Extensions could not be loaded.
+
+msg-4139107e1092 = No extensions are available.
+
+msg-5f659468fa40 = Search folders…
+
+msg-cc627b9b80a7 = No matching folders
+
+msg-41b634ed2413 = Add-ons
+
+msg-a80b0fe48eaa = No add-ons are registered.
+
+msg-880df61856c8 = No available add-ons.

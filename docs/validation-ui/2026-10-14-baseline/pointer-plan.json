@@ -1,0 +1,135 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "sidebar_width",
+      "equals": 264,
+      "attempts": 40,
+      "interval_ms": 250
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "264,350"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_drag",
+      "value": "304,350"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "304,350"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "sidebar_width",
+      "equals": 304,
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-sidebar-dragged"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "980,350"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_drag",
+      "value": "940,350"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "940,350"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "inspector_width",
+      "equals": 340,
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-both-dragged"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "24,145"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "24,145"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "navigation_tab",
+      "equals": "tags",
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-tags-clicked"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_down",
+      "value": "24,85"
+    },
+    "wait_ms": 250
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "pointer_up",
+      "value": "24,85"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "navigation_tab",
+      "equals": "folders",
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-folders-clicked"
+  }
+]

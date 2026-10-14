@@ -149,3 +149,33 @@ MCP运行模板：node scripts/photag-mcp-debug.cjs --exe target/debug/photag-sh
 仍未验：原生保存/目录选择/覆盖与回收站确认的实际指针路径、鼠标框选/拖拽/键盘逐键、长列表滚动恢复、扫描失败卡交互、播放声音听感及全codec覆盖、更新下载/校验/重启安装。现有MCP请求验证状态/服务和渲染，不代表这些原生路径通过。无实际每记录进度或音频波形接口，导出用indeterminate spinner、音频保持真实舞台，不伪造设计示例数据。V1通过，V2主要界面范围通过，V3部分通过，V4启动静默/手动检查通过；不能声称全产品完成。
 
 最后进程检查：既有PID33036仍运行 target/debug/photag-shell-handoff.exe（旧版），未终止；本轮MCP子进程均已退出。查看当前新样式应使用 photag-shell-accepted-20261014.exe，旧窗口不能代表本轮修改。
+
+## 2026-10-14：两侧分页/固定预览 v2 实施与验收
+
+用户当前参考 docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png 优先于final-v5的主窗口两侧布局。配套说明已新增同名.md；其他界面保持前轮设计。沿用用户授权的Luna代理协作实现Navigation与Inspector，主线程完成双侧分隔条、会话兼容及MCP实测。主媒体网格/筛选/后端语义保持，选中勾点移除，蓝边保留。
+
+最新运行文件：target/debug/photag-shell-sidebar-v2.exe。环境Windows/150%DPI/Rust1.97.1 MSVC；rustup toolchain list和rustc +1.97.1 --version确认，使用已安装工具链。隔离profile target/mcp-sidebar-v2（复制上一隔离测试库及其WAL，未接触正常PhoTag数据/会话）；12媒体仍在，选择02-mixed-formats匹配3。
+
+执行命令：cargo +1.97.1 fmt --all -- --check；cargo +1.97.1 check --locked -p photag-shell -j 2；cargo +1.97.1 build --locked -p photag-shell -j 2；cargo +1.97.1 test --locked -p photag-plugin-session -p photag-plugin-navigation -p photag-plugin-gallery -p photag-plugin-mcp -p photag-plugin-i18n -j 2。最终均通过，25 tests/0failed；包含旧session缺少inspector_width时保留原folder/media/Tags选择并round-trip的新兼容测试。日志target/sidebar-v2-check.log、sidebar-v2-build.log、sidebar-v2-tests.log。
+
+MCP：node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-sidebar-v2.exe --profile target/mcp-sidebar-v2 --plan target/sidebar-v2-acceptance.json --allow-mutations，32步骤全部执行；target/sidebar-v2-pointer.json另16步骤；target/sidebar-v2-restoration.json默认只读5步骤。报告分别profile/report-acceptance.json、report-pointer.json、report-restoration.json；对应target/sidebar-v2-*.log。全部窗口由同MCP child process创建，截图为真实PhoTag画面，没有另开GUI或OS指针注入。
+
+| 用户要求 | 实现与实测 | 证据（profile/screenshots） |
+|---|---|---|
+| 左侧文件夹/标签/扩展独立页 | 48pt竖rail；MCP页切换、GPUI down/up实际点击Tags/Folders；每页独立内容；底部Settings沿rail | v2-tags-page.png、v2-tags-clicked.png、v2-folders-clicked.png、v2-extensions-page.png |
+| 文件夹缩进/图标/数量/选中 | LucideFolder/FolderOpen、右对齐真实count，紧凑overlay菜单与标题+Add/More；搜索mixed、noresults、clear；All files12 | v2-folder-search.png、v2-folder-no-results.png、v2-restored-final.png |
+| 父子层级连接线 | 懒展开folder1及03-nested；浅灰竖线+横短线，正确02-mixed-formats选择/3记录；两层真实目录level-one | v2-final.png、v2-restored-final.png |
+| 右侧固定预览/下方分页 | 固定220pt画布、文件名/评分，点击预览路由原服务；信息保留基本/标签/EXIF/路径/文件菜单、独立滚动；History/Extensions切换预览仍固定 | v2-preview-info.png、v2-history-page.png、v2-inspector-extensions.png、v2-minimum-history.png |
+| 两侧常驻可拖动分隔条 | 8pt命中/24pt把手/列调整光标；root move/up/out-up；MCP通过Window.defer派发GPUIPlatformInput down/drag/up，左264→304，右300→340；第二次启动恢复304/340 | v2-sidebar-dragged.png、v2-both-dragged.png、v2-restored-final.png |
+| 缩略图只留蓝色边框 | 去掉右上checkbadge；边框显式RGBA，folder/rail selectedfill同步修正颜色打包；实际medium.webp选中7 | v2-readonly-final.png |
+| 小窗口及折叠 | 960×600附近外窗1462×956，220/260面板，信息区保留footer且下方滚动；left/right折叠可恢复 | v2-minimum-window.png、v2-minimum-narrow.png、v2-sidebar-closed.png、v2-inspector-closed.png |
+
+MCP扩展：control_ui navigation_tab/inspector_tab、sidebar_width/inspector_width；pointer_down/drag/up坐标为逻辑client x,y且受mutationsguard。CaptureWindowHandle单请求mailbox由Shell deferred派发，避免在render lease中重新update当前实体；这是项目PhoTag MCP真实GPUI事件通路，不是OS注入或仅设置宽度模拟。只读重启时pointer_down被正确拒绝(PHOTAG_MCP_ALLOW_MUTATIONS)，宽度保持304/340。
+
+发现并修正：首次展开子目录panic“cannot read SidebarView while already being updated”，渲染改为直接传selected_directory；SelectPath原普通slash路径与DB canonical前缀不一致导致0匹配，canonicalize后正确3；菜单Button追加hover与Kit默认hover重复panic，采用标准ghosthover+不透明底色；source theme.accent_alpha返回RGB而非RGBA，修正本轮选中fill/border打包。早期失败保留于stderr和report-before-path-normalization.json，不算最终通过。
+
+边界：History使用既有全局undo/redo摘要，当前无媒体历史时显示实情；没有新增单文件持久日志。扩展预留专用slot，无贡献显示暂无可用扩展，未引入插件商店或假按钮；当前无第三方贡献，不能声称加载/卸载外部扩展已验。信息区域实际鼠标滚轮、OS窗口外捕获、原生文件对话框及其他前轮未验项不在本轮证据内。GPUI内拖动/点击、尺寸与重启恢复已验；正常用户旧PID窗口保持不动。
+
+## 用户确认的开发基线（2026-10-14）
+
+用户认可当前界面并要求建立开发基线。基线标记dev-baseline-2026-10-14；关键截图/报告/计划已归档到docs/validation-ui/2026-10-14-baseline，不再仅依赖target本机输出。下一阶段功能操作优化与功能扩展的入口为functional-development-plan.md。上文未覆盖的行为继续保留，未因布局验收被标记为通过。

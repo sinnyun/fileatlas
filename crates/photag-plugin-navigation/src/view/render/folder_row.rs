@@ -1,12 +1,14 @@
 //! Source sidebar.rs:65-110,164-178 and theme.rs:535-547.
 use super::super::*;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 
 pub(super) fn folder_row(
     id: String,
     label: String,
     count: i64,
     selected: bool,
-    icon: char,
+    icon: IconName,
 ) -> Stateful<Div> {
     let mut row = div()
         .id(id)
@@ -20,17 +22,11 @@ pub(super) fn folder_row(
         .pr(px(6.))
         .gap(px(6.))
         .hover(|style| style.bg(rgba(0xffffff10)))
-        .child(
-            div()
-                .font_family(theme::ICON_FONT_FAMILY)
-                .text_size(px(12.))
-                .text_color(rgb(if selected {
-                    theme::accent_hover()
-                } else {
-                    theme::TEXT_SECONDARY
-                }))
-                .child(icon.to_string()),
-        )
+        .child(Icon::new(icon).size(px(14.)).text_color(rgb(if selected {
+            theme::accent_hover()
+        } else {
+            theme::TEXT_SECONDARY
+        })))
         .child(
             div()
                 .flex_1()
@@ -48,18 +44,16 @@ pub(super) fn folder_row(
         );
     }
     if selected {
-        row = row
-            .bg(rgba(theme::accent_alpha(theme::accent(), 70. / 255.)))
-            .child(
-                div()
-                    .absolute()
-                    .left(px(2.))
-                    .top(px(26. * 0.225))
-                    .w(px(3.))
-                    .h(px(26. * 0.55))
-                    .rounded(px(1.5))
-                    .bg(rgb(theme::accent())),
-            );
+        row = row.bg(rgba((theme::accent() << 8) | 70)).child(
+            div()
+                .absolute()
+                .left(px(2.))
+                .top(px(26. * 0.225))
+                .w(px(3.))
+                .h(px(26. * 0.55))
+                .rounded(px(1.5))
+                .bg(rgb(theme::accent())),
+        );
     }
     row
 }

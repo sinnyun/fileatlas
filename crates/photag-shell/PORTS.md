@@ -4,7 +4,7 @@
 
 The host chrome and contribution fallback view use `photag_ui_bridge::theme` surface and text tokens; the native base surface consumes source Mica/Acrylic alpha. GPUI Kit typography presets are still used by the shell; parity with source Segoe UI font loading and Windows font availability has not been validated.
 
-The shell restores `SessionState.sidebar_width` when it is between 160 and 500 pixels (otherwise 288 px) and saves the width when the sidebar divider drag ends. The updater is started before Settings. When Settings confirms an update it persists the current session snapshot, queues the staged path, and quits GPUI; after the application loop returns, the shell installs and relaunches the staged build before disposing the updater service. This update shutdown path still needs interactive Windows validation.
+The shell restores `SessionState.sidebar_width` when it is between 200 and 400 logical pixels (otherwise 264 px) and saves the width when the sidebar divider drag ends. The updater is started before Settings. When Settings confirms an update it persists the current session snapshot, queues the staged path, and quits GPUI; after the application loop returns, the shell installs and relaunches the staged build before disposing the updater service. This update shutdown path still needs interactive Windows validation.
 
 The explicit `dev-test` profile starts `photag-plugin-dev-test` after Gallery and
 its providers. It redirects the database, Settings, Session and thumbnail cache
@@ -36,3 +36,7 @@ plugin starts before views; translation revisions refresh native windows.
 Reference geometry: source main.rs:1007-1367. Live MCP screenshots confirm
 these regions render; detailed control, scan-status and hover parity remain
 incomplete. See the current validation record.
+
+## v2 paged-panel splitters (2026-10-14)
+
+Shell owns both widths, visible8pt splitter hit regions and24pt grips; feature pages remain Navigation/Gallery-owned. Sidebar defaults264pt, bounds200–400; Inspector defaults300pt, bounds240–480. Drag uses pointer delta from the initial width, root move/up/out-up handling keeps it active across neighboring views, and release saves SessionState.sidebar_width/inspector_width. Resizing reserves320pt center space. MCP width requests use the same setter/save path; shell publishes shell.sidebar-width/shell.inspector-width. CaptureWindowHandle pointer mailbox is drained via Window.defer after the render lease, dispatching native GPUI PlatformInput within this child window (no OS input). Live MCP down/drag/up changed264→304 and300→340; restart restored both. Settings entry sits under the48pt Navigation rail. Source/schema/backend unaffected. See docs/redesign-validation.md latestv2 evidence.

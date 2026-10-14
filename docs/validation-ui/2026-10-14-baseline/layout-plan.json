@@ -1,0 +1,263 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2000
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "expand_folder",
+      "folder_id": 1
+    },
+    "wait_ms": 550
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "expand_path",
+      "value": "F:/AI/geren/pho_cordis/test-data/photag-library/03-nested"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "select_path",
+      "value": "F:/AI/geren/pho_cordis/test-data/photag-library/02-mixed-formats"
+    },
+    "wait_ms": 550
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "v2-folder-selected",
+    "until": {
+      "field": "gallery.matched_count",
+      "equals": 3,
+      "attempts": 40,
+      "interval_ms": 250
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "select_media",
+      "value": "7"
+    },
+    "wait_ms": 500,
+    "capture": "v2-preview-info"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "navigation_tab",
+      "value": "tags"
+    },
+    "wait_ms": 350,
+    "capture": "v2-tags-page"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "navigation_tab",
+      "value": "extensions"
+    },
+    "wait_ms": 350,
+    "capture": "v2-extensions-page"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "navigation_tab",
+      "value": "folders"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "folder_search",
+      "value": "mixed"
+    },
+    "wait_ms": 450,
+    "capture": "v2-folder-search"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "folder_search",
+      "value": "no-matching-directory"
+    },
+    "wait_ms": 450,
+    "capture": "v2-folder-no-results"
+  },
+  {
+    "tool": "control_navigation",
+    "arguments": {
+      "action": "folder_search",
+      "value": ""
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_tab",
+      "value": "history"
+    },
+    "wait_ms": 350,
+    "capture": "v2-history-page"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_tab",
+      "value": "extensions"
+    },
+    "wait_ms": 350,
+    "capture": "v2-inspector-extensions"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_tab",
+      "value": "information"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "sidebar_width",
+      "value": "310"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_width",
+      "value": "340"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "inspector_width",
+      "equals": 340,
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-panels-resized"
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1462,
+      "height": 956
+    },
+    "wait_ms": 350,
+    "capture": "v2-minimum-window"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "sidebar_width",
+      "value": "220"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_width",
+      "value": "260"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "inspector_width",
+      "equals": 260,
+      "attempts": 30,
+      "interval_ms": 200
+    },
+    "capture": "v2-minimum-narrow"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_tab",
+      "value": "history"
+    },
+    "wait_ms": 350,
+    "capture": "v2-minimum-history"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_tab",
+      "value": "information"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "sidebar_close"
+    },
+    "wait_ms": 350,
+    "capture": "v2-sidebar-closed"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "sidebar_open"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_close"
+    },
+    "wait_ms": 350,
+    "capture": "v2-inspector-closed"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_open"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "resize_window",
+    "arguments": {
+      "width": 1942,
+      "height": 1256
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "sidebar_width",
+      "value": "264"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "inspector_width",
+      "value": "300"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "v2-final"
+  }
+]

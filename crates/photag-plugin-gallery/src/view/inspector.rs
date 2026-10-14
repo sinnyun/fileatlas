@@ -1,13 +1,15 @@
-//! v5 right-hand "文件信息" inspector (slot `gallery.inspector`): empty state,
-//! single-selection details with collapsible sections and fixed bottom
-//! actions, and a multi-selection summary. Mockup:
-//! docs/reference-ui/final-v5/00-main-library.png.
+//! Right-hand media inspector with fixed preview, independent information,
+//! history and extension pages, plus the existing file actions. Reference:
+//! docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png.
 
 use gpui_kit::assets::IconName;
+use gpui_kit::base::Disableable;
 use gpui_kit::component::Icon;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 mod helpers;
+mod pages;
+mod preview;
 use super::card;
 use super::*;
 use gpui_kit::component::button::ButtonVariants;
@@ -31,31 +33,65 @@ impl GalleryView {
                     .font_family(theme::SEMIBOLD_FONT_FAMILY)
                     .text_size(px(14.))
                     .text_color(rgb(theme::TEXT_PRIMARY))
-                    .child(photag_ui_bridge::i18n::tr("File info")),
+                    .child(photag_ui_bridge::i18n::tr("Preview")),
             )
             .child(
-                Button::new("gallery-inspector-close")
-                    .ghost()
-                    .compact()
-                    .icon(IconName::X)
-                    .tooltip(photag_ui_bridge::i18n::tr("Close inspector"))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if let Err(error) = this.surfaces.set_open("inspector", false) {
-                            eprintln!("could not close inspector surface: {error}");
-                        }
-                        cx.notify();
-                    })),
+                div()
+                    .h_flex()
+                    .items_center()
+                    .gap(px(4.))
+                    .child(
+                        Button::new("gallery-inspector-open-preview")
+                            .ghost()
+                            .compact()
+                            .icon(IconName::ExternalLink)
+                            .tooltip(photag_ui_bridge::i18n::tr("Open preview"))
+                            .disabled(self.selection.selected_media_ids.is_empty())
+                            .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
+                    )
+                    .child(
+                        Button::new("gallery-inspector-close")
+                            .ghost()
+                            .compact()
+                            .icon(IconName::X)
+                            .tooltip(photag_ui_bridge::i18n::tr("Close inspector"))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                if let Err(error) = this.surfaces.set_open("inspector", false) {
+                                    eprintln!("could not close inspector surface: {error}");
+                                }
+                                cx.notify();
+                            })),
+                    ),
             );
-        let body = match self.selection.selected_media_ids.len() {
-            0 => inspector_empty(),
-            1 => self.inspector_single(cx),
-            count => Self::inspector_multi(count, cx),
+        let tab = self.active_inspector_tab();
+        let preview = self.inspector_preview(cx);
+        let tabs = self.inspector_tabs(tab, cx);
+        let body = match tab {
+            "history" => self.inspector_history(),
+            "extensions" => self.inspector_extensions(),
+            _ => match self.selection.selected_media_ids.len() {
+                0 => inspector_empty(),
+                1 => self.inspector_single(cx),
+                count => Self::inspector_multi(count, cx),
+            },
+        };
+        let body = if tab == "information" && self.selection.selected_media_ids.len() == 1 {
+            body
+        } else {
+            div()
+                .size_full()
+                .min_h_0()
+                .overflow_y_scrollbar()
+                .child(body)
+                .into_any_element()
         };
         div()
             .v_flex()
             .size_full()
             .min_h_0()
             .child(header)
+            .child(preview)
+            .child(tabs)
             .child(div().v_flex().flex_1().min_h_0().child(body))
             .into_any_element()
     }
@@ -85,46 +121,7 @@ impl GalleryView {
                 .unwrap_or_default();
             fallback_tags.as_slice()
         };
-        let rating = media.rating.clamp(0, 5) as u8;
-        let mut stars = div().h_flex().items_center().gap(px(3.));
-        for star in 1..=5u8 {
-            stars = stars.child(
-                div()
-                    .id(format!("gallery-inspector-star-{star}"))
-                    .cursor_pointer()
-                    .text_size(px(17.))
-                    .text_color(rgb(if star <= rating {
-                        theme::STAR
-                    } else {
-                        theme::TEXT_MUTED
-                    }))
-                    .hover(|style| style.text_color(rgb(theme::STAR)))
-                    .child(if star <= rating { "★" } else { "☆" })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        let next = if star == rating { 0 } else { star };
-                        let media_ids = this.selection.selected_media_ids.clone();
-                        this.apply_rating_to(&media_ids, next);
-                        this.restore_selection(media_ids);
-                        cx.notify();
-                    })),
-            );
-        }
-        let mut body = div()
-            .v_flex()
-            .w_full()
-            .gap(px(2.))
-            .px(px(14.))
-            .pb(px(14.))
-            .child(
-                div()
-                    .w_full()
-                    .text_size(px(theme::FONT_SIZE_HEADING))
-                    .text_color(rgb(theme::TEXT_PRIMARY))
-                    .overflow_hidden()
-                    .text_ellipsis()
-                    .child(media.filename.clone()),
-            )
-            .child(stars);
+        let mut body = div().v_flex().w_full().gap(px(2.)).px(px(14.)).pb(px(14.));
         let basic_open = self.inspector_expanded.contains("basic");
         body = body.child(inspector_divider()).child(section_header(
             "basic",

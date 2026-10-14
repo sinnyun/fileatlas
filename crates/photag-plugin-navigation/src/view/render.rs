@@ -2,10 +2,12 @@ use super::*;
 use gpui_kit::component::button::ButtonVariants;
 
 mod folder_row;
+mod pages;
 mod scan_feedback;
 mod tag_render;
 use folder_row::folder_row;
-use tag_render::{render_subdirectory, render_tag};
+pub(super) use tag_render::merge_target_buttons;
+use tag_render::{directory_children_match, render_subdirectory, render_tag};
 
 impl SidebarView {
     pub(super) fn render_breadcrumb(&mut self, cx: &mut Context<Self>) -> Div {
@@ -108,6 +110,32 @@ impl SidebarView {
                     self.move_source_id = Some(id);
                     self.move_target_tag_id = None;
                 }
+                crate::NavigationUiRequest::ExpandFolder(id) => {
+                    if let Some(path) = self
+                        .snapshot
+                        .as_ref()
+                        .ok()
+                        .and_then(|snapshot| {
+                            snapshot.folders.iter().find(|node| node.folder.id == id)
+                        })
+                        .map(|node| node.folder.path.clone())
+                    {
+                        self.set_navigation_page(NavigationPage::Folders);
+                        self.expand_directory(&path);
+                    }
+                }
+                crate::NavigationUiRequest::ExpandPath(path) => {
+                    if let Ok(path) = std::fs::canonicalize(path) {
+                        self.set_navigation_page(NavigationPage::Folders);
+                        self.expand_directory(&path.to_string_lossy());
+                    }
+                }
+                crate::NavigationUiRequest::SelectPath(path) => {
+                    self.set_navigation_page(NavigationPage::Folders);
+                    if let Ok(path) = std::fs::canonicalize(path) {
+                        self.select_path(path.to_string_lossy().into_owned(), cx);
+                    }
+                }
                 crate::NavigationUiRequest::CloseModal => self.close_tag_modal(),
             }
             cx.notify();
@@ -124,6 +152,9 @@ impl Render for SidebarView {
             self.folder_path.update(cx, |input, cx| {
                 input.set_placeholder(photag_ui_bridge::i18n::tr("Folder path"), window, cx)
             });
+            self.folder_search.update(cx, |input, cx| {
+                input.set_placeholder(photag_ui_bridge::i18n::tr("Search folders…"), window, cx)
+            });
             self.new_folder_name.update(cx, |input, cx| {
                 input.set_placeholder(photag_ui_bridge::i18n::tr("Folder name"), window, cx)
             });
@@ -139,6 +170,11 @@ impl Render for SidebarView {
                     window,
                     cx,
                 )
+            });
+        }
+        if let Some(value) = self.pending_folder_search.take() {
+            self.folder_search.update(cx, |input, cx| {
+                input.set_value(&value, window, cx);
             });
         }
 
@@ -164,53 +200,45 @@ impl Render for SidebarView {
             .detach();
         }
         // Source main.rs:1282-1296 and sidebar.rs:228-275.
+        let rail = pages::render_rail(self, cx);
+        if self.active_page == NavigationPage::Extensions {
+            return div()
+                .h_flex()
+                .size_full()
+                .child(rail)
+                .child(pages::render_extensions(self));
+        }
         let mut panel = div()
             .v_flex()
             .size_full()
+            .flex_1()
+            .min_w_0()
             .gap(px(1.))
             .pl(px(10.))
             .pr(px(6.))
             .pt(px(2.))
             .pb(px(8.));
-        panel = scan_feedback::append(panel, self, cx);
+        if self.active_page == NavigationPage::Folders {
+            panel = scan_feedback::append(panel, self, cx);
+        }
         let folder_view = cx.entity().downgrade();
-        match &self.snapshot {
+        let panel = match &self.snapshot {
             Ok(snapshot) => {
-                if self.snapshot.is_ok() {
-                    panel = panel.child(
-                        folder_row(
-                            "navigation-all-media".into(),
-                            photag_ui_bridge::i18n::tr("All files"),
-                            snapshot.folders.iter().map(|node| node.media_count).sum(),
-                            self.session
-                                .snapshot()
-                                .map(|s| {
-                                    s.selected_folder_id.is_none() && s.selected_path.is_none()
-                                })
-                                .unwrap_or(true)
-                                && self.included_tags.is_empty()
-                                && self.excluded_tags.is_empty(),
-                            theme::icons::LIBRARY,
-                        )
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.select_folder(None, cx);
-                            this.select_tag(None, cx);
-                            cx.notify();
-                        })),
-                    );
+                if self.active_page == NavigationPage::Folders {
+                    let query = self.folder_search.read(cx).value().trim().to_owned();
+                    let lowered_query = query.to_lowercase();
                     panel = panel.child(
                         div()
-                            .group("folder-header")
                             .h_flex()
                             .items_center()
                             .justify_between()
                             .pt(px(2.))
-                            .pb(px(4.))
+                            .pb(px(5.))
                             .child(
                                 div()
-                                    .text_size(px(10.5))
-                                    .text_color(rgb(theme::TEXT_MUTED))
-                                    .child(photag_ui_bridge::i18n::tr("Folders").to_uppercase()),
+                                    .font_semibold()
+                                    .text_size(px(15.))
+                                    .child(photag_ui_bridge::i18n::tr("Folders")),
                             )
                             .child(
                                 div()
@@ -222,7 +250,7 @@ impl Render for SidebarView {
                                             .compact()
                                             .w(px(22.))
                                             .h(px(22.))
-                                            .label(photag_ui_bridge::i18n::tr(&("+").to_string()))
+                                            .label("+")
                                             .on_click(
                                                 cx.listener(|this, _, _, cx| this.pick_folder(cx)),
                                             ),
@@ -230,8 +258,9 @@ impl Render for SidebarView {
                                     .child(
                                         Button::new("navigation-folder-options")
                                             .ghost()
-                                            .opacity(0.)
-                                            .group_hover("folder-header", |style| style.opacity(1.))
+                                            .compact()
+                                            .w(px(22.))
+                                            .h(px(22.))
                                             .label("⋯")
                                             .dropdown_menu(move |mut menu, _, _| {
                                                 let path_view = folder_view.clone();
@@ -262,6 +291,28 @@ impl Render for SidebarView {
                                             }),
                                     ),
                             ),
+                    );
+                    panel = panel.child(Input::new(&self.folder_search).w_full());
+                    panel = panel.child(
+                        folder_row(
+                            "navigation-all-media".into(),
+                            photag_ui_bridge::i18n::tr("All files"),
+                            snapshot.folders.iter().map(|node| node.media_count).sum(),
+                            self.session
+                                .snapshot()
+                                .map(|s| {
+                                    s.selected_folder_id.is_none() && s.selected_path.is_none()
+                                })
+                                .unwrap_or(true)
+                                && self.included_tags.is_empty()
+                                && self.excluded_tags.is_empty(),
+                            gpui_kit::assets::IconName::Files,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.select_folder(None, cx);
+                            this.select_tag(None, cx);
+                            cx.notify();
+                        })),
                     );
                     if self.show_folder_path_entry {
                         panel = panel.child(
@@ -314,16 +365,40 @@ impl Render for SidebarView {
                                 ),
                         );
                     }
-                    for node in &snapshot.folders {
+                    let visible_folders = snapshot
+                        .folders
+                        .iter()
+                        .filter(|node| {
+                            lowered_query.is_empty()
+                                || node.folder.name.to_lowercase().contains(&lowered_query)
+                                || node.folder.path.to_lowercase().contains(&lowered_query)
+                                || directory_children_match(
+                                    &node.folder.path,
+                                    &self.expanded_directories,
+                                    &lowered_query,
+                                )
+                        })
+                        .collect::<Vec<_>>();
+                    if !lowered_query.is_empty() && visible_folders.is_empty() {
+                        panel = panel.child(
+                            div()
+                                .text_xs()
+                                .text_color(rgb(theme::TEXT_MUTED))
+                                .child(photag_ui_bridge::i18n::tr("No matching folders")),
+                        );
+                    }
+                    for node in visible_folders {
                         let expanded = self.expanded_directories.get(&node.folder.path);
                         let row_group = format!("navigation-folder-row-{}", node.folder.id);
                         panel = panel.child(
                             div()
                                 .group(row_group.clone())
+                                .relative()
                                 .h_flex()
                                 .w_full()
                                 .items_center()
                                 .gap_0()
+                                .hover(|style| style.bg(rgba(0xffffff10)))
                                 .child(
                                     Button::new(format!(
                                         "navigation-expand-root-{}",
@@ -366,9 +441,9 @@ impl Render for SidebarView {
                                             })
                                             .unwrap_or(false),
                                         if expanded.is_some() {
-                                            theme::icons::FOLDER_OPEN
+                                            gpui_kit::assets::IconName::FolderOpen
                                         } else {
-                                            theme::icons::FOLDER
+                                            gpui_kit::assets::IconName::Folder
                                         },
                                     )
                                     // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
@@ -389,11 +464,17 @@ impl Render for SidebarView {
                                     let folder_path = node.folder.path.clone();
                                     let folder_view = cx.entity().downgrade();
                                     Button::new(format!("navigation-folder-menu-{folder_id}"))
+                                        .absolute()
+                                        .right(px(2.))
+                                        .top(px(2.))
+                                        .ghost()
+                                        .compact()
                                         .opacity(0.)
                                         .group_hover(row_group, |style| style.opacity(1.))
                                         .label(photag_ui_bridge::i18n::tr(&("⋯").to_string()))
-                                        .w(px(theme::SIDEBAR_ROW_HEIGHT))
-                                        .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                                        .w(px(20.))
+                                        .h(px(22.))
+                                        .bg(rgb(theme::SURFACE_BASE))
                                         .dropdown_menu(move |mut menu, _, _| {
                                             let create_path = folder_path.clone();
                                             let create_view = folder_view.clone();
@@ -451,13 +532,37 @@ impl Render for SidebarView {
                                 }),
                         );
                         if let Some(children) = expanded {
-                            panel = panel.children(children.iter().map(|child| {
-                                render_subdirectory(child, &self.expanded_directories, cx)
-                            }));
+                            let child_rows = children
+                                .iter()
+                                .filter_map(|child| {
+                                    render_subdirectory(
+                                        child,
+                                        &self.expanded_directories,
+                                        &query,
+                                        self.session
+                                            .snapshot()
+                                            .ok()
+                                            .and_then(|saved| saved.selected_path)
+                                            .as_deref(),
+                                        cx,
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            if !child_rows.is_empty() {
+                                panel = panel.child(
+                                    div()
+                                        .v_flex()
+                                        .ml(px(22.))
+                                        .pl(px(8.))
+                                        .border_l_1()
+                                        .border_color(rgba(0xffffff38))
+                                        .children(child_rows),
+                                );
+                            }
                         }
                     }
                 }
-                if self.snapshot.is_ok() {
+                if self.active_page == NavigationPage::Tags {
                     let tag_view = cx.entity().downgrade();
                     panel = panel.child(
                         div()
@@ -654,68 +759,7 @@ impl Render for SidebarView {
                     .text_color(rgb(theme::DANGER))
                     .child(format!("Could not load library: {error}")),
             ),
-        }
+        };
+        div().h_flex().size_full().child(rail).child(panel)
     }
-}
-
-pub(super) fn merge_target_buttons(
-    view: &SidebarView,
-    source_id: i64,
-    cx: &mut Context<SidebarView>,
-) -> Vec<Div> {
-    let Some(snapshot) = view.snapshot.as_ref().ok() else {
-        return Vec::new();
-    };
-    let mut excluded = HashSet::new();
-    if let Some(source) = find_tag(&snapshot.tags, source_id) {
-        collect_tag_ids(source, &mut excluded);
-    }
-    let query = view.merge_search.read(cx).value().trim().to_owned();
-    let mut targets = Vec::new();
-    fn walk(
-        tags: &[photag_plugin_database::db::queries::Tag],
-        excluded: &HashSet<i64>,
-        query: &str,
-        mode: TagSearchMatch,
-        output: &mut Vec<(i64, String, usize, i64)>,
-    ) {
-        for tag in tags {
-            if !excluded.contains(&tag.id) && tag_matches(tag, query, mode) {
-                output.push((
-                    tag.id,
-                    tag.name.clone(),
-                    tag.full_path.matches('>').count(),
-                    tag.media_count,
-                ));
-            }
-            walk(&tag.children, excluded, query, mode, output);
-        }
-    }
-    walk(
-        &snapshot.tags,
-        &excluded,
-        &query,
-        view.tag_search_match,
-        &mut targets,
-    );
-    if targets.is_empty() {
-        return vec![
-            div()
-                .text_xs()
-                .child(photag_ui_bridge::i18n::tr("No matching tags")),
-        ];
-    }
-    targets
-        .into_iter()
-        .map(|(id, name, depth, count)| {
-            div().child(
-                Button::new(format!("navigation-merge-target-{id}"))
-                    .ghost()
-                    .w_full()
-                    .pl(px(8. + depth as f32 * 14.))
-                    .label(photag_ui_bridge::i18n::tr(&format!("{}  ({count})", name)))
-                    .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
-            )
-        })
-        .collect()
 }

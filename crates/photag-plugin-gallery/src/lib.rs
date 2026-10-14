@@ -560,6 +560,7 @@ impl Plugin for GalleryPlugin {
                 settings,
                 tagging,
                 Arc::clone(&bridge.surfaces),
+                Arc::clone(&bridge.views),
             ),
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;

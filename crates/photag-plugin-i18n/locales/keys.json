@@ -577,5 +577,17 @@
   "Max rating": "msg-5fa37fee5881",
   "Metadata writeback failed": "msg-43b254d8352f",
   "Retry": "msg-9f5cd8a2e880",
-  "Downloading…": "msg-c177e4b0aa9f"
+  "Downloading…": "msg-c177e4b0aa9f",
+  "Open preview": "msg-7a3aa87267c7",
+  "History": "msg-90ccd6497400",
+  "History service is unavailable.": "msg-7dffe6dda85c",
+  "No available media history.": "msg-ecb0fd43e845",
+  "Recent actions are global and are not tied to a single file.": "msg-3428c6a2e113",
+  "Extensions could not be loaded.": "msg-6520c6aa2e24",
+  "No extensions are available.": "msg-4139107e1092",
+  "Search folders…": "msg-5f659468fa40",
+  "No matching folders": "msg-cc627b9b80a7",
+  "Add-ons": "msg-41b634ed2413",
+  "No add-ons are registered.": "msg-a80b0fe48eaa",
+  "No available add-ons.": "msg-880df61856c8"
 }

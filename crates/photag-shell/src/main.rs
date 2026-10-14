@@ -466,6 +466,12 @@ fn main() {
             })
             // Source: vendor/photag-source/src/app.rs::AppState::new.
             .unwrap_or(theme::SIDEBAR_WIDTH);
+        let inspector_width = session
+            .snapshot()
+            .ok()
+            .map(|saved| saved.inspector_width)
+            .filter(|width| width.is_finite() && (240. ..=480.).contains(width))
+            .unwrap_or(theme::INSPECTOR_WIDTH);
         let session_for_shell = Arc::clone(&session);
         // Match the source viewport (1280×800, minimum 800×500) from
         // vendor/photag-source/src/main.rs.
@@ -544,6 +550,7 @@ fn main() {
                         }
                         if this
                             .update(cx, |shell: &mut PhoTagShell, cx| {
+                                shell.poll_panel_requests(cx);
                                 let tools = shell.surfaces.is_open("tools");
                                 let sidebar = shell.surfaces.value("sidebar.visible").as_deref()
                                     != Some("false");
@@ -579,7 +586,12 @@ fn main() {
                     session: session_for_shell,
                     surfaces: Arc::clone(&bridge.surfaces),
                     sidebar_width,
-                    resizing_sidebar: false,
+                    inspector_width,
+                    viewport_width: 1280.,
+                    capture: Arc::clone(&capture_handle),
+                    drag_origin_x: 0.,
+                    drag_origin_width: 0.,
+                    resizing_panel: None,
                     tools_open: false,
                     sidebar_open: true,
                     inspector_open: true,

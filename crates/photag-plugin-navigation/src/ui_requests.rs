@@ -7,6 +7,12 @@ pub enum NavigationUiRequest {
     OpenDelete(i64),
     OpenMerge(i64),
     OpenMove(i64),
+    /// Lazily load the direct children of a registered folder root.
+    ExpandFolder(i64),
+    /// Lazily expand a real directory inside a registered folder.
+    ExpandPath(String),
+    /// Select a real directory path contained by a registered folder.
+    SelectPath(String),
     CloseModal,
 }
 
@@ -17,7 +23,12 @@ impl NavigationUiRequest {
             | Self::OpenDelete(id)
             | Self::OpenMerge(id)
             | Self::OpenMove(id) => Some(*id),
-            Self::AllFiles | Self::OpenCreate | Self::CloseModal => None,
+            Self::AllFiles
+            | Self::OpenCreate
+            | Self::ExpandFolder(_)
+            | Self::ExpandPath(_)
+            | Self::SelectPath(_)
+            | Self::CloseModal => None,
         }
     }
 }
@@ -30,6 +41,12 @@ pub enum NavigationUiRequestError {
     InvalidTagId(i64),
     #[error("tag {0} does not exist")]
     UnknownTag(i64),
+    #[error("folder ID must be positive, received {0}")]
+    InvalidFolderId(i64),
+    #[error("folder {0} does not exist")]
+    UnknownFolder(i64),
+    #[error("directory path is not inside a registered folder: {0}")]
+    InvalidDirectoryPath(String),
     #[error("could not read the tag tree")]
     TagLookupFailed,
     #[error("navigation UI request queue is unavailable")]

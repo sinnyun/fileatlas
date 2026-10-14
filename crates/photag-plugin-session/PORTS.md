@@ -15,4 +15,8 @@ Status: the pinned PhoTag `session.json` schema and Cordis service are migrated.
 
 ## Debugging
 
-Check `session.json` keys and values against `vendor/photag-source/src/session.rs`. Gallery persists its current selection and pixel scroll offset after scroll changes and view teardown. Shell persists width at the end of a sidebar drag. Preview persists/restores its view state for the matching source path; selected tag and active sidebar tab are not currently restored. Abrupt process termination can still lose the latest gallery or sidebar change before its next save point.
+Check `session.json` keys and values against `vendor/photag-source/src/session.rs`. Gallery persists its current selection and pixel scroll offset after scroll changes and view teardown. Shell persists width at the end of a sidebar drag. Preview persists/restores its view state for the matching source path; Navigation restores the active sidebar page from the free-form sidebar_tab field, accepting old Folders/Tags values. Abrupt process termination can still lose the latest gallery or sidebar change before its next save point.
+
+## Inspector width compatibility (2026-10-14)
+
+SessionState.inspector_width:f32 is serde(default); zero uses300pt. Existing sidebar_width, selection and all source fields retain their names/semantics. Shell saves both widths at splitter mouse-up; no user file migration/reset is performed. Compatibility test loads old JSON without inspector_width, preserves folder7/media12/Tags and round-trips a350pt right width. MCP restart restored actual dragged widths304/340 in an isolated profile.

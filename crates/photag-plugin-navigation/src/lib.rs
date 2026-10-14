@@ -74,6 +74,36 @@ impl NavigationService {
                 return Err(NavigationUiRequestError::UnknownTag(id));
             }
         }
+        match &request {
+            NavigationUiRequest::ExpandFolder(id) => {
+                if *id <= 0 {
+                    return Err(NavigationUiRequestError::InvalidFolderId(*id));
+                }
+                let snapshot = self
+                    .snapshot()
+                    .map_err(|_| NavigationUiRequestError::UnknownFolder(*id))?;
+                if !snapshot.folders.iter().any(|node| node.folder.id == *id) {
+                    return Err(NavigationUiRequestError::UnknownFolder(*id));
+                }
+            }
+            NavigationUiRequest::SelectPath(path) | NavigationUiRequest::ExpandPath(path) => {
+                let target = std::fs::canonicalize(path)
+                    .ok()
+                    .filter(|path| path.is_dir())
+                    .ok_or_else(|| NavigationUiRequestError::InvalidDirectoryPath(path.clone()))?;
+                let snapshot = self
+                    .snapshot()
+                    .map_err(|_| NavigationUiRequestError::InvalidDirectoryPath(path.clone()))?;
+                let inside_registered_folder = snapshot.folders.iter().any(|node| {
+                    std::fs::canonicalize(&node.folder.path)
+                        .is_ok_and(|root| target.starts_with(root))
+                });
+                if !inside_registered_folder {
+                    return Err(NavigationUiRequestError::InvalidDirectoryPath(path.clone()));
+                }
+            }
+            _ => {}
+        }
         let mut pending = self
             .ui_request
             .lock()

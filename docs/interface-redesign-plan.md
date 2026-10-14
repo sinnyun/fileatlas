@@ -1,5 +1,7 @@
 # PhoTag 界面 v5 改造实施文档
 
+> 2026-10-14：用户已确认当前界面为开发基线，本文件作为界面阶段历史记录。新阶段续接请读 [开发基线](development-baseline-2026-10-14.md) 与 [功能操作优化/扩展计划](functional-development-plan.md)，不再沿旧样式台账自动重新设计。旧未验操作纳入F0。
+
 > **自动续接：** 用户只说“继续”时，根据交接文档台账推进下一未完成阶段：先完成 C0–C4 编码，再执行 V1–V4 验证。
 > 编码阶段不运行格式/编译/测试/应用/MCP；验证阶段按清单执行，运行时调试和截图必须使用 PhoTag 插件 MCP。
 > 显式指定任务范围时遵照用户指定。详见完整开发交接。
@@ -868,3 +870,7 @@ S2/S3/S4/S5/S6/S7/S8均保留为进行中，不标记完成；第二轮侧栏、
 ## 2026-10-14 最新实现/验收
 
 本轮按用户要求使用三个 GPT-6 Luna 子代理完善 Gallery、Navigation、Settings，主线程完成 Preview/Playback/Export 和实际MCP验收。00–08主要界面已截图迭代，最新Shell locked编译成功，独立运行EXE为 target/debug/photag-shell-accepted-20261014.exe。S10验证继续：原生输入、文件对话框/确认、拖拽框选、滚动恢复、扫描失败和声音听感仍未验。详见 redesign-validation 最新节；旧19错/旧二进制状态已被覆盖。
+
+## 2026-10-14 v2 两侧分页（本轮完成）
+
+用户 sidebar-pages-preview-2026-10-14-v2.png 现在是主窗口两侧布局的最新依据：左三页/树线、右固定preview+下方三页、双splitter、蓝色选中边框完成。新EXE sidebar-v2，25相关tests通过；PhoTag MCP GPUI事件点击/拖动与304/340宽度恢复通过。完整命令与证据在redesign-validation最新v2节。此前其他原生路径未验项不因此勾选。

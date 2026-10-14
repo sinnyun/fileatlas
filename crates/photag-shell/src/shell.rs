@@ -2,6 +2,9 @@ use super::*;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 
+mod panel_resize;
+use panel_resize::PanelSide;
+
 pub(super) struct PhoTagShell {
     pub(super) catalog: Arc<UiCatalog>,
     pub(super) views: Vec<(String, gpui_kit::AnyView)>,
@@ -10,14 +13,21 @@ pub(super) struct PhoTagShell {
     pub(super) session: Arc<photag_plugin_session::SessionService>,
     pub(super) surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     pub(super) sidebar_width: f32,
-    pub(super) resizing_sidebar: bool,
+    pub(super) inspector_width: f32,
+    pub(super) viewport_width: f32,
+    pub(super) capture: Arc<photag_plugin_mcp::CaptureWindowHandle>,
+    pub(super) drag_origin_x: f32,
+    pub(super) drag_origin_width: f32,
+    pub(super) resizing_panel: Option<PanelSide>,
     pub(super) tools_open: bool,
     pub(super) sidebar_open: bool,
     pub(super) inspector_open: bool,
 }
 
 impl Render for PhoTagShell {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.viewport_width = f32::from(window.bounds().size.width);
+        self.dispatch_mcp_pointer(window, cx);
         self.tools_open = self.surfaces.is_open("tools");
         self.inspector_open = self.surfaces.is_open("inspector");
         let contributions = self.catalog.snapshot().unwrap_or_default();
@@ -90,13 +100,15 @@ impl Render for PhoTagShell {
             let cordis = self.cordis.clone();
             let executor = self.executor.clone();
             div()
-                .h_flex()
-                .w_full()
+                .v_flex()
+                .w(px(48.))
                 .flex_shrink_0()
-                .h(px(42.))
+                .h(px(56.))
                 .items_center()
-                .gap(px(10.))
-                .px(px(14.))
+                .justify_center()
+                .gap(px(4.))
+                .flex_shrink_0()
+                .border_r_1()
                 .border_t_1()
                 .border_color(divider)
                 .id("shell-settings-entry")
@@ -109,7 +121,7 @@ impl Render for PhoTagShell {
                 )
                 .child(
                     div()
-                        .text_size(px(theme::FONT_SIZE_BODY))
+                        .text_size(px(10.))
                         .child(photag_ui_bridge::i18n::tr("Settings")),
                 )
                 .on_click(move |_, _, _| {
@@ -244,7 +256,13 @@ impl Render for PhoTagShell {
                     .children(sidebar_views),
             );
         if settings_available {
-            sidebar_column = sidebar_column.child(settings_entry);
+            sidebar_column = sidebar_column.child(
+                div()
+                    .h_flex()
+                    .w_full()
+                    .flex_shrink_0()
+                    .child(settings_entry),
+            );
         }
         let mut content_column = div()
             .v_flex()
@@ -327,6 +345,17 @@ impl Render for PhoTagShell {
                     cx.notify();
                 }
             }))
+            .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, window, cx| {
+                this.move_panel_drag(event, window, cx)
+            }))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| this.finish_panel_drag(cx)),
+            )
+            .on_mouse_up_out(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| this.finish_panel_drag(cx)),
+            )
             .child(title_band)
             .child(
                 div()
@@ -341,7 +370,7 @@ impl Render for PhoTagShell {
                         row.child(
                             div()
                                 .v_flex()
-                                .w(px(theme::INSPECTOR_WIDTH))
+                                .w(px(self.inspector_width))
                                 .h_full()
                                 .flex_shrink_0()
                                 .min_h_0()
@@ -352,70 +381,10 @@ impl Render for PhoTagShell {
                         )
                     })
                     .when(self.sidebar_open, |row| {
-                        row.child(
-                            div()
-                                .absolute()
-                                .left(px(self.sidebar_width - 4.))
-                                .group("sidebar-resizer")
-                                .top_0()
-                                .w(px(8.))
-                                .h_full()
-                                .cursor_col_resize()
-                                .child(
-                                    div()
-                                        .absolute()
-                                        .left(px(4.))
-                                        .top(px(72.))
-                                        .bottom(px(14.))
-                                        .w(px(1.))
-                                        .bg(rgba(if self.resizing_sidebar {
-                                            0xffffff1a
-                                        } else {
-                                            0
-                                        }))
-                                        .group_hover("sidebar-resizer", |style| {
-                                            style.bg(rgba(0xffffff1a))
-                                        }),
-                                )
-                                .on_mouse_down(
-                                    MouseButton::Left,
-                                    cx.listener(|this, _, _, cx| {
-                                        this.resizing_sidebar = true;
-                                        cx.notify();
-                                    }),
-                                )
-                                .on_mouse_move(cx.listener(
-                                    |this, event: &MouseMoveEvent, _, cx| {
-                                        if this.resizing_sidebar {
-                                            let next = f32::from(event.position.x).clamp(
-                                                theme::SIDEBAR_MIN_WIDTH,
-                                                theme::SIDEBAR_MAX_WIDTH,
-                                            );
-                                            if (next - this.sidebar_width).abs() > 0.5 {
-                                                this.sidebar_width = next;
-                                                cx.notify();
-                                            }
-                                        }
-                                    },
-                                ))
-                                .on_mouse_up(
-                                    MouseButton::Left,
-                                    cx.listener(|this, _, _, cx| {
-                                        if this.resizing_sidebar {
-                                            this.resizing_sidebar = false;
-                                            cx.notify();
-                                            if let Ok(mut saved) = this.session.snapshot() {
-                                                saved.sidebar_width = this.sidebar_width;
-                                                if let Err(error) = this.session.replace(saved) {
-                                                    eprintln!(
-                                                        "sidebar width session save failed: {error}"
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    }),
-                                ),
-                        )
+                        row.child(self.panel_splitter(PanelSide::Sidebar, cx))
+                    })
+                    .when(self.inspector_open, |row| {
+                        row.child(self.panel_splitter(PanelSide::Inspector, cx))
                     }),
             )
             .child(

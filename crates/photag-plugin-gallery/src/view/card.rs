@@ -116,13 +116,14 @@ pub(super) fn render_media_card(
                 cx,
             )
         });
-    // The actions menu reveals on hover; the selection badge owns this corner.
+    // Keep the actions menu in the corner; selection is communicated by the
+    // blue outline below without covering the media preview.
     if hover > 0.01 {
         frame = frame.child(
             div()
                 .absolute()
                 .top(px(6.))
-                .right(px(6. + 22. * selection))
+                .right(px(6.))
                 .opacity(hover)
                 .child(menu),
         );
@@ -176,35 +177,14 @@ pub(super) fn render_media_card(
         .h(px(thumb_size))
         .child(frame);
     if selection > 0.01 {
-        image_area = image_area
-            .child(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .rounded(px(theme::THUMB_ROUND))
-                    .border_2()
-                    .border_color(rgba(theme::accent_alpha(theme::accent(), 0.95 * selection))),
-            )
-            .child(
-                div()
-                    .absolute()
-                    .top(px(6.))
-                    .right(px(6.))
-                    .size(px(18. * selection))
-                    .rounded(px(theme::ROUND_SM))
-                    .bg(rgb(theme::accent()))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .font_family(theme::ICON_FONT_FAMILY)
-                    .text_size(px(11. * selection))
-                    .text_color(rgb(0xffffff))
-                    .child(if selection > 0.5 {
-                        theme::icons::CHECK.to_string()
-                    } else {
-                        String::new()
-                    }),
-            );
+        image_area = image_area.child(
+            div()
+                .absolute()
+                .inset_0()
+                .rounded(px(theme::THUMB_ROUND))
+                .border_2()
+                .border_color(rgba((theme::accent() << 8) | (242. * selection) as u32)),
+        );
     }
     if keyboard_focus && selection > 0.5 {
         image_area = image_area.child(
