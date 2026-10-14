@@ -7,6 +7,7 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if let Some(request) = self.service.take_ui_request() {
             match request {
+                crate::GalleryUiRequest::Layout(list) => self.set_layout(list, cx),
                 crate::GalleryUiRequest::Statistics => self.show_statistics = true,
                 crate::GalleryUiRequest::BulkActions => {
                     bulk_actions::reset_inputs(self, window, cx);
@@ -143,6 +144,7 @@ impl Render for GalleryView {
                 .map(|s| s.skeletons.len())
                 .unwrap_or(0),
             group_by_month: self.group_by_month,
+            list_layout: self.list_layout,
             window_offset: self
                 .snapshot
                 .as_ref()
@@ -181,9 +183,13 @@ impl Render for GalleryView {
             f32::from(window.bounds().size.width) - sidebar_width - GRID_PADDING * 2.0
         };
         let cards_width = (available_width - GRID_PADDING * 2.0).max(0.0);
-        let columns = ((cards_width + GRID_GAP) / (self.thumb_size + GRID_GAP))
-            .floor()
-            .max(1.0) as usize;
+        let columns = if self.list_layout {
+            1
+        } else {
+            ((cards_width + GRID_GAP) / (self.thumb_size + GRID_GAP))
+                .floor()
+                .max(1.0) as usize
+        };
         self.columns = columns;
         let group_by_month = self.group_by_month
             && matches!(
@@ -215,8 +221,12 @@ impl Render for GalleryView {
             if let Some(mut offset) = self.pending_scroll_restore.take() {
                 let mut item_ix = 0;
                 while item_ix + 1 < self.row_layout.len() {
-                    let height =
-                        gallery_row_height(&self.row_layout[item_ix], item_ix, self.thumb_size);
+                    let height = gallery_row_height(
+                        &self.row_layout[item_ix],
+                        item_ix,
+                        self.thumb_size,
+                        self.list_layout,
+                    );
                     if offset < height {
                         break;
                     }
@@ -237,7 +247,9 @@ impl Render for GalleryView {
                     return empty_state::render(self.filters_active() || self.scope_active(), cx);
                 }
                 let list_scroll = self.scroll.clone();
-                let card_size = self.thumb_size;
+                let list_layout = self.list_layout;
+                let card_size = if list_layout { 56. } else { self.thumb_size };
+                let list_width = list_layout.then_some(cards_width.max(100.));
                 let row_layout = Arc::clone(&row_layout);
                 let mut grid = div()
                     .id("gallery-grid-root")
@@ -435,6 +447,7 @@ impl Render for GalleryView {
                                                                 drag_paths,
                                                                 Arc::clone(&this.drag_allowed),
                                                                 card_size,
+                                                                list_width,
                                                                 media.micro_thumb.as_deref(),
                                                                 rating_target_ids,
                                                                 Arc::clone(&card_tag_tree),
@@ -500,7 +513,10 @@ impl Render for GalleryView {
                                                     .w_full()
                                                     .px(px(GRID_PADDING))
                                                     .h(px(gallery_row_height(
-                                                        layout_row, row_index, card_size,
+                                                        layout_row,
+                                                        row_index,
+                                                        card_size,
+                                                        list_layout,
                                                     )))
                                                     .pt(px(month_top_gap))
                                                     .gap_0()
@@ -549,7 +565,7 @@ impl Render for GalleryView {
     }
 }
 
-fn gallery_row_height(row: &GalleryVisualRow, index: usize, thumb: f32) -> f32 {
+fn gallery_row_height(row: &GalleryVisualRow, index: usize, thumb: f32, list: bool) -> f32 {
     let header = if row.month_label.is_some() { 40. } else { 0. };
     let month_gap = if index > 0 && row.month_label.is_some() {
         14.
@@ -559,7 +575,11 @@ fn gallery_row_height(row: &GalleryVisualRow, index: usize, thumb: f32) -> f32 {
     let cards = if row.collapsed {
         0.
     } else {
-        thumb + card::CARD_CAPTION_HEIGHT
+        if list {
+            56.
+        } else {
+            thumb + card::CARD_CAPTION_HEIGHT
+        }
     };
     header + month_gap + cards + 16.
 }

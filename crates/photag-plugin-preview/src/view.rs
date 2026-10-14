@@ -56,142 +56,160 @@ pub fn preview_view(
             let tag_picker_search = app.new(|cx| {
                 InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Filter tags…"))
             });
-            app.new(|cx| {
-                let view_service = Arc::clone(&service);
-                let focus_handle = cx.focus_handle();
-                let zoom_slider = cx.new(|_| {
-                    SliderState::new()
-                        .min(25.0)
-                        .max(200.0)
-                        .step(1.0)
-                        .default_value(service.snapshot().zoom_percent as f32)
-                });
-                let zoom_service = Arc::clone(&service);
-                let zoom_subscription = cx.subscribe(
-                    &zoom_slider,
-                    move |_: &mut PreviewView, _, event: &SliderEvent, cx| match event {
-                        SliderEvent::Change(SliderValue::Single(value))
-                        | SliderEvent::Release(SliderValue::Single(value)) => {
-                            zoom_service.set_zoom_scale(*value);
-                            cx.notify();
-                        }
-                        _ => {}
-                    },
-                );
-                let mut revision = service.snapshot().revision;
-                let mut decode_revision = service.decode_revision();
-                let mut showing_progressive = service
-                    .snapshot()
-                    .source
-                    .as_deref()
-                    .and_then(|source| service.progressive_path(source))
-                    .is_some();
-                let mut chrome_alpha = service.chrome_alpha();
-                let collapsed_dropdown_tag_ids = view_session
-                    .snapshot()
-                    .map(|session| session.collapsed_dropdown_tag_ids)
-                    .unwrap_or_default();
-                let decode_service = Arc::clone(&service);
-                cx.spawn(async move |this, cx| {
-                    let mut filmstrip_request = None;
-                    loop {
-                        cx.background_executor()
-                            .timer(std::time::Duration::from_millis(150))
-                            .await;
-                        decode_service.advance_wheel_animation();
-                        let next_decode_revision = decode_service.decode_revision();
-                        let snapshot = decode_service.snapshot();
-                        let next_showing_progressive = snapshot
-                            .source
-                            .as_deref()
-                            .and_then(|source| decode_service.progressive_path(source))
-                            .is_some();
-                        let changed = this
-                            .update(cx, |view: &mut PreviewView, cx| {
-                                let next = view.service.snapshot().revision;
-                                let more = view.surfaces.is_open("preview.more");
-                                let tags = view.surfaces.is_open("preview.tags");
-                                let request = view.surfaces.value("preview.filmstrip.request");
-                                if request != filmstrip_request {
-                                    if let Some(value) = &request {
-                                        if let Err(error) = view.settings.update(|settings| {
-                                            settings.show_filmstrip = value == "true"
-                                        }) {
-                                            view.operation_status = Some(error.to_string());
+            let content = app
+                .new(|cx| {
+                    let view_service = Arc::clone(&service);
+                    let focus_handle = cx.focus_handle();
+                    let zoom_slider = cx.new(|_| {
+                        SliderState::new()
+                            .min(25.0)
+                            .max(200.0)
+                            .step(1.0)
+                            .default_value(service.snapshot().zoom_percent as f32)
+                    });
+                    let zoom_service = Arc::clone(&service);
+                    let zoom_subscription = cx.subscribe(
+                        &zoom_slider,
+                        move |_: &mut PreviewView, _, event: &SliderEvent, cx| match event {
+                            SliderEvent::Change(SliderValue::Single(value))
+                            | SliderEvent::Release(SliderValue::Single(value)) => {
+                                zoom_service.set_zoom_scale(*value);
+                                cx.notify();
+                            }
+                            _ => {}
+                        },
+                    );
+                    let mut revision = service.snapshot().revision;
+                    let mut decode_revision = service.decode_revision();
+                    let mut showing_progressive = service
+                        .snapshot()
+                        .source
+                        .as_deref()
+                        .and_then(|source| service.progressive_path(source))
+                        .is_some();
+                    let mut chrome_alpha = service.chrome_alpha();
+                    let collapsed_dropdown_tag_ids = view_session
+                        .snapshot()
+                        .map(|session| session.collapsed_dropdown_tag_ids)
+                        .unwrap_or_default();
+                    let decode_service = Arc::clone(&service);
+                    cx.spawn(async move |this, cx| {
+                        let mut filmstrip_request = None;
+                        loop {
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_millis(150))
+                                .await;
+                            decode_service.advance_wheel_animation();
+                            let next_decode_revision = decode_service.decode_revision();
+                            let snapshot = decode_service.snapshot();
+                            let next_showing_progressive = snapshot
+                                .source
+                                .as_deref()
+                                .and_then(|source| decode_service.progressive_path(source))
+                                .is_some();
+                            let changed = this
+                                .update(cx, |view: &mut PreviewView, cx| {
+                                    let next = view.service.snapshot().revision;
+                                    let more = view.surfaces.is_open("preview.more");
+                                    let tags = view.surfaces.is_open("preview.tags");
+                                    let request = view.surfaces.value("preview.filmstrip.request");
+                                    if request != filmstrip_request {
+                                        if let Some(value) = &request {
+                                            if let Err(error) = view.settings.update(|settings| {
+                                                settings.show_filmstrip = value == "true"
+                                            }) {
+                                                view.operation_status = Some(error.to_string());
+                                            }
+                                            view.service.mark_activity();
                                         }
-                                        view.service.mark_activity();
+                                        filmstrip_request = request;
+                                        cx.notify();
                                     }
-                                    filmstrip_request = request;
-                                    cx.notify();
-                                }
-                                if more != view.more_actions_open || tags != view.tag_picker_open {
-                                    view.more_actions_open = more;
-                                    view.tag_picker_open = tags;
-                                    view.service.mark_activity();
-                                    cx.notify();
-                                }
-                                let next_chrome_alpha = view.service.chrome_alpha();
-                                let chrome_changed =
-                                    (next_chrome_alpha - chrome_alpha).abs() > 0.01;
-                                if next != revision
-                                    || next_decode_revision != decode_revision
-                                    || next_showing_progressive != showing_progressive
-                                    || chrome_changed
-                                {
-                                    revision = next;
-                                    decode_revision = next_decode_revision;
-                                    showing_progressive = next_showing_progressive;
-                                    chrome_alpha = next_chrome_alpha;
-                                    cx.notify();
-                                }
-                            })
-                            .is_ok();
-                        if !changed {
-                            break;
+                                    if more != view.more_actions_open
+                                        || tags != view.tag_picker_open
+                                    {
+                                        view.more_actions_open = more;
+                                        view.tag_picker_open = tags;
+                                        view.service.mark_activity();
+                                        cx.notify();
+                                    }
+                                    let next_chrome_alpha = view.service.chrome_alpha();
+                                    let chrome_changed =
+                                        (next_chrome_alpha - chrome_alpha).abs() > 0.01;
+                                    if next != revision
+                                        || next_decode_revision != decode_revision
+                                        || next_showing_progressive != showing_progressive
+                                        || chrome_changed
+                                    {
+                                        revision = next;
+                                        decode_revision = next_decode_revision;
+                                        showing_progressive = next_showing_progressive;
+                                        chrome_alpha = next_chrome_alpha;
+                                        cx.notify();
+                                    }
+                                })
+                                .is_ok();
+                            if !changed {
+                                break;
+                            }
                         }
+                    })
+                    .detach();
+                    PreviewView {
+                        locale_revision: u64::MAX,
+                        service: view_service,
+                        zoom_slider,
+                        _zoom_subscription: zoom_subscription,
+                        more_actions_open: false,
+                        settings: Arc::clone(&settings),
+                        session: view_session,
+                        tagging: Arc::clone(&tagging),
+                        history: history.clone(),
+                        cordis: cordis.clone(),
+                        surfaces: surfaces.clone(),
+                        last_drag_position: None,
+                        toolbar_drag_origin: None,
+                        toolbar_drag_offset: None,
+                        toolbar_error: None,
+                        toolbar_handle_hover: false,
+                        file_operations: Arc::clone(&file_operations),
+                        runtime: runtime.clone(),
+                        rename_input,
+                        rename_target: None,
+                        delete_confirmation_open: false,
+                        operation_status: None,
+                        operation_busy: false,
+                        focus_handle,
+                        tag_picker_search: tag_picker_search.clone(),
+                        tag_picker_open: false,
+                        collapsed_dropdown_tag_ids,
+                        collapsed_info_sections: ["Metadata (EXIF)", "File path", "Video"]
+                            .into_iter()
+                            .collect(),
+                        context_menu_open: false,
+                        context_menu_anchor: None,
+                        last_playback_source: None,
+                        last_seen_source: service.snapshot().source,
                     }
                 })
-                .detach();
-                PreviewView {
-                    locale_revision: u64::MAX,
-                    service: view_service,
-                    zoom_slider,
-                    _zoom_subscription: zoom_subscription,
-                    more_actions_open: false,
-                    settings: Arc::clone(&settings),
-                    session: view_session,
-                    tagging: Arc::clone(&tagging),
-                    history: history.clone(),
-                    cordis: cordis.clone(),
-                    surfaces: surfaces.clone(),
-                    last_drag_position: None,
-                    toolbar_drag_origin: None,
-                    toolbar_drag_offset: None,
-                    toolbar_error: None,
-                    toolbar_handle_hover: false,
-                    file_operations: Arc::clone(&file_operations),
-                    runtime: runtime.clone(),
-                    rename_input,
-                    rename_target: None,
-                    delete_confirmation_open: false,
-                    operation_status: None,
-                    operation_busy: false,
-                    focus_handle,
-                    tag_picker_search: tag_picker_search.clone(),
-                    tag_picker_open: false,
-                    collapsed_dropdown_tag_ids,
-                    collapsed_info_sections: ["Metadata (EXIF)", "File path", "Video"]
-                        .into_iter()
-                        .collect(),
-                    context_menu_open: false,
-                    context_menu_anchor: None,
-                    last_playback_source: None,
-                    last_seen_source: service.snapshot().source,
-                }
-            })
-            .into()
+                .into();
+            let visible = service.clone();
+            let close = service.clone();
+            photag_ui_bridge::panels::mount(
+                content,
+                photag_ui_bridge::panels::PanelOptions::new(
+                    "preview",
+                    "Image preview",
+                    (1100., 760.),
+                ),
+                surfaces.clone(),
+                move || visible.snapshot().source.is_some(),
+                move || close.close(),
+                app,
+            )
         },
     )
+    .with_panel_id("preview")
 }
 pub(crate) struct PreviewView {
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,

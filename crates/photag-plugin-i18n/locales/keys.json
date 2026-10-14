@@ -589,5 +589,11 @@
   "No matching folders": "msg-cc627b9b80a7",
   "Add-ons": "msg-41b634ed2413",
   "No add-ons are registered.": "msg-a80b0fe48eaa",
-  "No available add-ons.": "msg-880df61856c8"
+  "No available add-ons.": "msg-880df61856c8",
+  "Grid": "msg-panels-0",
+  "List": "msg-panels-1",
+  "Image preview": "msg-panels-2",
+  "Media playback": "msg-panels-3",
+  "PhoTag · Settings": "msg-panels-4",
+  "Development task status": "msg-panels-5"
 }

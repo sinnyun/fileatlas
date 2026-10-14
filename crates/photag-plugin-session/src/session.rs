@@ -42,6 +42,9 @@ pub struct SessionState {
     pub sidebar_tab: String,
     #[serde(default)]
     pub gallery_scroll: f32,
+    /// Additive preference; older PhoTag sessions default to the grid.
+    #[serde(default)]
+    pub gallery_list_layout: bool,
     /// Gallery selection restored only when the saved IDs still match the active query.
     #[serde(default)]
     pub selected_media_ids: Vec<i64>,
@@ -137,6 +140,8 @@ mod compatibility_tests {
             r#"{"selected_folder_id":7,"selected_media_ids":[12],"sidebar_width":264,"sidebar_tab":"Tags"}"#,
         ).unwrap();
         assert_eq!(state.inspector_width, 0.);
+        assert!(!state.gallery_list_layout);
+        state.gallery_list_layout = true;
         state.inspector_width = 350.;
         let restored: SessionState =
             serde_json::from_str(&serde_json::to_string(&state).unwrap()).unwrap();
@@ -144,6 +149,7 @@ mod compatibility_tests {
         assert_eq!(restored.selected_media_ids, vec![12]);
         assert_eq!(restored.sidebar_tab, "Tags");
         assert_eq!(restored.inspector_width, 350.);
+        assert!(restored.gallery_list_layout);
     }
 }
 

@@ -3,6 +3,7 @@ use super::*;
 /// Requests consumed by the live Gallery view, using its existing actions.
 #[derive(Clone)]
 pub enum GalleryUiRequest {
+    Layout(bool),
     Statistics,
     BulkActions,
     ConfigureBulk(crate::BulkActionKind, crate::BulkActionSource),
@@ -38,6 +39,7 @@ pub struct GalleryUiSnapshot {
     pub window_offset: usize,
     pub loaded_count: usize,
     pub group_by_month: bool,
+    pub list_layout: bool,
     pub inspector_sections: Vec<&'static str>,
     pub bulk_action: Option<&'static str>,
     pub bulk_source: &'static str,

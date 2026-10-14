@@ -7,7 +7,8 @@ use panel_resize::PanelSide;
 
 pub(super) struct PhoTagShell {
     pub(super) catalog: Arc<UiCatalog>,
-    pub(super) views: Vec<(String, gpui_kit::AnyView)>,
+    pub(super) views: Vec<(String, u64, String, Option<String>, gpui_kit::AnyView)>,
+    pub(super) view_catalog: Arc<photag_ui_bridge::UiViewCatalog>,
     pub(super) cordis: CordisContext,
     pub(super) executor: tokio::runtime::Handle,
     pub(super) session: Arc<photag_plugin_session::SessionService>,
@@ -22,12 +23,33 @@ pub(super) struct PhoTagShell {
     pub(super) tools_open: bool,
     pub(super) sidebar_open: bool,
     pub(super) inspector_open: bool,
+    pub(super) panel_signature: (bool, Option<String>),
 }
 
 impl Render for PhoTagShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.viewport_width = f32::from(window.bounds().size.width);
         self.dispatch_mcp_pointer(window, cx);
+        let mut previous = std::mem::take(&mut self.views);
+        self.views = self
+            .view_catalog
+            .snapshot()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|entry| entry.contribution.slot != "settings.language")
+            .map(|entry| {
+                let c = entry.contribution;
+                let view = if let Some(index) =
+                    previous.iter().position(|(id, generation, _, _, _)| {
+                        id == &c.id && *generation == entry.generation
+                    }) {
+                    previous.remove(index).4
+                } else {
+                    (c.factory)(window, cx)
+                };
+                (c.id, entry.generation, c.slot, c.panel_id, view)
+            })
+            .collect();
         self.tools_open = self.surfaces.is_open("tools");
         self.inspector_open = self.surfaces.is_open("inspector");
         let contributions = self.catalog.snapshot().unwrap_or_default();
@@ -43,7 +65,9 @@ impl Render for PhoTagShell {
         let mut inspector_views = Vec::new();
         let mut auxiliary_views = Vec::new();
         let mut modal_views = Vec::new();
-        for (slot, view) in &self.views {
+        let mut active_panel = None;
+        let active = self.surfaces.value("panel.active");
+        for (_, _, slot, panel_id, view) in &self.views {
             match slot.as_str() {
                 "command.breadcrumb" => breadcrumb_views.push(view.clone()),
                 "command.search" => search_views.push(view.clone()),
@@ -55,10 +79,17 @@ impl Render for PhoTagShell {
                 "gallery.content" => content_views.push(view.clone()),
                 "gallery.inspector" => inspector_views.push(view.clone()),
                 "workspace.main" => context_views.push(view.clone()),
-                "workspace.modal" => modal_views.push(view.clone()),
+                "workspace.modal" => {
+                    if panel_id.is_some() && panel_id == &active {
+                        active_panel = Some(view.clone());
+                    } else {
+                        modal_views.push(view.clone());
+                    }
+                }
                 _ => auxiliary_views.push(view.clone()),
             }
         }
+        modal_views.extend(active_panel);
         let mut tool_commands = Vec::new();
         let mut settings_available = false;
         for button in contributions.iter().filter_map(|owned| {
@@ -422,6 +453,17 @@ impl Render for PhoTagShell {
             );
         }
         if !modal_views.is_empty() {
+            if self.surfaces.any_panel_open() {
+                shell = shell.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .bg(rgba(0x00000060))
+                        .occlude()
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                        .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation()),
+                );
+            }
             shell = shell.child(div().absolute().inset_0().children(modal_views));
         }
         shell

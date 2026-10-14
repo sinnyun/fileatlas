@@ -883,3 +883,11 @@ update_offer_open=true after a manual check; no download/install performed.
 ## 2026-10-14 backend-preserving redesign validation
 
 Shell1.97.1 locked build/check pass; relevant11crate tests36 pass/1 ignored, separate FFmpeg ignored test1pass. See redesign-validation latest section for exact commands. JSON export12real rows passed and writing to directory returned actual os5 failure. Source-compatible paired video poster validation.png is not a separate indexed image (12total, not13). Invalid JPEG metadata write skips according to source semantics, so actual writeback retry/dismiss was tested using FileShare.None exclusive lock to produce os32 on isolated corrupt.jpg. Production query/schema/JSON writer/tagging order preserved; mapping in source-feature-audit updated. MediaIndexChanged scan completion observations refresh the sidebar; virtual dev-test inject/cleanup selects fixture folder by its existing contract. 100000virtual+12real stress scroll page offset99812 loaded200; crosspage selectionbulk2; virtualrows cleaned and All files12 reverified. No destructive file actions or ordinary userprofile mutation. Native Windows file dialogs/overwrite/recycle/drag and complete codec interoperability remain unverified.
+
+## 2026-10-14 基线后的通用弹出面板／列表／菜单优化
+
+用户指定的四项优化已实现：设置及媒体预览共用UI Bridge浮动框架、主界面点击隔离、Cordis-owned Single/Multiple PanelCatalog与各定义默认尺寸、Grid/List按钮及会话偏好、保持卡片按钮菜单触发实体。设计对照final-v5/01/02/03/05与baseline sidebar-pages-preview-v2；新的窗口几何与列表按本轮用户指令。完整141步MCP参数／结果／截图、准确命令、样本及未覆盖边界见[本轮运行证据](validation-ui/2026-10-14-panels/README.md)。
+
+Rust1.97.1 MSVC fmt/check/标准locked shell build通过；相关26项测试通过，最后UI Bridge5项清理回归通过。真实GPUI设置拖动100×50、缩放900×680→800×580、tab点击与外层隔离；菜单进入和预览ID6、单实例复用、多实例独立移动／关闭；真实图片/WAV/MP4解码及面板max/restore；List实际选择ID9与下一进程恢复；100009项列表末页offset99809/cache200；只读拒绝。正常用户数据未用于测试。
+
+SQLite与既有后端动作语义不改；源Session serde-default与Gallery grid/context-action语义已追踪，映射追加于source-feature-audit.md；gallery_list_layout字段为兼容的新增偏好。新组件使用说明见[floating-panels](floating-panels.md)。七个未逐项实测resize把手、窗口外捕获、不同DPI、列表修饰键/框选/OS拖出、全codec及听感、现有服务多媒体并行仍未覆盖，不将这些记为通过。

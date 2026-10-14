@@ -33,6 +33,7 @@ impl PhoTagMcpServer {
                 "excluded_tags": state.filter.excluded_tag_ids, "rating_min": state.filter.rating_min,
                 "rating_max": state.filter.rating_max, "date_from": state.filter.date_from.map(|d| d.to_string()),
                 "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
+                "layout": if state.list_layout { "list" } else { "grid" },
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
                 "window_offset": state.window_offset, "loaded_count": state.loaded_count,
                 "inspector_sections": state.inspector_sections,
@@ -40,6 +41,10 @@ impl PhoTagMcpServer {
                 "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             })),
+            "panels": (["settings", "preview", "playback"].iter().map(|id| json!({"id":id,"open":self.surfaces.is_open(&format!("panel.{id}")),"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>()),
+            "open_panel_ids": self.surfaces.open_panel_ids(),
+            "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| json!({"id":id,"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>(),
+            "active_panel": self.surfaces.value("panel.active"),
             "settings_open": self.surfaces.is_open("settings"),
             "export_open": self.surfaces.is_open("metadata-export"),
             "sidebar_open": self.surfaces.value("sidebar.visible").as_deref() != Some("false"),
@@ -83,7 +88,28 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
-            "pointer_down" | "pointer_drag" | "pointer_up" => {
+            "panel_open" | "panel_close" => {
+                let Ok(bridge) = self
+                    .context
+                    .try_service::<photag_ui_bridge::UiBridgeService>()
+                else {
+                    return error_json("UI Bridge unavailable");
+                };
+                let id = request.value.as_deref().unwrap_or("");
+                return if request.action == "panel_open" {
+                    match bridge.panels.open(id) {
+                        Ok(instance) => json!({"instance_id":instance}).to_string(),
+                        Err(error) => error_json(&error),
+                    }
+                } else {
+                    match bridge.panels.close(id) {
+                        Ok(()) => json!({"closed":id}).to_string(),
+                        Err(error) => error_json(&error),
+                    }
+                };
+            }
+            "pointer_down" | "pointer_drag" | "pointer_move" | "pointer_right_down"
+            | "pointer_right_up" | "pointer_up" => {
                 let coordinates = request
                     .value
                     .as_deref()
@@ -105,6 +131,9 @@ impl PhoTagMcpServer {
                     kind: match request.action.as_str() {
                         "pointer_down" => "down",
                         "pointer_drag" => "drag",
+                        "pointer_move" => "move",
+                        "pointer_right_down" => "right_down",
+                        "pointer_right_up" => "right_up",
                         _ => "up",
                     },
                     x: coordinates[0],

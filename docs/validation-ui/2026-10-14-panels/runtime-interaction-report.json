@@ -1,0 +1,6012 @@
+{
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-panels-v4.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3",
+  "started": "2026-10-14T03:03:09.198Z",
+  "steps": [
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "settings_open"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          }
+        ],
+        "active_panel": "preview",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "300,76"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "190,60,900,680",
+            "client_bounds": "190.66667,60.666668,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "190,60,900,680",
+            "client_bounds": "190.66667,60.666668,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_drag",
+        "value": "400,126"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "190,60,900,680",
+            "client_bounds": "190.66667,60.666668,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "190,60,900,680",
+            "client_bounds": "190.66667,60.666668,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "400,126"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "settings-dragged-v4.png"
+    },
+    {
+      "tool": "search_media",
+      "arguments": {
+        "limit": 100
+      },
+      "result": {
+        "total": 9,
+        "offset": 0,
+        "items": [
+          {
+            "id": 6,
+            "folder_id": 1,
+            "filename": "tiny.jpg",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\tiny.jpg",
+            "media_type": "image",
+            "file_size": 800,
+            "modified_at": 1791878376,
+            "width": 24,
+            "height": 16,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\ed63e8d88b0c397f.jpg",
+            "rating": 0
+          },
+          {
+            "id": 9,
+            "folder_id": 1,
+            "filename": "medium.webp",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.webp",
+            "media_type": "image",
+            "file_size": 1302,
+            "modified_at": 1791874408,
+            "width": 640,
+            "height": 480,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\b9bc6a98c3326d1e.jpg",
+            "rating": 0
+          },
+          {
+            "id": 8,
+            "folder_id": 1,
+            "filename": "medium.gif",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.gif",
+            "media_type": "image",
+            "file_size": 29398,
+            "modified_at": 1791874408,
+            "width": 320,
+            "height": 240,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\f57d1a9dc1ab50b3.jpg",
+            "rating": 0
+          },
+          {
+            "id": 7,
+            "folder_id": 1,
+            "filename": "large.tiff",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\large.tiff",
+            "media_type": "image",
+            "file_size": 3686642,
+            "modified_at": 1791874408,
+            "width": 1280,
+            "height": 960,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\818e400e30959896.jpg",
+            "rating": 0
+          },
+          {
+            "id": 4,
+            "folder_id": 1,
+            "filename": "nested-photo.jpeg",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-photo.jpeg",
+            "media_type": "image",
+            "file_size": 194614,
+            "modified_at": 1791874408,
+            "width": 900,
+            "height": 600,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\11a2cac865d252a6.jpg",
+            "rating": 0
+          },
+          {
+            "id": 3,
+            "folder_id": 1,
+            "filename": "nested-large.bmp",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-large.bmp",
+            "media_type": "image",
+            "file_size": 2359350,
+            "modified_at": 1791874408,
+            "width": 1024,
+            "height": 768,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\3b9189e093de38b2.jpg",
+            "rating": 0
+          },
+          {
+            "id": 2,
+            "folder_id": 1,
+            "filename": "sample.wav",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\sample.wav",
+            "media_type": "audio",
+            "file_size": 4044,
+            "modified_at": 1791874408,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 1,
+            "folder_id": 1,
+            "filename": "broken-image.jpg",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\broken-image.jpg",
+            "media_type": "image",
+            "file_size": 64,
+            "modified_at": 1791874408,
+            "width": null,
+            "height": null,
+            "date_taken": null,
+            "thumb_path": null,
+            "rating": 0
+          },
+          {
+            "id": 5,
+            "folder_id": 1,
+            "filename": "small.png",
+            "full_path": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\small.png",
+            "media_type": "image",
+            "file_size": 32654,
+            "modified_at": 1791874407,
+            "width": 180,
+            "height": 120,
+            "date_taken": null,
+            "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-panels-v3\\thumbs\\ea983e06fb9ecc88.jpg",
+            "rating": 0
+          }
+        ]
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "1188,788"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_drag",
+        "value": "1088,688"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,900,680",
+            "client_bounds": "290.66666,110.666664,898.6667,678.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "1088,688"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "360,178"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "360,178"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "toolbar",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "settings-resized.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "30,155"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "30,155"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": true,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "settings_close"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": true,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": true,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "preview",
+          "settings"
+        ],
+        "panel_instances": [
+          {
+            "id": "preview",
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "settings",
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          }
+        ],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_preview",
+      "arguments": {
+        "action": "close"
+      },
+      "result": {
+        "preview": {
+          "source": null,
+          "quarter_turns": 0,
+          "flip_horizontal": false,
+          "flip_vertical": false,
+          "fit_to_window": true,
+          "zoom_percent": 100,
+          "zoom_scale": 1,
+          "show_info": false,
+          "tags_open": false,
+          "more_open": false,
+          "media_id": null,
+          "filmstrip": [],
+          "revision": 2
+        },
+        "playback": {
+          "path": null,
+          "media_id": null,
+          "playing": false,
+          "position_seconds": 0,
+          "duration_seconds": 0,
+          "width": 0,
+          "height": 0,
+          "speed": 1,
+          "volume": 1,
+          "tags_open": false,
+          "more_open": false,
+          "audio_available": false,
+          "error": null,
+          "revision": 0
+        }
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "layout",
+        "value": "grid"
+      },
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_move",
+        "value": "400,210"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "410,178"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "410,178"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "card-menu-open.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_move",
+        "value": "550,410"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "card-menu-hovered.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_move",
+        "value": "450,297"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "450,297"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "450,297"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "settings",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_view_state",
+      "arguments": {},
+      "result": {
+        "preview": {
+          "source": "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\tiny.jpg",
+          "quarter_turns": 0,
+          "flip_horizontal": false,
+          "flip_vertical": false,
+          "fit_to_window": true,
+          "zoom_percent": 100,
+          "zoom_scale": 1,
+          "show_info": false,
+          "tags_open": false,
+          "more_open": false,
+          "media_id": 6,
+          "filmstrip": [
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\tiny.jpg",
+              6
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.webp",
+              9
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.gif",
+              8
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\large.tiff",
+              7
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-photo.jpeg",
+              4
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-large.bmp",
+              3
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\sample.wav",
+              2
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\broken-image.jpg",
+              1
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\small.png",
+              5
+            ]
+          ],
+          "revision": 3
+        },
+        "playback": {
+          "path": null,
+          "media_id": null,
+          "playing": false,
+          "position_seconds": 0,
+          "duration_seconds": 0,
+          "width": 0,
+          "height": 0,
+          "speed": 1,
+          "volume": 1,
+          "tags_open": false,
+          "more_open": false,
+          "audio_available": false,
+          "error": null,
+          "revision": 0
+        }
+      },
+      "screenshot": "card-menu-preview-result.png"
+    },
+    {
+      "tool": "control_preview",
+      "arguments": {
+        "action": "close"
+      },
+      "result": {
+        "preview": {
+          "source": null,
+          "quarter_turns": 0,
+          "flip_horizontal": false,
+          "flip_vertical": false,
+          "fit_to_window": true,
+          "zoom_percent": 100,
+          "zoom_scale": 1,
+          "show_info": false,
+          "tags_open": false,
+          "more_open": false,
+          "media_id": null,
+          "filmstrip": [
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\tiny.jpg",
+              6
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.webp",
+              9
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\medium.gif",
+              8
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\02-mixed-formats\\large.tiff",
+              7
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-photo.jpeg",
+              4
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\03-nested\\level-one\\level-two\\nested-large.bmp",
+              3
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\sample.wav",
+              2
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\04-no-thumbnail\\broken-image.jpg",
+              1
+            ],
+            [
+              "\\\\?\\F:\\AI\\geren\\pho_cordis\\test-data\\photag-library\\01-small\\small.png",
+              5
+            ]
+          ],
+          "revision": 4
+        },
+        "playback": {
+          "path": null,
+          "media_id": null,
+          "playing": false,
+          "position_seconds": 0,
+          "duration_seconds": 0,
+          "width": 0,
+          "height": 0,
+          "speed": 1,
+          "volume": 1,
+          "tags_open": false,
+          "more_open": false,
+          "audio_available": false,
+          "error": null,
+          "revision": 0
+        }
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_right_down",
+        "value": "350,210"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 1,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_right_up",
+        "value": "350,210"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0.7014983296394348,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_move",
+        "value": "460,480"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 1,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "right-menu-hovered.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "1100,600"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "1100,600"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "preview",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_open",
+        "value": "dev-test/status"
+      },
+      "result": {
+        "instance_id": "dev-test/status@1"
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_open",
+        "value": "dev-test/status"
+      },
+      "result": {
+        "instance_id": "dev-test/status@1"
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_open",
+        "value": "dev-test/status-multi"
+      },
+      "result": {
+        "instance_id": "dev-test/status-multi@2"
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_open",
+        "value": "dev-test/status-multi"
+      },
+      "result": {
+        "instance_id": "dev-test/status-multi@3"
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "460,236"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_drag",
+        "value": "220,90"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "220,90"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "100,74,600,360",
+            "client_bounds": "100.666664,74.666664,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "100,74,600,360",
+            "client_bounds": "100.666664,74.666664,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "multiple-separated.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "680,90"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "100,74,600,360",
+            "client_bounds": "100.666664,74.666664,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "680,90"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status-multi@3",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status-multi@3",
+            "bounds": "100,74,600,360",
+            "client_bounds": "100.666664,74.666664,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "grid",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [
+          "dev-test/status-multi@2",
+          "dev-test/status@1"
+        ],
+        "panel_instances": [
+          {
+            "id": "dev-test/status-multi@2",
+            "bounds": "340,220,600,360",
+            "client_bounds": "340.66666,220.66667,598.6667,358.66666"
+          },
+          {
+            "id": "dev-test/status@1",
+            "bounds": "380,250,520,300",
+            "client_bounds": "380.66666,250.66667,518.6667,298.66666"
+          }
+        ],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "multi-closed-one.png"
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_close",
+        "value": "dev-test/status@1"
+      },
+      "result": {
+        "closed": "dev-test/status@1"
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "panel_close",
+        "value": "dev-test/status-multi@2"
+      },
+      "result": {
+        "closed": "dev-test/status-multi@2"
+      }
+    },
+    {
+      "tool": "control_gallery",
+      "arguments": {
+        "action": "layout",
+        "value": "list"
+      },
+      "result": {
+        "accepted": true
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_down",
+        "value": "550,290"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "control_ui",
+      "arguments": {
+        "action": "pointer_up",
+        "value": "550,290"
+      },
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      }
+    },
+    {
+      "tool": "get_ui_state",
+      "arguments": {},
+      "result": {
+        "gallery_popover": "",
+        "tools_open": false,
+        "gallery": {
+          "search": "",
+          "media_type": "All",
+          "folder_id": null,
+          "path_prefix": null,
+          "sort": "NewestFirst",
+          "extensions": [],
+          "excluded_extensions": [],
+          "included_tags": [],
+          "excluded_tags": [],
+          "rating_min": 0,
+          "rating_max": 5,
+          "date_from": null,
+          "date_to": null,
+          "selected_media_ids": [],
+          "layout": "list",
+          "matched_count": 9,
+          "group_by_month": true,
+          "window_offset": 0,
+          "loaded_count": 9,
+          "inspector_sections": [
+            "basic",
+            "tags"
+          ],
+          "bulk_action": null,
+          "bulk_source": "Whole library",
+          "statistics_open": false,
+          "tag_picker_open": false,
+          "media_actions_open": false,
+          "media_actions_id": null
+        },
+        "panels": [
+          {
+            "id": "settings",
+            "open": false,
+            "bounds": "290,110,800,580",
+            "client_bounds": "290.66666,110.666664,798.6667,578.6667"
+          },
+          {
+            "id": "preview",
+            "open": false,
+            "bounds": "90,20,1100,760",
+            "client_bounds": "90.666664,20.666666,1098.6666,758.6667"
+          },
+          {
+            "id": "playback",
+            "open": false,
+            "bounds": null,
+            "client_bounds": null
+          }
+        ],
+        "open_panel_ids": [],
+        "panel_instances": [],
+        "active_panel": "dev-test/status-multi@3",
+        "settings_open": false,
+        "export_open": false,
+        "sidebar_open": true,
+        "inspector_open": true,
+        "update_checking": false,
+        "update_available": true,
+        "update_offer_open": false,
+        "settings_tab": "appearance",
+        "navigation_tab": "folders",
+        "inspector_tab": "information",
+        "sidebar_width": 264,
+        "inspector_width": 300,
+        "language": "zh-CN",
+        "translation_revision": 1,
+        "preview_chrome_alpha": 0,
+        "gallery_cards": [
+          {
+            "media_id": 6,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 9,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 8,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 7,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 4,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 3,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 2,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 1,
+            "hover": 0,
+            "selection": 0
+          },
+          {
+            "media_id": 5,
+            "hover": 0,
+            "selection": 0
+          }
+        ],
+        "scan_progress": null,
+        "metadata_export": {
+          "state": "idle"
+        },
+        "writeback_failures": []
+      },
+      "screenshot": "list-selected.png"
+    }
+  ]
+}

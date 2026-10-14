@@ -647,3 +647,15 @@ msg-41b634ed2413 = 扩展
 msg-a80b0fe48eaa = 暂无可用扩展。
 
 msg-880df61856c8 = 暂无可用扩展。
+
+msg-panels-0 = 网格
+
+msg-panels-1 = 列表
+
+msg-panels-2 = 图片预览
+
+msg-panels-3 = 音视频播放
+
+msg-panels-4 = PhoTag · 设置
+
+msg-panels-5 = 开发任务状态

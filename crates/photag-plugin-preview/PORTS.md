@@ -66,3 +66,7 @@ are separate from typed-request/state/screenshot coverage.
 ## 2026-10-14 current implementation and MCP evidence
 
 Reference02 rendered with real image info/ratings, fixed opaque toolbar, filenames in filmstrip, controlled More/Tags popovers. MCP exercised zoom/rotation/reset/filmstrip showhide/info; native file dialogs, toolbar drag and per-key keyboard behavior unverified. See current redraw evidence in docs/redesign-validation.md.
+
+## Shared floating frame (2026-10-14)
+
+Image preview content is mounted in the UI Bridge frame ID preview, default1100×760, with drag/resize/maximize/restore/close. Existing PreviewService ownership, transforms, filmstrip, tag/file/AI controls remain unchanged. `panels::content_bounds` reads measured GPUI content geometry; fit sizing uses that area, cursor zoom and right-click menu coordinates subtract its actual origin. Earlier whole-window viewport estimates above are historical for this path. Preview and Playback services still hold one active media each; the generic panel catalog does not imply multi-session decoding.

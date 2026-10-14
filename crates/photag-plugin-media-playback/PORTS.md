@@ -51,3 +51,7 @@ quality/codec breadth/device coverage requires separate listening and Windows te
 ## 2026-10-14 current implementation and MCP evidence
 
 Reference05 rendered with decoded320x180 H264 frames contained across the stage. PCM/H264 playback state, pause/seek2/speed1.25/volume0.4/Tags/More were exercised through same-process PhoTag MCP. Footer is fixed; speed/volume controls bounded. Sound listening, allcodecs, native file dialogs remain unverified.
+
+## Shared floating frame (2026-10-14)
+
+Playback content uses UI Bridge frame ID playback, default960×640 logical pixels, for both audio and video. Transport/FFmpeg/Tagging/FileOperations contracts remain the feature's existing services; shared title controls call MediaPlaybackService::close. UI frame drag, maximize/restore and real WAV/MP4 rendering were exercised in an isolated profile. Codec corpus, sound quality and concurrent media decoding are not covered.

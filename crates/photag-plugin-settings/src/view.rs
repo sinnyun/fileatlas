@@ -64,91 +64,109 @@ pub(super) fn settings(
                 .filter(|entry| entry.contribution.slot == "settings.language")
                 .map(|entry| (entry.contribution.factory)(window, app))
                 .collect::<Vec<_>>();
-            app.new(|cx| {
-                let mut view = SettingsView {
-                    locale_revision: u64::MAX,
-                    language_views,
-                    service: Arc::clone(&service),
-                    surfaces: Arc::clone(&view_surfaces),
-                    cordis: view_cordis,
-                    navigation: navigation.clone(),
-                    updater: updater.clone(),
-                    session: session.clone(),
-                    update_check: None,
-                    update_check_manual: false,
-                    update_download: None,
-                    update_info: None,
-                    update_staged: None,
-                    update_progress: Arc::new(AtomicU64::new(0)),
-                    update_status: None,
-                    update_error: None,
-                    update_offer_open: false,
-                    update_offer_dismissed: false,
-                    confirm_install: false,
-                    group_name_input: group_name_input.clone(),
-                    editing_group: None,
-                    // Pinned main.rs:130 starts Settings on Toolbar.
-                    tab: Tab::Toolbar,
-                    error: None,
-                    capturing_open_key: false,
-                    focus_handle: cx.focus_handle(),
-                    surface_visible: view_surfaces.is_open("settings"),
-                    window_position: None,
-                    drag_origin: None,
-                };
-                let surface_poll = Arc::clone(&view_surfaces);
-                cx.spawn(async move |this, cx| {
-                    let mut previous = surface_poll.is_open("settings");
-                    let mut previous_tab = surface_poll.value("settings.tab");
-                    loop {
-                        cx.background_executor()
-                            .timer(std::time::Duration::from_millis(100))
-                            .await;
-                        let visible = surface_poll.is_open("settings");
-                        let tab = surface_poll.value("settings.tab");
-                        if surface_poll.is_open("settings.check-updates") {
-                            let _ = surface_poll.set_open("settings.check-updates", false);
-                            if this
-                                .update(cx, |view: &mut SettingsView, cx| {
-                                    if view.update_check.is_none() {
-                                        view.begin_update_check(true);
-                                        view.monitor_updates(cx);
-                                    }
-                                })
-                                .is_err()
-                            {
-                                break;
+            let content = app
+                .new(|cx| {
+                    let mut view = SettingsView {
+                        locale_revision: u64::MAX,
+                        language_views,
+                        service: Arc::clone(&service),
+                        surfaces: Arc::clone(&view_surfaces),
+                        cordis: view_cordis,
+                        navigation: navigation.clone(),
+                        updater: updater.clone(),
+                        session: session.clone(),
+                        update_check: None,
+                        update_check_manual: false,
+                        update_download: None,
+                        update_info: None,
+                        update_staged: None,
+                        update_progress: Arc::new(AtomicU64::new(0)),
+                        update_status: None,
+                        update_error: None,
+                        update_offer_open: false,
+                        update_offer_dismissed: false,
+                        confirm_install: false,
+                        group_name_input: group_name_input.clone(),
+                        editing_group: None,
+                        // Pinned main.rs:130 starts Settings on Toolbar.
+                        tab: Tab::Toolbar,
+                        error: None,
+                        capturing_open_key: false,
+                        focus_handle: cx.focus_handle(),
+                        surface_visible: view_surfaces.is_open("settings"),
+                    };
+                    let surface_poll = Arc::clone(&view_surfaces);
+                    cx.spawn(async move |this, cx| {
+                        let mut previous = surface_poll.is_open("settings");
+                        let mut previous_tab = surface_poll.value("settings.tab");
+                        loop {
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_millis(100))
+                                .await;
+                            let visible = surface_poll.is_open("settings");
+                            let tab = surface_poll.value("settings.tab");
+                            if surface_poll.is_open("settings.check-updates") {
+                                let _ = surface_poll.set_open("settings.check-updates", false);
+                                if this
+                                    .update(cx, |view: &mut SettingsView, cx| {
+                                        if view.update_check.is_none() {
+                                            view.begin_update_check(true);
+                                            view.monitor_updates(cx);
+                                        }
+                                    })
+                                    .is_err()
+                                {
+                                    break;
+                                }
+                            }
+                            if visible != previous || tab != previous_tab {
+                                previous_tab = tab;
+                                previous = visible;
+                                if this
+                                    .update(cx, |view: &mut SettingsView, cx| {
+                                        view.surface_visible = visible;
+                                        cx.notify();
+                                    })
+                                    .is_err()
+                                {
+                                    break;
+                                }
                             }
                         }
-                        if visible != previous || tab != previous_tab {
-                            previous_tab = tab;
-                            previous = visible;
-                            if this
-                                .update(cx, |view: &mut SettingsView, cx| {
-                                    view.surface_visible = visible;
-                                    cx.notify();
-                                })
-                                .is_err()
-                            {
-                                break;
-                            }
-                        }
+                    })
+                    .detach();
+                    let auto_check = service
+                        .snapshot()
+                        .map(|settings| settings.auto_check_updates)
+                        .unwrap_or(false);
+                    if auto_check && view.updater.is_some() {
+                        view.begin_update_check(false);
+                        view.monitor_updates(cx);
                     }
+                    view
                 })
-                .detach();
-                let auto_check = service
-                    .snapshot()
-                    .map(|settings| settings.auto_check_updates)
-                    .unwrap_or(false);
-                if auto_check && view.updater.is_some() {
-                    view.begin_update_check(false);
-                    view.monitor_updates(cx);
-                }
-                view
-            })
-            .into()
+                .into();
+            let visible = surfaces.clone();
+            let close = surfaces.clone();
+            let mut options = photag_ui_bridge::panels::PanelOptions::new(
+                "settings",
+                "PhoTag · Settings",
+                (900., 680.),
+            );
+            options.min_size = (680., 360.);
+            photag_ui_bridge::panels::mount(
+                content,
+                options,
+                surfaces.clone(),
+                move || visible.is_open("settings"),
+                move || {
+                    let _ = close.set_open("settings", false);
+                },
+                app,
+            )
         },
     )
+    .with_panel_id("settings")
 }
 pub(super) struct SettingsView {
     locale_revision: u64,
@@ -177,8 +195,6 @@ pub(super) struct SettingsView {
     capturing_open_key: bool,
     focus_handle: FocusHandle,
     surface_visible: bool,
-    window_position: Option<(f32, f32)>,
-    drag_origin: Option<(f32, f32, f32, f32)>,
 }
 impl SettingsView {
     fn close_surface(&mut self, cx: &mut Context<Self>) {
@@ -452,86 +468,14 @@ impl Render for SettingsView {
                 _ => Tab::Appearance,
             };
         }
-        let viewport = window.bounds().size;
-        let card_width = (f32::from(viewport.width) - 48.).clamp(680., 900.);
-        let desired_height = match self.tab {
-            Tab::Appearance => 620.,
-            Tab::Toolbar => 520.,
-            Tab::Shortcuts => 680.,
-            Tab::Tags => 440.,
-            Tab::Ai => 620.,
-            Tab::Updates => 600.,
-        };
-        let card_height = (f32::from(viewport.height) - 48.).clamp(100., desired_height);
-        let (left, top) = self.window_position.unwrap_or((
-            (f32::from(viewport.width) - card_width).max(0.) / 2.,
-            (f32::from(viewport.height) - card_height).max(0.) / 2.,
-        ));
-        let left = left.clamp(0., (f32::from(viewport.width) - card_width).max(0.));
-        let top = top.clamp(0., (f32::from(viewport.height) - card_height).max(0.));
-        let body_height = (card_height - 48. - 44.).max(8.);
-        let content_width = (card_width - 167.).max(320.);
-        self.window_position = Some((left, top));
-        let drag_start = cx.listener(move |this, event: &MouseDownEvent, _, _| {
-            this.drag_origin = Some((
-                f32::from(event.position.x),
-                f32::from(event.position.y),
-                left,
-                top,
-            ));
-        });
-        let drag_move = cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
-            if event.dragging()
-                && let Some((start_x, start_y, origin_x, origin_y)) = this.drag_origin
-            {
-                let next_x = origin_x + f32::from(event.position.x) - start_x;
-                let next_y = origin_y + f32::from(event.position.y) - start_y;
-                this.window_position = Some((
-                    next_x.clamp(0., (f32::from(viewport.width) - card_width).max(0.)),
-                    next_y.clamp(0., (f32::from(viewport.height) - 100.).max(0.)),
-                ));
-                cx.notify();
-            }
-        });
-        let drag_end = cx.listener(|this, _: &MouseUpEvent, _, _| this.drag_origin = None);
-        let close = cx.listener(|this, _, _, cx| this.close_surface(cx));
-        let header = div()
-            .h_flex()
-            .h(px(48.))
-            .flex_shrink_0()
-            .items_center()
-            .justify_between()
-            .p_2()
-            .bg(rgb(theme::SURFACE_MODAL))
-            .border_b_1()
-            .border_color(rgba(theme::SEPARATOR_LIGHT))
-            .on_mouse_down(MouseButton::Left, drag_start)
-            .on_mouse_move(drag_move)
-            .on_mouse_up(MouseButton::Left, drag_end)
-            .child(
-                div()
-                    .text_lg()
-                    .font_semibold()
-                    .h_flex()
-                    .gap_3()
-                    .child(
-                        gpui_kit::component::Icon::new(gpui_kit::assets::IconName::Aperture)
-                            .text_color(rgb(theme::accent())),
-                    )
-                    .child("PhoTag")
-                    .child(photag_ui_bridge::i18n::tr("Settings")),
-            )
-            .child(
-                Button::new("settings-close")
-                    .ghost()
-                    .icon(gpui_kit::assets::IconName::X)
-                    .tooltip(photag_ui_bridge::i18n::tr("Close"))
-                    .on_click(close),
-            );
+        let bounds = photag_ui_bridge::panels::content_bounds(&self.surfaces, "settings", window);
+        let card_width = bounds.width;
+        let card_height = bounds.height;
+        let body_height = (card_height - 44.).max(8.);
+        let content_width = (card_width - 167.).max(1.);
         let mut card = div()
             .absolute()
-            .left(px(left))
-            .top(px(top))
+            .inset_0()
             .v_flex()
             .w(px(card_width))
             .h(px(card_height))
@@ -542,7 +486,6 @@ impl Render for SettingsView {
             .border_1()
             .border_color(rgba(theme::HAIRLINE.to_rgba()))
             .track_focus(&self.focus_handle)
-            .child(header)
             .child(
                 div()
                     .h_flex()
@@ -618,13 +561,6 @@ impl Render for SettingsView {
             .inset_0()
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|this, event, _, cx| this.handle_key_down(event, cx)))
-            .child(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .bg(rgb(theme::SURFACE_BASE))
-                    .opacity(0.65),
-            )
             .child(card);
         if self.update_offer_open {
             root = root.child(self.render_update_offer(window, cx));

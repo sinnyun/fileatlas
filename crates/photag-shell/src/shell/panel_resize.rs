@@ -163,19 +163,31 @@ impl PhoTagShell {
             window.defer(cx, move |window, cx| {
                 let position = point(px(input.x), px(input.y));
                 let event = match input.kind {
-                    "down" => PlatformInput::MouseDown(MouseDownEvent {
-                        button: MouseButton::Left,
+                    "down" | "right_down" => PlatformInput::MouseDown(MouseDownEvent {
+                        button: if input.kind == "right_down" {
+                            MouseButton::Right
+                        } else {
+                            MouseButton::Left
+                        },
                         position,
                         click_count: 1,
                         ..Default::default()
                     }),
-                    "drag" => PlatformInput::MouseMove(MouseMoveEvent {
+                    "drag" | "move" => PlatformInput::MouseMove(MouseMoveEvent {
                         position,
-                        pressed_button: Some(MouseButton::Left),
+                        pressed_button: if input.kind == "drag" {
+                            Some(MouseButton::Left)
+                        } else {
+                            None
+                        },
                         ..Default::default()
                     }),
                     _ => PlatformInput::MouseUp(MouseUpEvent {
-                        button: MouseButton::Left,
+                        button: if input.kind == "right_up" {
+                            MouseButton::Right
+                        } else {
+                            MouseButton::Left
+                        },
                         position,
                         click_count: 1,
                         ..Default::default()

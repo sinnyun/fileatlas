@@ -30,114 +30,130 @@ pub fn media_playback_view(
         10,
         move |_, app| {
             let view_service = Arc::clone(&service);
-            app.new(|cx| {
-                let mut revision = service.snapshot().revision;
-                let playhead = cx.new(|_| {
-                    SliderState::new()
-                        .min(0.0)
-                        .max(1000.0)
-                        .step(1.0)
-                        .default_value(0.0)
-                });
-                let volume = cx.new(|_| {
-                    SliderState::new()
-                        .min(0.0)
-                        .max(1.5)
-                        .step(0.01)
-                        .default_value(service.snapshot().volume)
-                });
-                let speed = cx.new(|_| {
-                    SliderState::new()
-                        .min(0.1)
-                        .max(2.0)
-                        .step(0.05)
-                        .default_value(service.snapshot().speed.clamp(0.1, 2.0))
-                });
-                let playhead_subscription = cx.subscribe(
-                    &playhead,
-                    |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
-                        SliderEvent::Change(SliderValue::Single(value)) => {
-                            view.playhead_value = Some(*value);
-                            cx.notify();
+            let content = app
+                .new(|cx| {
+                    let mut revision = service.snapshot().revision;
+                    let playhead = cx.new(|_| {
+                        SliderState::new()
+                            .min(0.0)
+                            .max(1000.0)
+                            .step(1.0)
+                            .default_value(0.0)
+                    });
+                    let volume = cx.new(|_| {
+                        SliderState::new()
+                            .min(0.0)
+                            .max(1.5)
+                            .step(0.01)
+                            .default_value(service.snapshot().volume)
+                    });
+                    let speed = cx.new(|_| {
+                        SliderState::new()
+                            .min(0.1)
+                            .max(2.0)
+                            .step(0.05)
+                            .default_value(service.snapshot().speed.clamp(0.1, 2.0))
+                    });
+                    let playhead_subscription = cx.subscribe(
+                        &playhead,
+                        |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
+                            SliderEvent::Change(SliderValue::Single(value)) => {
+                                view.playhead_value = Some(*value);
+                                cx.notify();
+                            }
+                            SliderEvent::Release(SliderValue::Single(value)) => {
+                                let duration = view.service.snapshot().duration_seconds;
+                                let _ = view.service.seek(duration * (*value as f64 / 1000.0));
+                                view.playhead_value = None;
+                                cx.notify();
+                            }
+                            _ => {}
+                        },
+                    );
+                    let volume_subscription = cx.subscribe(
+                        &volume,
+                        |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
+                            SliderEvent::Change(SliderValue::Single(value))
+                            | SliderEvent::Release(SliderValue::Single(value)) => {
+                                view.service.set_volume(*value);
+                                cx.notify();
+                            }
+                            _ => {}
+                        },
+                    );
+                    let speed_subscription = cx.subscribe(
+                        &speed,
+                        |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
+                            SliderEvent::Change(SliderValue::Single(value))
+                            | SliderEvent::Release(SliderValue::Single(value)) => {
+                                let _ = view.service.set_speed(*value);
+                                cx.notify();
+                            }
+                            _ => {}
+                        },
+                    );
+                    cx.spawn(async move |this, cx| {
+                        loop {
+                            cx.background_executor()
+                                .timer(std::time::Duration::from_millis(33))
+                                .await;
+                            let active = this
+                                .update(cx, |view: &mut PlaybackView, cx| {
+                                    let snapshot = view.service.snapshot();
+                                    if snapshot.revision != revision
+                                        || snapshot.playing
+                                        || view.tags_open != view.surfaces.is_open("playback.tags")
+                                        || view.more_open != view.surfaces.is_open("playback.more")
+                                    {
+                                        revision = snapshot.revision;
+                                        cx.notify();
+                                    }
+                                })
+                                .is_ok();
+                            if !active {
+                                break;
+                            }
                         }
-                        SliderEvent::Release(SliderValue::Single(value)) => {
-                            let duration = view.service.snapshot().duration_seconds;
-                            let _ = view.service.seek(duration * (*value as f64 / 1000.0));
-                            view.playhead_value = None;
-                            cx.notify();
-                        }
-                        _ => {}
-                    },
-                );
-                let volume_subscription = cx.subscribe(
-                    &volume,
-                    |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
-                        SliderEvent::Change(SliderValue::Single(value))
-                        | SliderEvent::Release(SliderValue::Single(value)) => {
-                            view.service.set_volume(*value);
-                            cx.notify();
-                        }
-                        _ => {}
-                    },
-                );
-                let speed_subscription = cx.subscribe(
-                    &speed,
-                    |view: &mut PlaybackView, _, event: &SliderEvent, cx| match event {
-                        SliderEvent::Change(SliderValue::Single(value))
-                        | SliderEvent::Release(SliderValue::Single(value)) => {
-                            let _ = view.service.set_speed(*value);
-                            cx.notify();
-                        }
-                        _ => {}
-                    },
-                );
-                cx.spawn(async move |this, cx| {
-                    loop {
-                        cx.background_executor()
-                            .timer(std::time::Duration::from_millis(33))
-                            .await;
-                        let active = this
-                            .update(cx, |view: &mut PlaybackView, cx| {
-                                let snapshot = view.service.snapshot();
-                                if snapshot.revision != revision
-                                    || snapshot.playing
-                                    || view.tags_open != view.surfaces.is_open("playback.tags")
-                                    || view.more_open != view.surfaces.is_open("playback.more")
-                                {
-                                    revision = snapshot.revision;
-                                    cx.notify();
-                                }
-                            })
-                            .is_ok();
-                        if !active {
-                            break;
-                        }
+                    })
+                    .detach();
+                    PlaybackView {
+                        service: view_service,
+                        tagging: tagging.clone(),
+                        file_operations: file_operations.clone(),
+                        surfaces: surfaces.clone(),
+                        focus_handle: cx.focus_handle(),
+                        last_path: None,
+                        playhead,
+                        volume,
+                        speed,
+                        playhead_value: None,
+                        speed_popup_open: false,
+                        tags_open: false,
+                        more_open: false,
+                        operation_status: None,
+                        _playhead_subscription: playhead_subscription,
+                        _volume_subscription: volume_subscription,
+                        _speed_subscription: speed_subscription,
                     }
                 })
-                .detach();
-                PlaybackView {
-                    service: view_service,
-                    tagging: tagging.clone(),
-                    file_operations: file_operations.clone(),
-                    surfaces: surfaces.clone(),
-                    focus_handle: cx.focus_handle(),
-                    last_path: None,
-                    playhead,
-                    volume,
-                    speed,
-                    playhead_value: None,
-                    speed_popup_open: false,
-                    tags_open: false,
-                    more_open: false,
-                    operation_status: None,
-                    _playhead_subscription: playhead_subscription,
-                    _volume_subscription: volume_subscription,
-                    _speed_subscription: speed_subscription,
-                }
-            })
-            .into()
+                .into();
+            let visible = service.clone();
+            let close = service.clone();
+            photag_ui_bridge::panels::mount(
+                content,
+                photag_ui_bridge::panels::PanelOptions::new(
+                    "playback",
+                    "Media playback",
+                    (960., 640.),
+                ),
+                surfaces.clone(),
+                move || visible.snapshot().path.is_some(),
+                move || close.close(),
+                app,
+            )
         },
     )
+    .with_panel_id("playback")
 }
 
 struct PlaybackView {

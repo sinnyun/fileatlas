@@ -26,6 +26,51 @@ struct DevTestPanel {
     service: Arc<DevTestService>,
 }
 
+pub(super) fn status_panel(service: Arc<DevTestService>, app: &mut App) -> AnyView {
+    app.new(|cx| {
+        cx.spawn(async move |this, cx| {
+            let mut previous = String::new();
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(200))
+                    .await;
+                if this
+                    .update(cx, |view: &mut StatusPanel, cx| {
+                        let next = view.0.status();
+                        if next != previous {
+                            previous = next;
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+        .detach();
+        StatusPanel(service)
+    })
+    .into()
+}
+
+struct StatusPanel(Arc<DevTestService>);
+impl Render for StatusPanel {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .v_flex()
+            .p_4()
+            .gap_3()
+            .child("开发测试：真实扫描及规模任务状态")
+            .child(if self.0.is_running() {
+                "运行中"
+            } else {
+                "空闲"
+            })
+            .child(self.0.status())
+    }
+}
+
 impl DevTestPanel {
     fn watch_status(&self, cx: &mut Context<Self>) {
         let service = Arc::clone(&self.service);

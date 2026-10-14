@@ -82,8 +82,8 @@ impl Render for PreviewView {
             .map(|name| name.to_string_lossy().to_string())
             .unwrap_or_else(|| "No media selected".into());
 
-        let bounds = window.bounds().size;
-        let viewport = (f32::from(bounds.width), f32::from(bounds.height));
+        let bounds = photag_ui_bridge::panels::content_bounds(&self.surfaces, "preview", window);
+        let viewport = (bounds.width, bounds.height);
         // `preview.rs:1750`: the fit box covers 90% of the preview area.
         let fit_width = viewport.0 * 0.9;
         let fit_height = viewport.1 * 0.9;
@@ -198,7 +198,7 @@ impl Render for PreviewView {
         // the fitted scale while fit mode is on.
         let service = Arc::clone(&self.service);
         let can_zoom = has_display;
-        let cursor_center = (viewport.0 / 2.0, viewport.1 / 2.0);
+        let cursor_center = (bounds.x + viewport.0 / 2.0, bounds.y + viewport.1 / 2.0);
         let wheel = cx.listener(move |_, event: &ScrollWheelEvent, _, cx| {
             if !can_zoom {
                 return;
@@ -258,10 +258,12 @@ impl Render for PreviewView {
             .on_mouse_down(MouseButton::Left, down)
             .on_mouse_down(
                 MouseButton::Right,
-                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                cx.listener(move |this, event: &MouseDownEvent, _, cx| {
                     this.context_menu_open = true;
-                    this.context_menu_anchor =
-                        Some((f32::from(event.position.x), f32::from(event.position.y)));
+                    this.context_menu_anchor = Some((
+                        f32::from(event.position.x) - bounds.x,
+                        f32::from(event.position.y) - bounds.y,
+                    ));
                     cx.notify();
                 }),
             )

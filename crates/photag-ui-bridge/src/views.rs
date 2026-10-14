@@ -18,6 +18,7 @@ pub struct UiViewContribution {
     pub slot: String,
     pub order: i32,
     pub factory: UiViewFactory,
+    pub panel_id: Option<String>,
 }
 
 impl UiViewContribution {
@@ -32,7 +33,12 @@ impl UiViewContribution {
             slot: slot.into(),
             order,
             factory: Arc::new(factory),
+            panel_id: None,
         }
+    }
+    pub fn with_panel_id(mut self, id: impl Into<String>) -> Self {
+        self.panel_id = Some(id.into());
+        self
     }
 }
 
@@ -50,15 +56,24 @@ impl std::fmt::Debug for UiViewContribution {
 #[derive(Clone, Debug)]
 pub struct OwnedUiView {
     pub owner: String,
+    pub generation: u64,
     pub contribution: UiViewContribution,
 }
 
 #[derive(Debug, Default)]
 pub struct UiViewCatalog {
     views: RwLock<BTreeMap<String, OwnedUiView>>,
+    next_generation: std::sync::atomic::AtomicU64,
 }
 
 impl UiViewCatalog {
+    pub(crate) fn unregister_id(&self, id: &str) -> Result<(), RegistrationError> {
+        self.views
+            .write()
+            .map_err(|_| RegistrationError::LockPoisoned)?
+            .remove(id);
+        Ok(())
+    }
     pub fn register(
         &self,
         owner: impl Into<String>,
@@ -85,11 +100,15 @@ impl UiViewCatalog {
         if let Some(view) = batch.iter().find(|view| registered.contains_key(&view.id)) {
             return Err(RegistrationError::DuplicateId(view.id.clone()));
         }
+        let generation = self
+            .next_generation
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         for contribution in batch {
             registered.insert(
                 contribution.id.clone(),
                 OwnedUiView {
                     owner: owner.clone(),
+                    generation,
                     contribution,
                 },
             );

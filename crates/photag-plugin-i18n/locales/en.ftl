@@ -655,3 +655,15 @@ msg-41b634ed2413 = Add-ons
 msg-a80b0fe48eaa = No add-ons are registered.
 
 msg-880df61856c8 = No available add-ons.
+
+msg-panels-0 = Grid
+
+msg-panels-1 = List
+
+msg-panels-2 = Image preview
+
+msg-panels-3 = Media playback
+
+msg-panels-4 = PhoTag · Settings
+
+msg-panels-5 = Development task status

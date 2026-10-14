@@ -517,7 +517,13 @@ fn main() {
                 .map(|entry| {
                     let slot = entry.contribution.slot.clone();
                     let view = (entry.contribution.factory)(window, cx);
-                    (slot, view)
+                    (
+                        entry.contribution.id,
+                        entry.generation,
+                        slot,
+                        entry.contribution.panel_id,
+                        view,
+                    )
                 })
                 .collect();
             if let Err(error) = bridge.surfaces.set_open("inspector", true) {
@@ -551,6 +557,32 @@ fn main() {
                         if this
                             .update(cx, |shell: &mut PhoTagShell, cx| {
                                 shell.poll_panel_requests(cx);
+                                let registered = shell
+                                    .view_catalog
+                                    .snapshot()
+                                    .unwrap_or_default()
+                                    .into_iter()
+                                    .filter(|entry| entry.contribution.slot != "settings.language")
+                                    .map(|entry| (entry.contribution.id, entry.generation))
+                                    .collect::<Vec<_>>();
+                                if registered
+                                    != shell
+                                        .views
+                                        .iter()
+                                        .map(|(id, generation, _, _, _)| (id.clone(), *generation))
+                                        .collect::<Vec<_>>()
+                                {
+                                    cx.notify();
+                                }
+
+                                let panels = (
+                                    shell.surfaces.any_panel_open(),
+                                    shell.surfaces.value("panel.active"),
+                                );
+                                if panels != shell.panel_signature {
+                                    shell.panel_signature = panels;
+                                    cx.notify();
+                                }
                                 let tools = shell.surfaces.is_open("tools");
                                 let sidebar = shell.surfaces.value("sidebar.visible").as_deref()
                                     != Some("false");
@@ -581,6 +613,7 @@ fn main() {
                 PhoTagShell {
                     catalog,
                     views: mounted_views,
+                    view_catalog: views.clone(),
                     cordis,
                     executor,
                     session: session_for_shell,
@@ -595,6 +628,7 @@ fn main() {
                     tools_open: false,
                     sidebar_open: true,
                     inspector_open: true,
+                    panel_signature: (false, None),
                 }
             })
         })

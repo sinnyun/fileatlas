@@ -27,7 +27,28 @@ impl Render for GalleryRegion {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.gallery.update(cx, |view, cx| match self.region {
             Region::Search => view.render_search(window, cx),
-            Region::Size => sliders::thumbnail(view, cx).into_any_element(),
+            Region::Size => div()
+                .h_flex()
+                .items_center()
+                .gap_1()
+                .child(
+                    Button::new("gallery-layout-grid")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Grid"))
+                        .toggled(!view.list_layout)
+                        .on_click(cx.listener(|view, _, _, cx| view.set_layout(false, cx))),
+                )
+                .child(
+                    Button::new("gallery-layout-list")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("List"))
+                        .toggled(view.list_layout)
+                        .on_click(cx.listener(|view, _, _, cx| view.set_layout(true, cx))),
+                )
+                .child(sliders::thumbnail(view, cx))
+                .into_any_element(),
             Region::Filters => view.render_filters(cx),
             Region::Status => view.render_status(cx),
             Region::Tools => view.render_tools(cx),

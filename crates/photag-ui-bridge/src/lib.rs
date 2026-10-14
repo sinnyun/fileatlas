@@ -6,6 +6,8 @@ use std::sync::{Arc, RwLock};
 use cordis::{Event, Service};
 
 pub mod i18n;
+pub mod panel_catalog;
+pub mod panels;
 pub mod theme;
 mod views;
 pub mod winfx;
@@ -21,6 +23,7 @@ pub struct UiBridgeService {
     pub views: Arc<UiViewCatalog>,
     /// Shared open/closed state for lifecycle-owned floating UI surfaces.
     pub surfaces: Arc<UiSurfaceState>,
+    pub panels: Arc<panel_catalog::PanelCatalog>,
 }
 
 #[derive(Debug, Default)]
@@ -32,6 +35,46 @@ pub struct UiSurfaceState {
 }
 
 impl UiSurfaceState {
+    /// Remove instance-local geometry and visibility when its owning view is disposed.
+    pub fn remove_panel(&self, id: &str) -> Result<(), String> {
+        self.set_open(format!("panel.{id}"), false)?;
+        let next = self
+            .open_panel_ids()
+            .into_iter()
+            .next_back()
+            .unwrap_or_default();
+        let mut values = self
+            .values
+            .write()
+            .map_err(|_| "UI value lock is poisoned")?;
+        let prefix = format!("panel.{id}.");
+        values.retain(|key, _| !key.starts_with(&prefix));
+        if values
+            .get("panel.active")
+            .is_some_and(|active| active == id)
+        {
+            values.insert("panel.active".into(), next);
+        }
+        Ok(())
+    }
+    pub fn any_panel_open(&self) -> bool {
+        self.open
+            .read()
+            .is_ok_and(|open| open.iter().any(|id| id.starts_with("panel.")))
+    }
+    pub fn open_panel_ids(&self) -> Vec<String> {
+        self.open
+            .read()
+            .map(|open| {
+                let mut ids = open
+                    .iter()
+                    .filter_map(|id| id.strip_prefix("panel.").map(str::to_owned))
+                    .collect::<Vec<_>>();
+                ids.sort();
+                ids
+            })
+            .unwrap_or_default()
+    }
     pub fn value(&self, id: &str) -> Option<String> {
         self.values
             .read()
@@ -116,10 +159,16 @@ impl UiSurfaceState {
 impl UiBridgeService {
     /// Construct the bridge around one catalog instance.
     pub fn new(catalog: Arc<UiCatalog>) -> Self {
+        let views = Arc::new(UiViewCatalog::default());
+        let surfaces = Arc::new(UiSurfaceState::default());
         Self {
             catalog,
-            views: Arc::new(UiViewCatalog::default()),
-            surfaces: Arc::new(UiSurfaceState::default()),
+            panels: Arc::new(panel_catalog::PanelCatalog::new(
+                views.clone(),
+                surfaces.clone(),
+            )),
+            views,
+            surfaces,
         }
     }
 }
@@ -439,7 +488,22 @@ mod tests {
                     0,
                     test_view,
                 )],
+            )?;
+            panel_catalog::register_panel_for_plugin(
+                &context,
+                "feature.test",
+                panel_catalog::PanelDefinition {
+                    options: panels::PanelOptions::new(
+                        "feature.test/panel",
+                        "Test panel",
+                        (500., 400.),
+                    ),
+                    multiplicity: panel_catalog::PanelMultiplicity::Multiple,
+                    factory: Arc::new(test_view),
+                },
             )
+            .unwrap();
+            Ok(())
         }
     }
 
@@ -480,7 +544,12 @@ mod tests {
             "plugin registers an executable GPUI mount"
         );
 
+        bridge.panels.open("feature.test/panel").unwrap();
+        bridge.panels.open("feature.test/panel").unwrap();
+        assert_eq!(bridge.views.snapshot().unwrap().len(), 3);
         fiber.dispose().await.unwrap();
+        assert!(!bridge.surfaces.any_panel_open());
+        assert!(bridge.panels.open("feature.test/panel").is_err());
         assert!(catalog.snapshot().unwrap().is_empty());
         assert!(bridge.views.snapshot().unwrap().is_empty());
     }

@@ -1,6 +1,17 @@
 use super::*;
 
 impl GalleryView {
+    pub(super) fn set_layout(&mut self, list: bool, cx: &mut Context<Self>) {
+        if self.list_layout != list {
+            self.list_layout = list;
+            self.row_layout_key = None;
+            self.rubberband = None;
+            self.pending_scroll_restore = None;
+            self.persist_filter_session();
+            cx.notify();
+        }
+    }
+
     pub(super) fn select_media(
         &mut self,
         media_id: i64,
@@ -83,8 +94,16 @@ impl GalleryView {
             && visible_band.size.height > px(0.)
             && let Ok(snapshot) = &self.snapshot
         {
-            let card_width = px(self.thumb_size);
-            let card_height = px(self.thumb_size);
+            let card_width = px(if self.list_layout {
+                f32::from(viewport.size.width) - 32.
+            } else {
+                self.thumb_size
+            });
+            let card_height = px(if self.list_layout {
+                56.
+            } else {
+                self.thumb_size
+            });
             let card_step = card_width + px(16.);
             let start = self.scroll.logical_scroll_top().item_ix;
             let visible_count = (f32::from(viewport.size.height) / 40.).ceil() as usize + 2;

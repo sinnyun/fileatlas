@@ -1,0 +1,84 @@
+[
+  {
+    "tool": "get_ui_state",
+    "wait_ms": 2500
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_open",
+      "value": "dev-test/status"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_open",
+      "value": "dev-test/status"
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_open",
+      "value": "dev-test/status-multi"
+    },
+    "wait_ms": 350
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "cleanup-before"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_close",
+      "value": "dev-test/status@1"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_close",
+      "value": "dev-test/status-multi@2"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "get_ui_state",
+    "until": {
+      "field": "open_panel_ids",
+      "equals": []
+    },
+    "capture": "cleanup-after"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "panel_close",
+      "value": "dev-test/status@1"
+    },
+    "expect_error": "Unknown panel instance"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "settings_open"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "get_ui_state",
+    "capture": "cleanup-settings"
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "settings_close"
+    },
+    "wait_ms": 300
+  }
+]

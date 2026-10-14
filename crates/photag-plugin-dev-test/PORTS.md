@@ -61,3 +61,7 @@ OS/backend errors and some generated diagnostics are not fully localized.
 The real MCP-only validation coverage and remaining source layout differences
 are recorded in docs/validation-report.md; screenshots do not prove pointer
 interaction or animation parity.
+
+## Floating status panels (2026-10-14)
+
+In the existing opt-in isolated dev-test profile, definitions dev-test/status(Single, default520×300) and dev-test/status-multi(Multiple, default600×360) use the public UI Bridge PanelCatalog and render DevTestService::status/is_running. They are real development task observers, not product plugins or fake state. Every instance polls status changes every200ms; Cordis owner photag.dev-test cleans definitions/instances on stop. MCP panel_open/close exercises the same public integration contract intended for future feature plugins.

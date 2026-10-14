@@ -111,6 +111,11 @@ impl PhoTagMcpServer {
         };
         let value = request.value.as_deref().unwrap_or("");
         let action = match request.action.as_str() {
+            "layout" => match value {
+                "grid" => R::Layout(false),
+                "list" => R::Layout(true),
+                _ => return error_json("layout requires grid/list"),
+            },
             "scroll" => {
                 let Ok(index) = value.parse::<usize>() else {
                     return error_json("scroll requires a zero-based index in value");

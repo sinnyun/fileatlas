@@ -119,6 +119,7 @@ struct GalleryView {
     row_layout: Arc<Vec<GalleryVisualRow>>,
     row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
     thumb_size: f32,
+    list_layout: bool,
     group_by_month: bool,
     show_selection_details: bool,
     show_tag_picker: bool,

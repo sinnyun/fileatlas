@@ -261,6 +261,34 @@ impl Plugin for DevTestPlugin {
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| DevTestPluginError::Publish(error.to_string()))?;
+        for (id, multiplicity, size) in [
+            (
+                "dev-test/status",
+                photag_ui_bridge::panel_catalog::PanelMultiplicity::Single,
+                (520., 300.),
+            ),
+            (
+                "dev-test/status-multi",
+                photag_ui_bridge::panel_catalog::PanelMultiplicity::Multiple,
+                (600., 360.),
+            ),
+        ] {
+            let service = service.clone();
+            photag_ui_bridge::panel_catalog::register_panel_for_plugin(
+                &context,
+                OWNER,
+                photag_ui_bridge::panel_catalog::PanelDefinition {
+                    options: photag_ui_bridge::panels::PanelOptions::new(
+                        id,
+                        "Development task status",
+                        size,
+                    ),
+                    multiplicity,
+                    factory: Arc::new(move |_, app| view::status_panel(service.clone(), app)),
+                },
+            )
+            .map_err(DevTestPluginError::UiRegistration)?;
+        }
         register_views_for_plugin(&context, OWNER, [view::dev_test_panel(service)])
             .map_err(|error| DevTestPluginError::UiRegistration(error.to_string()))?;
         Ok(())

@@ -36,3 +36,11 @@ accent synchronization entry point. Call after `set_accent_name` in Settings;
 it updates only primary/accent/selection using the existing solid/64-alpha rules.
 `Theme::update` reconciles component tokens and Base projections and refreshes
 windows; the runtime helper does not reset typography, geometry or other colors.
+
+## Floating panel contract (2026-10-14)
+
+`panels::mount(AnyView, PanelOptions, Arc<UiSurfaceState>, visible, close, &mut App) -> AnyView` supplies a shared draggable/resizable frame with maximize/restore/close. Options carry stable instance ID, translated title, independent default/minimum logical size. Actual GPUI content/client bounds are published; Preview uses `panels::content_bounds`. The host supplies one background occlusion layer and orders `UiViewContribution.with_panel_id` views by `panel.active`. A drag-only capture surface is painted above the frame so frame occlusion cannot swallow movement/up events.
+
+`UiBridgeService.panels: Arc<PanelCatalog>` exposes register/open/close/unregister_owner. `register_panel_for_plugin(Context, owner, PanelDefinition)` binds cleanup to Cordis. Definitions contain options, Single/Multiple policy and the real GPUI factory. Single open returns/focuses its existing ID; Multiple returns a new ID and creates independent content entities when mounted. Close removes the instance contribution; owner stop removes definitions, instances, open flags and views. UiViewCatalog attaches a monotonically allocated registration generation; host mounts compare ID plus generation to avoid retaining entities across plugin restart. Service-driven existing views use mount and retain their original service semantics.
+
+Window-internal geometry persists only for each entity lifetime; native detached windows and automatic geometry persistence are not supplied. Builtin Preview/Playback remain single-session services. See docs/floating-panels.md and docs/validation-ui/2026-10-14-panels for runtime evidence.

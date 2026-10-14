@@ -3,6 +3,7 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{ContextMenuExt, DropdownMenu};
+use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_contracts::TagDragPayload;
 use photag_plugin_drag_drop::DragDropService;
@@ -26,6 +27,7 @@ pub(super) fn render_media_card(
     drag_paths: Vec<PathBuf>,
     drag_allowed: Arc<AtomicBool>,
     thumb_size: f32,
+    list_width: Option<f32>,
     micro_thumb: Option<&[u8]>,
     rating_target_ids: Vec<i64>,
     tag_tree: Arc<Vec<photag_plugin_database::db::queries::Tag>>,
@@ -118,13 +120,13 @@ pub(super) fn render_media_card(
         });
     // Keep the actions menu in the corner; selection is communicated by the
     // blue outline below without covering the media preview.
-    if hover > 0.01 {
+    {
         frame = frame.child(
             div()
                 .absolute()
                 .top(px(6.))
                 .right(px(6.))
-                .opacity(hover)
+                .opacity(hover.max(0.08))
                 .child(menu),
         );
     }
@@ -227,15 +229,59 @@ pub(super) fn render_media_card(
                 .child(meta),
         );
     }
+    if list_width.is_some() {
+        let kind = match media.media_type.as_str() {
+            "video" => "Video",
+            "audio" => "Audio",
+            _ => "Photos",
+        };
+        let mut metadata = vec![photag_ui_bridge::i18n::tr(kind).to_string()];
+        if let Some(dimensions) = caption_metadata(media) {
+            metadata.push(dimensions);
+        }
+        metadata.push(format_bytes(media.file_size));
+        metadata.push(format!("★ {}", media.rating));
+        caption = div()
+            .flex_1()
+            .min_w_0()
+            .v_flex()
+            .justify_center()
+            .gap_1()
+            .px_3()
+            .child(
+                div()
+                    .text_sm()
+                    .text_ellipsis()
+                    .overflow_hidden()
+                    .child(media.filename.clone()),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_ellipsis()
+                    .overflow_hidden()
+                    .child(metadata.join(" · ")),
+            );
+    }
     let context_view = cx.entity().downgrade();
     let context_media = media.clone();
     let context_targets = rating_target_ids.clone();
     let context_tags = tag_tree.clone();
     div()
         .relative()
-        .w(px(thumb_size))
-        .h(px(thumb_size + CARD_CAPTION_HEIGHT))
-        .v_flex()
+        .w(px(list_width.unwrap_or(thumb_size)))
+        .h(px(if list_width.is_some() {
+            56.
+        } else {
+            thumb_size + CARD_CAPTION_HEIGHT
+        }))
+        .when(list_width.is_some(), |row| {
+            row.h_flex()
+                .rounded(px(4.))
+                .bg(rgba(theme::panel_rgba(theme::SURFACE_CARD)))
+        })
+        .when(list_width.is_none(), |row| row.v_flex())
         .id(format!("gallery-media-{media_id}"))
         .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
             this.set_card_hover(media_id, *hovered, cx)

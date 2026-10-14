@@ -20,3 +20,7 @@ Check `session.json` keys and values against `vendor/photag-source/src/session.r
 ## Inspector width compatibility (2026-10-14)
 
 SessionState.inspector_width:f32 is serde(default); zero uses300pt. Existing sidebar_width, selection and all source fields retain their names/semantics. Shell saves both widths at splitter mouse-up; no user file migration/reset is performed. Compatibility test loads old JSON without inspector_width, preserves folder7/media12/Tags and round-trips a350pt right width. MCP restart restored actual dragged widths304/340 in an isolated profile.
+
+## Additive gallery layout preference (2026-10-14)
+
+`SessionState.gallery_list_layout: bool` is serde-defaulted false; older PhoTag JSON remains readable and keeps the grid default. Gallery restores and saves it with the existing complete session object. The compatibility regression now round-trips a list preference alongside legacy folder/selection/sidebar fields. SQLite schema and other existing paths are unchanged.

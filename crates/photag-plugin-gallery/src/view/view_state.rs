@@ -323,6 +323,7 @@ impl GalleryView {
                 })
                 .unwrap_or(theme::THUMB_SIZE_DEFAULT),
             group_by_month,
+            list_layout: saved.gallery_list_layout,
             show_selection_details: false,
             show_tag_picker: false,
             media_actions_id: None,
@@ -404,6 +405,7 @@ impl GalleryView {
                 .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),
         );
         saved.group_by_month = Some(self.group_by_month);
+        saved.gallery_list_layout = self.list_layout;
         saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);
     }

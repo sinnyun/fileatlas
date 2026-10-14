@@ -227,3 +227,11 @@ routing and Tags/More service integration are not implemented.
 2026-10-14 redesign mapping update: metadata-export command/preparation modal/native JSON save maps to vendor/photag-source/src/app.rs:1535–1553 and db/queries.rs export_all_metadata. Query fields/order/writer unchanged. MCP all-library export12 success and os5 directory failure verified; native Save File clicks/overwrite remain unverified. Current UI follows final-v5, not historical source UI.
 
 2026-10-14 v2 UI-only additions: SessionState.inspector_width is serde(default) and source fields are unchanged; sidebar_tab accepts existing free-form Folders/Tags plus the new extensions page. Sidebar folder/path selection continues existing Cordis events and database query prefixes; MCP path normalization follows canonical tree paths, not a schema/query change. History page uses existing global undo_description/redo_description, not invented per-file history. Reference sidebar-pages-preview-2026-10-14-v2 now governs main panels.
+
+## 2026-10-14 functional additions mapping
+
+| Feature | Pinned behavior inspected | Current implementation / compatibility |
+|---|---|---|
+| Grid/list preference | vendor/photag-source/src/session.rs:14–53 (serde-defaulted session), src/ui/gallery.rs:696/990 (grid layout and windowed rows) | User-requested list is additive; same Gallery queries/cache/selection/actions, one item per virtual row. New serde-defaulted gallery_list_layout=false leaves old sessions on grid; no SQLite change. |
+| Stable card menus | vendor/photag-source/src/ui/gallery.rs:1673 onward (selected IDs and context actions) | Action semantics/target selection remain the shared builder; dropdown trigger now survives hover exit. |
+| Draggable/resizable popup frames | Existing Settings, Preview and Playback service-driven GPUI views; source settings/preview panels as feature references | User-requested common frame in UI Bridge, with Cordis-owned PanelCatalog for new plugin Single/Multiple definitions. No parallel plugin manager; existing media services remain single-session. |

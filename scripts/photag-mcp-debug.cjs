@@ -119,7 +119,7 @@ async function step(command) {
     assert(completed, `Condition not reached: ${JSON.stringify(command.until)}`);
   }
   await delay(command.wait_ms ?? 0);
-  const record = { tool: command.tool, arguments: command.arguments ?? {}, result: expectedError ? { expected_error: expectedError } : payload(result) };
+  const record = { tool: command.tool, arguments: command.arguments ?? {}, wait_ms: command.wait_ms ?? 0, ...(command.until ? { until: command.until } : {}), result: expectedError ? { expected_error: expectedError } : payload(result) };
   if (command.capture) {
     if (!/^[a-zA-Z0-9_-]+$/.test(command.capture)) throw Error('Capture name must be a simple file stem.');
     const screenshot = await call('screenshot_window');
