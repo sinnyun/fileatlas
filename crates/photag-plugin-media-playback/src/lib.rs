@@ -631,10 +631,17 @@ impl Plugin for MediaPlaybackPlugin {
             )],
         )
         .map_err(|e| PlaybackError::Ui(e.to_string()))?;
-        let tagging = context.try_service::<photag_plugin_tagging::TaggingService>().ok();
+        let tagging = context
+            .try_service::<photag_plugin_tagging::TaggingService>()
+            .ok();
         let file_operations = context
             .try_service::<photag_plugin_file_operations::FileOperationsService>()
             .ok();
+        let surfaces = context
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .map_err(|error| PlaybackError::Ui(error.to_string()))?
+            .surfaces
+            .clone();
         register_views_for_plugin(
             &context,
             "photag.media-playback",
@@ -642,6 +649,7 @@ impl Plugin for MediaPlaybackPlugin {
                 Arc::clone(&service),
                 tagging,
                 file_operations,
+                surfaces,
             )],
         )
         .map_err(|e| PlaybackError::Ui(e.to_string()))

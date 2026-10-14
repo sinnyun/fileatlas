@@ -7,14 +7,14 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::Icon;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
 use gpui_kit::component::scroll::ScrollableElement as _;
+use gpui_kit::component::slider::{Slider, SliderEvent, SliderState, SliderValue};
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
-use photag_ui_bridge::{UiViewContribution, theme};
 use photag_plugin_database::db::queries::Tag;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_tagging::TaggingService;
+use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::MediaPlaybackService;
 
@@ -22,6 +22,7 @@ pub fn media_playback_view(
     service: Arc<MediaPlaybackService>,
     tagging: Option<Arc<TaggingService>>,
     file_operations: Option<Arc<FileOperationsService>>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "media-playback/transport-view",
@@ -98,7 +99,11 @@ pub fn media_playback_view(
                         let active = this
                             .update(cx, |view: &mut PlaybackView, cx| {
                                 let snapshot = view.service.snapshot();
-                                if snapshot.revision != revision || snapshot.playing {
+                                if snapshot.revision != revision
+                                    || snapshot.playing
+                                    || view.tags_open != view.surfaces.is_open("playback.tags")
+                                    || view.more_open != view.surfaces.is_open("playback.more")
+                                {
                                     revision = snapshot.revision;
                                     cx.notify();
                                 }
@@ -114,6 +119,9 @@ pub fn media_playback_view(
                     service: view_service,
                     tagging: tagging.clone(),
                     file_operations: file_operations.clone(),
+                    surfaces: surfaces.clone(),
+                    focus_handle: cx.focus_handle(),
+                    last_path: None,
                     playhead,
                     volume,
                     speed,
@@ -136,6 +144,9 @@ struct PlaybackView {
     service: Arc<MediaPlaybackService>,
     tagging: Option<Arc<TaggingService>>,
     file_operations: Option<Arc<FileOperationsService>>,
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
+    focus_handle: FocusHandle,
+    last_path: Option<std::path::PathBuf>,
     playhead: Entity<SliderState>,
     volume: Entity<SliderState>,
     speed: Entity<SliderState>,
@@ -153,8 +164,17 @@ impl Render for PlaybackView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let snapshot = self.service.snapshot();
         if snapshot.path.is_none() {
+            self.last_path = None;
             return div().size_0();
         }
+        if self.last_path != snapshot.path {
+            self.last_path = snapshot.path.clone();
+            let _ = self.surfaces.set_open("playback.tags", false);
+            let _ = self.surfaces.set_open("playback.more", false);
+            window.focus(&self.focus_handle, cx);
+        }
+        self.tags_open = self.surfaces.is_open("playback.tags");
+        self.more_open = self.surfaces.is_open("playback.more");
         let seek_value = self.playhead_value.unwrap_or_else(|| {
             if snapshot.duration_seconds > 0.0 {
                 (snapshot.position_seconds / snapshot.duration_seconds * 1000.0) as f32
@@ -225,19 +245,21 @@ impl Render for PlaybackView {
             cx.notify();
         });
         let toggle_tags = cx.listener(|view, _: &ClickEvent, _, cx| {
-            view.tags_open = !view.tags_open;
-            view.more_open = false;
+            let _ = view.surfaces.set_open("playback.tags", !view.tags_open);
+            let _ = view.surfaces.set_open("playback.more", false);
             cx.notify();
         });
         let toggle_more = cx.listener(|view, _: &ClickEvent, _, cx| {
-            view.more_open = !view.more_open;
-            view.tags_open = false;
+            let _ = view.surfaces.set_open("playback.more", !view.more_open);
+            let _ = view.surfaces.set_open("playback.tags", false);
             cx.notify();
         });
         let frame = match &snapshot.frame_path {
             Some(path) => img(path.clone())
                 .max_w_full()
                 .max_h_full()
+                .w_full()
+                .h_full()
                 .object_fit(ObjectFit::Contain)
                 .into_any_element(),
             None if snapshot.path.is_some() && !snapshot.has_video => div()
@@ -292,7 +314,7 @@ impl Render for PlaybackView {
                         view.speed_popup_open = false;
                         cx.notify();
                     });
-                    row.child(button(format!("{speed:.0}×")).on_click(choose_speed))
+                    row.child(button(format!("{speed:.2}×")).on_click(choose_speed))
                 },
             );
             let slower_service = Arc::clone(&self.service);
@@ -378,8 +400,19 @@ impl Render for PlaybackView {
                     .on_click(next_frame),
             )
             .child(div().text_xs().child(photag_ui_bridge::i18n::tr("Volume")))
-            .child(Slider::new(&self.volume).w_24())
-            .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup));
+            .child(
+                div()
+                    .w(px(96.))
+                    .flex_shrink_0()
+                    .child(Slider::new(&self.volume).w_full()),
+            )
+            .child(button(format!("{:.2}×", snapshot.speed)).on_click(speed_popup))
+            .child(button("Tags").icon(IconName::Tag).on_click(toggle_tags))
+            .child(
+                button("More")
+                    .icon(IconName::Ellipsis)
+                    .on_click(toggle_more),
+            );
         let error = snapshot
             .error
             .map(|error| div().text_xs().text_color(rgb(theme::DANGER)).child(error));
@@ -388,21 +421,41 @@ impl Render for PlaybackView {
         div()
             .absolute()
             .inset_0()
-            .bg(rgba(0x000000dd))
+            .bg(rgb(theme::SURFACE_EXTREME))
             .flex()
             .items_center()
             .justify_center()
-            .p_4()
+            .track_focus(&self.focus_handle)
+            .on_key_down(cx.listener(|view, event: &KeyDownEvent, _, cx| {
+                match event.keystroke.key.as_str() {
+                    "escape" => view.service.close(),
+                    "space" => {
+                        let _ = view.service.toggle_play_pause();
+                    }
+                    "left" => {
+                        let _ = view
+                            .service
+                            .seek(view.service.snapshot().position_seconds - 5.);
+                    }
+                    "right" => {
+                        let _ = view
+                            .service
+                            .seek(view.service.snapshot().position_seconds + 5.);
+                    }
+                    _ => return,
+                }
+                cx.notify();
+            }))
             .child(
                 div()
                     .v_flex()
-                    .flex_1()
+                    .size_full()
                     .min_h_0()
                     .gap_0()
-                    .rounded(px(8.0))
+                    .relative()
                     .border_1()
                     .border_color(rgba(theme::SEPARATOR_LIGHT))
-                    .bg(rgba(theme::modal_rgba(theme::SURFACE_BASE)))
+                    .bg(rgb(theme::SURFACE_BASE))
                     .child(
                         div()
                             .h_flex()
@@ -421,14 +474,33 @@ impl Render for PlaybackView {
                                     .bg(rgba(theme::SEPARATOR_LIGHT)),
                             )
                             .child(div().flex_1().text_sm().child(title))
-                            .child(button("Tags").on_click(toggle_tags))
-                            .child(button("More").on_click(toggle_more))
                             .child(button("Close").icon(IconName::Close).on_click(close)),
                     )
-                    .when(self.tags_open, |panel| panel.child(tags_panel))
-                    .when(self.more_open, |panel| panel.child(more_panel))
+                    .when(self.tags_open, |panel| {
+                        panel.child(
+                            div()
+                                .absolute()
+                                .right(px(16.))
+                                .bottom(px(82.))
+                                .w(px(300.))
+                                .occlude()
+                                .child(tags_panel),
+                        )
+                    })
+                    .when(self.more_open, |panel| {
+                        panel.child(
+                            div()
+                                .absolute()
+                                .right(px(16.))
+                                .bottom(px(82.))
+                                .w(px(220.))
+                                .occlude()
+                                .child(more_panel),
+                        )
+                    })
                     .child(
                         div()
+                            .flex()
                             .flex_1()
                             .min_h_0()
                             .w_full()
@@ -452,18 +524,18 @@ impl Render for PlaybackView {
                             .child(compact_controls)
                             .when_some(error, |row, error| row.child(error))
                             .when_some(self.operation_status.clone(), |row, status| {
-                                row.child(div().text_xs().text_color(rgb(theme::DANGER)).child(status))
+                                row.child(
+                                    div().text_xs().text_color(rgb(theme::DANGER)).child(status),
+                                )
                             })
                             .child(speed_controls)
                             .child(
                                 div()
                                     .text_xs()
                                     .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(format!(
-                                        "{}  ·  rotation {}°",
-                                        output,
-                                        snapshot.rotation_quarters * 90
-                                    )),
+                                    .when(snapshot.playing && !snapshot.audio_available, |row| {
+                                        row.child(output)
+                                    }),
                             ),
                     ),
             )
@@ -495,13 +567,18 @@ impl PlaybackView {
         }
         let mut panel = div()
             .v_flex()
-            .max_h(px(220.))
+            .h(px(220.))
+            .bg(rgb(theme::SURFACE_MODAL))
+            .border_1()
+            .border_color(rgb(theme::SEPARATOR))
             .gap_1()
             .px_3()
             .py_2()
             .overflow_y_scrollbar();
         if tags.is_empty() {
-            return panel.child(photag_ui_bridge::i18n::tr("No tags yet")).into_any_element();
+            return panel
+                .child(photag_ui_bridge::i18n::tr("No tags yet"))
+                .into_any_element();
         }
         for (tag, depth) in tags {
             let id = tag.id;
@@ -542,23 +619,28 @@ impl PlaybackView {
             .gap_2()
             .px_3()
             .py_2()
-            .child(Button::new("playback-reveal").label(photag_ui_bridge::i18n::tr("Show in folder")).on_click(cx.listener(move |view, _, _, cx| {
-                let reveal = Arc::clone(&reveal);
-                cx.spawn(async move |this, cx| {
-                    let result = reveal.reveal_in_file_manager(media_id).await;
-                    let _ = this.update(cx, |view, cx| {
-                        view.operation_status = result.err().map(|error| error.to_string());
-                        cx.notify();
-                    });
-                }).detach();
-            })))
+            .child(
+                Button::new("playback-reveal")
+                    .label(photag_ui_bridge::i18n::tr("Show in folder"))
+                    .on_click(cx.listener(move |_view, _, _, cx| {
+                        let reveal = Arc::clone(&reveal);
+                        cx.spawn(async move |this, cx| {
+                            let result = reveal.reveal_in_file_manager(media_id).await;
+                            let _ = this.update(cx, |view, cx| {
+                                view.operation_status = result.err().map(|error| error.to_string());
+                                cx.notify();
+                            });
+                        })
+                        .detach();
+                    })),
+            )
             .into_any_element()
     }
 }
 
-fn flatten_tags<'a>(tags: &'a [Tag], depth: usize, rows: &mut Vec<(&'a Tag, usize)>) {
+fn flatten_tags(tags: &[Tag], depth: usize, rows: &mut Vec<(Tag, usize)>) {
     for tag in tags {
-        rows.push((tag, depth));
+        rows.push((tag.clone(), depth));
         flatten_tags(&tag.children, depth.saturating_add(1), rows);
     }
 }
@@ -566,6 +648,10 @@ fn flatten_tags<'a>(tags: &'a [Tag], depth: usize, rows: &mut Vec<(&'a Tag, usiz
 fn button(label: impl Into<String>) -> Button {
     let label = label.into();
     Button::new(format!("media-playback-{label}"))
+        .ghost()
+        .compact()
+        .h(px(28.))
+        .rounded(px(4.))
         .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
 }
 fn format_time(seconds: f64) -> String {

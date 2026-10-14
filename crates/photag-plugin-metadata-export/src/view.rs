@@ -1,210 +1,287 @@
-//! GPUI panel for selecting and running PhoTag's metadata backup export.
-
+//! v5 design 07: native destination selection and the real export state machine.
+use crate::{MetadataExportService, MetadataExportStatus};
+use gpui_kit::assets::IconName;
+use gpui_kit::base::StyledExt as _;
+use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::spinner::Spinner;
+use gpui_kit::component::{Disableable as _, Icon};
+use gpui_kit::prelude::FluentBuilder as _;
+use gpui_kit::*;
+use photag_ui_bridge::i18n::{tr, tr_args};
+use photag_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
 use std::sync::Arc;
 use std::time::Duration;
 
-use cordis::{Context as CordisContext, Routing};
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
-use gpui_kit::component::input::{Input, InputState};
-use gpui_kit::*;
-use photag_ui_bridge::{UiCommandInvoked, UiViewContribution, theme};
-
-use crate::{EXPORT_COMMAND_ID, MetadataExportService, MetadataExportStatus};
-
 pub(super) fn export_panel(
     service: Arc<MetadataExportService>,
-    cordis: CordisContext,
+    surfaces: Arc<UiSurfaceState>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "metadata-export/panel-view",
-        "workspace.metadata-export",
-        0,
-        move |window, app| {
-            let path = app.new(|cx| {
-                InputState::new(window, cx).placeholder("C:\\Backups\\photag_backup.json")
-            });
-            app.new(|_| ExportPanel::new(Arc::clone(&service), cordis.clone(), path))
-                .into()
+        "workspace.modal",
+        15,
+        move |_, app| {
+            let service = Arc::clone(&service);
+            let surfaces = Arc::clone(&surfaces);
+            app.new(|cx| {
+                cx.spawn(async move |this, cx| {
+                    loop {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(100))
+                            .await;
+                        if this
+                            .update(cx, |view: &mut ExportPanel, cx| {
+                                let status = view.service.status().ok();
+                                if status != view.last_status {
+                                    if matches!(
+                                        status,
+                                        Some(
+                                            MetadataExportStatus::Exporting
+                                                | MetadataExportStatus::Succeeded { .. }
+                                                | MetadataExportStatus::Failed(_)
+                                        )
+                                    ) {
+                                        let _ = view.surfaces.set_open("metadata-export", true);
+                                    }
+                                    view.last_status = status;
+                                    cx.notify();
+                                }
+                                let visible = view.surfaces.is_open("metadata-export");
+                                if visible != view.visible {
+                                    view.visible = visible;
+                                    cx.notify();
+                                }
+                            })
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                })
+                .detach();
+                ExportPanel {
+                    service,
+                    surfaces,
+                    visible: false,
+                    last_status: None,
+                    input_error: None,
+                }
+            })
+            .into()
         },
     )
 }
-
 struct ExportPanel {
     service: Arc<MetadataExportService>,
-    cordis: CordisContext,
-    path: Entity<InputState>,
+    surfaces: Arc<UiSurfaceState>,
+    visible: bool,
+    last_status: Option<MetadataExportStatus>,
     input_error: Option<String>,
-    waiting_for_export: bool,
 }
-
 impl ExportPanel {
-    fn new(
-        service: Arc<MetadataExportService>,
-        cordis: CordisContext,
-        path: Entity<InputState>,
-    ) -> Self {
-        Self {
-            service,
-            cordis,
-            path,
-            input_error: None,
-            waiting_for_export: false,
-        }
-    }
-
-    fn choose_destination(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        // Match the pinned PhoTag action: use rfd's native Save File dialog,
-        // with its OS-provided overwrite confirmation, instead of asking the
-        // user to type an absolute path into the panel.
-        if let Some(path) = rfd::FileDialog::new()
-            .set_title("Export metadata backup")
+    fn choose_and_export(&mut self, cx: &mut Context<Self>) {
+        // Pinned app.rs:1535-1553: JSON-filtered native save dialog followed by
+        // the complete metadata query and source-compatible pretty JSON writer.
+        let Some(path) = rfd::FileDialog::new()
+            .set_title(tr("Export metadata backup"))
             .add_filter("JSON", &["json"])
             .set_file_name("photag_backup.json")
             .save_file()
-        {
-            if let Err(error) = self.service.set_destination(path.clone()) {
-                self.input_error = Some(error.to_string());
-                cx.notify();
-                return;
-            }
-            self.path.update(cx, |state, cx| {
-                state.set_value(path.to_string_lossy().into_owned(), window, cx)
-            });
-            self.input_error = None;
-            cx.notify();
-        }
-    }
-
-    fn export(&mut self, cx: &mut Context<Self>) {
-        if self.waiting_for_export {
+        else {
             return;
-        }
-        let path = self.path.read(cx).value().trim().to_owned();
-        if path.is_empty() {
-            self.input_error = Some("Enter a destination JSON file path.".into());
-            cx.notify();
-            return;
-        }
-        if let Err(error) = self.service.set_destination(path) {
-            self.input_error = Some(error.to_string());
-            cx.notify();
-            return;
-        }
-        self.input_error = None;
-        self.waiting_for_export = true;
-        let cordis = self.cordis.clone();
-        cx.spawn(async move |this, cx| {
-            if let Err(error) = cordis
-                .emit::<UiCommandInvoked>(Routing::Unscoped, EXPORT_COMMAND_ID.to_owned())
-                .await
-            {
-                this.update(cx, |view, cx| {
-                    view.input_error = Some(format!("Could not start export: {error}"));
-                    view.waiting_for_export = false;
-                    cx.notify();
-                })
-                .ok();
-                return;
-            }
-            loop {
-                let exporting = this
-                    .update(cx, |view, cx| {
-                        cx.notify();
-                        matches!(view.service.status(), Ok(MetadataExportStatus::Exporting))
-                    })
-                    .unwrap_or(false);
-                if !exporting {
-                    break;
-                }
-                cx.background_executor()
-                    .timer(Duration::from_millis(180))
-                    .await;
-            }
-            this.update(cx, |view, cx| {
-                view.waiting_for_export = false;
-                cx.notify();
-            })
-            .ok();
-        })
-        .detach();
+        };
+        self.input_error = self
+            .service
+            .set_destination(path)
+            .and_then(|_| self.service.request_export())
+            .err()
+            .map(|error| error.to_string());
+        cx.notify();
     }
 }
-
 impl Render for ExportPanel {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (title, detail, status_color) = match self.service.status() {
-            Ok(MetadataExportStatus::Idle) => (
-                "Ready to export".to_owned(),
-                "Choose a destination to create a JSON backup of indexed media metadata."
-                    .to_owned(),
-                theme::TEXT_SECONDARY,
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if !self.visible {
+            return div().size_0().into_any_element();
+        }
+        let status = self
+            .service
+            .status()
+            .unwrap_or_else(|error| MetadataExportStatus::Failed(error.to_string()));
+        let exporting = matches!(status, MetadataExportStatus::Exporting);
+        let (title, detail, icon, color) = match &status {
+            MetadataExportStatus::Idle => (
+                tr("Ready to export"),
+                tr(
+                    "Export every indexed media record with its path, rating, and hierarchical tags.",
+                ),
+                IconName::File,
+                theme::accent(),
             ),
-            Ok(MetadataExportStatus::Exporting) => (
-                "Exporting metadata…".to_owned(),
-                "Writing the metadata backup. This panel updates when the export finishes."
-                    .to_owned(),
-                theme::TEXT_SECONDARY,
+            MetadataExportStatus::Exporting => (
+                tr("Exporting metadata…"),
+                tr("Writing the metadata backup. This panel updates when the export finishes."),
+                IconName::Upload,
+                theme::accent(),
             ),
-            Ok(MetadataExportStatus::Succeeded { path, records }) => (
-                "Export complete".to_owned(),
-                format!("Wrote {records} records to {}", path.display()),
-                theme::TEXT_SECONDARY,
+            MetadataExportStatus::Succeeded { records, .. } => (
+                tr("Export complete"),
+                tr_args(
+                    "Exported {records} records",
+                    &[("records", records.to_string())],
+                ),
+                IconName::CircleCheck,
+                theme::SUCCESS,
             ),
-            Ok(MetadataExportStatus::Failed(error)) => {
-                ("Export failed".to_owned(), error, theme::DANGER)
-            }
-            Err(error) => (
-                "Export status unavailable".to_owned(),
-                error.to_string(),
+            MetadataExportStatus::Failed(error) => (
+                tr("Export failed"),
+                error.clone(),
+                IconName::CircleX,
                 theme::DANGER,
             ),
         };
-        let error = self.input_error.clone();
-        let panel = div()
-            .v_flex()
-            .w_full()
-            .gap_3()
-            .p_4()
-            .border_t_1()
-            .border_color(rgb(theme::SURFACE_FAINT))
-            .child(
-                div().v_flex().gap_1()
-                    .child(div().text_base().font_semibold().child(photag_ui_bridge::i18n::tr("Metadata export (JSON)")))
-                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                        photag_ui_bridge::i18n::tr("Export every indexed media record with its path, rating, and hierarchical tags."),
-                    )),
-            )
-            .child(
-                div().v_flex().gap_2().p_3().rounded_md()
-                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                    .child(div().text_xs().font_semibold().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr("Destination file")))
-                    .child(div().h_flex().gap_2()
-                        .child(Input::new(&self.path).flex_1())
-                        .child(Button::new("metadata-export-browse")
-                            .label(photag_ui_bridge::i18n::tr("Browse…"))
-                            .on_click(cx.listener(|this, _, window, cx| this.choose_destination(window, cx))))
-                        .child(Button::new("metadata-export-run")
-                            .label(photag_ui_bridge::i18n::tr(&(if self.waiting_for_export { "Exporting…" } else { "Export JSON" }).to_string()))
-                            .on_click(cx.listener(|this, _, _, cx| this.export(cx)))),
-                    )
-            )
-            .child(
-                div().v_flex().gap_1().p_3().rounded_md()
-                    .border_1().border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                    .child(div().text_sm().font_semibold().text_color(rgb(status_color)).child(photag_ui_bridge::i18n::tr(&title)))
-                    .child(div().text_xs().text_color(rgb(status_color)).child(detail)),
-            );
-        if let Some(message) = error {
-            panel.child(
+        let mut body = div().v_flex().gap_3().p_4().child(
+            div()
+                .h_flex()
+                .items_start()
+                .gap_3()
+                .child(Icon::new(icon).size(px(28.)).text_color(rgb(color)))
+                .child(
+                    div()
+                        .v_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .gap_2()
+                        .child(div().text_size(px(16.)).font_semibold().child(title))
+                        .child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(if color == theme::DANGER {
+                                    color
+                                } else {
+                                    theme::TEXT_SECONDARY
+                                }))
+                                .child(detail),
+                        ),
+                ),
+        );
+        if exporting {
+            body = body.child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::DANGER))
-                    .child(message),
-            )
-        } else {
-            panel
+                    .h_flex()
+                    .gap_2()
+                    .child(Spinner::new())
+                    .child(tr("Exporting…")),
+            );
         }
+        if let MetadataExportStatus::Succeeded { path, .. } = &status {
+            body = body.child(
+                div()
+                    .v_flex()
+                    .gap_1()
+                    .p_3()
+                    .bg(rgb(theme::SURFACE_PANEL))
+                    .rounded(px(4.))
+                    .child(
+                        div().text_sm().child(
+                            path.file_name()
+                                .map(|name| name.to_string_lossy().into_owned())
+                                .unwrap_or_default(),
+                        ),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(path.display().to_string()),
+                    ),
+            );
+        }
+        if let Some(error) = &self.input_error {
+            body = body.child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::DANGER))
+                    .child(error.clone()),
+            );
+        }
+        div()
+            .absolute()
+            .inset_0()
+            .flex()
+            .items_center()
+            .justify_center()
+            .bg(rgba(theme::SCRIM))
+            .child(
+                div()
+                    .v_flex()
+                    .w(px((f32::from(window.bounds().size.width) - 48.).min(560.)))
+                    .rounded(px(6.))
+                    .border_1()
+                    .border_color(rgb(theme::SEPARATOR))
+                    .bg(rgb(theme::SURFACE_MODAL))
+                    .child(
+                        div()
+                            .h_flex()
+                            .gap_2()
+                            .h(px(48.))
+                            .px_4()
+                            .border_b_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .child(Icon::new(IconName::Upload).text_color(rgb(theme::accent())))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .font_semibold()
+                                    .text_sm()
+                                    .child(tr("Metadata export (JSON)")),
+                            )
+                            .child(
+                                Button::new("export-close-header")
+                                    .ghost()
+                                    .icon(IconName::X)
+                                    .disabled(exporting)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        let _ = this.surfaces.set_open("metadata-export", false);
+                                        cx.notify();
+                                    })),
+                            ),
+                    )
+                    .child(body)
+                    .child(
+                        div()
+                            .h_flex()
+                            .justify_end()
+                            .gap_2()
+                            .px_4()
+                            .py_3()
+                            .border_t_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .when(!exporting, |row| {
+                                row.child(
+                                    Button::new("export-choose")
+                                        .primary()
+                                        .label(tr("Choose destination…"))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
+                                                this.choose_and_export(cx)
+                                            }),
+                                        ),
+                                )
+                            })
+                            .child(
+                                Button::new("export-close-footer")
+                                    .label(tr("Close"))
+                                    .disabled(exporting)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        let _ = this.surfaces.set_open("metadata-export", false);
+                                        cx.notify();
+                                    })),
+                            ),
+                    ),
+            )
+            .into_any_element()
     }
 }

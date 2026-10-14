@@ -1,22 +1,22 @@
 use super::*;
+use gpui_kit::assets::IconName;
+use gpui_kit::component::Icon;
 use photag_plugin_database::db::queries::MediaQuery;
 
-pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl IntoElement {
+pub(super) fn render(
+    view: &GalleryView,
+    height: f32,
+    _: &mut Context<GalleryView>,
+) -> impl IntoElement {
     let mut panel = div()
         .v_flex()
         .gap_3()
-        .w(px(800.))
-        .max_h(px(620.))
+        .w_full()
+        .max_w(px(760.))
+        .min_w_0()
+        .min_h_0()
         .overflow_y_scrollbar()
-        .rounded_md()
-        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-        .p_4()
-        .child(
-            div()
-                .text_lg()
-                .font_semibold()
-                .child(photag_ui_bridge::i18n::tr("Library Statistics")),
-        );
+        .h(px(height));
     match view.service.statistics() {
         Ok(stats) => {
             let audio_count = view
@@ -46,11 +46,20 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
             panel = panel.child(
                 div()
                     .h_flex()
+                    .flex_wrap()
                     .gap_2()
-                    .child(metric_card("All files", total_value))
-                    .child(metric_card("Photos", stats.total_photos.to_string()))
-                    .child(metric_card("Videos", stats.total_videos.to_string()))
-                    .child(metric_card("Audio", audio_value)),
+                    .child(metric_card(IconName::Files, "All files", total_value))
+                    .child(metric_card(
+                        IconName::Image,
+                        "Photos",
+                        stats.total_photos.to_string(),
+                    ))
+                    .child(metric_card(
+                        IconName::Video,
+                        "Videos",
+                        stats.total_videos.to_string(),
+                    ))
+                    .child(metric_card(IconName::Music, "Audio", audio_value)),
             );
             if let Err(error) = &audio_count {
                 panel = panel.child(
@@ -69,23 +78,22 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
                 .max()
                 .unwrap_or(1)
                 .max(1);
-            for (rating, count) in stats.rating_counts.iter().copied().enumerate() {
-                let label = if rating == 0 {
-                    "Unrated".to_owned()
-                } else {
-                    format!("{rating} star{}", if rating == 1 { "" } else { "s" })
-                };
-                let color = (((60 + rating as u32 * 35).min(255)) << 16)
-                    | (((130 + rating as u32 * 20).min(255)) << 8)
-                    | 80;
-                rating_panel = rating_panel.child(bar_row(
-                    photag_ui_bridge::i18n::tr(&label),
-                    count,
-                    max_rating,
-                    color,
-                    130.,
-                ));
-            }
+            let rating_data = stats
+                .rating_counts
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(rating, count)| {
+                    let label = if rating == 0 {
+                        "0".to_owned()
+                    } else {
+                        format!("{rating}★")
+                    };
+                    (label, count)
+                })
+                .collect::<Vec<_>>();
+            rating_panel =
+                rating_panel.child(vertical_chart(rating_data, max_rating, theme::accent()));
             let mut storage_panel = stat_section("Storage space");
             storage_panel = storage_panel
                 .child(
@@ -105,6 +113,7 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
             panel = panel.child(
                 div()
                     .h_flex()
+                    .flex_wrap()
                     .items_start()
                     .gap_3()
                     .child(storage_panel.flex_1())
@@ -138,14 +147,16 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
                     .max()
                     .unwrap_or(1)
                     .max(1);
-                for (month, count) in stats.monthly_counts {
-                    months_panel =
-                        months_panel.child(bar_row(month, count, max_month, theme::accent(), 130.));
-                }
+                months_panel = months_panel.child(vertical_chart(
+                    stats.monthly_counts,
+                    max_month,
+                    theme::accent(),
+                ));
             }
             panel = panel.child(
                 div()
                     .h_flex()
+                    .flex_wrap()
                     .items_start()
                     .gap_3()
                     .child(tags_panel.flex_1())
@@ -163,20 +174,32 @@ pub(super) fn render(view: &GalleryView, _: &mut Context<GalleryView>) -> impl I
     panel
 }
 
-fn metric_card(label: &'static str, value: String) -> Div {
+fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
     div()
         .v_flex()
         .flex_1()
         .min_w_0()
+        .min_w(px(140.))
         .gap_1()
         .p_3()
         .rounded_md()
         .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
         .child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(photag_ui_bridge::i18n::tr(label)),
+                .h_flex()
+                .items_center()
+                .gap_2()
+                .child(
+                    Icon::new(icon)
+                        .size(px(16.))
+                        .text_color(rgb(theme::TEXT_SECONDARY)),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(label)),
+                ),
         )
         .child(div().text_xl().font_semibold().child(value))
 }
@@ -186,6 +209,7 @@ fn stat_section(title: &'static str) -> Div {
         .v_flex()
         .flex_1()
         .min_w_0()
+        .min_w(px(280.))
         .gap_2()
         .p_3()
         .rounded_md()
@@ -219,7 +243,7 @@ fn bar_row(label: String, count: i64, max: i64, color: u32, width: f32) -> Div {
         .h_flex()
         .items_center()
         .gap_2()
-        .child(div().w(px(112.)).text_xs().child(label))
+        .child(div().w(px(90.)).text_xs().child(label))
         .child(
             div()
                 .w(px(width))
@@ -235,4 +259,51 @@ fn bar_row(label: String, count: i64, max: i64, color: u32, width: f32) -> Div {
                 ),
         )
         .child(div().text_xs().child(count.to_string()))
+}
+
+fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
+    div()
+        .h_flex()
+        .items_end()
+        .justify_between()
+        .gap(px(3.))
+        .h(px(118.))
+        .children(data.into_iter().map(|(label, count)| {
+            let bar_height = if count <= 0 {
+                2.
+            } else {
+                (68. * count as f32 / max.max(1) as f32).clamp(3., 68.)
+            };
+            div()
+                .v_flex()
+                .flex_1()
+                .min_w_0()
+                .h(px(118.))
+                .items_center()
+                .justify_end()
+                .gap(px(3.))
+                .child(
+                    div()
+                        .text_size(px(9.))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(count.to_string()),
+                )
+                .child(
+                    div()
+                        .w(px(24.))
+                        .h(px(bar_height))
+                        .rounded(px(2.))
+                        .bg(rgb(color)),
+                )
+                .child(
+                    div()
+                        .w_full()
+                        .text_size(px(9.))
+                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_center()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(label),
+                )
+        }))
 }

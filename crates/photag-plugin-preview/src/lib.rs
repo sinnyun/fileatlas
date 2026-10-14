@@ -25,8 +25,8 @@ use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_session::SessionService;
 
 pub use plugin::{PreviewConfig, PreviewError, PreviewPlugin};
-pub use snapshot::{PreviewMediaKind, PreviewSnapshot};
 pub(crate) use snapshot::classify_media_path;
+pub use snapshot::{PreviewMediaKind, PreviewSnapshot};
 pub use view::preview_view;
 
 /// Cordis service for opening and controlling image previews.

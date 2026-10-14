@@ -136,6 +136,10 @@ impl Render for PhoTagShell {
             .tooltip(photag_ui_bridge::i18n::tr("Toggle sidebar"))
             .on_click(cx.listener(|this, _, _, cx| {
                 this.sidebar_open = !this.sidebar_open;
+                let _ = this.surfaces.set_value(
+                    "sidebar.visible",
+                    if this.sidebar_open { "true" } else { "false" },
+                );
                 cx.notify();
             }));
         let inspector_toggle = Button::new("shell-inspector")
@@ -198,11 +202,6 @@ impl Render for PhoTagShell {
                     .items_center()
                     .gap(px(10.))
                     .px(px(16.))
-                    .child(
-                        Icon::new(IconName::House)
-                            .size(px(15.))
-                            .text_color(rgb(theme::TEXT_SECONDARY)),
-                    )
                     .children(breadcrumb_views),
             )
             .child(

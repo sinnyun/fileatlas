@@ -13,12 +13,17 @@ impl SidebarView {
                 photag_ui_bridge::i18n::tr("Create tag"),
                 div()
                     .v_flex()
-                    .gap_2()
+                    .gap_3()
+                    .child(field_label("Tag name"))
                     .child(Input::new(&self.tag_name))
+                    .child(field_label("Parent tag"))
                     .child(tag_picker::parent_picker(self, cx))
                     .child(
                         div()
                             .h_flex()
+                            .pt(px(10.))
+                            .border_t_1()
+                            .border_color(rgb(theme::SEPARATOR))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -31,6 +36,8 @@ impl SidebarView {
                             )
                             .child(create),
                     ),
+                modal_close_button(cx),
+                430.,
             );
         }
 
@@ -40,11 +47,15 @@ impl SidebarView {
                     photag_ui_bridge::i18n::tr("Rename tag"),
                     div()
                         .v_flex()
-                        .gap_2()
+                        .gap_3()
+                        .child(field_label("Tag name"))
                         .child(Input::new(&self.tag_edit_name))
                         .child(
                             div()
                                 .h_flex()
+                                .pt(px(10.))
+                                .border_t_1()
+                                .border_color(rgb(theme::SEPARATOR))
                                 .justify_end()
                                 .gap_2()
                                 .child(
@@ -68,6 +79,8 @@ impl SidebarView {
                                         })),
                                 ),
                         ),
+                    modal_close_button(cx),
+                    430.,
                 );
             }
             let tags = self
@@ -82,17 +95,20 @@ impl SidebarView {
                 div()
                     .v_flex()
                     .gap_1()
-                    .max_h(px(150.))
+                    .max_h(px(286.))
                     .overflow_y_scrollbar(),
                 |rows, (tag_id, path)| {
                     let checked = self.associated_tag_ids.contains(&tag_id);
+                    let depth = path.matches('>').count();
                     rows.child(
                         Button::new(format!("navigation-associated-tag-{tag_id}"))
                             .ghost()
                             .w_full()
+                            .pl(px(6. + depth as f32 * 12.))
                             .label(photag_ui_bridge::i18n::tr(&format!(
-                                "{} {path}",
-                                if checked { "☑" } else { "☐" }
+                                "{} {}",
+                                if checked { "☑" } else { "☐" },
+                                path.replace('>', " › ")
                             )))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.toggle_associated_tag(tag_id, cx)
@@ -100,99 +116,217 @@ impl SidebarView {
                     )
                 },
             );
+            let selected_color = self.tag_color.read(cx).value().trim().to_ascii_lowercase();
             let swatches = [
-                "#E85D5D", "#F08C46", "#D9B443", "#69A96B", "#4FAF9F", "#4A9CC7", "#5C7FE0",
-                "#8A69CE", "#C168A6", "#A77C5A", "#858A92", "#E6E9ED",
+                [
+                    "#E85D5D", "#F07855", "#F08C46", "#D9A541", "#D9C044", "#9DAA47", "#69A96B",
+                    "#4FAF9F", "#4AAFB5", "#4A9CC7", "#5C7FE0",
+                ],
+                [
+                    "#716DDD", "#8A69CE", "#A168C7", "#C168A6", "#E06FA3", "#A77C5A", "#BE8C63",
+                    "#858A92", "#A6ABB2", "#D1D5DA", "#E6E9ED",
+                ],
             ]
             .into_iter()
-            .map(|color| {
-                let value = color.to_owned();
-                let parsed = crate::parse_hex_color(color).unwrap_or([120, 120, 130]);
-                let tint = (u32::from(parsed[0]) << 16)
-                    | (u32::from(parsed[1]) << 8)
-                    | u32::from(parsed[2]);
-                Button::new(format!("navigation-tag-color-{color}"))
-                    .label(" ")
-                    .w(px(22.))
-                    .h(px(22.))
-                    .bg(rgb(tint))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.tag_color
-                            .update(cx, |state, cx| state.set_value(&value, window, cx));
+            .map(|row| {
+                div()
+                    .h_flex()
+                    .gap(px(4.))
+                    .children(row.into_iter().map(|color| {
+                        let value = color.to_owned();
+                        let selected = selected_color == color.to_ascii_lowercase();
+                        let parsed = crate::parse_hex_color(color).unwrap_or([120, 120, 130]);
+                        let tint = (u32::from(parsed[0]) << 16)
+                            | (u32::from(parsed[1]) << 8)
+                            | u32::from(parsed[2]);
+                        Button::new(format!("navigation-tag-color-{color}"))
+                            .label(if selected { "✓" } else { " " })
+                            .text_size(px(10.))
+                            .text_color(rgb(0xffffff))
+                            .w(px(22.))
+                            .h(px(22.))
+                            .rounded(px(12.))
+                            .border_2()
+                            .border_color(rgb(if selected {
+                                theme::TEXT_PRIMARY
+                            } else {
+                                theme::SURFACE_MODAL
+                            }))
+                            .bg(rgb(tint))
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.tag_color
+                                    .update(cx, |state, cx| state.set_value(&value, window, cx));
+                            }))
                     }))
             })
             .collect::<Vec<_>>();
-            let icons = ["🏷", "🌿", "🏔", "✈", "⭐", "📷", "❤️", "📁"]
-                .into_iter()
-                .map(|icon| {
-                    let value = icon.to_owned();
-                    Button::new(format!("navigation-tag-icon-{icon}"))
-                        .ghost()
-                        .label(icon)
-                        .on_click(cx.listener(move |this, _, window, cx| {
-                            this.tag_icon
-                                .update(cx, |state, cx| state.set_value(&value, window, cx));
-                        }))
-                })
-                .collect::<Vec<_>>();
+            let selected_icon = self.tag_icon.read(cx).value().trim().to_owned();
+            let icons = [
+                [
+                    theme::icons::TAG,
+                    theme::icons::PICTURE,
+                    theme::icons::FOLDER,
+                    theme::icons::VIDEO,
+                    theme::icons::AUDIO,
+                    theme::icons::STAR,
+                    theme::icons::SEARCH,
+                    theme::icons::LIBRARY,
+                ],
+                [
+                    theme::icons::SETTINGS,
+                    theme::icons::EXTENSION,
+                    theme::icons::ZOOM,
+                    theme::icons::VIEW,
+                    theme::icons::CALENDAR,
+                    theme::icons::FILTER,
+                    theme::icons::SORT,
+                    theme::icons::ADD,
+                ],
+            ]
+            .into_iter()
+            .map(|row| {
+                div()
+                    .h_flex()
+                    .gap(px(5.))
+                    .children(row.into_iter().map(|icon| {
+                        let value = icon.to_string();
+                        let selected = selected_icon == value;
+                        Button::new(format!("navigation-tag-icon-{}", icon as u32))
+                            .w(px(30.))
+                            .h(px(30.))
+                            .rounded(px(4.))
+                            .font_family(theme::ICON_FONT_FAMILY)
+                            .text_size(px(15.))
+                            .text_color(rgb(if selected {
+                                theme::accent_hover()
+                            } else {
+                                theme::TEXT_PRIMARY
+                            }))
+                            .bg(rgba(if selected {
+                                theme::accent_alpha(theme::accent(), 70. / 255.)
+                            } else {
+                                theme::FILL_SUBTLE
+                            }))
+                            .border_1()
+                            .border_color(rgb(if selected {
+                                theme::accent()
+                            } else {
+                                theme::SEPARATOR
+                            }))
+                            .label(icon.to_string())
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                this.tag_icon
+                                    .update(cx, |state, cx| state.set_value(&value, window, cx));
+                            }))
+                    }))
+            })
+            .collect::<Vec<_>>();
             return modal_shell(
                 photag_ui_bridge::i18n::tr("Edit tag"),
                 div()
                     .v_flex()
-                    .gap_2()
-                    .child(Input::new(&self.tag_edit_name))
-                    .child(Input::new(&self.tag_color))
-                    .child(div().h_flex().gap_1().children(swatches))
-                    .child(Input::new(&self.tag_icon))
-                    .child(div().h_flex().gap_1().children(icons))
-                    .child(
-                        Button::new("navigation-tag-edit-display")
-                            .label(photag_ui_bridge::i18n::tr(if self.tag_edit_display {
-                                "✓ Display on thumbnails"
-                            } else {
-                                "Display on thumbnails"
-                            }))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.tag_edit_display = !this.tag_edit_display;
-                                cx.notify();
-                            })),
-                    )
-                    .child(associations)
-                    .child(
-                        Button::new("navigation-tag-appearance-children")
-                            .label(photag_ui_bridge::i18n::tr(
-                                if self.apply_tag_appearance_to_children {
-                                    "✓ Apply to children"
-                                } else {
-                                    "Apply to children"
-                                },
-                            ))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.apply_tag_appearance_to_children =
-                                    !this.apply_tag_appearance_to_children;
-                                cx.notify();
-                            })),
-                    )
-                    .when(self.apply_tag_appearance_to_children, |body| {
-                        body.child(
-                            Button::new("navigation-tag-appearance-skip-edited")
-                                .label(photag_ui_bridge::i18n::tr(
-                                    if self.exclude_edited_tag_children {
-                                        "✓ Skip edited children"
-                                    } else {
-                                        "Skip edited children"
-                                    },
-                                ))
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.exclude_edited_tag_children =
-                                        !this.exclude_edited_tag_children;
-                                    cx.notify();
-                                })),
-                        )
-                    })
+                    .gap_3()
                     .child(
                         div()
                             .h_flex()
+                            .items_start()
+                            .gap(px(18.))
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .gap_2()
+                                    .child(field_label("Tag name"))
+                                    .child(Input::new(&self.tag_edit_name))
+                                    .child(field_label("Tag color"))
+                                    .child(div().v_flex().gap(px(4.)).children(swatches))
+                                    .child(Input::new(&self.tag_color))
+                                    .child(field_label("Tag icon"))
+                                    .child(Input::new(&self.tag_icon))
+                                    .child(div().v_flex().gap(px(5.)).children(icons))
+                                    .child(
+                                        Button::new("navigation-tag-edit-display")
+                                            .ghost()
+                                            .w_full()
+                                            .justify_start()
+                                            .label(photag_ui_bridge::i18n::tr(
+                                                if self.tag_edit_display {
+                                                    "✓ Display on thumbnails"
+                                                } else {
+                                                    "Display on thumbnails"
+                                                },
+                                            ))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.tag_edit_display = !this.tag_edit_display;
+                                                cx.notify();
+                                            })),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .gap_2()
+                                    .child(field_label("Associated tags"))
+                                    .child(
+                                        div()
+                                            .v_flex()
+                                            .gap_1()
+                                            .p(px(8.))
+                                            .rounded(px(4.))
+                                            .bg(rgb(theme::SURFACE_FAINT))
+                                            .border_1()
+                                            .border_color(rgb(theme::SEPARATOR))
+                                            .child(associations),
+                                    )
+                                    .child(
+                                        Button::new("navigation-tag-appearance-children")
+                                            .ghost()
+                                            .w_full()
+                                            .justify_start()
+                                            .label(photag_ui_bridge::i18n::tr(
+                                                if self.apply_tag_appearance_to_children {
+                                                    "✓ Apply to children"
+                                                } else {
+                                                    "Apply to children"
+                                                },
+                                            ))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.apply_tag_appearance_to_children =
+                                                    !this.apply_tag_appearance_to_children;
+                                                cx.notify();
+                                            })),
+                                    )
+                                    .when(self.apply_tag_appearance_to_children, |body| {
+                                        body.child(
+                                            Button::new("navigation-tag-appearance-skip-edited")
+                                                .ghost()
+                                                .w_full()
+                                                .justify_start()
+                                                .label(photag_ui_bridge::i18n::tr(
+                                                    if self.exclude_edited_tag_children {
+                                                        "✓ Skip edited children"
+                                                    } else {
+                                                        "Skip edited children"
+                                                    },
+                                                ))
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.exclude_edited_tag_children =
+                                                        !this.exclude_edited_tag_children;
+                                                    cx.notify();
+                                                })),
+                                        )
+                                    }),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .pt(px(10.))
+                            .border_t_1()
+                            .border_color(rgb(theme::SEPARATOR))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -225,6 +359,8 @@ impl SidebarView {
                                     })),
                             ),
                     ),
+                modal_close_button(cx),
+                760.,
             );
         }
 
@@ -233,21 +369,79 @@ impl SidebarView {
                 photag_ui_bridge::i18n::tr("Delete tag"),
                 div()
                     .v_flex()
-                    .gap_2()
-                    .child(div().text_size(px(13.)).child(name))
+                    .gap_3()
                     .child(
                         div()
                             .h_flex()
-                            .gap_1()
-                            .child(count.to_string())
-                            .child(photag_ui_bridge::i18n::tr("media items")),
+                            .items_center()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .font_family(theme::ICON_FONT_FAMILY)
+                                    .text_size(px(24.))
+                                    .text_color(rgb(theme::DANGER))
+                                    .child(theme::icons::WARNING.to_string()),
+                            )
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .gap_1()
+                                    .child(
+                                        div().font_family(theme::SEMIBOLD_FONT_FAMILY).child(name),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                            .child(photag_ui_bridge::i18n::tr_args(
+                                                "Used by {count} media items",
+                                                &[("count", count.to_string())],
+                                            )),
+                                    ),
+                            ),
                     )
-                    .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                        photag_ui_bridge::i18n::tr("Also remove parent tags from those media?"),
+                    .child(field_label("When deleting this tag"))
+                    .child(
+                        Button::new("navigation-delete-tag-keep")
+                            .ghost()
+                            .w_full()
+                            .justify_start()
+                            .label(photag_ui_bridge::i18n::tr(if self.delete_clean_parents {
+                                "○ Keep parent tags"
+                            } else {
+                                "◉ Keep parent tags"
+                            }))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.delete_clean_parents = false;
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("navigation-delete-tag-clean")
+                            .ghost()
+                            .w_full()
+                            .justify_start()
+                            .label(photag_ui_bridge::i18n::tr(if self.delete_clean_parents {
+                                "◉ Also remove parent tags"
+                            } else {
+                                "○ Also remove parent tags"
+                            }))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.delete_clean_parents = true;
+                                cx.notify();
+                            })),
+                    )
+                    .child(div().text_sm().text_color(rgb(theme::TEXT_MUTED)).child(
+                        photag_ui_bridge::i18n::tr(
+                            "This action removes tag assignments from matching media.",
+                        ),
                     ))
                     .child(
                         div()
                             .h_flex()
+                            .pt(px(10.))
+                            .border_t_1()
+                            .border_color(rgb(theme::SEPARATOR))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -259,23 +453,18 @@ impl SidebarView {
                                     })),
                             )
                             .child(
-                                Button::new("navigation-delete-tag-keep")
-                                    .label(photag_ui_bridge::i18n::tr("Keep parent tags"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.confirm_delete = None;
-                                        this.delete_tag(id, false, cx);
-                                    })),
-                            )
-                            .child(
-                                Button::new("navigation-delete-tag-clean")
+                                Button::new("navigation-delete-tag-confirm")
                                     .danger()
-                                    .label(photag_ui_bridge::i18n::tr("Remove parent tags too"))
+                                    .label(photag_ui_bridge::i18n::tr("Delete"))
                                     .on_click(cx.listener(move |this, _, _, cx| {
+                                        let clean_parents = this.delete_clean_parents;
                                         this.confirm_delete = None;
-                                        this.delete_tag(id, true, cx);
+                                        this.delete_tag(id, clean_parents, cx);
                                     })),
                             ),
                     ),
+                modal_close_button(cx),
+                430.,
             );
         }
 
@@ -287,42 +476,126 @@ impl SidebarView {
                 .and_then(|s| find_tag(&s.tags, source_id))
                 .map(|tag| tag.name.clone())
                 .unwrap_or_else(|| "tag".into());
+            let source_color = self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|snapshot| find_tag(&snapshot.tags, source_id))
+                .and_then(|tag| tag.color.as_deref().and_then(crate::parse_hex_color))
+                .map(|[red, green, blue]| {
+                    (u32::from(red) << 16) | (u32::from(green) << 8) | u32::from(blue)
+                })
+                .unwrap_or(theme::TEXT_MUTED);
             let targets = super::render::merge_target_buttons(self, source_id, cx);
+            let child_count = self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|snapshot| find_tag(&snapshot.tags, source_id))
+                .map(|tag| tag.children.len())
+                .unwrap_or_default();
             return modal_shell(
                 photag_ui_bridge::i18n::tr("Merge tag"),
                 div()
                     .v_flex()
-                    .gap_2()
-                    .child(div().child(source_name))
+                    .gap_3()
                     .child(
                         div()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(photag_ui_bridge::i18n::tr("Choose a merge target")),
+                            .h_flex()
+                            .items_center()
+                            .gap_2()
+                            .child(div().font_family(theme::SEMIBOLD_FONT_FAMILY).child(photag_ui_bridge::i18n::tr("Source tag")))
+                            .child(tag_badge(&source_name, source_color)),
                     )
-                    .child(Input::new(&self.merge_search))
                     .child(
-                        Button::new("navigation-merge-children-mode")
-                            .label(photag_ui_bridge::i18n::tr(
-                                if self.merge_reparent_children {
-                                    "Children will be re-parented under target"
-                                } else {
-                                    "Children will be deleted"
-                                },
-                            ))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.merge_reparent_children = !this.merge_reparent_children;
-                                cx.notify();
-                            })),
+                        div()
+                            .h_flex()
+                            .items_start()
+                            .gap(px(16.))
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .gap_2()
+                                    .child(field_label("Choose a merge target"))
+                                    .child(Input::new(&self.merge_search))
+                                    .child(
+                                        div()
+                                            .v_flex()
+                                            .gap_1()
+                                            .p(px(6.))
+                                            .max_h(px(310.))
+                                            .overflow_y_scrollbar()
+                                            .rounded(px(4.))
+                                            .bg(rgb(theme::SURFACE_FAINT))
+                                            .border_1()
+                                            .border_color(rgb(theme::SEPARATOR))
+                                            .children(targets),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .gap_2()
+                                    .child(field_label("Child tag handling"))
+                                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                                        photag_ui_bridge::i18n::tr_args(
+                                            "This tag has {count} direct child tags.",
+                                            &[("count", child_count.to_string())],
+                                        ),
+                                    ))
+                                    .child(
+                                        Button::new("navigation-merge-children-reparent")
+                                            .ghost()
+                                            .w_full()
+                                            .justify_start()
+                                            .label(photag_ui_bridge::i18n::tr(if self.merge_reparent_children {
+                                                "◉ Re-parent children under target"
+                                            } else {
+                                                "○ Re-parent children under target"
+                                            }))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.merge_reparent_children = true;
+                                                cx.notify();
+                                            })),
+                                    )
+                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                                        photag_ui_bridge::i18n::tr("Existing child tags are kept and moved below the target."),
+                                    ))
+                                    .child(
+                                        Button::new("navigation-merge-children-delete")
+                                            .ghost()
+                                            .w_full()
+                                            .justify_start()
+                                            .label(photag_ui_bridge::i18n::tr(if self.merge_reparent_children {
+                                                "○ Delete child tags"
+                                            } else {
+                                                "◉ Delete child tags"
+                                            }))
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.merge_reparent_children = false;
+                                                cx.notify();
+                                            })),
+                                    )
+                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                                        photag_ui_bridge::i18n::tr("Child tag assignments are removed with the source tag."),
+                                    )),
+                            ),
                     )
-                    .children(targets)
                     .child(
                         Button::new("navigation-merge-cancel")
+                            .self_end()
                             .label(photag_ui_bridge::i18n::tr("Cancel"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.merge_source = None;
                                 cx.notify();
                             })),
                     ),
+                modal_close_button(cx),
+                720.,
             );
         }
 
@@ -359,13 +632,15 @@ impl SidebarView {
                                     })),
                             ),
                     ),
+                modal_close_button(cx),
+                480.,
             );
         }
         div()
     }
 }
 
-fn modal_shell(title: String, body: Div) -> Div {
+fn modal_shell(title: String, body: Div, close: Button, width: f32) -> Div {
     div()
         .absolute()
         .inset_0()
@@ -376,7 +651,9 @@ fn modal_shell(title: String, body: Div) -> Div {
         .child(
             div()
                 .v_flex()
-                .w(px(440.))
+                .items_start()
+                .h_auto()
+                .w(px(width))
                 .max_h(px(640.))
                 .overflow_y_scrollbar()
                 .gap_3()
@@ -387,12 +664,59 @@ fn modal_shell(title: String, body: Div) -> Div {
                 .border_color(rgb(theme::SEPARATOR))
                 .child(
                     div()
-                        .text_size(px(15.))
-                        .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                        .child(title),
+                        .h_flex()
+                        .items_center()
+                        .justify_between()
+                        .w_full()
+                        .pb(px(10.))
+                        .border_b_1()
+                        .border_color(rgb(theme::SEPARATOR))
+                        .child(
+                            div()
+                                .text_size(px(15.))
+                                .font_family(theme::SEMIBOLD_FONT_FAMILY)
+                                .child(title),
+                        )
+                        .child(close),
                 )
-                .child(body),
+                .child(body.w_full()),
         )
+}
+
+fn modal_close_button(cx: &mut Context<SidebarView>) -> Button {
+    Button::new("navigation-tag-modal-close")
+        .ghost()
+        .compact()
+        .w(px(28.))
+        .h(px(28.))
+        .font_family(theme::ICON_FONT_FAMILY)
+        .label(theme::icons::CLOSE.to_string())
+        .on_click(cx.listener(|this, _, _, cx| {
+            this.close_tag_modal();
+            cx.notify();
+        }))
+}
+
+fn field_label(label: &str) -> Div {
+    div()
+        .text_size(px(11.))
+        .text_color(rgb(theme::TEXT_SECONDARY))
+        .child(photag_ui_bridge::i18n::tr(label))
+}
+
+fn tag_badge(name: &str, color: u32) -> Div {
+    div()
+        .h_flex()
+        .items_center()
+        .gap(px(6.))
+        .pl(px(9.))
+        .pr(px(9.))
+        .pt(px(4.))
+        .pb(px(4.))
+        .rounded(px(4.))
+        .bg(rgb(theme::SURFACE_ELEVATED))
+        .child(div().w(px(8.)).h(px(8.)).rounded(px(4.)).bg(rgb(color)))
+        .child(name.to_owned())
 }
 
 fn collect_association_rows(

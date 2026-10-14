@@ -2,6 +2,7 @@
 //!
 //! Source: `vendor/photag-source/src/ui/preview.rs:797-936` (layout, plate and
 //! card painting) and `:1695-1708` (activation gate plus the toolbar lift).
+use gpui_kit::base::StyledExt as _;
 use std::sync::Arc;
 
 use gpui_kit::prelude::FluentBuilder as _;
@@ -16,14 +17,14 @@ use crate::PreviewMediaKind;
 use crate::classify_media_path;
 
 /// `preview.rs:826`: plate inset from the screen bottom.
-const STRIP_PAD: f32 = 8.0;
+const STRIP_PAD: f32 = 0.0;
 /// `preview.rs:827-828`: 64 px thumbs with a 4 px gap.
 const THUMB_SIZE: f32 = 64.0;
 const THUMB_GAP: f32 = 4.0;
 /// `preview.rs:890`: card corner radius.
 const CARD_ROUND: f32 = 3.0;
 /// `preview.rs:853`: plate fill RGBA(20, 20, 25, 210).
-const PLATE: u32 = 0x141419d2;
+const PLATE: u32 = (theme::SURFACE_BASE << 8) | 0xff;
 /// `preview.rs:891`: card fill RGBA(40, 40, 50, 255/2).
 const CARD: u32 = 0x2828327f;
 
@@ -68,7 +69,7 @@ pub(super) fn plate(
             let thumbnail = view.service.filmstrip_thumbnail(&path);
             let service = Arc::clone(&view.service);
             let target = path.clone();
-            div()
+            let thumb = div()
                 .id(format!("preview-filmstrip-{index}"))
                 .relative()
                 .w(px(THUMB_SIZE))
@@ -115,6 +116,25 @@ pub(super) fn plate(
                             .border_color(rgba(theme::accent())),
                     )
                 })
+                .into_any_element();
+            div()
+                .v_flex()
+                .w(px(THUMB_SIZE))
+                .gap(px(3.))
+                .child(thumb)
+                .child(
+                    div()
+                        .w_full()
+                        .text_center()
+                        .text_size(px(10.))
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(
+                            path.file_name()
+                                .map(|name| name.to_string_lossy().into_owned())
+                                .unwrap_or_default(),
+                        ),
+                )
                 .into_any_element()
         })
         .collect::<Vec<_>>();
@@ -132,7 +152,7 @@ pub(super) fn plate(
                     .id("preview-filmstrip-items")
                     .absolute()
                     .left(px(start_x))
-                    .top(px((FILMSTRIP_H - THUMB_SIZE) / 2.0))
+                    .top(px(8.))
                     .flex()
                     .gap(px(THUMB_GAP))
                     .children(rows),

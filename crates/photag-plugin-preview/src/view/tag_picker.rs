@@ -313,7 +313,7 @@ impl PreviewView {
         true
     }
 
-    pub(super) fn apply_rating_shortcut(&mut self, rating: u8, cx: &mut Context<Self>) {
+    pub(crate) fn apply_rating_shortcut(&mut self, rating: u8, cx: &mut Context<Self>) {
         let Some(media_id) = self.service.snapshot().media_id else {
             return;
         };

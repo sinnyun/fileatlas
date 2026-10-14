@@ -864,3 +864,7 @@ S2/S3/S4/S5/S6/S7/S8均保留为进行中，不标记完成；第二轮侧栏、
 详细修复锚点、公开接口、未登记文案、真实截图、验证命令和P0-P4顺序见
 [完整开发交接](development-handoff-2026-10-14.md)。使用
 `scripts/photag-mcp-debug.cjs`继续同进程插件MCP调试；保留启动更新静默。
+
+## 2026-10-14 最新实现/验收
+
+本轮按用户要求使用三个 GPT-6 Luna 子代理完善 Gallery、Navigation、Settings，主线程完成 Preview/Playback/Export 和实际MCP验收。00–08主要界面已截图迭代，最新Shell locked编译成功，独立运行EXE为 target/debug/photag-shell-accepted-20261014.exe。S10验证继续：原生输入、文件对话框/确认、拖拽框选、滚动恢复、扫描失败和声音听感仍未验。详见 redesign-validation 最新节；旧19错/旧二进制状态已被覆盖。

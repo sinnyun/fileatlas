@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 base64 = "0.22"
 cordis.workspace = true
+photag-contracts = { path = "../photag-contracts" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }

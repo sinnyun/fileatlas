@@ -4,6 +4,7 @@ use super::*;
 use gpui_kit::base::Disableable;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_kit::component::scroll::ScrollableElement as _;
 
 #[derive(Clone, Copy)]
 enum Region {
@@ -77,28 +78,6 @@ pub(super) fn contributions(
     views
 }
 
-pub(super) fn chip(
-    id: impl Into<ElementId>,
-    label: impl Into<SharedString>,
-    active: bool,
-) -> Button {
-    let label = label.into();
-    Button::new(id)
-        .ghost()
-        .compact()
-        .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
-        .h(px(26.))
-        .px(px(12.))
-        .rounded(px(13.))
-        .text_size(px(12.5))
-        .text_color(rgb(theme::TEXT_SECONDARY))
-        .bg(if active {
-            rgba((theme::accent() << 8) | 64)
-        } else {
-            rgba(0)
-        })
-}
-
 impl GalleryView {
     pub(super) fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let revision = photag_ui_bridge::i18n::revision();
@@ -118,8 +97,8 @@ impl GalleryView {
         for (input, label) in self.bulk_inputs.iter().zip([
             "Older than days",
             "Newer than days",
-            "Rating min 0-5",
-            "Rating max 0-5",
+            "Min rating",
+            "Max rating",
             "Name contains",
             "Extension",
             "Size min MB",
@@ -372,32 +351,95 @@ impl GalleryView {
 
     fn render_modal(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.refresh_locale(window, cx);
-        let mut root = div().absolute().inset_0();
+        let mut root = div()
+            .absolute()
+            .inset_0()
+            .w(window.bounds().size.width)
+            .h(window.bounds().size.height);
         if self.show_statistics || self.bulk_action.is_some() {
+            let showing_statistics = self.show_statistics;
+            let width = (f32::from(window.bounds().size.width) - 48.)
+                .min(if self.show_statistics { 800. } else { 860. });
+            let available_height = (f32::from(window.bounds().size.height) - 48.).max(200.);
+            let height = if showing_statistics {
+                available_height.min(552.)
+            } else {
+                available_height
+            };
             let mut card = div()
                 .v_flex()
-                .w(px(if self.show_statistics { 800. } else { 860. }))
-                .max_h(px(600.))
-                .overflow_y_scrollbar()
-                .rounded(px(8.))
-                .p(px(14.))
-                .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                .w(px(width))
+                .h(px(height))
+                .max_h(px(height))
+                .min_h_0()
+                .overflow_hidden()
+                .rounded(px(6.))
+                .bg(rgb(theme::SURFACE_MODAL))
                 .child(
-                    chip("gallery-modal-close", "Close", false).on_click(cx.listener(
-                        |this, _, _, cx| {
-                            this.show_statistics = false;
-                            this.bulk_action = None;
-                            this.confirm_bulk_action = false;
-                            this.confirm_bulk_action_ids = None;
-                            cx.notify();
-                        },
-                    )),
-                );
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .justify_between()
+                        .h(px(44.))
+                        .flex_shrink_0()
+                        .px(px(14.))
+                        .border_b_1()
+                        .border_color(rgba(theme::SEPARATOR_LIGHT))
+                        .child(
+                            div()
+                                .text_size(px(theme::FONT_SIZE_BODY))
+                                .font_semibold()
+                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .child(photag_ui_bridge::i18n::tr(if showing_statistics {
+                                    "Library Statistics"
+                                } else {
+                                    "Bulk actions…"
+                                })),
+                        )
+                        .child(
+                            Button::new("gallery-modal-close")
+                                .ghost()
+                                .compact()
+                                .icon(gpui_kit::assets::IconName::X)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.show_statistics = false;
+                                    this.bulk_action = None;
+                                    this.confirm_bulk_action = false;
+                                    this.confirm_bulk_action_ids = None;
+                                    cx.notify();
+                                })),
+                        ),
+                )
+                .px(px(14.))
+                .pb(px(14.));
             if self.show_statistics {
-                card = card.child(statistics::render(self, cx));
+                let stats_height = (height - 102.).max(250.);
+                card = card
+                    .child(statistics::render(self, stats_height, cx))
+                    .child(
+                        div()
+                            .h_flex()
+                            .justify_end()
+                            .flex_shrink_0()
+                            .h(px(44.))
+                            .px(px(14.))
+                            .border_t_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .child(
+                                Button::new("gallery-statistics-close")
+                                    .ghost()
+                                    .compact()
+                                    .label(photag_ui_bridge::i18n::tr("Close"))
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.show_statistics = false;
+                                        cx.notify();
+                                    })),
+                            ),
+                    );
             }
             if self.bulk_action.is_some() {
-                card = card.child(bulk_actions::render(self, cx));
+                let bulk_height = (height - 58.).max(160.);
+                card = card.child(bulk_actions::render(self, width - 28., bulk_height, cx));
             }
             root = root.child(
                 div()
@@ -411,6 +453,8 @@ impl GalleryView {
             );
         }
         if self.show_tag_picker && !self.selection.selected_media_ids.is_empty() {
+            let picker_width = (f32::from(window.bounds().size.width) - 32.).min(690.);
+            let picker_height = (f32::from(window.bounds().size.height) - 96.).clamp(360., 430.);
             root = root.child(
                 div()
                     .absolute()
@@ -421,10 +465,17 @@ impl GalleryView {
                     .bg(rgba(theme::SCRIM))
                     .child(
                         div()
-                            .w(px(690.))
-                            .max_h(px((f32::from(window.bounds().size.height) - 70.).max(300.)))
-                            .overflow_y_scrollbar()
-                            .child(tagging_picker::render(self, cx)),
+                            .w(px(picker_width))
+                            .max_w(px(690.))
+                            .h(px(picker_height))
+                            .max_h(px((f32::from(window.bounds().size.height) - 48.).max(360.)))
+                            .overflow_hidden()
+                            .child(tagging_picker::render(
+                                self,
+                                picker_width,
+                                picker_height,
+                                cx,
+                            )),
                     ),
             );
         }
@@ -462,48 +513,24 @@ impl GalleryView {
                     .child(status.clone()),
             );
         }
-        for failure in photag_plugin_tagging::writeback::failures() {
-            let path = failure.path.clone();
-            let retry_path = path.clone();
+        let failures = photag_plugin_tagging::writeback::failures();
+        if !failures.is_empty() {
             root = root.child(
                 div()
                     .absolute()
-                    .left(px(240.))
-                    .bottom(px(48.))
-                    .p_2()
-                    .bg(rgb(theme::SURFACE_PANEL))
-                    .child(format!(
-                        "Tag writeback failed: {}: {}",
-                        failure.path.display(),
-                        failure.error
-                    ))
+                    .right(px(12.))
+                    .bottom(px(56.))
+                    .w(px(320.))
                     .child(
-                        Button::new(format!("writeback-retry-{}", path.display()))
-                            .primary()
-                            .compact()
-                            .label(photag_ui_bridge::i18n::tr("Retry"))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.operation_status = match photag_plugin_tagging::writeback::retry_failure(&retry_path) {
-                                    Ok(true) => Some("Metadata writeback retry queued.".into()),
-                                    Ok(false) => Some("This writeback failure is no longer available.".into()),
-                                    Err(error) => Some(photag_ui_bridge::i18n::tr_args(
-                                        "Could not retry metadata writeback: {error}",
-                                        &[("error", error.to_string())],
-                                    )),
-                                };
-                                cx.notify();
+                        div()
+                            .w_full()
+                            .max_h(px((f32::from(window.bounds().size.height) - 80.).max(160.)))
+                            .overflow_y_scrollbar()
+                            .v_flex()
+                            .gap_2()
+                            .children(failures.into_iter().map(|failure| {
+                                super::writeback_failure::render(self, failure, cx)
                             })),
-                    )
-                    .child(
-                        chip(
-                            format!("writeback-dismiss-{}", path.display()),
-                            "Dismiss",
-                            false,
-                        )
-                        .on_click(cx.listener(move |_, _, _, cx| {
-                            photag_plugin_tagging::writeback::clear_failure(&path);
-                            cx.notify();
-                        })),
                     ),
             );
         }

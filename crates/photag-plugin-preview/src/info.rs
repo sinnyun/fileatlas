@@ -11,6 +11,7 @@ use gpui_kit::*;
 use photag_ui_bridge::theme;
 
 pub(super) struct IndexedInfo {
+    pub rating: i32,
     pub date_taken: Option<i64>,
     pub open_count: i64,
     pub tags: Vec<String>,
@@ -37,26 +38,95 @@ pub(super) fn info_panel(
         .border_color(rgb(theme::SURFACE_FAINT))
         .rounded_md()
         .overflow_y_scrollbar()
-        .child(div().text_base().font_medium().child(photag_ui_bridge::i18n::tr("Information")))
-        .child(section_title("File", collapsed.contains("File"), cx));
+        .child(
+            div()
+                .h_flex()
+                .justify_between()
+                .gap_2()
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .text_base()
+                        .font_medium()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(name.clone()),
+                )
+                .child(
+                    Button::new("preview-info-close")
+                        .ghost()
+                        .compact()
+                        .icon(gpui_kit::assets::IconName::X)
+                        .on_click(cx.listener(|view, _, _, cx| {
+                            view.toggle_information(cx);
+                        })),
+                ),
+        );
+    if let Some(indexed) = &indexed {
+        let mut stars = div().h_flex().gap_1();
+        for rating in 1..=5u8 {
+            let active = i32::from(rating) <= indexed.rating;
+            let target = if i32::from(rating) == indexed.rating {
+                0
+            } else {
+                rating
+            };
+            stars = stars.child(
+                Button::new(format!("preview-info-rating-{rating}"))
+                    .ghost()
+                    .compact()
+                    .icon(gpui_kit::assets::IconName::Star)
+                    .text_color(rgb(if active {
+                        theme::STAR
+                    } else {
+                        theme::TEXT_MUTED
+                    }))
+                    .on_click(
+                        cx.listener(move |view, _, _, cx| view.apply_rating_shortcut(target, cx)),
+                    ),
+            );
+        }
+        panel = panel.child(stars);
+    }
+    panel = panel.child(section_title("File", collapsed.contains("File"), cx));
     if !collapsed.contains("File") {
-        panel = panel
-            .child(detail("Name", &name))
-            .child(detail("Path", &path.display().to_string()))
-            .child(detail("Type", if is_video(path) { "video" } else { "image" }));
+        panel = panel.child(detail(
+            "Type",
+            if is_video(path) { "video" } else { "image" },
+        ));
         if let Some(extension) = path.extension().and_then(|value| value.to_str()) {
-            panel = panel.child(detail("Extension", &format!(".{}", extension.to_lowercase())));
+            panel = panel.child(detail(
+                "Extension",
+                &format!(".{}", extension.to_lowercase()),
+            ));
         }
         match std::fs::metadata(path) {
             Ok(metadata) => {
                 panel = panel
                     .child(detail("Size", &format_bytes(metadata.len())))
-                    .child(detail("Read-only", if metadata.permissions().readonly() { "yes" } else { "no" }))
+                    .child(detail(
+                        "Read-only",
+                        if metadata.permissions().readonly() {
+                            "yes"
+                        } else {
+                            "no"
+                        },
+                    ))
                     .child(detail("Modified", &format_time(metadata.modified().ok())))
                     .child(detail("Created", &format_time(metadata.created().ok())));
             }
             Err(_) => panel = panel.child(detail("File", "Couldn't read file metadata.")),
         }
+    }
+
+    panel = panel.child(section_title(
+        "File path",
+        collapsed.contains("File path"),
+        cx,
+    ));
+    if !collapsed.contains("File path") {
+        panel = panel.child(detail("Path", &path.display().to_string()));
     }
 
     if let Some(indexed) = &indexed {
@@ -69,66 +139,82 @@ pub(super) fn info_panel(
             };
             panel = panel
                 .child(detail("Times opened", &indexed.open_count.to_string()))
-                .child(detail("Date taken", &indexed.date_taken.map(format_unix).unwrap_or_else(|| "—".into())))
+                .child(detail(
+                    "Date taken",
+                    &indexed
+                        .date_taken
+                        .map(format_unix)
+                        .unwrap_or_else(|| "—".into()),
+                ))
                 .child(detail("Tags", &tags));
         }
     }
 
     if is_video(path) {
         panel = panel.child(section_title("Video", collapsed.contains("Video"), cx));
-        if !collapsed.contains("Video") { match probe_video(path) {
-            Some(info) => {
-                panel = panel
-                    .child(detail(
-                        "Dimensions",
-                        &format!("{} × {} px", info.width, info.height),
-                    ))
-                    .child(detail("Duration", &format_video_time(info.duration)))
-                    .child(detail("FPS", &format!("{:.2}", info.fps)));
-                if let Some(codec) = info.codec.as_deref() {
-                    panel = panel.child(detail("Codec", codec));
+        if !collapsed.contains("Video") {
+            match probe_video(path) {
+                Some(info) => {
+                    panel = panel
+                        .child(detail(
+                            "Dimensions",
+                            &format!("{} × {} px", info.width, info.height),
+                        ))
+                        .child(detail("Duration", &format_video_time(info.duration)))
+                        .child(detail("FPS", &format!("{:.2}", info.fps)));
+                    if let Some(codec) = info.codec.as_deref() {
+                        panel = panel.child(detail("Codec", codec));
+                    }
+                    if let Some(bitrate) = info.bitrate {
+                        panel = panel
+                            .child(detail("Bitrate", &format!("{:.0} kbps", bitrate / 1000.0)));
+                    }
+                    if let Some(codec) = info.audio_codec.as_deref() {
+                        panel = panel.child(detail("Audio", codec));
+                    }
                 }
-                if let Some(bitrate) = info.bitrate {
-                    panel =
-                        panel.child(detail("Bitrate", &format!("{:.0} kbps", bitrate / 1000.0)));
-                }
-                if let Some(codec) = info.audio_codec.as_deref() {
-                    panel = panel.child(detail("Audio", codec));
-                }
+                None => panel = panel.child(mut_text("ffprobe metadata is unavailable.")),
             }
-            None => panel = panel.child(mut_text("ffprobe metadata is unavailable.")),
-        }}
+        }
         return panel;
     }
     panel = panel.child(section_title("Image", collapsed.contains("Image"), cx));
-    if !collapsed.contains("Image") { match image::image_dimensions(path) {
-        Ok((width, height)) => {
-            panel = panel
-                .child(detail("Dimensions", &format!("{width} × {height} px")))
-                .child(detail(
-                    "Megapixels",
-                    &format!(
-                        "{:.2} MP",
-                        f64::from(width) * f64::from(height) / 1_000_000.0
-                    ),
-                ))
-                .child(detail("Aspect", &aspect_ratio(width, height)));
-        }
-        Err(_) => panel = panel.child(detail("Dimensions", "—")),
-    }}
-
-    panel = panel.child(section_title("Metadata (EXIF)", collapsed.contains("Metadata (EXIF)"), cx));
-    if !collapsed.contains("Metadata (EXIF)") { match read_exif(path) {
-        Ok(fields) if fields.is_empty() => {
-            panel = panel.child(mut_text("No common EXIF tags found."));
-        }
-        Ok(fields) => {
-            for (label, value) in fields {
-                panel = panel.child(detail(&label, &value));
+    if !collapsed.contains("Image") {
+        match image::image_dimensions(path) {
+            Ok((width, height)) => {
+                panel = panel
+                    .child(detail("Dimensions", &format!("{width} × {height} px")))
+                    .child(detail(
+                        "Megapixels",
+                        &format!(
+                            "{:.2} MP",
+                            f64::from(width) * f64::from(height) / 1_000_000.0
+                        ),
+                    ))
+                    .child(detail("Aspect", &aspect_ratio(width, height)));
             }
+            Err(_) => panel = panel.child(detail("Dimensions", "—")),
         }
-        Err(message) => panel = panel.child(mut_text(message)),
-    }}
+    }
+
+    panel = panel.child(section_title(
+        "Metadata (EXIF)",
+        collapsed.contains("Metadata (EXIF)"),
+        cx,
+    ));
+    if !collapsed.contains("Metadata (EXIF)") {
+        match read_exif(path) {
+            Ok(fields) if fields.is_empty() => {
+                panel = panel.child(mut_text("No common EXIF tags found."));
+            }
+            Ok(fields) => {
+                for (label, value) in fields {
+                    panel = panel.child(detail(&label, &value));
+                }
+            }
+            Err(message) => panel = panel.child(mut_text(message)),
+        }
+    }
     panel
 }
 
@@ -264,7 +350,22 @@ fn section_title(
     Button::new(format!("preview-info-section-{title}"))
         .ghost()
         .compact()
-        .label(format!("{}  {}", if collapsed { "▸" } else { "▾" }, photag_ui_bridge::i18n::tr(title)))
+        .w_full()
+        .border_t_1()
+        .border_color(rgba(theme::SEPARATOR_LIGHT))
+        .py_2()
+        .child(
+            div()
+                .w_full()
+                .h_flex()
+                .gap_2()
+                .child(gpui_kit::component::Icon::new(if collapsed {
+                    gpui_kit::assets::IconName::ChevronRight
+                } else {
+                    gpui_kit::assets::IconName::ChevronDown
+                }))
+                .child(photag_ui_bridge::i18n::tr(title)),
+        )
         .on_click(cx.listener(move |view, _, _, cx| {
             if !view.collapsed_info_sections.remove(title) {
                 view.collapsed_info_sections.insert(title);
@@ -289,11 +390,16 @@ fn detail(key: &str, value: &str) -> Div {
         .child(
             div()
                 .flex_1()
-                .child(if ["Type", "Read-only"].contains(&key) {
-                    photag_ui_bridge::i18n::tr(value)
-                } else {
-                    value.to_string()
-                }),
+                .min_w_0()
+                .overflow_hidden()
+                .text_ellipsis()
+                .child(
+                    if ["Type", "Read-only"].contains(&key) || value == "No tags assigned." {
+                        photag_ui_bridge::i18n::tr(value)
+                    } else {
+                        value.to_string()
+                    },
+                ),
         )
 }
 

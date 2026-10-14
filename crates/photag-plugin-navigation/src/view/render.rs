@@ -43,6 +43,13 @@ impl SidebarView {
             .items_center()
             .gap(px(8.))
             .child(
+                div()
+                    .font_family(theme::ICON_FONT_FAMILY)
+                    .text_size(px(13.))
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(theme::icons::LIBRARY.to_string()),
+            )
+            .child(
                 Button::new("navigation-breadcrumb-all-files")
                     .ghost()
                     .compact()
@@ -70,10 +77,16 @@ impl SidebarView {
     }
 }
 
-impl Render for SidebarView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl SidebarView {
+    pub(super) fn consume_ui_request(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(request) = self.service.take_ui_request() {
+            self.refresh();
             match request {
+                crate::NavigationUiRequest::AllFiles => {
+                    self.close_tag_modal();
+                    self.select_folder(None, cx);
+                    self.select_tag(None, cx);
+                }
                 crate::NavigationUiRequest::OpenCreate => {
                     self.close_tag_modal();
                     self.tag_create_open = true;
@@ -99,6 +112,12 @@ impl Render for SidebarView {
             }
             cx.notify();
         }
+    }
+}
+
+impl Render for SidebarView {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.consume_ui_request(window, cx);
         let locale_revision = photag_ui_bridge::i18n::revision();
         if self.locale_revision != locale_revision {
             self.locale_revision = locale_revision;
@@ -445,12 +464,23 @@ impl Render for SidebarView {
                             .h_flex()
                             .justify_between()
                             .items_center()
-                            .pt_3()
+                            .mt(px(8.))
+                            .pt(px(8.))
+                            .border_t_1()
+                            .border_color(rgb(theme::SEPARATOR))
                             .child(
                                 div()
+                                    .h_flex()
+                                    .items_center()
+                                    .gap(px(5.))
                                     .text_xs()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
-                                    .child(photag_ui_bridge::i18n::tr("Tags")),
+                                    .text_color(rgb(theme::TEXT_MUTED))
+                                    .child(
+                                        div()
+                                            .font_family(theme::ICON_FONT_FAMILY)
+                                            .child(theme::icons::TAG.to_string()),
+                                    )
+                                    .child(photag_ui_bridge::i18n::tr("Tags").to_uppercase()),
                             )
                             .child(
                                 div()
@@ -647,18 +677,15 @@ pub(super) fn merge_target_buttons(
         excluded: &HashSet<i64>,
         query: &str,
         mode: TagSearchMatch,
-        output: &mut Vec<(i64, String)>,
+        output: &mut Vec<(i64, String, usize, i64)>,
     ) {
         for tag in tags {
             if !excluded.contains(&tag.id) && tag_matches(tag, query, mode) {
                 output.push((
                     tag.id,
-                    format!(
-                        "{}{}  ({})",
-                        "  ".repeat(tag.full_path.matches('>').count()),
-                        tag.name,
-                        tag.media_count
-                    ),
+                    tag.name.clone(),
+                    tag.full_path.matches('>').count(),
+                    tag.media_count,
                 ));
             }
             walk(&tag.children, excluded, query, mode, output);
@@ -680,11 +707,13 @@ pub(super) fn merge_target_buttons(
     }
     targets
         .into_iter()
-        .map(|(id, label)| {
+        .map(|(id, name, depth, count)| {
             div().child(
                 Button::new(format!("navigation-merge-target-{id}"))
-                    .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
+                    .ghost()
                     .w_full()
+                    .pl(px(8. + depth as f32 * 14.))
+                    .label(photag_ui_bridge::i18n::tr(&format!("{}  ({count})", name)))
                     .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
             )
         })

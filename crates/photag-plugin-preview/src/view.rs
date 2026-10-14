@@ -38,6 +38,11 @@ pub fn preview_view(
     file_operations: Arc<FileOperationsService>,
     runtime: tokio::runtime::Handle,
 ) -> UiViewContribution {
+    let surfaces = cordis
+        .try_service::<photag_ui_bridge::UiBridgeService>()
+        .expect("preview UI requires the registered UI Bridge")
+        .surfaces
+        .clone();
     UiViewContribution::new(
         "preview/image-view",
         "workspace.modal",
@@ -88,6 +93,7 @@ pub fn preview_view(
                     .unwrap_or_default();
                 let decode_service = Arc::clone(&service);
                 cx.spawn(async move |this, cx| {
+                    let mut filmstrip_request = None;
                     loop {
                         cx.background_executor()
                             .timer(std::time::Duration::from_millis(150))
@@ -103,6 +109,27 @@ pub fn preview_view(
                         let changed = this
                             .update(cx, |view: &mut PreviewView, cx| {
                                 let next = view.service.snapshot().revision;
+                                let more = view.surfaces.is_open("preview.more");
+                                let tags = view.surfaces.is_open("preview.tags");
+                                let request = view.surfaces.value("preview.filmstrip.request");
+                                if request != filmstrip_request {
+                                    if let Some(value) = &request {
+                                        if let Err(error) = view.settings.update(|settings| {
+                                            settings.show_filmstrip = value == "true"
+                                        }) {
+                                            view.operation_status = Some(error.to_string());
+                                        }
+                                        view.service.mark_activity();
+                                    }
+                                    filmstrip_request = request;
+                                    cx.notify();
+                                }
+                                if more != view.more_actions_open || tags != view.tag_picker_open {
+                                    view.more_actions_open = more;
+                                    view.tag_picker_open = tags;
+                                    view.service.mark_activity();
+                                    cx.notify();
+                                }
                                 let next_chrome_alpha = view.service.chrome_alpha();
                                 let chrome_changed =
                                     (next_chrome_alpha - chrome_alpha).abs() > 0.01;
@@ -136,6 +163,7 @@ pub fn preview_view(
                     tagging: Arc::clone(&tagging),
                     history: history.clone(),
                     cordis: cordis.clone(),
+                    surfaces: surfaces.clone(),
                     last_drag_position: None,
                     toolbar_drag_origin: None,
                     toolbar_drag_offset: None,
@@ -152,7 +180,9 @@ pub fn preview_view(
                     tag_picker_search: tag_picker_search.clone(),
                     tag_picker_open: false,
                     collapsed_dropdown_tag_ids,
-                    collapsed_info_sections: std::collections::HashSet::new(),
+                    collapsed_info_sections: ["Metadata (EXIF)", "File path", "Video"]
+                        .into_iter()
+                        .collect(),
                     context_menu_open: false,
                     context_menu_anchor: None,
                     last_playback_source: None,
@@ -164,6 +194,7 @@ pub fn preview_view(
     )
 }
 pub(crate) struct PreviewView {
+    surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     locale_revision: u64,
     service: Arc<PreviewService>,
     zoom_slider: Entity<SliderState>,

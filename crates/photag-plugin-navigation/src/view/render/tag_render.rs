@@ -9,7 +9,7 @@ pub(super) fn render_tag(
     excluded: &[i64],
     cx: &mut Context<SidebarView>,
 ) -> Div {
-    let indent = "  ".repeat(tag.full_path.matches('>').count());
+    let depth = tag.full_path.matches('>').count();
     let tag_id = tag.id;
     let is_included = included.contains(&tag_id);
     let is_excluded = excluded.contains(&tag_id);
@@ -29,16 +29,15 @@ pub(super) fn render_tag(
         .min_w_0()
         .text_size(px(12.))
         .label(format!(
-            "{indent}{}{}  {}",
+            "{}{}",
             tag.name,
             if is_included {
-                " ✓"
+                "  ✓"
             } else if is_excluded {
-                " ⊘"
+                "  ⊘"
             } else {
                 ""
-            },
-            tag.media_count
+            }
         ))
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(select_name_id, event.modifiers(), cx)
@@ -202,13 +201,16 @@ pub(super) fn render_tag(
     let before = div()
         .w_full()
         .h(px(20.))
+        .opacity(0.)
         .items_center()
         .justify_center()
         .text_xs()
         .text_color(rgb(theme::TEXT_MUTED))
         .child(photag_ui_bridge::i18n::tr("Drop above to place before"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+            style
+                .opacity(1.)
+                .bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -226,6 +228,9 @@ pub(super) fn render_tag(
                 .relative()
                 .h_flex()
                 .items_center()
+                .pl(px(3. + depth as f32 * 10.))
+                .pr(px(3.))
+                .h(px(theme::SIDEBAR_ROW_HEIGHT))
                 .rounded(px(4.))
                 .when(selected, |row| {
                     row.bg(rgba(theme::accent_alpha(theme::accent(), 65. / 255.)))
@@ -252,9 +257,20 @@ pub(super) fn render_tag(
                             | (u32::from(green) << 8)
                             | u32::from(blue))))
                         .when_some(tag_icon, |row, icon| {
-                            row.child(div().text_size(px(10.)).child(icon.to_owned()))
+                            row.child(
+                                div()
+                                    .text_size(px(10.))
+                                    .text_color(rgb(theme::TEXT_SECONDARY))
+                                    .child(icon.to_owned()),
+                            )
                         })
                         .child(drag_name)
+                        .child(
+                            div()
+                                .text_size(px(10.5))
+                                .text_color(rgb(theme::TEXT_MUTED))
+                                .child(tag.media_count.to_string()),
+                        )
                         .drag_over::<TagDragPayload>(|style, _, _, _| {
                             style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
                         })
@@ -275,13 +291,16 @@ pub(super) fn render_tag(
     let after = div()
         .w_full()
         .h(px(20.))
+        .opacity(0.)
         .items_center()
         .justify_center()
         .text_xs()
         .text_color(rgb(theme::TEXT_MUTED))
         .child(photag_ui_bridge::i18n::tr("Drop below to place after"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+            style
+                .opacity(1.)
+                .bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(

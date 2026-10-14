@@ -173,6 +173,7 @@ impl SidebarView {
         let Some(tag) = tag else { return };
         let name = tag.name.clone();
         let count = tag.media_count.max(0) as usize;
+        self.delete_clean_parents = false;
         self.confirm_delete = Some((id, name, count));
         cx.notify();
     }

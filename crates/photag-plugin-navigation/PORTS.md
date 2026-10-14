@@ -109,3 +109,7 @@ child reparent/delete option is retained. The edit modal includes name, color
 swatches, icon presets, associated tags, child appearance propagation and
 display-on-thumbnail state. Live appearance and interaction remain unverified
 until checked through PhoTag MCP.
+
+## 2026-10-14 current implementation and MCP evidence
+
+Reference00/04 sidebar and five tag modal layouts were rendered via PhoTag MCP. New NavigationUiRequest::AllFiles dispatches existing folder/tag deselection. MediaIndexChanged listener/poller refreshes sidebar counts; modal render also consumes queued requests so close/switch is reachable under an open modal. Terminal scan errors preserve the last progress error for retry. Real tag tree/production data semantics are unchanged. Native tag submission/drag/scan-failure interaction remain unverified.

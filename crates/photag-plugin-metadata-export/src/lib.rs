@@ -196,18 +196,16 @@ impl Plugin for MetadataExportPlugin {
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| MetadataExportPluginError::Publish(error.to_string()))?;
-        let command_service = Arc::clone(&service);
+        let surfaces = context
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .map_err(|error| MetadataExportPluginError::Dependency(error.to_string()))?
+            .surfaces
+            .clone();
+        let command_surfaces = Arc::clone(&surfaces);
         let _command_listener = context
             .on::<UiCommandInvoked, _>(observer_sync(move |_, command_id| {
-                if command_id == EXPORT_COMMAND_ID
-                    && let Err(error) = command_service.request_export()
-                {
-                    if !matches!(&error, MetadataExportError::AlreadyRunning)
-                        && let Ok(mut status) = command_service.status.lock()
-                        && !matches!(&*status, MetadataExportStatus::Exporting)
-                    {
-                        *status = MetadataExportStatus::Failed(error.to_string());
-                    }
+                if command_id == EXPORT_COMMAND_ID {
+                    let _ = command_surfaces.set_open("metadata-export", true);
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -252,7 +250,7 @@ impl Plugin for MetadataExportPlugin {
         register_views_for_plugin(
             &context,
             "photag.metadata-export",
-            [view::export_panel(service, context.clone())],
+            [view::export_panel(service, surfaces)],
         )
         .map_err(|error| MetadataExportPluginError::UiRegistration(error.to_string()))?;
         Ok(())

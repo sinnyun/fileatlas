@@ -83,13 +83,17 @@ pub(super) fn render_media_card(
                 } else {
                     theme::icons::AUDIO.to_string()
                 }),
-            // The thumbnailer has not produced an image yet; keep the slot
-            // alive while the indexer backfills.
+            // A missing path does not say whether thumbnail generation is
+            // running or has failed. Keep a stable neutral placeholder until
+            // the real thumbnail becomes available instead of implying load.
             _ => frame
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(gpui_kit::component::spinner::Spinner::new()),
+                .font_family(theme::ICON_FONT_FAMILY)
+                .text_size(px(24.))
+                .text_color(rgba(0xffffff42))
+                .child(theme::icons::PICTURE.to_string()),
         };
     }
     let menu_view = cx.entity().downgrade();

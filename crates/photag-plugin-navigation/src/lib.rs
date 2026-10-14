@@ -412,6 +412,16 @@ impl Plugin for NavigationPlugin {
         };
         let expanded_subdirs = session.expanded_subdirs;
         let add_folder_requested = Arc::new(AtomicBool::new(false));
+        let index_changed = Arc::new(AtomicBool::new(false));
+        let dirty = Arc::clone(&index_changed);
+        let _index_listener = context
+            .on::<photag_contracts::MediaIndexChanged, _>(cordis::event::observer_sync(
+                move |_, ()| {
+                    dirty.store(true, Ordering::Release);
+                    Ok::<_, std::convert::Infallible>(())
+                },
+            ))
+            .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
         let pending = Arc::clone(&add_folder_requested);
         let _command_listener = context
             .on::<photag_ui_bridge::UiCommandInvoked, _>(cordis::event::observer_sync(
@@ -468,6 +478,7 @@ impl Plugin for NavigationPlugin {
                 expanded_subdirs,
                 preferences,
                 add_folder_requested,
+                index_changed,
             ),
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;

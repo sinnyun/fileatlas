@@ -547,3 +547,87 @@ msg-060c0ac901f1 = { $scanned } / { $total } files
 
 msg-9fc48a07fd54 = Folder scan failed
 msg-6562da48e869 = Retry scan
+
+msg-bdb888a3bff7 = Minimum rating
+
+msg-ccbb633d28f0 = Maximum rating
+
+msg-11c54a59d8a9 = Include
+
+msg-e0719d36d13f = Exported { $records } records
+
+msg-f80988dc7a01 = Choose destination…
+
+msg-1eca354d709c = Tag color
+
+msg-087405b4bc63 = Tag icon
+
+msg-f8cb934cf683 = Used by { $count } media items
+
+msg-d0e088641858 = When deleting this tag
+
+msg-a17532f77d2a = This action removes tag assignments from matching media.
+
+msg-f8e43c1cd8c8 = Child tag handling
+
+msg-42528a4d3804 = This tag has { $count } direct child tags.
+
+msg-d9467bd992da = Re-parent children under target
+
+msg-d6d928c16bb5 = Delete child tags
+
+msg-218858905699 = Existing child tags are kept and moved below the target.
+
+msg-54982ad020f3 = Child tag assignments are removed with the source tag.
+
+msg-0c7102d686f2 = Accent source
+
+msg-c14e7b1c4828 = Interface preview
+
+msg-289ee87b8659 = Lock toolbar position
+
+msg-c7e095fea9d2 = Reset toolbar position
+
+msg-f34c2d68fbfe = Exclude shortcut
+
+msg-6326d904695c = Hold this key while clicking a tag to exclude it.
+
+msg-aab797062afe = Open media file
+
+msg-67816c9e0815 = Use this key in the gallery or preview to open the selected file.
+
+msg-1d162663b03f = Rating shortcuts
+
+msg-cbf559e00d9b = Use number keys 0–5 to set a rating; in preview, 0 clears the rating.
+
+msg-516277b37623 = Tag target shortcuts (F1–F9)
+
+msg-be3d37f03446 = Choose a tag for each key. Press that key in the gallery or preview to toggle the tag.
+
+msg-235b09f91e42 = Tag name matching
+
+msg-395d66131946 = Choose whether a query can match anywhere or only at the start of a tag name.
+
+msg-f0301af24b41 = Check for new versions and choose when to install them.
+
+msg-eae1f5caf558 = Update status
+
+msg-f11d3f9000bf = Associated tags
+
+msg-75b26f417631 = Apply to children
+
+msg-8f133cd05a1b = Skip edited children
+
+msg-f3242734edeb = Parent tag
+
+msg-1c3d7aef2426 = System follows the Windows accent color.
+
+msg-c3d766d2060d = Min rating
+
+msg-5fa37fee5881 = Max rating
+
+msg-43b254d8352f = Metadata writeback failed
+
+msg-9f5cd8a2e880 = Retry
+
+msg-c177e4b0aa9f = Downloading…

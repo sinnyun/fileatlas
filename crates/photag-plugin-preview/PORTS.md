@@ -52,3 +52,17 @@ OS/backend errors and some generated diagnostics are not fully localized.
 The real MCP-only validation coverage and remaining source layout differences
 are recorded in docs/validation-report.md; screenshots do not prove pointer
 interaction or animation parity.
+
+## v5 design 01 / 07 presentation (2026-10-14)
+
+The image view uses an opaque stage, an opaque full-width toolbar anchored immediately above
+the optional 100px filmstrip, filename captions and a controlled GPUI Kit More popover. Stored
+custom toolbar offsets and lock/reset controls remain compatible. The information card uses
+real indexed filename/rating/open count/tags and filesystem/image metadata; ratings call the
+existing preview rating handler. EXIF and path sections start collapsed. More/Tags/filmstrip
+can be requested through the project MCP; see its PORTS. Pointer hit propagation and dragging
+are separate from typed-request/state/screenshot coverage.
+
+## 2026-10-14 current implementation and MCP evidence
+
+Reference02 rendered with real image info/ratings, fixed opaque toolbar, filenames in filmstrip, controlled More/Tags popovers. MCP exercised zoom/rotation/reset/filmstrip showhide/info; native file dialogs, toolbar drag and per-key keyboard behavior unverified. See current redraw evidence in docs/redesign-validation.md.

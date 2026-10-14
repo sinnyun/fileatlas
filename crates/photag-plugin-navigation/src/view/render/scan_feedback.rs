@@ -1,10 +1,6 @@
 use super::*;
 
-pub(super) fn append(
-    mut panel: Div,
-    view: &SidebarView,
-    cx: &mut Context<SidebarView>,
-) -> Div {
+pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<SidebarView>) -> Div {
     if view.active_scan_folder_id.is_some() {
         let progress = view.scan_progress.as_ref();
         let scanned = progress.map(|value| value.scanned).unwrap_or(0);
@@ -31,9 +27,9 @@ pub(super) fn append(
                                 .ghost()
                                 .compact()
                                 .label(photag_ui_bridge::i18n::tr("Cancel"))
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.cancel_active_scan(cx)
-                                })),
+                                .on_click(
+                                    cx.listener(|this, _, _, cx| this.cancel_active_scan(cx)),
+                                ),
                         ),
                 )
                 .child(
@@ -41,15 +37,18 @@ pub(super) fn append(
                         .value(ratio.clamp(0.0, 1.0) * 100.0)
                         .w_full(),
                 )
-                .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                    photag_ui_bridge::i18n::tr_args(
-                        "{scanned} / {total} files",
-                        &[
-                            ("scanned", scanned.to_string()),
-                            ("total", total.to_string()),
-                        ],
-                    ),
-                )),
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr_args(
+                            "{scanned} / {total} files",
+                            &[
+                                ("scanned", scanned.to_string()),
+                                ("total", total.to_string()),
+                            ],
+                        )),
+                ),
         );
     }
     if let Some((target, message)) = view.scan_failure.clone() {
@@ -83,7 +82,12 @@ pub(super) fn append(
                                 })),
                         ),
                 )
-                .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(message)),
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(message),
+                ),
         );
     }
     panel

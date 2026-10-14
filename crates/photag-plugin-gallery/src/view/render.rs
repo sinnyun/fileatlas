@@ -51,6 +51,20 @@ impl Render for GalleryView {
                     self.selection = GallerySelection::default();
                     self.persist_filter_session();
                 }
+                crate::GalleryUiRequest::SelectMany(ids) => {
+                    self.selection.selected_media_ids = ids;
+                    self.selection.anchor_id = self.selection.selected_media_ids.first().copied();
+                    self.persist_filter_session();
+                }
+                crate::GalleryUiRequest::ScrollTo(index) => {
+                    if self
+                        .snapshot
+                        .as_ref()
+                        .is_ok_and(|snapshot| index < snapshot.skeletons.len())
+                    {
+                        self.scroll_to_gallery_item(index);
+                    }
+                }
                 crate::GalleryUiRequest::Search(query) => {
                     self.search
                         .update(cx, |input, cx| input.set_value(&query, window, cx));
@@ -129,6 +143,16 @@ impl Render for GalleryView {
                 .map(|s| s.skeletons.len())
                 .unwrap_or(0),
             group_by_month: self.group_by_month,
+            window_offset: self
+                .snapshot
+                .as_ref()
+                .map(|snapshot| snapshot.window_offset)
+                .unwrap_or(0),
+            loaded_count: self
+                .snapshot
+                .as_ref()
+                .map(|snapshot| snapshot.media.len())
+                .unwrap_or(0),
             inspector_sections: self.inspector_expanded.iter().copied().collect(),
             bulk_action: self.bulk_action.map(|action| action.label()),
             bulk_source: self.bulk_source.label(),
@@ -302,6 +326,9 @@ impl Render for GalleryView {
                                                 snapshot.media = window.media;
                                                 snapshot.media_tags = window.media_tags;
                                             }
+                                            // List layout loads the page after render published
+                                            // its snapshot. Publish the new offset next frame.
+                                            cx.notify();
                                         }
                                         Ok(None) => {}
                                         Err(error) => this.snapshot = Err(error.to_string()),

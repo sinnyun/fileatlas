@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 impl SettingsView {
     pub(super) fn render_tab(&self, s: &Settings, cx: &mut Context<Self>) -> impl IntoElement {
@@ -48,9 +49,8 @@ impl SettingsView {
         match self.tab {
             Tab::Appearance => {
                 b = b.children(self.language_views.clone());
-                b = b.child(self.section("Accent color"));
+                b = b.child(self.section("Accent source"));
                 for name in [
-                    "System",
                     "Slate Blue",
                     "Dusty Teal",
                     "Muted Copper",
@@ -58,31 +58,42 @@ impl SettingsView {
                     "Sage Green",
                     "Dusty Mauve",
                     "Warm Taupe",
+                    "System",
                 ] {
                     let selected = s.accent_name == name;
                     let value = name.to_owned();
-                    let swatch = Button::new(format!("settings-accent-{name}"))
+                    let mut swatch = Button::new(format!("settings-accent-{name}"))
                         .compact()
+                        .p_0()
+                        .min_w(px(22.))
                         .w(px(22.))
                         .h(px(22.))
-                        .rounded(px(4.))
+                        .rounded_full()
                         .bg(rgb(theme::resolve_accent(name)))
                         .border_color(rgb(if selected {
                             theme::TEXT_PRIMARY
                         } else {
-                            theme::SURFACE_MODAL
+                            theme::TEXT_SECONDARY
                         }))
-                        .border(px(if selected { 1.5 } else { 0. }))
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            let value = value.clone();
-                            this.edit(move |s| s.accent_name = value.clone(), cx);
-                        }));
+                        .border(px(if selected { 2. } else { 1. }));
+                    if selected {
+                        swatch = swatch.child(
+                            div()
+                                .size(px(6.))
+                                .rounded_full()
+                                .bg(rgb(theme::TEXT_PRIMARY)),
+                        );
+                    }
+                    swatch = swatch.on_click(cx.listener(move |this, _, _, cx| {
+                        let value = value.clone();
+                        this.edit(move |s| s.accent_name = value.clone(), cx);
+                    }));
                     b = b.child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap(px(10.))
-                            .h(px(22.))
+                            .gap(px(9.))
+                            .h(px(25.))
                             .child(swatch)
                             .child(
                                 div()
@@ -91,193 +102,155 @@ impl SettingsView {
                             ),
                     );
                 }
-                b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                    photag_ui_bridge::i18n::tr("System follows the Windows accent color. Preview and feature panels use the shared accent palette."),
-                ));
-                b = b.child(self.section("Accent preview")).child(
+                b = b.child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(
+                            "System follows the Windows accent color.",
+                        )),
+                );
+                b = b.child(self.section("Interface preview")).child(
                     div()
                         .h_flex()
                         .items_center()
-                        .gap_2()
-                        .p_2()
+                        .gap(px(16.))
+                        .h(px(50.))
+                        .px_3()
                         .rounded_md()
                         .border_1()
                         .border_color(rgba(theme::HAIRLINE.to_rgba()))
                         .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                        .child(div().font_semibold().child("PhoTag"))
-                        .child(div().flex_1())
-                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Library")))
                         .child(
                             div()
-                                .px_2()
-                                .py_1()
-                                .rounded_sm()
-                                .bg(rgb(theme::resolve_accent(&s.accent_name)))
-                                .text_color(rgb(theme::TEXT_PRIMARY))
-                                .child(photag_ui_bridge::i18n::tr("Gallery")),
+                                .h_flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    gpui_kit::component::Icon::new(
+                                        gpui_kit::assets::IconName::Aperture,
+                                    )
+                                    .text_color(rgb(theme::accent())),
+                                )
+                                .child(div().font_semibold().child("PhoTag")),
                         )
-                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Tags"))),
+                        .child(
+                            div()
+                                .w(px(1.))
+                                .h(px(22.))
+                                .bg(rgba(theme::HAIRLINE.to_rgba())),
+                        )
+                        .child(gpui_kit::component::Icon::new(
+                            gpui_kit::assets::IconName::House,
+                        ))
+                        .child(gpui_kit::component::Icon::new(
+                            gpui_kit::assets::IconName::Folder,
+                        ))
+                        .child(div().flex_1())
+                        .child(gpui_kit::component::Icon::new(
+                            gpui_kit::assets::IconName::Star,
+                        ))
+                        .child(
+                            div()
+                                .h_flex()
+                                .items_center()
+                                .justify_center()
+                                .w(px(30.))
+                                .h_full()
+                                .border_b_1()
+                                .border_color(rgb(theme::accent()))
+                                .child(
+                                    gpui_kit::component::Icon::new(
+                                        gpui_kit::assets::IconName::Image,
+                                    )
+                                    .text_color(rgb(theme::accent())),
+                                ),
+                        ),
                 );
             }
             Tab::Toolbar => {
-                for (group, controls) in [
-                    (
-                        "Zoom controls",
-                        vec![
-                            (
-                                "tb.zoom_mode",
-                                "Zoom mode toggle",
-                                s.toolbar.zoom_mode_button,
-                            ),
-                            ("tb.zoom_reset", "Reset zoom", s.toolbar.zoom_reset_button),
-                            ("tb.zoom_presets", "Zoom presets", s.toolbar.zoom_presets),
-                        ],
-                    ),
-                    (
-                        "Photo manipulation",
-                        vec![
-                            ("tb.rotate", "Rotation controls", s.toolbar.rotate_buttons),
-                            ("tb.flip", "Mirror controls", s.toolbar.flip_buttons),
-                        ],
-                    ),
-                    (
-                        "Tags",
-                        vec![("tb.tags", "Tags dropdown", s.toolbar.tags_button)],
-                    ),
-                    (
-                        "File",
-                        vec![
-                            (
-                                "tb.delete",
-                                "Delete to recycle bin",
-                                s.toolbar.delete_button,
-                            ),
-                            ("tb.copy", "Copy to…", s.toolbar.copy_button),
-                            ("tb.move", "Move to…", s.toolbar.move_button),
-                            ("tb.explorer", "Show in Explorer", s.toolbar.explorer_button),
-                            (
-                                "tb.external",
-                                "Open in default app",
-                                s.toolbar.open_external_button,
-                            ),
-                        ],
-                    ),
-                    (
-                        "View",
-                        vec![
-                            (
-                                "tb.filmstrip",
-                                "Filmstrip toggle",
-                                s.toolbar.filmstrip_toggle,
-                            ),
-                            (
-                                "date",
-                                "Group date-sorted gallery by month",
-                                s.show_date_dividers,
-                            ),
-                        ],
-                    ),
-                ] {
-                    let mut section = div().v_flex().gap(px(6.)).child(
-                        div()
-                            .font_semibold()
-                            .child(photag_ui_bridge::i18n::tr(group)),
-                    );
-                    for (k, n, v) in controls {
-                        section = section.child(self.toggle_button(k, n, v, cx));
-                    }
-                    b = b.child(section);
-                }
-                b = b
-                    .child(self.toggle_button(
-                        "filmstrip",
-                        "Show filmstrip by default",
-                        s.show_filmstrip,
-                        cx,
-                    ))
-                    .child(self.toggle_button(
-                        "pos.locked",
-                        "Lock floating toolbar position",
-                        s.toolbar_pos.locked,
-                        cx,
-                    ))
-                    .child(div().child(format!(
-                        "Toolbar offset: {:.0}, {:.0} px",
-                        s.toolbar_pos.offset_x, s.toolbar_pos.offset_y
-                    )))
-                    .child(div().child(photag_ui_bridge::i18n::tr(
-                        "Adjust the preview toolbar position in 10 px steps.",
-                    )))
-                    .child(
-                        div()
-                            .h_flex()
-                            .gap_1()
-                            .child(self.enum_button(
-                                "pos-left",
-                                "← 10 px".into(),
-                                |s| s.toolbar_pos.offset_x -= 10.0,
-                                cx,
-                            ))
-                            .child(self.enum_button(
-                                "pos-right",
-                                "10 px →".into(),
-                                |s| s.toolbar_pos.offset_x += 10.0,
-                                cx,
-                            ))
-                            .child(self.enum_button(
-                                "pos-up",
-                                "↑ 10 px".into(),
-                                |s| s.toolbar_pos.offset_y -= 10.0,
-                                cx,
-                            ))
-                            .child(self.enum_button(
-                                "pos-down",
-                                "10 px ↓".into(),
-                                |s| s.toolbar_pos.offset_y += 10.0,
-                                cx,
-                            ))
-                            .child(self.enum_button(
-                                "pos-reset",
-                                "Reset position".into(),
-                                |s| {
-                                    s.toolbar_pos.offset_x = 0.0;
-                                    s.toolbar_pos.offset_y = 0.0;
-                                },
-                                cx,
-                            )),
-                    );
+                b = b.child(self.toolbar_settings(s, cx));
             }
             Tab::Shortcuts => {
                 b = b.child(self.section("Tag sidebar modifier"));
-                for opt in [
-                    ExcludeModifier::None,
-                    ExcludeModifier::Ctrl,
-                    ExcludeModifier::Shift,
-                    ExcludeModifier::Alt,
-                ] {
-                    let selected = s.exclude_modifier == opt;
-                    b = b.child(self.enum_button(
-                        format!("exclude-modifier-{}", opt.label()),
-                        format!("{}{}", if selected { "● " } else { "" }, opt.label()),
-                        move |s| s.exclude_modifier = opt,
-                        cx,
-                    ));
-                }
-                b = b
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap_2()
-                            .child(photag_ui_bridge::i18n::tr_args("Open selected media: {key}", &[("key", s.open_key.clone())]))
-                            .child(self.open_key_capture_button(cx)),
-                    )
-                    .child(div().child(
-                        photag_ui_bridge::i18n::tr("Gallery ratings use number-row keys. Preview applies 0–5 to the current item; F1–F9 toggles its assigned tag."),
-                    ));
-                b = b.child(self.section("Tag hotkeys F1–F9"));
-                b = b.child(div().child(photag_ui_bridge::i18n::tr(
-                    "Press an F-key in the gallery or preview to toggle its assigned tag.",
+                let modifier = s.exclude_modifier;
+                let weak = cx.entity().downgrade();
+                b = b.child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .justify_between()
+                        .gap_3()
+                        .child(
+                            div()
+                                .v_flex()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_sm()
+                                        .child(photag_ui_bridge::i18n::tr("Exclude shortcut")),
+                                )
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(rgb(theme::TEXT_SECONDARY))
+                                        .child(photag_ui_bridge::i18n::tr(
+                                            "Hold this key while clicking a tag to exclude it.",
+                                        )),
+                                ),
+                        )
+                        .child(
+                            Button::new("settings-exclude-modifier")
+                                .w(px(100.))
+                                .label(photag_ui_bridge::i18n::tr(modifier.label()))
+                                .dropdown_caret(true)
+                                .dropdown_menu(move |mut menu, _, _| {
+                                    for option in [
+                                        ExcludeModifier::None,
+                                        ExcludeModifier::Ctrl,
+                                        ExcludeModifier::Shift,
+                                        ExcludeModifier::Alt,
+                                    ] {
+                                        let weak = weak.clone();
+                                        menu = menu.item(
+                                            PopupMenuItem::new(photag_ui_bridge::i18n::tr(
+                                                option.label(),
+                                            ))
+                                            .checked(option == modifier)
+                                            .on_click(move |_, _, cx| {
+                                                let _ = weak.update(cx, |view, cx| {
+                                                    view.edit(
+                                                        |settings| {
+                                                            settings.exclude_modifier = option
+                                                        },
+                                                        cx,
+                                                    )
+                                                });
+                                            }),
+                                        );
+                                    }
+                                    menu
+                                }),
+                        ),
+                );
+                b = b.child(self.section("Open media file"));
+                b = b.child(div().h_flex().items_center().justify_between().gap_3()
+                    .child(div().v_flex().gap_1()
+                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Open selected media")))
+                        .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr("Use this key in the gallery or preview to open the selected file."))))
+                    .child(div().h_flex().items_center().gap_2()
+                        .child(div().px_3().py_1().rounded_sm().border_1()
+                            .border_color(rgba(theme::HAIRLINE.to_rgba())).bg(rgb(theme::SURFACE_BASE))
+                            .child(s.open_key.clone()))
+                        .child(self.open_key_capture_button(cx))));
+                b = b.child(self.section("Rating shortcuts"));
+                b = b.child(div().text_sm().child(photag_ui_bridge::i18n::tr(
+                    "Use number keys 0–5 to set a rating; in preview, 0 clears the rating.",
+                )));
+                b = b.child(self.section("Tag target shortcuts (F1–F9)"));
+                b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr(
+                    "Choose a tag for each key. Press that key in the gallery or preview to toggle the tag.",
                 )));
                 match self
                     .navigation
@@ -287,6 +260,7 @@ impl SettingsView {
                 {
                     Some(Ok(snapshot)) => {
                         let mut flat_tags = Vec::new();
+                        let mut rows = div().v_flex().gap(px(3.));
                         let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
                         while let Some(tag) = pending.pop() {
                             let icon = tag
@@ -306,13 +280,39 @@ impl SettingsView {
                                 .iter()
                                 .find(|hotkey| hotkey.key == key)
                                 .map(|hotkey| hotkey.tag_id);
-                            b = b.child(tag_hotkeys::button(
-                                key,
-                                selected,
-                                flat_tags.clone(),
-                                cx.entity().downgrade(),
-                            ));
+                            rows = rows.child(
+                                div()
+                                    .h_flex()
+                                    .w_full()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .w(px(42.))
+                                            .h(px(24.))
+                                            .flex_shrink_0()
+                                            .h_flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .rounded_sm()
+                                            .border_1()
+                                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                                            .bg(rgb(theme::SURFACE_BASE))
+                                            .text_sm()
+                                            .font_semibold()
+                                            .child(key),
+                                    )
+                                    .child(tag_hotkeys::button(
+                                        key,
+                                        selected,
+                                        flat_tags.clone(),
+                                        cx.entity().downgrade(),
+                                    )),
+                            );
                         }
+                        b = b.child(rows);
                     }
                     Some(Err(error)) => {
                         b = b.child(div().child(format!("Could not load tags: {error}")));
@@ -321,6 +321,7 @@ impl SettingsView {
                         b = b.child(div().child(photag_ui_bridge::i18n::tr(
                             "Tag choices are unavailable while the navigation plugin is stopped.",
                         )));
+                        let mut rows = div().v_flex().gap(px(3.));
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
                             let selected = s
                                 .tag_hotkeys
@@ -330,46 +331,81 @@ impl SettingsView {
                             let assigned = selected
                                 .map(|id| format!("tag #{id}"))
                                 .unwrap_or_else(|| "None".into());
-                            b = b.child(div().child(format!("{key}: {assigned}")));
+                            rows = rows.child(
+                                div()
+                                    .h_flex()
+                                    .w_full()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .w(px(42.))
+                                            .h(px(24.))
+                                            .flex_shrink_0()
+                                            .h_flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .rounded_sm()
+                                            .border_1()
+                                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                                            .bg(rgb(theme::SURFACE_BASE))
+                                            .text_sm()
+                                            .font_semibold()
+                                            .child(key),
+                                    )
+                                    .child(div().flex_1().child(assigned)),
+                            );
                         }
+                        b = b.child(rows);
                     }
                 }
             }
             Tab::Tags => {
-                b = b.child(self.section("Global search scope"));
-                for (k, n, v) in [
-                    ("search.files", "Filenames", s.search_scopes.filenames),
-                    ("search.paths", "Paths", s.search_scopes.paths),
-                    ("search.tags", "Tags", s.search_scopes.tags),
-                ] {
-                    b = b.child(self.toggle_button(k, n, v, cx));
-                }
-                b = b.child(self.toggle_button(
-                    "persist",
-                    "Keep tag search query when switching tabs",
-                    s.tag_search_persist,
-                    cx,
-                ));
                 b = b.child(self.section("Search match"));
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
                     photag_ui_bridge::i18n::tr("Choose whether search matches anywhere in a tag name or only from its beginning."),
                 ));
-                let mut match_options = div().h_flex().gap_2();
-                for opt in [TagSearchMatch::Contains, TagSearchMatch::StartsWith] {
-                    let chosen = s.tag_search_match == opt;
-                    match_options = match_options.child(self.enum_button(
-                        format!("tag-match-{}", opt.label()),
-                        format!("{}{}", if chosen { "● " } else { "" }, opt.label()),
-                        move |s| s.tag_search_match = opt,
-                        cx,
-                    ));
+                let match_mode = s.tag_search_match;
+                let weak = cx.entity().downgrade();
+                b = b.child(div().h_flex().items_center().justify_between().gap_3()
+                    .child(div().v_flex().gap_1()
+                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Tag name matching")))
+                        .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr("Choose whether a query can match anywhere or only at the start of a tag name."))))
+                    .child(Button::new("settings-tag-match")
+                        .label(photag_ui_bridge::i18n::tr(match_mode.label()))
+                        .dropdown_menu(move |mut menu, _, _| {
+                            for option in [TagSearchMatch::Contains, TagSearchMatch::StartsWith] {
+                                let weak = weak.clone();
+                                menu = menu.item(PopupMenuItem::new(photag_ui_bridge::i18n::tr(option.label()))
+                                    .checked(option == match_mode)
+                                    .on_click(move |_, _, cx| {
+                                        let _ = weak.update(cx, |view, cx| view.edit(|settings| settings.tag_search_match = option, cx));
+                                    }));
+                            }
+                            menu
+                        })));
+                b = b.child(self.section("Search scope"));
+                for (key, label, enabled) in [
+                    ("search.files", "Filenames", s.search_scopes.filenames),
+                    ("search.paths", "Paths", s.search_scopes.paths),
+                    ("search.tags", "Tags", s.search_scopes.tags),
+                ] {
+                    b = b.child(self.toggle_button(key, label, enabled, cx));
                 }
-                b = b.child(match_options);
+                b = b.child(self.toggle_button(
+                    "persist",
+                    "Keep search query when switching tabs",
+                    s.tag_search_persist,
+                    cx,
+                ));
                 b = b.child(self.section("Source tag children after merge"));
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(
                     photag_ui_bridge::i18n::tr("Choose whether child tags move to the target tag or are removed with the merged tag."),
                 ));
-                let mut merge_options = div().h_flex().gap_2();
+                let mut merge_options = div().v_flex().gap_1();
                 for opt in [TagMergeChildren::Reparent, TagMergeChildren::Delete] {
                     let chosen = s.tag_merge_children == opt;
                     merge_options = merge_options.child(self.enum_button(

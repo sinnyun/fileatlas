@@ -37,3 +37,17 @@ OS/backend errors and some generated diagnostics are not fully localized.
 The real MCP-only validation coverage and remaining source layout differences
 are recorded in docs/validation-report.md; screenshots do not prove pointer
 interaction or animation parity.
+
+## v5 design 01 presentation (2026-10-14)
+
+Playback fills the same PhoTag window with an opaque stage, a slim filename header and fixed
+bottom transport. Tags/More share UI Bridge surface state between buttons and MCP requests.
+The view supports focused Escape, Space and Left/Right seeking through existing service
+methods. Volume is bounded by the public service to [0,1.5]; MCP `set_volume` uses the same
+method. The view only shows output-unavailable feedback during active playback; stopping at
+the end no longer mislabels a stopped audio session as an unavailable device. Actual sound
+quality/codec breadth/device coverage requires separate listening and Windows tests.
+
+## 2026-10-14 current implementation and MCP evidence
+
+Reference05 rendered with decoded320x180 H264 frames contained across the stage. PCM/H264 playback state, pause/seek2/speed1.25/volume0.4/Tags/More were exercised through same-process PhoTag MCP. Footer is fixed; speed/volume controls bounded. Sound listening, allcodecs, native file dialogs remain unverified.

@@ -2,6 +2,24 @@ use super::*;
 
 #[tool_router(router = read_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
+    #[tool(
+        description = "调整当前 PhoTag 原生窗口外框尺寸（像素），用于隔离档案的布局验证。范围：640×480 至 4096×2160。"
+    )]
+    fn resize_window(&self, Parameters(request): Parameters<WindowSizeRequest>) -> String {
+        match screenshot::resize_window(self.capture.get(), request.width, request.height) {
+            Ok((actual_width, actual_height)) => serde_json::to_string(&json!({
+                "ok": true,
+                "requested_width": request.width,
+                "requested_height": request.height,
+                "actual_width": actual_width,
+                "actual_height": actual_height,
+            }))
+            .unwrap_or_else(|error| format!("{{\"error\":\"{error}\"}}")),
+            Err(error) => serde_json::to_string(&json!({"error": error}))
+                .unwrap_or_else(|_| "{\"error\":\"window resize failed\"}".into()),
+        }
+    }
+
     #[tool(description = "截取当前 PhoTag 原生窗口的真实画面，并以 MCP 图片内容返回。")]
     async fn screenshot_window(&self) -> Result<CallToolResult, McpError> {
         let handle = self.capture.get();

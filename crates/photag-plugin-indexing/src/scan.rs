@@ -176,59 +176,60 @@ fn scan_folder_impl(
         if cancel.load(Ordering::Relaxed) {
             return Ok(());
         }
-        db.database.with_writer(|conn| {
-            conn.execute_batch("BEGIN")?;
-            let insert_result = (|| {
-                for entry in chunk {
-                    let path = &entry.path;
-                    let filename = path
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    let full_path = path.to_string_lossy().to_string();
-                    let ext = path
-                        .extension()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-                    let media_type = get_media_type(&ext).unwrap_or(entry.media_type);
-                    let metadata = std::fs::metadata(path).ok();
-                    let file_size = metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
-                    let modified_at = metadata
-                        .as_ref()
-                        .and_then(|m| m.modified().ok())
-                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                        .map(|d| d.as_secs() as i64)
-                        .unwrap_or(0);
-                    let thumb_path_str = entry
-                        .thumb_image
-                        .as_ref()
-                        .map(|p| p.to_string_lossy().to_string());
-                    queries::insert_media(
-                        conn,
-                        folder_id,
-                        &filename,
-                        &full_path,
-                        media_type,
-                        file_size,
-                        modified_at,
-                        None,
-                        None,
-                        thumb_path_str.as_deref(),
-                    )?;
+        db.database
+            .with_writer(|conn| {
+                conn.execute_batch("BEGIN")?;
+                let insert_result = (|| {
+                    for entry in chunk {
+                        let path = &entry.path;
+                        let filename = path
+                            .file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
+                        let full_path = path.to_string_lossy().to_string();
+                        let ext = path
+                            .extension()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string();
+                        let media_type = get_media_type(&ext).unwrap_or(entry.media_type);
+                        let metadata = std::fs::metadata(path).ok();
+                        let file_size = metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
+                        let modified_at = metadata
+                            .as_ref()
+                            .and_then(|m| m.modified().ok())
+                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                            .map(|d| d.as_secs() as i64)
+                            .unwrap_or(0);
+                        let thumb_path_str = entry
+                            .thumb_image
+                            .as_ref()
+                            .map(|p| p.to_string_lossy().to_string());
+                        queries::insert_media(
+                            conn,
+                            folder_id,
+                            &filename,
+                            &full_path,
+                            media_type,
+                            file_size,
+                            modified_at,
+                            None,
+                            None,
+                            thumb_path_str.as_deref(),
+                        )?;
+                    }
+                    Ok::<(), rusqlite::Error>(())
+                })();
+                match insert_result {
+                    Ok(()) => conn.execute_batch("COMMIT"),
+                    Err(error) => {
+                        let _ = conn.execute_batch("ROLLBACK");
+                        Err(error)
+                    }
                 }
-                Ok::<(), rusqlite::Error>(())
-            })();
-            match insert_result {
-                Ok(()) => conn.execute_batch("COMMIT"),
-                Err(error) => {
-                    let _ = conn.execute_batch("ROLLBACK");
-                    Err(error)
-                }
-            }
-        })
-        .map_err(|error| error.to_string())?;
+            })
+            .map_err(|error| error.to_string())?;
         let scanned = ((chunk_idx + 1) * chunk_size).min(total);
         tx.send(Some(ScanProgress {
             scanned,
@@ -309,7 +310,8 @@ fn scan_folder_impl(
             let mut batch: Vec<(String, String, u32, u32, Option<Vec<u8>>)> =
                 Vec::with_capacity(BATCH_SIZE);
             let flush = |batch: &mut Vec<(String, String, u32, u32, Option<Vec<u8>>)>,
-                         db: &Arc<IndexingService>| -> Result<(), String> {
+                         db: &Arc<IndexingService>|
+             -> Result<(), String> {
                 if batch.is_empty() {
                     return Ok(());
                 }
@@ -378,8 +380,7 @@ fn scan_folder_impl(
         )?;
     }
 
-    db
-        .database
+    db.database
         .with_writer(|conn| queries::update_folder_scan_time(conn, folder_id))
         .map_err(|error| error.to_string())?;
     Ok(())

@@ -1,6 +1,55 @@
 //! Native capture of the PhoTag window passed by the Shell.
 
 #[cfg(target_os = "windows")]
+pub(super) fn resize_window(handle: isize, width: u32, height: u32) -> Result<(u32, u32), String> {
+    use windows_sys::Win32::{
+        Foundation::{HWND, RECT},
+        UI::WindowsAndMessaging::{
+            GetWindowRect, IsWindow, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOZORDER, SetWindowPos,
+        },
+    };
+
+    if !(640..=4096).contains(&width) || !(480..=2160).contains(&height) {
+        return Err("PhoTag window size must be between 640×480 and 4096×2160 pixels.".into());
+    }
+    let hwnd = handle as HWND;
+    unsafe {
+        if IsWindow(hwnd) == 0 {
+            return Err("PhoTag 原生窗口句柄已失效。".into());
+        }
+        if SetWindowPos(
+            hwnd,
+            std::ptr::null_mut(),
+            0,
+            0,
+            width as i32,
+            height as i32,
+            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE,
+        ) == 0
+        {
+            return Err("Windows 无法调整 PhoTag 窗口尺寸。".into());
+        }
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect) == 0 {
+            return Err("Windows 无法读取调整后的 PhoTag 窗口尺寸。".into());
+        }
+        return Ok((
+            rect.right.saturating_sub(rect.left) as u32,
+            rect.bottom.saturating_sub(rect.top) as u32,
+        ));
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(super) fn resize_window(
+    _handle: isize,
+    _width: u32,
+    _height: u32,
+) -> Result<(u32, u32), String> {
+    Err("PhoTag MCP window resizing is currently supported only on Windows.".into())
+}
+
+#[cfg(target_os = "windows")]
 pub(super) fn capture_png(handle: isize) -> Result<(Vec<u8>, u32, u32), String> {
     use std::{mem, ptr};
     use windows_sys::Win32::{

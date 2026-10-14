@@ -469,6 +469,15 @@ impl GalleryView {
             .iter()
             .position(|row| row.media_range.contains(&index))
             .unwrap_or(index / self.columns.max(1));
-        self.scroll.scroll_to_reveal_item(row_index);
+        if self.scroll.bounds_for_item(row_index).is_some() {
+            self.scroll.scroll_to_reveal_item(row_index);
+        } else {
+            // Unmeasured virtual rows have no accumulated height yet. Jump
+            // by logical row so the list measures the requested page first.
+            self.scroll.scroll_to(ListOffset {
+                item_ix: row_index,
+                offset_in_item: px(0.),
+            });
+        }
     }
 }

@@ -879,3 +879,7 @@ were not exercised. User-directed quiet startup updates retain source check,
 download and install semantics, but suppress automatic offer opening. Live
 MCP observed update_available=true/update_offer_open=false after startup and
 update_offer_open=true after a manual check; no download/install performed.
+
+## 2026-10-14 backend-preserving redesign validation
+
+Shell1.97.1 locked build/check pass; relevant11crate tests36 pass/1 ignored, separate FFmpeg ignored test1pass. See redesign-validation latest section for exact commands. JSON export12real rows passed and writing to directory returned actual os5 failure. Source-compatible paired video poster validation.png is not a separate indexed image (12total, not13). Invalid JPEG metadata write skips according to source semantics, so actual writeback retry/dismiss was tested using FileShare.None exclusive lock to produce os32 on isolated corrupt.jpg. Production query/schema/JSON writer/tagging order preserved; mapping in source-feature-audit updated. MediaIndexChanged scan completion observations refresh the sidebar; virtual dev-test inject/cleanup selects fixture folder by its existing contract. 100000virtual+12real stress scroll page offset99812 loaded200; crosspage selectionbulk2; virtualrows cleaned and All files12 reverified. No destructive file actions or ordinary userprofile mutation. Native Windows file dialogs/overwrite/recycle/drag and complete codec interoperability remain unverified.

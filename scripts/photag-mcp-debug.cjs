@@ -96,11 +96,21 @@ function field(value, dottedPath) {
 const report = { executable: exe, profile, started: new Date().toISOString(), steps: [] };
 async function step(command) {
   if (command.method) return request(command.method, command.params ?? {});
-  let result = await call(command.tool, command.arguments ?? {});
+  let result, expectedError;
+  try { result = await call(command.tool, command.arguments ?? {}); }
+  catch (error) {
+    if (!command.expect_error || !String(error).includes(command.expect_error)) throw error;
+    expectedError = String(error);
+  }
+  assert(!command.expect_error || expectedError, `Expected MCP error containing ${command.expect_error}`);
   if (command.until) {
     let completed = false;
     for (let attempt = 0; attempt < (command.until.attempts ?? 30); attempt++) {
-      if (JSON.stringify(field(payload(result), command.until.field)) === JSON.stringify(command.until.equals)) {
+      const observed = field(payload(result), command.until.field);
+      const matches = command.until.at_least === undefined
+        ? JSON.stringify(observed) === JSON.stringify(command.until.equals)
+        : typeof observed === 'number' && observed >= command.until.at_least;
+      if (matches) {
         completed = true; break;
       }
       await delay(command.until.interval_ms ?? 500);
@@ -109,7 +119,7 @@ async function step(command) {
     assert(completed, `Condition not reached: ${JSON.stringify(command.until)}`);
   }
   await delay(command.wait_ms ?? 0);
-  const record = { tool: command.tool, arguments: command.arguments ?? {}, result: payload(result) };
+  const record = { tool: command.tool, arguments: command.arguments ?? {}, result: expectedError ? { expected_error: expectedError } : payload(result) };
   if (command.capture) {
     if (!/^[a-zA-Z0-9_-]+$/.test(command.capture)) throw Error('Capture name must be a simple file stem.');
     const screenshot = await call('screenshot_window');

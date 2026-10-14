@@ -1,7 +1,7 @@
 # Metadata export plugin ports / 元数据导出对接
 
 Status: the original all-library database query and JSON serialization are
-available behind a Cordis service. A lifecycle-owned GPUI panel now offers the
+available behind a Cordis service. A lifecycle-owned GPUI modal now offers the
 source-compatible native Save File dialog and overwrite confirmation, invokes
 the registered Cordis command, performs the export on a named worker thread,
 and displays the record count/path or failure.
@@ -32,15 +32,12 @@ and displays the record count/path or failure.
 - `set_destination(path)` stores the path used by the command and
   `status()` exposes `Idle`, `Exporting`, `Succeeded { path, records }`, or
   `Failed(message)` to the panel.
-- The GPUI panel `workspace.metadata-export` contains a JSON backup heading,
-  destination input, Browse…, and Export JSON controls. It presents ready,
-  exporting, success, and failure cards from the real service status. Browse
-  opens `rfd::FileDialog` with the source title,
-  JSON filter, and `photag_backup.json` default. On Windows, the native Save
-  File dialog handles existing-file overwrite confirmation. Cancel leaves the
-  current path intact. The button emits `UiCommandInvoked("metadata-export/export")`;
-  the Cordis listener starts the query/serialization/write on a named worker
-  thread. Existing command/menu contributions use the same command ID.
+- The GPUI dialog contributes to workspace.modal and opens through UiBridge surface
+  metadata-export. The command opens preparation; Choose destination opens rfd
+  with JSON filter/default photag_backup.json and invokes request_export after
+  a destination is returned. It shows true Idle/Exporting/Succeeded/Failed states,
+  record count/path and error, with indeterminate progress and bounded footer.
+  Native cancellation leaves the destination unchanged; overwrite is OS-owned.
 - Result payload: successful status includes the exact output path and number
   of exported rows; errors preserve database, JSON, filesystem, and state-lock
   messages. The panel renders idle guidance, an in-progress message, and a
@@ -88,3 +85,18 @@ has only `Exporting` and carries no progress count, so the panel reports the
 actual active state without an invented percentage. Live MCP visual review is
 reserved for the parent redesign task; Windows native dialog interaction is
 still unverified here.
+
+## v5 design 07 command and visible status (2026-10-14)
+
+The `metadata-export/export` command opens the preparation dialog through UiBridgeService
+surface `metadata-export`. Choose destination invokes the source-compatible native JSON save
+dialog (`photag_backup.json`, OS overwrite confirmation), then sets the destination and calls
+`MetadataExportService::request_export`. The modal polls the real shared status and displays
+idle/exporting/succeeded/failed, record count and destination. Progress is indeterminate because
+the service has no per-record progress contract. MCP `export_metadata` also drives this status
+modal. Closing does not cancel a worker and is disabled while exporting. Schema/query/writer,
+service identity and worker lifecycle are unchanged; the UI contribution now owns workspace.modal.
+
+## 2026-10-14 current implementation and MCP evidence
+
+Reference07 real success12records and filesystemdirectory failure(os5) rendered through PhoTag MCP. Query/schema/order/writer unchanged. Native save/overwrite clicks remain unverified; see docs/redesign-validation.md.

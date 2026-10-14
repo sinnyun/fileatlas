@@ -9,7 +9,25 @@ use std::sync::atomic::Ordering;
 
 impl SettingsView {
     pub(super) fn render_updates_page(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
-        let mut page = div().v_flex().gap_3().line_height(relative(1.));
+        let mut page = div().v_flex().gap_3().line_height(relative(1.)).child(
+            div()
+                .v_flex()
+                .gap_1()
+                .child(
+                    div()
+                        .text_lg()
+                        .font_semibold()
+                        .child(photag_ui_bridge::i18n::tr("Updates")),
+                )
+                .child(
+                    div()
+                        .text_sm()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(
+                            "Check for new versions and choose when to install them.",
+                        )),
+                ),
+        );
         page = page.child(
             div()
                 .h_flex()
@@ -48,6 +66,11 @@ impl SettingsView {
             )));
         }
 
+        page = page.child(
+            div()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Check for updates")),
+        );
         let checking = self.update_check.is_some();
         let mut check_row = div().h_flex().items_center().gap_2().child(
             Button::new("settings-update-check")
@@ -92,6 +115,11 @@ impl SettingsView {
                 theme::TEXT_SECONDARY,
             )
         };
+        page = page.child(
+            div()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Update status")),
+        );
         page = page.child(
             div()
                 .h_flex()
@@ -141,6 +169,7 @@ impl SettingsView {
             if !notes.is_empty() {
                 release = release.child(
                     div()
+                        .h(px(150.))
                         .max_h(px(150.))
                         .overflow_y_scrollbar()
                         .text_sm()

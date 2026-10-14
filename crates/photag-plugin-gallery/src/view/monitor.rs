@@ -22,11 +22,7 @@ pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
     .detach();
 }
 
-fn tick(
-    view: &mut GalleryView,
-    scroll: &ListState,
-    cx: &mut Context<GalleryView>,
-) -> bool {
+fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView>) -> bool {
     let popover = view.surfaces.value("gallery.popover");
     if view.previous_popover != popover {
         view.previous_popover = popover;

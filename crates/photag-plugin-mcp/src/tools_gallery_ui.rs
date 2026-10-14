@@ -5,15 +5,17 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct GalleryControl {
-    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu.
+    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll.
     action: String,
-    /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id.
+    /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
     value: Option<String>,
     /// Bulk source: all/folder/tag/selection.
     bulk_source: Option<String>,
     exclude: Option<bool>,
     tag_id: Option<i64>,
     media_id: Option<i64>,
+    /// select_many: 1–1000 unique indexed IDs, including records outside the loaded page.
+    media_ids: Option<Vec<i64>>,
     rating_min: Option<i32>,
     rating_max: Option<i32>,
     enabled: Option<bool>,
@@ -21,7 +23,7 @@ pub(super) struct GalleryControl {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct NavigationControl {
-    /// create/edit/delete/merge/move/close: open the corresponding real tag dialog. Opening a dialog does not commit a tag mutation.
+    /// all: select All files; create/edit/delete/merge/move/close: control the real tag dialogs.
     action: String,
     tag_id: Option<i64>,
 }
@@ -29,7 +31,7 @@ pub(super) struct NavigationControl {
 #[tool_router(router = gallery_ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Actions: create, edit, delete, merge, move, close. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
+        description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Actions: all, create, edit, delete, merge, move, close. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
     )]
     fn control_navigation(&self, Parameters(request): Parameters<NavigationControl>) -> String {
         if let Err(error) = self.mutation_guard() {
@@ -37,6 +39,7 @@ impl PhoTagMcpServer {
         }
         use photag_plugin_navigation::NavigationUiRequest as R;
         let action = match request.action.as_str() {
+            "all" => R::AllFiles,
             "create" => R::OpenCreate,
             "close" => R::CloseModal,
             "edit" | "delete" | "merge" | "move" => {
@@ -71,6 +74,39 @@ impl PhoTagMcpServer {
         };
         let value = request.value.as_deref().unwrap_or("");
         let action = match request.action.as_str() {
+            "scroll" => {
+                let Ok(index) = value.parse::<usize>() else {
+                    return error_json("scroll requires a zero-based index in value");
+                };
+                let Some(snapshot) = self.gallery.ui_snapshot() else {
+                    return error_json("Gallery is not mounted");
+                };
+                if index >= snapshot.matched_count {
+                    return error_json("scroll index is outside the current results");
+                }
+                R::ScrollTo(index)
+            }
+            "select_many" => {
+                let Some(ids) = request.media_ids else {
+                    return error_json("select_many requires media_ids");
+                };
+                if ids.is_empty() || ids.len() > 1000 {
+                    return error_json("select_many requires 1–1000 indexed IDs");
+                }
+                let unique = ids
+                    .iter()
+                    .copied()
+                    .collect::<std::collections::HashSet<_>>();
+                if unique.len() != ids.len()
+                    || ids.iter().any(|id| {
+                        *id <= 0 || self.gallery.media_by_id(*id).ok().flatten().is_none()
+                    })
+                {
+                    return error_json("select_many requires unique existing positive media IDs");
+                }
+                R::SelectMany(ids)
+            }
+
             "popover" => {
                 if ![
                     "type",

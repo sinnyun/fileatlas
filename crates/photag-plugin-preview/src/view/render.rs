@@ -239,7 +239,7 @@ impl Render for PreviewView {
             .absolute()
             .top(px(52.0))
             .bottom(px(if self.filmstrip_visible() && is_image {
-                150.0
+                154.0
             } else {
                 54.0
             }))
@@ -279,7 +279,9 @@ impl Render for PreviewView {
                         .right(px(12.0))
                         .top(px(12.0))
                         .w(px(310.0))
-                        .max_h(px(viewport.1 - 76.0))
+                        .h(px((viewport.1
+                            - if self.filmstrip_visible() { 210. } else { 130. })
+                        .max(100.)))
                         .occlude()
                         .child(crate::info::info_panel(
                             path,
@@ -294,7 +296,7 @@ impl Render for PreviewView {
         let mut root = div()
             .absolute()
             .inset_0()
-            .bg(rgba(0x000000dd))
+            .bg(rgb(theme::SURFACE_EXTREME))
             .track_focus(&self.focus_handle)
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
                 this.service.mark_activity();

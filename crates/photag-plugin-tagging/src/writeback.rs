@@ -268,9 +268,11 @@ pub fn retry_failure(path: impl AsRef<std::path::Path>) -> Result<bool, Schedule
     {
         if let Ok(mut state) = state().lock() {
             state.worker_running = false;
-            if let Some(index) = state.queue.iter().position(|job| {
-                state.current.get(&job.key) == Some(&job.generation)
-            }) {
+            if let Some(index) = state
+                .queue
+                .iter()
+                .position(|job| state.current.get(&job.key) == Some(&job.generation))
+            {
                 if let Some(job) = state.queue.remove(index) {
                     state.current.remove(&job.key);
                     record_failure(

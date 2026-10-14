@@ -2,7 +2,7 @@
 
 use super::*;
 
-pub(super) fn gallery(
+pub(crate) fn gallery(
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
     drag_drop: Arc<DragDropService>,
@@ -28,7 +28,7 @@ pub(super) fn gallery(
         if let Some(view) = cached.as_ref() {
             return view.clone();
         }
-        let inputs = view_state::build_inputs(window, app, &session, &surfaces);
+        let inputs = view_state::build_inputs(window, app, &session);
         let view = app.new(|cx| {
             GalleryView::new(
                 Arc::clone(&service),

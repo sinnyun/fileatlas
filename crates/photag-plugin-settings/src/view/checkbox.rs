@@ -31,10 +31,22 @@ impl SettingsView {
                     .relative()
                     .size(px(14.))
                     .flex_shrink_0()
-                    .rounded(px(5.))
-                    .bg(rgb(0x4a4a4a))
-                    .group_hover(group.clone(), |style| style.bg(rgb(0x5c5c5c)))
-                    .group_active(group, |style| style.bg(rgb(0x686868)))
+                    .rounded(px(2.))
+                    .border_1()
+                    .border_color(rgb(if value {
+                        theme::accent()
+                    } else {
+                        theme::TEXT_SECONDARY
+                    }))
+                    .bg(rgb(if value {
+                        theme::accent()
+                    } else {
+                        theme::SURFACE_MODAL
+                    }))
+                    .group_hover(group.clone(), |style| {
+                        style.border_color(rgb(theme::TEXT_PRIMARY))
+                    })
+                    .group_active(group, |style| style.bg(rgb(theme::SURFACE_ELEVATED)))
                     .when(value, |indicator| {
                         indicator.child(
                             canvas(

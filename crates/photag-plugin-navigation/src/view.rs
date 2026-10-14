@@ -47,6 +47,7 @@ pub(super) fn sidebar(
     expanded_subdirs: HashSet<String>,
     preferences: Arc<RwLock<TagInteractionPreferences>>,
     add_folder_requested: Arc<std::sync::atomic::AtomicBool>,
+    index_changed: Arc<std::sync::atomic::AtomicBool>,
 ) -> Vec<UiViewContribution> {
     let cached = Arc::new(std::sync::Mutex::new(None::<Entity<SidebarView>>));
     let create = Arc::new(move |window: &mut Window, app: &mut App| {
@@ -102,6 +103,7 @@ pub(super) fn sidebar(
                 .placeholder(photag_ui_bridge::i18n::tr("Filter target tags…"))
         });
         let pending = Arc::clone(&add_folder_requested);
+        let dirty = Arc::clone(&index_changed);
         let view = app.new(|cx| {
             cx.spawn(async move |this, cx| {
                 loop {
@@ -113,7 +115,11 @@ pub(super) fn sidebar(
                             let requested =
                                 pending.swap(false, std::sync::atomic::Ordering::AcqRel);
                             let ui_requested = view.service.has_ui_request();
-                            if requested || ui_requested {
+                            let changed = dirty.swap(false, std::sync::atomic::Ordering::AcqRel);
+                            if changed {
+                                view.refresh();
+                            }
+                            if requested || ui_requested || changed {
                                 if requested {
                                     view.pick_folder(cx);
                                 }
@@ -218,9 +224,12 @@ struct SidebarTagModal {
 }
 
 impl Render for SidebarTagModal {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sidebar
-            .update(cx, |sidebar, cx| sidebar.render_tag_modal(cx))
+            .update(cx, |sidebar, cx| {
+                sidebar.consume_ui_request(window, cx);
+                sidebar.render_tag_modal(cx)
+            })
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                 if event.keystroke.key.eq_ignore_ascii_case("escape") {
                     let sidebar = this.sidebar.clone();
@@ -280,6 +289,7 @@ struct SidebarView {
     move_source_id: Option<i64>,
     merge_reparent_children: bool,
     confirm_delete: Option<(i64, String, usize)>,
+    delete_clean_parents: bool,
     tag_create_open: bool,
 }
 
@@ -383,6 +393,7 @@ impl SidebarView {
             move_source_id: None,
             merge_reparent_children: true,
             confirm_delete: None,
+            delete_clean_parents: false,
             tag_create_open: false,
         }
     }
@@ -502,6 +513,11 @@ impl SidebarView {
         }
         if completed {
             self.active_scan = None;
+            failure = failure.or_else(|| {
+                self.scan_progress
+                    .as_ref()
+                    .and_then(|progress| progress.error.clone())
+            });
             if let (Some(folder_id), Some(error)) = (self.active_scan_folder_id, failure) {
                 self.scan_failure = Some((ScanRetryTarget::Folder(folder_id), error));
             }

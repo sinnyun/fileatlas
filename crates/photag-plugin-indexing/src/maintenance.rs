@@ -70,30 +70,33 @@ pub(super) fn process_videos_parallel(
         let mut batch: Vec<(String, String, Option<Vec<u8>>)> = Vec::with_capacity(BATCH_SIZE);
         let mut count = 0usize;
         let flush = |batch: &mut Vec<(String, String, Option<Vec<u8>>)>,
-                     db: &Arc<IndexingService>| -> Result<(), String> {
+                     db: &Arc<IndexingService>|
+         -> Result<(), String> {
             if batch.is_empty() {
                 return Ok(());
             }
-            db.database.with_writer(|conn| {
-                conn.execute_batch("BEGIN")?;
-                let updates = (|| {
-                    let mut stmt = conn.prepare_cached(
+            db.database
+                .with_writer(|conn| {
+                    conn.execute_batch("BEGIN")?;
+                    let updates = (|| {
+                        let mut stmt = conn.prepare_cached(
                         "UPDATE media SET thumb_path = ?1, micro_thumb = ?2 WHERE full_path = ?3"
                     )?;
-                    for (full_path, thumb_path, micro) in batch.iter() {
-                        let micro_ref: Option<&[u8]> = micro.as_deref();
-                        stmt.execute(rusqlite::params![thumb_path, micro_ref, full_path])?;
+                        for (full_path, thumb_path, micro) in batch.iter() {
+                            let micro_ref: Option<&[u8]> = micro.as_deref();
+                            stmt.execute(rusqlite::params![thumb_path, micro_ref, full_path])?;
+                        }
+                        Ok::<(), rusqlite::Error>(())
+                    })();
+                    match updates {
+                        Ok(()) => conn.execute_batch("COMMIT"),
+                        Err(error) => {
+                            let _ = conn.execute_batch("ROLLBACK");
+                            Err(error)
+                        }
                     }
-                    Ok::<(), rusqlite::Error>(())
-                })();
-                match updates {
-                    Ok(()) => conn.execute_batch("COMMIT"),
-                    Err(error) => {
-                        let _ = conn.execute_batch("ROLLBACK");
-                        Err(error)
-                    }
-                }
-            }).map_err(|error| error.to_string())?;
+                })
+                .map_err(|error| error.to_string())?;
             batch.clear();
             Ok(())
         };
@@ -128,80 +131,81 @@ pub fn generate_missing_thumbnails_async(
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let worker_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let thumb_dir = db.thumbnails.directory().to_path_buf();
-        let total = items.len();
-        if total == 0 {
-            return;
-        }
+            let thumb_dir = db.thumbnails.directory().to_path_buf();
+            let total = items.len();
+            if total == 0 {
+                return;
+            }
 
-        let mut image_paths: Vec<(PathBuf, String)> = items
-            .iter()
-            .filter(|(_, mt)| mt == "image")
-            .map(|(fp, _)| (PathBuf::from(fp), fp.clone()))
-            .collect();
-        // Sort by directory then filename for HDD-friendly sequential reads.
-        image_paths.sort_by(|a, b| {
-            let pa = a.0.parent();
-            let pb = b.0.parent();
-            pa.cmp(&pb)
-                .then_with(|| a.0.file_name().cmp(&b.0.file_name()))
-        });
-        let video_paths: Vec<String> = items
-            .iter()
-            .filter(|(_, mt)| mt == "video")
-            .map(|(fp, _)| fp.clone())
-            .collect();
-        let img_total = image_paths.len();
-        let mut global_count = 0;
+            let mut image_paths: Vec<(PathBuf, String)> = items
+                .iter()
+                .filter(|(_, mt)| mt == "image")
+                .map(|(fp, _)| (PathBuf::from(fp), fp.clone()))
+                .collect();
+            // Sort by directory then filename for HDD-friendly sequential reads.
+            image_paths.sort_by(|a, b| {
+                let pa = a.0.parent();
+                let pb = b.0.parent();
+                pa.cmp(&pb)
+                    .then_with(|| a.0.file_name().cmp(&b.0.file_name()))
+            });
+            let video_paths: Vec<String> = items
+                .iter()
+                .filter(|(_, mt)| mt == "video")
+                .map(|(fp, _)| fp.clone())
+                .collect();
+            let img_total = image_paths.len();
+            let mut global_count = 0;
 
-        // Image thumbnails in parallel (shared work queue for HDD-friendly sequential reads)
-        if img_total > 0 {
-            let num_workers = scan::worker_count();
-            // Unbounded: bounded sync_channel(256) was throttling fast workers
-            // to the orchestrator's drain rate, hurting peak throughput. Each
-            // result tuple is small (~1KB + ~500B micro-thumb), so backlog cost
-            // is negligible compared to the throughput win.
-            let (result_tx, result_rx) =
-                mpsc::channel::<(String, String, u32, u32, Option<Vec<u8>>)>();
-            let work_idx = Arc::new(AtomicUsize::new(0));
+            // Image thumbnails in parallel (shared work queue for HDD-friendly sequential reads)
+            if img_total > 0 {
+                let num_workers = scan::worker_count();
+                // Unbounded: bounded sync_channel(256) was throttling fast workers
+                // to the orchestrator's drain rate, hurting peak throughput. Each
+                // result tuple is small (~1KB + ~500B micro-thumb), so backlog cost
+                // is negligible compared to the throughput win.
+                let (result_tx, result_rx) =
+                    mpsc::channel::<(String, String, u32, u32, Option<Vec<u8>>)>();
+                let work_idx = Arc::new(AtomicUsize::new(0));
 
-            let image_result = std::thread::scope(|scope| -> Result<(), String> {
-                for _ in 0..num_workers {
-                    let rtx = result_tx.clone();
-                    let db_worker = Arc::clone(&db);
-                    let idx = work_idx.clone();
-                    let paths = &image_paths;
-                    let cancel = cancel.clone();
-                    scope.spawn(move || {
-                        loop {
-                            if cancel.load(Ordering::Relaxed) {
-                                break;
+                let image_result = std::thread::scope(|scope| -> Result<(), String> {
+                    for _ in 0..num_workers {
+                        let rtx = result_tx.clone();
+                        let db_worker = Arc::clone(&db);
+                        let idx = work_idx.clone();
+                        let paths = &image_paths;
+                        let cancel = cancel.clone();
+                        scope.spawn(move || {
+                            loop {
+                                if cancel.load(Ordering::Relaxed) {
+                                    break;
+                                }
+                                let i = idx.fetch_add(1, Ordering::Relaxed);
+                                if i >= paths.len() {
+                                    break;
+                                }
+                                let (path, full_path) = &paths[i];
+                                if let Some((tp, w, h, micro)) =
+                                    db_worker.thumbnails.generate_image(path)
+                                {
+                                    rtx.send((full_path.clone(), tp, w, h, micro)).ok();
+                                }
                             }
-                            let i = idx.fetch_add(1, Ordering::Relaxed);
-                            if i >= paths.len() {
-                                break;
-                            }
-                            let (path, full_path) = &paths[i];
-                            if let Some((tp, w, h, micro)) =
-                                db_worker.thumbnails.generate_image(path)
-                            {
-                                rtx.send((full_path.clone(), tp, w, h, micro)).ok();
-                            }
-                        }
-                    });
-                }
-                drop(result_tx);
-
-                // Large batch — UI reads use read_db, so this doesn't block them.
-                const BATCH_SIZE: usize = 128;
-                let mut batch: Vec<(String, String, u32, u32, Option<Vec<u8>>)> =
-                    Vec::with_capacity(BATCH_SIZE);
-                let flush = |batch: &mut Vec<(String, String, u32, u32, Option<Vec<u8>>)>,
-                             db: &Arc<IndexingService>| -> Result<(), String> {
-                    if batch.is_empty() {
-                        return Ok(());
+                        });
                     }
-                    db.database.with_writer(|conn| {
+                    drop(result_tx);
+
+                    // Large batch — UI reads use read_db, so this doesn't block them.
+                    const BATCH_SIZE: usize = 128;
+                    let mut batch: Vec<(String, String, u32, u32, Option<Vec<u8>>)> =
+                        Vec::with_capacity(BATCH_SIZE);
+                    let flush = |batch: &mut Vec<(String, String, u32, u32, Option<Vec<u8>>)>,
+                                 db: &Arc<IndexingService>|
+                     -> Result<(), String> {
+                        if batch.is_empty() {
+                            return Ok(());
+                        }
+                        db.database.with_writer(|conn| {
                         conn.execute_batch("BEGIN")?;
                         let updates = (|| {
                             let mut stmt = conn.prepare_cached(
@@ -223,60 +227,64 @@ pub fn generate_missing_thumbnails_async(
                             }
                         }
                     }).map_err(|error| error.to_string())?;
-                    batch.clear();
+                        batch.clear();
+                        Ok(())
+                    };
+                    while let Ok(item) = result_rx.recv() {
+                        batch.push(item);
+                        global_count += 1;
+                        if batch.len() >= BATCH_SIZE {
+                            flush(&mut batch, &db)?;
+                        }
+                        if global_count % 50 == 0 || global_count == total {
+                            tx.send(Some(ScanProgress {
+                                scanned: global_count,
+                                total,
+                                phase: format!(
+                                    "Generating thumbnails... {}/{}",
+                                    global_count, total
+                                ),
+                                error: None,
+                            }))
+                            .ok();
+                        }
+                    }
+                    flush(&mut batch, &db)?;
                     Ok(())
-                };
-                while let Ok(item) = result_rx.recv() {
-                    batch.push(item);
-                    global_count += 1;
-                    if batch.len() >= BATCH_SIZE {
-                        flush(&mut batch, &db)?;
-                    }
-                    if global_count % 50 == 0 || global_count == total {
-                        tx.send(Some(ScanProgress {
-                            scanned: global_count,
-                            total,
-                            phase: format!("Generating thumbnails... {}/{}", global_count, total),
-                            error: None,
-                        }))
-                        .ok();
-                    }
+                });
+                if let Err(error) = image_result {
+                    tx.send(Some(ScanProgress {
+                        scanned: global_count,
+                        total,
+                        phase: "Thumbnail backfill failed".into(),
+                        error: Some(error),
+                    }))
+                    .ok();
+                    return;
                 }
-                flush(&mut batch, &db)?;
-                Ok(())
-            });
-            if let Err(error) = image_result {
-                tx.send(Some(ScanProgress {
-                    scanned: global_count,
-                    total,
-                    phase: "Thumbnail backfill failed".into(),
-                    error: Some(error),
-                })).ok();
-                return;
             }
-        }
 
-        // Video thumbnails (parallel)
-        if !video_paths.is_empty() && ffmpeg::is_ffmpeg_available() {
-            if let Err(error) = process_videos_parallel(
-                &db,
-                &video_paths,
-                &thumb_dir,
-                &cancel,
-                &tx,
-                "Generating video thumbnails",
-                global_count,
-            ) {
-                tx.send(Some(ScanProgress {
-                    scanned: global_count,
-                    total,
-                    phase: "Thumbnail backfill failed".into(),
-                    error: Some(error),
-                })).ok();
-                return;
+            // Video thumbnails (parallel)
+            if !video_paths.is_empty() && ffmpeg::is_ffmpeg_available() {
+                if let Err(error) = process_videos_parallel(
+                    &db,
+                    &video_paths,
+                    &thumb_dir,
+                    &cancel,
+                    &tx,
+                    "Generating video thumbnails",
+                    global_count,
+                ) {
+                    tx.send(Some(ScanProgress {
+                        scanned: global_count,
+                        total,
+                        phase: "Thumbnail backfill failed".into(),
+                        error: Some(error),
+                    }))
+                    .ok();
+                    return;
+                }
             }
-        }
-
         }));
         if worker_result.is_err() {
             tx.send(Some(ScanProgress {
@@ -284,7 +292,8 @@ pub fn generate_missing_thumbnails_async(
                 total: items.len(),
                 phase: "Thumbnail backfill failed".into(),
                 error: Some("The thumbnail backfill worker stopped unexpectedly.".into()),
-            })).ok();
+            }))
+            .ok();
         }
         tx.send(None).ok();
     });

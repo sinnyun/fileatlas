@@ -1,6 +1,7 @@
 /// Requests applied by the live navigation Sidebar entity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NavigationUiRequest {
+    AllFiles,
     OpenCreate,
     OpenEdit(i64),
     OpenDelete(i64),
@@ -16,7 +17,7 @@ impl NavigationUiRequest {
             | Self::OpenDelete(id)
             | Self::OpenMerge(id)
             | Self::OpenMove(id) => Some(*id),
-            Self::OpenCreate | Self::CloseModal => None,
+            Self::AllFiles | Self::OpenCreate | Self::CloseModal => None,
         }
     }
 }

@@ -1,5 +1,26 @@
 use super::*;
 
+impl PhoTagMcpServer {
+    fn observe_scan<T: Send + 'static>(&self, progress: std::sync::mpsc::Receiver<Option<T>>) {
+        let context = self.context.clone();
+        let runtime = tokio::runtime::Handle::current();
+        std::thread::spawn(move || {
+            while let Ok(update) = progress.recv() {
+                if update.is_none() {
+                    break;
+                }
+            }
+            // Like the Sidebar scan observer, notify every consumer after the
+            // production indexing stream completes. Do not clear UI filters.
+            if let Err(error) = runtime.block_on(
+                context.emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ()),
+            ) {
+                eprintln!("MCP scan completion dispatch failed: {error}");
+            }
+        });
+    }
+}
+
 #[tool_router(router = write_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
     #[tool(
@@ -21,7 +42,10 @@ impl super::PhoTagMcpServer {
         }
         loop {
             match self.metadata_export.status() {
-                Ok(photag_plugin_metadata_export::MetadataExportStatus::Succeeded { path, records }) => {
+                Ok(photag_plugin_metadata_export::MetadataExportStatus::Succeeded {
+                    path,
+                    records,
+                }) => {
                     return json!({"ok": true, "path": path, "records": records}).to_string();
                 }
                 Ok(photag_plugin_metadata_export::MetadataExportStatus::Failed(error)) => {
@@ -182,7 +206,7 @@ impl super::PhoTagMcpServer {
         }
         match self.navigation.add_folder(&request.path) {
             Ok((folder, progress)) => {
-                std::thread::spawn(move || while progress.recv().is_ok() {});
+                self.observe_scan(progress);
                 serde_json::to_string(&json!({ "ok": true, "folder": folder }))
                     .unwrap_or_else(|error| error_json(&error.to_string()))
             }
@@ -254,6 +278,8 @@ impl super::PhoTagMcpServer {
                 "zoom_percent": preview.zoom_percent,
                 "zoom_scale": preview.zoom_scale,
                 "show_info": preview.show_info,
+                "tags_open": self.surfaces.is_open("preview.tags"),
+                "more_open": self.surfaces.is_open("preview.more"),
                 "media_id": preview.media_id,
                 "filmstrip": self.preview.filmstrip_items(),
                 "revision": preview.revision,
@@ -267,6 +293,9 @@ impl super::PhoTagMcpServer {
                 "width": playback.width,
                 "height": playback.height,
                 "speed": playback.speed,
+                "volume": playback.volume,
+                "tags_open": self.surfaces.is_open("playback.tags"),
+                "more_open": self.surfaces.is_open("playback.more"),
                 "audio_available": playback.audio_available,
                 "error": playback.error,
                 "revision": playback.revision,
@@ -278,7 +307,40 @@ impl super::PhoTagMcpServer {
     #[tool(description = "控制当前图片预览的旋转、翻转、适配、缩放和信息面板。")]
     fn control_preview(&self, Parameters(request): Parameters<PreviewControlRequest>) -> String {
         match request.action.as_str() {
-            "close" => self.preview.close(),
+            "more_open" | "more_close" | "tags_open" | "tags_close" => {
+                let key = if request.action.starts_with("more") {
+                    "preview.more"
+                } else {
+                    "preview.tags"
+                };
+                if let Err(error) = self
+                    .surfaces
+                    .set_open(key, request.action.ends_with("open"))
+                {
+                    return error_json(&error.to_string());
+                }
+            }
+            "filmstrip_show" | "filmstrip_hide" => {
+                if let Err(error) = self.surfaces.set_value(
+                    "preview.filmstrip.request",
+                    if request.action.ends_with("show") {
+                        "true"
+                    } else {
+                        "false"
+                    },
+                ) {
+                    return error_json(&error.to_string());
+                }
+            }
+            "next" | "previous" => {
+                self.preview
+                    .navigate_filmstrip(if request.action == "next" { 1 } else { -1 });
+            }
+            "close" => {
+                self.preview.close();
+                let _ = self.surfaces.set_open("preview.more", false);
+                let _ = self.surfaces.set_open("preview.tags", false);
+            }
             "rotate_clockwise" => self.preview.rotate_clockwise(),
             "rotate_counter_clockwise" => self.preview.rotate_counter_clockwise(),
             "flip_horizontal" => self.preview.flip_horizontal(),
@@ -306,6 +368,39 @@ impl super::PhoTagMcpServer {
     #[tool(description = "控制当前视频播放：播放/暂停、定位、逐帧步进、倍速或关闭。")]
     fn control_playback(&self, Parameters(request): Parameters<PlaybackControlRequest>) -> String {
         let result = match request.action.as_str() {
+            "tags_open" | "tags_close" | "more_open" | "more_close" => {
+                let tags = request.action.starts_with("tags");
+                let open = request.action.ends_with("open");
+                let key = if tags {
+                    "playback.tags"
+                } else {
+                    "playback.more"
+                };
+                if let Err(error) = self.surfaces.set_open(key, open) {
+                    return error_json(&error.to_string());
+                }
+                if open {
+                    let _ = self.surfaces.set_open(
+                        if tags {
+                            "playback.more"
+                        } else {
+                            "playback.tags"
+                        },
+                        false,
+                    );
+                }
+                return self.get_view_state();
+            }
+            "set_volume" => {
+                let Some(volume) = request
+                    .volume
+                    .filter(|value| value.is_finite() && (0.0..=1.5).contains(value))
+                else {
+                    return error_json("set_volume requires a finite volume from 0 to 1.5");
+                };
+                self.playback.set_volume(volume);
+                return self.get_view_state();
+            }
             "play_pause" => self.playback.toggle_play_pause(),
             "seek" => match request.seconds {
                 Some(seconds) if seconds.is_finite() && (0.0..=86_400.0).contains(&seconds) => {
@@ -408,7 +503,7 @@ impl super::PhoTagMcpServer {
         }
         match self.navigation.rescan(request.folder_id) {
             Ok(progress) => {
-                std::thread::spawn(move || while progress.recv().is_ok() {});
+                self.observe_scan(progress);
                 "{\"ok\":true,\"started\":true}".into()
             }
             Err(error) => error_json(&error.to_string()),

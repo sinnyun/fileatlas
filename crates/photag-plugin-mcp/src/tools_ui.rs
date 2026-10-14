@@ -7,7 +7,8 @@ use serde::Deserialize;
 pub(super) struct UiRequest {
     /// settings_open/close/tab, language, statistics, bulk_actions,
     /// gallery_dialogs_close, select_media, deselect, hover_media, hover_clear,
-    /// inspector_open, inspector_close, settings_check_updates.
+    /// inspector_open/close, sidebar_open/close, export_open/close,
+    /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
     action: String,
     /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
@@ -24,18 +25,22 @@ impl PhoTagMcpServer {
             "tools_open": self.surfaces.is_open("tools"),
             "gallery": self.gallery.ui_snapshot().map(|state| json!({
                 "search": state.filter.search, "media_type": format!("{:?}", state.filter.media_type),
+                "folder_id": state.filter.folder_id, "path_prefix": state.filter.path_prefix,
                 "sort": format!("{:?}", state.filter.sort), "extensions": state.filter.extensions,
                 "excluded_extensions": state.filter.excluded_extensions, "included_tags": state.filter.selected_tag_ids,
                 "excluded_tags": state.filter.excluded_tag_ids, "rating_min": state.filter.rating_min,
                 "rating_max": state.filter.rating_max, "date_from": state.filter.date_from.map(|d| d.to_string()),
                 "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
+                "window_offset": state.window_offset, "loaded_count": state.loaded_count,
                 "inspector_sections": state.inspector_sections,
                 "bulk_action": state.bulk_action, "bulk_source": state.bulk_source,
                 "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             })),
             "settings_open": self.surfaces.is_open("settings"),
+            "export_open": self.surfaces.is_open("metadata-export"),
+            "sidebar_open": self.surfaces.value("sidebar.visible").as_deref() != Some("false"),
             "inspector_open": self.surfaces.is_open("inspector"),
             "update_checking": self.surfaces.is_open("settings.update-checking"),
             "update_available": self.surfaces.is_open("settings.update-available"),
@@ -59,6 +64,7 @@ impl PhoTagMcpServer {
                 photag_plugin_metadata_export::MetadataExportStatus::Succeeded { path, records } => json!({"state":"succeeded","path":path,"records":records}),
                 photag_plugin_metadata_export::MetadataExportStatus::Failed(error) => json!({"state":"failed","error":error}),
             }),
+            "writeback_failures": photag_plugin_tagging::writeback::failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         })
         .to_string()
     }
@@ -71,8 +77,31 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "writeback_retry" | "writeback_dismiss" => {
+                let Some(path) = request.value.as_deref() else {
+                    return error_json("writeback action requires a recorded failure path");
+                };
+                if !photag_plugin_tagging::writeback::failures()
+                    .iter()
+                    .any(|failure| failure.path.to_string_lossy() == path)
+                {
+                    return error_json("writeback failure not found");
+                }
+                if request.action == "writeback_retry" {
+                    if let Err(error) = photag_plugin_tagging::writeback::retry_failure(path) {
+                        return error_json(&error.to_string());
+                    }
+                } else {
+                    photag_plugin_tagging::writeback::clear_failure(path);
+                }
+                return self.get_ui_state();
+            }
             "settings_open" => self.surfaces.set_open("settings", true),
             "settings_close" => self.surfaces.set_open("settings", false),
+            "export_open" => self.surfaces.set_open("metadata-export", true),
+            "export_close" => self.surfaces.set_open("metadata-export", false),
+            "sidebar_open" => self.surfaces.set_value("sidebar.visible", "true"),
+            "sidebar_close" => self.surfaces.set_value("sidebar.visible", "false"),
             "inspector_open" => self.surfaces.set_open("inspector", true),
             "inspector_close" => self.surfaces.set_open("inspector", false),
             "settings_check_updates" => self.surfaces.set_open("settings.check-updates", true),

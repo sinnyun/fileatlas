@@ -545,6 +545,12 @@ fn main() {
                         if this
                             .update(cx, |shell: &mut PhoTagShell, cx| {
                                 let tools = shell.surfaces.is_open("tools");
+                                let sidebar = shell.surfaces.value("sidebar.visible").as_deref()
+                                    != Some("false");
+                                if sidebar != shell.sidebar_open {
+                                    shell.sidebar_open = sidebar;
+                                    cx.notify();
+                                }
                                 if tools != shell.tools_open {
                                     shell.tools_open = tools;
                                     cx.notify();

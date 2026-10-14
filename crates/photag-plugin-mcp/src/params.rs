@@ -102,7 +102,8 @@ pub(super) struct MediaIdRequest {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct PreviewControlRequest {
     /// rotate_clockwise, rotate_counter_clockwise, flip_horizontal, flip_vertical,
-    /// close, fit, toggle_info, or zoom.
+    /// close, fit, toggle_info, zoom, next, previous, tags_open/close,
+    /// more_open/close, filmstrip_show/hide.
     pub(super) action: String,
     /// Used only by the zoom action; accepted presets are 25, 50, 100, 125, 150, and 200.
     pub(super) zoom_percent: Option<u16>,
@@ -110,7 +111,7 @@ pub(super) struct PreviewControlRequest {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct PlaybackControlRequest {
-    /// play_pause, seek, step, set_speed, or close.
+    /// play_pause, seek, step, set_speed, set_volume, tags_open/close, more_open/close, or close.
     pub(super) action: String,
     /// Used by seek.
     pub(super) seconds: Option<f64>,
@@ -118,6 +119,8 @@ pub(super) struct PlaybackControlRequest {
     pub(super) frames: Option<i32>,
     /// Used by set_speed; accepted range is 0.1 through 8.
     pub(super) speed: Option<f32>,
+    /// Used by set_volume; finite gain from 0 to 1.5.
+    pub(super) volume: Option<f32>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -157,4 +160,12 @@ pub(super) struct ExportRequest {
     pub(super) path: String,
     /// Must be true after the caller has shown the destination path to the user.
     pub(super) confirm: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct WindowSizeRequest {
+    /// Requested outer window width, in physical pixels.
+    pub(super) width: u32,
+    /// Requested outer window height, in physical pixels.
+    pub(super) height: u32,
 }

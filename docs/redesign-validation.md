@@ -110,3 +110,42 @@
   最新Rust源码可运行。
 - 交接入口：`docs/development-handoff-2026-10-14.md`，含逐稿缺失状态、i18n欠账、
   公开API实/未实现区别、恢复编译与MCP迭代步骤。旧成功测试与截图均按版本区分。
+
+## 2026-10-14：Luna 并行样式实现与主线程 MCP 验收
+
+本节覆盖上文旧构建/19错快照。设计依据是 docs/reference-ui/final-v5 的 00–08 图及 concepts 说明。用户明确要求多个 GPT-6 Luna 子代理：Gallery、Navigation、Settings 分别实现，主线程合并检查并通过同进程 PhoTag MCP 截图迭代。普通数据库/设置未使用；原工作树保留，未提交。
+
+环境：Windows MSVC，已检查 rustup toolchain list/rustc +1.97.1 --version；Rust 1.97.1，150% DPI。常规外窗1942×1256对应约1280×800内容，最小外窗1462×956对应约960×600内容。最新EXE为 target/debug/photag-shell-accepted-20261014.exe。所有运行截图由 scripts/photag-mcp-debug.cjs 启动该EXE --mcp取得，没有另外启动GUI或OS输入注入。
+
+静态验证命令与结果：
+
+- cargo +1.97.1 fmt --all -- --check：通过。
+- cargo +1.97.1 check --locked -p photag-shell -j 2：通过，target/accepted-check.log。
+- cargo +1.97.1 build --locked -p photag-shell -j 2：通过，target/accepted-build.log；复制到上述独立EXE名。
+- cargo +1.97.1 test --locked -p photag-plugin-gallery -p photag-plugin-navigation -p photag-plugin-settings -p photag-plugin-preview -p photag-plugin-media-playback -p photag-plugin-metadata-export -p photag-plugin-mcp -p photag-plugin-i18n -p photag-plugin-indexing -p photag-plugin-tagging -p photag-plugin-dev-test -j 2：36通过/0失败/1 ignored，target/accepted-tests.log。
+- cargo +1.97.1 test --locked -p photag-plugin-indexing extracts_a_thumbnail_from_a_valid_generated_video -j 2 -- --ignored：另1通过，target/final-ffmpeg-test.log。
+- node --check scripts/photag-mcp-debug.cjs：通过。客户端现在支持 expect_error 和 until.at_least，实际预期错误保留在报告。
+
+MCP运行模板：node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-accepted-20261014.exe --profile target/mcp-v5-validation --plan target/final-accepted-plan.json --allow-mutations。profile下LOCALAPPDATA、DB、settings、session和缓存全部隔离。改变UI/隔离数据时启用mutations，不涉及用户普通库。当前全部MCP子进程已退出。
+
+| 参考稿 | 本轮修改及实际检查 | 截图（target/mcp-v5-validation/screenshots） |
+|---|---|---|
+| 00/01 Gallery | 中性背景、紧凑筛选、无缩略图占位、侧栏树/计数、文件信息折叠、选中/无结果、侧栏与Inspector折叠、最小窗 | 00-main-accepted.png、00-min-final.png、00-min-both-closed-final.png、08-no-results-final.png |
+| 01 filters | type/tags/extensions/date/rating/sort六弹层；真实类型9照片/1视频/2音频、rating≥4匹配2项、日期请求、清空筛选 | filter-*-final.png |
+| 02 Preview | 实色全窗舞台、底部工具条、命名filmstrip、More/Tags popover、真实信息/评分、旋转/重置/缩放/filmstrip隐藏 | preview-final.png、preview-info-final.png、preview-more-final.png、preview-no-strip-final.png |
+| 03 Settings | 六页正文重排、导航图标/激活边、圆形accent、toolbar两列、方形checkbox、F1–F9完整宽度、AI/Tags/Updates组 | settings-*-final.png、settings-shortcuts-accepted.png |
+| 04 Tags | create/edit/delete/merge/move标题/X、颜色22点/图标16项、编辑两列、删除单选项、真正tag picker双栏+预览+footer | tag-*-final.png、tag-assign-final.png、tag-assign-min-final.png |
+| 05 Playback | 视频适配舞台、固定播放footer、受限音量/速率、Tags/More；生成8秒H264/AAC视频和PCM音频，暂停、seek2秒、speed1.25、volume0.4状态 | video-fit-accepted.png、video-paused-final.png、video-tags-final.png、audio-paused-final.png、audio-more-final.png |
+| 06 Bulk | 操作/来源两列、AND筛选、完整匹配计数、独立滚动和固定footer；跨页CurrentSelection真正显示2项 | bulk-final.png、bulk-min-final.png、100k-cross-page-bulk.png |
+| 07 Stats/Export/Updates | 真实统计柱形和标签图；JSON12项成功/目录拒绝访问失败；更新offer实色双栏、版本/说明/真实状态、固定footer | 07-statistics-final.png、07-export-success-final.png、07-export-failed-final.png、07-manual-update-accepted.png |
+| 08 Feedback | 写回真实锁文件os32错误、精确路径重试、忽略清除；失败卡在右下320pt，标题/文件/错误/按钮完整 | 08-writeback-failure-accepted.png、08-writeback-retry-accepted.png |
+
+报告：report-preparation.json、report-interactions-before-writeback.json（前91步；后续由分段计划完成）、report-writeback-export-success.json、report-feedback-rest.json、report-final-accepted.json、report-writeback-position-accepted.json，均在profile目录。对应计划保留在target/final-*.json与target/writeback-position-plan.json。更新手动检查访问真实release，不下载/安装；启动update_available=true时update_offer_open=false，手动检查后true。实际release notes为远端原文，保留英文。
+
+压力测试通过：100000虚拟+12实际=100012记录，scroll index99999后window_offset=99812/loaded_count=200；select_many[15,16]跨首末页，bulk CurrentSelection匹配2项，未执行删除。清理100000虚拟后重新选择All files，12实际记录仍在。报告report-stress-accepted-before-refresh.json保存成功滚动/跨页/清理证据；report-final-accepted.json确认All files12。生产逻辑修复：GPUI未测量远处行没有累计高度，scroll_to_reveal_item不能用于远跳，改用逻辑ListOffset；已加载页变化后通知发布snapshot。
+
+本轮曾失败的检查与结论：最初13项假设错误，同名validation.png为视频poster不单独索引，正确总数12；dev-test扫描/清理会选fixture folder，clear_filters保留scope，需All files才能断言12。最初invalid JPEG写回未报错与源实现的跳过语义相同，故改用独占文件锁产生真实失败。首次十万滚动失败已修复重测；失败卡scrollbar包装曾丢失外层absolute定位，已将定位与滚动容器分开并重拍。子代理更新offer括号错误已修复check；没有将这些初次失败算通过。
+
+仍未验：原生保存/目录选择/覆盖与回收站确认的实际指针路径、鼠标框选/拖拽/键盘逐键、长列表滚动恢复、扫描失败卡交互、播放声音听感及全codec覆盖、更新下载/校验/重启安装。现有MCP请求验证状态/服务和渲染，不代表这些原生路径通过。无实际每记录进度或音频波形接口，导出用indeterminate spinner、音频保持真实舞台，不伪造设计示例数据。V1通过，V2主要界面范围通过，V3部分通过，V4启动静默/手动检查通过；不能声称全产品完成。
+
+最后进程检查：既有PID33036仍运行 target/debug/photag-shell-handoff.exe（旧版），未终止；本轮MCP子进程均已退出。查看当前新样式应使用 photag-shell-accepted-20261014.exe，旧窗口不能代表本轮修改。

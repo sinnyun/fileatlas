@@ -10,6 +10,8 @@ pub enum GalleryUiRequest {
     CloseMediaActions,
     CloseDialogs,
     Select(i64),
+    SelectMany(Vec<i64>),
+    ScrollTo(usize),
     Deselect,
     Hover(Option<i64>),
     Search(String),
@@ -33,6 +35,8 @@ pub struct GalleryUiSnapshot {
     pub filter: filter::GalleryFilter,
     pub selected_media_ids: Vec<i64>,
     pub matched_count: usize,
+    pub window_offset: usize,
+    pub loaded_count: usize,
     pub group_by_month: bool,
     pub inspector_sections: Vec<&'static str>,
     pub bulk_action: Option<&'static str>,
@@ -56,7 +60,11 @@ impl GalleryService {
         if media_id <= 0 {
             return Err("media_id must be positive".into());
         }
-        if self.media_by_id(media_id).map_err(|error| error.to_string())?.is_none() {
+        if self
+            .media_by_id(media_id)
+            .map_err(|error| error.to_string())?
+            .is_none()
+        {
             return Err(format!("media {media_id} is not indexed"));
         }
         self.request_ui(GalleryUiRequest::OpenMediaActions(media_id));

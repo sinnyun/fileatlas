@@ -131,3 +131,7 @@ confirmation-bound file-operation execution are retained. Current Gallery
 compilation fails on 19 missing type/trait/visibility errors in these new
 panels. See docs/development-handoff-2026-10-14.md for exact diagnostics and
 pending public-interface/runtime validation; do not claim this work complete.
+
+## 2026-10-14 current implementation and MCP evidence
+
+UI requests SelectMany(Vec<i64>) and ScrollTo(usize) support explicit indexed selections and zero-based current-result scrolling. GalleryUiSnapshot publishes window_offset/loaded_count. Unmeasured virtual rows use logical ListOffset, measured visible rows retain reveal behavior. Scroll page changes notify publication; production page size remains200. Reference00/01/04/06/07/08 layouts and real 100012-row last-page200, cross-page bulk2, compact writeback os32/retry/dismiss were checked through PhoTag MCP. Native pointer/drag/window restore remain unverified. Earlier19error notes are historical; current Shell build passes.

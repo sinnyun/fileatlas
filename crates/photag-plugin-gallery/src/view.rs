@@ -23,6 +23,7 @@ mod sliders;
 mod statistics;
 mod tagging_picker;
 mod view_state;
+mod writeback_failure;
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -65,7 +66,7 @@ use crate::{
     selection::{GallerySelection, Modifiers as SelectionModifiers},
 };
 
-pub(super) use factory::gallery;
+pub(crate) use factory::gallery;
 
 struct GalleryView {
     month_motion: std::collections::HashMap<String, card_motion::CardMotion>,

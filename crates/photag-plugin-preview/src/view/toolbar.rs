@@ -5,8 +5,10 @@
 //! (video toolbar), `settings.rs:203-282` (per-button visibility),
 //! `theme.rs:505-512` (item spacing 8x6, button padding 12x5) and
 //! `theme.rs:440-471` (ghost widget fill, rounding `ROUND_SM + 1`).
+use gpui_kit::assets::IconName;
 use std::sync::Arc;
 use std::time::Duration;
+mod more;
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
@@ -24,15 +26,15 @@ use super::PreviewView;
 use super::tag_picker;
 
 /// Image toolbar anchor above the bottom edge (`preview.rs:2391`).
-const IMAGE_BOTTOM: f32 = 50.0;
+const IMAGE_BOTTOM: f32 = 0.0;
 /// Video toolbar anchor above the bottom edge (`preview.rs:1304`).
 const VIDEO_BOTTOM: f32 = 100.0;
 /// `preview.rs:1708`: the strip lifts the image toolbar by height + 4.
-pub(super) const FILMSTRIP_HEIGHT: f32 = 80.0;
-const FILMSTRIP_LIFT_GAP: f32 = 4.0;
+pub(super) const FILMSTRIP_HEIGHT: f32 = 100.0;
+const FILMSTRIP_LIFT_GAP: f32 = 0.0;
 const FRAME_ROUND: f32 = 8.0;
 /// `preview.rs:2404` frame fill RGBA(20, 20, 25, 230).
-const IMAGE_FRAME: u32 = 0x141419e6;
+const IMAGE_FRAME: u32 = (theme::SURFACE_BASE << 8) | 0xff;
 /// `preview.rs:1309` frame fill black alpha 160, no shadow.
 const VIDEO_FRAME: u32 = 0x000000a0;
 const PADDING_X: f32 = 10.0;
@@ -47,9 +49,9 @@ const VERTICAL_GAP: f32 = theme::SOURCE_ITEM_SPACING_Y;
 /// `preview.rs:2682-2698`: 36x4 pill in a 10-high row; the source's hit rect
 /// expands it by (8, 6) and overflows the row, GPUI hit areas are the layout
 /// box, so only the 8 px horizontal expansion is reproduced.
-const HANDLE_ROW_H: f32 = 10.0;
+const HANDLE_ROW_H: f32 = 4.0;
 const HANDLE_PILL_W: f32 = 36.0;
-const HANDLE_PILL_H: f32 = 4.0;
+const HANDLE_PILL_H: f32 = 2.0;
 const HANDLE_HIT_X: f32 = 8.0;
 /// `preview.rs:2740-2746`: neutral RGB(190, 190, 200) pill, alpha per state.
 const HANDLE_RGB: u32 = 0xBEBEC800;
@@ -71,7 +73,7 @@ const IMAGE_POPUP_MIN_H: f32 = 360.0;
 const VIDEO_POPUP_FACTOR: f32 = 0.70;
 const VIDEO_POPUP_MIN_H: f32 = 200.0;
 /// `preview.rs:2454`: zoom preset combo width.
-const PRESET_MENU_W: f32 = 70.0;
+const PRESET_MENU_W: f32 = 100.0;
 /// `preview.rs:2456`: zoom preset entries.
 const ZOOM_PRESETS: [u16; 6] = [25, 50, 100, 125, 150, 200];
 
@@ -95,17 +97,27 @@ fn tool_button(id: &str, label: String) -> Button {
 
 /// `preview.rs:2357-2368`: icon-only button whose tooltip shows immediately.
 fn icon_button(id: &str, glyph: &str, tip: &str) -> Button {
-    tool_button(id, glyph.into())
+    let icon = match id {
+        "rotate-ccw" => IconName::RotateCcw,
+        "rotate-cw" => IconName::RotateCw,
+        "flip-h" => IconName::FlipHorizontal2,
+        "flip-v" => IconName::FlipVertical2,
+        "delete" | "video-delete" => IconName::Trash,
+        "copy" => IconName::Copy,
+        "move" => IconName::ArrowRightLeft,
+        "explorer" => IconName::FolderOpen,
+        _ => IconName::ExternalLink,
+    };
+    let _ = glyph;
+    tool_button(id, String::new())
+        .icon(icon)
         .tooltip(tr(tip))
         .tooltip_show_delay(Duration::ZERO)
 }
 
 /// `preview.rs:2467,2489,2624,2649`: categories are divided by `|` labels.
 fn separator() -> Div {
-    div()
-        .text_size(px(theme::FONT_SIZE_BUTTON))
-        .text_color(rgb(theme::TEXT_SECONDARY))
-        .child("|")
+    div().w(px(1.)).h(px(22.)).bg(rgba(theme::SEPARATOR_LIGHT))
 }
 
 /// Popup geometry from the two source popup blocks (image, video).
@@ -367,7 +379,12 @@ impl PreviewView {
                         menu
                     }),
             );
-            row = row.child(Slider::new(&self.zoom_slider).w(px(128.0)));
+            row = row.child(
+                div()
+                    .w(px(128.))
+                    .flex_shrink_0()
+                    .child(Slider::new(&self.zoom_slider).w_full()),
+            );
         }
 
         if anything_in_zoom && settings.manip_category_visible() {
@@ -437,44 +454,7 @@ impl PreviewView {
             row = row.child(separator());
         }
         if settings.file_category_visible() {
-            row = row.child(
-                tool_button("more", tr("More"))
-                    .dropdown_caret(self.more_actions_open)
-                    .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
-                        this.more_actions_open = !this.more_actions_open;
-                        cx.notify();
-                    })),
-            );
-        }
-        if self.more_actions_open && settings.delete_button {
-            row = row.child(
-                icon_button("delete", "🗑", "Delete (Del/Backspace)")
-                    .on_click(cx.listener(|this, _, window, cx| this.request_delete(window, cx))),
-            );
-        }
-        if self.more_actions_open && settings.copy_button {
-            row = row.child(
-                icon_button("copy", "📋", "Copy to…")
-                    .on_click(cx.listener(|this, _, _, cx| this.copy_current_to_file(cx))),
-            );
-        }
-        if self.more_actions_open && settings.move_button {
-            row = row.child(
-                icon_button("move", "➡", "Move to…")
-                    .on_click(cx.listener(|this, _, _, cx| this.move_current_to_file(cx))),
-            );
-        }
-        if self.more_actions_open && settings.explorer_button {
-            row = row.child(
-                icon_button("explorer", "📂", "Show in Explorer")
-                    .on_click(cx.listener(|this, _, _, cx| this.reveal_in_file_manager(cx))),
-            );
-        }
-        if self.more_actions_open && settings.open_external_button {
-            row = row.child(
-                icon_button("open-external", "🔗", "Open in default app")
-                    .on_click(cx.listener(|this, _, _, cx| this.open_in_default_app(cx))),
-            );
+            row = row.child(more::button(self, &settings, cx));
         }
 
         if (settings.file_category_visible()
@@ -488,7 +468,8 @@ impl PreviewView {
         if settings.filmstrip_toggle {
             let show = self.filmstrip_visible();
             row = row.child(
-                tool_button("filmstrip", "🎞".into())
+                tool_button("filmstrip", String::new())
+                    .icon(IconName::PanelBottom)
                     .toggled(show)
                     .tooltip(tr(if show {
                         "Hide filmstrip"
@@ -529,20 +510,17 @@ impl PreviewView {
             .child(
                 div()
                     .v_flex()
+                    .w_full()
                     .items_center()
                     .gap(px(VERTICAL_GAP))
                     .when_some(pill, |frame, pill| frame.child(pill))
                     .child(row)
                     .px(px(PADDING_X))
                     .py(px(padding_y))
-                    .rounded(px(FRAME_ROUND))
-                    .bg(rgba(fill))
-                    .when(handle, |frame| {
-                        frame.shadow(vec![
-                            BoxShadow::new(px(0.), px(4.), rgba(0x000000a0).into())
-                                .blur_radius(px(14.)),
-                        ])
-                    }),
+                    .rounded(px(if handle { 0. } else { FRAME_ROUND }))
+                    .border_t_1()
+                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .bg(rgba(fill)),
             )
             .on_scroll_wheel(cx.listener(|this, _: &ScrollWheelEvent, _, _| {
                 // `preview.rs:2597-2601`: scroll over the toolbar stays there.
@@ -672,7 +650,9 @@ fn tags_button(
     let open = view.tag_picker_open;
     let height = px(geom.height(viewport_height));
     let body = tag_picker::popup(view, geom.min_width, height, cx);
-    let trigger = tool_button("tags", format!("🏷 {} ({assigned}) ▾", tr("Tags")));
+    let trigger = tool_button("tags", format!("{} ({assigned})", tr("Tags")))
+        .icon(IconName::Tag)
+        .dropdown_caret(true);
     let weak = cx.entity().downgrade();
     Popover::new("preview-tags-popup")
         .anchor(Anchor::BottomLeft)
@@ -684,6 +664,7 @@ fn tags_button(
             let _ = weak.update(app, move |this: &mut PreviewView, cx| {
                 if this.tag_picker_open != next {
                     this.tag_picker_open = next;
+                    let _ = this.surfaces.set_open("preview.tags", next);
                     cx.notify();
                 }
             });

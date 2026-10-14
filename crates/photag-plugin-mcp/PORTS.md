@@ -17,6 +17,7 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP c
 ## Tool contracts
 
 - `screenshot_window`: captures only the PhoTag top-level HWND on Windows with `PrintWindow(PW_RENDERFULLCONTENT)`, encodes the result as PNG, and returns MCP image content plus pixel dimensions. A missing, minimized, invalid, or unsupported window returns an error. Visual output has been inspected for Gallery and Preview on the isolated validation profile; other screens and DPI/window-size configurations remain to be checked.
+- `resize_window`: changes the current PhoTag HWND outer size for isolated layout checks. Width is limited to 640–4096 and height to 480–2160; the result includes requested and actual window bounds because Windows DPI and monitor work-area limits can clamp the request. It does not move, activate, or reorder the window; capture afterward with `screenshot_window` to check the rendered layout.
 - `list_library`: reads registered folder IDs, paths, last-scan times/counts, and the hierarchical tag tree.
 - `search_media`: supports a phrase across filename/path/tag, folder ID, tag IDs, media type, offset, a maximum page size of 100, and the source sort orders.
 - `get_media`: returns a single indexed media row and its current tags.
@@ -108,3 +109,22 @@ scripts/photag-mcp-debug.cjs does so, uses an isolated target profile, captures
 via screenshot_window and keeps one child window alive in interactive mode.
 It cannot attach to another instance. Current continuation changes are
 unverified; the older successful exe predates final layout edits.
+## v5 redesign validation interfaces (2026-10-14)
+
+`control_ui` additionally accepts `sidebar_open/sidebar_close`, `export_open/export_close`,
+`writeback_retry/writeback_dismiss` (value is an exact recorded failure path). Sidebar controls
+use the same UI Bridge state and Shell toggle; writeback actions use the production retry
+payload or failure dismissal, never a synthesized successful result. `get_ui_state` exposes
+sidebar/export visibility and the recorded writeback failures with path/error.
+
+`control_preview` additionally accepts `next/previous`, `tags_open/tags_close`,
+`more_open/more_close`, and `filmstrip_show/filmstrip_hide`. Requests affect the mounted Preview
+view's controlled GPUI Kit popovers and existing SettingsService filmstrip flag. These do not
+inject OS input. `control_playback` adds `set_volume` with finite `volume` in [0,1.5],
+`tags_open/tags_close` and `more_open/more_close`; `get_view_state.playback` returns actual volume
+and the controlled surfaces. UI requests are asynchronous; read state after the GPUI poller.
+The existing isolated-profile mutation policy remains applicable.
+
+## 2026-10-14 current implementation and MCP evidence
+
+control_gallery actions select_many (1–1000 unique existing media_ids) and scroll (zero-based current-result index in value) are mutation-guarded UI requests, including unloaded records. get_ui_state gallery includes window_offset/loaded_count and folder_id/path_prefix. 100012-row runtime observed window_offset99812/loaded_count200 and bulk2 across pages. Detailed profile/plans/reports and current limits: docs/redesign-validation.md latest section.

@@ -2,6 +2,7 @@
 
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
+use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
@@ -10,7 +11,12 @@ use photag_ui_bridge::theme;
 
 use super::GalleryView;
 
-pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> Div {
+pub(super) fn render(
+    view: &mut GalleryView,
+    width: f32,
+    height: f32,
+    cx: &mut Context<GalleryView>,
+) -> Div {
     let query = view
         .tag_picker_search
         .read(cx)
@@ -30,52 +36,21 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
     let mut recent = Vec::new();
     collect_recent_labels(&tags, &recent_ids, &mut recent);
     let selected_count = view.selection.selected_media_ids.len();
-    let mut picker = div()
+    let card_height = height.max(360.);
+    let body_height = (card_height - 104.).max(240.);
+    let body_width = (width - 28.).max(1.);
+    let picker_width = (body_width * (2. / 3.)).min(430.).max(1.);
+    let preview_width = (body_width - picker_width).max(1.);
+    let picker = div()
         .v_flex()
         .gap_2()
-        .w(px(430.))
-        .flex_shrink_0()
-        .rounded_md()
-        .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+        .w(px(picker_width))
+        .h(px(body_height))
+        .min_w_0()
+        .min_h_0()
         .p_3()
-        .child(
-            div()
-                .text_sm()
-                .font_semibold()
-                .child(photag_ui_bridge::i18n::tr_args(
-                    "Assign tags to {count} selected media",
-                    &[("count", selected_count.to_string())],
-                )),
-        )
         .child(Input::new(&view.tag_picker_search).w_full());
-    picker = picker.child(
-        div()
-            .h_flex()
-            .gap_2()
-            .child(
-                Button::new("gallery-tag-assign")
-                    .label(photag_ui_bridge::i18n::tr("Assign"))
-                    .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(true, cx))),
-            )
-            .child(
-                Button::new("gallery-tag-remove")
-                    .label(photag_ui_bridge::i18n::tr("Remove"))
-                    .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(false, cx))),
-            )
-            .child(
-                Button::new("gallery-tag-clear")
-                    .label(photag_ui_bridge::i18n::tr("Clear all tags"))
-                    .on_click(cx.listener(|this, _, _, cx| this.clear_picker_tags(cx))),
-            )
-            .child(
-                Button::new("gallery-tag-picker-clear")
-                    .label(photag_ui_bridge::i18n::tr("Clear choices"))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.tag_picker_selected.clear();
-                        cx.notify();
-                    })),
-            ),
-    );
+    let mut picker = picker;
     if list_empty(&tags, &query) {
         picker = picker.child(
             div()
@@ -87,8 +62,12 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
         picker = picker.child(
             div()
                 .v_flex()
-                .gap_1()
-                .max_h(px(250.))
+                .w_full()
+                .flex_1()
+                .min_h_0()
+                .rounded_sm()
+                .bg(rgb(theme::SURFACE_PANEL))
+                .p_1()
                 .overflow_y_scrollbar()
                 .children(tag_tree_rows(
                     &tags,
@@ -125,6 +104,8 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
             div()
                 .v_flex()
                 .gap_1()
+                .max_h(px(64.))
+                .flex_shrink_0()
                 .child(
                     div()
                         .text_xs()
@@ -134,13 +115,118 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> D
                 .child(recent_row),
         );
     }
-    let preview = selected_media_preview(view);
+    let preview = selected_media_preview(view, preview_width);
     div()
-        .h_flex()
-        .items_start()
-        .gap_3()
-        .child(picker)
-        .child(preview)
+        .v_flex()
+        .w(px(width))
+        .h(px(card_height))
+        .min_h_0()
+        .overflow_hidden()
+        .rounded_md()
+        .bg(rgb(theme::SURFACE_MODAL))
+        .child(
+            div()
+                .h_flex()
+                .w_full()
+                .h(px(48.))
+                .items_center()
+                .justify_between()
+                .border_b_1()
+                .border_color(rgba(theme::BORDER.to_rgba()))
+                .px_4()
+                .child(
+                    div()
+                        .text_sm()
+                        .font_semibold()
+                        .child(photag_ui_bridge::i18n::tr_args(
+                            "Assign tags to {count} selected media",
+                            &[("count", selected_count.to_string())],
+                        )),
+                )
+                .child(
+                    Button::new("gallery-tag-picker-close")
+                        .ghost()
+                        .compact()
+                        .label("×")
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.show_tag_picker = false;
+                            cx.notify();
+                        })),
+                ),
+        )
+        .child(
+            div()
+                .h_flex()
+                .w_full()
+                .h(px(body_height))
+                .min_h_0()
+                .child(picker)
+                .child(
+                    div()
+                        .v_flex()
+                        .w(px(preview_width))
+                        .h(px(body_height))
+                        .min_w_0()
+                        .min_h_0()
+                        .border_l_1()
+                        .border_color(rgba(theme::BORDER.to_rgba()))
+                        .child(preview),
+                ),
+        )
+        .child(
+            div()
+                .h_flex()
+                .w_full()
+                .h(px(56.))
+                .flex_shrink_0()
+                .items_center()
+                .justify_end()
+                .gap_2()
+                .border_t_1()
+                .border_color(rgba(theme::BORDER.to_rgba()))
+                .px_4()
+                .child(
+                    Button::new("gallery-tag-picker-clear")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Clear choices"))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.tag_picker_selected.clear();
+                            cx.notify();
+                        })),
+                )
+                .child(div().flex_1())
+                .child(
+                    Button::new("gallery-tag-picker-cancel")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Cancel"))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.show_tag_picker = false;
+                            cx.notify();
+                        })),
+                )
+                .child(
+                    Button::new("gallery-tag-assign")
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Assign"))
+                        .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(true, cx))),
+                )
+                .child(
+                    Button::new("gallery-tag-remove")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Remove"))
+                        .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(false, cx))),
+                )
+                .child(
+                    Button::new("gallery-tag-clear")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Clear all tags"))
+                        .on_click(cx.listener(|this, _, _, cx| this.clear_picker_tags(cx))),
+                ),
+        )
 }
 
 fn tag_tree_rows(
@@ -208,18 +294,19 @@ fn find_tag(
     })
 }
 
-fn selected_media_preview(view: &GalleryView) -> Div {
+fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
     let selected = &view.selection.selected_media_ids;
     let media = selected
         .first()
         .and_then(|id| view.service.media_by_id(*id).ok().flatten());
     let mut preview = div()
         .v_flex()
-        .items_center()
-        .gap_2()
-        .w(px(220.))
-        .rounded_md()
-        .bg(rgb(theme::SURFACE_PANEL))
+        .items_start()
+        .gap_1()
+        .w(px(width))
+        .h_full()
+        .min_w_0()
+        .overflow_hidden()
         .p_3()
         .child(
             div()
@@ -228,16 +315,86 @@ fn selected_media_preview(view: &GalleryView) -> Div {
                 .child(photag_ui_bridge::i18n::tr("Selected media")),
         );
     if let Some(media) = media {
+        let mut tags_for_media = view
+            .tagging
+            .as_ref()
+            .and_then(|service| service.for_media(media.id).ok())
+            .unwrap_or_default();
         if let Some(path) = &media.thumb_path {
             preview = preview.child(
                 img(std::path::PathBuf::from(path))
-                    .w(px(190.))
-                    .h(px(150.))
+                    .w_full()
+                    .h(px(132.))
                     .object_fit(ObjectFit::Cover)
                     .rounded_md(),
             );
+        } else {
+            preview = preview.child(
+                div()
+                    .w_full()
+                    .h(px(132.))
+                    .rounded_md()
+                    .bg(rgb(theme::SURFACE_FAINT))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_size(px(28.))
+                    .child(if media.media_type == "video" {
+                        "▶"
+                    } else if media.media_type == "audio" {
+                        "♫"
+                    } else {
+                        "▧"
+                    }),
+            );
         }
-        preview = preview.child(div().text_sm().child(media.filename.clone()));
+        preview = preview.child(
+            div()
+                .w_full()
+                .text_sm()
+                .font_medium()
+                .child(media.filename.clone()),
+        );
+        if let (Some(width), Some(height)) = (media.width, media.height) {
+            preview = preview.child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(format!("{width} × {height}")),
+            );
+        }
+        tags_for_media.sort_by(|left, right| left.name.cmp(&right.name));
+        preview = preview.child(
+            div()
+                .w_full()
+                .pt_1()
+                .text_xs()
+                .font_semibold()
+                .child(photag_ui_bridge::i18n::tr("Tags")),
+        );
+        if tags_for_media.is_empty() {
+            preview = preview.child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .child(photag_ui_bridge::i18n::tr("No tags assigned yet.")),
+            );
+        } else {
+            let mut chips = div().h_flex().w_full().flex_wrap().gap_1();
+            for tag in tags_for_media.into_iter().take(6) {
+                chips = chips.child(
+                    div()
+                        .rounded_sm()
+                        .bg(rgb(theme::SURFACE_PANEL))
+                        .px_2()
+                        .py(px(2.))
+                        .text_xs()
+                        .child(tag.name),
+                );
+            }
+            preview = preview.child(chips);
+        }
         if selected.len() > 1 {
             preview = preview.child(div().text_xs().child(photag_ui_bridge::i18n::tr_args(
                 "and {count} more selected",

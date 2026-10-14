@@ -20,9 +20,11 @@ pub(super) fn button(
             }
         });
     Button::new(format!("settings-tag-hotkey-{key}"))
-        .label(photag_ui_bridge::i18n::tr(
-            &(format!("{key}: {label}")).to_string(),
-        ))
+        .compact()
+        .w(px(360.))
+        .h(px(28.))
+        .label(label)
+        .dropdown_caret(true)
         .dropdown_menu(move |mut menu, _, _| {
             let none_view = view.clone();
             menu = menu.item(

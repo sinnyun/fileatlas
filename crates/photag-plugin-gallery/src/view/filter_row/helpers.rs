@@ -5,8 +5,8 @@ const POPOVER_ROW_HEIGHT: f32 = 30.;
 const RATING_SLIDER_WIDTH: f32 = 224.;
 const RATING_SLIDER_PAD: f32 = 9.;
 
-/// Chip trigger shared by every filter popover: subtle fill, 30 high, with a
-/// chevron while inactive and an accent clear control while active.
+/// Compact ghost trigger shared by every filter popover. Active filters use a
+/// quiet accent wash while inactive controls stay visually light.
 pub(super) fn chip(
     id: &'static str,
     icon: IconName,
@@ -34,10 +34,8 @@ pub(super) fn chip(
         .compact()
         .h(px(theme::FILTER_CHIP_HEIGHT))
         .px(px(7.))
-        .rounded(px(theme::ROUND_MD))
-        .border_1()
-        .border_color(rgba(theme::SEPARATOR_LIGHT))
-        .bg(rgba(theme::FILL_SUBTLE))
+        .rounded(px(theme::ROUND_SM))
+        .when(active, |button| button.bg(rgba(theme::FILL_SUBTLE)))
         .text_size(px(theme::FONT_SIZE_BUTTON))
         .text_color(rgb(text_color))
         .child(

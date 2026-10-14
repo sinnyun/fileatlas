@@ -113,6 +113,7 @@ impl Plugin for McpPlugin {
             dev_test,
             i18n,
             surfaces,
+            context.clone(),
         );
         let task = tokio::spawn(async move {
             match server.serve(stdio()).await {
@@ -157,6 +158,7 @@ pub enum McpPluginError {
 
 #[derive(Clone)]
 struct PhoTagMcpServer {
+    context: Context,
     #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
     gallery: Arc<GalleryService>,
@@ -186,8 +188,10 @@ impl PhoTagMcpServer {
         dev_test: Option<Arc<DevTestService>>,
         i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
+        context: Context,
     ) -> Self {
         Self {
+            context,
             tool_router: Self::read_tool_router()
                 + Self::write_tool_router()
                 + Self::dev_test_tool_router()

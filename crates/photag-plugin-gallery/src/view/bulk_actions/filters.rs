@@ -15,7 +15,7 @@ pub(super) fn section_title(label: &'static str) -> Div {
 }
 
 pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>) -> Div {
-    let mut filters = div()
+    let filters = div()
         .v_flex()
         .gap_2()
         .child(section_title("3. Match all filters (AND)"))
@@ -61,7 +61,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("File name")),
                 )
-                .child(Input::new(&view.bulk_inputs[4]).w(px(410.))),
+                .child(Input::new(&view.bulk_inputs[4]).flex_1().min_w_0()),
         )
         .child(
             div()
@@ -88,13 +88,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                             cx.notify();
                         })),
                 )
-                .child(Input::new(&view.bulk_inputs[5]).w(px(320.)))
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(photag_ui_bridge::i18n::tr("Separate with commas")),
-                ),
+                .child(Input::new(&view.bulk_inputs[5]).flex_1().min_w_0()),
         )
         .child(date_row(view, true, cx))
         .child(date_row(view, false, cx))
@@ -109,9 +103,17 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("Rating")),
                 )
-                .child(div().text_xs().child(photag_ui_bridge::i18n::tr("From")))
+                .child(
+                    div()
+                        .text_xs()
+                        .child(photag_ui_bridge::i18n::tr("Minimum rating")),
+                )
                 .child(Input::new(&view.bulk_inputs[2]).w(px(55.)))
-                .child(div().text_xs().child(photag_ui_bridge::i18n::tr("To")))
+                .child(
+                    div()
+                        .text_xs()
+                        .child(photag_ui_bridge::i18n::tr("Maximum rating")),
+                )
                 .child(Input::new(&view.bulk_inputs[3]).w(px(55.)))
                 .child(
                     div()
@@ -178,7 +180,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
     filters
 }
 
-fn bulk_tag_tree(view: &GalleryView, cx: &mut Context<GalleryView>) -> Div {
+fn bulk_tag_tree(view: &GalleryView, cx: &mut Context<GalleryView>) -> impl IntoElement {
     let tags = view
         .tagging
         .as_ref()
@@ -232,13 +234,19 @@ fn bulk_tag_rows(
     rows
 }
 
-pub(super) fn match_results_list(media: &[MediaItem]) -> Div {
+pub(super) fn match_results_list(
+    media: &[MediaItem],
+    count: usize,
+    height: f32,
+) -> impl IntoElement {
     let mut list = div()
         .v_flex()
         .gap_2()
         .w(px(240.))
-        .max_h(px(490.))
+        .flex_shrink_0()
         .overflow_y_scrollbar()
+        .min_h_0()
+        .h(px(height))
         .rounded_md()
         .bg(rgb(theme::SURFACE_PANEL))
         .p_2()
@@ -248,7 +256,7 @@ pub(super) fn match_results_list(media: &[MediaItem]) -> Div {
                 .font_semibold()
                 .child(photag_ui_bridge::i18n::tr_args(
                     "Matching media ({count})",
-                    &[("count", media.len().to_string())],
+                    &[("count", count.to_string())],
                 )),
         );
     if media.is_empty() {
@@ -300,7 +308,7 @@ pub(super) fn match_results_list(media: &[MediaItem]) -> Div {
                             div()
                                 .text_xs()
                                 .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child(item.media_type.clone()),
+                                .child(photag_ui_bridge::i18n::tr(item.media_type.as_str())),
                         ),
                 ),
             );

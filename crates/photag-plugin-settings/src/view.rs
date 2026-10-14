@@ -21,6 +21,8 @@ mod checkbox;
 mod tabs;
 #[path = "view/tag_hotkeys.rs"]
 mod tag_hotkeys;
+#[path = "view/toolbar.rs"]
+mod toolbar;
 #[path = "view/updates.rs"]
 mod updates;
 #[path = "view/updates_page.rs"]
@@ -362,27 +364,53 @@ impl SettingsView {
     }
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let mut rail = div().v_flex().w(px(166.)).gap(px(6.)).p_2().flex_shrink_0();
-        for (tab, name) in [
-            (Tab::Appearance, "Appearance"),
-            (Tab::Toolbar, "Toolbar"),
-            (Tab::Shortcuts, "Shortcuts"),
-            (Tab::Tags, "Tags"),
-            (Tab::Ai, "AI"),
-            (Tab::Updates, "Updates"),
+        use gpui_kit::assets::IconName;
+        for (tab, name, icon) in [
+            (Tab::Appearance, "Appearance", IconName::Monitor),
+            (Tab::Toolbar, "Toolbar", IconName::SlidersHorizontal),
+            (Tab::Shortcuts, "Shortcuts", IconName::Keyboard),
+            (Tab::Tags, "Tags", IconName::Tag),
+            (Tab::Ai, "AI", IconName::Sparkles),
+            (Tab::Updates, "Updates", IconName::RefreshCw),
         ] {
-            let label = if self.tab == tab {
-                format!("●  {}", photag_ui_bridge::i18n::tr(name))
-            } else {
-                photag_ui_bridge::i18n::tr(name)
-            };
+            let active = self.tab == tab;
             rail = rail.child(
                 Button::new(format!("settings-tab-{name}"))
                     .ghost()
                     .w_full()
                     .h(px(38.))
                     .px(px(10.))
+                    .justify_start()
+                    .rounded(px(4.))
+                    .border_l(px(3.))
+                    .border_color(if active {
+                        rgb(theme::accent())
+                    } else {
+                        rgba(0)
+                    })
+                    .bg(if active {
+                        rgba((theme::accent() << 8) | 0x48)
+                    } else {
+                        rgba(0)
+                    })
+                    .text_color(rgb(theme::TEXT_PRIMARY))
                     .text_size(px(14.))
-                    .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
+                    .child(
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .items_center()
+                            .justify_start()
+                            .gap_2()
+                            .child(gpui_kit::component::Icon::new(icon))
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_size(px(14.))
+                                    .text_color(rgb(theme::TEXT_PRIMARY))
+                                    .child(photag_ui_bridge::i18n::tr(name)),
+                            ),
+                    )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.tab = tab;
                         let name = match tab {
@@ -425,15 +453,22 @@ impl Render for SettingsView {
             };
         }
         let viewport = window.bounds().size;
-        let card_width = (f32::from(viewport.width) - 32.).clamp(680., 980.);
-        let card_height = (f32::from(viewport.height) - 24.).max(100.);
+        let card_width = (f32::from(viewport.width) - 48.).clamp(680., 900.);
+        let desired_height = match self.tab {
+            Tab::Appearance => 620.,
+            Tab::Toolbar => 520.,
+            Tab::Shortcuts => 680.,
+            Tab::Tags => 440.,
+            Tab::Ai => 620.,
+            Tab::Updates => 600.,
+        };
+        let card_height = (f32::from(viewport.height) - 48.).clamp(100., desired_height);
         let (left, top) = self.window_position.unwrap_or((
             (f32::from(viewport.width) - card_width).max(0.) / 2.,
             (f32::from(viewport.height) - card_height).max(0.) / 2.,
         ));
         let left = left.clamp(0., (f32::from(viewport.width) - card_width).max(0.));
-        let top = top.clamp(0., (f32::from(viewport.height) - 100.).max(0.));
-        let card_height = (f32::from(viewport.height) - top - 14.).clamp(100., 520.);
+        let top = top.clamp(0., (f32::from(viewport.height) - card_height).max(0.));
         let body_height = (card_height - 48. - 44.).max(8.);
         let content_width = (card_width - 167.).max(320.);
         self.window_position = Some((left, top));
@@ -468,6 +503,8 @@ impl Render for SettingsView {
             .justify_between()
             .p_2()
             .bg(rgb(theme::SURFACE_MODAL))
+            .border_b_1()
+            .border_color(rgba(theme::SEPARATOR_LIGHT))
             .on_mouse_down(MouseButton::Left, drag_start)
             .on_mouse_move(drag_move)
             .on_mouse_up(MouseButton::Left, drag_end)
@@ -475,11 +512,20 @@ impl Render for SettingsView {
                 div()
                     .text_lg()
                     .font_semibold()
+                    .h_flex()
+                    .gap_3()
+                    .child(
+                        gpui_kit::component::Icon::new(gpui_kit::assets::IconName::Aperture)
+                            .text_color(rgb(theme::accent())),
+                    )
+                    .child("PhoTag")
                     .child(photag_ui_bridge::i18n::tr("Settings")),
             )
             .child(
                 Button::new("settings-close")
-                    .label(photag_ui_bridge::i18n::tr("Close ×"))
+                    .ghost()
+                    .icon(gpui_kit::assets::IconName::X)
+                    .tooltip(photag_ui_bridge::i18n::tr("Close"))
                     .on_click(close),
             );
         let mut card = div()

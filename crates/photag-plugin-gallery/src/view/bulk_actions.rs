@@ -6,9 +6,10 @@ use crate::filter::MediaTypeFilter;
 use filters::{filter_controls, match_results_list, section_title};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::button::Button;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::calendar::Date;
 use gpui_kit::component::date_picker::DatePicker;
+use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::{MediaItem, MediaQuery};
 use photag_ui_bridge::theme;
@@ -246,35 +247,22 @@ fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64
     matching_results(view, cx).map(|(ids, _)| ids)
 }
 
-pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyElement {
+pub(super) fn render(
+    view: &GalleryView,
+    width: f32,
+    height: f32,
+    cx: &mut Context<GalleryView>,
+) -> AnyElement {
     let mut panel = div()
         .v_flex()
-        .gap_2()
+        .w_full()
+        .gap_3()
+        .h(px(height))
+        .min_h_0()
+        .overflow_hidden()
         .rounded_md()
-        .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-        .p_3()
-        .child(
-            Button::new("gallery-bulk-toggle")
-                .label(photag_ui_bridge::i18n::tr(
-                    &(if view.bulk_action.is_some() {
-                        "Close bulk actions"
-                    } else {
-                        "Bulk actions… (Ctrl+Shift+D)"
-                    })
-                    .to_string(),
-                ))
-                .on_click(cx.listener(|this, _, window, cx| {
-                    let closing = this.bulk_action.is_some();
-                    if !closing {
-                        reset_inputs(this, window, cx);
-                        this.bulk_source = BulkActionSource::WholeLibrary;
-                    }
-                    this.bulk_action = (!closing).then_some(BulkActionKind::Delete);
-                    this.confirm_bulk_action = false;
-                    this.confirm_bulk_action_ids = None;
-                    cx.notify();
-                })),
-        );
+        .bg(rgb(theme::SURFACE_MODAL))
+        .p_3();
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
     };
@@ -285,25 +273,21 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     };
     let count = ids.len();
     let has_filter_error = error.is_some();
-    if let Some(error) = error {
-        panel = panel.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
-    }
-    if let Some(status) = &view.operation_status {
-        panel = panel.child(
+    let available_width = (width - 280.).max(320.);
+    let column_width = ((available_width - 28.) / 2.).max(120.);
+    let action_source = div()
+        .h_flex()
+        .w_full()
+        .items_start()
+        .gap_3()
+        .child(
             div()
-                .text_sm()
-                .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(status.clone()),
-        );
-    }
-    let mut controls =
-        div()
-            .v_flex()
-            .gap_2()
-            .w(px(560.))
-            .child(section_title("1. Choose action"))
-            .child(
-                div().h_flex().gap_2().children(
+                .v_flex()
+                .w(px(column_width))
+                .flex_shrink_0()
+                .gap_1()
+                .child(section_title("1. Choose action"))
+                .children(
                     [
                         BulkActionKind::Delete,
                         BulkActionKind::CopyTo,
@@ -311,9 +295,23 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                     ]
                     .into_iter()
                     .map(|choice| {
+                        let selected = view.bulk_action == Some(choice);
                         Button::new(format!("gallery-bulk-action-{}", choice.verb()))
-                            .label(photag_ui_bridge::i18n::tr(choice.label()))
-                            .toggled(view.bulk_action == Some(choice))
+                            .ghost()
+                            .compact()
+                            .w_full()
+                            .bg(if view.bulk_action == Some(choice) {
+                                rgba((theme::accent() << 8) | 48)
+                            } else {
+                                rgba(0)
+                            })
+                            .text_color(rgb(if view.bulk_action == Some(choice) {
+                                theme::accent()
+                            } else {
+                                theme::TEXT_PRIMARY
+                            }))
+                            .child(choice_row(choice.label(), selected))
+                            .toggled(selected)
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.bulk_action = Some(choice);
                                 this.confirm_bulk_action = false;
@@ -322,21 +320,69 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                             }))
                     }),
                 ),
-            )
-            .child(section_title("2. Choose source"))
-            .child(div().h_flex().flex_wrap().gap_2().children(
-                BulkActionSource::ALL.into_iter().map(|choice| {
+        )
+        .child(
+            div()
+                .v_flex()
+                .w(px(column_width))
+                .flex_shrink_0()
+                .gap_1()
+                .child(section_title("2. Choose source"))
+                .children(BulkActionSource::ALL.into_iter().map(|choice| {
+                    let selected = view.bulk_source == choice;
                     Button::new(format!("gallery-bulk-source-{}", choice.label()))
-                        .label(photag_ui_bridge::i18n::tr(choice.label()))
-                        .toggled(view.bulk_source == choice)
+                        .ghost()
+                        .compact()
+                        .w_full()
+                        .bg(if view.bulk_source == choice {
+                            rgba((theme::accent() << 8) | 48)
+                        } else {
+                            rgba(0)
+                        })
+                        .text_color(rgb(if view.bulk_source == choice {
+                            theme::accent()
+                        } else {
+                            theme::TEXT_PRIMARY
+                        }))
+                        .child(choice_row(choice.label(), selected))
+                        .toggled(selected)
                         .on_click(cx.listener(move |this, _, _, cx| {
                             this.bulk_source = choice;
                             this.confirm_bulk_action = false;
                             this.confirm_bulk_action_ids = None;
                             cx.notify();
                         }))
-                }),
-            ));
+                })),
+        );
+    let mut controls = div()
+        .v_flex()
+        .gap_2()
+        .overflow_y_scrollbar()
+        .w(px(available_width))
+        .h_full()
+        .min_w_0()
+        .min_h_0()
+        .flex_shrink_0()
+        .child(
+            div()
+                .h_flex()
+                .gap_3()
+                .p_2()
+                .rounded_md()
+                .bg(rgb(theme::SURFACE_PANEL))
+                .child(action_source),
+        );
+    if let Some(error) = error {
+        controls = controls.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
+    }
+    if let Some(status) = &view.operation_status {
+        controls = controls.child(
+            div()
+                .text_sm()
+                .text_color(rgb(theme::TEXT_SECONDARY))
+                .child(status.clone()),
+        );
+    }
     if view.bulk_source == BulkActionSource::CurrentSelection {
         controls = controls.child(
             div()
@@ -349,19 +395,27 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     } else {
         controls = controls.child(filter_controls(view, cx));
     }
-    let result_list = match_results_list(&matched_media);
+    let result_list = match_results_list(&matched_media, count, (height - 110.).max(120.));
     let layout = div()
         .h_flex()
+        .flex_1()
+        .min_h_0()
         .items_start()
         .gap_4()
+        .w_full()
         .child(controls)
         .child(result_list);
     panel = panel.child(layout);
     panel = panel.child(
         div()
             .h_flex()
+            .flex_shrink_0()
             .items_center()
             .justify_between()
+            .mt(px(3.))
+            .pt(px(10.))
+            .border_t_1()
+            .border_color(rgba(theme::SEPARATOR_LIGHT))
             .child(div().text_sm().child(photag_ui_bridge::i18n::tr_args(
                 "Matches: {count} items",
                 &[("count", count.to_string())],
@@ -372,6 +426,8 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                     .gap_2()
                     .child(
                         Button::new("gallery-bulk-cancel")
+                            .ghost()
+                            .compact()
                             .label(photag_ui_bridge::i18n::tr("Cancel"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.bulk_action = None;
@@ -382,6 +438,8 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
                     )
                     .child(
                         Button::new("gallery-bulk-run")
+                            .primary()
+                            .compact()
                             .label(photag_ui_bridge::i18n::tr(
                                 &(if action == BulkActionKind::Delete && view.confirm_bulk_action {
                                     photag_ui_bridge::i18n::tr_args(
@@ -407,6 +465,40 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
     panel.into_any_element()
 }
 
+fn choice_row(label: &str, selected: bool) -> Div {
+    let accent = theme::accent();
+    div()
+        .h_flex()
+        .w_full()
+        .items_center()
+        .gap_2()
+        .child(
+            div()
+                .size(px(14.))
+                .rounded_full()
+                .border_1()
+                .border_color(if selected {
+                    rgb(accent)
+                } else {
+                    rgba(theme::BORDER.to_rgba())
+                })
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(if selected {
+                    div().size(px(6.)).rounded_full().bg(rgb(accent))
+                } else {
+                    div().size(px(6.))
+                }),
+        )
+        .child(
+            div()
+                .flex_1()
+                .text_sm()
+                .child(photag_ui_bridge::i18n::tr(label)),
+        )
+}
+
 fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Div {
     let (label, picker, has_value) = if from {
         (
@@ -427,11 +519,16 @@ fn date_row(view: &GalleryView, from: bool, cx: &mut Context<GalleryView>) -> Di
         .gap_2()
         .child(
             div()
-                .w(px(150.))
+                .w(px(110.))
+                .flex_shrink_0()
                 .text_sm()
                 .child(photag_ui_bridge::i18n::tr(label)),
         )
-        .child(DatePicker::new(picker).placeholder(photag_ui_bridge::i18n::tr("Choose date")));
+        .child(
+            DatePicker::new(picker)
+                .w(px(220.))
+                .placeholder(photag_ui_bridge::i18n::tr("Select date")),
+        );
     if has_value {
         row = row.child(
             Button::new(if from {
