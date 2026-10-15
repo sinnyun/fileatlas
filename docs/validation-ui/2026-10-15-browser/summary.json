@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-15",
+  "note": "Historical browser implementation before 2026-10-16 sidebar review. Current review evidence is in ../2026-10-16-sidebar-review.",
+  "profiles": [
+    "mcp-browser-smoke9",
+    "mcp-browser-extended6",
+    "mcp-browser-extended7"
+  ],
+  "scenarios": {
+    "basic": {
+      "cases": [
+        "unbookmarked direct browse",
+        "explicit descendants",
+        "native watcher create",
+        "native watcher delete",
+        "tag persistence",
+        "missing records panel",
+        "explicit relink",
+        "delete missing annotation"
+      ]
+    },
+    "extended": {
+      "cases": [
+        "bookmark alias and order",
+        "same path overwrite refreshes thumbnail dimensions and preview revision",
+        "tag result locate and select",
+        "native watcher directory create",
+        "descendants restores previous grouping",
+        "remove favorite preserves tags and local files",
+        "disabled thumbnails do not decode new visible images",
+        "100000 real direct files",
+        "list scroll beyond 200 row window",
+        "cancel stops directory producer",
+        "rapid navigation rejects stale results"
+      ],
+      "performance": {
+        "firstPublishedMs": 2675,
+        "completePublishedMs": 29491
+      },
+      "memory": {
+        "WorkingSet64": 222978048,
+        "PeakWorkingSet64": 261554176,
+        "CPU": 46.359375
+      }
+    },
+    "restart": {
+      "cases": [
+        "stale saved cache IDs ignored",
+        "bookmarks restored without startup library scan",
+        "untagged selection restored by path",
+        "durable tag association restored",
+        "read only mutation guard",
+        "missing record retains independent identification preview after restart"
+      ]
+    },
+    "pointer": {
+      "cases": [
+        "GPUI pointer toggles descendants on and off",
+        "previous grouping restored"
+      ]
+    },
+    "snapshot": {
+      "cases": [
+        "missing image record shows saved identification preview",
+        "cancel acknowledgement includes actual directory producer stop"
+      ],
+      "cancelObservedMs": 186
+    }
+  },
+  "durableRows": {
+    "media": 1,
+    "media_tags": 1,
+    "tag_previews": 1
+  }
+}

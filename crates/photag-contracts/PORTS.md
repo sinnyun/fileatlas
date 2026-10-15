@@ -13,3 +13,8 @@ This crate contains UI-framework-neutral Cordis events. Keep names and argument 
 | `MediaIndexChanged` | `photag/indexing/media-index-changed` | `()` | Watcher/Indexing → Gallery |
 
 Each event currently returns `()`. Keep payloads independent of GPUI types so plugin services remain usable without rendering.
+
+
+## Review corrections — 2026-10-16
+
+`SidebarFoldersChanged::Args = SidebarFoldersUpdate { revision:u64, config:SidebarFoldersConfig }`. Navigation produces versioned sidebar edits; Settings serializes them and rejects stale delivery. SidebarFoldersConfig retains quick_access, favorite_groups, show_network_drives (default true). This is compile-time service/event coordination, not a second plugin manager.

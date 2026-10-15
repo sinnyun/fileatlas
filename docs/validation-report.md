@@ -985,3 +985,10 @@ latest_id701→701. Workspace94 passed/3 ignored before final claim guard;
 final Preview11 passed, locked shell build/format/refresh guard pass.
 See validation-ui/2026-10-15-preview-optimization/README.md for exact commands,
 single-run/cache limits, test harness corrections and remaining boundaries.
+
+
+## 2026-10-16 浏览与侧栏审查回归
+
+沿用户确认的浏览语义审查其他 AI 的 Explorer 侧栏。设置改为带修订事件与串行持久化，成功才提交内存；会话同值不写、失败不污染快照。浏览任意存在目录可重启恢复，旧资料库成员限制仅留在旧模式。目录快照在途期间合并刷新，完成的部分结果先交付，避免分块反复使其失效。后台源语义对照 vendor/photag-source/src/session.rs、原 main.rs/sidebar.rs 选择与展开流程；新增快速访问和分组收藏按当前用户设计实现。
+
+13 相关 crate 65 测试通过，locked Shell check/build、fmt 和 refresh guard 通过；静态日志 target/sidebar-review-tests-final.log。真实同进程 MCP 的失败写盘/重试、稳定重启、原生监听、十万文件首批/末页/取消/快速切换、标签与缺失重链通过。可追溯证据与未覆盖边界见 validation-ui/2026-10-16-sidebar-review/README.md；历史浏览证据缺失的 summary/PNG 已补齐，不把历史坐标当作当前侧栏点击证据。

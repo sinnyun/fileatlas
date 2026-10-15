@@ -27,12 +27,12 @@ cargo +1.97.1 test --locked -p photag-plugin-database -p photag-plugin-gallery -
 运行场景：
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-smoke10 --allow-mutations --scenario scripts/validate-browser-mcp.cjs
+node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-smoke9 --allow-mutations --scenario scripts/validate-browser-mcp.cjs
 $env:PHOTAG_BROWSER_LARGE_DIR='F:\AI\geren\pho_cordis\target\mcp-browser-extended2\100k'
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended7 --allow-mutations --scenario scripts/validate-browser-extended.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended7 --scenario scripts/validate-browser-restart.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended7 --allow-mutations --scenario scripts/validate-browser-pointer.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended7 --allow-mutations --scenario scripts/validate-browser-snapshot.cjs
+node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended6 --allow-mutations --scenario scripts/validate-browser-extended.cjs
+node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended6 --scenario scripts/validate-browser-restart.cjs
+node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended6 --allow-mutations --scenario scripts/validate-browser-pointer.cjs
+node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-browser-extended6 --allow-mutations --scenario scripts/validate-browser-snapshot.cjs
 ```
 
 首次不设置PHOTAG_BROWSER_LARGE_DIR时，extended场景会在自身隔离profile内创建10万个真实空文件；后续可指向既有隔离夹具。它不是dev-test虚拟媒体行。重启额外案例把隔离session中的旧selected_media_ids预置为无效值2147483647，保留selected_file_paths，再只读启动，确认忽略旧行号。
@@ -63,3 +63,6 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 ## 仍未覆盖的系统边界
 
 原生文件选择器/回收站/跨卷移动的完整交互、全部图片视频codec、强制notify失败后的PollWatcher回退、断开的网络/可移动盘、访问拒绝和复杂junction的实机行为仍未逐项验收。分块取消能终止后续生产，不能强行中断已进入的OS阻塞调用或解码。上述路径已实现处理或沿用既有生产实现，但本轮证据不能证明全部Windows环境均通过。原有F0其他未验项继续保留。
+
+
+2026-10-16 补充审查：未收藏目录重启与目录快照交付存在遗漏，已在后续[审查修复记录](../2026-10-16-sidebar-review/README.md)修复。上面的 pointer 坐标及截图属于当时窗口；新侧栏的点击证据以新记录为准。

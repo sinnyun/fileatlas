@@ -381,6 +381,7 @@ impl GalleryView {
             snapshot,
             snapshot_read: Default::default(),
             snapshot_generation: 0,
+            snapshot_directory_dirty: false,
             visible_demand: None,
             viewport_read: Default::default(),
             inspector_fallback: None,
@@ -403,7 +404,7 @@ impl GalleryView {
         let selected = self.selection.selected_media_ids.clone();
         let anchor = self.selection.anchor_id;
         let scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
-        self.reload();
+        self.reload_state(false);
         if let Ok(snapshot) = &self.snapshot {
             let valid = snapshot
                 .skeletons
@@ -422,7 +423,10 @@ impl GalleryView {
 
     #[tracing::instrument(skip_all)]
     pub(super) fn reload(&mut self) {
-        self.persist_filter_session();
+        self.reload_state(true);
+    }
+
+    fn reload_state(&mut self, persist: bool) {
         self.snapshot_generation += 1;
         self.visible_demand = None;
         self.service.viewport_request.fetch_add(1, Ordering::AcqRel);
@@ -445,7 +449,9 @@ impl GalleryView {
         self.selected_directory = None;
         self.scroll.reset(0);
         self.pending_scroll_restore = None;
-        self.persist_filter_session();
+        if persist {
+            self.persist_filter_session();
+        }
         self.show_exif = false;
         self.exif_cache = None;
         self.confirm_delete = false;

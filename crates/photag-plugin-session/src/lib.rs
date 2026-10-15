@@ -49,18 +49,19 @@ impl SessionService {
 
     /// Replace the saved session and serialize it using the original field names.
     pub fn replace(&self, session: SessionState) -> Result<(), SessionServiceError> {
-        {
-            let mut state = self
-                .state
-                .write()
-                .map_err(|_| SessionServiceError::Poisoned)?;
-            *state = session.clone();
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| SessionServiceError::Poisoned)?;
+        if *state == session {
+            return Ok(());
         }
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)?;
         }
         let serialized = serde_json::to_string_pretty(&session)?;
         std::fs::write(&self.path, serialized)?;
+        *state = session;
         Ok(())
     }
 }
@@ -113,4 +114,30 @@ impl Plugin for SessionPlugin {
 pub enum SessionPluginError {
     #[error("session service publication failed: {0}")]
     Publish(String),
+}
+#[cfg(test)]
+mod persistence_tests {
+    use super::*;
+    #[test]
+    fn unchanged_session_does_not_write_and_failed_save_keeps_memory() {
+        let root =
+            std::env::temp_dir().join(format!("photag-session-review-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("session.json");
+        let service = SessionService::open_at(&path);
+        service.replace(SessionState::default()).unwrap();
+        assert!(!path.exists());
+        std::fs::create_dir(&path).unwrap();
+        let mut changed = SessionState::default();
+        changed.selected_path = Some("changed".into());
+        assert!(service.replace(changed.clone()).is_err());
+        assert_eq!(service.snapshot().unwrap(), SessionState::default());
+        std::fs::remove_dir(&path).unwrap();
+        service.replace(changed.clone()).unwrap();
+        let first = std::fs::metadata(&path).unwrap().modified().unwrap();
+        service.replace(changed.clone()).unwrap();
+        assert_eq!(std::fs::metadata(&path).unwrap().modified().unwrap(), first);
+        assert_eq!(SessionService::open_at(&path).snapshot().unwrap(), changed);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 }

@@ -50,10 +50,13 @@ pub const SCRIM: u32 = 0x0d0f12b8;
 
 // Geometry and typography. Values follow the v5 design direction
 // (docs/reference-ui/final-v5/); the source egui constants are superseded.
+/// Lower bound for the startup window; the actual size grows with the display.
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 800.0;
 pub const WINDOW_MIN_WIDTH: f32 = 960.0;
 pub const WINDOW_MIN_HEIGHT: f32 = 600.0;
+/// Share of the primary display work area requested at startup.
+pub const WINDOW_WORK_AREA_FRACTION: f32 = 0.85;
 /// Top band: logo, breadcrumb, thumbnail size, search and Tools.
 pub const TITLE_BAND_HEIGHT: f32 = 56.0;
 /// Bottom status band.

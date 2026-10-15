@@ -764,3 +764,31 @@ msg-809997f6cb8d = 显示缩略图
 msg-179fed85ec50 = 搜索文件
 
 msg-a0840f01f0d5 = 已保存关联文件的大小。
+msg-729fe0e7b138 = 驱动器
+msg-2992f46f6869 = 显示网络驱动器
+msg-404054aadcbd = 隐藏网络驱动器
+msg-9dc42054dafa = 未找到驱动器
+msg-3a544de84baa = 正在加载驱动器…
+msg-2bf9ea0e4690 = 添加到库
+msg-8b43b0cb1da1 = 快速访问
+msg-df796c655f6f = 新建分组
+msg-3f7374ac08ea = 删除分组
+msg-8debd7f8e119 = 从快速访问移除
+msg-18720329ca30 = 从收藏夹移除
+msg-eebdd24a77d9 = 确认
+msg-4bbe30648055 = 文件夹不存在
+msg-9bd88f2485ac = 桌面
+msg-b4e929d8bcfe = 文档
+msg-1e6245009d67 = 图片
+msg-6eb00b4b2614 = 音乐
+msg-d5fdc1af021e = 下载
+
+msg-5b2606b078b9 = 刷新驱动器
+
+msg-113f1cf3564b = 侧栏更改未保存
+
+msg-ca1844969742 = 不可用
+
+msg-62ad837d0108 = 添加到文件夹收藏
+
+msg-9615c8137b02 = 名称不能为空

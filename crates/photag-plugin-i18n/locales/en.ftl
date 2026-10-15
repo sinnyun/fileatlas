@@ -772,3 +772,31 @@ msg-809997f6cb8d = Show thumbnails
 msg-179fed85ec50 = Search files
 
 msg-a0840f01f0d5 = Saved annotation file size.
+msg-729fe0e7b138 = Drives
+msg-2992f46f6869 = Show network drives
+msg-404054aadcbd = Hide network drives
+msg-9dc42054dafa = No drives found
+msg-3a544de84baa = Loading drives…
+msg-2bf9ea0e4690 = Add to library
+msg-8b43b0cb1da1 = Quick access
+msg-df796c655f6f = New group
+msg-3f7374ac08ea = Delete group
+msg-8debd7f8e119 = Remove from quick access
+msg-18720329ca30 = Remove from favorites
+msg-eebdd24a77d9 = Confirm
+msg-4bbe30648055 = Folder does not exist
+msg-9bd88f2485ac = Desktop
+msg-b4e929d8bcfe = Documents
+msg-1e6245009d67 = Pictures
+msg-6eb00b4b2614 = Music
+msg-d5fdc1af021e = Downloads
+
+msg-5b2606b078b9 = Refresh drives
+
+msg-113f1cf3564b = Sidebar changes not saved
+
+msg-ca1844969742 = Unavailable
+
+msg-62ad837d0108 = Add to folder bookmarks
+
+msg-9615c8137b02 = Name cannot be empty

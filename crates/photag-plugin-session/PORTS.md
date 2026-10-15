@@ -39,3 +39,8 @@ Runtime diagnostics: plugin startup and existing error/diagnostic output now emi
 ## Browser runtime update — 2026-10-15
 
 Additive fields: `show_descendants:bool` (false), `thumbnails_disabled:bool` (false), `before_descendants_grouping:Option<String>`, `selected_file_paths:Vec<String>`. Browser selection restoration resolves paths after the directory finishes; old selected_media_ids remain JSON-compatible but are not trusted across browser-cache restarts. Preferences retain the accepted view layout.
+
+
+## Review corrections — 2026-10-16
+
+Additive serde-default `sidebar_collapsed_sections:HashSet<String>` and `sidebar_collapsed_groups:HashSet<String>` restore Explorer section/group collapse. `SessionService::replace` skips equal states, holds the write lock through persistence and leaves its last snapshot unchanged on failure. This prevents passive identical saves from generating watched file events. Tests cover no-op, failed save and round-trip. Source comparison: vendor/photag-source/src/session.rs; its direct state save remains the historical reference, while Cordis service now owns ordered publication.

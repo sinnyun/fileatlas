@@ -213,6 +213,10 @@ pub struct Settings {
     /// user confirming first.
     #[serde(default = "default_auto_check_updates")]
     pub auto_check_updates: bool,
+    /// Sidebar drive/quick-access/favorites configuration owned by the
+    /// Navigation plugin; persisted here so the JSON stays the single store.
+    #[serde(default)]
+    pub sidebar_folders: photag_contracts::SidebarFoldersConfig,
 }
 
 /// Floating preview-toolbar placement & interaction lock. Offsets are
@@ -276,6 +280,7 @@ impl Default for Settings {
             toolbar_pos: ToolbarPosition::default(),
             ai: AiSettings::default(),
             auto_check_updates: default_auto_check_updates(),
+            sidebar_folders: photag_contracts::SidebarFoldersConfig::default(),
         }
     }
 }

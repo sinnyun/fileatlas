@@ -105,3 +105,18 @@ installed by idle validation.
 ## Shared refresh ownership (2026-10-15)
 
 Settings surface and updater timers use UI Bridge refresh::poll. Shared gates track visibility/tab and update progress; tag choices use ReadModel. Terminal worker errors notify once and stop; empty channels do not paint.
+
+## Sidebar folders block (2026-10-15)
+
+`Settings.sidebar_folders` (`photag_contracts::SidebarFoldersConfig`:
+`quick_access`, `favorite_groups`, `show_network_drives`) is a new serde-default
+JSON block; older documents deserialize unchanged. The plugin observes
+`SidebarFoldersChanged` and accepts `SidebarFoldersUpdate { revision, config }` and writes the received document through
+`SettingsService::update`. At startup it pushes the persisted block into
+`NavigationService::sidebar_folders().restore(...)` when the Navigation service
+is already published (shell starts Navigation before Settings). No SQLite
+change; navigation never reads settings directly (cycle-safe event flow).
+
+## Sidebar persistence review — 2026-10-16
+
+`SettingsService::replace/update` serialize disk publication under the state write lock and publish the new memory snapshot only after success. The SidebarFoldersChanged observer rejects stale revisions; a failed revision can retry. It propagates save errors to Navigation for visible retry feedback. Normal JSON fields and paths are unchanged. Tests cover concurrent edits, stale delivery and failure/retry; this is not a crash-safe filesystem transaction guarantee.

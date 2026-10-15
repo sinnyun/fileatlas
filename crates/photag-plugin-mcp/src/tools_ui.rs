@@ -11,9 +11,13 @@ pub(super) struct UiRequest {
     /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
     /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
     /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
+    /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
+    /// {"kind":"remove_quick_access","path":"F:\\library"}.
     action: String,
     /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
+    /// Structured SidebarUiRequest payload for the sidebar_request action.
+    request: Option<serde_json::Value>,
 }
 
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
@@ -71,6 +75,7 @@ impl PhoTagMcpServer {
             "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
             "settings_tag_choices": self.surfaces.value("settings.tag-choices").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
             "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
+            "sidebar_folders": self.navigation.sidebar_state(),
             "inspector_tab": self.surfaces.value("gallery.inspector.tab").unwrap_or_else(|| "information".into()),
             "sidebar_width": self.surfaces.value("shell.sidebar-width").and_then(|value| value.parse::<f32>().ok()),
             "inspector_width": self.surfaces.value("shell.inspector-width").and_then(|value| value.parse::<f32>().ok()),
@@ -179,6 +184,27 @@ impl PhoTagMcpServer {
                     x: coordinates[0],
                     y: coordinates[1],
                 })
+            }
+            "sidebar_request" => {
+                let Some(payload) = request.request else {
+                    return error_json("sidebar_request requires a request payload");
+                };
+                let request = match serde_json::from_value::<
+                    photag_plugin_navigation::SidebarUiRequest,
+                >(payload)
+                {
+                    Ok(request) => request,
+                    Err(error) => return error_json(&format!("invalid sidebar request: {error}")),
+                };
+                if let Err(error) = self.navigation.request_ui(
+                    photag_plugin_navigation::NavigationUiRequest::Sidebar(request),
+                ) {
+                    return error_json(&error.to_string());
+                }
+                let mut state = serde_json::json!({"queued": true});
+                state["ui_state"] = serde_json::from_str::<serde_json::Value>(&self.get_ui_state())
+                    .unwrap_or_default();
+                return state.to_string();
             }
             "writeback_retry" | "writeback_dismiss" => {
                 let Some(path) = request.value.as_deref() else {

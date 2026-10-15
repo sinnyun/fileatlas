@@ -35,6 +35,9 @@ mod folder_picker;
 mod page_state;
 mod projections;
 mod render;
+mod sections;
+mod sidebar_persistence;
+mod sidebar_state;
 mod support;
 mod tag_actions;
 mod tag_modal;
@@ -58,6 +61,7 @@ pub(super) fn sidebar(
     preferences: Arc<RwLock<TagInteractionPreferences>>,
     add_folder_requested: Arc<std::sync::atomic::AtomicBool>,
     index_changed: Arc<std::sync::atomic::AtomicBool>,
+    folders: Arc<crate::SidebarFoldersService>,
 ) -> Vec<UiViewContribution> {
     let cached = Arc::new(std::sync::Mutex::new(None::<Entity<SidebarView>>));
     let create = Arc::new(move |window: &mut Window, app: &mut App| {
@@ -140,8 +144,13 @@ pub(super) fn sidebar(
             InputState::new(window, cx)
                 .placeholder(photag_ui_bridge::i18n::tr("Filter target tags…"))
         });
+        let sidebar_editor_input = app.new(|cx| {
+            InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
+        });
         let pending = Arc::clone(&add_folder_requested);
         let dirty = Arc::clone(&index_changed);
+        let folders_service = Arc::clone(&folders);
+        let poll_folders_service = Arc::clone(&folders);
         let view = app.new(|cx| {
             photag_ui_bridge::refresh::poll(
                 cx,
@@ -159,6 +168,12 @@ pub(super) fn sidebar(
                         .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
                         .and_then(|value| NavigationPage::from_key(&value));
                     let directory_changed = view.poll_directories();
+                    let drives_changed = view.drives_read.poll() | view.system_folders_read.poll();
+                    let config_changed =
+                        poll_folders_service.revision() != view.sidebar_config_revision;
+                    if config_changed {
+                        view.sidebar_config_revision = poll_folders_service.revision();
+                    }
                     let page_changed = surface_page.is_some_and(|page| page != view.active_page);
                     if let Some(page) = surface_page {
                         if page != view.active_page {
@@ -187,11 +202,14 @@ pub(super) fn sidebar(
                     };
                     if changed {
                         view.refresh();
+                        view.refresh_selected_directory();
                     }
                     let changed = requested
                         || ui_requested
                         || changed
                         || directory_changed
+                        || drives_changed
+                        || config_changed
                         || page_changed
                         || search_changed;
                     if changed {
@@ -199,6 +217,7 @@ pub(super) fn sidebar(
                             view.pick_folder(cx);
                         }
                     }
+                    view.publish_sidebar_state(cx);
                     changed.into()
                 },
             );
@@ -228,7 +247,18 @@ pub(super) fn sidebar(
                 tag_search,
                 merge_search,
                 view_preferences,
+                folders_service,
+                sidebar_editor_input,
             )
+        });
+        view.update(app, |view, cx| {
+            view._window_activation =
+                Some(cx.observe_window_activation(window, |view, window, cx| {
+                    if window.is_window_active() {
+                        view.refresh_sidebar_roots();
+                        cx.notify();
+                    }
+                }));
         });
         *cached = Some(view.clone());
         view
@@ -315,6 +345,42 @@ struct SidebarView {
     delete_clean_parents: bool,
     tag_create_open: bool,
     rename_favorite: Option<i64>,
+    folders: Arc<crate::SidebarFoldersService>,
+    sidebar_config_revision: u64,
+    sidebar_io_revision: u64,
+    sidebar_save_error: Option<String>,
+    directory_revision: u64,
+    system_folders_read:
+        photag_ui_bridge::read_model::ReadModel<u64, Vec<(String, std::path::PathBuf)>>,
+    _window_activation: Option<Subscription>,
+    drives_read: photag_ui_bridge::read_model::ReadModel<(bool, u64), Vec<crate::DriveInfo>>,
+    collapsed_sections: HashSet<&'static str>,
+    sidebar_editor: Option<SidebarEditor>,
+    sidebar_editor_error: Option<String>,
+    sidebar_editor_input: Entity<InputState>,
+    picker_editor: Option<SidebarEditor>,
+    collapsed_groups: HashSet<String>,
+    sidebar_state_signature_cache: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) enum SidebarEditor {
+    AddQuickAccess,
+    RenameQuickAccess { path: String },
+    CreateGroup,
+    RenameGroup { group_id: String },
+    AddFavorite { group_id: String },
+    RenameFavorite { group_id: String, folder_id: String },
+}
+
+impl SidebarEditor {
+    pub(super) fn placeholder(&self) -> &'static str {
+        match self {
+            Self::AddQuickAccess | Self::AddFavorite { .. } => "Folder path",
+            Self::RenameQuickAccess { .. } | Self::RenameFavorite { .. } => "Display name",
+            Self::CreateGroup | Self::RenameGroup { .. } => "Group name",
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -686,35 +752,6 @@ impl SidebarView {
         }
         self.emit_tag_selection(cx);
         cx.notify();
-    }
-
-    fn toggle_directory(&mut self, path: &str) {
-        if self.expanded_directories.remove(path).is_none() {
-            if self.service.browser_enabled() {
-                self.queue_directory(path);
-            } else {
-                self.expanded_directories
-                    .insert(path.to_owned(), self.service.subdirectories(path));
-            }
-        }
-        self.persist_directory_expansion();
-    }
-
-    fn expand_directory(&mut self, path: &str) {
-        if !self.expanded_directories.contains_key(path) {
-            let children = self.service.subdirectories(path);
-            self.expanded_directories.insert(path.to_owned(), children);
-        }
-        self.persist_directory_expansion();
-    }
-
-    fn persist_directory_expansion(&self) {
-        if let Ok(mut session) = self.session.snapshot() {
-            session.expanded_subdirs = self.expanded_directories.keys().cloned().collect();
-            if let Err(error) = self.session.replace(session) {
-                tracing::error!("directory expansion session save failed: {error}");
-            }
-        }
     }
 
     fn toggle_tag(&mut self, tag_id: i64) {

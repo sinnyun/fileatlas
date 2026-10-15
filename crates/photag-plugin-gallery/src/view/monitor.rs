@@ -13,8 +13,7 @@ pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
 fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView>) -> bool {
     let mut repaint = false;
     if view.service.poll_directory() {
-        view.refresh_index();
-        repaint = true;
+        view.snapshot_directory_dirty = true;
     }
     if view.snapshot_read.poll() {
         if let Some(result) = view.snapshot_read.value() {
@@ -26,6 +25,13 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
             view.row_layout_key = None;
             view.row_layout = Arc::new(Vec::new());
         }
+        repaint = true;
+    }
+    // Publish a finished partial result before scheduling the next directory
+    // revision. Replacing its key on every chunk can starve the first display.
+    if view.snapshot_directory_dirty && !view.snapshot_read.is_pending() {
+        view.snapshot_directory_dirty = false;
+        view.refresh_index();
         repaint = true;
     }
     if view.viewport_read.poll() {

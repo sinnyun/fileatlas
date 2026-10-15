@@ -5489,6 +5489,7 @@ name = "photag-contracts"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "serde",
 ]
 
 [[package]]
@@ -5600,8 +5601,8 @@ dependencies = [
  "photag-plugin-session",
  "photag-plugin-settings",
  "photag-plugin-tagging",
- "photag-plugin-watcher",
  "photag-plugin-thumbnails",
+ "photag-plugin-watcher",
  "photag-ui-bridge",
  "rfd",
  "rusqlite",
@@ -5734,6 +5735,7 @@ name = "photag-plugin-navigation"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "dirs 5.0.1",
  "gpui-kit",
  "photag-contracts",
  "photag-plugin-database",
@@ -5745,9 +5747,12 @@ dependencies = [
  "photag-ui-bridge",
  "rfd",
  "rusqlite",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

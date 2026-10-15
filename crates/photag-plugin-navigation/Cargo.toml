@@ -21,6 +21,15 @@ photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
+serde.workspace = true
+serde_json.workspace = true
+dirs.workspace = true
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+] }
 
 [lints]
 workspace = true

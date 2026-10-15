@@ -157,3 +157,87 @@ Sidebar and scan monitors use UI Bridge refresh::poll. Scan sampling compares sc
 Runtime folder records are **favorites**. `add_folder` saves a bookmark and selects it without indexing; `rescan` requests a fresh browse of that directory, preserving annotations; remove only removes the bookmark. The legacy scan receiver signature remains for source-compatible callers and completes immediately in browser mode. `rename_favorite(i64,&str)` changes an alias; `move_favorite(i64,isize)` changes order. Neither changes local names.
 
 Arbitrary `SelectPath(String)` is accepted for an existing directory. `browse_subdirectories(&str)->io::Result<Vec<SubdirectoryNode>>` reads one level without child probes/count scans; Sidebar queues expanded paths through one ReadModel. Rows optimistically expose an expansion arrow until expanded. Favorites missing from disk remain in navigation, with browse errors. UI contributions and picker ownership retain Cordis cleanup. No favorite watcher or startup scan is installed.
+
+## Explorer-style sidebar sections (2026-10-15)
+
+The Folders page stacks three new sections above/below the existing favorite
+tree: **Drives** (top), **Quick access** (top), and grouped **Favorites**
+(bottom, above nothing; the existing folder tree stays in the middle).
+
+- `src/drives.rs` `enumerate_drives(include_network) -> Vec<DriveInfo>` uses
+  windows-sys `GetLogicalDrives`/`GetDriveTypeW`/`GetVolumeInformationW`/
+  `GetDiskFreeSpaceExW` (Windows only; other targets return empty). Network
+  drives show letter+usage only (no UNC). Reads run through a
+  `ReadModel<(show_network, roots_revision), Vec<DriveInfo>>`; render only
+  requests, the refresh::poll timer delivers results (`drives_read.poll()`).
+- `src/sidebar_folders.rs` `SidebarFoldersService` owns
+  `photag_contracts::SidebarFoldersConfig` (quick_access entries, named
+  favorite_groups with folders, `show_network_drives`, default true) behind a
+  RwLock plus an AtomicU64 revision. `update()` bumps the revision and returns
+  the new document; `restore()` seeds silently-but-bumped at startup. It is
+  not a Cordis service; Settings reaches it via
+  `NavigationService::sidebar_folders()`.
+- Persistence: after each mutation the view emits
+  `SidebarFoldersChanged(SidebarFoldersUpdate { revision, config })`; the Settings plugin stores it
+  in its JSON (`settings.sidebar_folders`) and Navigation restores it on
+  Settings startup. No SQLite change. The sidebar poll compares
+  `folders.revision()` against the view snapshot to re-render after external
+  restore/persist cycles.
+- Interactions follow the confirmed decisions: browse mode clicks
+  select the path without expanding it (`activate_sidebar_path`); library mode click/menu adds the
+  folder to the library (`add_folder_path`); per-row menus add/open in file
+  manager/rename/remove; the inline editor row (`SidebarEditor`) edits paths,
+  group names and display names, with native picker routing through
+  `picker_editor`. Folder rows share the lazy `expanded_directories` tree and
+  session expansion persistence.
+
+## Sidebar semantic requests and debug snapshot (2026-10-16)
+
+The Explorer-style sections are drivable without pointer hit-tests, so MCP
+verification no longer depends on screenshot pixel calibration.
+
+- `src/ui_requests.rs` adds `NavigationUiRequest::Sidebar(SidebarUiRequest)` plus
+  `SidebarEditorRequest`. `SidebarUiRequest` derives `serde::Deserialize` with an
+  internal `"kind"` tag (snake_case), so the MCP client sends exactly the JSON
+  shape it logs, e.g. `{"kind":"remove_quick_access","path":"F:\library"}` or
+  `{"kind":"open_editor","text":"新分组","editor":{"target":"create_group"}}`.
+- `ui_requests::validate_sidebar_request(folders, request)` runs inside
+  `NavigationService::request_ui` before queueing: section keys are limited to
+  `drives`/`quick_access`/`favorites`/`folders`, drive roots must be present from
+  the cheap `GetLogicalDrives` bitmask (no capacity probe), paths must be existing directories, and favorite
+  group/folder ids must exist in the current `SidebarFoldersConfig`. Rejections
+  return `NavigationUiRequestError::InvalidSidebarRequest(reason)`.
+- The mounted view applies a queued request in
+  `view/sections.rs::apply_sidebar_request`, which only calls the existing row
+  and menu handlers (`toggle_section`, `set_show_network_drives`, `toggle_drive`,
+  `activate_sidebar_path`, `toggle_directory`, `add_folder_path`,
+  `add_quick_access_path`, `remove_quick_access`, `add_favorite_folder_path`,
+  `remove_favorite_folder`, `remove_favorite_group`, `open_sidebar_editor`,
+  `confirm_sidebar_editor`). It is a trigger, not a parallel implementation: the
+  pointer path and the request path share the same code, including the
+  `SidebarFoldersChanged` persistence emit.
+- `view/sidebar_state.rs::publish_sidebar_state` runs in the existing
+  `refresh::poll` timer and writes a JSON snapshot into
+  `NavigationService::sidebar_state()` (`publish_sidebar_state`/`sidebar_state`
+  accessors in `src/lib.rs`). Publishing is change-gated by a signature over
+  page, browse mode, collapsed sections, expanded drives, config revision, drive
+  read state, expanded-directory paths/revision, group collapse state, editor target+text+error and the session
+  selected path, so an idle sidebar costs nothing.
+- Snapshot fields: `page`, `browse_mode`, `*_collapsed`, `show_network_drives`,
+  `config_revision`, `drives_pending`, `drives[]` (root/letter/label/kind/usage
+  bytes/expanded/selected), `system_quick_access[]`, `quick_access[]`,
+  `favorite_groups[]` (with nested folders), `library_folders[]`, and
+  `editor` (`target` debug name, current `text`, inline `error`). Additional fields: `roots_revision`, `system_folders_pending`, `save_error`, drive `usage_error` and row `child_count`.
+- Inspect failures: the `navigation request` tracing line in the profile
+  `stderr.log` records every queued request; validation errors come back as the
+  MCP tool error payload instead.
+
+## Sidebar review corrections — 2026-10-16
+
+`SidebarFoldersService::update` returns None for a no-op and preserves aliases on duplicate adds. Quick access and drive chevrons share `expanded_directories`; section key is `quick_access`. `SessionState.sidebar_collapsed_sections/sidebar_collapsed_groups` persist section/group state. Existing directories outside bookmarks now restore in browser mode; legacy mode retains its root membership rule.
+
+New `SidebarUiRequest::{RefreshRoots, RetrySave, ToggleGroup { group_id }}` routes to the same UI handlers. Window activation/manual RefreshRoots invalidate drive and known-folder ReadModels independently of favorite edits. System known-folder lookup/probes run off render. Expanded active directory children refresh on local index events. Unknown browser media counts are hidden. Extended Windows paths compare lexically for selection without render-time filesystem IO.
+
+Save events carry a monotonic revision. The view displays a failed latest save with Retry; obsolete failures cannot overwrite newer status. Inline path/name validation stays in the editor rather than replacing the library snapshot. Capacity failures show Unavailable, not a fictitious 0/0. Slow OS/network calls cannot be forcibly interrupted; offline network and removable-drive dialogs are not verified by local-drive checks.
+
+Reproducible checks and defects: docs/validation-ui/2026-10-16-sidebar-review/README.md. Rendering is split across sections/render.rs and its quick_access/favorites/editor modules.

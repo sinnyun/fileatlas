@@ -6,6 +6,8 @@ impl SidebarView {
         // Match PhoTag's PendingAction::AddFolder flow: a native directory
         // dialog returns an optional path, and cancellation is a no-op.
         let title = format!("PhoTag · {}", photag_ui_bridge::i18n::tr("Add folder"));
+        let editor = self.picker_editor.clone();
+        let editor_for_task = editor.clone();
         let Some(lease) = self.service.picker.begin(title.clone()) else {
             return;
         };
@@ -19,8 +21,19 @@ impl SidebarView {
             drop(lease);
             let _ = this.update(cx, |view, cx| {
                 if let Some(path) = path {
-                    view.add_folder_path(path.path().to_string_lossy().into_owned(), cx);
+                    let path = path.path().to_string_lossy().into_owned();
+                    match editor_for_task {
+                        Some(SidebarEditor::AddQuickAccess) => {
+                            view.add_quick_access_path(path, cx);
+                        }
+                        Some(SidebarEditor::AddFavorite { group_id }) => {
+                            view.add_favorite_folder_path(group_id, path, cx);
+                        }
+                        None => view.add_folder_path(path, cx),
+                        Some(_) => {}
+                    }
                 }
+                view.picker_editor = None;
                 cx.notify();
             });
         }));

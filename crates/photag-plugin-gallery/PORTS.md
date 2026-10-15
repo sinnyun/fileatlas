@@ -233,3 +233,8 @@ Public controls: `browser_enabled`, `show_descendants`, `set_show_descendants(bo
 Gallery consumes WatcherService and IndexingService. Native watcher changes patch the session cache or invalidate a directory; refresh/reactivation rereads it. Snapshots use ReadModel; row renderers declare demand which is merged once per poll. A 200-row rich window and a small visible overscan request thumbnails; stale generation/request/file versions cannot publish decoded results. Preview is still the existing prioritized decoder. The tools menu includes thumbnail enable/disable and missing-record maintenance. Session restores selection by path, not cached row ID. Favorite home, tag results, locate-and-select, grid/list, groups and existing action surfaces share the accepted layout.
 
 Missing-record UI chooses exact files or proposes same-name candidates from one explicitly picked folder, then applies each row or skips. Delete missing records requires two-step confirmation and revalidates local missing status. No automatic move inference. See browser validation evidence for exercised Windows paths; codec, inaccessible-drive and native picker boundary coverage remains limited.
+
+
+## Review corrections — 2026-10-16
+
+Directory chunk changes coalesce while a snapshot read is in flight. A finished partial snapshot is delivered before the next directory revision is requested, preventing continuous key invalidation from starving the first result. Explicit navigation/filter reloads still invalidate old results. Refresh preserves selection/scroll without persisting a transient empty selection; unchanged SessionService saves do not write. Browsing the isolated profile itself and external file creation are checked through same-process MCP.

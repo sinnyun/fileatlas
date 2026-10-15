@@ -377,3 +377,16 @@ The user explicitly replaced indexed-library product semantics and excluded old 
 | Yazi VfsEntries, Refresher, local watcher | vendor/yazi-reference + gallery/live.rs + watcher/{watcher,browser}.rs | MIT-attributed adaptation: bounded batches, latest request, generation, cooperative cancel, fallback and stat patches integrated with Cordis/GPUI; not a replacement runtime. |
 
 Validation evidence and exact limits: docs/validation-ui/2026-10-15-browser/README.md. No automatic external move matching or old library migration is introduced.
+
+
+## 2026-10-16 浏览/Explorer 审查映射修正
+
+| 行为来源 | 当前实现 | 用户需求下的变化 |
+| --- | --- | --- |
+| vendor/photag-source/src/session.rs 的 selected_path 与直接 save | NavigationPlugin 恢复；SessionService::replace；GalleryView::refresh_index | 浏览任意存在目录，不限制资料库；无变化不写盘、失败不提交内存、刷新不保存瞬时空选择。 |
+| 原 sidebar.rs 子目录展开与本项目旧 indexed count | Navigation view/directories.rs 与 sections/render 子模块 | 单一懒加载树；未知数量不显示为 0；当前本地事件使展开树刷新。 |
+| 本轮其他 AI 新增 quick_access/favorite_groups JSON | SidebarFoldersService；SidebarFoldersUpdate；SettingsService | 保留新设计，修复重复添加丢别名、异步旧版本覆盖、失败无反馈、分组恢复。 |
+| 本轮其他 AI 驱动器/系统已知目录 | navigation/drives.rs；ReadModel | render 不探测本地路径；盘符校验不读取容量；后台独立刷新、容量失败明确显示。 |
+| Yazi 分块结果流与现有 ReadModel 最新请求规则 | Gallery monitor snapshot_directory_dirty | 查询在途合并目录块，完成后先交付部分结果再刷新；单 worker 和显式导航过期拒绝规则保持。 |
+
+见 validation-ui/2026-10-16-sidebar-review/README.md。新需求与旧源不同的地方是明确浏览语义变化，不要求旧索引 UI 对等。

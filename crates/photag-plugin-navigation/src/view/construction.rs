@@ -27,6 +27,8 @@ impl SidebarView {
         tag_search: Entity<InputState>,
         merge_search: Entity<InputState>,
         preferences: Arc<RwLock<TagInteractionPreferences>>,
+        folders: Arc<crate::SidebarFoldersService>,
+        sidebar_editor_input: Entity<InputState>,
     ) -> Self {
         let snapshot = service.snapshot().map_err(|error| error.to_string());
         let mut expanded_tags = expanded_tags;
@@ -57,6 +59,7 @@ impl SidebarView {
                 Err(_) => HashMap::new(),
             }
         };
+        let saved_sidebar = session.snapshot().unwrap_or_default();
         Self {
             folder_picker_task: None,
             locale_revision: u64::MAX,
@@ -119,6 +122,24 @@ impl SidebarView {
             delete_clean_parents: false,
             tag_create_open: false,
             rename_favorite: None,
+            folders,
+            sidebar_config_revision: 0,
+            sidebar_io_revision: 0,
+            sidebar_save_error: None,
+            directory_revision: 0,
+            system_folders_read: Default::default(),
+            _window_activation: None,
+            drives_read: Default::default(),
+            collapsed_sections: ["drives", "quick_access", "favorites", "folders"]
+                .into_iter()
+                .filter(|key| saved_sidebar.sidebar_collapsed_sections.contains(*key))
+                .collect(),
+            sidebar_editor: None,
+            sidebar_editor_error: None,
+            sidebar_editor_input,
+            picker_editor: None,
+            collapsed_groups: saved_sidebar.sidebar_collapsed_groups,
+            sidebar_state_signature_cache: String::new(),
         }
     }
 }

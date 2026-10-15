@@ -26,7 +26,7 @@ pub enum TagClickMode {
     Exclude,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SessionState {
     #[serde(default)]
     pub show_descendants: bool,
@@ -48,6 +48,10 @@ pub struct SessionState {
     /// doesn't break old session files on upgrade.
     #[serde(default)]
     pub sidebar_tab: String,
+    #[serde(default)]
+    pub sidebar_collapsed_sections: HashSet<String>,
+    #[serde(default)]
+    pub sidebar_collapsed_groups: HashSet<String>,
     #[serde(default)]
     pub gallery_scroll: f32,
     /// Additive preference; older PhoTag sessions default to the grid.

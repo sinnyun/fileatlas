@@ -48,7 +48,11 @@ fn snapshot_and_tag_commands_preserve_tree_and_counts() {
         .unwrap();
     let thumbnails = Arc::new(ThumbnailService::open_at(root.join("thumbs")).unwrap());
     let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
-    let service = Arc::new(NavigationService::new(database, indexing));
+    let service = Arc::new(NavigationService::new(
+        database,
+        indexing,
+        Arc::new(SidebarFoldersService::default()),
+    ));
     let parent = service.create_tag("Events", None).unwrap();
     let child = service.create_tag("Summer", Some(parent.id)).unwrap();
     service.set_tag_display(child.id, false).unwrap();
@@ -96,7 +100,11 @@ fn folder_add_rescan_and_remove_keep_database_and_scan_lifecycle_in_sync() {
     let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
     let thumbnails = Arc::new(ThumbnailService::open_at(root.join("thumbs")).unwrap());
     let indexing = Arc::new(IndexingService::new(Arc::clone(&database), thumbnails));
-    let navigation = Arc::new(NavigationService::new(Arc::clone(&database), indexing));
+    let navigation = Arc::new(NavigationService::new(
+        Arc::clone(&database),
+        indexing,
+        Arc::new(SidebarFoldersService::default()),
+    ));
 
     let (folder, progress) = navigation.add_folder(&library).unwrap();
     wait_for_scan(progress);
@@ -180,4 +188,147 @@ async fn navigation_plugin_registers_and_cleans_sidebar_contributions() {
     assert!(catalog.snapshot().unwrap().is_empty());
     watcher_fiber.dispose().await.unwrap();
     let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn sidebar_folders_service_tracks_restore_and_update_revisions() {
+    use photag_contracts::{QuickAccessEntry, SidebarFoldersConfig};
+
+    let service = SidebarFoldersService::default();
+    assert_eq!(service.revision(), 0);
+    assert!(service.snapshot().show_network_drives);
+
+    let seeded = SidebarFoldersConfig {
+        quick_access: vec![QuickAccessEntry {
+            path: r"X:\library".into(),
+            display_name: Some("Library".into()),
+        }],
+        favorite_groups: Vec::new(),
+        show_network_drives: false,
+    };
+    service.restore(seeded.clone());
+    assert_eq!(service.revision(), 1);
+    service.restore(seeded.clone());
+    assert_eq!(
+        service.revision(),
+        1,
+        "identical restore does not announce a change"
+    );
+
+    let updated = service
+        .update(|config| config.show_network_drives = true)
+        .expect("update reports the new document");
+    assert_eq!(service.revision(), 2);
+    assert!(updated.show_network_drives);
+    assert!(
+        service
+            .update(|config| config.show_network_drives = true)
+            .is_none()
+    );
+    assert_eq!(
+        service.revision(),
+        2,
+        "no-op edit must not publish or re-read drives"
+    );
+    assert_eq!(service.snapshot().quick_access.len(), 1);
+
+    let round_trip: SidebarFoldersConfig =
+        serde_json::from_str(&serde_json::to_string(&updated).unwrap()).unwrap();
+    assert_eq!(round_trip, updated);
+}
+
+#[test]
+fn sidebar_requests_parse_from_json_and_validate_known_targets() {
+    use crate::ui_requests::validate_sidebar_request;
+    use photag_contracts::{FavoriteFolder, FavoriteGroup, QuickAccessEntry, SidebarFoldersConfig};
+
+    let here = std::env::current_dir()
+        .unwrap()
+        .to_string_lossy()
+        .into_owned();
+    let folders = SidebarFoldersService::with_config(SidebarFoldersConfig {
+        quick_access: vec![QuickAccessEntry {
+            path: here.clone(),
+            display_name: Some("here".into()),
+        }],
+        favorite_groups: vec![FavoriteGroup {
+            id: "group-1".into(),
+            name: "摄影分组".into(),
+            folders: vec![FavoriteFolder {
+                id: "folder-1".into(),
+                path: here.clone(),
+                display_name: None,
+            }],
+        }],
+        show_network_drives: true,
+    });
+    let parse = |payload: &str| -> SidebarUiRequest {
+        serde_json::from_str(payload).expect("sidebar request payload")
+    };
+    let check = |payload: &str| validate_sidebar_request(&folders, &parse(payload));
+
+    assert_eq!(
+        parse(r#"{"kind":"remove_quick_access","path":"F:\\library"}"#),
+        SidebarUiRequest::RemoveQuickAccess {
+            path: r"F:\library".to_owned()
+        }
+    );
+    assert_eq!(
+        parse(r#"{"kind":"open_editor","text":"新分组","editor":{"target":"create_group"}}"#),
+        SidebarUiRequest::OpenEditor {
+            editor: SidebarEditorRequest::CreateGroup,
+            text: "新分组".to_owned(),
+        }
+    );
+    assert!(
+        check(&format!(
+            r#"{{"kind":"remove_quick_access","path":"{}"}}"#,
+            here.replace('\\', "\\\\")
+        ))
+        .is_ok()
+    );
+    assert!(check(r#"{"kind":"remove_quick_access","path":"Q:\\missing"}"#).is_err());
+    assert!(check(r#"{"kind":"toggle_section","key":"quick_access"}"#).is_ok());
+    assert_eq!(
+        check(r#"{"kind":"toggle_section","key":"nope"}"#),
+        Err(NavigationUiRequestError::InvalidSidebarRequest(
+            "unknown section key"
+        ))
+    );
+    assert!(check(r#"{"kind":"set_network_drives","show":false}"#).is_ok());
+    assert!(check(r#"{"kind":"add_quick_access","path":"Q:\\missing"}"#).is_err());
+    assert!(
+        check(r#"{"kind":"remove_favorite_folder","group_id":"group-1","folder_id":"other"}"#)
+            .is_err()
+    );
+    assert!(check(r#"{"kind":"remove_favorite_group","group_id":"group-1"}"#).is_ok());
+    assert!(check(r#"{"kind":"remove_favorite_group","group_id":"group-2"}"#).is_err());
+    assert!(check(r#"{"kind":"confirm_editor"}"#).is_ok());
+    let drive = (b'A'..=b'Z')
+        .map(|letter| format!("{}:\\", letter as char))
+        .find(|root| crate::drives::drive_root_present(root));
+    if let Some(root) = drive {
+        assert!(
+            check(&format!(
+                r#"{{"kind":"toggle_drive","root":"{}"}}"#,
+                root.replace('\\', "\\\\")
+            ))
+            .is_ok()
+        );
+    }
+    assert!(check(r#"{"kind":"toggle_drive","root":"not-a-drive"}"#).is_err());
+}
+
+#[test]
+fn sidebar_display_paths_match_extended_windows_identity_without_io() {
+    use crate::sidebar_folders::*;
+    assert!(same_sidebar_path(r"\\?\F:\Photos\", r"f:/photos"));
+    assert!(same_sidebar_path(
+        r"\\?\UNC\server\share",
+        r"\\SERVER\SHARE\"
+    ));
+    assert!(in_sidebar_root(r"\\?\F:\photos\one.jpg", r"F:\"));
+    assert!(!in_sidebar_root(r"F:\photography", r"F:\photo"));
+    assert_eq!(crate::drives::drive_root_index("F:/"), Some(5));
+    assert_eq!(crate::drives::drive_root_index("F:/child"), None);
 }

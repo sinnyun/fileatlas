@@ -54,6 +54,25 @@ use photag_ui_bridge::{
 mod shell;
 use shell::PhoTagShell;
 
+/// Startup window extent: a share of the display work area, never below the
+/// design baseline and never beyond the usable area itself.
+fn startup_window_extent(available: Option<(f32, f32)>) -> (f32, f32) {
+    let fit = |work_area: f32, baseline: f32| {
+        let work_area = if work_area.is_finite() && work_area > 0.0 {
+            work_area
+        } else {
+            baseline
+        };
+        (work_area * theme::WINDOW_WORK_AREA_FRACTION).clamp(baseline.min(work_area), work_area)
+    };
+    let (area_width, area_height) =
+        available.unwrap_or((theme::WINDOW_WIDTH, theme::WINDOW_HEIGHT));
+    (
+        fit(area_width, theme::WINDOW_WIDTH),
+        fit(area_height, theme::WINDOW_HEIGHT),
+    )
+}
+
 fn render_contribution(owned: &OwnedContribution) -> Div {
     let contribution = &owned.contribution;
     let (category, location) = match &contribution.kind {
@@ -495,11 +514,14 @@ fn main() {
             .filter(|width| width.is_finite() && (240. ..=480.).contains(width))
             .unwrap_or(theme::INSPECTOR_WIDTH);
         let session_for_shell = Arc::clone(&session);
-        // Match the source viewport (1280×800, minimum 800×500) from
-        // vendor/photag-source/src/main.rs.
+        let work_area = cx
+            .primary_display()
+            .map(|display| display.visible_bounds().size)
+            .map(|area| (f32::from(area.width), f32::from(area.height)));
+        let (window_width, window_height) = startup_window_extent(work_area);
         let window_options = WindowOptions {
             window_bounds: Some(WindowBounds::centered(
-                size(px(theme::WINDOW_WIDTH), px(theme::WINDOW_HEIGHT)),
+                size(px(window_width), px(window_height)),
                 cx,
             )),
             window_min_size: Some(size(
@@ -624,7 +646,7 @@ fn main() {
                     surfaces: Arc::clone(&bridge.surfaces),
                     sidebar_width,
                     inspector_width,
-                    viewport_width: 1280.,
+                    viewport_width: window_width,
                     capture: Arc::clone(&capture_handle),
                     drag_origin_x: 0.,
                     drag_origin_width: 0.,
@@ -761,4 +783,33 @@ fn main() {
     runtime
         .block_on(debug_fiber.dispose())
         .expect("stop debug plugin");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::startup_window_extent;
+
+    #[test]
+    fn uses_a_share_of_a_large_work_area() {
+        let (width, height) = startup_window_extent(Some((1920., 1200.)));
+        assert_eq!((width, height), (1632., 1020.));
+    }
+
+    #[test]
+    fn never_drops_below_the_design_baseline() {
+        let (width, height) = startup_window_extent(Some((1366., 768.)));
+        assert_eq!((width, height), (1280., 768.));
+    }
+
+    #[test]
+    fn never_exceeds_the_available_area() {
+        let (width, height) = startup_window_extent(Some((1000., 700.)));
+        assert_eq!((width, height), (1000., 700.));
+    }
+
+    #[test]
+    fn falls_back_to_the_baseline_without_a_display() {
+        let (width, height) = startup_window_extent(None);
+        assert_eq!((width, height), (1280., 800.));
+    }
 }

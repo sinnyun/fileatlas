@@ -201,7 +201,8 @@ pub(super) fn capture_png(_handle: isize) -> Result<(Vec<u8>, u32, u32), String>
 #[cfg(target_os = "windows")]
 pub fn window_status(handle: isize) -> serde_json::Value {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GetWindowThreadProcessId, IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible,
+        GetWindowRect, GetWindowThreadProcessId, IsHungAppWindow, IsIconic, IsWindow,
+        IsWindowVisible,
     };
     let hwnd = handle as windows_sys::Win32::Foundation::HWND;
     let mut owner = 0;
@@ -211,10 +212,68 @@ pub fn window_status(handle: isize) -> serde_json::Value {
             GetWindowThreadProcessId(hwnd, &mut owner);
         }
     }
+    let bounds = if valid {
+        let mut rect = windows_sys::Win32::Foundation::RECT::default();
+        if unsafe { GetWindowRect(hwnd, &mut rect) } == 0 {
+            serde_json::Value::Null
+        } else {
+            serde_json::json!({
+                "x": rect.left,
+                "y": rect.top,
+                "width": rect.right - rect.left,
+                "height": rect.bottom - rect.top,
+            })
+        }
+    } else {
+        serde_json::Value::Null
+    };
     serde_json::json!({"valid":valid,"owned":valid && owner == std::process::id(),
         "visible":valid && unsafe { IsWindowVisible(hwnd) } != 0,
         "minimized":valid && unsafe { IsIconic(hwnd) } != 0,
-        "hung":valid && unsafe { IsHungAppWindow(hwnd) } != 0})
+        "hung":valid && unsafe { IsHungAppWindow(hwnd) } != 0,
+        "bounds": bounds,
+        "geometry": pointer_geometry(hwnd, valid)})
+}
+
+/// Exact screenshot-pixel → pointer-coordinate transform for this window.
+/// `pointer = (screenshot - client_origin) / scale_factor`, matching the
+/// logical client coordinates that `control_ui` pointer actions dispatch.
+#[cfg(target_os = "windows")]
+fn pointer_geometry(hwnd: windows_sys::Win32::Foundation::HWND, valid: bool) -> serde_json::Value {
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::Graphics::Gdi::ClientToScreen;
+    use windows_sys::Win32::UI::HiDpi::GetDpiForWindow;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetClientRect, GetWindowRect, USER_DEFAULT_SCREEN_DPI,
+    };
+    if !valid {
+        return serde_json::Value::Null;
+    }
+    let mut client = windows_sys::Win32::Foundation::RECT::default();
+    let mut frame = windows_sys::Win32::Foundation::RECT::default();
+    if unsafe { GetClientRect(hwnd, &mut client) } == 0
+        || unsafe { GetWindowRect(hwnd, &mut frame) } == 0
+    {
+        return serde_json::Value::Null;
+    }
+    let mut origin = POINT { x: 0, y: 0 };
+    if unsafe { ClientToScreen(hwnd, &mut origin) } == 0 {
+        return serde_json::Value::Null;
+    }
+    let scale_factor = unsafe { GetDpiForWindow(hwnd) } as f32 / USER_DEFAULT_SCREEN_DPI as f32;
+    let (offset_x, offset_y) = (origin.x - frame.left, origin.y - frame.top);
+    serde_json::json!({
+        "scale_factor": scale_factor,
+        "client_size": {
+            "width": (client.right - client.left) as f32 / scale_factor,
+            "height": (client.bottom - client.top) as f32 / scale_factor,
+        },
+        "screenshot_to_pointer": {
+            "offset_x": offset_x,
+            "offset_y": offset_y,
+            "divide_by": scale_factor,
+        },
+    })
 }
 
 #[cfg(not(target_os = "windows"))]

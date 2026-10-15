@@ -1,7 +1,7 @@
 use super::super::*;
 use gpui_kit::assets::IconName;
 
-pub(super) fn render_tag(
+pub(in crate::view) fn render_tag(
     tag: &photag_plugin_database::db::queries::Tag,
     expanded: &HashSet<i64>,
     query: &str,
@@ -314,11 +314,12 @@ impl Render for TagDragGhost {
     }
 }
 
-pub(super) fn render_subdirectory(
+pub(in crate::view) fn render_subdirectory(
     node: &SubdirectoryNode,
     expanded: &HashMap<String, Vec<SubdirectoryNode>>,
     query: &str,
     selected_directory: Option<&str>,
+    counts_known: bool,
     cx: &mut Context<SidebarView>,
 ) -> Option<Div> {
     let query = query.trim().to_lowercase();
@@ -331,7 +332,14 @@ pub(super) fn render_subdirectory(
             children
                 .iter()
                 .filter_map(|child| {
-                    render_subdirectory(child, expanded, &query, selected_directory, cx)
+                    render_subdirectory(
+                        child,
+                        expanded,
+                        &query,
+                        selected_directory,
+                        counts_known,
+                        cx,
+                    )
                 })
                 .collect::<Vec<_>>()
         })
@@ -376,7 +384,8 @@ pub(super) fn render_subdirectory(
                 ),
             )
         });
-    let selected = selected_directory == Some(node.path.as_str());
+    let selected = selected_directory
+        .is_some_and(|path| crate::sidebar_folders::same_sidebar_path(path, &node.path));
     let expand = if node.has_children {
         let directory_path = node.path.clone();
         Button::new(format!("navigation-expand-dir-{}", node.path))
@@ -401,52 +410,54 @@ pub(super) fn render_subdirectory(
             .w(px(18.))
             .label(" ")
     };
-    let row = div()
-        .group(row_group)
-        .relative()
-        .h_flex()
-        .w_full()
-        .h(px(26.))
-        .items_center()
-        .gap(px(3.))
-        .rounded(px(4.))
-        .px(px(3.))
-        .hover(|style| style.bg(rgba(0xffffff10)))
-        .when(selected, |row| row.bg(rgba((theme::accent() << 8) | 70)))
-        .child(div().w(px(8.)).h(px(1.)).bg(rgba(0xffffff38)))
-        .child(expand)
-        .child(
-            div()
-                .id(format!("navigation-open-dir-{}", node.path))
-                .h_flex()
-                .flex_1()
-                .min_w_0()
-                .h_full()
-                .items_center()
-                .gap(px(6.))
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
-                )
-                .child(theme::small_icon(if expanded.contains_key(&node.path) {
-                    IconName::FolderOpen
-                } else {
-                    IconName::Folder
-                }))
-                .child(
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .text_xs()
-                        .text_ellipsis()
-                        .child(node.name.clone()),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::TEXT_MUTED))
-                        .child(node.media_count.to_string()),
-                ),
-        );
+    let row =
+        div()
+            .group(row_group)
+            .relative()
+            .h_flex()
+            .w_full()
+            .h(px(26.))
+            .items_center()
+            .gap(px(3.))
+            .rounded(px(4.))
+            .px(px(3.))
+            .hover(|style| style.bg(rgba(0xffffff10)))
+            .when(selected, |row| row.bg(rgba((theme::accent() << 8) | 70)))
+            .child(div().w(px(8.)).h(px(1.)).bg(rgba(0xffffff38)))
+            .child(expand)
+            .child(
+                div()
+                    .id(format!("navigation-open-dir-{}", node.path))
+                    .h_flex()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .items_center()
+                    .gap(px(6.))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.select_path(selected_path.clone(), cx)
+                    }))
+                    .child(theme::small_icon(if expanded.contains_key(&node.path) {
+                        IconName::FolderOpen
+                    } else {
+                        IconName::Folder
+                    }))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .text_xs()
+                            .text_ellipsis()
+                            .child(node.name.clone()),
+                    )
+                    .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                        if counts_known {
+                            node.media_count.to_string()
+                        } else {
+                            String::new()
+                        },
+                    )),
+            );
     let row = row.child(menu);
     let mut subtree = div().v_flex().child(row);
     if !children.is_empty() {
@@ -463,7 +474,7 @@ pub(super) fn render_subdirectory(
     Some(subtree)
 }
 
-pub(super) fn directory_children_match(
+pub(in crate::view) fn directory_children_match(
     path: &str,
     expanded: &HashMap<String, Vec<SubdirectoryNode>>,
     query: &str,

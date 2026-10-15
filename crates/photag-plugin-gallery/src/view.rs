@@ -165,6 +165,7 @@ struct GalleryView {
     snapshot: Result<GallerySnapshot, String>,
     snapshot_read: photag_ui_bridge::read_model::ReadModel<u64, GallerySnapshot>,
     snapshot_generation: u64,
+    snapshot_directory_dirty: bool,
     visible_demand: Option<std::ops::Range<usize>>,
     viewport_read: photag_ui_bridge::read_model::ReadModel<
         (u64, u64, Vec<i64>, Vec<i64>),

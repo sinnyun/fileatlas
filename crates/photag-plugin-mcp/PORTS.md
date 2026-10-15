@@ -219,3 +219,72 @@ details in original messages. No new tools or mutation permissions are added.
 Browser diagnostics in get_ui_state.browser: filesystem, show_descendants, worker_active, status tuple (generation,revision,loading,scanned,error). control_gallery adds navigate(value), show_descendants(enabled), thumbnails(enabled), cancel_directory, missing_records, record_candidate(media_id,value), relink_record(media_id), delete_missing_records (two calls confirm), locate_file(media_id), close_dialogs. All UI mutations require the existing opt-in.
 
 `manage_tag_records`: list_missing is read-only; relink(record_id,path) and delete_missing(record_ids,confirm=true) require mutation opt-in. `manage_favorite`: rename(folder_id,name), move(folder_id,delta), mutation opt-in. Mutations use production services and publish normal reload events. Scripts validate-browser-mcp.cjs / validate-browser-extended.cjs / validate-browser-restart.cjs run via photag-mcp-debug.cjs with isolated profiles. No OS input automation or external process attachment is used.
+
+## Window bounds in `get_ui_state.window_status` (2026-10-15)
+
+`window_status` now also returns `bounds` (`x`, `y`, `width`, `height`) from
+`GetWindowRect` for the MCP child's own HWND, or `null` when the handle is
+invalid or the rect call fails. Values are physical device pixels, so a
+scaled display reports width/height larger than the logical GPUI window size;
+use `panel_instances` client bounds for logical measurements. Read-only: this
+adds no mutation and no new tool.
+
+## Sidebar section debugging (2026-10-16)
+
+- `get_ui_state.sidebar_folders` returns the snapshot the mounted Navigation
+  sidebar published (`NavigationService::sidebar_state`), or `null` before the
+  first publish. It carries drives with usage bytes, system and user quick
+  access rows, favorite groups with their folders, library folder paths,
+  collapsed-section flags, `show_network_drives`, `browse_mode` and the open
+  inline editor target/text. Screenshots stay a visual check; section state is
+  asserted from this field.
+- `control_ui { action: "sidebar_request", request: <SidebarUiRequest JSON> }`
+  queues one semantic sidebar edit through `NavigationService::request_ui`, the
+  same path the rendered rows and popup menus use. Payload kinds:
+  `toggle_section{key}`, `set_network_drives{show}`, `toggle_drive{root}`,
+  `activate_path{path}`, `toggle_expanded{path}`, `add_to_library{path}`,
+  `add_quick_access{path}`, `remove_quick_access{path}`,
+  `add_favorite_folder{group_id,path}`,
+  `remove_favorite_folder{group_id,folder_id}`, `remove_favorite_group{group_id}`,
+  `open_editor{editor,text}`, `confirm_editor`, `cancel_editor`. Editor targets:
+  `add_quick_access`, `rename_quick_access{path}`, `create_group`,
+  `rename_group{group_id}`, `add_favorite{group_id}`,
+  `rename_favorite{group_id,folder_id}`.
+- The action returns `{"queued":true,"ui_state":...}`. Requests are applied on
+  the next view render, so poll `get_ui_state` (the sidebar timer re-notifies
+  while a request is pending) before asserting. Navigation validates targets and
+  paths; unknown groups/folders/sections or missing directories return an error
+  and never reach the view.
+- Like every other control action this is gated by
+  `PHOTAG_MCP_ALLOW_MUTATIONS=1`. It injects no OS pointer/keyboard events and
+  does not open popup menus: `control_ui` `pointer_move`/`pointer_down`/
+  `pointer_up` do, and their result is checked on a screenshot.
+- `window_status.bounds` (added with the startup window sizing work) reports the
+  native `GetWindowRect` in physical pixels, which is what explains a
+  screenshot's pixel size; section state itself is asserted from
+  `sidebar_folders`, not from screenshots.
+
+## Pointer geometry in `get_ui_state.window_status` (2026-10-16)
+
+`screenshot_window` captures the whole window rect (`PrintWindow` +
+`GetWindowRect`), while `control_ui` pointer actions dispatch GPUI logical
+client points. `window_status.geometry` closes that gap so a click target is
+derived instead of guessed:
+
+- `scale_factor` — `GetDpiForWindow(hwnd)/96`, the same value GPUI uses.
+- `client_size` — `GetClientRect` divided by `scale_factor`, i.e. the logical
+  client area the app lays out in.
+- `screenshot_to_pointer.{offset_x,offset_y,divide_by}` — the client origin
+  inside the window rect (`ClientToScreen(0,0)` minus `GetWindowRect` left/top)
+  and the divisor. Pointer coordinate = `(screenshot_px - offset) / divide_by`.
+
+Read `geometry` *after* `resize_window`: the startup window and a resized window
+report different sizes, and offsets are per-HWND-state. On this host the probe
+returned `scale_factor 1.5`, `offset (11, 45)` and a 960×600 logical client for
+the 1462×956 physical window rect. Read-only: adds no mutation and no new tool.
+
+
+
+## Review corrections — 2026-10-16
+
+`control_ui.sidebar_request` additionally accepts refresh_roots, retry_save, toggle_group (group_id). `get_ui_state.sidebar_folders` includes roots_revision, system_folders_pending, save_error, directory child_count, drive usage_error and editor.error. All mutations still require PHOTAG_MCP_ALLOW_MUTATIONS=1. Test scenarios are checked into scripts/validate-sidebar-review*.cjs and validate-browser-selfwatch.cjs; pointer coordinates use get_ui_state.window_status.geometry.

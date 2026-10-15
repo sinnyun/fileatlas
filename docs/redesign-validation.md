@@ -318,3 +318,53 @@ EXIF切换/清空/缺失源、真实评分写入后的统计/匹配更新、Watc
 坏图render12→12、raw日志701→701。workspace94通过/3忽略，最终Preview11通过，
 locked构建/格式/刷新归属检查通过。精确复现、构建hash、初次测试脚本失败原因和
 未验证的指针/格式/写权限范围见[优化证据](validation-ui/2026-10-15-preview-optimization/README.md)。
+
+### 启动窗口尺寸自适应（2026-10-15）
+
+沿用已接受的dev-baseline-2026-10-14布局，未改任何面板结构。启动窗口不再固定
+1280×800，改为取主屏可用工作区（`visible_bounds`，已排除任务栏）的85%，下限
+1280×800、上限不超过工作区本身（`photag-shell/src/main.rs::startup_window_extent`，
+常量在`photag-ui-bridge/src/theme.rs`）。`PhoTagShell.viewport_width`初值改用实际
+启动宽度，不再写死1280。MCP `get_ui_state.window_status`新增只读`bounds`
+（`GetWindowRect`物理像素），用于核对真实窗口尺寸。
+
+本机主屏2560×1440、工作区2560×1392、窗口缩放150%（`GetDpiForWindow`=144；本条原记为100%有误，
+2026-10-16 的 `window_status.geometry` 探针已给出确定值）。photag-shell.exe（locked构建）
+经同进程MCP实测`window_status.bounds`为3286×1831物理像素（含Windows不可见
+缩放边框，即GPUI逻辑约2176×1203），窗口居中、标题栏/侧栏/筛选行/预览栏/
+状态栏均按现有设计正常绘制，见`target/mcp-windowsize/screenshots/main.png`。
+`cargo +1.97.1 fmt --all -- --check`、`check -p photag-shell`、
+`test -p photag-shell --bin photag-shell`（4项尺寸推导用例）与
+`node scripts/check-ui-refresh.cjs`均通过。多显示器、非100%缩放下次启动的
+记忆（窗口尺寸/位置未持久化）仍未验证。
+
+### 侧栏 Explorer 风格分区（驱动器 / 快速访问 / 分组收藏夹，2026-10-16）
+
+实现设计稿 `1792074142274.png`，其余布局沿用已接受的 dev-baseline-2026-10-14：左侧图标栏、
+Folders 页与中部“文件夹收藏”库树结构不变，新区块按“驱动器/快速访问在上、分组收藏夹在下”插入。
+持久化只加到 settings JSON 的 `sidebar_folders` 区块（`quick_access`、`favorite_groups`、
+`show_network_drives`），未动 SQLite。驱动器枚举与用量（盘符+卷标+已用/总量 GB+进度条，网络盘
+只显盘符+用量+地球图标、不显 UNC）走 `read_model::ReadModel` 被动读取，未新增计时器。
+
+为让侧栏可被同进程 MCP 直接调试，新增语义通道 `NavigationUiRequest::Sidebar`（14 种请求，
+在 `NavigationService::request_ui` 校验目标后调用与渲染控件完全相同的 handler）、只读快照
+`get_ui_state.sidebar_folders`、`control_ui{action:"sidebar_request"}`，以及
+`window_status.geometry`（`scale_factor` + 客户区原点，给出
+`pointer = (screenshot_px - offset) / scale` 的确定换算，替代像素猜测）。
+
+隔离 dev-test profile `target/mcp-sidebar-sections` 实测：32 步语义场景全通过（网络盘开关往返、
+快速访问清空/新增/改名、分组创建→加/改名/删收藏文件夹→改分组名→删分组、编辑器取消、区块折叠、
+盘内子目录展开、行选中、添加到库，以及 4 项非法目标被拒绝），结果同时落盘到该 profile 的
+settings.json；指针场景逐一打开 6 类“…”菜单（驱动器标题网络盘开关含 ✓ 状态、系统行、用户行、
+分组行、收藏文件夹行、驱动器行），并点击菜单项把 `show_network_drives` 真实改为 false 再改回 true。
+`cargo +1.97.1 fmt --all -- --check`、`test -p photag-plugin-navigation`（7 项）、
+`build -p photag-shell`、`node scripts/check-ui-refresh.cjs` 均通过。
+截图、复现脚本、命令与仍未验证项（原生文件夹选择器、拖拽放置、编辑器键盘输入、watcher 对新区块
+联动、非 150% 缩放）见[侧栏分区证据](validation-ui/2026-10-16-sidebar-sections/README.md)。
+
+
+## 2026-10-16 浏览模式与其他 AI 侧栏改动审查
+
+在 1177e4e 与其后的 Explorer 分区改动上继续修复，保留新布局。发现并处理快速访问键不一致、箭头展开状态重复、别名覆盖、分组状态未发布/保存、同步盘容量校验、被动目录 IO、保存旧版本覆盖/错误吞没、编辑器错误污染导航快照、虚假目录计数等问题。另补浏览模式未收藏目录重启恢复、会话自身监听循环、持续分块使快照交付饥饿三个遗漏。具体复现/修复映射、设计对照与真实 GPUI 点击截图见 [审查报告](validation-ui/2026-10-16-sidebar-review/README.md)。
+
+Windows/150% DPI，Rust 1.97.1 MSVC，locked/-j2：fmt/check/build、UI refresh guard 通过；13 个相关 crate 65 测试通过。全新隔离 MCP profile 验证侧栏编辑/失败重试/静止日志、稳定后重启、四次箭头 pointer、浏览自身 profile 和真实文件事件。十万真实文件扩展回归（含枚举结束前部分结果断言）、标签重启和基本缺失重链回归通过。最终一轮首批发布 793ms（8224 项，仍在加载），完整 13332ms，峰值工作集 247332864 bytes；为本机 debug 热缓存样本，不是像素首帧或通用性能保证。持久 media/media_tags/tag_previews 各 1 行，未保存十万普通浏览记录。原生选择器/完整键盘焦点/断网和可移动盘等未验项详见报告；不以静态测试代替运行验收。

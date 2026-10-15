@@ -1,0 +1,162 @@
+{
+  "date": "2026-10-16",
+  "baseline": "1177e4e + uncommitted Explorer sidebar changes",
+  "static": {
+    "toolchain": "1.97.1-x86_64-pc-windows-msvc",
+    "lockedShellBuild": true,
+    "testsPassed": 65,
+    "testsFailed": 0,
+    "fmt": true,
+    "lockedShellCheck": true,
+    "uiRefreshGuard": true
+  },
+  "scenarios": {
+    "sidebar": {
+      "report": "target/mcp-sidebar-review4/sidebar-review-report.json",
+      "cases": [
+        "invalid inline editor path reports locally and preserves the library",
+        "duplicate adds preserve aliases; no-op edits do not publish revisions",
+        "unchanged edit confirms and closes without saving a new revision",
+        "navigation does not implicitly expand or enumerate the sidebar path",
+        "native directory changes refresh an expanded active sidebar folder",
+        "repeated collapse and expansion use one path state",
+        "quick_access semantic and rendered section key agree",
+        "group state changes are published even when row count stays equal",
+        "explicit drive refresh has an independent revision",
+        "settings write failure is visible",
+        "same revision can retry after a failed save",
+        "debug drawer idle state does not repeat I/O logs or repaint records"
+      ],
+      "idle": {
+        "before": 340,
+        "after": 340
+      }
+    },
+    "sidebarRestart": {
+      "report": "target/mcp-sidebar-review4/sidebar-restart-report.json",
+      "cases": [
+        "section and group collapse restored",
+        "drive expansion restored",
+        "alias and selected path restored",
+        "no startup library scan",
+        "read-only mutation guard"
+      ]
+    },
+    "sidebarPointer": {
+      "report": "target/mcp-sidebar-review4/sidebar-pointer-report.json",
+      "cases": [
+        "real GPUI quick-access chevron collapses and expands four times"
+      ],
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    "browserBasic": {
+      "report": "target/mcp-browser-review-smoke/browser-report.json",
+      "cases": [
+        "unbookmarked direct browse",
+        "explicit descendants",
+        "native watcher create",
+        "native watcher delete",
+        "tag persistence",
+        "missing records panel",
+        "explicit relink",
+        "delete missing annotation"
+      ]
+    },
+    "browserRestart": {
+      "report": "target/mcp-browser-review2/restart-report.json",
+      "cases": [
+        "bookmarks restored without startup library scan",
+        "untagged selection restored by path",
+        "durable tag association restored",
+        "read only mutation guard",
+        "missing record retains independent identification preview after restart"
+      ]
+    },
+    "selfWatch": {
+      "report": "target/mcp-selfwatch-review-final-selfwatch-report.json",
+      "cases": [
+        "browsing profile does not rewrite session while idle",
+        "external file change refreshes and settles"
+      ]
+    },
+    "browserExtended": {
+      "report": "target/mcp-browser-review2/extended-report.json",
+      "cases": [
+        "bookmark alias and order",
+        "same path overwrite refreshes thumbnail dimensions and preview revision",
+        "tag result locate and select",
+        "native watcher directory create",
+        "descendants restores previous grouping",
+        "remove favorite preserves tags and local files",
+        "disabled thumbnails do not decode new visible images",
+        "100000 real direct files",
+        "list scroll beyond 200 row window",
+        "cancel stops directory producer",
+        "rapid navigation rejects stale results"
+      ],
+      "performance": {
+        "firstPublishedMs": 791,
+        "completePublishedMs": 14683
+      },
+      "memory": {
+        "WorkingSet64": 217214976,
+        "PeakWorkingSet64": 251396096,
+        "CPU": 30.84375
+      },
+      "durableRows": {
+        "media": 1,
+        "media_tags": 1,
+        "tag_previews": 1
+      }
+    },
+    "browserExtendedFinal": {
+      "report": "target/mcp-browser-review3/extended-report.json",
+      "cases": [
+        "bookmark alias and order",
+        "same path overwrite refreshes thumbnail dimensions and preview revision",
+        "tag result locate and select",
+        "native watcher directory create",
+        "descendants restores previous grouping",
+        "remove favorite preserves tags and local files",
+        "disabled thumbnails do not decode new visible images",
+        "partial results published before 100000 real direct files finish",
+        "list scroll beyond 200 row window",
+        "cancel stops directory producer",
+        "rapid navigation rejects stale results"
+      ],
+      "performance": {
+        "firstPublishedMs": 793,
+        "completePublishedMs": 13332
+      },
+      "memory": {
+        "WorkingSet64": 215736320,
+        "PeakWorkingSet64": 247332864,
+        "CPU": 26.296875
+      },
+      "durableRows": {
+        "media": 1,
+        "media_tags": 1,
+        "tag_previews": 1
+      }
+    },
+    "snapshotFinal": {
+      "report": "target/mcp-browser-review3/snapshot-report.json",
+      "cases": [
+        "missing image record shows saved identification preview",
+        "cancel acknowledgement includes actual directory producer stop"
+      ],
+      "cancelObservedMs": 92
+    }
+  }
+}

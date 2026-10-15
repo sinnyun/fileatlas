@@ -1,10 +1,16 @@
 //! PhoTag library sidebar data and tag tree operations, owned by Cordis.
 
+mod drives;
 mod favorites;
 mod folder_picker;
+mod sidebar_folders;
 mod ui_requests;
 mod view;
-pub use ui_requests::{NavigationUiRequest, NavigationUiRequestError};
+pub use drives::{DriveInfo, DriveKind, enumerate_drives};
+pub use sidebar_folders::SidebarFoldersService;
+pub use ui_requests::{
+    NavigationUiRequest, NavigationUiRequestError, SidebarEditorRequest, SidebarUiRequest,
+};
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -48,6 +54,8 @@ pub struct NavigationService {
     scans: Mutex<HashMap<i64, Arc<AtomicBool>>>,
     ui_request: Mutex<Option<NavigationUiRequest>>,
     picker: Arc<folder_picker::FolderPickerState>,
+    folders: Arc<SidebarFoldersService>,
+    sidebar_state: Mutex<Option<serde_json::Value>>,
 }
 
 impl Service for NavigationService {
@@ -55,7 +63,11 @@ impl Service for NavigationService {
 }
 
 impl NavigationService {
-    pub fn new(database: Arc<DatabaseService>, indexing: Arc<IndexingService>) -> Self {
+    pub fn new(
+        database: Arc<DatabaseService>,
+        indexing: Arc<IndexingService>,
+        folders: Arc<SidebarFoldersService>,
+    ) -> Self {
         Self {
             tag_revision: std::sync::atomic::AtomicU64::new(0),
             database,
@@ -64,7 +76,28 @@ impl NavigationService {
             scans: Mutex::new(HashMap::new()),
             ui_request: Mutex::new(None),
             picker: Arc::default(),
+            folders,
+            sidebar_state: Mutex::new(None),
         }
+    }
+
+    /// Last snapshot the mounted sidebar view published for read-only debugging.
+    pub fn sidebar_state(&self) -> Option<serde_json::Value> {
+        self.sidebar_state
+            .lock()
+            .ok()
+            .and_then(|state| state.clone())
+    }
+
+    pub(crate) fn publish_sidebar_state(&self, state: serde_json::Value) {
+        if let Ok(mut current) = self.sidebar_state.lock() {
+            if current.as_ref() != Some(&state) {
+                *current = Some(state);
+            }
+        }
+    }
+    pub fn sidebar_folders(&self) -> &Arc<SidebarFoldersService> {
+        &self.folders
     }
     pub fn browser_enabled(&self) -> bool {
         self.database.is_browser()
@@ -129,6 +162,9 @@ impl NavigationService {
                 }
             }
             _ => {}
+        }
+        if let NavigationUiRequest::Sidebar(request) = &request {
+            ui_requests::validate_sidebar_request(&self.folders, request)?;
         }
         let mut pending = self
             .ui_request
@@ -529,7 +565,10 @@ impl Plugin for NavigationPlugin {
         let session = session_service
             .snapshot()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?;
-        let service = Arc::new(NavigationService::new(database, indexing).with_watcher(watcher));
+        let folders_service = Arc::new(SidebarFoldersService::default());
+        let service = Arc::new(
+            NavigationService::new(database, indexing, folders_service).with_watcher(watcher),
+        );
         let folders = service
             .snapshot()
             .map_err(|error| NavigationPluginError::Dependency(error.to_string()))?
@@ -538,6 +577,9 @@ impl Plugin for NavigationPlugin {
             .selected_folder_id
             .filter(|id| folders.iter().any(|folder| folder.folder.id == *id));
         let selected_path = session.selected_path.filter(|path| {
+            if service.browser_enabled() {
+                return Path::new(path).is_dir();
+            }
             let selected = Path::new(path).canonicalize();
             selected.is_ok_and(|selected| {
                 folders.iter().any(|folder| {
@@ -614,6 +656,7 @@ impl Plugin for NavigationPlugin {
             ],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
+        let sidebar_folders = Arc::clone(service.sidebar_folders());
         register_views_for_plugin(
             &context,
             "photag.navigation",
@@ -627,6 +670,7 @@ impl Plugin for NavigationPlugin {
                 preferences,
                 add_folder_requested,
                 index_changed,
+                sidebar_folders,
             ),
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;

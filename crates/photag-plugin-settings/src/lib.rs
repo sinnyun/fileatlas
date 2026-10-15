@@ -61,31 +61,42 @@ impl SettingsService {
 
     /// Replace preferences and persist them to the source-compatible file.
     pub fn replace(&self, settings: Settings) -> Result<(), SettingsServiceError> {
-        {
-            let mut state = self
-                .state
-                .write()
-                .map_err(|_| SettingsServiceError::Poisoned)?;
-            *state = settings.clone();
-        }
-        self.persist(&settings)
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| SettingsServiceError::Poisoned)?;
+        self.persist(&settings)?;
+        *state = settings;
+        Ok(())
     }
 
-    /// Apply one preference edit and persist the resulting snapshot.
+    /// Serialize the edit and disk publication; failed writes keep the previous snapshot.
     pub fn update(
         &self,
         edit: impl FnOnce(&mut Settings),
     ) -> Result<Settings, SettingsServiceError> {
-        let settings = {
-            let mut state = self
-                .state
-                .write()
-                .map_err(|_| SettingsServiceError::Poisoned)?;
-            edit(&mut state);
-            state.clone()
-        };
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| SettingsServiceError::Poisoned)?;
+        let mut settings = state.clone();
+        edit(&mut settings);
         self.persist(&settings)?;
+        *state = settings.clone();
         Ok(settings)
+    }
+
+    fn apply_sidebar_update(
+        &self,
+        last: &std::sync::Mutex<u64>,
+        update: photag_contracts::SidebarFoldersUpdate,
+    ) -> Result<(), SettingsServiceError> {
+        let mut last = last.lock().map_err(|_| SettingsServiceError::Poisoned)?;
+        if update.revision > *last {
+            self.update(|settings| settings.sidebar_folders = update.config)?;
+            *last = update.revision;
+        }
+        Ok(())
     }
 
     fn persist(&self, settings: &Settings) -> Result<(), SettingsServiceError> {
@@ -158,6 +169,20 @@ impl Plugin for SettingsPlugin {
             .try_service::<photag_plugin_navigation::NavigationService>()
             .ok()
             .map(|service| Arc::downgrade(&service));
+        let sidebar_settings = Arc::clone(&service);
+        let last_sidebar_revision = std::sync::Mutex::new(0u64);
+        let _sidebar_folders = context
+            .on::<photag_contracts::SidebarFoldersChanged, _>(observer_sync(
+                move |_, update: photag_contracts::SidebarFoldersUpdate| {
+                    sidebar_settings.apply_sidebar_update(&last_sidebar_revision, update)
+                },
+            ))
+            .map_err(|error| SettingsPluginError::EventRegistration(error.to_string()))?;
+        if let Some(navigation) = navigation.as_ref().and_then(|weak| weak.upgrade()) {
+            navigation
+                .sidebar_folders()
+                .restore(settings.sidebar_folders.clone());
+        }
         let updater = context
             .try_service::<photag_plugin_updater::UpdaterService>()
             .ok();
@@ -271,3 +296,6 @@ pub enum SettingsPluginError {
     #[error("settings command registration failed: {0}")]
     EventRegistration(String),
 }
+
+#[cfg(test)]
+mod review_tests;

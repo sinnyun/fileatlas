@@ -6,7 +6,7 @@ use gpui_kit::component::button::ButtonVariants;
 mod folder_row;
 mod pages;
 mod scan_feedback;
-mod tag_render;
+pub(in crate::view) mod tag_render;
 use folder_row::folder_row;
 pub(super) use tag_render::merge_target_buttons;
 use tag_render::{directory_children_match, render_subdirectory, render_tag};
@@ -161,6 +161,9 @@ impl SidebarView {
                     }
                 }
                 crate::NavigationUiRequest::CloseModal => self.close_tag_modal(),
+                crate::NavigationUiRequest::Sidebar(request) => {
+                    self.apply_sidebar_request(request, window, cx);
+                }
             }
             cx.notify();
         }
@@ -243,6 +246,16 @@ impl Render for SidebarView {
             .pt(px(2.))
             .pb(px(8.));
         if self.active_page == NavigationPage::Folders {
+            panel = panel
+                .child(self.render_drives_section(cx))
+                .child(self.render_quick_access_section(cx));
+            if matches!(
+                self.sidebar_editor,
+                Some(SidebarEditor::AddQuickAccess | SidebarEditor::RenameQuickAccess { .. })
+            ) && let Some(editor_row) = self.render_sidebar_editor_row(cx)
+            {
+                panel = panel.child(editor_row);
+            }
             panel = scan_feedback::append(panel, self, cx);
         }
         let folder_view = cx.entity().downgrade();
@@ -541,6 +554,7 @@ impl Render for SidebarView {
                                             .ok()
                                             .and_then(|saved| saved.selected_path)
                                             .as_deref(),
+                                        !self.service.browser_enabled(),
                                         cx,
                                     )
                                 })
@@ -748,6 +762,22 @@ impl Render for SidebarView {
                     .text_color(rgb(theme::DANGER))
                     .child(format!("Could not load library: {error}")),
             ),
+        };
+        let panel = if self.active_page == NavigationPage::Folders {
+            let panel = if self.sidebar_editor.is_some()
+                && !matches!(
+                    self.sidebar_editor,
+                    Some(SidebarEditor::AddQuickAccess | SidebarEditor::RenameQuickAccess { .. })
+                )
+                && let Some(editor_row) = self.render_sidebar_editor_row(cx)
+            {
+                panel.child(editor_row)
+            } else {
+                panel
+            };
+            panel.child(self.render_favorites_section(cx))
+        } else {
+            panel
         };
         div().h_flex().size_full().child(rail).child(panel)
     }

@@ -106,3 +106,72 @@ impl Event for DirectoryPathSelected {
     type Args = Option<String>;
     type Output = ();
 }
+
+/// One user-pinned folder in the sidebar's Quick Access section.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct QuickAccessEntry {
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}
+
+/// One folder entry inside a user-created favorites group.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct FavoriteFolder {
+    pub id: String,
+    pub path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}
+
+/// A user-created group in the sidebar favorites section.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct FavoriteGroup {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub folders: Vec<FavoriteFolder>,
+}
+
+/// Sidebar drive/quick-access/favorites configuration owned by Navigation
+/// and persisted by the Settings plugin without a crate dependency cycle.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SidebarFoldersConfig {
+    #[serde(default)]
+    pub quick_access: Vec<QuickAccessEntry>,
+    #[serde(default)]
+    pub favorite_groups: Vec<FavoriteGroup>,
+    #[serde(default = "default_true")]
+    pub show_network_drives: bool,
+}
+
+impl Default for SidebarFoldersConfig {
+    fn default() -> Self {
+        Self {
+            quick_access: Vec::new(),
+            favorite_groups: Vec::new(),
+            show_network_drives: true,
+        }
+    }
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Revisioned sidebar write; stale asynchronous delivery must not overwrite newer preferences.
+#[derive(Clone, Debug)]
+pub struct SidebarFoldersUpdate {
+    pub revision: u64,
+    pub config: SidebarFoldersConfig,
+}
+
+/// Published by Navigation after a sidebar folders config mutation; the
+/// Settings plugin persists the new value into its JSON document.
+pub struct SidebarFoldersChanged;
+
+impl Event for SidebarFoldersChanged {
+    const NAME: &'static str = "photag/navigation/sidebar-folders-changed";
+    type Args = SidebarFoldersUpdate;
+    type Output = ();
+}
