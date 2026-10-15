@@ -73,6 +73,7 @@ use crate::{
 pub(crate) use factory::gallery;
 
 struct GalleryView {
+    _ready_task: Option<Task<()>>,
     month_motion: std::collections::HashMap<String, card_motion::CardMotion>,
     hovered_cards: HashSet<i64>,
     card_motion: std::collections::HashMap<i64, card_motion::CardMotion>,
@@ -166,6 +167,8 @@ struct GalleryView {
     snapshot_read: photag_ui_bridge::read_model::ReadModel<u64, GallerySnapshot>,
     snapshot_generation: u64,
     snapshot_directory_dirty: bool,
+    directory_snapshot_scope: u64,
+    directory_snapshot_started: std::time::Instant,
     visible_demand: Option<std::ops::Range<usize>>,
     viewport_read: photag_ui_bridge::read_model::ReadModel<
         (u64, u64, Vec<i64>, Vec<i64>),

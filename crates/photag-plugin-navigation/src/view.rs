@@ -27,9 +27,11 @@ use photag_ui_bridge::{UiViewContribution, theme};
 
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
+mod address_bar;
 mod construction;
 mod directories;
 mod favorite_menu;
+mod location_actions;
 use favorite_menu::favorite_menu;
 mod folder_picker;
 mod page_state;
@@ -147,6 +149,10 @@ pub(super) fn sidebar(
         let sidebar_editor_input = app.new(|cx| {
             InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Folder path"))
         });
+        let address_input = app.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder(photag_ui_bridge::i18n::tr("Enter folder address"))
+        });
         let pending = Arc::clone(&add_folder_requested);
         let dirty = Arc::clone(&index_changed);
         let folders_service = Arc::clone(&folders);
@@ -204,7 +210,9 @@ pub(super) fn sidebar(
                         view.refresh();
                         view.refresh_selected_directory();
                     }
-                    let changed = requested
+                    let address_changed = view.sync_address_location();
+                    let changed = address_changed
+                        || requested
                         || ui_requested
                         || changed
                         || directory_changed
@@ -249,7 +257,16 @@ pub(super) fn sidebar(
                 view_preferences,
                 folders_service,
                 sidebar_editor_input,
+                address_input,
+                cx.focus_handle(),
             )
+        });
+        address_bar::subscribe(&view, window, app);
+        view.update(app, |view, cx| {
+            let wake = view.service.ui_wake.clone();
+            view._ui_ready_task = Some(photag_ui_bridge::refresh::listen(cx, wake, |view, _| {
+                view.service.has_ui_request()
+            }));
         });
         view.update(app, |view, cx| {
             view._window_activation =
@@ -289,6 +306,7 @@ pub(super) fn sidebar(
 }
 
 struct SidebarView {
+    _ui_ready_task: Option<Task<()>>,
     folder_picker_task: Option<Task<()>>,
     locale_revision: u64,
     service: Arc<NavigationService>,
@@ -353,6 +371,8 @@ struct SidebarView {
     system_folders_read:
         photag_ui_bridge::read_model::ReadModel<u64, Vec<(String, std::path::PathBuf)>>,
     _window_activation: Option<Subscription>,
+    address: address_bar::AddressBarState,
+    _address_subscription: Option<Subscription>,
     drives_read: photag_ui_bridge::read_model::ReadModel<(bool, u64), Vec<crate::DriveInfo>>,
     collapsed_sections: HashSet<&'static str>,
     sidebar_editor: Option<SidebarEditor>,
@@ -581,26 +601,6 @@ impl SidebarView {
         .detach();
     }
 
-    fn select_folder(&self, folder_id: Option<i64>, cx: &mut Context<Self>) {
-        if let Ok(mut session) = self.session.snapshot() {
-            session.selected_folder_id = folder_id;
-            session.selected_path = None;
-            if let Err(error) = self.session.replace(session) {
-                tracing::error!("folder selection session save failed: {error}");
-            }
-        }
-        let cordis = self.cordis.clone();
-        cx.spawn(async move |_, _| {
-            if let Err(error) = cordis
-                .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
-                .await
-            {
-                tracing::error!("folder selection dispatch failed: {error}");
-            }
-        })
-        .detach();
-    }
-
     fn request_new_subfolder(
         &mut self,
         parent: String,
@@ -665,23 +665,6 @@ impl SidebarView {
             self.excluded_tags.clear();
         }
         self.emit_tag_selection(cx);
-    }
-
-    fn emit_tag_selection(&self, cx: &mut Context<Self>) {
-        let cordis = self.cordis.clone();
-        let selection = TagFilterSelection {
-            included: self.included_tags.clone(),
-            excluded: self.excluded_tags.clone(),
-        };
-        cx.spawn(async move |_, _| {
-            if let Err(error) = cordis
-                .emit::<TagFilterSelectionChanged>(Routing::Unscoped, selection)
-                .await
-            {
-                tracing::error!("tag selection dispatch failed: {error}");
-            }
-        })
-        .detach();
     }
 
     fn toggle_tag_selection(&mut self, tag_id: i64, modifiers: Modifiers, cx: &mut Context<Self>) {
@@ -764,25 +747,5 @@ impl SidebarView {
                 tracing::error!("tag expansion session save failed: {error}");
             }
         }
-    }
-
-    fn select_path(&self, path: String, cx: &mut Context<Self>) {
-        if let Ok(mut session) = self.session.snapshot() {
-            session.selected_folder_id = None;
-            session.selected_path = Some(path.clone());
-            if let Err(error) = self.session.replace(session) {
-                tracing::error!("path selection session save failed: {error}");
-            }
-        }
-        let cordis = self.cordis.clone();
-        cx.spawn(async move |_, _| {
-            if let Err(error) = cordis
-                .emit::<DirectoryPathSelected>(Routing::Unscoped, Some(path))
-                .await
-            {
-                tracing::error!("directory selection dispatch failed: {error}");
-            }
-        })
-        .detach();
     }
 }

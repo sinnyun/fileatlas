@@ -9,9 +9,7 @@ license.workspace = true
 tracing.workspace = true
 cordis.workspace = true
 gpui-kit.workspace = true
-
-[dev-dependencies]
-tokio.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 
 [lints]
 workspace = true

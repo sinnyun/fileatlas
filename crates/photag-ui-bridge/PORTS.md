@@ -65,6 +65,17 @@ No persistence, Cordis registrations or DB access is owned by this utility.
 
 ## Unified refresh contract (2026-10-15)
 
+2026-10-16 readiness extension: `refresh::Wake: Clone + Default` exposes
+`trigger()` and async `wait()`, backed by one coalesced Notify permit, without
+payloads or an idle timer. `refresh::listen(cx, wake, FnMut(&mut V,
+&mut Context<V>) -> bool) -> Task<()>` samples through a weak entity and only
+notifies for a real change. Store the returned task in the view; dropping it
+cancels the listener. One consumer owns each signal; this is not broadcast.
+`ReadModel::set_wake(Wake)` opts into completion/disconnect hints. The result
+sender disconnects before a panic hint is delivered. Existing poll identity,
+stale-result and cached-failure rules stay authoritative. Navigation/Gallery
+retain their 100/200ms fallback samplers. See navigation-latency validation.
+
 `refresh::poll<V>(Context<V>, Duration, FnMut(&mut V, &mut Context<V>) -> PollResult)` owns weak-entity timers and one notify per changed sample. `PollResult::until(changed, active)` delivers a terminal change before stopping. `ChangeGate<T>::new/changed/current` centralizes passive signature equality.
 
 `ReadModel::request` declares a demand without receiving a result from render; `poll` delivers it, `update` combines both for model pollers. `key/is_pending/value` expose state. One running worker plus one latest queued closure per model; stale results cannot overwrite current keys, A→B→A reuses A, worker disconnects cache an error. Neither utility emits logs. Callers own semantic invalidation keys; no schema/service/plugin lifecycle change. See docs/ui-refresh-contract.md and scripts/check-ui-refresh.cjs.

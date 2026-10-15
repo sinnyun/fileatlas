@@ -56,3 +56,8 @@ Shell now composes the debug plugin before other feature startup, disposes it la
 ## Shared refresh and passive input diagnostics (2026-10-15)
 
 Shell lifecycle/surface/locale polling uses UI Bridge refresh::poll; locale changes still refresh component windows. A transparent canvas registers capture-phase GPUI move/down/key observers during paint solely to update MCP's bounded in-memory input counters. It does not intercept input, notify or log.
+
+
+## Address interaction verification — 2026-10-16
+
+The title bar continues to host Navigation's command.breadcrumb contribution; address/history behavior remains in the Navigation feature. Shell's same-process MCP dispatcher additionally consumes CaptureWindowHandle::take_key and dispatches parsed GPUI Keystroke as PlatformInput::KeyDown after the render lease. poll_panel_requests only wakes for an actually pending key/pointer. No keyboard input is injected into the OS or other applications.

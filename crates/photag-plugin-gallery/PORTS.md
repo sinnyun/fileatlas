@@ -230,7 +230,7 @@ Production browsing is filesystem driven for every grouping. `live.rs` adapts Ya
 
 Public controls: `browser_enabled`, `show_descendants`, `set_show_descendants(bool)`, `thumbnails_enabled`, `set_thumbnails_enabled(bool)`, `invalidate_directory`, `cancel_directory`, `poll_directory`, `directory_worker_active`. `directory_status() -> (u64 generation,u64 revision,bool active,usize scanned,Option<String> error)`. Active means view loading; worker_active separately reports an OS call/producer still running after cancellation. A blocked OS read or an already running decoder is not forcibly interruptible.
 
-Gallery consumes WatcherService and IndexingService. Native watcher changes patch the session cache or invalidate a directory; refresh/reactivation rereads it. Snapshots use ReadModel; row renderers declare demand which is merged once per poll. A 200-row rich window and a small visible overscan request thumbnails; stale generation/request/file versions cannot publish decoded results. Preview is still the existing prioritized decoder. The tools menu includes thumbnail enable/disable and missing-record maintenance. Session restores selection by path, not cached row ID. Favorite home, tag results, locate-and-select, grid/list, groups and existing action surfaces share the accepted layout.
+Gallery consumes WatcherService and IndexingService. Native watcher changes patch the session cache or invalidate a directory; explicit refresh rereads it; activation uses the continuously running watcher. Snapshots use ReadModel; row renderers declare demand which is merged once per poll. A 200-row rich window and a small visible overscan request thumbnails; stale generation/request/file versions cannot publish decoded results. Preview is still the existing prioritized decoder. The tools menu includes thumbnail enable/disable and missing-record maintenance. Session restores selection by path, not cached row ID. Favorite home, tag results, locate-and-select, grid/list, groups and existing action surfaces share the accepted layout.
 
 Missing-record UI chooses exact files or proposes same-name candidates from one explicitly picked folder, then applies each row or skips. Delete missing records requires two-step confirmation and revalidates local missing status. No automatic move inference. See browser validation evidence for exercised Windows paths; codec, inaccessible-drive and native picker boundary coverage remains limited.
 
@@ -238,3 +238,25 @@ Missing-record UI chooses exact files or proposes same-name candidates from one 
 ## Review corrections — 2026-10-16
 
 Directory chunk changes coalesce while a snapshot read is in flight. A finished partial snapshot is delivered before the next directory revision is requested, preventing continuous key invalidation from starving the first result. Explicit navigation/filter reloads still invalidate old results. Refresh preserves selection/scroll without persisting a transient empty selection; unchanged SessionService saves do not write. Browsing the isolated profile itself and external file creation are checked through same-process MCP.
+
+
+## Duplicate directory refresh fix — 2026-10-16
+
+Window activation no longer invalidates the browser or retries its subscription. The current native/PollWatcher remains active while unfocused; actual file events and explicit refresh still update the view. LiveBrowser registers the selected watch before queuing enumeration; its worker waits cooperatively on WatcherService::browse_registration_pending (off the UI thread, cancellable). The old synthetic root change on registration is removed. Initial snapshots wait for the first current enumeration batch instead of briefly showing an earlier cached inventory.
+
+Background refresh keeps existing rows, scroll, selection, dialogs and the current 200-row rich window until the new result arrives; load_grouped_window is a crate-private query variant preserving its offset. Selection is validated against the delivered skeletons. Explicit navigation/filter reloads retain reset semantics. GalleryUiSnapshot.snapshot_revision:u64 is a read-only diagnostic for query scheduling, exposed as MCP gallery.snapshot_revision. Same-process lifecycle and external-change evidence: docs/validation-ui/2026-10-16-refresh/README.md.
+
+
+## Address bar integration — 2026-10-16
+
+Directory latency update: the view owns a shared Wake listener alongside its
+200ms fallback. UI requests, all five scope/index observers, bounded producer
+batches and snapshot/viewport ReadModel completions signal it after publishing
+state. One sampler consumes both paths. First batch counts files plus directories
+(32 entries); subsequent batches flush at 2048 entries or 32ms when nonempty.
+Intermediate snapshot queries coalesce with a 50ms minimum spacing; first scope
+and final completion bypass it. Logical row geometry preserves scroll even when
+a second result arrives before GPUI measures reset rows. No extra persistence or
+source-file writes. Evidence: docs/validation-ui/2026-10-16-navigation-latency.
+
+The duplicate Up button is removed from command.size; Navigation now places Up before the full breadcrumb/address field. Gallery's folder cards, picker, locate and existing Alt+Up still route through NavigationUiRequest::SelectPath. Gallery-focused Ctrl+L and Alt+Left/Right enqueue public AddressBarRequest variants. Navigation owns history/input; Gallery does not implement a parallel history. Existing selection/file-operation undo history is separate and unchanged.

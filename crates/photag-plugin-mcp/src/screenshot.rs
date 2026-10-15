@@ -230,6 +230,7 @@ pub fn window_status(handle: isize) -> serde_json::Value {
     serde_json::json!({"valid":valid,"owned":valid && owner == std::process::id(),
         "visible":valid && unsafe { IsWindowVisible(hwnd) } != 0,
         "minimized":valid && unsafe { IsIconic(hwnd) } != 0,
+        "active":valid && unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() } == hwnd,
         "hung":valid && unsafe { IsHungAppWindow(hwnd) } != 0,
         "bounds": bounds,
         "geometry": pointer_geometry(hwnd, valid)})
@@ -302,4 +303,27 @@ pub fn restore_test_window(handle: isize) -> Result<(), String> {
 #[cfg(not(target_os = "windows"))]
 pub fn restore_test_window(_: isize) -> Result<(), String> {
     Err("Window restoration is Windows-only".into())
+}
+
+/// Lifecycle validation through this MCP child's own native window only.
+#[cfg(target_os = "windows")]
+pub fn set_test_window_active(handle: isize, active: bool) -> Result<(), String> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        SW_MINIMIZE, SW_RESTORE, SetForegroundWindow, ShowWindowAsync,
+    };
+    if window_status(handle)["owned"] != true {
+        return Err("PhoTag window is unavailable or belongs to another process".into());
+    }
+    unsafe {
+        let hwnd = handle as windows_sys::Win32::Foundation::HWND;
+        ShowWindowAsync(hwnd, if active { SW_RESTORE } else { SW_MINIMIZE });
+        if active {
+            SetForegroundWindow(hwnd);
+        }
+    }
+    Ok(())
+}
+#[cfg(not(target_os = "windows"))]
+pub fn set_test_window_active(_: isize, _: bool) -> Result<(), String> {
+    Err("Window activation validation is Windows-only".into())
 }

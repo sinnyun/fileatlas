@@ -12,77 +12,16 @@ pub(super) use tag_render::merge_target_buttons;
 use tag_render::{directory_children_match, render_subdirectory, render_tag};
 
 impl SidebarView {
-    pub(super) fn render_breadcrumb(&mut self, cx: &mut Context<Self>) -> Div {
-        let saved = self.session.snapshot().unwrap_or_default();
-        let all_selected = saved.selected_folder_id.is_none()
-            && saved.selected_path.is_none()
-            && self.included_tags.is_empty()
-            && self.excluded_tags.is_empty();
-        let location = saved
-            .selected_path
-            .as_deref()
-            .and_then(|path| Path::new(path).file_name())
-            .and_then(|name| name.to_str())
-            .map(str::to_owned)
-            .or_else(|| {
-                saved.selected_folder_id.and_then(|id| {
-                    self.snapshot
-                        .as_ref()
-                        .ok()?
-                        .folders
-                        .iter()
-                        .find(|node| node.folder.id == id)
-                        .map(|node| node.folder.name.clone())
-                })
-            })
-            .or_else(|| {
-                self.included_tags.first().and_then(|id| {
-                    self.snapshot.as_ref().ok().and_then(|snapshot| {
-                        find_tag(&snapshot.tags, *id).map(|tag| tag.name.clone())
-                    })
-                })
-            });
-        div()
-            .h_flex()
-            .items_center()
-            .gap(px(8.))
-            .child(
-                div()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child(theme::small_icon(IconName::Library)),
-            )
-            .child(
-                Button::new("navigation-breadcrumb-all-files")
-                    .ghost()
-                    .compact()
-                    .label(photag_ui_bridge::i18n::tr("Favorites"))
-                    .text_color(rgb(if all_selected {
-                        theme::TEXT_PRIMARY
-                    } else {
-                        theme::TEXT_SECONDARY
-                    }))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.select_folder(None, cx);
-                        this.select_tag(None, cx);
-                        cx.notify();
-                    })),
-            )
-            .when_some(location, |row, label| {
-                row.child(div().text_color(rgb(theme::TEXT_MUTED)).child("/"))
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_PRIMARY))
-                            .child(label),
-                    )
-            })
-    }
-}
-
-impl SidebarView {
     pub(super) fn consume_ui_request(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if let Some(request) = self.service.take_ui_request() {
-            self.refresh();
+            if !matches!(
+                request,
+                crate::NavigationUiRequest::SelectPath(_)
+                    | crate::NavigationUiRequest::ExpandPath(_)
+                    | crate::NavigationUiRequest::AddressBar(_)
+            ) {
+                self.refresh();
+            }
             match request {
                 crate::NavigationUiRequest::AllFiles => {
                     self.close_tag_modal();
@@ -164,7 +103,11 @@ impl SidebarView {
                 crate::NavigationUiRequest::Sidebar(request) => {
                     self.apply_sidebar_request(request, window, cx);
                 }
+                crate::NavigationUiRequest::AddressBar(request) => {
+                    self.apply_address_request(request, window, cx);
+                }
             }
+            self.publish_sidebar_state(cx);
             cx.notify();
         }
     }
@@ -210,18 +153,26 @@ impl Render for SidebarView {
             let cordis = self.cordis.clone();
             let folder_id = self.restored_folder_id;
             let path = self.restored_path.clone();
+            let tags = TagFilterSelection {
+                included: self.included_tags.clone(),
+                excluded: self.excluded_tags.clone(),
+            };
             cx.spawn(async move |_, _| {
-                if let Err(error) = cordis
-                    .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
-                    .await
-                {
-                    tracing::error!("restored folder selection dispatch failed: {error}");
-                }
-                if let Err(error) = cordis
-                    .emit::<DirectoryPathSelected>(Routing::Unscoped, path)
-                    .await
-                {
-                    tracing::error!("restored directory selection dispatch failed: {error}");
+                let result = if path.is_some() {
+                    cordis
+                        .emit::<DirectoryPathSelected>(Routing::Unscoped, path)
+                        .await
+                } else if !tags.included.is_empty() || !tags.excluded.is_empty() {
+                    cordis
+                        .emit::<TagFilterSelectionChanged>(Routing::Unscoped, tags)
+                        .await
+                } else {
+                    cordis
+                        .emit::<FolderSelectionChanged>(Routing::Unscoped, folder_id)
+                        .await
+                };
+                if let Err(error) = result {
+                    tracing::error!(%error,"restored navigation dispatch failed");
                 }
             })
             .detach();

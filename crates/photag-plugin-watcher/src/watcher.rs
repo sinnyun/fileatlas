@@ -34,6 +34,44 @@ fn classify(kind: &EventKind) -> Option<EventClass> {
     }
 }
 
+#[cfg(test)]
+mod registration_tests {
+    use super::*;
+
+    #[test]
+    fn registration_does_not_synthesize_a_change_but_real_creation_is_delivered() {
+        let root =
+            std::env::temp_dir().join(format!("photag-watch-registration-{}", std::process::id()));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.to_string_lossy();
+        let mut watcher = FolderWatcher::new().expect("filesystem watcher");
+        watcher.replace_watch(None, Some(&path), false);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while watcher.registration_pending() {
+            assert!(Instant::now() < deadline);
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        std::thread::sleep(Duration::from_millis(950));
+        assert_eq!(watcher.poll_changes(), (Vec::new(), Vec::new()));
+        let file = root.join("actual.txt");
+        std::fs::write(&file, "real change").unwrap();
+        let expected = std::fs::canonicalize(&file)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            if watcher.poll_changes().0.contains(&expected) {
+                break;
+            }
+            assert!(Instant::now() < deadline, "real change was not delivered");
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        drop(watcher);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
 #[derive(Copy, Clone)]
 enum EventClass {
     Add,
@@ -47,6 +85,7 @@ pub struct FolderWatcher {
     /// (especially on slower drives or recursive trees).
     watcher: Arc<Mutex<Box<dyn Watcher + Send>>>,
     generation: Arc<std::sync::atomic::AtomicU64>,
+    registered_generation: Arc<std::sync::atomic::AtomicU64>,
     normalize_paths: std::sync::atomic::AtomicBool,
     rx: mpsc::Receiver<notify::Result<Event>>,
     sender: mpsc::SyncSender<notify::Result<Event>>,
@@ -86,6 +125,7 @@ impl FolderWatcher {
         Some(Self {
             watcher: Arc::new(Mutex::new(watcher)),
             generation: Arc::default(),
+            registered_generation: Arc::default(),
             normalize_paths: std::sync::atomic::AtomicBool::new(false),
             rx,
             sender: tx,
@@ -103,6 +143,7 @@ impl FolderWatcher {
         self.normalize_paths.store(true, Ordering::Release);
         let ticket = self.generation.fetch_add(1, Ordering::AcqRel) + 1;
         let generation = self.generation.clone();
+        let completed = self.registered_generation.clone();
         let watcher = self.watcher.clone();
         let sender = self.sender.clone();
         let overflow = self.overflow.clone();
@@ -140,9 +181,6 @@ impl FolderWatcher {
                                 Ok(()) => {
                                     *registered.lock().unwrap() = Some(new.clone());
                                     *watcher = Box::new(fallback);
-                                    let _ = sender.try_send(Ok(
-                                        Event::new(EventKind::Any).add_path(new.into())
-                                    ));
                                 }
                                 Err(error) => {
                                     tracing::error!(%error,path=%new,"polling directory watch failed")
@@ -154,12 +192,17 @@ impl FolderWatcher {
                         }
                     } else {
                         *registered.lock().unwrap() = Some(new.clone());
-                        let _ =
-                            sender.try_send(Ok(Event::new(EventKind::Any).add_path(new.into())));
                     }
                 }
+                completed.store(ticket, Ordering::Release);
             }
         });
+    }
+
+    pub fn registration_pending(&self) -> bool {
+        use std::sync::atomic::Ordering;
+        self.registered_generation.load(Ordering::Acquire)
+            != self.generation.load(Ordering::Acquire)
     }
 
     /// Non-blocking: actually registers the watch on a background thread.

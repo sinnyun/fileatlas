@@ -85,6 +85,7 @@ impl Plugin for GalleryPlugin {
         let selection_state = Arc::clone(&selected_folder);
         let selection_tag_state = Arc::clone(&selected_tag);
         let selection_path_state = Arc::clone(&selected_path);
+        let ready = service.wake.clone();
         let _selection_listener = context
             .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
                 if let Ok(mut selected) = selection_state.0.lock() {
@@ -96,12 +97,14 @@ impl Plugin for GalleryPlugin {
                 if let Ok(mut selected) = selection_path_state.0.lock() {
                     *selected = None;
                 }
+                ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let tag_state = Arc::clone(&selected_tag);
         let tag_folder_state = Arc::clone(&selected_folder);
         let tag_path_state = Arc::clone(&selected_path);
+        let ready = service.wake.clone();
         let _tag_selection_listener = context
             .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id: Option<i64>| {
                 if let Ok(mut selected) = tag_state.0.lock() {
@@ -118,12 +121,14 @@ impl Plugin for GalleryPlugin {
                         *selected = None;
                     }
                 }
+                ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let tag_filter_state = Arc::clone(&selected_tag);
         let tag_filter_folder = Arc::clone(&selected_folder);
         let tag_filter_path = Arc::clone(&selected_path);
+        let ready = service.wake.clone();
         let _tag_filter_selection_listener = context
             .on::<TagFilterSelectionChanged, _>(observer_sync(
                 move |_, selection: TagFilterSelection| {
@@ -138,6 +143,7 @@ impl Plugin for GalleryPlugin {
                             *selected = None;
                         }
                     }
+                    ready.trigger();
                     Ok::<_, std::convert::Infallible>(())
                 },
             ))
@@ -145,6 +151,7 @@ impl Plugin for GalleryPlugin {
         let path_state = Arc::clone(&selected_path);
         let path_folder_state = Arc::clone(&selected_folder);
         let path_tag_state = Arc::clone(&selected_tag);
+        let ready = service.wake.clone();
         let _path_selection_listener = context
             .on::<DirectoryPathSelected, _>(observer_sync(move |_, path| {
                 if let Ok(mut selected) = path_state.0.lock() {
@@ -156,13 +163,16 @@ impl Plugin for GalleryPlugin {
                 if let Ok(mut selected) = path_tag_state.0.lock() {
                     *selected = TagFilterSelection::default();
                 }
+                ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let revision = Arc::clone(&index_revision);
+        let ready = service.wake.clone();
         let _media_index_listener = context
             .on::<MediaIndexChanged, _>(observer_sync(move |_, ()| {
                 revision.0.fetch_add(1, Ordering::Release);
+                ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;

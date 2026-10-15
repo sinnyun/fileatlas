@@ -69,6 +69,7 @@ pub struct GalleryWindow {
 }
 
 pub struct GalleryService {
+    wake: photag_ui_bridge::refresh::Wake,
     live: live::LiveBrowser,
     viewport_request: AtomicU64,
     thumbnails_disabled: std::sync::atomic::AtomicBool,
@@ -126,6 +127,7 @@ impl Service for GalleryService {
 impl GalleryService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
         Self {
+            wake: Default::default(),
             database,
             live: Default::default(),
             viewport_request: AtomicU64::new(0),
@@ -145,6 +147,7 @@ impl GalleryService {
             tracing::info!(?request, "gallery request");
         }
         *self.ui_request.lock().expect("Gallery UI request lock") = Some(request);
+        self.wake.trigger();
     }
 
     pub fn card_states(&self) -> Vec<GalleryCardState> {
@@ -296,7 +299,7 @@ impl GalleryService {
     #[tracing::instrument(skip_all, err)]
     pub fn load(&self, mut query: MediaQuery) -> Result<GallerySnapshot, GalleryError> {
         self.scope_cache_query(&mut query)?;
-        self.load_snapshot(query, photag_plugin_grouping::GroupingMode::None, false)
+        self.load_snapshot(query, photag_plugin_grouping::GroupingMode::None, false, 0)
     }
 
     #[tracing::instrument(skip_all, err)]
@@ -305,7 +308,16 @@ impl GalleryService {
         query: MediaQuery,
         mode: photag_plugin_grouping::GroupingMode,
     ) -> Result<GallerySnapshot, GalleryError> {
-        self.load_snapshot(query, mode, true)
+        self.load_snapshot(query, mode, true, 0)
+    }
+
+    pub(crate) fn load_grouped_window(
+        &self,
+        query: MediaQuery,
+        mode: GroupingMode,
+        offset: usize,
+    ) -> Result<GallerySnapshot, GalleryError> {
+        self.load_snapshot(query, mode, true, offset)
     }
 
     fn load_snapshot(
@@ -313,6 +325,7 @@ impl GalleryService {
         mut query: MediaQuery,
         mode: GroupingMode,
         browse: bool,
+        window_offset: usize,
     ) -> Result<GallerySnapshot, GalleryError> {
         let browser = if browse {
             self.browser_snapshot(&query, mode)?
@@ -334,11 +347,18 @@ impl GalleryService {
             query.path_prefix = None;
         }
         Ok(self.database.with_reader(|connection| {
-            let mut skeletons = if browser.active && browser.directory.is_none() {
-                Vec::new()
-            } else {
-                queries::get_media_skeletons(connection, &query)?
-            };
+            let status = self.live.status();
+            let waiting_for_first_batch = self.database.is_browser()
+                && browser.active
+                && browser.directory.is_some()
+                && status.2
+                && status.3 == 0;
+            let mut skeletons =
+                if browser.active && browser.directory.is_none() || waiting_for_first_batch {
+                    Vec::new()
+                } else {
+                    queries::get_media_skeletons(connection, &query)?
+                };
             let group_labels = if let Some(grouping) = &self.grouping {
                 let mut fields = if matches!(
                     mode,
@@ -373,8 +393,10 @@ impl GalleryService {
                 vec![None; skeletons.len()]
             };
             let media_count = skeletons.len() as i64;
+            let window_offset = window_offset.min(skeletons.len().saturating_sub(1));
             let mut media = skeletons
                 .iter()
+                .skip(window_offset)
                 .take(MEDIA_WINDOW_SIZE)
                 .map(|s| queries::get_media_by_id(connection, s.id))
                 .collect::<rusqlite::Result<Vec<_>>>()?
@@ -409,7 +431,7 @@ impl GalleryService {
                 skeletons,
                 group_labels: group_labels.clone(),
                 media_count,
-                window_offset: 0,
+                window_offset,
                 media,
                 media_tags,
                 available_extensions,

@@ -82,6 +82,15 @@ impl WatcherService {
         }
     }
 
+    /// The directory producer waits off the UI thread until its subscription
+    /// is installed, avoiding an unobserved gap followed by a second full scan.
+    pub fn browse_registration_pending(&self) -> bool {
+        self.watcher
+            .lock()
+            .map(|w| w.registration_pending())
+            .unwrap_or(false)
+    }
+
     pub fn invalidate_browse_directory(&self) {
         self.directory_dirty.store(true, Ordering::Release);
     }

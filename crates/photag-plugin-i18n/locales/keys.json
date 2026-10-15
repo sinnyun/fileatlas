@@ -676,5 +676,12 @@
   "Sidebar changes not saved": "msg-113f1cf3564b",
   "Unavailable": "msg-ca1844969742",
   "Add to folder bookmarks": "msg-62ad837d0108",
-  "Name cannot be empty": "msg-9615c8137b02"
+  "Name cannot be empty": "msg-9615c8137b02",
+  "Back": "msg-76900f1bfd16",
+  "Forward": "msg-f1c65e14817e",
+  "Enter folder address": "msg-eee29e96afe2",
+  "Edit folder address": "msg-9b11043d221a",
+  "Go to folder": "msg-26fc1cffd287",
+  "Navigation target is unavailable": "msg-2cabb20c5124",
+  "Enter an absolute folder address": "msg-52077acd046b"
 }

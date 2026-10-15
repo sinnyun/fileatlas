@@ -5,6 +5,42 @@
 use gpui_kit::Context;
 use std::time::Duration;
 
+/// Coalesced readiness hint. One permit, no queued payloads and no idle timer.
+#[derive(Clone, Default)]
+pub struct Wake(std::sync::Arc<tokio::sync::Notify>);
+impl Wake {
+    pub fn trigger(&self) {
+        self.0.notify_one();
+    }
+    pub async fn wait(&self) {
+        self.0.notified().await;
+    }
+}
+
+/// Store the returned task in the owning view; dropping it cancels the listener.
+/// A wake only asks the shared sampler to check for real changes.
+pub fn listen<V: 'static>(
+    cx: &mut Context<V>,
+    wake: Wake,
+    mut sample: impl FnMut(&mut V, &mut Context<V>) -> bool + 'static,
+) -> gpui_kit::Task<()> {
+    cx.spawn(async move |this, cx| {
+        loop {
+            wake.wait().await;
+            if this
+                .update(cx, |view, cx| {
+                    if sample(view, cx) {
+                        cx.notify();
+                    }
+                })
+                .is_err()
+            {
+                break;
+            }
+        }
+    })
+}
+
 #[derive(Debug)]
 pub struct ChangeGate<T>(Option<T>);
 
@@ -83,6 +119,22 @@ pub fn poll<V: 'static>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn readiness_is_coalesced_and_stays_idle_without_new_work() {
+        let wake = Wake::default();
+        for _ in 0..1000 {
+            wake.trigger();
+        }
+        wake.wait().await;
+        assert!(
+            tokio::time::timeout(Duration::from_millis(10), wake.wait())
+                .await
+                .is_err()
+        );
+        wake.trigger();
+        wake.wait().await;
+    }
 
     #[test]
     fn unchanged_samples_and_stationary_input_do_not_invalidate() {

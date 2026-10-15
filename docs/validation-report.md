@@ -992,3 +992,21 @@ single-run/cache limits, test harness corrections and remaining boundaries.
 沿用户确认的浏览语义审查其他 AI 的 Explorer 侧栏。设置改为带修订事件与串行持久化，成功才提交内存；会话同值不写、失败不污染快照。浏览任意存在目录可重启恢复，旧资料库成员限制仅留在旧模式。目录快照在途期间合并刷新，完成的部分结果先交付，避免分块反复使其失效。后台源语义对照 vendor/photag-source/src/session.rs、原 main.rs/sidebar.rs 选择与展开流程；新增快速访问和分组收藏按当前用户设计实现。
 
 13 相关 crate 65 测试通过，locked Shell check/build、fmt 和 refresh guard 通过；静态日志 target/sidebar-review-tests-final.log。真实同进程 MCP 的失败写盘/重试、稳定重启、原生监听、十万文件首批/末页/取消/快速切换、标签与缺失重链通过。可追溯证据与未覆盖边界见 validation-ui/2026-10-16-sidebar-review/README.md；历史浏览证据缺失的 summary/PNG 已补齐，不把历史坐标当作当前侧栏点击证据。
+
+
+## 2026-10-16 进入目录及恢复窗口重复刷新
+
+已移除 Gallery 焦点恢复无条件重扫和注册后根伪事件；后台等待监听注册后再枚举，背景快照保留现有列表/选择/滚动与 rich window。23 相关测试、locked check、独立输出构建、fmt 和 UI refresh guard 通过。同进程 MCP 实际三次最小化/恢复：目录 generation 1→1、查询 revision 2→2、窗口 offset 250→250；真实外部新增/删除仍生效。基本 8 项和十万文件扩展 11 项回归通过。常用 exe 因正在运行被占用，验证输出为 target/debug/photag-shell-refresh.exe，未终止用户窗口。命令、截图、范围和剩余边界见 [重复刷新记录](validation-ui/2026-10-16-refresh/README.md)。
+
+
+## 2026-10-16 用户指定顶部面包屑地址栏
+
+后续目录性能：UI Bridge Wake/listen连接目录批次、范围事件和ReadModel完成，
+使用原采样器按变化刷新，保留bounded4/取消/generation。Yazi精确源码及PhoTag来源
+映射已更新。真实D盘两个目录10次，最终debug构建中位内容发布时间722.0→67.4ms，
+源目录名字/大小/mtime不变，持久media/media_tags/tag_previews各0。42测试与同进程
+地址11项、刷新4项、自身监听2项通过。十万文件11项扩展通过，首批159ms、全量17775ms，
+保留全量处理限制。最终常用exe已更新。原始报告、命令和计时范围见
+validation-ui/2026-10-16-navigation-latency/README.md。
+
+完整根至当前目录面包屑、路径编辑、后退/前进/上一级已集成 Navigation 既有贡献。历史统一目录/Home/标签范围，窗口内最多200项，真实路径在动作时验证；当前层级不重载，非法路径保留状态。窗口启动只恢复一个对应范围事件，避免空路径清空标签/收藏。34项测试、locked check、独立输出构建、fmt、UI refresh guard通过；同进程MCP 11项语义/实际Enter-Escape-Ctrl+L、4项真实pointer、文件夹及标签只读重启验证通过，重复刷新回归通过。设计来源为用户圈定截图；截图、命令、接口与未覆盖网络/输入系统边界见 [地址栏证据](validation-ui/2026-10-16-address/README.md)。

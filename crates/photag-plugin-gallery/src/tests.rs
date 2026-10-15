@@ -59,6 +59,12 @@ fn keeps_full_rows_windowed_and_loads_new_viewport_range() {
     assert_eq!(page.offset, MEDIA_WINDOW_SIZE);
     assert_eq!(page.media.len(), 45);
     assert_eq!(page.media[0].filename, "image-200.png");
+    let refreshed = gallery
+        .load_grouped_window(MediaQuery::default(), GroupingMode::Month, 200)
+        .unwrap();
+    assert_eq!(refreshed.window_offset, 200);
+    assert_eq!(refreshed.media[0].filename, "image-200.png");
+    assert_eq!(refreshed.media.len(), 45);
     let _ = std::fs::remove_dir_all(root);
 }
 

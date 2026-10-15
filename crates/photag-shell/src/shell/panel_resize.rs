@@ -139,7 +139,7 @@ impl PhoTagShell {
 
     /// MCP uses the same width setter and persistence path as a splitter drag.
     pub(crate) fn poll_panel_requests(&mut self, cx: &mut Context<Self>) {
-        if self.capture.pointer_pending() {
+        if self.capture.pointer_pending() || self.capture.key_pending() {
             cx.notify();
         }
         for (side, key) in [
@@ -159,6 +159,20 @@ impl PhoTagShell {
     }
 
     pub(super) fn dispatch_mcp_pointer(&self, window: &Window, cx: &mut Context<Self>) {
+        if let Some(key) = self.capture.take_key() {
+            window.defer(cx, move |window, cx| {
+                if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
+                    window.dispatch_event(
+                        PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
+                            keystroke,
+                            is_held: false,
+                            prefer_character_input: false,
+                        }),
+                        cx,
+                    );
+                }
+            });
+        }
         if let Some(input) = self.capture.take_pointer() {
             window.defer(cx, move |window, cx| {
                 let position = point(px(input.x), px(input.y));

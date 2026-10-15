@@ -800,3 +800,17 @@ msg-ca1844969742 = Unavailable
 msg-62ad837d0108 = Add to folder bookmarks
 
 msg-9615c8137b02 = Name cannot be empty
+
+msg-76900f1bfd16 = Back
+
+msg-f1c65e14817e = Forward
+
+msg-eee29e96afe2 = Enter folder address
+
+msg-9b11043d221a = Edit folder address
+
+msg-26fc1cffd287 = Go to folder
+
+msg-2cabb20c5124 = Navigation target is unavailable
+
+msg-52077acd046b = Enter an absolute folder address

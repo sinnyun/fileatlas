@@ -390,3 +390,21 @@ Validation evidence and exact limits: docs/validation-ui/2026-10-15-browser/READ
 | Yazi 分块结果流与现有 ReadModel 最新请求规则 | Gallery monitor snapshot_directory_dirty | 查询在途合并目录块，完成后先交付部分结果再刷新；单 worker 和显式导航过期拒绝规则保持。 |
 
 见 validation-ui/2026-10-16-sidebar-review/README.md。新需求与旧源不同的地方是明确浏览语义变化，不要求旧索引 UI 对等。
+
+
+## 2026-10-16 重复刷新修复映射
+
+对照 vendor/photag-source/src/watcher.rs 的注册/800ms 防抖流程，保留本项目 notify/PollWatcher 与有界事件处理。浏览改造初期额外添加的注册后根提示与 Gallery activation 无条件 invalidate 是二次重扫来源。现由 FolderWatcher 注册完成版本、WatcherService::browse_registration_pending 和 LiveBrowser 的后台等待统一先订阅后枚举，不再发送该提示；切换焦点只由现有侧栏刷新盘信息，不启动 Gallery 扫描。Gallery 的背景 refresh_index 不再借用会清空列表的完整 reload 流程；新快照读取保留原 rich window。详见 validation-ui/2026-10-16-refresh/README.md。
+
+
+## 2026-10-16 地址栏/导航历史映射
+
+2026-10-16 延迟优化补充：原 PhoTag sidebar/main 的路径选择和 session 范围仍由
+Navigation 事件复用；跳过浏览时无关收藏快照查询。Yazi 固定版本的
+`yazi-actor/src/mgr/cd.rs`（新保存的原样 MIT 参考）先切换范围再 refresh/render，
+以及已存档 VfsEntries/Refresher 的流、取消、Part/ticket 对应 Gallery live.rs。
+共享 UI Bridge Wake/listen 将结果就绪交给原有变化采样器，保留 bounded4、
+ReadModel 身份和过期拒绝，不照搬无界队列。真实 D 盘与输入计时、回归边界见
+validation-ui/2026-10-16-navigation-latency/README.md。
+
+对照 vendor/photag-source/src/main.rs:41-53 的 session selected_path/selected_folder_id 恢复与 ui/sidebar.rs:292-411 的文件夹选择语义。旧 Navigation render_breadcrumb 只显示“收藏集合 / 末级名称”；现按用户参考图圈定位置替换为盘符至当前目录完整面包屑和路径编辑，Navigation 的目录事件与 Gallery 浏览查询继续复用。新的 location.rs 是窗口内最多 200 项的纯导航历史，不复用文件操作 undo/redo、不新增 DB 表。Session 范围恢复改为只发对应路径/文件夹/标签事件，避免后续空路径事件清空前一个范围。外部目录/标签导航也进入同一历史，明确的新能力以本轮用户要求为准。验证：validation-ui/2026-10-16-address/README.md。

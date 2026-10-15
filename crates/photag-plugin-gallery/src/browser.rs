@@ -63,11 +63,8 @@ impl GalleryService {
         };
         if let Some(path) = &snapshot.directory {
             if self.database.is_browser() {
-                if self.live.ensure(path, &self.database) {
-                    if let Some(watcher) = &self.watcher {
-                        watcher.set_browse_directory(Some(path), self.live.recursive());
-                    }
-                }
+                self.live
+                    .ensure(path, &self.database, self.watcher.as_ref(), &self.wake);
                 snapshot.parent = Path::new(path)
                     .parent()
                     .filter(|p| !p.as_os_str().is_empty())

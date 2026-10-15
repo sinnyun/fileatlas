@@ -1,7 +1,6 @@
 //! Native directory tiles and Navigation-service routing for ungrouped views.
 use super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Disableable;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use photag_plugin_navigation::{NavigationService, NavigationUiRequest};
@@ -113,21 +112,6 @@ impl GalleryView {
         }
         cx.notify();
     }
-}
-
-pub(super) fn up_button(view: &GalleryView, cx: &mut Context<GalleryView>) -> Button {
-    Button::new("gallery-directory-up")
-        .ghost()
-        .compact()
-        .icon(theme::icon(IconName::ArrowUp))
-        .tooltip(photag_ui_bridge::i18n::tr("Up one folder"))
-        .disabled(
-            !view
-                .snapshot
-                .as_ref()
-                .is_ok_and(|s| s.browser.active && s.browser.directory.is_some()),
-        )
-        .on_click(cx.listener(|this, _, _, cx| this.directory_up(cx)))
 }
 
 pub(super) fn refresh_button(cx: &mut Context<GalleryView>) -> Button {

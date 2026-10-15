@@ -18,6 +18,20 @@ pub enum NavigationUiRequest {
     CloseModal,
     /// Explorer-style sidebar sections (drives, quick access, grouped favorites).
     Sidebar(SidebarUiRequest),
+    AddressBar(AddressBarRequest),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum AddressBarRequest {
+    Back,
+    Forward,
+    Up,
+    Edit,
+    Cancel,
+    Submit,
+    SetText { text: String },
+    Crumb { path: String },
 }
 
 /// One semantic edit for the sidebar sections. Every variant maps onto the same
@@ -113,7 +127,8 @@ impl NavigationUiRequest {
             | Self::ExpandPath(_)
             | Self::SelectPath(_)
             | Self::CloseModal
-            | Self::Sidebar(_) => None,
+            | Self::Sidebar(_)
+            | Self::AddressBar(_) => None,
         }
     }
 }

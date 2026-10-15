@@ -3,13 +3,15 @@
 mod drives;
 mod favorites;
 mod folder_picker;
+mod location;
 mod sidebar_folders;
 mod ui_requests;
 mod view;
 pub use drives::{DriveInfo, DriveKind, enumerate_drives};
 pub use sidebar_folders::SidebarFoldersService;
 pub use ui_requests::{
-    NavigationUiRequest, NavigationUiRequestError, SidebarEditorRequest, SidebarUiRequest,
+    AddressBarRequest, NavigationUiRequest, NavigationUiRequestError, SidebarEditorRequest,
+    SidebarUiRequest,
 };
 
 use std::collections::HashMap;
@@ -47,6 +49,7 @@ pub struct SubdirectoryNode {
 }
 
 pub struct NavigationService {
+    ui_wake: photag_ui_bridge::refresh::Wake,
     tag_revision: std::sync::atomic::AtomicU64,
     database: Arc<DatabaseService>,
     indexing: Arc<IndexingService>,
@@ -69,6 +72,7 @@ impl NavigationService {
         folders: Arc<SidebarFoldersService>,
     ) -> Self {
         Self {
+            ui_wake: Default::default(),
             tag_revision: std::sync::atomic::AtomicU64::new(0),
             database,
             indexing,
@@ -150,15 +154,17 @@ impl NavigationService {
                     .ok()
                     .filter(|path| path.is_dir())
                     .ok_or_else(|| NavigationUiRequestError::InvalidDirectoryPath(path.clone()))?;
-                let snapshot = self
-                    .snapshot()
-                    .map_err(|_| NavigationUiRequestError::InvalidDirectoryPath(path.clone()))?;
-                let inside_registered_folder = snapshot.folders.iter().any(|node| {
-                    std::fs::canonicalize(&node.folder.path)
-                        .is_ok_and(|root| target.starts_with(root))
-                });
-                if !inside_registered_folder && !self.database.is_browser() {
-                    return Err(NavigationUiRequestError::InvalidDirectoryPath(path.clone()));
+                if !self.database.is_browser() {
+                    let snapshot = self.snapshot().map_err(|_| {
+                        NavigationUiRequestError::InvalidDirectoryPath(path.clone())
+                    })?;
+                    let inside_registered_folder = snapshot.folders.iter().any(|node| {
+                        std::fs::canonicalize(&node.folder.path)
+                            .is_ok_and(|root| target.starts_with(root))
+                    });
+                    if !inside_registered_folder && !self.database.is_browser() {
+                        return Err(NavigationUiRequestError::InvalidDirectoryPath(path.clone()));
+                    }
                 }
             }
             _ => {}
@@ -174,6 +180,8 @@ impl NavigationService {
             return Err(NavigationUiRequestError::Busy);
         }
         *pending = Some(request);
+        drop(pending);
+        self.ui_wake.trigger();
         Ok(())
     }
 

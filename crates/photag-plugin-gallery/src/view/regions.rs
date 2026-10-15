@@ -39,7 +39,6 @@ impl Render for GalleryRegion {
                         .tooltip(photag_ui_bridge::i18n::tr("Open folder"))
                         .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
                 )
-                .child(directory_browser::up_button(view, cx))
                 .child(directory_browser::refresh_button(cx))
                 .child(
                     Button::new("gallery-descendants")

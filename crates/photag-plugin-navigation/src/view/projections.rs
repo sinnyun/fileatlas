@@ -6,9 +6,9 @@ pub(super) struct SidebarBreadcrumb {
 }
 
 impl Render for SidebarBreadcrumb {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.sidebar
-            .update(cx, |sidebar, cx| sidebar.render_breadcrumb(cx))
+            .update(cx, |sidebar, cx| sidebar.render_breadcrumb(window, cx))
     }
 }
 

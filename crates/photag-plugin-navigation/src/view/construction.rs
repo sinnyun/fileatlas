@@ -29,6 +29,8 @@ impl SidebarView {
         preferences: Arc<RwLock<TagInteractionPreferences>>,
         folders: Arc<crate::SidebarFoldersService>,
         sidebar_editor_input: Entity<InputState>,
+        address_input: Entity<InputState>,
+        address_focus: FocusHandle,
     ) -> Self {
         let snapshot = service.snapshot().map_err(|error| error.to_string());
         let mut expanded_tags = expanded_tags;
@@ -60,7 +62,16 @@ impl SidebarView {
             }
         };
         let saved_sidebar = session.snapshot().unwrap_or_default();
+        let initial_location =
+            address_bar::location_from_session(&saved_sidebar, snapshot.as_ref().ok());
         Self {
+            _ui_ready_task: None,
+            address: address_bar::AddressBarState::new(
+                address_input,
+                initial_location,
+                address_focus,
+            ),
+            _address_subscription: None,
             folder_picker_task: None,
             locale_revision: u64::MAX,
             service: Arc::clone(&service),

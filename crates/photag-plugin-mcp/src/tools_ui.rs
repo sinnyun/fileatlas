@@ -46,6 +46,7 @@ impl PhoTagMcpServer {
                 "grouping_mode": state.grouping_mode.key(), "groups": state.groups, "collapsed_groups": state.collapsed_groups,
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
                 "window_offset": state.window_offset, "loaded_count": state.loaded_count,
+                "snapshot_revision":state.snapshot_revision,
                 "inspector_sections": state.inspector_sections,
                 "bulk_action": state.bulk_action, "bulk_source": state.bulk_source,
                 "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
@@ -111,6 +112,28 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "key_press" => {
+                let key = request.value.unwrap_or_default();
+                if !matches!(
+                    key.as_str(),
+                    "enter" | "escape" | "ctrl-l" | "alt-left" | "alt-right" | "alt-up"
+                ) {
+                    return error_json("unsupported navigation key");
+                }
+                return match self.capture.queue_key(key) {
+                    Ok(()) => json!({"queued":true}).to_string(),
+                    Err(e) => error_json(&e),
+                };
+            }
+            "window_minimize" | "window_activate" => {
+                return match crate::screenshot::set_test_window_active(
+                    self.capture.get(),
+                    request.action == "window_activate",
+                ) {
+                    Ok(()) => json!({"requested":true}).to_string(),
+                    Err(error) => error_json(&error),
+                };
+            }
             "window_restore" => {
                 return match crate::screenshot::restore_test_window(self.capture.get()) {
                     Ok(()) => json!({"restored":true}).to_string(),
@@ -184,6 +207,24 @@ impl PhoTagMcpServer {
                     x: coordinates[0],
                     y: coordinates[1],
                 })
+            }
+            "address_bar" => {
+                let Some(payload) = request.request else {
+                    return error_json("address_bar requires a request payload");
+                };
+                let request = match serde_json::from_value::<
+                    photag_plugin_navigation::AddressBarRequest,
+                >(payload)
+                {
+                    Ok(r) => r,
+                    Err(e) => return error_json(&e.to_string()),
+                };
+                return match self.navigation.request_ui(
+                    photag_plugin_navigation::NavigationUiRequest::AddressBar(request),
+                ) {
+                    Ok(()) => json!({"queued":true}).to_string(),
+                    Err(e) => error_json(&e.to_string()),
+                };
             }
             "sidebar_request" => {
                 let Some(payload) = request.request else {

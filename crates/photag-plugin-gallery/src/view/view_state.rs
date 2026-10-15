@@ -277,6 +277,7 @@ impl GalleryView {
             .map(|_| writeback_failure_signature())
             .unwrap_or_default();
         Self {
+            _ready_task: None,
             month_motion: std::collections::HashMap::new(),
             hovered_cards: HashSet::new(),
             card_motion: std::collections::HashMap::new(),
@@ -382,6 +383,8 @@ impl GalleryView {
             snapshot_read: Default::default(),
             snapshot_generation: 0,
             snapshot_directory_dirty: false,
+            directory_snapshot_scope: 0,
+            directory_snapshot_started: std::time::Instant::now(),
             visible_demand: None,
             viewport_read: Default::default(),
             inspector_fallback: None,
@@ -403,7 +406,9 @@ impl GalleryView {
     pub(super) fn refresh_index(&mut self) {
         let selected = self.selection.selected_media_ids.clone();
         let anchor = self.selection.anchor_id;
-        let scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
+        let scroll = self
+            .pending_scroll_restore
+            .unwrap_or_else(|| self.scroll_offset());
         self.reload_state(false);
         if let Ok(snapshot) = &self.snapshot {
             let valid = snapshot
@@ -421,6 +426,22 @@ impl GalleryView {
         self.persist_filter_session();
     }
 
+    // ListState's scrollbar estimate omits unmeasured rows after reset. A
+    // second streamed result can arrive before paint, so use our known row
+    // geometry and logical anchor instead of that temporary estimate.
+    pub(super) fn scroll_offset(&self) -> f32 {
+        let top = self.scroll.logical_scroll_top();
+        self.row_layout
+            .iter()
+            .take(top.item_ix)
+            .enumerate()
+            .map(|(i, row)| {
+                super::render::gallery_row_height(row, i, self.thumb_size, self.list_layout)
+            })
+            .sum::<f32>()
+            + f32::from(top.offset_in_item)
+    }
+
     #[tracing::instrument(skip_all)]
     pub(super) fn reload(&mut self) {
         self.reload_state(true);
@@ -433,10 +454,23 @@ impl GalleryView {
         let service = Arc::clone(&self.service);
         let query = self.filter.to_query();
         let mode = self.grouping_mode;
+        self.snapshot_read.set_wake(self.service.wake.clone());
+        let offset = if persist {
+            0
+        } else {
+            self.snapshot.as_ref().map(|s| s.window_offset).unwrap_or(0)
+        };
         self.snapshot_read
             .request(self.snapshot_generation, move || {
-                service.load_grouped(query, mode).map_err(|e| e.to_string())
+                service
+                    .load_grouped_window(query, mode, offset)
+                    .map_err(|e| e.to_string())
             });
+        // Directory chunks and watcher changes update the existing view. Keep
+        // rendered rows, rich media and selection until their replacement arrives.
+        if !persist {
+            return;
+        }
         self.inspector_fallback = None;
         self.inspector_read = Default::default();
         self.selection_details_cache = None;
@@ -499,7 +533,9 @@ impl GalleryView {
         saved.selected_tag_ids = self.filter.selected_tag_ids.clone();
         saved.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
         saved.selected_media_ids = self.selection.selected_media_ids.clone();
-        saved.gallery_scroll = (-f32::from(self.scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
+        saved.gallery_scroll = self
+            .pending_scroll_restore
+            .unwrap_or_else(|| self.scroll_offset());
         saved.thumb_size = Some(
             self.thumb_size
                 .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX),

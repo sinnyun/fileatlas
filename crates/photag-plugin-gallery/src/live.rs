@@ -26,6 +26,8 @@ struct Request {
     cancel: Arc<AtomicBool>,
     tx: mpsc::SyncSender<Message>,
     database: Arc<DatabaseService>,
+    watcher: Option<Arc<photag_plugin_watcher::WatcherService>>,
+    wake: photag_ui_bridge::refresh::Wake,
 }
 #[derive(Default)]
 struct State {
@@ -149,13 +151,22 @@ impl LiveBrowser {
         }
         changed
     }
-    pub fn ensure(&self, root: &str, database: &Arc<DatabaseService>) -> bool {
+    pub fn ensure(
+        &self,
+        root: &str,
+        database: &Arc<DatabaseService>,
+        watcher: Option<&Arc<photag_plugin_watcher::WatcherService>>,
+        wake: &photag_ui_bridge::refresh::Wake,
+    ) -> bool {
         let recursive = self.recursive();
         let Ok(mut s) = self.state.lock() else {
             return false;
         };
         if s.key.as_ref() == Some(&(root.to_owned(), recursive)) {
             return false;
+        }
+        if let Some(watcher) = watcher {
+            watcher.set_browse_directory(Some(root), recursive);
         }
         s.cancel.store(true, Ordering::Release);
         let (tx, rx) = mpsc::sync_channel(4);
@@ -174,6 +185,8 @@ impl LiveBrowser {
             cancel: s.cancel.clone(),
             tx,
             database: database.clone(),
+            watcher: watcher.cloned(),
+            wake: wake.clone(),
         };
         if let Ok(mut pending) = self.queue.request.lock() {
             *pending = Some(request);
@@ -220,7 +233,10 @@ fn send(request: &Request, mut message: Message) -> bool {
             return false;
         }
         match request.tx.try_send(message) {
-            Ok(()) => return true,
+            Ok(()) => {
+                request.wake.trigger();
+                return true;
+            }
             Err(mpsc::TrySendError::Disconnected(_)) => return false,
             Err(mpsc::TrySendError::Full(value)) => {
                 message = value;
@@ -232,6 +248,19 @@ fn send(request: &Request, mut message: Message) -> bool {
 
 fn enumerate(request: &Request) -> Result<(), String> {
     let started = Instant::now();
+    while request
+        .watcher
+        .as_ref()
+        .is_some_and(|w| w.browse_registration_pending())
+    {
+        if request.cancel.load(Ordering::Acquire) {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    if request.cancel.load(Ordering::Acquire) {
+        return Ok(());
+    }
     let root = PathBuf::from(&request.root);
     let mut stack = vec![root.clone()];
     // Keep annotations even if the corresponding local file disappeared.
@@ -242,6 +271,7 @@ fn enumerate(request: &Request) -> Result<(), String> {
     let mut batch = Vec::with_capacity(256);
     let mut dirs = Vec::new();
     let mut first = true;
+    let mut last_flush = Instant::now();
     let mut warnings = Vec::new();
     while let Some(directory) = stack.pop() {
         if request.cancel.load(Ordering::Acquire) {
@@ -292,12 +322,16 @@ fn enumerate(request: &Request) -> Result<(), String> {
                 };
                 batch.push((path, metadata));
             }
-            if batch.len() >= 2048 || first && batch.len() + dirs.len() >= 32 {
+            let buffered = batch.len() + dirs.len();
+            if buffered >= if first { 32 } else { 2048 }
+                || buffered > 0 && last_flush.elapsed() >= Duration::from_millis(32)
+            {
                 let count = commit(request, &mut batch)?;
                 if !send(request, Message::Batch(std::mem::take(&mut dirs), count)) {
                     return Ok(());
                 }
                 first = false;
+                last_flush = Instant::now();
             }
         }
     }

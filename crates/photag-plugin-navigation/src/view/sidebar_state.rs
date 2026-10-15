@@ -56,7 +56,7 @@ impl SidebarView {
                 .map(|n| (&n.folder.id, &n.folder.path, &n.folder.name))
                 .collect::<Vec<_>>()),
             self.directory_revision
-        )
+        ) + &self.address_snapshot(cx).to_string()
     }
 
     /// Publish the rendered sidebar sections as data so MCP checks do not have
@@ -161,6 +161,7 @@ impl SidebarView {
             })
             .unwrap_or_default();
         self.service.publish_sidebar_state(json!({
+            "address_bar":self.address_snapshot(cx),
             "page": self.active_page.key(),
             "browse_mode": self.service.browser_enabled(),
             "drives_collapsed": self.collapsed_sections.contains("drives"),

@@ -48,6 +48,7 @@ pub enum GalleryUiRequest {
 /// Snapshot published by the rendered Gallery entity, not a separate query.
 #[derive(Clone)]
 pub struct GalleryUiSnapshot {
+    pub snapshot_revision: u64,
     pub records_open: bool,
     pub records_count: Option<usize>,
     pub record_candidates: Vec<(i64, String)>,

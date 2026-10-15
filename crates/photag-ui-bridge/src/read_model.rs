@@ -10,6 +10,7 @@ pub struct ReadModel<K, V> {
     value: Option<Result<V, String>>,
     pending: Option<(K, Receiver<Result<V, String>>)>,
     queued: Option<(K, Reader<V>)>,
+    wake: Option<crate::refresh::Wake>,
 }
 
 impl<K, V> Default for ReadModel<K, V> {
@@ -19,11 +20,15 @@ impl<K, V> Default for ReadModel<K, V> {
             value: None,
             pending: None,
             queued: None,
+            wake: None,
         }
     }
 }
 
 impl<K: Clone + PartialEq, V: Send + 'static> ReadModel<K, V> {
+    pub fn set_wake(&mut self, wake: crate::refresh::Wake) {
+        self.wake = Some(wake);
+    }
     /// Request without consuming a completion or notifying from render.
     pub fn request(
         &mut self,
@@ -93,10 +98,22 @@ impl<K: Clone + PartialEq, V: Send + 'static> ReadModel<K, V> {
             return false;
         };
         let (send, receive) = mpsc::channel();
+        let wake = self.wake.clone();
         match std::thread::Builder::new()
             .name("photag-read-model".into())
             .spawn(move || {
-                let _ = send.send(read());
+                // Also deliver a disconnected-worker error promptly after panic.
+                struct Ready(Option<crate::refresh::Wake>);
+                impl Drop for Ready {
+                    fn drop(&mut self) {
+                        if let Some(wake) = &self.0 {
+                            wake.trigger();
+                        }
+                    }
+                }
+                let _ready = Ready(wake);
+                let sender = send; // Drop/disconnect before Ready on panic.
+                let _ = sender.send(read());
             }) {
             Ok(_) => {
                 self.pending = Some((key, receive));
@@ -123,6 +140,26 @@ impl<K: Clone + PartialEq, V: Send + 'static> ReadModel<K, V> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn completion_and_panics_wake_the_consumer_without_periodic_polling() {
+        let wake = crate::refresh::Wake::default();
+        let mut model = ReadModel::<u64, usize>::default();
+        model.set_wake(wake.clone());
+        model.request(1, || Ok(7));
+        tokio::time::timeout(std::time::Duration::from_secs(3), wake.wait())
+            .await
+            .unwrap();
+        assert!(model.poll());
+        assert_eq!(model.value().unwrap().as_ref().unwrap(), &7);
+        assert!(!model.request(1, || panic!("completed reads must stay cached")));
+        model.request(2, || panic!("simulated read failure"));
+        tokio::time::timeout(std::time::Duration::from_secs(3), wake.wait())
+            .await
+            .unwrap();
+        assert!(model.poll());
+        assert!(model.value().unwrap().is_err());
+    }
     fn finish(model: &mut ReadModel<u64, usize>, key: u64) {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         while model.value().is_none() {

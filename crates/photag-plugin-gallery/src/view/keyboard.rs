@@ -16,6 +16,35 @@ impl GalleryView {
         cx: &mut Context<Self>,
     ) {
         let gallery_focused = self.focus_handle.is_focused(window);
+        if gallery_focused {
+            use photag_plugin_navigation::{
+                AddressBarRequest as A, NavigationService, NavigationUiRequest,
+            };
+            let request = if event.keystroke.modifiers.control
+                && event.keystroke.key.eq_ignore_ascii_case("l")
+            {
+                Some(A::Edit)
+            } else if event.keystroke.modifiers.alt {
+                match event.keystroke.key.as_str() {
+                    "left" => Some(A::Back),
+                    "right" => Some(A::Forward),
+                    _ => None,
+                }
+            } else {
+                None
+            };
+            if let Some(request) = request {
+                if let Ok(navigation) = self.cordis.try_service::<NavigationService>() {
+                    if let Err(error) =
+                        navigation.request_ui(NavigationUiRequest::AddressBar(request))
+                    {
+                        self.operation_status = Some(error.to_string());
+                    }
+                }
+                cx.stop_propagation();
+                return;
+            }
+        }
         if self.show_records && event.keystroke.key == "escape" {
             self.show_records = false;
             cx.notify();

@@ -241,3 +241,21 @@ New `SidebarUiRequest::{RefreshRoots, RetrySave, ToggleGroup { group_id }}` rout
 Save events carry a monotonic revision. The view displays a failed latest save with Retry; obsolete failures cannot overwrite newer status. Inline path/name validation stays in the editor rather than replacing the library snapshot. Capacity failures show Unavailable, not a fictitious 0/0. Slow OS/network calls cannot be forcibly interrupted; offline network and removable-drive dialogs are not verified by local-drive checks.
 
 Reproducible checks and defects: docs/validation-ui/2026-10-16-sidebar-review/README.md. Rendering is split across sections/render.rs and its quick_access/favorites/editor modules.
+
+
+## Explorer address bar — 2026-10-16
+
+Latency update: request_ui triggers a coalesced shared Wake after releasing the
+queue lock; Sidebar owns the listener task. SelectPath/ExpandPath/AddressBar skip
+unrelated favorite/tag snapshot reloads. Browser path validation no longer loads
+favorite roots for the legacy membership check. Target existence is still checked
+at action time. Tag history validates against a fresh service snapshot, not a
+potentially old rendered tree. The 100ms passive sampler remains unchanged.
+
+The existing navigation/breadcrumb-view contribution in command.breadcrumb is now the full address bar. view/address_bar.rs owns its typed actions/input/history; address_bar/render.rs renders Back/Forward/Up, root-to-leaf clickable breadcrumbs and an editable path. location.rs owns pure path presentation and bounded window-local NavigationHistory (200 locations). No new database or persistent history table. Current scope still uses existing session path/folder/tag fields; restore emits exactly one matching scope event so an empty directory event cannot clear restored tags/favorites.
+
+Public NavigationUiRequest::AddressBar(AddressBarRequest) accepts serde kind back/forward/up/edit/cancel/submit/set_text {text}/crumb {path}. It is consumed by the mounted Sidebar, with the same handlers as pointer controls. Crumb is validated against current ancestors; typed and historical paths are checked at action time. Quoted absolute and relative paths are supported; relative paths use the current folder. Invalid/missing locations keep scope and history cursor, with visible error state. Current breadcrumb and unchanged submits do not reload. Drive and UNC share roots have no Up destination.
+
+Session changes from Gallery tag filters also synchronize history without filesystem IO; selecting a folder clears tag scope. Home and tag views have context labels, not fictitious filesystem paths. Back/Forward restores directory/home/tag scope, truncates forward history on a new branch and deduplicates equivalent Windows paths. History resets at the restored location for a new window.
+
+get_ui_state.sidebar_folders.address_bar is change-gated: path, editing, text, error, can_back/can_forward/can_up, breadcrumbs[{label,path}]. Input uses InputState and actual PressEnter; Escape cancels, Ctrl+L edits, Alt+Left/Right navigates when the bar is focused. Gallery forwards Ctrl+L and Alt+Left/Right from its own focus; existing Alt+Up is retained. Long breadcrumbs scroll horizontally; edit exposes the complete path. No render-time metadata/canonicalize probes are added. See docs/validation-ui/2026-10-16-address/README.md.

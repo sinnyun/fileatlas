@@ -4,13 +4,14 @@
 use super::*;
 
 pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
-    let scroll_for_monitor = view.scroll.clone();
+    let wake = view.service.wake.clone();
+    view._ready_task = Some(photag_ui_bridge::refresh::listen(cx, wake, tick));
     photag_ui_bridge::refresh::poll(cx, Duration::from_millis(200), move |view, cx| {
-        tick(view, &scroll_for_monitor, cx).into()
+        tick(view, cx).into()
     });
 }
 
-fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView>) -> bool {
+fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     let mut repaint = false;
     if view.service.poll_directory() {
         view.snapshot_directory_dirty = true;
@@ -23,14 +24,32 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
                 .map_err(|e| e.clone());
             view.visible_demand = None;
             view.row_layout_key = None;
-            view.row_layout = Arc::new(Vec::new());
+            // Keep old geometry until render replaces it; another ready chunk
+            // may need the logical scroll anchor before that paint.
+            if let Ok(snapshot) = &view.snapshot {
+                let valid = snapshot
+                    .skeletons
+                    .iter()
+                    .map(|m| m.id)
+                    .collect::<HashSet<_>>();
+                view.selection
+                    .selected_media_ids
+                    .retain(|id| valid.contains(id));
+                view.selection.anchor_id = view.selection.anchor_id.filter(|id| valid.contains(id));
+            }
         }
         repaint = true;
     }
     // Publish a finished partial result before scheduling the next directory
     // revision. Replacing its key on every chunk can starve the first display.
-    if view.snapshot_directory_dirty && !view.snapshot_read.is_pending() {
+    let status = view.service.directory_status();
+    let publish_chunk = status.0 != view.directory_snapshot_scope
+        || !status.2
+        || view.directory_snapshot_started.elapsed() >= Duration::from_millis(50);
+    if view.snapshot_directory_dirty && !view.snapshot_read.is_pending() && publish_chunk {
         view.snapshot_directory_dirty = false;
+        view.directory_snapshot_scope = status.0;
+        view.directory_snapshot_started = std::time::Instant::now();
         view.refresh_index();
         repaint = true;
     }
@@ -168,7 +187,9 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         view.set_month_grouping(group_by_month, cx);
         repaint = true;
     }
-    let current_scroll = (-f32::from(scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
+    let current_scroll = view
+        .pending_scroll_restore
+        .unwrap_or_else(|| view.scroll_offset());
     repaint |= view.poll_dialog_reads(cx);
     repaint |= view.poll_records();
     if (current_scroll - view.last_saved_scroll).abs() >= 1.0 {

@@ -202,6 +202,7 @@ impl GalleryView {
         }
         let service = self.service.clone();
         let request = service.viewport_request.fetch_add(1, Ordering::AcqRel) + 1;
+        self.viewport_read.set_wake(self.service.wake.clone());
         self.viewport_read.request(key, move || {
             service.prepare_window(ids, visible, offset, status.0, request)
         });

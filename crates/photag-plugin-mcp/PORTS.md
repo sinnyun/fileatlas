@@ -288,3 +288,17 @@ the 1462×956 physical window rect. Read-only: adds no mutation and no new tool.
 ## Review corrections — 2026-10-16
 
 `control_ui.sidebar_request` additionally accepts refresh_roots, retry_save, toggle_group (group_id). `get_ui_state.sidebar_folders` includes roots_revision, system_folders_pending, save_error, directory child_count, drive usage_error and editor.error. All mutations still require PHOTAG_MCP_ALLOW_MUTATIONS=1. Test scenarios are checked into scripts/validate-sidebar-review*.cjs and validate-browser-selfwatch.cjs; pointer coordinates use get_ui_state.window_status.geometry.
+
+
+## Native activation regression tools — 2026-10-16
+
+Mutation-guarded control_ui actions window_minimize and window_activate target only the published HWND owned by the current MCP child (ShowWindowAsync, and SetForegroundWindow on activation). They exercise real window lifecycle events, without OS input injection or controlling another process. window_status.active reports actual foreground ownership, so tests do not equate a queued request with activation. get_ui_state.gallery.snapshot_revision reports Gallery query scheduling independently of directory generation. Reproduction: scripts/validate-browser-refresh.cjs.
+
+
+## Address bar and key events — 2026-10-16
+
+Mutation-guarded control_ui action address_bar accepts request:{kind:back/forward/up/edit/cancel/submit/set_text/crumb}, with text/path payloads as defined by Navigation::AddressBarRequest. It queues the same mounted-view handlers as controls. Read-only diagnostics are get_ui_state.sidebar_folders.address_bar (path/editing/text/error/breadcrumbs and can_*).
+
+control_ui key_press accepts only enter, escape, ctrl-l, alt-left, alt-right, alt-up in value. CaptureWindowHandle::{queue_key,key_pending,take_key} carries a single pending String to Shell; the existing MCP input poll/dispatch lease delivers PlatformInput::KeyDown through the same GPUI window, not OS injection. The field prefer_character_input is false. Input text in scenarios uses the real InputState via set_text; actual keyboard/paste/IME entry is not claimed by that setup. tools require PHOTAG_MCP_ALLOW_MUTATIONS=1.
+
+Checked-in scripts: validate-address-bar.cjs (semantic routes + actual Enter/Escape), validate-address-pointer.cjs (real pointer controls), validate-address-restart.cjs and prepare-address-tag-restart.cjs (scope stability). See docs/validation-ui/2026-10-16-address/README.md.

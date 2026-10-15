@@ -37,6 +37,7 @@ use serde_json::json;
 pub struct CaptureWindowHandle {
     native: std::sync::atomic::AtomicIsize,
     pointer: std::sync::Mutex<Option<McpPointerInput>>,
+    key: std::sync::Mutex<Option<String>>,
     input_activity: std::sync::Mutex<input_activity::InputActivity>,
 }
 
@@ -53,6 +54,20 @@ impl Service for CaptureWindowHandle {
 }
 
 impl CaptureWindowHandle {
+    pub fn queue_key(&self, key: String) -> Result<(), String> {
+        let mut pending = self.key.lock().map_err(|_| "MCP key queue unavailable")?;
+        if pending.is_some() {
+            return Err("MCP key request is still pending".into());
+        }
+        *pending = Some(key);
+        Ok(())
+    }
+    pub fn key_pending(&self) -> bool {
+        self.key.lock().is_ok_and(|p| p.is_some())
+    }
+    pub fn take_key(&self) -> Option<String> {
+        self.key.lock().ok().and_then(|mut p| p.take())
+    }
     pub fn set(&self, handle: isize) {
         self.native
             .store(handle, std::sync::atomic::Ordering::Release);

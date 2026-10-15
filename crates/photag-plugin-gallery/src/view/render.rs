@@ -192,6 +192,7 @@ impl Render for GalleryView {
             cx.notify();
         }
         self.service.publish_ui_snapshot(crate::GalleryUiSnapshot {
+            snapshot_revision: self.snapshot_generation,
             records_open: self.show_records,
             records_count: self
                 .records_read
@@ -725,7 +726,12 @@ impl GalleryView {
     }
 }
 
-fn gallery_row_height(row: &GalleryVisualRow, index: usize, thumb: f32, list: bool) -> f32 {
+pub(super) fn gallery_row_height(
+    row: &GalleryVisualRow,
+    index: usize,
+    thumb: f32,
+    list: bool,
+) -> f32 {
     let header = if row.month_label.is_some() { 40. } else { 0. };
     let month_gap = if index > 0 && row.month_label.is_some() {
         14.
