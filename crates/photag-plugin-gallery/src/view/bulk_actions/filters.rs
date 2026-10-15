@@ -182,9 +182,10 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
 
 fn bulk_tag_tree(view: &GalleryView, cx: &mut Context<GalleryView>) -> impl IntoElement {
     let tags = view
-        .tagging
+        .snapshot
         .as_ref()
-        .and_then(|service| service.tag_tree().ok())
+        .ok()
+        .map(|snapshot| snapshot.tag_tree.clone())
         .unwrap_or_default();
     div()
         .v_flex()

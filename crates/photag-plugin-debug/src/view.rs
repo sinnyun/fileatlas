@@ -65,26 +65,13 @@ impl DebugView {
             }
         });
         let weak = service.clone();
-        cx.spawn(async move |this, cx| {
-            let mut revision = u64::MAX;
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(250))
-                    .await;
-                let Some(s) = weak.upgrade() else { break };
-                let next = s.revision();
-                if next != revision {
-                    revision = next;
-                    if this.update(cx, |_, cx| cx.notify()).is_err() {
-                        break;
-                    }
-                }
-                if this.upgrade().is_none() {
-                    break;
-                }
-            }
-        })
-        .detach();
+        let mut revision = photag_ui_bridge::refresh::ChangeGate::default();
+        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(250), move |_, _| {
+            let Some(service) = weak.upgrade() else {
+                return photag_ui_bridge::refresh::PollResult::until(false, false);
+            };
+            revision.changed(service.view_revision(panel)).into()
+        });
         Self {
             service,
             panel,

@@ -26,22 +26,34 @@ impl Render for GalleryView {
                     self.confirm_bulk_action = false;
                     self.confirm_bulk_action_ids = None;
                 }
+                crate::GalleryUiRequest::BulkField(index, value) => {
+                    if let Some(input) = self.bulk_inputs.get(index) {
+                        input.update(cx, |input, cx| input.set_value(&value, window, cx));
+                        self.confirm_bulk_action = false;
+                        self.confirm_bulk_action_ids = None;
+                    }
+                }
                 crate::GalleryUiRequest::OpenMediaActions(id) => {
                     self.selected_directory = None;
-                    if self.service.media_by_id(id).ok().flatten().is_some() {
+                    if let Some(media) = self.service.media_by_id(id).ok().flatten() {
                         self.selection.selected_media_ids = vec![id];
                         self.selection.anchor_id = Some(id);
                         self.media_actions_id = Some(id);
+                        self.media_actions_item = Some((id, media));
                         self.persist_filter_session();
                     }
                 }
-                crate::GalleryUiRequest::CloseMediaActions => self.media_actions_id = None,
+                crate::GalleryUiRequest::CloseMediaActions => {
+                    self.media_actions_id = None;
+                    self.media_actions_item = None;
+                }
                 crate::GalleryUiRequest::CloseDialogs => {
                     self.show_statistics = false;
                     self.bulk_action = None;
                     self.show_selection_details = false;
                     self.show_tag_picker = false;
                     self.media_actions_id = None;
+                    self.media_actions_item = None;
                     self.confirm_bulk_action = false;
                     self.confirm_bulk_action_ids = None;
                 }
@@ -52,6 +64,9 @@ impl Render for GalleryView {
                         self.selection.anchor_id = Some(id);
                         self.persist_filter_session();
                     }
+                }
+                crate::GalleryUiRequest::Preview(id) => {
+                    self.preview_media(id, cx);
                 }
                 crate::GalleryUiRequest::Deselect => {
                     self.selected_directory = None;
@@ -199,6 +214,7 @@ impl Render for GalleryView {
             bulk_action: self.bulk_action.map(|action| action.label()),
             bulk_source: self.bulk_source.label(),
             statistics_open: self.show_statistics,
+            dialog_reads: self.dialog_read_status(),
             tag_picker_open: self.show_tag_picker,
             media_actions_open: self.media_actions_id.is_some(),
             media_actions_id: self.media_actions_id,
@@ -304,6 +320,26 @@ impl Render for GalleryView {
                 let list_layout = self.list_layout;
                 let card_size = if list_layout { 56. } else { self.thumb_size };
                 let list_width = list_layout.then_some(cards_width.max(100.));
+                let selected_ids = self.selection.selected_media_ids.clone();
+                let loaded_selected_paths = self
+                    .snapshot
+                    .as_ref()
+                    .ok()
+                    .map(|snapshot| {
+                        selected_ids
+                            .iter()
+                            .filter_map(|id| {
+                                snapshot
+                                    .media
+                                    .iter()
+                                    .find(|media| media.id == *id)
+                                    .map(|media| PathBuf::from(media.full_path.as_str()))
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                let selected_drag_paths =
+                    self.selected_drag_paths(&selected_ids, loaded_selected_paths, cx);
                 let row_layout = Arc::clone(&row_layout);
                 let mut grid = div()
                     .id("gallery-grid-root")
@@ -412,16 +448,7 @@ impl Render for GalleryView {
                                         this.card_motion.retain(|id, _| loaded.contains(id));
                                         this.hovered_cards.retain(|id| loaded.contains(id));
                                         let card_tag_tree = Arc::new(snapshot.tag_tree.clone());
-                                        let selected_drag_paths =
-                                            if this.selection.selected_media_ids.is_empty() {
-                                                Vec::new()
-                                            } else {
-                                                this.service
-                                                    .media_paths_by_ids(
-                                                        &this.selection.selected_media_ids,
-                                                    )
-                                                    .unwrap_or_default()
-                                            };
+                                        let selected_drag_paths = selected_drag_paths.clone();
                                         for row_index in range {
                                             let Some(layout_row) = row_layout.get(row_index) else {
                                                 continue;
@@ -630,6 +657,34 @@ impl Render for GalleryView {
                 .child(format!("Could not load media: {error}"))
                 .into_any_element(),
         }
+    }
+}
+
+impl GalleryView {
+    fn selected_drag_paths(
+        &mut self,
+        selected_ids: &[i64],
+        loaded_paths: Vec<PathBuf>,
+        _: &mut Context<Self>,
+    ) -> Vec<PathBuf> {
+        if selected_ids.is_empty() {
+            return Vec::new();
+        }
+        if loaded_paths.len() == selected_ids.len() {
+            return loaded_paths;
+        }
+        if let Some((cached_ids, paths)) = &self.selected_drag_paths_cache
+            && cached_ids == selected_ids
+        {
+            return paths.clone();
+        }
+
+        let service = self.service.clone();
+        let ids = selected_ids.to_vec();
+        self.selected_drag_read.request(ids.clone(), move || {
+            service.media_paths_by_ids(&ids).map_err(|e| e.to_string())
+        });
+        loaded_paths
     }
 }
 

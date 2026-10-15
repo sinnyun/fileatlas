@@ -31,7 +31,7 @@ pub fn media_playback_view(
             let view_service = Arc::clone(&service);
             let content = app
                 .new(|cx| {
-                    let mut revision = service.snapshot().revision;
+                    let mut refresh_key = photag_ui_bridge::refresh::ChangeGate::default();
                     let playhead = cx.new(|_| {
                         SliderState::new()
                             .min(0.0)
@@ -91,30 +91,31 @@ pub fn media_playback_view(
                             _ => {}
                         },
                     );
-                    cx.spawn(async move |this, cx| {
-                        loop {
-                            cx.background_executor()
-                                .timer(std::time::Duration::from_millis(33))
-                                .await;
-                            let active = this
-                                .update(cx, |view: &mut PlaybackView, cx| {
-                                    let snapshot = view.service.snapshot();
-                                    if snapshot.revision != revision
-                                        || snapshot.playing
-                                        || view.tags_open != view.surfaces.is_open("playback.tags")
-                                        || view.more_open != view.surfaces.is_open("playback.more")
-                                    {
-                                        revision = snapshot.revision;
-                                        cx.notify();
-                                    }
-                                })
-                                .is_ok();
-                            if !active {
-                                break;
+                    photag_ui_bridge::refresh::poll(
+                        cx,
+                        std::time::Duration::from_millis(33),
+                        move |view: &mut PlaybackView, _| {
+                            let read_changed = view.tag_read.poll();
+                            if read_changed {
+                                if let (Some(id), Some(Ok((tree, assigned)))) =
+                                    (view.tag_read.key(), view.tag_read.value())
+                                {
+                                    view.tag_tree_cache = Some(tree.clone());
+                                    view.assigned_tags_cache = Some((*id, assigned.clone()));
+                                }
                             }
-                        }
-                    })
-                    .detach();
+                            let snapshot = view.service.snapshot();
+                            (read_changed
+                                | refresh_key.changed((
+                                    snapshot.revision,
+                                    snapshot.position_seconds.to_bits(),
+                                    snapshot.playing,
+                                    view.surfaces.is_open("playback.tags"),
+                                    view.surfaces.is_open("playback.more"),
+                                )))
+                            .into()
+                        },
+                    );
                     PlaybackView {
                         service: view_service,
                         tagging: tagging.clone(),
@@ -128,6 +129,9 @@ pub fn media_playback_view(
                         playhead_value: None,
                         speed_popup_open: false,
                         tags_open: false,
+                        tag_tree_cache: None,
+                        assigned_tags_cache: None,
+                        tag_read: Default::default(),
                         more_open: false,
                         operation_status: None,
                         _playhead_subscription: playhead_subscription,
@@ -168,6 +172,10 @@ struct PlaybackView {
     playhead_value: Option<f32>,
     speed_popup_open: bool,
     tags_open: bool,
+    tag_tree_cache: Option<Vec<Tag>>,
+    assigned_tags_cache: Option<(i64, std::collections::HashSet<i64>)>,
+    tag_read:
+        photag_ui_bridge::read_model::ReadModel<i64, (Vec<Tag>, std::collections::HashSet<i64>)>,
     more_open: bool,
     operation_status: Option<String>,
     _playhead_subscription: Subscription,
@@ -573,7 +581,10 @@ impl Render for PlaybackView {
 }
 
 impl PlaybackView {
-    fn render_tags(&self, media_id: Option<i64>, cx: &mut Context<Self>) -> AnyElement {
+    fn render_tags(&mut self, media_id: Option<i64>, cx: &mut Context<Self>) -> AnyElement {
+        if !self.tags_open {
+            return div().size_0().into_any_element();
+        }
         let Some(tagging) = self.tagging.as_ref() else {
             return div().size_0().into_any_element();
         };
@@ -585,15 +596,35 @@ impl PlaybackView {
                 .child(photag_ui_bridge::i18n::tr("Tags require indexed media."))
                 .into_any_element();
         };
-        let assigned = tagging
-            .for_media(media_id)
-            .unwrap_or_default()
-            .into_iter()
-            .map(|tag| tag.id)
-            .collect::<std::collections::HashSet<_>>();
+        if self
+            .assigned_tags_cache
+            .as_ref()
+            .is_none_or(|(id, _)| *id != media_id)
+        {
+            let tagging = Arc::clone(tagging);
+            self.tag_read.request(media_id, move || {
+                let tree = tagging.tag_tree().map_err(|e| e.to_string())?;
+                let assigned = tagging
+                    .for_media(media_id)
+                    .map_err(|e| e.to_string())?
+                    .into_iter()
+                    .map(|tag| tag.id)
+                    .collect();
+                Ok((tree, assigned))
+            });
+        }
+        if let Some(Err(error)) = self.tag_read.value() {
+            return div().p_3().child(error.clone()).into_any_element();
+        }
+        let assigned = self
+            .assigned_tags_cache
+            .as_ref()
+            .filter(|(id, _)| *id == media_id)
+            .map(|(_, ids)| ids.clone())
+            .unwrap_or_default();
         let mut tags = Vec::new();
-        if let Ok(tree) = tagging.tag_tree() {
-            flatten_tags(&tree, 0, &mut tags);
+        if let Some(tree) = &self.tag_tree_cache {
+            flatten_tags(tree, 0, &mut tags);
         }
         let mut panel = div()
             .v_flex()
@@ -626,6 +657,10 @@ impl PlaybackView {
                         } else {
                             tagging.assign(&[media_id], &[id])
                         };
+                        if result.is_ok() {
+                            view.assigned_tags_cache = None;
+                            view.tag_read = Default::default();
+                        }
                         view.operation_status = result.err().map(|error| error.to_string());
                         cx.notify();
                     })),

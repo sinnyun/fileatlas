@@ -101,28 +101,18 @@ pub fn mount(
     app: &mut App,
 ) -> AnyView {
     app.new(|cx| {
-        cx.spawn(async move |this, cx| {
-            let mut previous = false;
-            loop {
-                cx.background_executor()
-                    .timer(std::time::Duration::from_millis(100))
-                    .await;
-                if this
-                    .update(cx, |panel: &mut FloatingPanel, cx| {
-                        let active = (panel.visible)();
-                        if active != previous {
-                            previous = active;
-                            panel.drag = None;
-                            cx.notify();
-                        }
-                    })
-                    .is_err()
-                {
-                    break;
+        let mut visible_gate = crate::refresh::ChangeGate::new(false);
+        crate::refresh::poll(
+            cx,
+            std::time::Duration::from_millis(100),
+            move |panel: &mut FloatingPanel, _| {
+                let changed = visible_gate.changed((panel.visible)());
+                if changed {
+                    panel.drag = None;
                 }
-            }
-        })
-        .detach();
+                changed.into()
+            },
+        );
         FloatingPanel {
             content,
             focus: cx.focus_handle(),

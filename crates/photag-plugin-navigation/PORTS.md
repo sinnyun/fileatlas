@@ -135,3 +135,16 @@ Gallery consumes public NavigationService::request_ui SelectPath/AllFiles; no pr
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Tag-choice invalidation (2026-10-15)
+
+`NavigationService::tag_revision() -> u64` is a memory-only revision. Successful
+tag create/rename/delete/move/appearance/display operations advance it; the
+Cordis-owned MediaIndexChanged observer also advances it for Tagging merges
+and metadata reconciliation. It does not query SQLite or emit extra events.
+Settings uses this identity to refresh background choices while remaining
+idle between changes. SQL ordering/schema and tag command results are unchanged.
+
+## Shared refresh ownership (2026-10-15)
+
+Sidebar and scan monitors use UI Bridge refresh::poll. Scan sampling compares scanned/total/phase/error before and after draining events; remaining active without progress does not notify. Completion retains existing refresh and MediaIndexChanged emission, then terminates the finite poller.

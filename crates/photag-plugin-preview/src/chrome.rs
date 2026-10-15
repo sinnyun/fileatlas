@@ -15,6 +15,14 @@ impl PreviewService {
         if state.fit_to_window {
             return false;
         }
+        // Once settled, polling must neither change the model nor save the
+        // session again. Revision changes are what wake the preview renderer.
+        if state.zoom_scale == animation.target_zoom
+            && state.pan_x == animation.target_pan_x
+            && state.pan_y == animation.target_pan_y
+        {
+            return false;
+        }
         let now = std::time::Instant::now();
         let dt = now
             .duration_since(animation.last_tick)
@@ -44,10 +52,12 @@ impl PreviewService {
         }
     }
 
+    #[track_caller]
     pub fn mark_activity(&self) {
         if let Ok(mut last_activity) = self.last_activity.lock() {
             *last_activity = std::time::Instant::now();
         }
+        self.note_activity(std::panic::Location::caller());
     }
 
     pub(super) fn sync_wheel_animation(&self) {
@@ -73,5 +83,52 @@ impl PreviewService {
         } else {
             0.0
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn stationary_pointer_observations_do_not_restart_chrome_activity() {
+        let directory =
+            std::env::temp_dir().join(format!("photag-pointer-idle-{}", std::process::id()));
+        let service = PreviewService::open_at(&directory).unwrap();
+        service.mark_pointer_activity(100., 120.);
+        let activity = service.load_status()["activity"]["count"].as_u64().unwrap();
+        for _ in 0..100 {
+            service.mark_pointer_activity(100., 120.);
+        }
+        assert_eq!(service.load_status()["activity"]["count"], activity);
+        service.mark_pointer_activity(101., 120.);
+        assert_eq!(service.load_status()["activity"]["count"], activity + 1);
+        service.mark_activity(); // A real click/key still wakes chrome at rest.
+        assert_eq!(service.load_status()["activity"]["count"], activity + 2);
+        drop(service);
+        let _ = std::fs::remove_dir_all(directory);
+    }
+    #[test]
+    fn settled_zoom_stops_changing_revision_on_every_poll() {
+        let directory =
+            std::env::temp_dir().join(format!("photag-zoom-idle-{}", std::process::id()));
+        let service = PreviewService::open_at(&directory).unwrap();
+        service.zoom_wheel(120., 1., (50., 20.));
+        let mut settled = false;
+        for _ in 0..100 {
+            service.wheel_animation.lock().unwrap().last_tick =
+                std::time::Instant::now() - std::time::Duration::from_millis(100);
+            if !service.advance_wheel_animation() {
+                settled = true;
+                break;
+            }
+        }
+        assert!(settled);
+        let revision = service.snapshot().revision;
+        for _ in 0..100 {
+            assert!(!service.advance_wheel_animation());
+        }
+        assert_eq!(service.snapshot().revision, revision);
+        drop(service);
+        let _ = std::fs::remove_dir_all(directory);
     }
 }

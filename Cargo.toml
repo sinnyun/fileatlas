@@ -50,6 +50,47 @@ gpui-kit = "=0.7.1"
 debug = 0
 incremental = true
 
+# Media decoders and the native RGBA/BGRA upload conversion must run optimized
+# even while application code remains debuggable. A 24 MP JPEG otherwise spends
+# several seconds in unoptimized pixel/decoder loops before its full paint.
+[profile.dev.package.image]
+opt-level = 3
+
+[profile.dev.package.jpeg-decoder]
+opt-level = 3
+
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+
+[profile.dev.package.gpui-pre]
+opt-level = 2
+
+# PNG decoding/filter reconstruction and DEFLATE are separate dependency crates;
+# optimizing image alone does not optimize these hot paths in dev builds.
+[profile.dev.package."png:0.18.1"]
+opt-level = 3
+
+[profile.dev.package.fdeflate]
+opt-level = 3
+
+[profile.dev.package.flate2]
+opt-level = 3
+
+[profile.dev.package."miniz_oxide:0.8.9"]
+opt-level = 3
+
+[profile.dev.package."miniz_oxide:0.9.1"]
+opt-level = 3
+
+[profile.dev.package.simd-adler32]
+opt-level = 3
+
+[profile.dev.package.adler2]
+opt-level = 3
+
+[profile.dev.package.crc32fast]
+opt-level = 3
+
 [profile.test]
 debug = 0
 incremental = true

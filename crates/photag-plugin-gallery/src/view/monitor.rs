@@ -5,44 +5,30 @@ use super::*;
 
 pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
     let scroll_for_monitor = view.scroll.clone();
-    cx.spawn(async move |this, cx| {
-        loop {
-            cx.background_executor()
-                .timer(Duration::from_millis(200))
-                .await;
-            let monitor = scroll_for_monitor.clone();
-            let changed = this
-                .update(cx, |view, cx| tick(view, &monitor, cx))
-                .unwrap_or(false);
-            if !changed {
-                break;
-            }
-        }
-    })
-    .detach();
+    photag_ui_bridge::refresh::poll(cx, Duration::from_millis(200), move |view, cx| {
+        tick(view, &scroll_for_monitor, cx).into()
+    });
 }
 
 fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView>) -> bool {
+    let mut repaint = false;
     let popover = view.surfaces.value("gallery.popover");
-    if view.previous_popover != popover {
-        view.previous_popover = popover;
-        cx.notify();
+    if view.previous_popover.changed(popover) {
+        repaint = true;
     }
     let inspector_tab = view.surfaces.value("gallery.inspector.tab");
-    if view.previous_inspector_tab != inspector_tab {
-        view.previous_inspector_tab = inspector_tab;
-        cx.notify();
+    if view.previous_inspector_tab.changed(inspector_tab) {
+        repaint = true;
     }
     let progress = view
         .service
         .scan_progress()
         .map(|progress| (progress.scanned, progress.total, progress.phase));
-    if view.previous_scan_progress != progress {
-        view.previous_scan_progress = progress;
-        cx.notify();
+    if view.previous_scan_progress.changed(progress) {
+        repaint = true;
     }
     if view.service.has_ui_request() {
-        cx.notify();
+        repaint = true;
     }
     let selected = view
         .selected_folder
@@ -75,16 +61,16 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         view.filter.excluded_tag_ids = selected_tags.excluded;
         view.filter.path_prefix = selected_path;
         view.reload();
-        cx.notify();
+        repaint = true;
     } else if index_changed {
         view.refresh_index();
-        cx.notify();
+        repaint = true;
     }
     if view.tagging.is_some() {
         let current = writeback_failure_signature();
         if current != view.writeback_failure_signature {
             view.writeback_failure_signature = current;
-            cx.notify();
+            repaint = true;
         }
     }
     if let Some(group_by_month) = view
@@ -100,12 +86,13 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         && group_by_month != (view.grouping_mode == photag_plugin_grouping::GroupingMode::Month)
     {
         view.set_month_grouping(group_by_month, cx);
-        cx.notify();
+        repaint = true;
     }
     let current_scroll = (-f32::from(scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
+    repaint |= view.poll_dialog_reads(cx);
     if (current_scroll - view.last_saved_scroll).abs() >= 1.0 {
         view.persist_filter_session();
         view.last_saved_scroll = current_scroll;
     }
-    true
+    repaint
 }

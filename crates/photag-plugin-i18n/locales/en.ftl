@@ -428,6 +428,7 @@ msg-cd2057f0131f = Image dimensions
 msg-4bab2d8fe13f = More
 msg-f76f1c1c6596 = No file selected
 msg-bf187fac9a53 = Selected media is no longer indexed.
+msg-4cbe8a957132 = Loading file info…
 msg-ce3f61b04a90 = Add a folder with photos and videos to start browsing
 msg-03eb1a44337c = Add folder
 msg-cd0af6cfca75 = No matches

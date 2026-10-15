@@ -39,32 +39,33 @@ impl SettingsView {
     }
 
     pub(super) fn monitor_updates(&mut self, cx: &mut Context<Self>) {
-        cx.spawn(async move |this, cx| {
-            loop {
-                let active = this
-                    .update(cx, |view, cx| {
-                        view.poll_updates();
-                        cx.notify();
-                        view.update_check.is_some() || view.update_download.is_some()
-                    })
-                    .unwrap_or(false);
-                if !active {
-                    break;
-                }
-                cx.background_executor()
-                    .timer(Duration::from_millis(120))
-                    .await;
-            }
-        })
-        .detach();
+        cx.notify();
+        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(120), |view: &mut Self, _| {
+            let changed = view.poll_updates();
+            photag_ui_bridge::refresh::PollResult::until(
+                changed,
+                view.update_check.is_some() || view.update_download.is_some(),
+            )
+        });
     }
 
-    fn poll_updates(&mut self) {
-        let check_result = self
-            .update_check
-            .as_ref()
-            .and_then(|receiver| receiver.try_recv().ok());
+    fn poll_updates(&mut self) -> bool {
+        let progress = self
+            .update_progress
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let mut changed = self.update_progress_seen.changed(progress);
+        let check_result =
+            self.update_check
+                .as_ref()
+                .and_then(|receiver| match receiver.try_recv() {
+                    Ok(result) => Some(result),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => None,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        Some(Err("Update check stopped before returning a result.".into()))
+                    }
+                });
         if let Some(result) = check_result {
+            changed = true;
             self.update_check = None;
             let _ = self.surfaces.set_open("settings.update-checking", false);
             match result {
@@ -99,11 +100,18 @@ impl SettingsView {
                 }
             }
         }
-        let download_result = self
-            .update_download
-            .as_ref()
-            .and_then(|receiver| receiver.try_recv().ok());
+        let download_result =
+            self.update_download
+                .as_ref()
+                .and_then(|receiver| match receiver.try_recv() {
+                    Ok(result) => Some(result),
+                    Err(std::sync::mpsc::TryRecvError::Empty) => None,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => Some(Err(
+                        "Update download stopped before returning a result.".into(),
+                    )),
+                });
         if let Some(result) = download_result {
+            changed = true;
             self.update_download = None;
             match result {
                 Ok(path) => {
@@ -118,6 +126,7 @@ impl SettingsView {
                 }
             }
         }
+        changed
     }
 
     pub(super) fn render_update_offer(

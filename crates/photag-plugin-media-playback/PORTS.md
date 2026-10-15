@@ -59,3 +59,7 @@ Playback content uses UI Bridge frame ID playback, default960×640 logical pixel
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Shared read and refresh ownership (2026-10-15)
+
+Playback uses UI Bridge refresh::poll with ChangeGate over service revision, position bits, playing state and tag/more visibility. Active state alone no longer forces paint; advancing position still updates the transport. Tag reads use shared ReadModel; assignments invalidate it and cached failures display in the popup. Decoder/transport and action semantics unchanged.

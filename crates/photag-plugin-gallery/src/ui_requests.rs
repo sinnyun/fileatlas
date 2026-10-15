@@ -10,10 +10,12 @@ pub enum GalleryUiRequest {
     Statistics,
     BulkActions,
     ConfigureBulk(crate::BulkActionKind, crate::BulkActionSource),
+    BulkField(usize, String),
     OpenMediaActions(i64),
     CloseMediaActions,
     CloseDialogs,
     Select(i64),
+    Preview(i64),
     SelectMany(Vec<i64>),
     ScrollTo(usize),
     Deselect,
@@ -58,9 +60,24 @@ pub struct GalleryUiSnapshot {
     pub bulk_action: Option<&'static str>,
     pub bulk_source: &'static str,
     pub statistics_open: bool,
+    pub dialog_reads: GalleryDialogReads,
     pub tag_picker_open: bool,
     pub media_actions_open: bool,
     pub media_actions_id: Option<i64>,
+}
+
+#[derive(Clone, Default)]
+pub struct GalleryDialogReads {
+    pub statistics_state: &'static str,
+    pub statistics_error: Option<String>,
+    pub photos: Option<i64>,
+    pub videos: Option<i64>,
+    pub audio: Option<i64>,
+    pub rating_counts: Option<[i64; 6]>,
+    pub bulk_state: &'static str,
+    pub bulk_error: Option<String>,
+    pub bulk_count: Option<usize>,
+    pub bulk_preview_ids: Vec<i64>,
 }
 
 impl GalleryService {

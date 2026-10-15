@@ -1,0 +1,33 @@
+   Compiling photag-plugin-debug v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-debug)
+   Compiling photag-plugin-mcp v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-mcp)
+    Finished `test` profile [unoptimized] target(s) in 11.49s
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_debug-2b9f1af6ec32fbcd.exe)
+
+running 7 tests
+test store::ui_tests::rendering_observations_are_retained_without_driving_more_renders ... ok
+test store::ui_tests::historical_pages_freeze_view_without_stopping_collection ... ok
+test capture::tests::tracing_captures_nested_errors_fields_and_elapsed_time ... ok
+test store::tests::bounds_filters_pages_clear_and_sequence ... ok
+test tests::plugin_disposal_removes_services_views_and_event_observers ... ok
+test store::tests::concurrent_writers_are_ordered_and_bounded ... ok
+test store::ui_tests::drawer_hides_only_repaint_telemetry_before_filtering_and_paging ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_mcp-4cf482d372f75317.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_debug
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_mcp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

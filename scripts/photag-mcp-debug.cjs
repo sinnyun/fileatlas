@@ -141,6 +141,11 @@ async function step(command) {
       clientInfo: { name: 'photag-redesign-debug', version: '1.0' },
     });
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
+    if (option('--scenario')) {
+      await require(path.resolve(root, option('--scenario')))({
+        call, payload, step, delay, request, root, profile, output, exe,
+      });
+    }
     if (option('--plan')) {
       const commands = JSON.parse(fs.readFileSync(path.resolve(root, option('--plan')), 'utf8'));
       for (const command of commands) console.log(JSON.stringify(await step(command)));
@@ -155,7 +160,7 @@ async function step(command) {
         catch (error) { console.error(String(error)); }
       }
     }
-    if (!option('--plan') && !argv.includes('--interactive')) {
+    if (!option('--plan') && !option('--scenario') && !argv.includes('--interactive')) {
       console.log(JSON.stringify(await request('tools/list', {}), null, 2));
     }
   } catch (error) {

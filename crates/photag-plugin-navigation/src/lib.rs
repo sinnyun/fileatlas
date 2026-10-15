@@ -40,6 +40,7 @@ pub struct SubdirectoryNode {
 }
 
 pub struct NavigationService {
+    tag_revision: std::sync::atomic::AtomicU64,
     database: Arc<DatabaseService>,
     indexing: Arc<IndexingService>,
     watcher: Option<Arc<WatcherService>>,
@@ -55,6 +56,7 @@ impl Service for NavigationService {
 impl NavigationService {
     pub fn new(database: Arc<DatabaseService>, indexing: Arc<IndexingService>) -> Self {
         Self {
+            tag_revision: std::sync::atomic::AtomicU64::new(0),
             database,
             indexing,
             watcher: None,
@@ -279,20 +281,28 @@ impl NavigationService {
             .collect()
     }
 
+    /// In-memory invalidation identity for tag-choice readers; no database I/O.
+    pub fn tag_revision(&self) -> u64 {
+        self.tag_revision.load(Ordering::Acquire)
+    }
+
     pub fn create_tag(&self, name: &str, parent: Option<i64>) -> Result<Tag, NavigationError> {
-        Ok(self
+        let tag = self
             .database
-            .with_writer(|c| queries::create_tag(c, name, parent))?)
+            .with_writer(|c| queries::create_tag(c, name, parent))?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
+        Ok(tag)
     }
     pub fn rename_tag(&self, id: i64, name: &str) -> Result<(), NavigationError> {
-        Ok(self
-            .database
-            .with_writer(|c| queries::rename_tag(c, id, name))?)
+        self.database
+            .with_writer(|c| queries::rename_tag(c, id, name))?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
+        Ok(())
     }
     /// Delete a tag and optionally remove its ancestors from media that had
     /// the tag, matching PhoTag's explicit "clean parents" confirmation.
     pub fn delete_tag(&self, id: i64, clean_parents: bool) -> Result<Vec<i64>, NavigationError> {
-        Ok(self.database.with_writer(|connection| {
+        let affected = self.database.with_writer(|connection| {
             let affected = queries::get_media_ids_with_tag(connection, id)?;
             if clean_parents && !affected.is_empty() {
                 let ancestors = queries::get_ancestor_ids(connection, id)?;
@@ -302,12 +312,16 @@ impl NavigationService {
             }
             queries::delete_tag(connection, id)?;
             Ok(affected)
-        })?)
+        })?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
+        Ok(affected)
     }
     pub fn move_tag(&self, id: i64, drop: TagDropPos) -> Result<Vec<i64>, NavigationError> {
-        Ok(self
+        let affected = self
             .database
-            .with_writer(|c| queries::move_tag(c, id, drop))?)
+            .with_writer(|c| queries::move_tag(c, id, drop))?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
+        Ok(affected)
     }
     pub fn set_tag_appearance(
         &self,
@@ -315,9 +329,10 @@ impl NavigationService {
         color: Option<&str>,
         icon: Option<&str>,
     ) -> Result<(), NavigationError> {
-        Ok(self
-            .database
-            .with_writer(|c| queries::update_tag_appearance(c, id, color, icon))?)
+        self.database
+            .with_writer(|c| queries::update_tag_appearance(c, id, color, icon))?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
+        Ok(())
     }
     pub fn set_tag_display(&self, id: i64, display: bool) -> Result<(), NavigationError> {
         let tree = self
@@ -352,6 +367,7 @@ impl NavigationService {
             }
             Ok(())
         })?;
+        self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(())
     }
 }
@@ -466,10 +482,16 @@ impl Plugin for NavigationPlugin {
         let add_folder_requested = Arc::new(AtomicBool::new(false));
         let index_changed = Arc::new(AtomicBool::new(false));
         let dirty = Arc::clone(&index_changed);
+        let tag_invalidation = Arc::downgrade(&service);
         let _index_listener = context
             .on::<photag_contracts::MediaIndexChanged, _>(cordis::event::observer_sync(
                 move |_, ()| {
                     dirty.store(true, Ordering::Release);
+                    // Tagging merge/reparent and metadata reconciliation also
+                    // publish this event; invalidate tag choices without a read.
+                    if let Some(service) = tag_invalidation.upgrade() {
+                        service.tag_revision.fetch_add(1, Ordering::Release);
+                    }
                     Ok::<_, std::convert::Infallible>(())
                 },
             ))

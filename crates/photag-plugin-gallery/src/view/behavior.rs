@@ -171,38 +171,7 @@ impl GalleryView {
 
     pub(super) fn toggle_exif(&mut self, cx: &mut Context<Self>) {
         self.show_exif = !self.show_exif;
-        if self.show_exif {
-            self.ensure_exif_loaded(cx);
-        }
         cx.notify();
-    }
-
-    pub(super) fn ensure_exif_loaded(&mut self, cx: &mut Context<Self>) {
-        let selected_path = self
-            .selection
-            .selected_media_ids
-            .first()
-            .and_then(|&media_id| {
-                self.service
-                    .media_by_id(media_id)
-                    .ok()
-                    .flatten()
-                    .map(|media| (media_id, media.full_path))
-            });
-        if let Some((media_id, path)) = selected_path {
-            if self
-                .exif_cache
-                .as_ref()
-                .is_some_and(|(id, _)| *id == media_id)
-            {
-                return;
-            }
-            self.exif_cache = Some((
-                media_id,
-                card::read_exif_fields(&path).map_err(str::to_string),
-            ));
-            cx.notify();
-        }
     }
 
     pub(super) fn start_operation<F>(&mut self, operation: F, refresh: bool, cx: &mut Context<Self>)
@@ -276,10 +245,26 @@ impl GalleryView {
 
     #[tracing::instrument(skip_all, fields(media_id=?media_id))]
     pub(super) fn preview_media(&mut self, media_id: i64, cx: &mut Context<Self>) -> bool {
-        let opened = match self.service.media_by_id(media_id) {
+        // A double-click comes from a loaded card. Use that row directly so the
+        // interaction can show the preview without waiting for another DB read.
+        // Keyboard requests may refer to a selected row outside the current page.
+        let media = self
+            .snapshot
+            .as_ref()
+            .ok()
+            .and_then(|snapshot| {
+                snapshot
+                    .media
+                    .iter()
+                    .find(|media| media.id == media_id)
+                    .cloned()
+            })
+            .map(|media| Ok(Some(media)))
+            .unwrap_or_else(|| self.service.media_by_id(media_id));
+        let opened = match media {
             Ok(Some(media)) if media.media_type == "image" => {
-                self.set_preview_filmstrip();
-                match self.preview.open_media(media.full_path, Some(media_id)) {
+                self.set_preview_filmstrip(media_id);
+                match self.preview.open_indexed_media(&media) {
                     Ok(()) => {
                         self.operation_status = Some("Image preview opened.".into());
                         true
@@ -291,8 +276,8 @@ impl GalleryView {
                 }
             }
             Ok(Some(media)) if media.media_type == "video" => {
-                self.set_preview_filmstrip();
-                match self.preview.open_media(media.full_path, Some(media_id)) {
+                self.set_preview_filmstrip(media_id);
+                match self.preview.open_indexed_media(&media) {
                     Ok(()) => {
                         self.video_preview_open = true;
                         self.operation_status = Some("Video preview opened.".into());
@@ -302,8 +287,8 @@ impl GalleryView {
                 false
             }
             Ok(Some(media)) if media.media_type == "audio" => {
-                self.set_preview_filmstrip();
-                match self.preview.open_media(media.full_path, Some(media_id)) {
+                self.set_preview_filmstrip(media_id);
+                match self.preview.open_indexed_media(&media) {
                     Ok(()) => self.operation_status = Some("Audio preview opened.".into()),
                     Err(error) => self.operation_status = Some(error.to_string()),
                 }
@@ -326,8 +311,8 @@ impl GalleryView {
         opened
     }
 
-    fn set_preview_filmstrip(&self) {
-        let items = self
+    fn set_preview_filmstrip(&self, current_media_id: i64) {
+        let ids = self
             .snapshot
             .as_ref()
             .map(|snapshot| {
@@ -338,11 +323,32 @@ impl GalleryView {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
-        let filmstrip = self
-            .service
-            .media_path_pairs_by_ids(&items)
+        let visible_items = self
+            .snapshot
+            .as_ref()
+            .map(|snapshot| {
+                snapshot
+                    .media
+                    .iter()
+                    .map(photag_plugin_preview::FilmstripMedia::from)
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
-        self.preview.set_filmstrip_media(filmstrip);
+        self.preview.set_indexed_filmstrip_items(visible_items);
+
+        // Resolve the complete filtered strip off the UI thread. The current
+        // window remains usable immediately while the full order is prepared.
+        let service = Arc::clone(&self.service);
+        let preview = Arc::clone(&self.preview);
+        self.runtime.spawn(async move {
+            let result =
+                tokio::task::spawn_blocking(move || service.preview_items_by_ids(&ids)).await;
+            if let Ok(Ok(items)) = result {
+                if preview.snapshot().media_id == Some(current_media_id) {
+                    preview.set_indexed_filmstrip_items(items);
+                }
+            }
+        });
     }
 
     pub(super) fn suggest_tags(&mut self, media_id: i64, cx: &mut Context<Self>) {

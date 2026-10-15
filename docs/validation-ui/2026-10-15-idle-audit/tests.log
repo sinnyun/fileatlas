@@ -1,0 +1,161 @@
+   Compiling photag-ui-bridge v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-ui-bridge)
+   Compiling photag-plugin-tagging v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-tagging)
+   Compiling photag-plugin-navigation v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-navigation)
+   Compiling photag-plugin-settings v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-settings)
+   Compiling photag-plugin-media-playback v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-media-playback)
+   Compiling photag-plugin-ai v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-ai)
+   Compiling photag-plugin-history v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-history)
+   Compiling photag-plugin-grouping v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-grouping)
+   Compiling photag-plugin-preview v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-preview)
+   Compiling photag-plugin-debug v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-debug)
+   Compiling photag-plugin-gallery v0.1.0 (F:\AI\geren\pho_cordis\crates\photag-plugin-gallery)
+    Finished `test` profile [unoptimized] target(s) in 29.73s
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_database-e4a14f6f1043c06f.exe)
+
+running 5 tests
+test tests::database_service_lifetime_follows_its_cordis_plugin ... ok
+test tests::original_schema_and_query_module_open_on_a_fresh_database ... ok
+test tests::media_query_filters_and_sort_orders_match_the_source_contract ... ok
+test tests::folder_and_tag_foreign_keys_cascade_through_related_rows ... ok
+test tests::opening_an_existing_pre_migration_library_preserves_rows_and_tags ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_debug-0a7e298816eaa905.exe)
+
+running 6 tests
+test store::ui_tests::historical_pages_freeze_view_without_stopping_collection ... ok
+test store::ui_tests::rendering_observations_are_retained_without_driving_more_renders ... ok
+test store::tests::bounds_filters_pages_clear_and_sequence ... ok
+test capture::tests::tracing_captures_nested_errors_fields_and_elapsed_time ... ok
+test tests::plugin_disposal_removes_services_views_and_event_observers ... ok
+test store::tests::concurrent_writers_are_ordered_and_bounded ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_gallery-912c921cc78bf054.exe)
+
+running 19 tests
+test filter::tests::clearing_one_extension_removes_only_that_filter_state ... ok
+test filter::tests::extension_click_cycles_include_exclude_and_neutral ... ok
+test selection::tests::enter_remains_a_preview_key_when_a_custom_key_is_configured ... ok
+test filter::tests::search_scope_toggles_map_to_query_flags ... ok
+test filter::tests::tags_tab_ignores_folder_path_and_empty_filters_are_disabled ... ok
+test filter::tests::date_input_distinguishes_valid_empty_and_partial_values ... ok
+test filter::tests::maps_all_filters_and_inclusive_calendar_day_bounds ... ok
+test filter::tests::rating_range_bounds_clamp_and_remain_ordered ... ok
+test selection::tests::enter_previews_the_first_selected_item ... ok
+test selection::tests::pointer_selection_supports_ctrl_toggle_and_shift_ranges ... ok
+test selection::tests::select_all_rating_and_delete_match_source_actions ... ok
+test selection::tests::shift_navigation_extends_from_stable_anchor_and_scrolls ... ok
+test view::card_motion::tests::transitions_reverse_without_jumps_and_finish_at_source_durations ... ok
+test view::rows::tests::folder_and_file_ranges_share_a_row_without_shifting_file_indices ... ok
+test tests::plugin_registers_gallery_ui_and_cleans_it_on_disposal ... ok
+test tests::applies_bulk_rating_with_source_range_clamping ... ok
+test grouping_tests::reordered_groups_keep_full_row_windows_and_filters_aligned ... ok
+test tests::keeps_full_rows_windowed_and_loads_new_viewport_range ... ok
+test browser_tests::browser_projects_immediate_files_folders_and_safe_cache_windows ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_media_playback-a30a9d063c908c9f.exe)
+
+running 3 tests
+test ffmpeg::tests::probes_audio_only_duration_without_inventing_video_dimensions ... ok
+test ffmpeg::tests::rejects_metadata_without_audio_or_video_streams ... ok
+test tests::seeking_paused_audio_keeps_output_paused ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_navigation-58cfb148f20eaa14.exe)
+
+running 5 tests
+test tests::source_color_format_round_trips_and_rejects_invalid_input ... ok
+test folder_picker::tests::one_picker_at_a_time_and_cancellation_allows_reopening ... ok
+test tests::snapshot_and_tag_commands_preserve_tree_and_counts ... ok
+test tests::folder_add_rescan_and_remove_keep_database_and_scan_lifecycle_in_sync ... ok
+test tests::navigation_plugin_registers_and_cleans_sidebar_contributions ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_preview-30a14d14f194752e.exe)
+
+running 6 tests
+test chrome::tests::settled_zoom_stops_changing_revision_on_every_poll ... ok
+test presentation::tests::late_paints_cannot_complete_a_different_media_request_or_downgrade_full ... ok
+test chrome::tests::stationary_pointer_observations_do_not_restart_chrome_activity ... ok
+test decode::tests::active_decode_precedes_queued_filmstrip_work_and_ready_frame_does_not_expire ... ok
+test scaled_decode::tests::jpeg_fast_pass_uses_scaled_decode_and_preserves_aspect ... ok
+test ai_suggestions::tests::unchanged_selection_and_empty_worker_channel_do_not_invalidate ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_plugin_settings-ad62e48bee73e4e2.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src\lib.rs (target\debug\deps\photag_ui_bridge-cb9f877751d99dd5.exe)
+
+running 10 tests
+test panels::tests::frame_remains_reachable_in_small_windows ... ok
+test refresh::tests::unchanged_samples_and_stationary_input_do_not_invalidate ... ok
+test read_model::tests::empty_polls_coalesce_and_errors_do_not_retry_on_every_paint ... ok
+test refresh::tests::playback_changes_advance_and_completion_keeps_final_notification ... ok
+test tests::batch_registration_is_atomic_on_duplicate ... ok
+test tests::owner_cleanup_removes_only_that_plugins_resources ... ok
+test read_model::tests::stale_results_are_discarded_and_latest_request_waits_for_the_one_worker ... ok
+test panel_catalog::tests::single_reuses_multiple_is_independent_and_owner_cleanup_is_scoped ... ok
+test tests::cordis_disposal_removes_feature_ui_contributions ... ok
+test read_model::tests::rapid_changes_run_only_the_latest_queued_read_and_cache_worker_failure ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_database
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_debug
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_gallery
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_media_playback
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_navigation
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_preview
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_plugin_settings
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests photag_ui_bridge
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

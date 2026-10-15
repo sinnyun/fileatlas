@@ -310,6 +310,8 @@ impl GalleryView {
             bulk_inputs,
             bulk_action: None,
             bulk_source: BulkActionSource::WholeLibrary,
+            statistics_read: Default::default(),
+            bulk_read: Default::default(),
             bulk_media_type: MediaTypeFilter::All,
             bulk_tag_ids: Vec::new(),
             bulk_extension_exclude: false,
@@ -337,6 +339,7 @@ impl GalleryView {
             show_selection_details: false,
             show_tag_picker: false,
             media_actions_id: None,
+            media_actions_item: None,
             slider_drag: None,
             show_statistics: false,
             collapsed_months: photag_plugin_grouping::restore_collapsed(
@@ -351,15 +354,26 @@ impl GalleryView {
             video_preview_open: false,
             show_exif: false,
             exif_cache: None,
+            exif_read: Default::default(),
             operation_status: None,
             writeback_failure_signature: initial_writeback_failures,
-            previous_inspector_tab: initial_inspector_tab,
+            previous_inspector_tab: photag_ui_bridge::refresh::ChangeGate::new(
+                initial_inspector_tab,
+            ),
             confirm_delete: false,
             snapshot,
+            inspector_fallback: None,
+            inspector_read: Default::default(),
+            selection_details_cache: None,
+            selection_details_read: Default::default(),
+            selected_drag_paths_cache: None,
+            selected_drag_read: Default::default(),
             observed_index_revision,
             last_saved_scroll: restored_scroll,
-            previous_scan_progress: None,
-            previous_popover: surfaces.value("gallery.popover"),
+            previous_scan_progress: Default::default(),
+            previous_popover: photag_ui_bridge::refresh::ChangeGate::new(
+                surfaces.value("gallery.popover"),
+            ),
             _subscriptions,
         }
     }
@@ -392,6 +406,12 @@ impl GalleryView {
             .service
             .load_grouped(self.filter.to_query(), self.grouping_mode)
             .map_err(|error| error.to_string());
+        self.inspector_fallback = None;
+        self.inspector_read = Default::default();
+        self.selection_details_cache = None;
+        self.selection_details_read = Default::default();
+        self.selected_drag_paths_cache = None;
+        self.selected_drag_read = Default::default();
         self.row_layout = Arc::new(Vec::new());
         self.row_layout_key = None;
         self.selection = GallerySelection::default();

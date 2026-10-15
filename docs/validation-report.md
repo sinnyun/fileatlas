@@ -921,3 +921,67 @@ This refines the user-requested grouping extension, beyond upstream date groupin
 ## Immediate directory browsing extension (2026-10-14)
 
 Source trace: db/queries.rs build_filters/path_prefix, scan.rs list_subdirectories:466 and app.rs get_subdirs:819. None now uses additive direct_directory filtering plus checked existing directory listing. Original recursive load/query APIs, other grouping modes, global search/tag views, SQLite and persisted paths remain compatible. Folder cards route through Navigation public requests and carry no fabricated media IDs; current-folder bulk scope is immediate.36 related tests pass (1 existing FFmpeg ignored);84 same-process MCP steps include actual GPUI double-click, mixed folder/file rubber-band, preview, empty/ordinary restart and200-record last-page cache. Evidence/limits: docs/validation-ui/2026-10-14-folder-browser/README.md.
+## 2026-10-15 Preview idle/latency follow-up
+
+Pinned `src/ui/preview.rs` Fast→Full behavior and
+`src/ui/gallery.rs::decode_jpeg_scaled/load_full_image_to` were traced for
+immediate thumbnail display, scaled JPEG and EXIF handling. The new native
+stage retains these semantics while using GPUI's existing full-asset loader;
+ordinary images no longer generate redundant oriented PNG files. User
+transform composition remains after EXIF and only materializes cache files.
+No media files, SQLite schema or normal profile paths changed. Source mapping
+and Preview/Debug/MCP PORTS were updated together. Related tests (30) and
+locked shell build/check/fmt passed. Same-process Windows pointer/open,
+accessibility and idle timing evidence is recorded in
+[preview-feedback](validation-ui/2026-10-15-preview-feedback/README.md).
+This evidence does not establish full codec/camera/editor interoperability.
+
+## 2026-10-15 Shared UI refresh and full idle audit
+
+Pinned Settings tag-tree, Statistics metrics, bulk predicates, selected media,
+EXIF, scan progress and preview/transport semantics were traced and retained.
+Render-time read feedback found by actual MCP tests is replaced by UI Bridge
+ReadModel; all GPUI timers share refresh::poll and passive change gates. Source
+mapping and affected PORTS were updated together. No SQLite schema, persisted
+normal profile or command-time target validation changed. Conservative writer
+revision invalidation includes partial-write errors without changing SQL order.
+
+Final rebuilt binary SHA-256 is recorded in the evidence. Two same-process
+Windows MCP suites exercised136 states (134 settled,2 actually-playing), with
+zero sustained/blocked outcomes. Real writes update open Statistics/Bulk, native
+Watcher reconciles an isolated fixture, and missing/cleared/off-window selections
+settle without repeating reads. Original failures and all quiet rechecks are
+retained.89 workspace tests pass,3 existing tests remain ignored; locked shell
+check/build/format and architecture guard pass. Runtime scope, inputs, exact
+commands, native paint timings and unverified destructive/codec/network-install
+boundaries are in [idle audit](validation-ui/2026-10-15-idle-audit/README.md).
+
+## 2026-10-15 Preview per-file phase timing
+
+Instrumented queue wait, metadata/cache check, compressed read, header, decode,
+orientation, resize and encoded cache publication without changing source media
+or SQLite. Source DCT scaling and generic orientation/pixels are retained; generic
+input buffering is the intentional IO-measurement change. Related14 tests pass,
+including PNG/BMP/TIFF/WebP equivalence, JPEG dimensions and read/header failures.
+Same-process MCP covers cold/warm/corrupt images and actual detail rendering;
+see the decode-details validation evidence. Cache-write errors have explicit
+failure diagnostics but a forced OS write-denial scenario is not part of that run.
+
+## 2026-10-15 First three preview optimizations
+
+Dev PNG/DEFLATE dependencies are optimized; indexed Gallery thumbnails now
+travel through public FilmstripMedia to Preview, with worker freshness checks
+and existing missing/stale fallback. JPEG-only progressive work is deferred
+until pending >=150ms, at most once per open; full paint/switch/close cancel
+unneeded work and stale completions cannot publish. Source mapping is in
+source-feature-audit.md and Preview/Gallery/MCP PORTS.
+
+Final same-process MCP actual-folder run:14/14 complete, screenshot PNG
+663.3→78.9ms and72MP PNG8045.4→422.1ms; no PNG1600jobs,19 thumbnail
+reuses without decoding, one JPEG progressive cancelled before encoding.
+All11 source fingerprints unchanged. Synthetic navigation/zoom/rotation/
+rapid close/error/details tests pass; corrupt-image render12→12 and raw idle
+latest_id701→701. Workspace94 passed/3 ignored before final claim guard;
+final Preview11 passed, locked shell build/format/refresh guard pass.
+See validation-ui/2026-10-15-preview-optimization/README.md for exact commands,
+single-run/cache limits, test harness corrections and remaining boundaries.

@@ -140,77 +140,60 @@ pub(super) fn sidebar(
         let pending = Arc::clone(&add_folder_requested);
         let dirty = Arc::clone(&index_changed);
         let view = app.new(|cx| {
-            cx.spawn(async move |this, cx| {
-                loop {
-                    cx.background_executor()
-                        .timer(Duration::from_millis(100))
-                        .await;
-                    if this
-                        .update(cx, |view: &mut SidebarView, cx| {
-                            let requested =
-                                pending.swap(false, std::sync::atomic::Ordering::AcqRel);
-                            let ui_requested = view.service.has_ui_request();
-                            let changed = dirty.swap(false, std::sync::atomic::Ordering::AcqRel);
-                            let bridge = view
-                                .cordis
-                                .try_service::<photag_ui_bridge::UiBridgeService>()
-                                .ok();
-                            let surface_page = bridge
-                                .as_ref()
-                                .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
-                                .and_then(|value| NavigationPage::from_key(&value));
-                            let page_changed =
-                                surface_page.is_some_and(|page| page != view.active_page);
-                            if let Some(page) = surface_page {
-                                if page != view.active_page {
-                                    view.set_navigation_page(page);
-                                }
-                            }
-                            let folder_search = bridge
-                                .as_ref()
-                                .and_then(|bridge| {
-                                    bridge.surfaces.value("navigation.folder-search")
-                                })
-                                .unwrap_or_default();
-                            let input_search = view.folder_search.read(cx).value().to_string();
-                            let search_changed = if folder_search != view.last_folder_search_surface
-                            {
-                                view.pending_folder_search = Some(folder_search.clone());
-                                view.last_folder_search_surface = folder_search;
-                                true
-                            } else if input_search != view.last_folder_search_surface {
-                                if let Some(bridge) = bridge.as_ref() {
-                                    let _ = bridge
-                                        .surfaces
-                                        .set_value("navigation.folder-search", &input_search);
-                                }
-                                view.last_folder_search_surface = input_search;
-                                false
-                            } else {
-                                false
-                            };
-                            if changed {
-                                view.refresh();
-                            }
-                            if requested
-                                || ui_requested
-                                || changed
-                                || page_changed
-                                || search_changed
-                            {
-                                if requested {
-                                    view.pick_folder(cx);
-                                }
-                                cx.notify();
-                            }
-                        })
-                        .is_err()
-                    {
-                        break;
+            photag_ui_bridge::refresh::poll(
+                cx,
+                Duration::from_millis(100),
+                move |view: &mut SidebarView, cx| {
+                    let requested = pending.swap(false, std::sync::atomic::Ordering::AcqRel);
+                    let ui_requested = view.service.has_ui_request();
+                    let changed = dirty.swap(false, std::sync::atomic::Ordering::AcqRel);
+                    let bridge = view
+                        .cordis
+                        .try_service::<photag_ui_bridge::UiBridgeService>()
+                        .ok();
+                    let surface_page = bridge
+                        .as_ref()
+                        .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
+                        .and_then(|value| NavigationPage::from_key(&value));
+                    let page_changed = surface_page.is_some_and(|page| page != view.active_page);
+                    if let Some(page) = surface_page {
+                        if page != view.active_page {
+                            view.set_navigation_page(page);
+                        }
                     }
-                }
-            })
-            .detach();
+                    let folder_search = bridge
+                        .as_ref()
+                        .and_then(|bridge| bridge.surfaces.value("navigation.folder-search"))
+                        .unwrap_or_default();
+                    let input_search = view.folder_search.read(cx).value().to_string();
+                    let search_changed = if folder_search != view.last_folder_search_surface {
+                        view.pending_folder_search = Some(folder_search.clone());
+                        view.last_folder_search_surface = folder_search;
+                        true
+                    } else if input_search != view.last_folder_search_surface {
+                        if let Some(bridge) = bridge.as_ref() {
+                            let _ = bridge
+                                .surfaces
+                                .set_value("navigation.folder-search", &input_search);
+                        }
+                        view.last_folder_search_surface = input_search;
+                        false
+                    } else {
+                        false
+                    };
+                    if changed {
+                        view.refresh();
+                    }
+                    let changed =
+                        requested || ui_requested || changed || page_changed || search_changed;
+                    if changed {
+                        if requested {
+                            view.pick_folder(cx);
+                        }
+                    }
+                    changed.into()
+                },
+            );
             SidebarView::new(
                 view_service,
                 view_cordis,
@@ -408,26 +391,21 @@ impl SidebarView {
     }
 
     fn monitor_scan(&mut self, cx: &mut Context<Self>) {
-        cx.spawn(async move |this, cx| {
-            loop {
-                let active = this
-                    .update(cx, |view, cx| {
-                        if view.poll_scan() {
-                            view.notify_media_index(cx);
-                        }
-                        cx.notify();
-                        view.active_scan.is_some()
-                    })
-                    .unwrap_or(false);
-                if !active {
-                    break;
-                }
-                cx.background_executor()
-                    .timer(Duration::from_millis(200))
-                    .await;
+        cx.notify();
+        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(200), |view: &mut Self, cx| {
+            let signature = |view: &Self| {
+                view.scan_progress
+                    .as_ref()
+                    .map(|p| (p.scanned, p.total, p.phase.clone(), p.error.clone()))
+            };
+            let before = signature(view);
+            let completed = view.poll_scan();
+            if completed {
+                view.notify_media_index(cx);
             }
-        })
-        .detach();
+            let changed = completed || before != signature(view);
+            photag_ui_bridge::refresh::PollResult::until(changed, view.active_scan.is_some())
+        });
     }
 
     fn poll_scan(&mut self) -> bool {

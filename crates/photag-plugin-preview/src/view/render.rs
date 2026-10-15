@@ -19,6 +19,7 @@ impl Render for PreviewView {
         if snapshot.source.is_none() {
             return div().size_0();
         }
+        self.service.note_image_render();
         let chrome_alpha = self.service.chrome_alpha();
         if snapshot.source != self.last_seen_source {
             self.last_seen_source = snapshot.source.clone();
@@ -69,7 +70,8 @@ impl Render for PreviewView {
         ) {
             Ok(None)
         } else {
-            self.service.display_path()
+            self.request_display_path(&snapshot, cx)
+                .unwrap_or_else(|| Ok(None))
         };
         // `preview.rs:1693`: the floating bands key off "can something be shown",
         // not "has the full-resolution decode finished".
@@ -89,42 +91,7 @@ impl Render for PreviewView {
 
         let (image, fit_scale) = match display {
             Ok(Some(path)) => {
-                // `preview.rs:1763`: only a full-resolution decode caps at 1x;
-                // a low-resolution first frame is upscaled to the fit box.
-                let progressive = snapshot
-                    .source
-                    .as_deref()
-                    .and_then(|source| self.service.progressive_path(source));
-                let is_progressive = progressive.as_ref() == Some(&path);
-                let dimensions = image::image_dimensions(&path).ok();
-                let fit_scale = dimensions.map_or(1.0, |(width, height)| {
-                    let raw = (fit_width / width as f32).min(fit_height / height as f32);
-                    if is_progressive { raw } else { raw.min(1.0) }
-                });
-                let scale = if snapshot.fit_to_window {
-                    fit_scale
-                } else {
-                    snapshot.zoom_scale
-                };
-                let image = match dimensions {
-                    Some((width, height)) => img(path)
-                        .w(px(width as f32 * scale))
-                        .h(px(height as f32 * scale))
-                        .object_fit(ObjectFit::Contain)
-                        .relative()
-                        .left(px(snapshot.pan_x))
-                        .top(px(snapshot.pan_y))
-                        .into_any_element(),
-                    None => img(path)
-                        .max_w_full()
-                        .max_h_full()
-                        .object_fit(ObjectFit::Contain)
-                        .relative()
-                        .left(px(snapshot.pan_x))
-                        .top(px(snapshot.pan_y))
-                        .into_any_element(),
-                };
-                (image, fit_scale)
+                self.render_ready_image(path, &snapshot, (fit_width, fit_height), window, cx)
             }
             Ok(None) if media_kind == Some(PreviewMediaKind::Audio) => {
                 let open = cx.listener(|this, _: &ClickEvent, _, cx| {
@@ -218,18 +185,22 @@ impl Render for PreviewView {
         });
         let can_pan = has_display;
         let down = cx.listener(move |this, event: &MouseDownEvent, window, cx| {
+            this.service.mark_activity();
             window.focus(&this.focus_handle, cx);
             this.last_drag_position =
                 can_pan.then_some((f32::from(event.position.x), f32::from(event.position.y)));
         });
         let moved = cx.listener(move |this, event: &MouseMoveEvent, _, cx| {
-            this.service.mark_activity();
+            this.service
+                .mark_pointer_activity(f32::from(event.position.x), f32::from(event.position.y));
             if !can_pan || !event.dragging() {
                 this.last_drag_position = None;
                 return;
             }
             let current = (f32::from(event.position.x), f32::from(event.position.y));
-            if let Some(previous) = this.last_drag_position.replace(current) {
+            if let Some(previous) = this.last_drag_position.replace(current)
+                && current != previous
+            {
                 this.service
                     .pan_by(current.0 - previous.0, current.1 - previous.1);
                 cx.notify();
@@ -278,7 +249,19 @@ impl Render for PreviewView {
             if let Some(path) = snapshot.source.as_deref() {
                 let indexed = snapshot
                     .media_id
-                    .and_then(|media_id| support::indexed_info(&self.service, media_id));
+                    .and_then(|media_id| self.request_indexed_info(media_id, cx));
+                let file_info = self.request_file_info(path.to_path_buf(), cx);
+                let dimensions = self.request_image_dimensions(path.to_path_buf(), cx);
+                let exif = (!self.collapsed_info_sections.contains("Metadata (EXIF)"))
+                    .then(|| self.request_exif(path.to_path_buf(), cx))
+                    .flatten();
+                let video_info = if media_kind == Some(PreviewMediaKind::Video)
+                    && !self.collapsed_info_sections.contains("Video")
+                {
+                    self.request_video_info(path.to_path_buf(), cx)
+                } else {
+                    None
+                };
                 stage = stage.child(
                     div()
                         .absolute()
@@ -292,6 +275,10 @@ impl Render for PreviewView {
                         .child(crate::info::info_panel(
                             path,
                             indexed,
+                            file_info,
+                            dimensions,
+                            exif,
+                            video_info,
                             &self.collapsed_info_sections,
                             cx,
                         )),
@@ -305,7 +292,10 @@ impl Render for PreviewView {
             .bg(rgb(theme::SURFACE_EXTREME))
             .track_focus(&self.focus_handle)
             .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _, cx| {
-                this.service.mark_activity();
+                this.service.mark_pointer_activity(
+                    f32::from(event.position.x),
+                    f32::from(event.position.y),
+                );
                 this.move_toolbar_drag(
                     (f32::from(event.position.x), f32::from(event.position.y)),
                     cx,

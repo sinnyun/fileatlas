@@ -25,9 +25,10 @@ pub(super) fn render(
         .trim()
         .to_lowercase();
     let tags = view
-        .tagging
+        .snapshot
         .as_ref()
-        .and_then(|service| service.tag_tree().ok())
+        .ok()
+        .map(|snapshot| snapshot.tag_tree.clone())
         .unwrap_or_default();
     let recent_ids = view
         .tagging
@@ -297,9 +298,22 @@ fn find_tag(
 
 fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
     let selected = &view.selection.selected_media_ids;
-    let media = selected
-        .first()
-        .and_then(|id| view.service.media_by_id(*id).ok().flatten());
+    let selected_id = selected.first().copied();
+    let media = selected_id.and_then(|id| {
+        view.snapshot.as_ref().ok().and_then(|snapshot| {
+            snapshot
+                .media
+                .iter()
+                .find(|media| media.id == id)
+                .cloned()
+                .or_else(|| {
+                    view.inspector_fallback
+                        .as_ref()
+                        .filter(|fallback| fallback.media_id == id)
+                        .and_then(|fallback| fallback.media.clone())
+                })
+        })
+    });
     let mut preview = div()
         .v_flex()
         .items_start()
@@ -317,9 +331,16 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
         );
     if let Some(media) = media {
         let mut tags_for_media = view
-            .tagging
+            .snapshot
             .as_ref()
-            .and_then(|service| service.for_media(media.id).ok())
+            .ok()
+            .and_then(|snapshot| snapshot.media_tags.get(&media.id).cloned())
+            .or_else(|| {
+                view.inspector_fallback
+                    .as_ref()
+                    .filter(|fallback| fallback.media_id == media.id)
+                    .map(|fallback| fallback.tags.clone())
+            })
             .unwrap_or_default();
         if let Some(path) = &media.thumb_path {
             preview = preview.child(

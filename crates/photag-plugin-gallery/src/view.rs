@@ -16,6 +16,7 @@ mod inspector;
 mod keyboard;
 mod monitor;
 mod month_header;
+mod read_models;
 mod regions;
 mod render;
 mod rows;
@@ -127,8 +128,12 @@ struct GalleryView {
     show_selection_details: bool,
     show_tag_picker: bool,
     media_actions_id: Option<i64>,
+    media_actions_item: Option<(i64, photag_plugin_database::db::queries::MediaItem)>,
     slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
+    statistics_read:
+        photag_ui_bridge::read_model::ReadModel<(u64, u64), read_models::StatisticsRead>,
+    bulk_read: photag_ui_bridge::read_model::ReadModel<String, bulk_actions::MatchResults>,
     collapsed_months: HashSet<String>,
     inspector_expanded: HashSet<&'static str>,
     tag_filter_exclude_mode: bool,
@@ -137,16 +142,31 @@ struct GalleryView {
     video_preview_open: bool,
     show_exif: bool,
     exif_cache: Option<(i64, Result<Vec<(String, String)>, String>)>,
+    exif_read: photag_ui_bridge::read_model::ReadModel<(i64, u64, u64), Vec<(String, String)>>,
     operation_status: Option<String>,
     writeback_failure_signature: Vec<(String, String)>,
-    previous_inspector_tab: Option<String>,
+    previous_inspector_tab: photag_ui_bridge::refresh::ChangeGate<Option<String>>,
     confirm_delete: bool,
     snapshot: Result<GallerySnapshot, String>,
+    inspector_fallback: Option<InspectorFallback>,
+    inspector_read: photag_ui_bridge::read_model::ReadModel<i64, InspectorFallback>,
+    selection_details_cache: Option<(i64, i64, Option<card::FileMetadataSnapshot>)>,
+    selection_details_read:
+        photag_ui_bridge::read_model::ReadModel<i64, (i64, Option<card::FileMetadataSnapshot>)>,
+    selected_drag_paths_cache: Option<(Vec<i64>, Vec<PathBuf>)>,
+    selected_drag_read: photag_ui_bridge::read_model::ReadModel<Vec<i64>, Vec<PathBuf>>,
     observed_index_revision: u64,
     last_saved_scroll: f32,
-    previous_scan_progress: Option<(usize, usize, String)>,
-    previous_popover: Option<String>,
+    previous_scan_progress: photag_ui_bridge::refresh::ChangeGate<Option<(usize, usize, String)>>,
+    previous_popover: photag_ui_bridge::refresh::ChangeGate<Option<String>>,
     _subscriptions: Vec<Subscription>,
+}
+
+#[derive(Clone)]
+struct InspectorFallback {
+    media_id: i64,
+    media: Option<photag_plugin_database::db::queries::MediaItem>,
+    tags: Vec<photag_plugin_database::db::queries::Tag>,
 }
 
 impl Drop for GalleryView {

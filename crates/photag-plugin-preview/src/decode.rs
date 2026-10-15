@@ -17,10 +17,88 @@ pub(super) struct WheelAnimation {
     pub last_tick: std::time::Instant,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn active_decode_precedes_queued_filmstrip_work_and_ready_frame_does_not_expire() {
+        let queue = DecodeQueue::default();
+        queue.push(DecodeJob {
+            source: "neighbor".into(),
+            target: "neighbor-cache".into(),
+            max_dim: 96,
+            urgent: false,
+            queued_at: std::time::Instant::now(),
+            generation: 0,
+            request_cancelled: Arc::default(),
+            full_ready: Arc::default(),
+            reuse_thumbnail: None,
+        });
+        queue.push(DecodeJob {
+            source: "active".into(),
+            target: "active-cache".into(),
+            max_dim: 1600,
+            urgent: true,
+            queued_at: std::time::Instant::now(),
+            generation: 0,
+            request_cancelled: Arc::default(),
+            full_ready: Arc::default(),
+            reuse_thumbnail: None,
+        });
+        assert_eq!(queue.pop().unwrap().source, PathBuf::from("active"));
+        let directory =
+            std::env::temp_dir().join(format!("photag-progressive-ready-{}", std::process::id()));
+        let service = PreviewService::open_at(&directory).unwrap();
+        let source = directory.join("source.jpg");
+        image::RgbImage::from_pixel(64, 48, image::Rgb([20, 80, 180]))
+            .save(&source)
+            .unwrap();
+        service.prewarm_image(&source, 1600);
+        let started = std::time::Instant::now();
+        let path = loop {
+            if let Some(path) = service.progressive_path(&source) {
+                break path;
+            }
+            assert!(started.elapsed() < std::time::Duration::from_secs(5));
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        };
+        std::fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(10))
+            .unwrap();
+        assert_eq!(service.progressive_path(&source), Some(path));
+        drop(service);
+        let _ = std::fs::remove_dir_all(directory);
+    }
+}
+
 pub(super) struct DecodeJob {
     pub source: PathBuf,
     pub target: PathBuf,
     pub max_dim: u32,
+    pub urgent: bool,
+    pub queued_at: std::time::Instant,
+    pub generation: u64,
+    pub request_cancelled: Arc<std::sync::atomic::AtomicBool>,
+    pub full_ready: Arc<std::sync::atomic::AtomicBool>,
+    pub reuse_thumbnail: Option<PathBuf>,
+}
+
+impl DecodeJob {
+    pub(super) fn cancellation_reason(&self) -> &'static str {
+        if self.request_cancelled.load(Ordering::Acquire) {
+            "request_changed_or_closed"
+        } else if self.max_dim == 1600 && self.full_ready.load(Ordering::Acquire) {
+            "full_image_ready"
+        } else {
+            "none"
+        }
+    }
+    pub(super) fn cancelled(&self) -> bool {
+        self.cancellation_reason() != "none"
+    }
 }
 
 #[derive(Default)]
@@ -31,11 +109,33 @@ pub(super) struct DecodeQueue {
 }
 
 impl DecodeQueue {
-    pub(super) fn push(&self, job: DecodeJob) {
+    pub(super) fn push(&self, mut job: DecodeJob) {
+        job.queued_at = std::time::Instant::now();
         if let Ok(mut jobs) = self.jobs.lock() {
-            jobs.push_back(job);
+            if job.urgent {
+                jobs.push_front(job);
+            } else {
+                jobs.push_back(job);
+            }
             self.ready.notify_one();
         }
+    }
+
+    pub(super) fn remove_cancelled(&self) -> Vec<DecodeJob> {
+        let Ok(mut jobs) = self.jobs.lock() else {
+            return Vec::new();
+        };
+        let mut removed = Vec::new();
+        let mut retained = VecDeque::new();
+        for job in jobs.drain(..) {
+            if job.cancelled() {
+                removed.push(job);
+            } else {
+                retained.push_back(job);
+            }
+        }
+        *jobs = retained;
+        removed
     }
 
     fn pop(&self) -> Option<DecodeJob> {
@@ -56,39 +156,31 @@ impl DecodeQueue {
 /// render thread. A small queue keeps a filtered filmstrip from fanning out.
 pub(super) fn start_decode_workers(
     decode_queue: Arc<DecodeQueue>,
-    pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32)>>>,
+    pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32, u64)>>>,
+    ready_decodes: Arc<Mutex<std::collections::HashMap<(PathBuf, u32), PathBuf>>>,
     decode_revision: Arc<std::sync::atomic::AtomicU64>,
 ) {
     for _ in 0..2 {
         let queue = Arc::clone(&decode_queue);
         let pending = Arc::clone(&pending_decodes);
         let revision = Arc::clone(&decode_revision);
+        let ready = Arc::clone(&ready_decodes);
         std::thread::spawn(move || {
             while let Some(job) = queue.pop() {
                 let key = (job.source.clone(), job.max_dim);
-                let decoded = PreviewService::open_oriented(&job.source)
-                    .ok()
-                    .map(|image| image.thumbnail(job.max_dim, job.max_dim));
-                let written = decoded.is_some_and(|image| {
-                    let temporary = job.target.with_extension(format!(
-                        "{}.tmp.jpg",
-                        std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .map_or(0, |elapsed| elapsed.as_nanos())
-                    ));
-                    image.save(&temporary).is_ok()
-                        && if std::fs::rename(&temporary, &job.target).is_ok() {
-                            true
-                        } else {
-                            let _ = std::fs::remove_file(temporary);
-                            job.target.is_file()
+                let result = super::decode_diagnostics::run(&job);
+                if let Some(output) = result.filter(|_| !job.cancelled()) {
+                    if let Ok(mut ready) = ready.lock() {
+                        // Bound the in-memory index used by render-time lookups.
+                        if ready.len() >= 64 {
+                            ready.retain(|(source, _), _| source == &job.source);
                         }
-                });
-                if written {
+                        ready.insert(key.clone(), output);
+                    }
                     revision.fetch_add(1, Ordering::Release);
                 }
                 if let Ok(mut pending) = pending.lock() {
-                    pending.remove(&key);
+                    pending.remove(&(job.source.clone(), job.max_dim, job.generation));
                 }
             }
         });
@@ -97,6 +189,7 @@ pub(super) fn start_decode_workers(
 
 impl Drop for PreviewService {
     fn drop(&mut self) {
+        self.cancel_decode_request();
         if let Ok(mut closed) = self.decode_queue.closed.lock() {
             *closed = true;
         }
@@ -105,25 +198,23 @@ impl Drop for PreviewService {
 }
 
 impl PreviewService {
-    /// Return a brief low-resolution first frame while the native image element starts
-    /// decoding the full source. The file is produced off the render thread.
+    /// Keep the ready progressive raster available until the native full image
+    /// has painted. Age on disk is unrelated to image readiness.
     pub fn progressive_path(&self, source: &std::path::Path) -> Option<PathBuf> {
-        let fast = self.decode_cache_path(source, 1600);
-        if !fast.is_file() {
-            return None;
-        }
-        let recent = fast
-            .metadata()
-            .ok()
-            .and_then(|metadata| metadata.modified().ok())
-            .and_then(|modified| modified.elapsed().ok())
-            .is_some_and(|age| age < std::time::Duration::from_millis(500));
-        recent.then_some(fast)
+        self.ready_decodes
+            .lock()
+            .ok()?
+            .get(&(source.to_owned(), 1600))
+            .cloned()
     }
 
     pub fn filmstrip_thumbnail(&self, source: &std::path::Path) -> Option<PathBuf> {
-        let path = self.decode_cache_path(source, 96);
-        path.is_file().then_some(path)
+        self.ready_decodes
+            .lock()
+            .ok()?
+            .get(&(source.to_owned(), 96))
+            .cloned()
+            .or_else(|| self.indexed_thumbnail(source))
     }
 
     pub(super) fn decode_cache_path(&self, source: &std::path::Path, max_dim: u32) -> PathBuf {
@@ -134,20 +225,51 @@ impl PreviewService {
     }
 
     pub(super) fn prewarm_image(&self, source: &std::path::Path, max_dim: u32) {
-        let target = self.decode_cache_path(source, max_dim);
-        if target.is_file() {
+        if max_dim == 1600 && !super::decode_policy::supports_fast_preview(source) {
             return;
         }
+        let (generation, request_cancelled, full_ready) = {
+            let Ok(control) = self.decode_control.lock() else {
+                return;
+            };
+            (
+                control.generation,
+                Arc::clone(&control.cancelled),
+                Arc::clone(&control.full_ready),
+            )
+        };
+        if request_cancelled.load(Ordering::Acquire)
+            || (max_dim == 1600 && full_ready.load(Ordering::Acquire))
+        {
+            return;
+        }
+        let reuse_thumbnail = (max_dim == 96)
+            .then(|| self.indexed_thumbnail(source))
+            .flatten();
+        let target = self.decode_cache_path(source, max_dim);
         let source = source.to_path_buf();
         let key = (source.clone(), max_dim);
+        if self
+            .ready_decodes
+            .lock()
+            .is_ok_and(|ready| ready.contains_key(&key))
+        {
+            return;
+        }
         let Ok(mut pending) = self.pending_decodes.lock() else {
             return;
         };
-        if pending.insert(key.clone()) {
+        if pending.insert((source.clone(), max_dim, generation)) {
             self.decode_queue.push(DecodeJob {
                 source,
                 target,
                 max_dim,
+                urgent: max_dim == 1600 && self.snapshot().source.as_ref() == Some(&key.0),
+                queued_at: std::time::Instant::now(),
+                generation,
+                request_cancelled,
+                full_ready,
+                reuse_thumbnail,
             });
         }
     }

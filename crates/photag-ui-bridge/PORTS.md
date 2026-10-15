@@ -48,3 +48,23 @@ Window-internal geometry persists only for each entity lifetime; native detached
 ## Runtime diagnostics (2026-10-14)
 
 Runtime debug integration: workspace.bottom is the shell bottom dock slot and workspace.debug-status is the footer suffix. UiSurfaceState::set_open logs only actual visibility transitions. Registration, generation and Cordis-owned cleanup semantics are unchanged.
+
+## Keyed background read models (2026-10-15)
+
+`read_model::ReadModel<K,V>` is a shared presentation utility, not a service or
+plugin manager. `update(key, FnOnce() -> Result<V,String>) -> bool` belongs in
+an action/model poller; `value() -> Option<&Result<V,String>>` is the render
+boundary. It admits one worker at a time, coalesces edits to the latest key,
+ignores stale completions, caches successes and failures, and returns false
+for unchanged/empty-channel polls. Worker disconnect/start failure becomes a
+cached error. A view dropping the receiver cannot be invalidated by that read;
+an already-running read can finish but must not mutate application state.
+The owning plugin/view still owns its tasks and invalidation identity. Settings
+uses Navigation's tag revision; Gallery dialogs use index revision plus inputs.
+No persistence, Cordis registrations or DB access is owned by this utility.
+
+## Unified refresh contract (2026-10-15)
+
+`refresh::poll<V>(Context<V>, Duration, FnMut(&mut V, &mut Context<V>) -> PollResult)` owns weak-entity timers and one notify per changed sample. `PollResult::until(changed, active)` delivers a terminal change before stopping. `ChangeGate<T>::new/changed/current` centralizes passive signature equality.
+
+`ReadModel::request` declares a demand without receiving a result from render; `poll` delivers it, `update` combines both for model pollers. `key/is_pending/value` expose state. One running worker plus one latest queued closure per model; stale results cannot overwrite current keys, A→B→A reuses A, worker disconnects cache an error. Neither utility emits logs. Callers own semantic invalidation keys; no schema/service/plugin lifecycle change. See docs/ui-refresh-contract.md and scripts/check-ui-refresh.cjs.

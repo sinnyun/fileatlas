@@ -346,11 +346,11 @@ pub(super) fn render_media_details(
     media: &photag_plugin_database::db::queries::MediaItem,
     tags: &[photag_plugin_database::db::queries::Tag],
     open_count: i64,
+    filesystem: Option<&FileMetadataSnapshot>,
     show_exif: bool,
     exif_fields: Option<&Result<Vec<(String, String)>, String>>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement {
-    let filesystem = std::fs::metadata(&media.full_path).ok();
     let extension = std::path::Path::new(&media.filename)
         .extension()
         .and_then(|value| value.to_str())
@@ -379,18 +379,11 @@ pub(super) fn render_media_details(
         details = details
             .child(detail_line(
                 "Read-only",
-                if metadata.permissions().readonly() {
-                    "Yes"
-                } else {
-                    "No"
-                },
+                if metadata.read_only { "Yes" } else { "No" },
             ))
-            .child(detail_line(
-                "Modified",
-                &format_system_time(metadata.modified().ok()),
-            ));
-        if let Ok(created) = metadata.created() {
-            details = details.child(detail_line("Created", &format_system_time(Some(created))));
+            .child(detail_line("Modified", &metadata.modified));
+        if let Some(created) = &metadata.created {
+            details = details.child(detail_line("Created", created));
         }
     }
     if let (Some(width), Some(height)) = (media.width, media.height) {
@@ -499,6 +492,25 @@ pub(super) fn render_media_details(
         }
     }
     details
+}
+
+#[derive(Clone)]
+pub(super) struct FileMetadataSnapshot {
+    read_only: bool,
+    modified: String,
+    created: Option<String>,
+}
+
+pub(super) fn read_file_metadata(path: &str) -> Option<FileMetadataSnapshot> {
+    let metadata = std::fs::metadata(path).ok()?;
+    Some(FileMetadataSnapshot {
+        read_only: metadata.permissions().readonly(),
+        modified: format_system_time(metadata.modified().ok()),
+        created: metadata
+            .created()
+            .ok()
+            .map(|value| format_system_time(Some(value))),
+    })
 }
 
 pub(super) fn read_exif_fields(path: &str) -> Result<Vec<(String, String)>, &'static str> {

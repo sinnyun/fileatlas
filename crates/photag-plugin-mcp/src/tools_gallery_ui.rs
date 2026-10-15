@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct GalleryControl {
-    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll.
+    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll/preview.
     action: String,
     /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
     value: Option<String>,
@@ -19,6 +19,9 @@ pub(super) struct GalleryControl {
     rating_min: Option<i32>,
     rating_max: Option<i32>,
     enabled: Option<bool>,
+    /// bulk_field only: input index 0..7 (older/newer days, min/max rating, name,
+    /// extensions, min/max MB); text is carried in value.
+    field_index: Option<usize>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -106,7 +109,7 @@ impl PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Control live Gallery filters, popovers, bulk configuration and the Gallery-owned media action surface through feature requests. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
+        description = "Control live Gallery filters, popovers, bulk configuration, preview opening and the Gallery-owned media action surface through feature requests. Use preview with media_id to exercise the Gallery double-click preview path. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
     )]
     fn control_gallery(&self, Parameters(request): Parameters<GalleryControl>) -> String {
         tracing::info!(?request, "MCP control request");
@@ -190,6 +193,12 @@ impl PhoTagMcpServer {
                 };
             }
             "bulk_open" => R::BulkActions,
+            "bulk_field" => {
+                let Some(index) = request.field_index.filter(|index| *index < 8) else {
+                    return error_json("bulk_field requires field_index from 0 to 7");
+                };
+                R::BulkField(index, value.to_owned())
+            }
             "bulk_close" => R::CloseDialogs,
             "bulk_configure" => {
                 let action = match value {
@@ -217,6 +226,15 @@ impl PhoTagMcpServer {
                 };
             }
             "close_media_menu" => R::CloseMediaActions,
+            "preview" => {
+                let Some(id) = request.media_id.filter(|id| *id > 0) else {
+                    return error_json("preview requires a positive media_id");
+                };
+                if self.gallery.media_by_id(id).ok().flatten().is_none() {
+                    return error_json("preview media is not indexed");
+                }
+                R::Preview(id)
+            }
             "search" => R::Search(value.to_string()),
             "media_type" => R::MediaType(match value {
                 "all" => M::All,

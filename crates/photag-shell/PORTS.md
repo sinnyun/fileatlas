@@ -52,3 +52,7 @@ Enabling Gallery also enables Navigation and its Indexing/Watcher dependencies, 
 ## Runtime diagnostics (2026-10-14)
 
 Shell now composes the debug plugin before other feature startup, disposes it last, and hosts lifecycle-owned workspace.bottom/workspace.debug-status slots. Diagnostic policy, storage and UI remain in photag-plugin-debug. See its PORTS.md.
+
+## Shared refresh and passive input diagnostics (2026-10-15)
+
+Shell lifecycle/surface/locale polling uses UI Bridge refresh::poll; locale changes still refresh component windows. A transparent canvas registers capture-phase GPUI move/down/key observers during paint solely to update MCP's bounded in-memory input counters. It does not intercept input, notify or log.

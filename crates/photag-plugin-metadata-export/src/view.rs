@@ -24,41 +24,34 @@ pub(super) fn export_panel(
             let service = Arc::clone(&service);
             let surfaces = Arc::clone(&surfaces);
             app.new(|cx| {
-                cx.spawn(async move |this, cx| {
-                    loop {
-                        cx.background_executor()
-                            .timer(Duration::from_millis(100))
-                            .await;
-                        if this
-                            .update(cx, |view: &mut ExportPanel, cx| {
-                                let status = view.service.status().ok();
-                                if status != view.last_status {
-                                    if matches!(
-                                        status,
-                                        Some(
-                                            MetadataExportStatus::Exporting
-                                                | MetadataExportStatus::Succeeded { .. }
-                                                | MetadataExportStatus::Failed(_)
-                                        )
-                                    ) {
-                                        let _ = view.surfaces.set_open("metadata-export", true);
-                                    }
-                                    view.last_status = status;
-                                    cx.notify();
-                                }
-                                let visible = view.surfaces.is_open("metadata-export");
-                                if visible != view.visible {
-                                    view.visible = visible;
-                                    cx.notify();
-                                }
-                            })
-                            .is_err()
-                        {
-                            break;
+                photag_ui_bridge::refresh::poll(
+                    cx,
+                    Duration::from_millis(100),
+                    |view: &mut ExportPanel, _| {
+                        let mut changed = false;
+                        let status = view.service.status().ok();
+                        if status != view.last_status {
+                            if matches!(
+                                status,
+                                Some(
+                                    MetadataExportStatus::Exporting
+                                        | MetadataExportStatus::Succeeded { .. }
+                                        | MetadataExportStatus::Failed(_)
+                                )
+                            ) {
+                                let _ = view.surfaces.set_open("metadata-export", true);
+                            }
+                            view.last_status = status;
+                            changed = true;
                         }
-                    }
-                })
-                .detach();
+                        let visible = view.surfaces.is_open("metadata-export");
+                        if visible != view.visible {
+                            view.visible = visible;
+                            changed = true;
+                        }
+                        changed.into()
+                    },
+                );
                 ExportPanel {
                     service,
                     surfaces,

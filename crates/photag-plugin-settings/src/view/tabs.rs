@@ -242,20 +242,13 @@ impl SettingsView {
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr(
                     "Choose a tag for each key. Press that key in the gallery or preview to toggle the tag.",
                 )));
-                match self
-                    .navigation
-                    .as_ref()
-                    .and_then(Weak::upgrade)
-                    .map(|navigation| navigation.snapshot())
-                {
-                    Some(Ok(snapshot)) => {
-                        let mut flat_tags = Vec::new();
+                match self.tag_choices.value() {
+                    Some(Ok(choices)) => {
+                        let flat_tags = choices
+                            .iter()
+                            .map(|tag| (tag.id, tag.label.clone()))
+                            .collect::<Vec<_>>();
                         let mut rows = div().v_flex().gap(px(3.));
-                        let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
-                        while let Some(tag) = pending.pop() {
-                            flat_tags.push((tag.id, tag.full_path.replace('>', " > ")));
-                            pending.extend(tag.children.into_iter().rev());
-                        }
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
                             let selected = s
                                 .tag_hotkeys
@@ -300,9 +293,7 @@ impl SettingsView {
                         b = b.child(div().child(format!("Could not load tags: {error}")));
                     }
                     None => {
-                        b = b.child(div().child(photag_ui_bridge::i18n::tr(
-                            "Tag choices are unavailable while the navigation plugin is stopped.",
-                        )));
+                        b = b.child(div().child(photag_ui_bridge::i18n::tr("Loading file info…")));
                         let mut rows = div().v_flex().gap(px(3.));
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
                             let selected = s

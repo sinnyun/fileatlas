@@ -2,6 +2,7 @@
 use super::{GalleryView, format_bulk_outcome};
 use chrono::Utc;
 mod filters;
+mod read_model;
 use crate::filter::MediaTypeFilter;
 use filters::{filter_controls, match_results_list, section_title};
 use gpui_kit::base::StyledExt as _;
@@ -13,6 +14,8 @@ use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_database::db::queries::{MediaItem, MediaQuery};
 use photag_ui_bridge::theme;
+use read_model::MatchRequest;
+pub(super) use read_model::{MatchResults, poll_matches};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,22 +92,13 @@ fn matching_results(
     view: &GalleryView,
     cx: &Context<GalleryView>,
 ) -> Result<(Vec<i64>, Vec<MediaItem>), String> {
+    matching_request(view, cx)?.load(&view.service)
+}
+
+fn matching_request(view: &GalleryView, cx: &Context<GalleryView>) -> Result<MatchRequest, String> {
     if view.bulk_source == BulkActionSource::CurrentSelection {
         let ids = view.selection.selected_media_ids.clone();
-        // The active GallerySnapshot only contains the current 200-row page.
-        // Resolve every selected identity through the same database service so
-        // the preview covers selections that span pages and fails visibly if a
-        // selected row disappeared instead of silently truncating the target set.
-        let media = ids
-            .iter()
-            .map(|id| {
-                view.service
-                    .media_by_id(*id)
-                    .map_err(|error| error.to_string())?
-                    .ok_or_else(|| format!("Selected media {id} is no longer indexed."))
-            })
-            .collect::<Result<Vec<_>, String>>()?;
-        return Ok((ids, media));
+        return Ok(MatchRequest::Selection(ids));
     }
     let mut query = MediaQuery::default();
     match view.bulk_source {
@@ -227,29 +221,14 @@ fn matching_results(
     if matches!((query.size_min, query.size_max), (Some(min), Some(max)) if min > max) {
         return Err("Minimum file size cannot exceed maximum file size".into());
     }
-    let snapshot = view
-        .service
-        .load(query)
-        .map_err(|error| error.to_string())?;
-    let mut ids = snapshot
-        .skeletons
-        .iter()
-        .map(|item| item.id)
-        .collect::<Vec<_>>();
-    if view.bulk_source == BulkActionSource::SelectedTag && !view.bulk_tag_ids.is_empty() {
-        ids.retain(|id| {
-            snapshot
-                .media_tags
-                .get(id)
-                .is_some_and(|tags| tags.iter().any(|tag| view.bulk_tag_ids.contains(&tag.id)))
-        });
-    }
-    let media = snapshot
-        .media
-        .into_iter()
-        .filter(|media| ids.contains(&media.id))
-        .collect();
-    Ok((ids, media))
+    Ok(MatchRequest::Query(
+        query,
+        if view.bulk_source == BulkActionSource::SelectedTag {
+            view.bulk_tag_ids.clone()
+        } else {
+            Vec::new()
+        },
+    ))
 }
 
 fn matching_ids(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Vec<i64>, String> {
@@ -275,7 +254,12 @@ pub(super) fn render(
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
     };
-    let matching = matching_results(view, cx);
+    let loading = view.bulk_read.value().is_none();
+    let matching = view
+        .bulk_read
+        .value()
+        .cloned()
+        .unwrap_or_else(|| Ok((Vec::new(), Vec::new())));
     let (ids, matched_media, error) = match matching {
         Ok((ids, media)) => (ids, media, None),
         Err(error) => (Vec::new(), Vec::new(), Some(error)),
@@ -383,6 +367,9 @@ pub(super) fn render(
         );
     if let Some(error) = error {
         controls = controls.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
+    }
+    if loading {
+        controls = controls.child(photag_ui_bridge::i18n::tr("Loading file info…"));
     }
     if let Some(status) = &view.operation_status {
         controls = controls.child(

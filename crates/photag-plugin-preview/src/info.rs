@@ -10,6 +10,7 @@ use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_ui_bridge::theme;
 
+#[derive(Clone)]
 pub(super) struct IndexedInfo {
     pub rating: i32,
     pub date_taken: Option<i64>,
@@ -17,9 +18,31 @@ pub(super) struct IndexedInfo {
     pub tags: Vec<String>,
 }
 
+#[derive(Clone)]
+pub(super) struct FileInfo {
+    pub size: u64,
+    pub read_only: bool,
+    pub modified: String,
+    pub created: String,
+}
+
+pub(super) fn read_file_info(path: &Path) -> Option<FileInfo> {
+    let metadata = std::fs::metadata(path).ok()?;
+    Some(FileInfo {
+        size: metadata.len(),
+        read_only: metadata.permissions().readonly(),
+        modified: format_time(metadata.modified().ok()),
+        created: format_time(metadata.created().ok()),
+    })
+}
+
 pub(super) fn info_panel(
     path: &Path,
     indexed: Option<IndexedInfo>,
+    file_info: Option<FileInfo>,
+    dimensions: Option<(u32, u32)>,
+    exif_fields: Option<Result<Vec<(String, String)>, String>>,
+    video_info: Option<VideoProbe>,
     collapsed: &std::collections::HashSet<&'static str>,
     cx: &mut Context<crate::view::PreviewView>,
 ) -> impl IntoElement {
@@ -101,22 +124,18 @@ pub(super) fn info_panel(
                 &format!(".{}", extension.to_lowercase()),
             ));
         }
-        match std::fs::metadata(path) {
-            Ok(metadata) => {
+        match file_info {
+            Some(info) => {
                 panel = panel
-                    .child(detail("Size", &format_bytes(metadata.len())))
+                    .child(detail("Size", &format_bytes(info.size)))
                     .child(detail(
                         "Read-only",
-                        if metadata.permissions().readonly() {
-                            "yes"
-                        } else {
-                            "no"
-                        },
+                        if info.read_only { "yes" } else { "no" },
                     ))
-                    .child(detail("Modified", &format_time(metadata.modified().ok())))
-                    .child(detail("Created", &format_time(metadata.created().ok())));
+                    .child(detail("Modified", &info.modified))
+                    .child(detail("Created", &info.created));
             }
-            Err(_) => panel = panel.child(detail("File", "Couldn't read file metadata.")),
+            None => panel = panel.child(detail("File", "Loading file info…")),
         }
     }
 
@@ -153,7 +172,7 @@ pub(super) fn info_panel(
     if is_video(path) {
         panel = panel.child(section_title("Video", collapsed.contains("Video"), cx));
         if !collapsed.contains("Video") {
-            match probe_video(path) {
+            match video_info {
                 Some(info) => {
                     panel = panel
                         .child(detail(
@@ -173,15 +192,15 @@ pub(super) fn info_panel(
                         panel = panel.child(detail("Audio", codec));
                     }
                 }
-                None => panel = panel.child(mut_text("ffprobe metadata is unavailable.")),
+                None => panel = panel.child(mut_text("Loading file info…")),
             }
         }
         return panel;
     }
     panel = panel.child(section_title("Image", collapsed.contains("Image"), cx));
     if !collapsed.contains("Image") {
-        match image::image_dimensions(path) {
-            Ok((width, height)) => {
+        match dimensions {
+            Some((width, height)) => {
                 panel = panel
                     .child(detail("Dimensions", &format!("{width} × {height} px")))
                     .child(detail(
@@ -193,7 +212,7 @@ pub(super) fn info_panel(
                     ))
                     .child(detail("Aspect", &aspect_ratio(width, height)));
             }
-            Err(_) => panel = panel.child(detail("Dimensions", "—")),
+            None => panel = panel.child(detail("Dimensions", "Loading file info…")),
         }
     }
 
@@ -203,16 +222,17 @@ pub(super) fn info_panel(
         cx,
     ));
     if !collapsed.contains("Metadata (EXIF)") {
-        match read_exif(path) {
-            Ok(fields) if fields.is_empty() => {
+        match exif_fields {
+            Some(Ok(fields)) if fields.is_empty() => {
                 panel = panel.child(mut_text("No common EXIF tags found."));
             }
-            Ok(fields) => {
+            Some(Ok(fields)) => {
                 for (label, value) in fields {
                     panel = panel.child(detail(&label, &value));
                 }
             }
-            Err(message) => panel = panel.child(mut_text(message)),
+            Some(Err(message)) => panel = panel.child(mut_text(&message)),
+            None => panel = panel.child(mut_text("Loading file info…")),
         }
     }
     panel
@@ -242,7 +262,7 @@ fn is_video(path: &Path) -> bool {
 }
 
 #[derive(Clone)]
-struct VideoProbe {
+pub(super) struct VideoProbe {
     width: u32,
     height: u32,
     fps: f64,
@@ -252,7 +272,7 @@ struct VideoProbe {
     audio_codec: Option<String>,
 }
 
-fn probe_video(path: &Path) -> Option<VideoProbe> {
+pub(super) fn probe_video(path: &Path) -> Option<VideoProbe> {
     static CACHE: OnceLock<
         Mutex<std::collections::HashMap<(std::path::PathBuf, u128, u64), Option<VideoProbe>>>,
     > = OnceLock::new();
@@ -410,7 +430,7 @@ fn mut_text(value: &str) -> Div {
         .child(photag_ui_bridge::i18n::tr(value))
 }
 
-fn read_exif(path: &Path) -> Result<Vec<(String, String)>, &'static str> {
+pub(super) fn read_exif(path: &Path) -> Result<Vec<(String, String)>, &'static str> {
     let file = std::fs::File::open(path).map_err(|_| "Couldn't read file.")?;
     let mut reader = std::io::BufReader::new(file);
     let exif = exif::Reader::new()

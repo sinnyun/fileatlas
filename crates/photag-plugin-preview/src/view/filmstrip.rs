@@ -38,7 +38,12 @@ pub(super) fn plate(
 ) -> Option<AnyElement> {
     let snapshot = view.service.snapshot();
     let is_image = snapshot.media_kind == Some(PreviewMediaKind::Image);
-    let has_display = snapshot.source.is_some() && view.service.display_path().ok()?.is_some();
+    let has_display = snapshot.source.is_some()
+        && view
+            .request_display_path(&snapshot, cx)
+            .and_then(Result::ok)
+            .flatten()
+            .is_some();
     if !view.filmstrip_visible() || !is_image || !has_display || view.service.chrome_alpha() <= 0.01
     {
         return None;

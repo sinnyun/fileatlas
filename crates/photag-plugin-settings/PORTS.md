@@ -87,3 +87,21 @@ The existing settings modal content now uses UI Bridge `panels::mount`, ID setti
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Idle read models (2026-10-15)
+
+Shortcuts and AI group choices consume one shared background tag-choice model,
+loaded when a relevant Settings page is open, keyed by Navigation availability
+and `tag_revision()`. Reopening reloads; tag mutations/events invalidate it
+while open. Render never calls Navigation::snapshot. Missing/error choices are
+cached as well. `settings.tag-choices` is a read-only published UI snapshot:
+state loading/ready/failed, revision and choices[{id,name,label}] or error,
+exposed by MCP `get_ui_state.settings_tag_choices`. Empty worker polls do not
+redraw. Update monitoring now notifies only for byte progress or task results;
+disconnected check/download channels become errors and end monitoring rather
+than leaving an endless 120 ms repaint loop. No update is downloaded or
+installed by idle validation.
+
+## Shared refresh ownership (2026-10-15)
+
+Settings surface and updater timers use UI Bridge refresh::poll. Shared gates track visibility/tab and update progress; tag choices use ReadModel. Terminal worker errors notify once and stop; empty channels do not paint.

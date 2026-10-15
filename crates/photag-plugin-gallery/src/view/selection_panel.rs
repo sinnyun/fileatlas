@@ -1,10 +1,11 @@
 use super::*;
 
 impl GalleryView {
-    pub(super) fn selection_details(&self, root: Div, cx: &mut Context<Self>) -> Div {
+    pub(super) fn selection_details(&mut self, root: Div, cx: &mut Context<Self>) -> Div {
         if !self.show_selection_details || self.selection.selected_media_ids.is_empty() {
             return root;
         }
+        self.ensure_selection_details_data(cx);
         let Ok(snapshot) = &self.snapshot else {
             return root;
         };
@@ -126,7 +127,16 @@ impl GalleryView {
                     .get(&selected_id)
                     .map(Vec::as_slice)
                     .unwrap_or_default();
-                let open_count = self.service.open_count(selected_id).unwrap_or(0);
+                let open_count = self
+                    .selection_details_cache
+                    .as_ref()
+                    .filter(|(id, _, _)| *id == selected_id)
+                    .map_or(0, |(_, count, _)| *count);
+                let file_metadata = self
+                    .selection_details_cache
+                    .as_ref()
+                    .filter(|(id, _, _)| *id == selected_id)
+                    .and_then(|(_, _, metadata)| metadata.as_ref());
                 let exif_fields = self
                     .exif_cache
                     .as_ref()
@@ -136,6 +146,7 @@ impl GalleryView {
                     media,
                     tags,
                     open_count,
+                    file_metadata,
                     self.show_exif,
                     exif_fields,
                     cx,
@@ -156,5 +167,38 @@ impl GalleryView {
                 .p_3()
                 .child(panel),
         )
+    }
+
+    fn ensure_selection_details_data(&mut self, _: &mut Context<Self>) {
+        let Some(media_id) = self
+            .selection
+            .selected_media_ids
+            .first()
+            .copied()
+            .filter(|_| self.selection.selected_media_ids.len() == 1)
+        else {
+            return;
+        };
+        if self
+            .selection_details_cache
+            .as_ref()
+            .is_some_and(|(id, _, _)| *id == media_id)
+        {
+            return;
+        }
+        let Some(path) = self.snapshot.as_ref().ok().and_then(|snapshot| {
+            snapshot
+                .media
+                .iter()
+                .find(|media| media.id == media_id)
+                .map(|media| media.full_path.clone())
+        }) else {
+            return;
+        };
+        let service = Arc::clone(&self.service);
+        self.selection_details_read.request(media_id, move || {
+            let count = service.open_count(media_id).map_err(|e| e.to_string())?;
+            Ok((count, card::read_file_metadata(&path)))
+        });
     }
 }

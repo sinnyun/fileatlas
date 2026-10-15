@@ -25,10 +25,12 @@ Status: the query/window service and source-backed Gallery interactions are impl
 - Thumbnail size (100–300 px), date-sorted month grouping, and collapsed month sections restore from and save to `SessionService`; month grouping also reads and updates `SettingsService.show_date_dividers`, including changes made from the Settings panel. The default thumbnail size is 160 px and month grouping defaults on.
 - The GPUI `uniform_list` renders visible media rows plus two rows of overscan. Its column count is derived from the current window width and thumbnail size; the list requests `ensure_window` for the visible global row range and keeps only the service's 200-row rich-media cache. Compact skeletons continue to drive keyboard navigation and month boundaries. Gallery cards display cached 8×8 RGB micro-thumbnails behind the asynchronous cached image. Their action menu provides AI Suggest Tags, Preview, open in the system default application, reveal in File Explorer, hierarchical tag assignment, copy, move, Recycle Bin deletion confirmation, and 0–5 ratings. Open/reveal and AI suggestions target the clicked card; tag, copy, move, delete, and rating target the current selection when the clicked card belongs to it, otherwise only that card. Tag changes use `TaggingService` and record source-shaped history entries when available. Preview and AI suggestion requests include the indexed media ID; the AI action opens the clicked image through `PreviewService`, whose AI suggestions surface observes the active image and starts inference.
 - The `open_media_menu` Gallery UI request renders an application-owned action surface for an indexed ID, with Preview, open/reveal, rating, tags, AI suggestions, rename, copy, move, and delete. It reuses Gallery handlers and reports its live ID/open state; the native GPUI context menu remains pointer-triggered.
+- `GalleryUiRequest::Preview(media_id)` exercises the same selected-card preview handler as double-click. It reuses the loaded `MediaItem` for immediate opening, sets the current rich-media window as the first filmstrip, and resolves the complete ordered result in the background. Late path results are ignored if another media item has become active.
+- The optional selection-details popup reads open count and filesystem permissions/timestamps once on a background worker for its selected media ID; redraws use the cached result.
 - Statistics opens the source database query and displays image/video totals, total storage, rating distribution, top ten tags, and the latest twelve media months. Query errors are shown in the panel.
 - When TaggingService is available, Gallery samples the writeback-failure registry and surfaces each metadata error with Retry and Dismiss actions; the 200 ms service monitor notifies the view when asynchronous writes complete or fail. Retry calls `writeback::retry_failure(path)` to enqueue the exact failed payload; dismissal calls `writeback::clear_failure(path)`.
 - Session scroll offsets are stored in pixels through the uniform list's underlying scroll handle. Rubber-band selection starts on empty gallery space, replaces selection on plain drag, adds to selection on Ctrl+drag, and clears selection on a plain empty-space click. It maps the drag rectangle through the uniform list's measured row height, viewport bounds, and scroll offset, considering only rows that intersect the visible rectangle. AI inference and suggestion assignment run through the Preview AI surface; non-image card requests report that suggestions require an image.
-- Preview receives the active query's complete ordered `(path, media_id)` sequence, resolved from compact gallery skeleton IDs, so image/audio/video navigation retains media identity beyond the currently loaded rich-media page. Rows deleted during resolution are skipped without shifting path/ID pairing.
+- Preview receives the active query's complete ordered `(path, media_id)` sequence asynchronously, resolved from compact gallery skeleton IDs, so image/audio/video navigation retains media identity beyond the currently loaded rich-media page. The loaded window provides immediate first paint; rows deleted during resolution are skipped without shifting path/ID pairing.
 - Configured `Settings.open_key` opens the selected item when the Gallery root has focus and no bulk/delete confirmation is active (default `Space`; absent settings provider retains the current `Enter` behavior). F1–F9 settings mappings toggle their tag for the selected media, testing membership on the first selected item as in the source app; assignment/removal goes through `TaggingService`, preserving association/ancestor and metadata-write semantics. Successful toggles record source-shaped `AssignedTags`/`RemovedTags` entries when history is available.
 - With media selected, the Gallery exposes a searchable hierarchical tag picker. Search matches tag names and full paths; selected choices can be assigned or removed from all selected media, or all assignments can be cleared. Successful operations reload results and record `AssignedTags`, `RemovedTags`, or pre-clear `ClearedTags` history entries when history is available.
 - Successful Gallery rating changes record `RatingChanged` with the source's representative previous rating and clamped target rating; successful single-item rename records `Renamed` only after the indexed filename confirms the change. Ctrl+Z/Ctrl+Y call the optional `HistoryService`; completion status is visible in the Gallery and the query is reloaded after undo/redo.
@@ -180,3 +182,41 @@ Folder selection is ephemeral; actual location/layout use existing Session field
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Dialog read models (2026-10-15)
+
+Statistics and bulk-match preview load through UI Bridge ReadModel on the
+existing Gallery model poller, not during render. Statistics caches by index
+and Database writer revision for the open dialog. Bulk preview caches by source, folder/path/tag
+scope, selected IDs, all raw filter fields/dates, index and writer revision. Relative
+dates are fixed for that preview request. CurrentSelection still bypasses
+filters, and execute revalidates current targets before any file operation.
+Errors are cached; editing a field retries with a new key. Dialog close drops
+the read model; no database schema/file operation order changed.
+`GalleryUiRequest::BulkField(usize,String)` updates the real input and clears
+delete confirmation. `GalleryUiSnapshot::dialog_reads` exposes typed
+GalleryDialogReads (statistics state/error/photo/video/audio counts; bulk
+state/error/matched count/loaded preview IDs), with no extra queries. Statistics
+also publishes rating_counts. `GalleryService::data_revision() -> u64` forwards
+the Database writer clock, so direct service mutations also invalidate reads.
+
+Inspector/selection-detail EXIF uses the same keyed background boundary, with
+selected ID + index/writer revisions. A loaded/fallback media path is reused;
+otherwise its lookup is done once by the worker. Missing source/EXIF/errors
+are cached. Rendering and expansion actions never query a path or read EXIF;
+deselect/multiple selection/closing EXIF abandons the read model. Late results
+cannot populate the next selection. `exif_cache` is its paint-only projection.
+
+## Unified passive UI models (2026-10-15)
+
+Gallery monitor now returns one aggregated change flag to UI Bridge refresh::poll. Surface/progress signatures use shared ChangeGate. Statistics, bulk, EXIF, off-window Inspector fallback, single-selection metadata and selected drag paths all use shared ReadModel. Render declares only nonblocking demand; completion delivery checks current selection and publishes existing snapshot fields. Errors/empty results are cached, never re-read on each paint. Existing index refresh clears selection-derived caches.
+## Preview thumbnail handoff (2026-10-15)
+
+`preview_items_by_ids(&[i64]) -> Result<Vec<photag_plugin_preview::FilmstripMedia>, GalleryError>`
+returns existing source path, ID and optional thumb_path in requested order,
+skipping missing rows with the existing query semantics. The visible loaded
+window is projected without IO; full filtered-result resolution remains on the
+background executor and applies only while the opened identity is active.
+Preview consumes the public contract; Gallery does not own preview decoding.
+No schema, filters, events or source file mutation changes. See Preview PORTS
+for thumbnail freshness, fallback, generation cancellation and diagnostics.

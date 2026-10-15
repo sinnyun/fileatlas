@@ -235,13 +235,13 @@ impl super::PhoTagMcpServer {
                     .iter()
                     .map(|item| item.id)
                     .collect::<Vec<_>>();
-                self.gallery.media_path_pairs_by_ids(&ids)
+                self.gallery.preview_items_by_ids(&ids)
             })
             .unwrap_or_default();
         let view = match media.media_type.as_str() {
             "image" => {
-                self.preview.set_filmstrip_media(filmstrip);
-                if let Err(error) = self.preview.open_media(&media.full_path, Some(media.id)) {
+                self.preview.set_indexed_filmstrip_items(filmstrip);
+                if let Err(error) = self.preview.open_indexed_media(&media) {
                     return error_json(&error.to_string());
                 }
                 "preview"
@@ -283,6 +283,7 @@ impl super::PhoTagMcpServer {
                 "media_id": preview.media_id,
                 "filmstrip": self.preview.filmstrip_items(),
                 "revision": preview.revision,
+                "image_load": self.preview.load_status(),
             },
             "playback": {
                 "path": playback.path,

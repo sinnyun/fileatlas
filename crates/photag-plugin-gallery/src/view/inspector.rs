@@ -16,9 +16,7 @@ use helpers::*;
 
 impl GalleryView {
     pub(super) fn render_inspector(&mut self, cx: &mut Context<Self>) -> AnyElement {
-        if self.inspector_expanded.contains("exif") {
-            self.ensure_exif_loaded(cx);
-        }
+        self.ensure_inspector_fallback(cx);
         let header = div()
             .h_flex()
             .flex_shrink_0()
@@ -95,30 +93,62 @@ impl GalleryView {
             .into_any_element()
     }
 
+    fn ensure_inspector_fallback(&mut self, _: &mut Context<Self>) {
+        let Some(media_id) = self.selection.selected_media_ids.first().copied() else {
+            return;
+        };
+        if self
+            .snapshot
+            .as_ref()
+            .is_ok_and(|s| s.media.iter().any(|m| m.id == media_id))
+        {
+            return;
+        }
+        let service = self.service.clone();
+        let tagging = self.tagging.clone();
+        self.inspector_read.request(media_id, move || {
+            let media = service.media_by_id(media_id).map_err(|e| e.to_string())?;
+            let tags = match tagging {
+                Some(tagging) => tagging.for_media(media_id).map_err(|e| e.to_string())?,
+                None => Vec::new(),
+            };
+            Ok(InspectorFallback {
+                media_id,
+                media,
+                tags,
+            })
+        });
+    }
+
+    pub(super) fn inspector_fallback(&self, media_id: i64) -> Option<&InspectorFallback> {
+        self.inspector_fallback
+            .as_ref()
+            .filter(|cached| cached.media_id == media_id)
+    }
+
     fn inspector_single(&self, cx: &mut Context<Self>) -> AnyElement {
         let media_id = self.selection.selected_media_ids[0];
         let Ok(snapshot) = &self.snapshot else {
             return inspector_message("File info is unavailable.");
         };
-        let fallback;
+        let fallback = self
+            .inspector_fallback(media_id)
+            .and_then(|cached| cached.media.as_ref());
         let media = if let Some(media) = snapshot.media.iter().find(|media| media.id == media_id) {
             media
-        } else if let Ok(Some(media)) = self.service.media_by_id(media_id) {
-            fallback = media;
-            &fallback
+        } else if let Some(media) = fallback {
+            media
+        } else if self.inspector_read.key() == Some(&media_id) && self.inspector_read.is_pending() {
+            return inspector_message("Loading file info…");
         } else {
             return inspector_message("Selected media is no longer indexed.");
         };
-        let fallback_tags;
         let tags = if let Some(tags) = snapshot.media_tags.get(&media_id) {
             tags.as_slice()
         } else {
-            fallback_tags = self
-                .tagging
-                .as_ref()
-                .and_then(|service| service.for_media(media_id).ok())
-                .unwrap_or_default();
-            fallback_tags.as_slice()
+            self.inspector_fallback(media_id)
+                .map(|cached| cached.tags.as_slice())
+                .unwrap_or_default()
         };
         let mut body = div().v_flex().w_full().gap(px(2.)).px(px(14.)).pb(px(14.));
         let basic_open = self.inspector_expanded.contains("basic");
@@ -269,7 +299,7 @@ impl GalleryView {
                 )
                 .into_any_element(),
             Some(Err(message)) => inspector_message(message),
-            None => inspector_message("No EXIF metadata."),
+            None => inspector_message("Loading file info…"),
         }
     }
 
@@ -408,9 +438,6 @@ impl GalleryView {
     ) {
         if !self.inspector_expanded.insert(section) {
             self.inspector_expanded.remove(&section);
-        }
-        if section == "exif" && self.inspector_expanded.contains("exif") {
-            self.ensure_exif_loaded(cx);
         }
         cx.notify();
     }

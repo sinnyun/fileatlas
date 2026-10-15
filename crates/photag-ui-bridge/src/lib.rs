@@ -8,6 +8,8 @@ use cordis::{Event, Service};
 pub mod i18n;
 pub mod panel_catalog;
 pub mod panels;
+pub mod read_model;
+pub mod refresh;
 pub mod theme;
 mod views;
 pub mod winfx;

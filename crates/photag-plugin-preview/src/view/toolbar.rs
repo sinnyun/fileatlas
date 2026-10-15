@@ -6,7 +6,6 @@
 //! `theme.rs:505-512` (item spacing 8x6, button padding 12x5) and
 //! `theme.rs:440-471` (ghost widget fill, rounding `ROUND_SM + 1`).
 use gpui_kit::assets::IconName;
-use std::sync::Arc;
 use std::time::Duration;
 mod more;
 
@@ -322,7 +321,10 @@ impl PreviewView {
     ) -> Div {
         let settings = self.toolbar_settings();
         let snapshot = self.service.snapshot();
-        let assigned = assigned_tag_count(&snapshot.media_id, &self.tagging);
+        let assigned = snapshot
+            .media_id
+            .and_then(|media_id| self.request_indexed_info(media_id, cx))
+            .map_or(0, |info| info.tags.len());
         let mut anything_in_zoom = false;
         let mut row = div().h_flex().items_center().gap(px(IMAGE_GAP));
 
@@ -531,7 +533,12 @@ impl PreviewView {
 
     /// `preview.rs:1301-1423`: video keeps Tags, Clear, `|` and Delete only.
     fn video_toolbar(&mut self, viewport_height: f32, cx: &mut Context<Self>) -> AnyElement {
-        let assigned = assigned_tag_count(&self.service.snapshot().media_id, &self.tagging);
+        let assigned = self
+            .service
+            .snapshot()
+            .media_id
+            .and_then(|media_id| self.request_indexed_info(media_id, cx))
+            .map_or(0, |info| info.tags.len());
         let popup = PopupGeom {
             min_width: None,
             height_factor: VIDEO_POPUP_FACTOR,
@@ -628,15 +635,6 @@ impl PreviewView {
             }
         }
     }
-}
-
-fn assigned_tag_count(
-    media_id: &Option<i64>,
-    tagging: &Arc<photag_plugin_tagging::TaggingService>,
-) -> usize {
-    media_id
-        .and_then(|id| tagging.for_media(id).ok())
-        .map_or(0, |tags| tags.len())
 }
 
 /// `preview.rs:2499-2604`: Tags button plus the popup anchored above it, which

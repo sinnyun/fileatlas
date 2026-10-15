@@ -1,0 +1,128 @@
+[
+  {
+    "until": {
+      "interval_ms": 200,
+      "field": "gallery.loaded_count",
+      "at_least": 2,
+      "attempts": 100
+    },
+    "wait_ms": 600,
+    "tool": "get_ui_state"
+  },
+  {
+    "wait_ms": 300,
+    "arguments": {
+      "action": "accessibility_activate"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "open"
+    },
+    "tool": "control_debug"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "525,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "wait_ms": 2000,
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "525,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "tool": "get_view_state",
+    "capture": "cold-jpeg-full"
+  },
+  {
+    "wait_ms": 8000,
+    "arguments": {
+      "action": "zoom",
+      "zoom_percent": 150
+    },
+    "tool": "control_preview"
+  },
+  {
+    "tool": "get_view_state",
+    "wait_ms": 5000
+  },
+  {
+    "tool": "get_view_state"
+  },
+  {
+    "wait_ms": 5000,
+    "arguments": {
+      "page_size": 200
+    },
+    "tool": "get_debug_info"
+  },
+  {
+    "arguments": {
+      "page_size": 200
+    },
+    "tool": "get_debug_info"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "close"
+    },
+    "tool": "control_preview"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "360,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "wait_ms": 2500,
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "360,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "tool": "get_view_state",
+    "capture": "cold-tiff-full"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "close"
+    },
+    "tool": "control_preview"
+  },
+  {
+    "wait_ms": 500,
+    "arguments": {
+      "action": "pointer_double_down",
+      "value": "525,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "wait_ms": 1500,
+    "arguments": {
+      "action": "pointer_double_up",
+      "value": "525,230"
+    },
+    "tool": "control_ui"
+  },
+  {
+    "tool": "get_view_state",
+    "capture": "warm-jpeg-full"
+  }
+]

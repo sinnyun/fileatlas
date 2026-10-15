@@ -5757,6 +5757,7 @@ dependencies = [
  "cordis-rs",
  "gpui-kit",
  "image",
+ "jpeg-decoder",
  "kamadak-exif",
  "open",
  "photag-contracts",

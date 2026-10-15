@@ -36,3 +36,14 @@ Keep closures short; move expensive scans/metadata work off the GPUI render thre
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostic wrappers retain separate WAL reader/writer connections, locking, SQL operation order and error types. with_reader/with_writer now record caller location and wall-clock spans including lock wait; SQL failures emit ERROR. No schema change or SQL rewriting. The logging subscriber belongs to photag.debug.
+
+## In-memory writer revision (2026-10-15)
+
+`DatabaseService::write_revision() -> u64` reads an atomic invalidation identity
+without logging or querying SQLite. It advances after each writer closure
+returns, even on error because the closure may have performed partial writes.
+It does not advance for readers. This is conservative invalidation, not a
+durable transaction ID or count of changed rows. No schema, SQL, lock order or
+closure results are changed; direct external SQLite writes are not tracked.
+Gallery statistics/bulk read models use this with their existing event revision
+to remain fresh after direct service operations without repaint-driven reads.

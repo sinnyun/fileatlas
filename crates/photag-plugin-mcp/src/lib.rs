@@ -1,5 +1,6 @@
 //! MCP server adapter for PhoTag's Cordis-owned application services.
 
+mod input_activity;
 mod params;
 mod screenshot;
 mod tools_debug;
@@ -36,6 +37,7 @@ use serde_json::json;
 pub struct CaptureWindowHandle {
     native: std::sync::atomic::AtomicIsize,
     pointer: std::sync::Mutex<Option<McpPointerInput>>,
+    input_activity: std::sync::Mutex<input_activity::InputActivity>,
 }
 
 /// Same-process GPUI input, dispatched by the shell after its render lease ends.

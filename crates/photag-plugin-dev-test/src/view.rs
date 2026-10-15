@@ -28,27 +28,12 @@ struct DevTestPanel {
 
 pub(super) fn status_panel(service: Arc<DevTestService>, app: &mut App) -> AnyView {
     app.new(|cx| {
-        cx.spawn(async move |this, cx| {
-            let mut previous = String::new();
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(200))
-                    .await;
-                if this
-                    .update(cx, |view: &mut StatusPanel, cx| {
-                        let next = view.0.status();
-                        if next != previous {
-                            previous = next;
-                            cx.notify();
-                        }
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        })
-        .detach();
+        let mut gate = photag_ui_bridge::refresh::ChangeGate::default();
+        photag_ui_bridge::refresh::poll(
+            cx,
+            Duration::from_millis(200),
+            move |view: &mut StatusPanel, _| gate.changed(view.0.status()).into(),
+        );
         StatusPanel(service)
     })
     .into()
@@ -74,23 +59,15 @@ impl Render for StatusPanel {
 impl DevTestPanel {
     fn watch_status(&self, cx: &mut Context<Self>) {
         let service = Arc::clone(&self.service);
-        cx.spawn(async move |this, cx| {
-            loop {
-                let running = this
-                    .update(cx, |_, cx| {
-                        cx.notify();
-                        service.is_running()
-                    })
-                    .unwrap_or(false);
-                if !running {
-                    break;
-                }
-                cx.background_executor()
-                    .timer(Duration::from_millis(180))
-                    .await;
-            }
-        })
-        .detach();
+        let mut gate = photag_ui_bridge::refresh::ChangeGate::default();
+        cx.notify();
+        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(180), move |_: &mut Self, _| {
+            let running = service.is_running();
+            photag_ui_bridge::refresh::PollResult::until(
+                gate.changed((running, service.status())),
+                running,
+            )
+        });
     }
 }
 

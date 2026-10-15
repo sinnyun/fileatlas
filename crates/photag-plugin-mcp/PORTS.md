@@ -38,6 +38,9 @@ Mutations are disabled by default. `confirm: true` is an explicit call-site ackn
 
 ## Current limits and debugging
 
+- `get_view_state.preview.image_load` exposes Preview's actual first/full paint timing, quality, dimensions, errors, render count and polling wake reasons. `get_debug_info.view_revision` exposes the drawer's independent UI/content clocks. These read-only diagnostics do not generate logs or invalidate views.
+- `control_ui { action: "accessibility_activate" }` requires the existing mutation opt-in and asks only the Shell-published HWND belonging to this process for its native Windows UI Automation provider (`WM_GETOBJECT`, UIA root ID). This activates real GPUI accessibility updates for feedback-loop regression testing; no external window attachment or OS pointer/keyboard injection is used. Timeout is bounded to 2 seconds; non-Windows returns an unsupported error.
+
 - The MCP server is a child-process stdio endpoint: the client must launch `photag-shell --mcp`; the child process itself is the GUI application instance MCP controls. It does not attach to an already-open PhoTag process.
 - MCP tool availability does not complete native UI behavior listed in `docs/source-feature-audit.md`; tools call the same Cordis services and their existing limits apply.
 - Check `PHOTAG_MCP_ALLOW_MUTATIONS`, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
@@ -89,7 +92,9 @@ bulk_configure; configuration uses `value` for delete/copy/move and
 `bulk_source` for all/folder/tag/selection. `get_ui_state` reports the live
 bulk action/source. `open_media_menu` with `media_id` and `close_media_menu`
 control a live Gallery-owned media action surface; its state and indexed ID are
-reported by `get_ui_state`. The native right-click ContextMenu remains
+reported by `get_ui_state`. The `preview` action with `media_id` routes through
+Gallery's selected-card preview handler and is available for same-process
+validation of its filmstrip handoff. The native right-click ContextMenu remains
 pointer-triggered. `control_navigation` accepts create/edit/delete/merge/move/close with
 optional required-on-target tag_id; these open dialogs, never commit
 deletion/merge. Both tools require the existing mutation flag and asynchronous
@@ -162,3 +167,46 @@ control_gallery adds open_directory(value=an entry in the current directory-card
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics tools: get_debug_info(category?,level?,search?,page?,page_size?) returns actual drawer ui and logs Page from optional photag/debug service. Read-only and deliberately does not log its own query. control_debug(action,value?) shares DebugService::control with native controls and requires PHOTAG_MCP_ALLOW_MUTATIONS=1. Unknown service/action/invalid values return normal error JSON. MCP rejected requests are logged as ERROR; stdout remains reserved for protocol traffic.
+
+## Idle regression matrix (2026-10-15)
+
+`get_ui_state` adds `settings_tag_choices` and `gallery.dialog_reads` from the
+actual view caches, not new DB queries. Dialog reads report statistics
+state/error/photos/videos/audio/rating_counts and bulk state/error/count/preview_ids.
+Mutation-guarded `control_gallery action=bulk_field` requires `field_index`
+0..7 and text in `value`: older/newer days, min/max rating, name, extensions,
+min/max MB. It updates the real InputState and resets confirmation; it cannot
+execute an operation. The reusable same-process runner supports `--scenario
+scripts/validate-idle-mcp.cjs`: isolated fixtures, native accessibility enabled,
+Debug following live, settling and paired idle observations, stale-data/error
+checks and separate active playback observations. Sustained/blocked cases cause
+a failing suite. Read the report's coverage/limits; this is not an assertion of
+all codec/OS integration behavior.
+
+`get_view_state.preview.image_load.activity` records last activity caller,
+counter and pointer coordinates. `scripts/validate-idle-followup.cjs` adds
+longer stationary/reopen samples, live writer invalidation, populated menus,
+plugin Single/Multiple panels, Inspector sections, native Watcher stimuli,
+export error/recovery and diagnostic controls. Finite hover/input transitions
+are retained and followed by bounded quiet rechecks; sustained work still fails.
+
+## Native-window and input diagnostics (2026-10-15)
+
+`get_ui_state` adds `input_activity` counters (move events, changed positions, buttons, keys, last pointer) and `window_status` (valid, owned, visible, minimized, hung). These are passive and never notify/log. Mutation-guarded `control_ui {action:"window_restore"}` validates ownership before restoring only this child process's minimized HWND with no activation. Test suites record window interruptions and compare input counters; they cannot call an unrendered/minimized interval a quiet pass. No OS mouse/key injection.
+
+## Debug repaint display filter (2026-10-15)
+
+`get_debug_info` accepts optional `hide_ui_refresh: bool`: omitted/false keeps raw
+queries compatible with idle audits, true applies the actual drawer's routine
+DEBUG/TRACE accessibility-repaint display rule. `ui.filter.hide_ui_refresh`
+reports the drawer default (true). Raw capture/retention are unchanged. The
+same-process scenario scripts/validate-debug-hover.cjs verifies real GPUI hover,
+raw-vs-displayed queries, normal DB records, search and paging.
+## Preview cache policy diagnostics (2026-10-15)
+
+`open_media` now hands ordered path/ID/thumbnail triples through Gallery's
+`preview_items_by_ids` and Preview's `set_indexed_filmstrip_items`, matching the
+Gallery opening route. `get_view_state.preview.image_load.cache_policy` exposes
+the progressive policy, nearby indexed/display thumbnail paths and pending job
+count without file/database reads. `get_debug_info` retains reuse/cancellation
+details in original messages. No new tools or mutation permissions are added.

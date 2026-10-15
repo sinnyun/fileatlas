@@ -144,6 +144,14 @@ impl GalleryView {
                 );
             }
         } else {
+            let message = if selected_count > 0
+                && self.selection.selected_media_ids.first().is_some_and(|id| {
+                    self.inspector_read.key() == Some(id) && self.inspector_read.is_pending()
+                }) {
+                "Loading file info…"
+            } else {
+                "No file selected"
+            };
             preview = preview.child(
                 div()
                     .w_full()
@@ -155,7 +163,7 @@ impl GalleryView {
                     .justify_center()
                     .text_size(px(theme::FONT_SIZE_SMALL))
                     .text_color(rgb(theme::TEXT_MUTED))
-                    .child(photag_ui_bridge::i18n::tr("No file selected")),
+                    .child(photag_ui_bridge::i18n::tr(message)),
             );
         }
         preview.into_any_element()
@@ -168,7 +176,10 @@ impl GalleryView {
             .ok()
             .and_then(|snapshot| snapshot.media.iter().find(|media| media.id == media_id))
             .cloned()
-            .or_else(|| self.service.media_by_id(media_id).ok().flatten())
+            .or_else(|| {
+                self.inspector_fallback(media_id)
+                    .and_then(|cached| cached.media.clone())
+            })
     }
 
     fn rating_stars(&self, media_id: i64, rating: u8, cx: &mut Context<Self>) -> Div {

@@ -28,7 +28,7 @@ const GRAY: u32 = 0x7f7f7f;
 const SEARCH_WIDTH: f32 = 180.0;
 
 pub(super) fn popup(
-    view: &PreviewView,
+    view: &mut PreviewView,
     min_width: Option<f32>,
     height: Pixels,
     cx: &mut Context<PreviewView>,
@@ -40,13 +40,23 @@ pub(super) fn popup(
         .trim()
         .to_lowercase();
     let media_id = view.service.snapshot().media_id;
-    let assigned: std::collections::HashSet<i64> = media_id
-        .and_then(|id| view.tagging.for_media(id).ok())
-        .unwrap_or_default()
-        .into_iter()
-        .map(|tag| tag.id)
-        .collect();
-    let tags = view.tagging.tag_tree().unwrap_or_default();
+    if view.tag_picker_open
+        && let Some(id) = media_id
+    {
+        view.request_tag_picker_data(id, cx);
+    }
+    if let Some(Err(error)) = view.tag_picker_read.value() {
+        return div().p_3().child(error.clone()).into_any_element();
+    }
+    let assigned = media_id
+        .and_then(|id| {
+            view.tag_picker_cache
+                .as_ref()
+                .filter(|(cached, _)| *cached == id)
+        })
+        .map(|(_, assigned)| assigned.clone())
+        .unwrap_or_default();
+    let tags = view.tag_tree_cache.clone().unwrap_or_default();
     let mut body = div()
         .v_flex()
         .gap(px(theme::SOURCE_ITEM_SPACING_Y))
@@ -264,6 +274,8 @@ impl PreviewView {
         }
         match self.tagging.clear(&[media_id]) {
             Ok(()) => {
+                self.tag_picker_cache = None;
+                self.tag_picker_read = Default::default();
                 if let Some(history) = &self.history {
                     history.push(UndoEntry::RemovedTags {
                         media_ids: vec![media_id],
@@ -363,6 +375,8 @@ impl PreviewView {
         };
         match result {
             Ok(()) => {
+                self.tag_picker_cache = None;
+                self.tag_picker_read = Default::default();
                 if let Some(history) = &self.history {
                     history.push(if assign {
                         UndoEntry::AssignedTags {

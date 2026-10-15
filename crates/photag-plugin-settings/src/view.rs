@@ -19,6 +19,8 @@ mod ai_groups;
 mod checkbox;
 #[path = "view/tabs.rs"]
 mod tabs;
+#[path = "view/tag_choices.rs"]
+mod tag_choices;
 #[path = "view/tag_hotkeys.rs"]
 mod tag_hotkeys;
 #[path = "view/toolbar.rs"]
@@ -81,6 +83,7 @@ pub(super) fn settings(
                         update_info: None,
                         update_staged: None,
                         update_progress: Arc::new(AtomicU64::new(0)),
+                        update_progress_seen: photag_ui_bridge::refresh::ChangeGate::new(0),
                         update_status: None,
                         update_error: None,
                         update_offer_open: false,
@@ -94,47 +97,33 @@ pub(super) fn settings(
                         capturing_open_key: false,
                         focus_handle: cx.focus_handle(),
                         surface_visible: view_surfaces.is_open("settings"),
+                        tag_choices: Default::default(),
                     };
                     let surface_poll = Arc::clone(&view_surfaces);
-                    cx.spawn(async move |this, cx| {
-                        let mut previous = surface_poll.is_open("settings");
-                        let mut previous_tab = surface_poll.value("settings.tab");
-                        loop {
-                            cx.background_executor()
-                                .timer(std::time::Duration::from_millis(100))
-                                .await;
+                    let mut surface_gate = photag_ui_bridge::refresh::ChangeGate::new((
+                        surface_poll.is_open("settings"),
+                        surface_poll.value("settings.tab"),
+                    ));
+                    photag_ui_bridge::refresh::poll(
+                        cx,
+                        std::time::Duration::from_millis(100),
+                        move |view: &mut SettingsView, cx| {
                             let visible = surface_poll.is_open("settings");
-                            let tab = surface_poll.value("settings.tab");
+                            let changed =
+                                surface_gate.changed((visible, surface_poll.value("settings.tab")));
+                            view.surface_visible = visible;
+                            let mut changed = view.poll_tag_choices() | changed;
                             if surface_poll.is_open("settings.check-updates") {
                                 let _ = surface_poll.set_open("settings.check-updates", false);
-                                if this
-                                    .update(cx, |view: &mut SettingsView, cx| {
-                                        if view.update_check.is_none() {
-                                            view.begin_update_check(true);
-                                            view.monitor_updates(cx);
-                                        }
-                                    })
-                                    .is_err()
-                                {
-                                    break;
+                                if view.update_check.is_none() {
+                                    view.begin_update_check(true);
+                                    view.monitor_updates(cx);
+                                    changed = true;
                                 }
                             }
-                            if visible != previous || tab != previous_tab {
-                                previous_tab = tab;
-                                previous = visible;
-                                if this
-                                    .update(cx, |view: &mut SettingsView, cx| {
-                                        view.surface_visible = visible;
-                                        cx.notify();
-                                    })
-                                    .is_err()
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    })
-                    .detach();
+                            changed.into()
+                        },
+                    );
                     let auto_check = service
                         .snapshot()
                         .map(|settings| settings.auto_check_updates)
@@ -182,6 +171,7 @@ pub(super) struct SettingsView {
     update_info: Option<UpdateInfo>,
     update_staged: Option<std::path::PathBuf>,
     update_progress: Arc<AtomicU64>,
+    update_progress_seen: photag_ui_bridge::refresh::ChangeGate<u64>,
     update_status: Option<String>,
     update_error: Option<String>,
     update_offer_open: bool,
@@ -195,6 +185,7 @@ pub(super) struct SettingsView {
     capturing_open_key: bool,
     focus_handle: FocusHandle,
     surface_visible: bool,
+    tag_choices: photag_ui_bridge::read_model::ReadModel<(bool, u64), Vec<tag_choices::TagChoice>>,
 }
 impl SettingsView {
     fn close_surface(&mut self, cx: &mut Context<Self>) {

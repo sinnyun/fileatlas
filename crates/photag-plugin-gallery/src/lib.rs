@@ -5,7 +5,7 @@ mod browser;
 pub use browser::{BrowserSnapshot, GalleryDirectory};
 mod ui_requests;
 mod view;
-pub use ui_requests::{GalleryUiRequest, GalleryUiSnapshot};
+pub use ui_requests::{GalleryDialogReads, GalleryUiRequest, GalleryUiSnapshot};
 pub use view::bulk_actions::{BulkActionKind, BulkActionSource};
 
 use std::collections::HashMap;
@@ -396,6 +396,24 @@ impl GalleryService {
         })?)
     }
 
+    /// Ordered filmstrip identities plus existing thumbnail caches, resolved off the UI thread.
+    pub fn preview_items_by_ids(
+        &self,
+        ids: &[i64],
+    ) -> Result<Vec<photag_plugin_preview::FilmstripMedia>, GalleryError> {
+        Ok(self.database.with_reader(|connection| {
+            ids.iter()
+                .filter_map(|id| match queries::get_media_by_id(connection, *id) {
+                    Ok(Some(media)) => {
+                        Some(Ok(photag_plugin_preview::FilmstripMedia::from(&media)))
+                    }
+                    Ok(None) => None,
+                    Err(error) => Some(Err(error)),
+                })
+                .collect::<rusqlite::Result<Vec<_>>>()
+        })?)
+    }
+
     /// Read the informational open counter stored by PhoTag's original schema.
     pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
         Ok(self.database.with_reader(|connection| {
@@ -417,6 +435,10 @@ impl GalleryService {
 
     pub fn statistics(&self) -> Result<queries::LibraryStats, GalleryError> {
         Ok(self.database.with_reader(queries::get_statistics)?)
+    }
+
+    pub fn data_revision(&self) -> u64 {
+        self.database.write_revision()
     }
 
     /// Persist a selection rating using PhoTag's clamped bulk update query.

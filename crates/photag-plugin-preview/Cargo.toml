@@ -23,6 +23,7 @@ rfd = { version = "0.15", default-features = false }
 open = "5"
 tokio.workspace = true
 image = "0.25"
+jpeg-decoder = { version = "0.3", default-features = false }
 thiserror = "2"
 chrono = "0.4"
 kamadak-exif = "0.6.1"

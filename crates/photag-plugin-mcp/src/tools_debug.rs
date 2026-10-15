@@ -11,6 +11,8 @@ pub(super) struct DebugQuery {
     /// Zero based. Defaults to the drawer's current page/filter.
     pub page: Option<usize>,
     pub page_size: Option<usize>,
+    /// True matches the drawer: hide routine repaint telemetry. Defaults to false for raw audits.
+    pub hide_ui_refresh: Option<bool>,
 }
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct DebugControl {
@@ -32,6 +34,8 @@ impl PhoTagMcpServer {
         };
         let ui = s.ui_state();
         let mut filter = ui.filter.clone();
+        // Preserve full raw observations for existing idle/performance audits.
+        filter.hide_ui_refresh = query.hide_ui_refresh.unwrap_or(false);
         if let Some(v) = query.category {
             filter.category = v;
         }
@@ -47,7 +51,7 @@ impl PhoTagMcpServer {
         if let Some(v) = query.page_size {
             filter.page_size = v;
         }
-        json!({"ui":ui,"logs":s.query(&filter)}).to_string()
+        json!({"ui":ui,"logs":s.query(&filter),"view_revision":s.view_revision(true)}).to_string()
     }
     #[tool(
         description = "Control the real bottom debug drawer: open/close, filters, zero-based page, page_size=25/50/100/200, pause/follow, select ID, clear logs. Requires mutation opt-in."

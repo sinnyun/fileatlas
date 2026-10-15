@@ -1,5 +1,48 @@
 //! Native capture of the PhoTag window passed by the Shell.
 
+/// Ask only this process's published window for its UI Automation provider.
+/// This activates the same GPUI accessibility path as a Windows UIA client.
+#[cfg(target_os = "windows")]
+pub(super) fn activate_accessibility(handle: isize) -> Result<bool, String> {
+    use windows_sys::Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{
+            GetWindowThreadProcessId, IsWindow, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_GETOBJECT,
+        },
+    };
+    let hwnd = handle as HWND;
+    let mut process = 0;
+    let mut provider = 0;
+    unsafe {
+        if IsWindow(hwnd) == 0 {
+            return Err("PhoTag window is unavailable".into());
+        }
+        GetWindowThreadProcessId(hwnd, &mut process);
+        if process != std::process::id() {
+            return Err("Window does not belong to this PhoTag process".into());
+        }
+        // UIA's UiaRootObjectId is -25; no external HWND or input is accepted.
+        if SendMessageTimeoutW(
+            hwnd,
+            WM_GETOBJECT,
+            0,
+            -25,
+            SMTO_ABORTIFHUNG,
+            2000,
+            &mut provider,
+        ) == 0
+        {
+            return Err("PhoTag accessibility activation timed out".into());
+        }
+    }
+    Ok(provider != 0)
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(super) fn activate_accessibility(_: isize) -> Result<bool, String> {
+    Err("PhoTag accessibility activation is Windows-only".into())
+}
+
 #[cfg(target_os = "windows")]
 pub(super) fn resize_window(handle: isize, width: u32, height: u32) -> Result<(u32, u32), String> {
     use windows_sys::Win32::{
@@ -153,4 +196,51 @@ pub(super) fn capture_png(handle: isize) -> Result<(Vec<u8>, u32, u32), String> 
 #[cfg(not(target_os = "windows"))]
 pub(super) fn capture_png(_handle: isize) -> Result<(Vec<u8>, u32, u32), String> {
     Err("PhoTag MCP 窗口截图目前仅支持 Windows。".into())
+}
+/// Read only this child's native window state; no repaint/input is generated.
+#[cfg(target_os = "windows")]
+pub fn window_status(handle: isize) -> serde_json::Value {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetWindowThreadProcessId, IsHungAppWindow, IsIconic, IsWindow, IsWindowVisible,
+    };
+    let hwnd = handle as windows_sys::Win32::Foundation::HWND;
+    let mut owner = 0;
+    let valid = handle != 0 && unsafe { IsWindow(hwnd) } != 0;
+    if valid {
+        unsafe {
+            GetWindowThreadProcessId(hwnd, &mut owner);
+        }
+    }
+    serde_json::json!({"valid":valid,"owned":valid && owner == std::process::id(),
+        "visible":valid && unsafe { IsWindowVisible(hwnd) } != 0,
+        "minimized":valid && unsafe { IsIconic(hwnd) } != 0,
+        "hung":valid && unsafe { IsHungAppWindow(hwnd) } != 0})
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn window_status(_: isize) -> serde_json::Value {
+    serde_json::json!({"unsupported":true})
+}
+
+#[cfg(target_os = "windows")]
+pub fn restore_test_window(handle: isize) -> Result<(), String> {
+    let state = window_status(handle);
+    if state["owned"] != true {
+        return Err("PhoTag window is unavailable or belongs to another process".into());
+    }
+    if state["minimized"] == true {
+        // Restore only this MCP child's window, without taking keyboard focus.
+        unsafe {
+            windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                handle as windows_sys::Win32::Foundation::HWND,
+                windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNOACTIVATE,
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn restore_test_window(_: isize) -> Result<(), String> {
+    Err("Window restoration is Windows-only".into())
 }

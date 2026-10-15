@@ -38,23 +38,13 @@ pub fn view(
                 let poll_ai = Arc::clone(&ai);
                 let poll_preview = Arc::clone(&preview);
                 let poll_settings = Arc::clone(&settings);
-                cx.spawn(async move |this, cx| {
-                    loop {
-                        cx.background_executor()
-                            .timer(Duration::from_millis(150))
-                            .await;
-                        let alive = this
-                            .update(cx, |view: &mut AiSuggestionsView, cx| {
-                                view.poll(&poll_preview, &poll_ai, &poll_settings);
-                                cx.notify();
-                            })
-                            .is_ok();
-                        if !alive {
-                            break;
-                        }
-                    }
-                })
-                .detach();
+                photag_ui_bridge::refresh::poll(
+                    cx,
+                    Duration::from_millis(150),
+                    move |view: &mut AiSuggestionsView, _| {
+                        view.poll(&poll_preview, &poll_ai, &poll_settings).into()
+                    },
+                );
                 AiSuggestionsView {
                     ai,
                     settings,
@@ -92,14 +82,20 @@ struct AiSuggestionsView {
 }
 
 impl AiSuggestionsView {
-    fn poll(&mut self, preview: &PreviewService, ai: &AiService, settings: &SettingsService) {
+    fn poll(
+        &mut self,
+        preview: &PreviewService,
+        ai: &AiService,
+        settings: &SettingsService,
+    ) -> bool {
         let snapshot = preview.snapshot();
         let current = snapshot
             .source
             .clone()
             .zip(snapshot.media_id)
             .filter(|(path, _)| is_image(path));
-        if current != self.key {
+        let mut changed = current != self.key;
+        if changed {
             let had_pending_work = self.inference.is_some() || self.download.is_some();
             self.key = current.clone();
             self.result = None;
@@ -115,10 +111,12 @@ impl AiSuggestionsView {
                 .is_some_and(|(_, media_id)| *media_id == requested_media_id)
             {
                 self.request();
+                changed = true;
             }
         }
         let download_result = self.download.as_ref().map(|receiver| receiver.try_recv());
         if let Some(result) = download_result {
+            changed |= !matches!(&result, Err(mpsc::TryRecvError::Empty));
             match result {
                 Ok(Ok(())) => {
                     self.download = None;
@@ -138,6 +136,7 @@ impl AiSuggestionsView {
         }
         let inference_result = self.inference.as_ref().map(|receiver| receiver.try_recv());
         if let Some(result) = inference_result {
+            changed |= !matches!(&result, Err(mpsc::TryRecvError::Empty));
             match result {
                 Ok(Ok(suggestions)) => {
                     self.inference = None;
@@ -175,8 +174,10 @@ impl AiSuggestionsView {
                 && ai.model_exists()
             {
                 self.begin_inference(current, ai, settings);
+                changed = true;
             }
         }
+        changed
     }
 
     fn begin_inference(
@@ -282,6 +283,79 @@ fn is_image(path: &std::path::Path) -> bool {
             | "aiff"
             | "aif"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AiService, AiSuggestionsView, HistoryService, PreviewService, SettingsService,
+        TagSuggestion, TaggingService,
+    };
+    use std::{
+        collections::HashSet,
+        sync::{Arc, mpsc},
+    };
+    #[test]
+    fn unchanged_selection_and_empty_worker_channel_do_not_invalidate() {
+        let directory = std::env::temp_dir().join(format!("photag-ai-idle-{}", std::process::id()));
+        let database = Arc::new(
+            photag_plugin_database::DatabaseService::open_at(directory.join("test.db")).unwrap(),
+        );
+        let tagging = Arc::new(TaggingService::new(Arc::clone(&database)));
+        let files = Arc::new(photag_plugin_file_operations::FileOperationsService::new(
+            Arc::clone(&database),
+            cordis::Context::new(),
+        ));
+        let history = Arc::new(HistoryService::new(database, Arc::clone(&tagging), files));
+        let settings = Arc::new(SettingsService::open_at(directory.join("settings.json")));
+        settings
+            .update(|settings| settings.ai.auto_analyze = false)
+            .unwrap();
+        let ai = Arc::new(AiService);
+        let preview = PreviewService::open_at(directory.join("preview")).unwrap();
+        let mut view = AiSuggestionsView {
+            ai: Arc::clone(&ai),
+            settings: Arc::clone(&settings),
+            tagging,
+            history,
+            key: None,
+            analyzed: HashSet::new(),
+            result: None,
+            error: None,
+            inference: None,
+            download: None,
+            message: None,
+        };
+        for _ in 0..10 {
+            assert!(!view.poll(&preview, &ai, &settings));
+        }
+        {
+            let mut snapshot = preview.state.lock().unwrap();
+            snapshot.source = Some("fixture.jpg".into());
+            snapshot.media_id = Some(1);
+        }
+        assert!(view.poll(&preview, &ai, &settings));
+        let (send, receive) = mpsc::channel();
+        view.inference = Some(receive);
+        for _ in 0..10 {
+            assert!(!view.poll(&preview, &ai, &settings));
+        }
+        send.send(Ok(vec![TagSuggestion {
+            label: "example".into(),
+            confidence: 0.9,
+            group_name: None,
+        }]))
+        .unwrap();
+        assert!(view.poll(&preview, &ai, &settings));
+        assert_eq!(view.result.as_ref().unwrap().len(), 1);
+        for _ in 0..10 {
+            assert!(!view.poll(&preview, &ai, &settings));
+        }
+        drop(view);
+        drop(preview);
+        drop(settings);
+        let _ = std::fs::remove_dir_all(directory);
+    }
 }
 
 impl Render for AiSuggestionsView {

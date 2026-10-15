@@ -483,6 +483,38 @@ impl Render for PhoTagShell {
             }
             shell = shell.child(div().absolute().inset_0().children(modal_views));
         }
-        shell
+        let capture = self.capture.clone();
+        // Register passive observers during paint, before dispatch reaches
+        // widget handlers. They never invalidate/log or intercept input.
+        shell.child(
+            gpui_kit::canvas(
+                |_, _, _| (),
+                move |_, (), window, _| {
+                    let pointer = capture.clone();
+                    window.on_mouse_event(move |event: &gpui_kit::MouseMoveEvent, phase, _, _| {
+                        if phase == gpui_kit::DispatchPhase::Capture {
+                            pointer.observe_pointer(
+                                f32::from(event.position.x),
+                                f32::from(event.position.y),
+                            );
+                        }
+                    });
+                    let buttons = capture.clone();
+                    window.on_mouse_event(move |_: &gpui_kit::MouseDownEvent, phase, _, _| {
+                        if phase == gpui_kit::DispatchPhase::Capture {
+                            buttons.observe_button();
+                        }
+                    });
+                    let keys = capture.clone();
+                    window.on_key_event(move |_: &gpui_kit::KeyDownEvent, phase, _, _| {
+                        if phase == gpui_kit::DispatchPhase::Capture {
+                            keys.observe_key();
+                        }
+                    });
+                },
+            )
+            .absolute()
+            .inset_0(),
+        )
     }
 }

@@ -1,6 +1,5 @@
 use super::*;
 use gpui_kit::assets::IconName;
-use photag_plugin_database::db::queries::MediaQuery;
 
 pub(super) fn render(
     view: &GalleryView,
@@ -16,21 +15,8 @@ pub(super) fn render(
         .min_h_0()
         .overflow_y_scrollbar()
         .h(px(height));
-    match view.service.statistics() {
-        Ok(stats) => {
-            let audio_count = view
-                .service
-                .load(MediaQuery {
-                    media_type: Some("audio".to_owned()),
-                    ..MediaQuery::default()
-                })
-                .map(|snapshot| {
-                    snapshot
-                        .skeletons
-                        .iter()
-                        .filter(|media| media.is_audio)
-                        .count() as i64
-                });
+    match view.statistics_read.value() {
+        Some(Ok((stats, audio_count))) => {
             let total = audio_count
                 .as_ref()
                 .ok()
@@ -129,7 +115,7 @@ pub(super) fn render(
                     .map(|(_, count)| *count)
                     .unwrap_or(1)
                     .max(1);
-                for (name, count) in stats.top_tags {
+                for (name, count) in stats.top_tags.iter().cloned() {
                     tags_panel =
                         tags_panel.child(bar_row(name, count, max_tags, theme::accent(), 130.));
                 }
@@ -147,7 +133,7 @@ pub(super) fn render(
                     .unwrap_or(1)
                     .max(1);
                 months_panel = months_panel.child(vertical_chart(
-                    stats.monthly_counts,
+                    stats.monthly_counts.clone(),
                     max_month,
                     theme::accent(),
                 ));
@@ -162,12 +148,15 @@ pub(super) fn render(
                     .child(months_panel.flex_1()),
             );
         }
-        Err(error) => {
+        Some(Err(error)) => {
             panel = panel.child(
                 div()
                     .text_color(rgb(theme::DANGER))
                     .child(format!("Error loading statistics: {error}")),
             );
+        }
+        None => {
+            panel = panel.child(photag_ui_bridge::i18n::tr("Loading file info…"));
         }
     }
     panel

@@ -3,8 +3,10 @@
 mod actions;
 mod context_menu;
 mod filmstrip;
+mod image_stage;
 mod keyboard;
 mod overlays;
+mod read_models;
 mod render;
 mod support;
 mod tag_picker;
@@ -79,27 +81,34 @@ pub fn preview_view(
                             _ => {}
                         },
                     );
-                    let mut revision = service.snapshot().revision;
-                    let mut decode_revision = service.decode_revision();
-                    let mut showing_progressive = service
-                        .snapshot()
-                        .source
-                        .as_deref()
-                        .and_then(|source| service.progressive_path(source))
-                        .is_some();
-                    let mut chrome_alpha = service.chrome_alpha();
+                    let mut revision =
+                        photag_ui_bridge::refresh::ChangeGate::new(service.snapshot().revision);
+                    let mut decode_revision =
+                        photag_ui_bridge::refresh::ChangeGate::new(service.decode_revision());
+                    let mut showing_progressive = photag_ui_bridge::refresh::ChangeGate::new(
+                        service
+                            .snapshot()
+                            .source
+                            .as_deref()
+                            .and_then(|source| service.progressive_path(source))
+                            .is_some(),
+                    );
+                    let mut chrome_alpha = photag_ui_bridge::refresh::ChangeGate::new(
+                        (service.chrome_alpha() * 100.).round() as u8,
+                    );
                     let collapsed_dropdown_tag_ids = view_session
                         .snapshot()
                         .map(|session| session.collapsed_dropdown_tag_ids)
                         .unwrap_or_default();
                     let decode_service = Arc::clone(&service);
-                    cx.spawn(async move |this, cx| {
-                        let mut filmstrip_request = None;
-                        loop {
-                            cx.background_executor()
-                                .timer(std::time::Duration::from_millis(150))
-                                .await;
+                    let mut filmstrip_request =
+                        photag_ui_bridge::refresh::ChangeGate::new(None::<String>);
+                    photag_ui_bridge::refresh::poll(
+                        cx,
+                        std::time::Duration::from_millis(150),
+                        move |view: &mut PreviewView, _| {
                             decode_service.advance_wheel_animation();
+                            decode_service.request_progressive_if_pending();
                             let next_decode_revision = decode_service.decode_revision();
                             let snapshot = decode_service.snapshot();
                             let next_showing_progressive = snapshot
@@ -107,54 +116,53 @@ pub fn preview_view(
                                 .as_deref()
                                 .and_then(|source| decode_service.progressive_path(source))
                                 .is_some();
-                            let changed = this
-                                .update(cx, |view: &mut PreviewView, cx| {
-                                    let next = view.service.snapshot().revision;
-                                    let more = view.surfaces.is_open("preview.more");
-                                    let tags = view.surfaces.is_open("preview.tags");
-                                    let request = view.surfaces.value("preview.filmstrip.request");
-                                    if request != filmstrip_request {
-                                        if let Some(value) = &request {
-                                            if let Err(error) = view.settings.update(|settings| {
-                                                settings.show_filmstrip = value == "true"
-                                            }) {
-                                                view.operation_status = Some(error.to_string());
-                                            }
-                                            view.service.mark_activity();
-                                        }
-                                        filmstrip_request = request;
-                                        cx.notify();
+                            let mut changed = false;
+                            let next = view.service.snapshot().revision;
+                            let more = view.surfaces.is_open("preview.more");
+                            let tags = view.surfaces.is_open("preview.tags");
+                            let request = view.surfaces.value("preview.filmstrip.request");
+                            if filmstrip_request.changed(request.clone()) {
+                                if let Some(value) = &request {
+                                    if let Err(error) = view.settings.update(|settings| {
+                                        settings.show_filmstrip = value == "true"
+                                    }) {
+                                        view.operation_status = Some(error.to_string());
                                     }
-                                    if more != view.more_actions_open
-                                        || tags != view.tag_picker_open
-                                    {
-                                        view.more_actions_open = more;
-                                        view.tag_picker_open = tags;
-                                        view.service.mark_activity();
-                                        cx.notify();
-                                    }
-                                    let next_chrome_alpha = view.service.chrome_alpha();
-                                    let chrome_changed =
-                                        (next_chrome_alpha - chrome_alpha).abs() > 0.01;
-                                    if next != revision
-                                        || next_decode_revision != decode_revision
-                                        || next_showing_progressive != showing_progressive
-                                        || chrome_changed
-                                    {
-                                        revision = next;
-                                        decode_revision = next_decode_revision;
-                                        showing_progressive = next_showing_progressive;
-                                        chrome_alpha = next_chrome_alpha;
-                                        cx.notify();
-                                    }
-                                })
-                                .is_ok();
-                            if !changed {
-                                break;
+                                    view.service.mark_activity();
+                                }
+                                changed = true;
                             }
-                        }
-                    })
-                    .detach();
+                            if more != view.more_actions_open || tags != view.tag_picker_open {
+                                view.more_actions_open = more;
+                                view.tag_picker_open = tags;
+                                view.service.mark_activity();
+                                changed = true;
+                            }
+                            for (did_change, reason) in
+                                [
+                                    (revision.changed(next), "state"),
+                                    (decode_revision.changed(next_decode_revision), "decode"),
+                                    (
+                                        showing_progressive.changed(next_showing_progressive),
+                                        "progressive",
+                                    ),
+                                    (
+                                        chrome_alpha.changed(
+                                            (view.service.chrome_alpha() * 100.).round() as u8,
+                                        ),
+                                        "chrome",
+                                    ),
+                                ]
+                            {
+                                if did_change {
+                                    view.service.note_poll_wake(reason);
+                                    changed = true;
+                                }
+                            }
+                            changed |= view.poll_reads();
+                            changed.into()
+                        },
+                    );
                     PreviewView {
                         locale_revision: u64::MAX,
                         service: view_service,
@@ -190,6 +198,15 @@ pub fn preview_view(
                         context_menu_anchor: None,
                         last_playback_source: None,
                         last_seen_source: service.snapshot().source,
+                        image_dimensions_cache: Default::default(),
+                        file_info_cache: Default::default(),
+                        exif_cache: Default::default(),
+                        video_info_cache: Default::default(),
+                        display_path_cache: Default::default(),
+                        indexed_info_cache: Default::default(),
+                        tag_tree_cache: None,
+                        tag_picker_cache: None,
+                        tag_picker_read: Default::default(),
                     }
                 })
                 .into();
@@ -244,4 +261,34 @@ pub(crate) struct PreviewView {
     context_menu_anchor: Option<(f32, f32)>,
     last_playback_source: Option<std::path::PathBuf>,
     last_seen_source: Option<std::path::PathBuf>,
+    image_dimensions_cache:
+        photag_ui_bridge::read_model::ReadModel<std::path::PathBuf, Option<(u32, u32)>>,
+    file_info_cache:
+        photag_ui_bridge::read_model::ReadModel<std::path::PathBuf, Option<crate::info::FileInfo>>,
+    exif_cache: photag_ui_bridge::read_model::ReadModel<std::path::PathBuf, Vec<(String, String)>>,
+    video_info_cache: photag_ui_bridge::read_model::ReadModel<
+        std::path::PathBuf,
+        Option<crate::info::VideoProbe>,
+    >,
+    display_path_cache:
+        photag_ui_bridge::read_model::ReadModel<DisplayPathKey, Option<std::path::PathBuf>>,
+    indexed_info_cache:
+        photag_ui_bridge::read_model::ReadModel<i64, Option<crate::info::IndexedInfo>>,
+    tag_tree_cache: Option<Vec<photag_plugin_database::db::queries::Tag>>,
+    tag_picker_cache: Option<(i64, std::collections::HashSet<i64>)>,
+    tag_picker_read: photag_ui_bridge::read_model::ReadModel<
+        i64,
+        (
+            Vec<photag_plugin_database::db::queries::Tag>,
+            std::collections::HashSet<i64>,
+        ),
+    >,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct DisplayPathKey {
+    source: std::path::PathBuf,
+    quarter_turns: u8,
+    flip_horizontal: bool,
+    flip_vertical: bool,
 }

@@ -1,0 +1,52 @@
+[
+  {
+    "wait_ms": 500,
+    "tool": "get_ui_state",
+    "until": {
+      "interval_ms": 200,
+      "field": "gallery.loaded_count",
+      "attempts": 100,
+      "at_least": 2
+    }
+  },
+  {
+    "tool": "control_ui",
+    "arguments": {
+      "action": "accessibility_activate"
+    },
+    "wait_ms": 300
+  },
+  {
+    "tool": "control_debug",
+    "arguments": {
+      "action": "open"
+    },
+    "wait_ms": 400
+  },
+  {
+    "tool": "control_gallery",
+    "arguments": {
+      "action": "preview",
+      "media_id": 1
+    },
+    "wait_ms": 200
+  },
+  {
+    "tool": "get_view_state",
+    "wait_ms": 5000
+  },
+  {
+    "tool": "get_view_state",
+    "wait_ms": 5000
+  },
+  {
+    "tool": "get_view_state",
+    "capture": "large-pending-investigate"
+  },
+  {
+    "tool": "get_debug_info",
+    "arguments": {
+      "page_size": 200
+    }
+  }
+]

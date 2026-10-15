@@ -73,3 +73,7 @@ The production scan regression now expects all 12 ordinary files in `test-data/p
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Shared refresh ownership (2026-10-15)
+
+StatusPanel and finite task monitors use UI Bridge refresh::poll and ChangeGate over status/running. A running but unchanged task no longer forces redraw; terminal changes notify before the monitor stops.

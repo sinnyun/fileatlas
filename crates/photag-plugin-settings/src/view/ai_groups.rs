@@ -6,25 +6,27 @@ use gpui_kit::component::input::Input;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
 use photag_ui_bridge::theme;
-use std::sync::Weak;
 
 impl SettingsView {
     pub(super) fn ai_groups(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
         let mut panel = div().v_flex().gap_2();
-        let mut available_tags = Vec::new();
-        if let Some(Ok(snapshot)) = self
-            .navigation
-            .as_ref()
-            .and_then(Weak::upgrade)
-            .map(|navigation| navigation.snapshot())
-        {
-            let mut pending: Vec<_> = snapshot.tags.into_iter().rev().collect();
-            while let Some(tag) = pending.pop() {
-                available_tags.push((tag.name.clone(), tag.full_path.replace('>', " > ")));
-                pending.extend(tag.children.into_iter().rev());
-            }
+        let available_tags = self
+            .tag_choices
+            .value()
+            .and_then(|value| value.as_ref().ok())
+            .map(|choices| {
+                choices
+                    .iter()
+                    .map(|tag| (tag.name.clone(), tag.label.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        if let Some(Err(error)) = self.tag_choices.value() {
+            panel = panel.child(div().text_color(rgb(theme::DANGER)).child(error.clone()));
         }
-        if available_tags.is_empty() {
+        if self.tag_choices.value().is_none() {
+            panel = panel.child(photag_ui_bridge::i18n::tr("Loading file info…"));
+        } else if available_tags.is_empty() {
             panel = panel.child(div().child(
                 photag_ui_bridge::i18n::tr("No library tags are available for adding to groups while Navigation is stopped or the tag library is empty."),
             ));

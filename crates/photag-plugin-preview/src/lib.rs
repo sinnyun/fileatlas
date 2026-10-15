@@ -7,8 +7,15 @@
 mod ai_suggestions;
 mod chrome;
 mod decode;
+mod decode_diagnostics;
+mod decode_policy;
+mod filmstrip_cache;
+#[cfg(test)]
+mod filmstrip_cache_tests;
 mod info;
 mod plugin;
+mod presentation;
+mod scaled_decode;
 mod snapshot;
 mod transform_session;
 mod view;
@@ -24,6 +31,7 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_session::SessionService;
 
+pub use filmstrip_cache::FilmstripMedia;
 pub use plugin::{PreviewConfig, PreviewError, PreviewPlugin};
 pub(crate) use snapshot::classify_media_path;
 pub use snapshot::{PreviewMediaKind, PreviewSnapshot};
@@ -32,12 +40,16 @@ pub use view::preview_view;
 /// Cordis service for opening and controlling image previews.
 pub struct PreviewService {
     state: Mutex<PreviewSnapshot>,
+    load_tracker: Mutex<presentation::LoadTracker>,
     cache_dir: PathBuf,
     session: Option<Arc<SessionService>>,
     filmstrip: Mutex<Vec<PathBuf>>,
+    indexed_thumbnails: Mutex<std::collections::HashMap<PathBuf, PathBuf>>,
+    decode_control: Mutex<decode_policy::DecodeControl>,
     filmstrip_media_ids: Mutex<std::collections::HashMap<PathBuf, i64>>,
     decode_queue: Arc<decode::DecodeQueue>,
-    pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32)>>>,
+    pending_decodes: Arc<Mutex<HashSet<(PathBuf, u32, u64)>>>,
+    ready_decodes: Arc<Mutex<std::collections::HashMap<(PathBuf, u32), PathBuf>>>,
     decode_revision: Arc<AtomicU64>,
     database: Mutex<Option<Arc<DatabaseService>>>,
     last_opened_id: Mutex<Option<i64>>,
@@ -56,20 +68,26 @@ impl PreviewService {
         std::fs::create_dir_all(&cache_dir)?;
         let decode_queue = Arc::new(decode::DecodeQueue::default());
         let pending_decodes = Arc::new(Mutex::new(HashSet::new()));
+        let ready_decodes = Arc::new(Mutex::new(std::collections::HashMap::new()));
         let decode_revision = Arc::new(AtomicU64::new(0));
         decode::start_decode_workers(
             Arc::clone(&decode_queue),
             Arc::clone(&pending_decodes),
+            Arc::clone(&ready_decodes),
             Arc::clone(&decode_revision),
         );
         Ok(Self {
             state: Mutex::new(PreviewSnapshot::default()),
+            load_tracker: Mutex::new(presentation::LoadTracker::default()),
             cache_dir,
             session: None,
             filmstrip: Mutex::new(Vec::new()),
+            indexed_thumbnails: Mutex::default(),
+            decode_control: Mutex::default(),
             filmstrip_media_ids: Mutex::new(std::collections::HashMap::new()),
             decode_queue,
             pending_decodes,
+            ready_decodes,
             decode_revision,
             database: Mutex::new(None),
             last_opened_id: Mutex::new(None),
@@ -161,6 +179,7 @@ impl PreviewService {
         if !path.is_file() {
             return Err(PreviewError::MissingSource(path));
         }
+        self.begin_image_load(&path, media_id);
         let mut state = self.state.lock().map_err(|_| PreviewError::StatePoisoned)?;
         state.source = Some(path.clone());
         state.media_kind = Some(classify_media_path(&path));
@@ -192,22 +211,7 @@ impl PreviewService {
                 }
             }
         }
-        if let Some(source) = self.snapshot().source {
-            if classify_media_path(&source) == PreviewMediaKind::Image {
-                self.prewarm_image(&source, 1600);
-            }
-            let paths = self.filmstrip();
-            if let Some(index) = paths.iter().position(|path| path == &source) {
-                for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
-                    if classify_media_path(path) == PreviewMediaKind::Image {
-                        self.prewarm_image(path, 96);
-                        if path != &source {
-                            self.prewarm_image(path, 1600);
-                        }
-                    }
-                }
-            }
-        }
+        self.prewarm_filmstrip_neighborhood();
         Ok(())
     }
 
@@ -221,16 +225,10 @@ impl PreviewService {
         if let Ok(mut strip) = self.filmstrip.lock() {
             *strip = paths.clone();
         }
-        let current = self.snapshot().source;
-        if let Some(index) =
-            current.and_then(|path| paths.iter().position(|candidate| candidate == &path))
-        {
-            for path in paths.iter().skip(index.saturating_sub(3)).take(7) {
-                if classify_media_path(path) == PreviewMediaKind::Image {
-                    self.prewarm_image(path, 96);
-                }
-            }
+        if let Ok(mut thumbs) = self.indexed_thumbnails.lock() {
+            thumbs.retain(|source, _| paths.contains(source));
         }
+        self.prewarm_filmstrip_neighborhood();
     }
 
     /// Set ordered filmstrip paths with their indexed row IDs for preview actions/navigation.
@@ -243,6 +241,20 @@ impl PreviewService {
             *ids = items.iter().cloned().collect();
         }
         self.set_filmstrip(items.into_iter().map(|(path, _)| path));
+    }
+
+    /// Set paths already obtained from the indexed gallery without doing a
+    /// synchronous existence check for every row on the UI thread.
+    pub fn set_indexed_filmstrip_media(&self, items: impl IntoIterator<Item = (PathBuf, i64)>) {
+        let items = items
+            .into_iter()
+            .map(|(path, media_id)| FilmstripMedia {
+                thumbnail: self.indexed_thumbnail(&path),
+                path,
+                media_id,
+            })
+            .collect::<Vec<_>>();
+        self.set_indexed_filmstrip_items(items);
     }
 
     /// Return the filmstrip together with IDs, when supplied by an indexed caller.
@@ -273,7 +285,12 @@ impl PreviewService {
         if let Ok(mut ids) = self.filmstrip_media_ids.lock() {
             let had_identity = ids.remove(old).is_some();
             if had_identity {
-                ids.insert(new, media_id);
+                ids.insert(new.clone(), media_id);
+            }
+        }
+        if let Ok(mut thumbs) = self.indexed_thumbnails.lock() {
+            if let Some(thumb) = thumbs.remove(old) {
+                thumbs.insert(new, thumb);
             }
         }
     }
@@ -289,7 +306,6 @@ impl PreviewService {
         }
         self.save_preview_path(Some(new.clone()));
         self.save_preview_transform();
-        self.prewarm_image(&new, 1600);
         self.prewarm_image(&new, 96);
     }
 
@@ -329,6 +345,7 @@ impl PreviewService {
             s.media_kind = None;
             s.revision = s.revision.wrapping_add(1);
         }
+        self.cancel_decode_request();
         self.save_preview_path(None);
         self.mark_activity();
     }
@@ -443,9 +460,10 @@ impl PreviewService {
         let Some(source) = s.source else {
             return Ok(None);
         };
-        let orientation = Self::read_orientation(&source);
         let user_transform = s.quarter_turns != 0 || s.flip_horizontal || s.flip_vertical;
-        if !user_transform && orientation == image::metadata::Orientation::NoTransforms {
+        // GPUI's native image loader applies EXIF orientation itself. Creating
+        // an oriented full-size PNG here would redundantly decode phone images.
+        if !user_transform {
             return Ok(Some(source));
         }
         let mut hasher = std::collections::hash_map::DefaultHasher::new();

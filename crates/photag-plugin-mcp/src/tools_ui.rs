@@ -22,12 +22,11 @@ impl PhoTagMcpServer {
         description = "Read Settings, language, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
     )]
     fn get_ui_state(&self) -> String {
-        json!({
-            "library_refresh": self.navigation.library_refresh().map(|state| json!({"running":state.running,"total_folders":state.total_folders,"completed_folders":state.completed_folders,"failures":state.failures})),
-            "folder_picker": {"pending": self.navigation.folder_picker_pending(), "native_open": self.navigation.folder_picker_window().is_some()},
-            "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
-            "tools_open": self.surfaces.is_open("tools"),
-            "gallery": self.gallery.ui_snapshot().map(|state| json!({
+        let gallery = self.gallery.ui_snapshot().map(|state| {
+            let statistics = json!({"state":state.dialog_reads.statistics_state,"error":state.dialog_reads.statistics_error,"photos":state.dialog_reads.photos,"videos":state.dialog_reads.videos,"audio":state.dialog_reads.audio,"rating_counts":state.dialog_reads.rating_counts});
+                    let bulk = json!({"state":state.dialog_reads.bulk_state,"error":state.dialog_reads.bulk_error,"count":state.dialog_reads.bulk_count,"preview_ids":state.dialog_reads.bulk_preview_ids});
+                    let dialog_reads = json!({"statistics":statistics,"bulk":bulk});
+                    json!({
                 "browsing": state.browsing, "current_directory": state.current_directory, "parent_directory": state.parent_directory,
                 "directories": state.directories.iter().map(|f| json!({"name":f.name,"path":f.path})).collect::<Vec<_>>(),
                 "selected_directory": state.selected_directory, "directory_error": state.directory_error,
@@ -45,8 +44,17 @@ impl PhoTagMcpServer {
                 "inspector_sections": state.inspector_sections,
                 "bulk_action": state.bulk_action, "bulk_source": state.bulk_source,
                 "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
+                "dialog_reads": dialog_reads,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
-            })),
+            })});
+        json!({
+            "input_activity": self.capture.input_snapshot(),
+            "window_status": crate::screenshot::window_status(self.capture.get()),
+            "library_refresh": self.navigation.library_refresh().map(|state| json!({"running":state.running,"total_folders":state.total_folders,"completed_folders":state.completed_folders,"failures":state.failures})),
+            "folder_picker": {"pending": self.navigation.folder_picker_pending(), "native_open": self.navigation.folder_picker_window().is_some()},
+            "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
+            "tools_open": self.surfaces.is_open("tools"),
+            "gallery": gallery,
             "panels": (["settings", "preview", "playback"].iter().map(|id| json!({"id":id,"open":self.surfaces.is_open(&format!("panel.{id}")),"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>()),
             "open_panel_ids": self.surfaces.open_panel_ids(),
             "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| json!({"id":id,"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>(),
@@ -59,6 +67,7 @@ impl PhoTagMcpServer {
             "update_available": self.surfaces.is_open("settings.update-available"),
             "update_offer_open": self.surfaces.is_open("settings.update-offer"),
             "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
+            "settings_tag_choices": self.surfaces.value("settings.tag-choices").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
             "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
             "inspector_tab": self.surfaces.value("gallery.inspector.tab").unwrap_or_else(|| "information".into()),
             "sidebar_width": self.surfaces.value("shell.sidebar-width").and_then(|value| value.parse::<f32>().ok()),
@@ -95,6 +104,20 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "window_restore" => {
+                return match crate::screenshot::restore_test_window(self.capture.get()) {
+                    Ok(()) => json!({"restored":true}).to_string(),
+                    Err(error) => error_json(&error),
+                };
+            }
+            "accessibility_activate" => {
+                return match crate::screenshot::activate_accessibility(self.capture.get()) {
+                    Ok(provider) => {
+                        json!({"requested":true,"provider_response":provider}).to_string()
+                    }
+                    Err(error) => error_json(&error),
+                };
+            }
             "panel_open" | "panel_close" => {
                 let Ok(bridge) = self
                     .context

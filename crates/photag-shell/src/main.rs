@@ -552,86 +552,68 @@ fn main() {
                 tracing::error!("inspector initialization failed: {error}");
             }
             cx.new(|cx| {
-                cx.spawn(async move |this, cx| {
-                    let mut revision = photag_ui_bridge::i18n::revision();
-                    loop {
-                        cx.background_executor()
-                            .timer(std::time::Duration::from_millis(100))
-                            .await;
-                        let next = photag_ui_bridge::i18n::revision();
-                        if next != revision {
-                            revision = next;
-                            if this
-                                .update(cx, |shell: &mut PhoTagShell, cx| {
-                                    if let Ok(i18n) = shell
-                                        .cordis
-                                        .try_service::<photag_plugin_i18n::I18nService>()
-                                    {
-                                        gpui_kit::component::set_locale(i18n.language().code());
-                                    }
-                                    cx.refresh_windows();
-                                })
-                                .is_err()
+                let mut locale =
+                    photag_ui_bridge::refresh::ChangeGate::new(photag_ui_bridge::i18n::revision());
+                photag_ui_bridge::refresh::poll(
+                    cx,
+                    std::time::Duration::from_millis(100),
+                    move |shell: &mut PhoTagShell, cx| {
+                        let mut changed = locale.changed(photag_ui_bridge::i18n::revision());
+                        if changed {
+                            if let Ok(i18n) = shell
+                                .cordis
+                                .try_service::<photag_plugin_i18n::I18nService>()
                             {
-                                break;
+                                gpui_kit::component::set_locale(i18n.language().code());
                             }
+                            cx.refresh_windows();
                         }
-                        if this
-                            .update(cx, |shell: &mut PhoTagShell, cx| {
-                                shell.poll_panel_requests(cx);
-                                let registered = shell
-                                    .view_catalog
-                                    .snapshot()
-                                    .unwrap_or_default()
-                                    .into_iter()
-                                    .filter(|entry| entry.contribution.slot != "settings.language")
-                                    .map(|entry| (entry.contribution.id, entry.generation))
-                                    .collect::<Vec<_>>();
-                                if registered
-                                    != shell
-                                        .views
-                                        .iter()
-                                        .map(|(id, generation, _, _, _)| (id.clone(), *generation))
-                                        .collect::<Vec<_>>()
-                                {
-                                    cx.notify();
-                                }
-
-                                let panels = (
-                                    shell.surfaces.any_panel_open(),
-                                    shell.surfaces.value("panel.active"),
-                                );
-                                if panels != shell.panel_signature {
-                                    shell.panel_signature = panels;
-                                    cx.notify();
-                                }
-                                let tools = shell.surfaces.is_open("tools");
-                                let sidebar = shell.surfaces.value("sidebar.visible").as_deref()
-                                    != Some("false");
-                                if sidebar != shell.sidebar_open {
-                                    shell.sidebar_open = sidebar;
-                                    cx.notify();
-                                }
-                                if tools != shell.tools_open {
-                                    shell.tools_open = tools;
-                                    cx.notify();
-                                }
-                                let next = shell.surfaces.is_open("inspector");
-                                if next != shell.inspector_open {
-                                    shell.inspector_open = next;
-                                    cx.notify();
-                                }
-                            })
-                            .is_err()
+                        shell.poll_panel_requests(cx);
+                        let registered = shell
+                            .view_catalog
+                            .snapshot()
+                            .unwrap_or_default()
+                            .into_iter()
+                            .filter(|entry| entry.contribution.slot != "settings.language")
+                            .map(|entry| (entry.contribution.id, entry.generation))
+                            .collect::<Vec<_>>();
+                        if registered
+                            != shell
+                                .views
+                                .iter()
+                                .map(|(id, generation, _, _, _)| (id.clone(), *generation))
+                                .collect::<Vec<_>>()
                         {
-                            break;
+                            changed = true;
                         }
-                        if this.upgrade().is_none() {
-                            break;
+
+                        let panels = (
+                            shell.surfaces.any_panel_open(),
+                            shell.surfaces.value("panel.active"),
+                        );
+                        if panels != shell.panel_signature {
+                            shell.panel_signature = panels;
+                            changed = true;
                         }
-                    }
-                })
-                .detach();
+                        let tools = shell.surfaces.is_open("tools");
+                        let sidebar =
+                            shell.surfaces.value("sidebar.visible").as_deref() != Some("false");
+                        if sidebar != shell.sidebar_open {
+                            shell.sidebar_open = sidebar;
+                            changed = true;
+                        }
+                        if tools != shell.tools_open {
+                            shell.tools_open = tools;
+                            changed = true;
+                        }
+                        let next = shell.surfaces.is_open("inspector");
+                        if next != shell.inspector_open {
+                            shell.inspector_open = next;
+                            changed = true;
+                        }
+                        changed.into()
+                    },
+                );
                 PhoTagShell {
                     catalog,
                     views: mounted_views,

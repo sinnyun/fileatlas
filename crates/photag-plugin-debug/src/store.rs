@@ -36,6 +36,8 @@ pub struct Filter {
     pub page_size: usize,
     /// Freeze at a sequence number while inspecting older pages.
     pub through_id: Option<u64>,
+    /// Hide routine DEBUG/TRACE accessibility repaint telemetry in the drawer.
+    pub hide_ui_refresh: bool,
 }
 #[derive(Serialize)]
 pub struct Page {
@@ -59,6 +61,8 @@ pub struct DebugService {
     capacity: usize,
     buffer: Mutex<Buffer>,
     revision: AtomicU64,
+    content_revision: AtomicU64,
+    ui_revision: AtomicU64,
     ui: Mutex<UiState>,
 }
 impl cordis::Service for DebugService {
@@ -80,11 +84,26 @@ impl DebugService {
                 evicted: 0,
             }),
             revision: AtomicU64::new(0),
+            content_revision: AtomicU64::new(0),
+            ui_revision: AtomicU64::new(0),
             ui: Mutex::new(UiState::default()),
         }
     }
     pub fn revision(&self) -> u64 {
         self.revision.load(Ordering::Relaxed)
+    }
+    /// Collection and presentation have different clocks: renderer telemetry
+    /// remains queryable, but must not cause another render that logs itself.
+    pub fn view_revision(&self, panel: bool) -> (u64, u64) {
+        let ui = self.ui_state();
+        (
+            self.ui_revision.load(Ordering::Relaxed),
+            if panel && ui.open && ui.filter.through_id.is_none() {
+                self.content_revision.load(Ordering::Relaxed)
+            } else {
+                0
+            },
+        )
     }
     pub fn record(
         &self,
@@ -118,6 +137,11 @@ impl DebugService {
             thread: format!("{:?}", std::thread::current().id()),
         });
         self.revision.fetch_add(1, Ordering::Relaxed);
+        // GPUI emits this observation after painting the debug drawer itself.
+        // Retain it above, without feeding the drawer's invalidation clock.
+        if !is_ui_refresh(level, target, message) {
+            self.content_revision.fetch_add(1, Ordering::Relaxed);
+        }
     }
     pub fn record_by_id(&self, id: u64) -> Option<Record> {
         self.buffer
@@ -133,6 +157,7 @@ impl DebugService {
         b.records.clear();
         b.evicted = 0;
         self.revision.fetch_add(1, Ordering::Relaxed);
+        self.content_revision.fetch_add(1, Ordering::Relaxed);
     }
     pub fn query(&self, filter: &Filter) -> Page {
         let b = self.buffer.lock().unwrap_or_else(|e| e.into_inner());
@@ -142,7 +167,8 @@ impl DebugService {
             .iter()
             .rev()
             .filter(|r| {
-                filter.through_id.is_none_or(|id| r.id <= id)
+                (!filter.hide_ui_refresh || !is_ui_refresh(&r.level, &r.target, &r.message))
+                    && filter.through_id.is_none_or(|id| r.id <= id)
                     && (filter.category.is_empty() || r.category == filter.category)
                     && (filter.level.is_empty() || r.level.eq_ignore_ascii_case(&filter.level))
                     && (search.is_empty()
@@ -175,6 +201,9 @@ impl DebugService {
             categories: b
                 .records
                 .iter()
+                .filter(|r| {
+                    !filter.hide_ui_refresh || !is_ui_refresh(&r.level, &r.target, &r.message)
+                })
                 .map(|r| r.category.clone())
                 .collect::<BTreeSet<_>>()
                 .into_iter()
@@ -182,6 +211,12 @@ impl DebugService {
         }
     }
 }
+fn is_ui_refresh(level: &str, target: &str, message: &str) -> bool {
+    matches!(level, "DEBUG" | "TRACE")
+        && target == "gpui::window"
+        && message.contains("Sending a11y tree update:")
+}
+
 pub(crate) fn bounded(text: &str) -> String {
     if text.len() <= MAX_TEXT {
         return text.into();
@@ -282,11 +317,23 @@ mod tests {
     }
 }
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Serialize)]
 pub struct UiState {
     pub open: bool,
     pub filter: Filter,
     pub selected: Option<u64>,
+}
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            open: false,
+            selected: None,
+            filter: Filter {
+                hide_ui_refresh: true,
+                ..Default::default()
+            },
+        }
+    }
 }
 impl DebugService {
     pub fn ui_state(&self) -> UiState {
@@ -348,6 +395,7 @@ impl DebugService {
             ui.selected = None;
         }
         self.revision.fetch_add(1, Ordering::Relaxed);
+        self.ui_revision.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
 }
@@ -355,6 +403,152 @@ impl DebugService {
 #[cfg(test)]
 mod ui_tests {
     use super::*;
+    #[test]
+    fn rendering_observations_are_retained_without_driving_more_renders() {
+        let s = DebugService::new(100);
+        s.control("open", "").unwrap();
+        let drawer = s.view_revision(true);
+        let button = s.view_revision(false);
+        let collection = s.revision();
+        for _ in 0..10 {
+            s.record(
+                "DEBUG",
+                "gpui::window",
+                "event",
+                "message=Sending a11y tree update: 65 nodes",
+                None,
+                None,
+                None,
+            );
+        }
+        assert_eq!(s.query(&Filter::default()).total, 10);
+        assert!(s.revision() > collection);
+        assert_eq!(s.view_revision(true), drawer);
+        assert_eq!(s.view_revision(false), button);
+        s.record(
+            "ERROR",
+            "gpui::window",
+            "event",
+            "render failed",
+            None,
+            None,
+            None,
+        );
+        assert_ne!(s.view_revision(true), drawer);
+        assert_eq!(s.view_revision(false), button);
+        s.control("pause", "").unwrap();
+        let paused = s.view_revision(true);
+        s.record(
+            "INFO",
+            "photag_plugin_preview",
+            "event",
+            "decoded",
+            None,
+            None,
+            None,
+        );
+        assert_eq!(s.view_revision(true), paused);
+        s.control("close", "").unwrap();
+        let hidden = s.view_revision(true);
+        s.record(
+            "INFO",
+            "photag_plugin_database",
+            "read",
+            "completed",
+            None,
+            None,
+            None,
+        );
+        assert_eq!(s.view_revision(true), hidden);
+    }
+    #[test]
+    fn drawer_hides_only_repaint_telemetry_before_filtering_and_paging() {
+        let s = DebugService::new(100);
+        for _ in 0..12 {
+            s.record(
+                "DEBUG",
+                "gpui::window",
+                "event",
+                "Sending a11y tree update: 65 nodes",
+                None,
+                None,
+                None,
+            );
+        }
+        s.record(
+            "WARN",
+            "gpui::window",
+            "event",
+            "Sending a11y tree update: failed",
+            None,
+            None,
+            None,
+        );
+        s.record(
+            "ERROR",
+            "gpui::window",
+            "event",
+            "render failed",
+            None,
+            None,
+            None,
+        );
+        s.record(
+            "DEBUG",
+            "photag_plugin_database",
+            "read",
+            "Sending a11y tree update: caller text",
+            Some(1.0),
+            None,
+            None,
+        );
+        s.record(
+            "INFO",
+            "photag_plugin_gallery",
+            "select",
+            "selected",
+            None,
+            None,
+            None,
+        );
+        let mut filter = s.ui_state().filter;
+        assert!(filter.hide_ui_refresh);
+        filter.page_size = 2;
+        let first = s.query(&filter);
+        assert_eq!(
+            (
+                first.total,
+                first.pages,
+                first.records.len(),
+                first.retained
+            ),
+            (4, 2, 2, 16)
+        );
+        filter.page = 1;
+        assert!(
+            s.query(&filter)
+                .records
+                .iter()
+                .all(|r| matches!(r.level.as_str(), "WARN" | "ERROR"))
+        );
+        filter.search = "65 nodes".into();
+        assert_eq!(s.query(&filter).total, 0);
+        assert_eq!(s.query(&Filter::default()).total, 16);
+        assert!(s.record_by_id(1).is_some());
+        s.clear();
+        s.record(
+            "TRACE",
+            "gpui::window",
+            "event",
+            "Sending a11y tree update: 4 nodes",
+            None,
+            None,
+            None,
+        );
+        assert!(s.query(&s.ui_state().filter).categories.is_empty());
+        assert_eq!(s.query(&Filter::default()).categories, vec!["gpui"]);
+    }
+
     #[test]
     fn historical_pages_freeze_view_without_stopping_collection() {
         let s = DebugService::new(100);

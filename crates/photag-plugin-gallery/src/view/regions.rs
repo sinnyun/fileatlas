@@ -540,8 +540,13 @@ impl GalleryView {
             );
         }
         if let Some(media_id) = self.media_actions_id {
-            match self.service.media_by_id(media_id) {
-                Ok(Some(media)) => {
+            match self
+                .media_actions_item
+                .as_ref()
+                .filter(|(id, _)| *id == media_id)
+                .map(|(_, media)| media)
+            {
+                Some(media) => {
                     root = root.child(
                         div()
                             .absolute()
@@ -553,11 +558,7 @@ impl GalleryView {
                             .child(card_menu::render_requested(&media, cx)),
                     );
                 }
-                Ok(None) => self.media_actions_id = None,
-                Err(error) => {
-                    self.operation_status = Some(error.to_string());
-                    self.media_actions_id = None;
-                }
+                None => self.media_actions_id = None,
             }
         }
         root = self.selection_details(root, cx);

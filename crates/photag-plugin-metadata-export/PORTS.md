@@ -104,3 +104,7 @@ Reference07 real success12records and filesystemdirectory failure(os5) rendered 
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+## Shared refresh ownership (2026-10-15)
+
+Export panel reports status/visibility changes to UI Bridge refresh::poll, preserving existing loading/success/error and opening behavior. No per-tick notify while status is unchanged.

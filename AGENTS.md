@@ -195,3 +195,20 @@ identity, startup dependencies, input/output payloads, event producers and
 consumers, current limits, and where to inspect failures. Keep it aligned with
 actual public Rust signatures; it is an integration/debug guide, not a claim
 that all behavior is complete.
+
+## UI refresh and passive read ownership (2026-10-15)
+
+- All GPUI timer-driven model/view polling uses `photag_ui_bridge::refresh::poll`.
+  Return `PollResult` with actual changes; a timer wake, empty receiver, or an
+  operation merely remaining active is not a reason to notify. Finite workers
+  use `PollResult::until(changed, active)` so completion stops the timer.
+- Use `refresh::ChangeGate` for passive state signatures/duplicate pointer input.
+  Playback keys include changing positions/frames; settled animations return idle.
+- Passive DB/filesystem/metadata reads use `read_model::ReadModel` with explicit
+  identity/revision keys. Cache failures, coalesce requests, discard stale results.
+  Render may declare a nonblocking request and read its snapshot; it must not
+  execute IO or log/notify repeatedly. Pollers deliver read completions.
+- Preserve event/action semantics and fresh action-time target validation.
+  Do not hide logs to disguise repeated work. New/changed flows require same-process
+  MCP quiet-state and real-change checks. Run `node scripts/check-ui-refresh.cjs`.
+- Contract and examples: `docs/ui-refresh-contract.md`.

@@ -38,6 +38,14 @@ jobs:
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
 
+      - name: Set up Node for architecture checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enforce shared UI polling
+        run: node scripts/check-ui-refresh.cjs
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 

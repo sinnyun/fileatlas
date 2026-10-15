@@ -13,6 +13,7 @@ use rusqlite::Connection;
 
 /// PhoTag database service available to scanner and feature plugins.
 pub struct DatabaseService {
+    write_revision: std::sync::atomic::AtomicU64,
     writer: Mutex<Connection>,
     reader: Mutex<Connection>,
     path: PathBuf,
@@ -29,6 +30,7 @@ impl DatabaseService {
         let writer = db::open_db()?;
         let reader = db::open_read_conn()?;
         Ok(Self {
+            write_revision: std::sync::atomic::AtomicU64::new(0),
             writer: Mutex::new(writer),
             reader: Mutex::new(reader),
             path: default_database_path(),
@@ -46,6 +48,7 @@ impl DatabaseService {
         let writer = db::open_db_at(&path)?;
         let reader = db::open_read_conn_at(&path)?;
         Ok(Self {
+            write_revision: std::sync::atomic::AtomicU64::new(0),
             writer: Mutex::new(writer),
             reader: Mutex::new(reader),
             path,
@@ -55,6 +58,13 @@ impl DatabaseService {
     /// Return the on-disk database path.
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// Memory-only invalidation clock. Conservative: every writer closure may
+    /// have changed rows, including one returning an error after partial work.
+    pub fn write_revision(&self) -> u64 {
+        self.write_revision
+            .load(std::sync::atomic::Ordering::Acquire)
     }
 
     /// Run a short read-only SQL operation on the independent UI/read
@@ -81,7 +91,10 @@ impl DatabaseService {
         let span = tracing::info_span!("with_writer",caller=%std::panic::Location::caller());
         let _entered = span.enter();
         let connection = lock(&self.writer)?;
-        operation(&connection)
+        let result = operation(&connection);
+        self.write_revision
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+        result
             .map_err(DatabaseAccessError::Sql)
             .inspect_err(|error| tracing::error!(%error,"database operation failed"))
     }
@@ -190,6 +203,7 @@ mod tests {
                 .as_nanos()
         ));
         let database = DatabaseService::open_at(&path).unwrap();
+        assert_eq!(database.write_revision(), 0);
         let columns = database
             .with_reader(|connection| {
                 let mut statement = connection.prepare("PRAGMA table_info(media)")?;
@@ -200,11 +214,27 @@ mod tests {
             .unwrap();
         assert!(columns.iter().any(|column| column == "micro_thumb"));
         assert!(columns.iter().any(|column| column == "rating"));
+        assert_eq!(
+            database.write_revision(),
+            0,
+            "reads must not invalidate caches"
+        );
 
         let folder = database
             .with_writer(|connection| db::queries::add_folder(connection, "D:/PhoTag-test"))
             .unwrap();
         assert_eq!(folder.path, "D:/PhoTag-test");
+        assert_eq!(database.write_revision(), 1);
+        let failed: Result<(), _> = database.with_writer(|connection| {
+            db::queries::create_tag(connection, "partial-write", None)?;
+            Err(rusqlite::Error::InvalidQuery)
+        });
+        assert!(failed.is_err());
+        assert_eq!(
+            database.write_revision(),
+            2,
+            "partial writes must invalidate too"
+        );
 
         drop(database);
         let _ = std::fs::remove_file(path);

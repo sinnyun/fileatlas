@@ -290,3 +290,71 @@ See grouping PORTS and isolated Windows MCP validation for evidence and scale/fi
 | User-requested new diagnostic drawer (no upstream counterpart) | photag-plugin-debug + two UI bridge slots + same-process MCP tools | Bounded memory, filtering/pagination, no persistent DB/profile changes |
 
 Backend trace checked pinned DB mod.rs, migrated database wrappers and callers; operation/data semantics are unchanged. Full per-instruction/native/OS tracing and crash persistence are outside this feature; captured records represent actual emitted events and instrumented boundaries.
+
+## Preview latency and idle redraw follow-up (2026-10-15)
+
+| Pinned behavior / boundary | Current mapping | Compatibility |
+|---|---|---|
+| `vendor/photag-source/src/ui/preview.rs` Fast→Full priorities and immediate gallery texture, `gallery.rs::decode_jpeg_scaled/load_full_image_to` DCT-scaled JPEG and orientation | `PreviewService::open_indexed_media`, `view/image_stage.rs`, `scaled_decode.rs`, prioritized two-worker queue | Gallery thumbnail appears while progressive/native full data load; fast images stay until full is ready. JPEG color-space fallback and EXIF orientation remain. GPUI applies EXIF on original assets, avoiding a redundant oriented PNG; user transforms still compose after EXIF. |
+| Source animation stops requesting frames once settled; AI updates reflect worker transitions | `chrome::advance_wheel_animation`, `AiSuggestionsView::poll -> bool` | Settled/unchanged polls stop revision changes, writes and redraws; analysis requests/results remain functional. |
+| New diagnostic drawer observes renderer events | `DebugService::view_revision` separates observation collection from redraw scheduling | Accessibility records remain complete; they cannot recursively drive the drawer's own paint. Application errors and domain actions still update live. |
+
+First/full paint markers and MCP state measure displayed image readiness separately
+from open-handler spans. Targeted development-profile optimization of image,
+JPEG decoders and GPUI pixel conversion does not alter schema or media files.
+
+## Full live idle regression follow-up (2026-10-15)
+
+| Pinned behavior | Current mapping | Compatibility / intentional difference |
+|---|---|---|
+| `main.rs:2343` Shortcuts and `main.rs:2465` AI groups flatten the already-loaded `AppState.tag_tree` | Settings `tag_choices` background model shared by both pages; Navigation tag revision and MediaIndexChanged invalidation | Same tag IDs/names/hierarchy and F1–F9/group actions; avoid querying the complete navigation model during paint. |
+| `main.rs:1698` Statistics invokes original `get_statistics`; `db/queries.rs::get_statistics` defines metrics | Gallery StatisticsRead on the model poller, keyed by index/writer revisions | Existing metrics/audio adaptation retained; load on open/change, not on paint. |
+| `main.rs::show_bulk_action_modal`, `app.rs:1601::bulk_action_matching_ids` | Stable raw-input keyed bulk preview and existing fresh action-time revalidation | CurrentSelection still skips filters; same dates/extensions/rating/size predicates and target-change delete confirmation. Relative dates are computed for the request, not for every paint. |
+| `db/mod.rs` separate WAL reader/writer connections | DatabaseService adds atomic writer revision after closure completion, also on errors | No SQL/schema/query/result/order change. Conservative memory-only invalidation covers direct mutations and possible partial writes. |
+| `ui/preview.rs` mouse activity shows controls, then finite idle fade | Preview coalesces identical coordinates at stage/root and ignores zero-distance pan | Real input still wakes controls; stationary platform observations cannot perpetually reset fade. |
+| `ui/gallery.rs` / existing Inspector EXIF fields for selected media | Gallery keyed EXIF read model resolves the path and reads fields off-thread, then projects cached results | Existing field parsing/error messages retained; cache checked before any work and invalidated by identity/data changes. |
+
+Source audit alone missed the Settings/Statistics/Bulk render-time reads; the
+same-process MCP matrix reproduced their logging feedback loops before fixing
+them. See the full idle validation evidence for actual observed coverage and
+remaining OS/codec/update-install boundaries.
+
+### Shared refresh implementation (2026-10-15)
+
+Pinned `src/ui/preview.rs`/`src/ui/info.rs` metadata and tag presentation, Gallery
+selection/drag paths, scan progress and transport state keep their existing
+service/query semantics. The GPUI implementations now reuse UI Bridge
+`refresh::{poll,ChangeGate,PollResult}` and `read_model::ReadModel`, rather than
+per-feature timer/receiver/async-completion templates. Rendering can declare a
+nonblocking demand; work executes off-thread and model pollers deliver results.
+All existing GPUI timers share notification/lifetime handling. SQL schema,
+command-time revalidation, Cordis events and file mutation order are unchanged.
+See docs/ui-refresh-contract.md for keys, errors and future caller requirements.
+
+### Measured preview decode stages (2026-10-15)
+
+Pinned `ui/gallery.rs:183::decode_jpeg_scaled` reads encoded bytes before DCT
+scaling; the current path retains that decoder, fallback, orientation and aspect
+semantics while recording each stage. Generic decode now uses the same
+extension-selected ImageReader decoder/orientation against a compressed-memory
+buffer to separate file read from decoding. PNG/BMP/TIFF/WebP pixel-equivalence
+regressions compare the old open_oriented path; JPEG scaling and missing/corrupt
+failures are tested. The two-worker queue, urgent ordering, cache freshness and
+publication semantics remain; only failed temporary artifacts gain cleanup.
+Per-file job/paint timing contracts and cache-hit/skipped-stage limits are in
+Preview PORTS. No SQL or normal user media mutation is introduced.
+### Preview decode optimization mapping (2026-10-15)
+
+Pinned `src/ui/preview.rs:809-896` explicitly sources filmstrip images from
+Gallery's `TextureManager::get_or_load`; the GPUI equivalent now carries
+database thumb_path through public `FilmstripMedia` to Preview and validates
+freshness in its existing workers. Missing/stale paths retain 96px fallback.
+Source's immediate thumbnail/full-image behavior is retained; the GPUI-only
+unconditional 1600px intermediate is intentionally limited to pending JPEGs
+after 150ms, whose existing DCT-scaled decoder can avoid a complete decode.
+PNG full decode is no longer duplicated for an intermediate image. Request
+generations own cancellation, and failure is terminal for that generation's
+progressive attempt. Cargo dev overrides optimize png0.18.1 and its DEFLATE/
+checksum dependencies without dependency upgrades or release-profile changes.
+No DB schema, source bytes or metadata semantics change. See Preview PORTS and
+the measured optimization report for tests and remaining codec boundaries.

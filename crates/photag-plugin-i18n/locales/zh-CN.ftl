@@ -420,6 +420,7 @@ msg-cd2057f0131f = 图像尺寸
 msg-4bab2d8fe13f = 更多
 msg-f76f1c1c6596 = 未选择文件
 msg-bf187fac9a53 = 所选媒体已从索引中移除。
+msg-4cbe8a957132 = 正在加载文件信息…
 msg-ce3f61b04a90 = 添加包含照片和视频的文件夹以开始浏览
 msg-03eb1a44337c = 添加文件夹
 msg-cd0af6cfca75 = 没有匹配项
