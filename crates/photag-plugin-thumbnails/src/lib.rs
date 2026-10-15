@@ -5,11 +5,13 @@ use std::sync::Arc;
 
 use cordis::{Context, Plugin, Service};
 
+mod budget;
 pub mod thumbs;
 
 /// Shared thumbnail generation service available to feature plugins.
 pub struct ThumbnailService {
     directory: PathBuf,
+    accesses: std::sync::atomic::AtomicUsize,
 }
 
 impl Service for ThumbnailService {
@@ -21,7 +23,10 @@ impl ThumbnailService {
     pub fn open_at(directory: impl Into<PathBuf>) -> std::io::Result<Self> {
         let directory = directory.into();
         std::fs::create_dir_all(&directory)?;
-        Ok(Self { directory })
+        Ok(Self {
+            directory,
+            accesses: Default::default(),
+        })
     }
 
     /// Directory holding PhoTag's path-hash named JPEG thumbnail cache.
@@ -36,7 +41,20 @@ impl ThumbnailService {
         &self,
         source: impl AsRef<Path>,
     ) -> Option<(String, u32, u32, Option<Vec<u8>>)> {
-        thumbs::generate_thumbnail_with_dims(source.as_ref(), &self.directory)
+        let result = thumbs::generate_thumbnail_with_dims(source.as_ref(), &self.directory);
+        self.maintain_cache(result.as_ref().map(|v| v.0.as_str()));
+        result
+    }
+    /// Called on the requesting worker after image or video thumbnail demand.
+    pub fn maintain_cache(&self, protected: Option<&str>) {
+        if self
+            .accesses
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            % 256
+            == 255
+        {
+            budget::prune(&self.directory, protected);
+        }
     }
 }
 
@@ -111,7 +129,7 @@ mod tests {
         ImageBuffer::from_pixel(48, 24, Rgb([24u8, 120, 220]))
             .save(&source)
             .unwrap();
-        let service = ThumbnailService { directory: cache };
+        let service = ThumbnailService::open_at(cache).unwrap();
 
         let first = service.generate_image(&source).unwrap();
         assert_eq!((first.1, first.2), (48, 24));
@@ -119,8 +137,14 @@ mod tests {
         assert!(first.3.is_some());
 
         let cached = service.generate_image(&source).unwrap();
-        assert_eq!((cached.1, cached.2), (0, 0));
+        assert_eq!((cached.1, cached.2), (48, 24));
         assert!(cached.3.is_some());
+        ImageBuffer::from_pixel(64, 32, Rgb([220u8, 60, 20]))
+            .save(&source)
+            .unwrap();
+        let replaced = service.generate_image(&source).unwrap();
+        assert_ne!(replaced.0, cached.0);
+        assert_eq!((replaced.1, replaced.2), (64, 32));
         let _ = std::fs::remove_dir_all(root);
     }
 
@@ -136,7 +160,7 @@ mod tests {
         ));
         let cache = root.join("cache");
         std::fs::create_dir_all(&cache).unwrap();
-        let service = ThumbnailService { directory: cache };
+        let service = ThumbnailService::open_at(cache).unwrap();
         let pixels = ImageBuffer::from_fn(64, 40, |x, y| {
             Rgb([(x * 3) as u8, (y * 5) as u8, ((x + y) * 2) as u8])
         });

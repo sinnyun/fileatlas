@@ -1,5 +1,7 @@
 # MCP plugin ports / MCP 对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Windows `PrintWindow` capture and live MCP round trips have been exercised with the isolated dev-test profile; see `docs/validation-report.md` for the checked interactions and remaining limits.
 
 ## Cordis lifecycle and dependencies
@@ -210,3 +212,10 @@ Gallery opening route. `get_view_state.preview.image_load.cache_policy` exposes
 the progressive policy, nearby indexed/display thumbnail paths and pending job
 count without file/database reads. `get_debug_info` retains reuse/cancellation
 details in original messages. No new tools or mutation permissions are added.
+
+
+## Browser runtime update — 2026-10-15
+
+Browser diagnostics in get_ui_state.browser: filesystem, show_descendants, worker_active, status tuple (generation,revision,loading,scanned,error). control_gallery adds navigate(value), show_descendants(enabled), thumbnails(enabled), cancel_directory, missing_records, record_candidate(media_id,value), relink_record(media_id), delete_missing_records (two calls confirm), locate_file(media_id), close_dialogs. All UI mutations require the existing opt-in.
+
+`manage_tag_records`: list_missing is read-only; relink(record_id,path) and delete_missing(record_ids,confirm=true) require mutation opt-in. `manage_favorite`: rename(folder_id,name), move(folder_id,delta), mutation opt-in. Mutations use production services and publish normal reload events. Scripts validate-browser-mcp.cjs / validate-browser-extended.cjs / validate-browser-restart.cjs run via photag-mcp-debug.cjs with isolated profiles. No OS input automation or external process attachment is used.

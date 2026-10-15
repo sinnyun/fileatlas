@@ -46,9 +46,16 @@ impl SidebarView {
                 }
             }
         }
-        let expanded_directories = match &snapshot {
-            Ok(snapshot) => restore_expanded_directories(&service, snapshot, &expanded_subdirs),
-            Err(_) => HashMap::new(),
+        let expanded_directories = if service.browser_enabled() {
+            expanded_subdirs
+                .iter()
+                .map(|p| (p.clone(), Vec::new()))
+                .collect()
+        } else {
+            match &snapshot {
+                Ok(snapshot) => restore_expanded_directories(&service, snapshot, &expanded_subdirs),
+                Err(_) => HashMap::new(),
+            }
         };
         Self {
             folder_picker_task: None,
@@ -82,6 +89,12 @@ impl SidebarView {
             scan_failure: None,
             scan_progress: None,
             expanded_directories,
+            pending_directories: if service.browser_enabled() {
+                expanded_subdirs.iter().cloned().collect()
+            } else {
+                Default::default()
+            },
+            directory_read: Default::default(),
             expanded_tags,
             restored_folder_id,
             restored_path,
@@ -105,6 +118,7 @@ impl SidebarView {
             confirm_delete: None,
             delete_clean_parents: false,
             tag_create_open: false,
+            rename_favorite: None,
         }
     }
 }

@@ -5600,6 +5600,7 @@ dependencies = [
  "photag-plugin-session",
  "photag-plugin-settings",
  "photag-plugin-tagging",
+ "photag-plugin-watcher",
  "photag-plugin-thumbnails",
  "photag-ui-bridge",
  "rfd",
@@ -5817,6 +5818,8 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "photag-plugin-database",
+ "photag-plugin-indexing",
+ "photag-plugin-thumbnails",
  "photag-ui-bridge",
  "rusqlite",
  "thiserror 2.0.21",

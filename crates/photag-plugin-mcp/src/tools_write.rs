@@ -24,6 +24,81 @@ impl PhoTagMcpServer {
 #[tool_router(router = write_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
     #[tool(
+        description = "Rename a folder favorite alias (action=rename,name) or reorder it (action=move,delta). Requires mutations enabled. Does not rename local files."
+    )]
+    fn manage_favorite(&self, Parameters(request): Parameters<FavoriteRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let result = match request.action.as_str() {
+            "rename" => self
+                .navigation
+                .rename_favorite(request.folder_id, request.name.as_deref().unwrap_or("")),
+            "move" => self
+                .navigation
+                .move_favorite(request.folder_id, request.delta.unwrap_or(0)),
+            _ => return error_json("unsupported favorite action"),
+        };
+        match result {
+            Ok(()) => {
+                let _ = self
+                    .navigation
+                    .request_ui(photag_plugin_navigation::NavigationUiRequest::CloseModal);
+                json!({"updated":request.folder_id}).to_string()
+            }
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+    #[tool(
+        description = "Inspect missing tagged-file records (action=list_missing); explicitly relink a record (action=relink, record_id,path), or delete missing records (action=delete_missing,record_ids,confirm=true). Mutations require PHOTAG_MCP_ALLOW_MUTATIONS=1. No local file is deleted."
+    )]
+    async fn manage_tag_records(
+        &self,
+        Parameters(request): Parameters<TagRecordRequest>,
+    ) -> String {
+        if request.action != "list_missing" {
+            if let Err(error) = self.mutation_guard() {
+                return error_json(&error);
+            }
+        }
+        let mutating = request.action != "list_missing";
+        let tagging = self.tagging.clone();
+        let outcome = tokio::task::spawn_blocking(move || {
+            let result = match request.action.as_str() {
+                "list_missing" => tagging
+                    .missing_records()
+                    .map(|items| json!({"records":items})),
+                "relink" => match (request.record_id, request.path) {
+                    (Some(id), Some(path)) => tagging
+                        .relink_record(id, &path)
+                        .map(|_| json!({"relinked":id})),
+                    _ => Err("record_id and path are required".into()),
+                },
+                "delete_missing" if request.confirm == Some(true) => tagging
+                    .delete_missing_records(&request.record_ids.unwrap_or_default())
+                    .map(|count| json!({"deleted":count})),
+                _ => Err("Invalid action or missing confirmation".into()),
+            };
+            match result {
+                Ok(value) => value.to_string(),
+                Err(error) => error_json(&error),
+            }
+        })
+        .await
+        .unwrap_or_else(|error| error_json(&error.to_string()));
+        if mutating
+            && serde_json::from_str::<serde_json::Value>(&outcome)
+                .is_ok_and(|v| v.get("error").is_none())
+        {
+            let _ = self
+                .context
+                .emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+                .await;
+        }
+        outcome
+    }
+
+    #[tool(
         description = "将 PhoTag 当前完整元数据备份为源格式 JSON。需要启用修改权限，并要求 confirm=true。"
     )]
     async fn export_metadata(&self, Parameters(request): Parameters<ExportRequest>) -> String {
@@ -495,7 +570,7 @@ impl super::PhoTagMcpServer {
     }
 
     #[tool(
-        description = "重建一个已注册文件夹的索引；会先清理该文件夹现有数据库媒体行，不会删除源文件。调用方必须将 confirm 设为 true；修改工具默认关闭。"
+        description = "刷新收藏目录并打开其浏览视图。浏览模式不清理标签，不递归建立媒体索引。需要 confirm=true 及修改权限。"
     )]
     fn rescan_folder(&self, Parameters(request): Parameters<FolderRequest>) -> String {
         if let Err(error) = self.mutation_guard() {

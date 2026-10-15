@@ -1,6 +1,4 @@
-//! Cordis plugin lifecycle for the gallery: dependency resolution, shared
-//! selection state services, event wiring and UI contribution cleanup.
-
+//! Cordis lifecycle for the gallery, including local browser providers.
 use super::*;
 
 #[derive(Debug, Clone, Default)]
@@ -56,8 +54,16 @@ impl Plugin for GalleryPlugin {
             .ok();
         let runtime = tokio::runtime::Handle::current();
         let mut service = GalleryService::new(database);
+        service.grouping = Some(
+            context
+                .try_service::<photag_plugin_grouping::GroupingService>()
+                .map_err(|e| GalleryPluginError::Dependency(e.to_string()))?,
+        );
         service.indexing = context
             .try_service::<photag_plugin_indexing::IndexingService>()
+            .ok();
+        service.watcher = context
+            .try_service::<photag_plugin_watcher::WatcherService>()
             .ok();
         let service = Arc::new(service);
         let selected_folder = Arc::new(SelectedFolder::default());
@@ -215,6 +221,7 @@ impl Plugin for GalleryPlugin {
                 settings,
                 tagging,
                 Arc::clone(&bridge.surfaces),
+                Arc::clone(&bridge.views),
             ),
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;

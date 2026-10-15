@@ -358,3 +358,22 @@ progressive attempt. Cargo dev overrides optimize png0.18.1 and its DEFLATE/
 checksum dependencies without dependency upgrades or release-profile changes.
 No DB schema, source bytes or metadata semantics change. See Preview PORTS and
 the measured optimization report for tests and remaining codec boundaries.
+
+
+## Browser-mode replacement mapping — 2026-10-15
+
+The user explicitly replaced indexed-library product semantics and excluded old data migration. The legacy source module remains the reference for retained tag hierarchy, queries, metadata writers and file operation behavior. Browser runtime uses a new photag-tags.db and leaves photag.db untouched.
+
+| Original behavior / source entry | Current public boundary | Intentional difference |
+|---|---|---|
+| vendor/photag-source/src/db/queries.rs + scan.rs, registered-folder indexed media | DatabaseService::open_browser_at; GalleryService::load_grouped; gallery/live.rs | Real local read_dir + versioned session SQLite cache; ordinary browse never persists inventory. |
+| source folder add/rescan/remove in state/mod.rs, ui/sidebar.rs | NavigationService::{add_folder,rescan,remove_folder,rename_favorite,move_favorite} | Favorites only; refresh navigates/rereads; removal preserves file associations. |
+| source watcher.rs + startup registered-root scan | WatcherService::{set_browse_directory,retry_browse_watch,poll_and_reconcile} | One current directory subscription; direct by default; no favorite startup scan. File events stat/patch; external disappearance preserves tags. |
+| source thumbnail pipeline thumbs.rs; preview source decoding | IndexingService::visible_thumbnail; ThumbnailService; PreviewService | Keep source decoding/orientation/embedded thumbnail and existing prioritized Preview; demand only visible browse rows, versioned invalidation and independent tag snapshots. |
+| source assign/remove tag queries, xmp.rs | TaggingService::{assign,remove,relink_record,delete_missing_records} | Keep hierarchy/association/IPTC/XMP semantics; assignment captures local snapshot, missing/relink are explicit new operations. |
+| source single/bulk file commands and undo actions | FileOperationsService; HistoryService | Known local moves update associations outside favorites; recycling retains missing tagged records; cache pins protect session history. |
+| source session selected_media_ids | SessionState::selected_file_paths | Persist file identity by canonical path, resolve a fresh cache row after restart. |
+| source global indexed statistics/export/bulk | get_statistics_scoped / export_metadata_scoped / annotated_only | Persistent annotation universe is separate from current visible directory. |
+| Yazi VfsEntries, Refresher, local watcher | vendor/yazi-reference + gallery/live.rs + watcher/{watcher,browser}.rs | MIT-attributed adaptation: bounded batches, latest request, generation, cooperative cancel, fallback and stat patches integrated with Cordis/GPUI; not a replacement runtime. |
+
+Validation evidence and exact limits: docs/validation-ui/2026-10-15-browser/README.md. No automatic external move matching or old library migration is introduced.

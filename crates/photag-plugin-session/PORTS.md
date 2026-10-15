@@ -1,5 +1,7 @@
 # Session plugin ports / 会话数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: the pinned PhoTag `session.json` schema and Cordis service are migrated. Gallery filters, selected media IDs, scroll offset, thumbnail size, and month-group setting restore on view creation and save on selection/filter changes, scroll changes, and view teardown. Navigation restores folder/path selection, expanded directories, and expanded tag IDs. The shell restores and saves the sidebar width. Preview reopens the last image path and restores its transform, zoom, pan, zoom anchor, and information visibility when the path still exists.
 
 ## Lifecycle and storage
@@ -32,3 +34,8 @@ SessionState.inspector_width:f32 is serde(default); zero uses300pt. Existing sid
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+Additive fields: `show_descendants:bool` (false), `thumbnails_disabled:bool` (false), `before_descendants_grouping:Option<String>`, `selected_file_paths:Vec<String>`. Browser selection restoration resolves paths after the directory finishes; old selected_media_ids remain JSON-compatible but are not trusted across browser-cache restarts. Preferences retain the accepted view layout.

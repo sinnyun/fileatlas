@@ -50,7 +50,7 @@ pub enum BulkActionSource {
 impl BulkActionSource {
     pub(crate) fn label(self) -> &'static str {
         match self {
-            Self::WholeLibrary => "Whole library",
+            Self::WholeLibrary => "All tagged files",
             Self::SelectedFolder => "Selected folder",
             Self::SelectedTag => "Selected tag",
             Self::CurrentSelection => "Current selection",
@@ -102,7 +102,9 @@ fn matching_request(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Mat
     }
     let mut query = MediaQuery::default();
     match view.bulk_source {
-        BulkActionSource::WholeLibrary => {}
+        BulkActionSource::WholeLibrary => {
+            query.annotated_only = view.service.browser_enabled();
+        }
         BulkActionSource::SelectedFolder => {
             query.folder_id = view.filter.folder_id;
             query.path_prefix = view.filter.path_prefix.clone();
@@ -111,16 +113,21 @@ fn matching_request(view: &GalleryView, cx: &Context<GalleryView>) -> Result<Mat
                     if snapshot.browser.directory.is_none() {
                         return Err("Select a folder first.".into());
                     }
-                    query.direct_directory = snapshot.browser.directory.clone();
+                    if view.service.show_descendants() {
+                        query.directory_tree = snapshot.browser.directory.clone();
+                    } else {
+                        query.direct_directory = snapshot.browser.directory.clone();
+                    }
                     query.path_prefix = None;
                 }
             }
         }
         BulkActionSource::SelectedTag => {
             let ids = view.filter.selected_tag_ids.clone();
-            if !ids.is_empty() {
-                query.tag_ids = Some(ids);
+            if ids.is_empty() {
+                return Err("Select a tag first.".into());
             }
+            query.tag_ids = Some(ids);
         }
         BulkActionSource::CurrentSelection => unreachable!(),
     }

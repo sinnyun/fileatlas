@@ -12,6 +12,11 @@ impl PreviewView {
     ) -> (AnyElement, f32) {
         let (generation, thumbnail) = self.service.presentation_source();
         let resource: gpui::Resource = path.into();
+        let revision = self.service.file_revision();
+        if self.image_asset_revision != revision {
+            cx.remove_asset::<gpui::ImgResourceLoader>(&resource);
+            self.image_asset_revision = revision;
+        }
         let full = window.use_asset::<gpui::ImgResourceLoader>(&resource, cx);
         let mut failure = None;
         let ready = match full {

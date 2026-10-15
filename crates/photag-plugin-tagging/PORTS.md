@@ -1,5 +1,7 @@
 # Tagging plugin ports / 标签数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: database-backed assignment/association/merge/reparent service and
 source-compatible JPEG IPTC/non-JPEG XMP metadata writeback are available.
 The gallery now provides a searchable hierarchical tag picker for assigning or
@@ -34,3 +36,10 @@ Use stable integer media/tag IDs from the database service. The Gallery and Prev
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+Browser assignment captures current local size/time and image thumbnail before persisting the association. Identification images are copied to **tag-previews/** beside photag-tags.db and referenced by tag_previews, independent of rebuildable browse thumbnails. Existing hierarchy, association and XMP/IPTC writeback/failure queue semantics remain.
+
+`missing_records()->Result<Vec<MediaItem>,String>` lists tagged paths for which metadata returns NotFound, substituting saved identification previews. Permission failures are not missing. `relink_record(i64,&str)` requires a currently missing old path and an explicit regular target; it rejects a target with existing tags or rating, preserves original tags, refreshes path/size/time/thumbnail and schedules writeback. `delete_missing_records(&[i64])->Result<usize,String>` checks again, deletes records only, never a local source file. Errors propagate to Gallery operation feedback/MCP. Camera/editor interoperability remains outside this change.

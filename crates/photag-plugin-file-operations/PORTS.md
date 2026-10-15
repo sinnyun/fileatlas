@@ -1,5 +1,7 @@
 # File operations plugin ports / 文件操作对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: source-compatible single-item and bulk copy/move/delete, rename,
 create-folder, Recycle Bin delete, open, reveal, and database follow-through
 are available. Gallery owns destination dialogs, Delete confirmation, operation
@@ -82,3 +84,8 @@ presentation policy to its caller.
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+Runtime file actions validate local metadata at action time. Known program-initiated move/rename updates the annotation path even outside favorites. Browser rows use owner 0 rather than bookmark ownership. Successful recycling removes live membership and retains annotated records for missing/relink maintenance; recycle failure does not erase records. External moves are not automatically matched. Legacy tests retain source semantics via open_at. Real recycle-bin/native-dialog paths remain explicitly unverified in browser mode.

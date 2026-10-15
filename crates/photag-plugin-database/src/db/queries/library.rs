@@ -58,7 +58,8 @@ pub fn count_media_under_path(conn: &Connection, prefix: &str) -> rusqlite::Resu
 }
 
 pub fn list_folders(conn: &Connection) -> rusqlite::Result<Vec<Folder>> {
-    let mut stmt = conn.prepare("SELECT id, path, last_scan FROM folders ORDER BY path")?;
+    let mut stmt =
+        conn.prepare("SELECT id, path, last_scan FROM folders WHERE path <> '' ORDER BY path")?;
     let rows = stmt.query_map([], |row| {
         let path: String = row.get(1)?;
         let name = std::path::Path::new(&path)
@@ -189,6 +190,7 @@ pub fn get_media(conn: &Connection, query: &MediaQuery) -> rusqlite::Result<Vec<
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params_refs.as_slice(), |row| {
         Ok(MediaItem {
+            missing: false,
             id: row.get(0)?,
             folder_id: row.get(1)?,
             filename: row.get(2)?,

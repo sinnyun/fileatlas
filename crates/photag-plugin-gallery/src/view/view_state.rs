@@ -21,7 +21,7 @@ pub(super) fn build_inputs(
 ) -> GalleryViewInputs {
     let saved = session.snapshot().unwrap_or_default();
     let search = app.new(|cx| {
-        InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search your library"))
+        InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search files"))
     });
     let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
@@ -247,6 +247,8 @@ impl GalleryView {
                     photag_plugin_grouping::GroupingMode::None
                 }
             });
+        service.set_show_descendants(saved.show_descendants);
+        service.set_thumbnails_enabled(!saved.thumbnails_disabled);
         let snapshot = service
             .load_grouped(filter.to_query(), grouping_mode)
             .map_err(|error| error.to_string());
@@ -335,6 +337,14 @@ impl GalleryView {
                 })
                 .unwrap_or(theme::THUMB_SIZE_DEFAULT),
             grouping_mode,
+            before_descendants_grouping: saved
+                .before_descendants_grouping
+                .as_deref()
+                .and_then(photag_plugin_grouping::GroupingMode::parse),
+            restored_file_paths: saved.selected_file_paths.clone(),
+            restore_in_directory: saved.selected_path.is_some()
+                || saved.selected_folder_id.is_some(),
+            selection_restore: Default::default(),
             list_layout: saved.gallery_list_layout,
             show_selection_details: false,
             show_tag_picker: false,
@@ -342,6 +352,13 @@ impl GalleryView {
             media_actions_item: None,
             slider_drag: None,
             show_statistics: false,
+            show_records: false,
+            records_page: 0,
+            record_read_revision: 0,
+            location_picker_pending: false,
+            confirm_delete_missing: false,
+            record_candidates: Default::default(),
+            records_read: Default::default(),
             collapsed_months: photag_plugin_grouping::restore_collapsed(
                 &saved.collapsed_months,
                 grouping_mode,
@@ -362,6 +379,10 @@ impl GalleryView {
             ),
             confirm_delete: false,
             snapshot,
+            snapshot_read: Default::default(),
+            snapshot_generation: 0,
+            visible_demand: None,
+            viewport_read: Default::default(),
             inspector_fallback: None,
             inspector_read: Default::default(),
             selection_details_cache: None,
@@ -402,10 +423,16 @@ impl GalleryView {
     #[tracing::instrument(skip_all)]
     pub(super) fn reload(&mut self) {
         self.persist_filter_session();
-        self.snapshot = self
-            .service
-            .load_grouped(self.filter.to_query(), self.grouping_mode)
-            .map_err(|error| error.to_string());
+        self.snapshot_generation += 1;
+        self.visible_demand = None;
+        self.service.viewport_request.fetch_add(1, Ordering::AcqRel);
+        let service = Arc::clone(&self.service);
+        let query = self.filter.to_query();
+        let mode = self.grouping_mode;
+        self.snapshot_read
+            .request(self.snapshot_generation, move || {
+                service.load_grouped(query, mode).map_err(|e| e.to_string())
+            });
         self.inspector_fallback = None;
         self.inspector_read = Default::default();
         self.selection_details_cache = None;
@@ -430,6 +457,17 @@ impl GalleryView {
         let Ok(mut saved) = self.session.snapshot() else {
             return;
         };
+        saved.before_descendants_grouping =
+            self.before_descendants_grouping.map(|m| m.key().to_owned());
+        saved.show_descendants = self.service.show_descendants();
+        saved.thumbnails_disabled = !self.service.thumbnails_enabled();
+        saved.selected_file_paths = self
+            .service
+            .media_paths_by_ids(&self.selection.selected_media_ids)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|p| p.to_string_lossy().into_owned())
+            .collect();
         saved.search_query = self.filter.search.clone();
         saved.selected_folder_id = self.filter.folder_id;
         saved.selected_path = self.filter.path_prefix.clone();

@@ -143,7 +143,7 @@ async function step(command) {
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
     if (option('--scenario')) {
       await require(path.resolve(root, option('--scenario')))({
-        call, payload, step, delay, request, root, profile, output, exe,
+        call, payload, step, delay, request, root, profile, output, exe, processId: child.pid,
       });
     }
     if (option('--plan')) {

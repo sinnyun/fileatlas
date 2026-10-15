@@ -19,8 +19,14 @@ pub fn find_or_create_tag(conn: &Connection, name: &str) -> Option<i64> {
 }
 
 pub fn export_all_metadata(conn: &Connection) -> rusqlite::Result<Vec<MediaExport>> {
+    export_metadata_scoped(conn, false)
+}
+pub fn export_metadata_scoped(
+    conn: &Connection,
+    annotations: bool,
+) -> rusqlite::Result<Vec<MediaExport>> {
     let mut media_stmt = conn.prepare(
-        "SELECT id, filename, full_path, COALESCE(rating, 0) FROM media ORDER BY full_path",
+        if annotations {"SELECT id,filename,full_path,COALESCE(rating,0) FROM media WHERE COALESCE(rating,0)<>0 OR EXISTS(SELECT 1 FROM media_tags t WHERE t.media_id=media.id) ORDER BY full_path"} else {"SELECT id, filename, full_path, COALESCE(rating, 0) FROM media ORDER BY full_path"},
     )?;
     let mut tag_stmt = conn.prepare(
         "SELECT t.full_path FROM tags t

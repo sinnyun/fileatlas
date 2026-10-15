@@ -720,3 +720,55 @@ msg-ca67bd59cc41 = retained
 msg-48acbb9c630a = evicted
 
 msg-3660315a9af3 = page
+
+msg-da9f7dc827a7 = Folder favorites
+
+msg-7a1f2a83aca9 = Favorites
+
+msg-64a56c42b330 = Show subfolders
+
+msg-6a9084025c4b = Open folder
+
+msg-ca7bd268ffed = Relink missing files
+
+msg-a889f116723b = Choose relink folder
+
+msg-b5fbdfe3a967 = Delete missing records
+
+msg-e215aee886fb = Confirm delete missing records
+
+msg-1648e7fbf0a4 = Missing files
+
+msg-f52edea4c267 = File missing
+
+msg-4674127f8c9e = Choose replacement file
+
+msg-a3cb6bbc41d7 = Apply relink
+
+msg-81ee603f024e = Saved preview
+
+msg-28d03596d24e = Skip
+
+msg-5f4fcbb593b1 = Rename favorite
+
+msg-bd847fc7f3b5 = Move favorite up
+
+msg-592f4c04f234 = Move favorite down
+
+msg-4cf8a251abed = Loading folder…
+
+msg-e39030df977c = Loading cancelled
+
+msg-1b5c49f534aa = Favorite folder
+
+msg-52ea54361a4c = All tagged files
+
+msg-1a5db52359a6 = Current folder
+
+msg-0b915d24c388 = Hide thumbnails
+
+msg-809997f6cb8d = Show thumbnails
+
+msg-179fed85ec50 = Search files
+
+msg-a0840f01f0d5 = Saved annotation file size.

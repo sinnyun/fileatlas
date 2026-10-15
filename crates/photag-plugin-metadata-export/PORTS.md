@@ -1,5 +1,7 @@
 # Metadata export plugin ports / 元数据导出对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: the original all-library database query and JSON serialization are
 available behind a Cordis service. A lifecycle-owned GPUI modal now offers the
 source-compatible native Save File dialog and overwrite confirmation, invokes
@@ -108,3 +110,8 @@ Runtime diagnostics: plugin startup and existing error/diagnostic output now emi
 ## Shared refresh ownership (2026-10-15)
 
 Export panel reports status/visibility changes to UI Bridge refresh::poll, preserving existing loading/success/error and opening behavior. No per-tick notify while status is unchanged.
+
+
+## Browser runtime update — 2026-10-15
+
+Runtime exports tagged/rated file records via `queries::export_metadata_scoped(conn,true)`; ephemeral directory cache rows are excluded. Legacy `export_metadata` remains for source-compatible tests. Favorites and tags retain their existing export representation.

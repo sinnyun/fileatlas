@@ -31,8 +31,26 @@ impl Render for GalleryRegion {
                 .h_flex()
                 .items_center()
                 .gap_1()
+                .child(
+                    Button::new("gallery-open-folder")
+                        .ghost()
+                        .compact()
+                        .icon(theme::icon(gpui_kit::assets::IconName::FolderOpen))
+                        .tooltip(photag_ui_bridge::i18n::tr("Open folder"))
+                        .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
+                )
                 .child(directory_browser::up_button(view, cx))
                 .child(directory_browser::refresh_button(cx))
+                .child(
+                    Button::new("gallery-descendants")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Show subfolders"))
+                        .toggled(view.service.show_descendants())
+                        .on_click(cx.listener(|view, _, _, cx| {
+                            view.set_descendants(!view.service.show_descendants(), cx)
+                        })),
+                )
                 .child(
                     Button::new("gallery-layout-grid")
                         .ghost()
@@ -109,7 +127,7 @@ impl GalleryView {
         }
         self.locale_revision = revision;
         for (input, label) in [
-            (&self.search, "Search your library"),
+            (&self.search, "Search files"),
             (&self.rename_input, "New filename"),
             (&self.tag_picker_search, "Find tags to assign"),
         ] {
@@ -310,6 +328,26 @@ impl GalleryView {
                     .child(error.clone()),
             );
         }
+        let directory_status = self.service.directory_status();
+        if directory_status.2 {
+            row = row
+                .child(gpui_kit::component::spinner::Spinner::new())
+                .child(div().child(format!(
+                    "{}: {}",
+                    photag_ui_bridge::i18n::tr("Loading folder…"),
+                    directory_status.3
+                )))
+                .child(
+                    Button::new("directory-cancel")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Cancel"))
+                        .on_click(cx.listener(|view, _, _, cx| {
+                            view.service.cancel_directory();
+                            cx.notify();
+                        })),
+                );
+        }
         if let Some(progress) = self.service.scan_progress() {
             let fraction = progress.scanned as f32 / progress.total.max(1) as f32;
             row = row
@@ -347,6 +385,37 @@ impl GalleryView {
             .v_flex()
             .gap(px(2.))
             .w_full()
+            .child(
+                tool_button(
+                    "gallery-thumbnails",
+                    if self.service.thumbnails_enabled() {
+                        "Hide thumbnails"
+                    } else {
+                        "Show thumbnails"
+                    },
+                    gpui_kit::assets::IconName::Image,
+                )
+                .on_click(cx.listener(|view, _, _, cx| {
+                    view.service
+                        .set_thumbnails_enabled(!view.service.thumbnails_enabled());
+                    view.refresh_index();
+                    view.persist_filter_session();
+                    cx.notify();
+                })),
+            )
+            .child(
+                tool_button(
+                    "gallery-missing-records",
+                    "Relink missing files",
+                    gpui_kit::assets::IconName::Folder,
+                )
+                .on_click(cx.listener(|view, _, _, cx| {
+                    view.show_records = true;
+                    view.record_read_revision += 1;
+                    view.records_page = 0;
+                    cx.notify();
+                })),
+            )
             .child(
                 tool_button(
                     "gallery-bulk-open",
@@ -416,7 +485,7 @@ impl GalleryView {
             .inset_0()
             .w(window.bounds().size.width)
             .h(window.bounds().size.height);
-        if self.show_statistics || self.bulk_action.is_some() {
+        if self.show_records || self.show_statistics || self.bulk_action.is_some() {
             let showing_statistics = self.show_statistics;
             let width = (f32::from(window.bounds().size.width) - 48.)
                 .min(if self.show_statistics { 800. } else { 860. });
@@ -450,7 +519,9 @@ impl GalleryView {
                                 .text_size(px(theme::FONT_SIZE_BODY))
                                 .font_semibold()
                                 .text_color(rgb(theme::TEXT_PRIMARY))
-                                .child(photag_ui_bridge::i18n::tr(if showing_statistics {
+                                .child(photag_ui_bridge::i18n::tr(if self.show_records {
+                                    "Relink missing files"
+                                } else if showing_statistics {
                                     "Library Statistics"
                                 } else {
                                     "Bulk actions…"
@@ -462,6 +533,7 @@ impl GalleryView {
                                 .compact()
                                 .icon(theme::icon(gpui_kit::assets::IconName::X))
                                 .on_click(cx.listener(|this, _, _, cx| {
+                                    this.show_records = false;
                                     this.show_statistics = false;
                                     this.bulk_action = None;
                                     this.confirm_bulk_action = false;
@@ -472,7 +544,9 @@ impl GalleryView {
                 )
                 .px(px(14.))
                 .pb(px(14.));
-            if self.show_statistics {
+            if self.show_records {
+                card = card.child(records::render(self, cx));
+            } else if self.show_statistics {
                 let stats_height = (height - 102.).max(250.);
                 card = card
                     .child(statistics::render(self, stats_height, cx))

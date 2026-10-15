@@ -1,5 +1,7 @@
 # Indexing plugin ports / 索引数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: Cordis service and original scan workflow are present. Current tests use synthetic fixtures; full media-format and Windows parity remain pending.
 
 ## Lifecycle and dependencies
@@ -35,3 +37,8 @@ Watcher starts one cancellable background refresh over every registered folder u
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics observe tracked production progress streams: phase transitions, errors, scan_id and stream completion with duration_ms, failed and completed flags. Observation still forwards all messages and cleans its active entry even if downstream closes; no fabricated scan result. Stream elapsed includes work/wait, not CPU time.
+
+
+## Browser runtime update — 2026-10-15
+
+Normal startup, folder browsing and favorite clicks do not invoke recursive indexing. `visible_thumbnail(&str,&str)->Option<(String,Option<u32>,Option<u32>,Option<Vec<u8>>)>` reuses the image thumbnail and ffmpeg video poster pipelines for current visible demand. Paths inside the derived thumbnail directory are excluded to prevent cache self-generation. The recursive scan API remains for isolated dev fixtures and legacy regression coverage, not the browser product entry point.

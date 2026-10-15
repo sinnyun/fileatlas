@@ -1,5 +1,7 @@
 # Thumbnail plugin ports / 缩略图数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: original image thumbnail pipeline is wrapped as a service and cache reuse has a synthetic-image regression test. Full format and Windows parity are not established.
 
 ## Lifecycle and dependency
@@ -21,3 +23,8 @@ Indexing calls this service to generate image caches and fills missing thumbnail
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+The derived cache key now includes source path, size and nanosecond modification time. Cached-image hits return original header dimensions instead of zero dimensions. Legacy webp reuse requires a non-older cache file. `generate_image` checks the derived JPEG/webp budget every 256 accesses: retain up to 5000 files and 512 MiB by oldest modification order (not a true access LRU), protect the current result. This maintenance runs on the requesting worker, not GPUI render. Durable tag-previews live separately and are excluded. Video poster demand uses the same versioned naming and cache maintenance budget.

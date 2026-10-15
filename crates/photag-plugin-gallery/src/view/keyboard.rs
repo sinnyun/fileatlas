@@ -16,7 +16,13 @@ impl GalleryView {
         cx: &mut Context<Self>,
     ) {
         let gallery_focused = self.focus_handle.is_focused(window);
+        if self.show_records && event.keystroke.key == "escape" {
+            self.show_records = false;
+            cx.notify();
+            return;
+        }
         if gallery_focused && event.keystroke.key.eq_ignore_ascii_case("f5") {
+            self.service.invalidate_directory();
             self.refresh_index();
             cx.notify();
             return;

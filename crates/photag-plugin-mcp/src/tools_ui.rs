@@ -27,6 +27,7 @@ impl PhoTagMcpServer {
                     let bulk = json!({"state":state.dialog_reads.bulk_state,"error":state.dialog_reads.bulk_error,"count":state.dialog_reads.bulk_count,"preview_ids":state.dialog_reads.bulk_preview_ids});
                     let dialog_reads = json!({"statistics":statistics,"bulk":bulk});
                     json!({
+                "records_open":state.records_open,"records_count":state.records_count,"record_candidates":state.record_candidates,
                 "browsing": state.browsing, "current_directory": state.current_directory, "parent_directory": state.parent_directory,
                 "directories": state.directories.iter().map(|f| json!({"name":f.name,"path":f.path})).collect::<Vec<_>>(),
                 "selected_directory": state.selected_directory, "directory_error": state.directory_error,
@@ -48,6 +49,7 @@ impl PhoTagMcpServer {
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             })});
         json!({
+            "browser": {"filesystem":self.gallery.browser_enabled(), "show_descendants":self.gallery.show_descendants(),"worker_active":self.gallery.directory_worker_active(),"status":self.gallery.directory_status()},
             "input_activity": self.capture.input_snapshot(),
             "window_status": crate::screenshot::window_status(self.capture.get()),
             "library_refresh": self.navigation.library_refresh().map(|state| json!({"running":state.running,"total_folders":state.total_folders,"completed_folders":state.completed_folders,"failures":state.failures})),

@@ -17,10 +17,7 @@ pub(super) fn render(
         .h(px(height));
     match view.statistics_read.value() {
         Some(Ok((stats, audio_count))) => {
-            let total = audio_count
-                .as_ref()
-                .ok()
-                .map(|audio| stats.total_photos + stats.total_videos + *audio);
+            let total = Some(stats.total_files);
             let audio_value = audio_count
                 .as_ref()
                 .map(|count| count.to_string())

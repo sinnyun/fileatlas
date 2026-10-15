@@ -85,6 +85,21 @@ impl HistoryService {
         if stacks.undo.len() > HISTORY_LIMIT {
             stacks.undo.remove(0);
         }
+        let ids = stacks
+            .undo
+            .iter()
+            .chain(stacks.redo.iter())
+            .flat_map(|entry| match entry {
+                UndoEntry::Renamed { media_id, .. } => vec![*media_id],
+                UndoEntry::AssignedTags { media_ids, .. }
+                | UndoEntry::RemovedTags { media_ids, .. }
+                | UndoEntry::ClearedTags { media_ids, .. }
+                | UndoEntry::RatingChanged { media_ids, .. } => media_ids.clone(),
+            })
+            .collect::<Vec<_>>();
+        if let Err(error) = self.database.pin_history(&ids) {
+            tracing::error!(%error,"history cache pin failed");
+        }
     }
 
     /// Capture the exact current assignments before the caller clears tags.

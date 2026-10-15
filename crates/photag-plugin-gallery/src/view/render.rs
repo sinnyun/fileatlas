@@ -7,10 +7,39 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if let Some(request) = self.service.take_ui_request() {
             match request {
+                crate::GalleryUiRequest::LocateFile(id) => self.locate_file(id, cx),
                 crate::GalleryUiRequest::OpenDirectory(path) => self.open_directory(path, cx),
                 crate::GalleryUiRequest::DirectoryUp => self.directory_up(cx),
-                crate::GalleryUiRequest::Refresh => self.refresh_index(),
+                crate::GalleryUiRequest::Refresh => {
+                    self.service.invalidate_directory();
+                    self.refresh_index();
+                }
+                crate::GalleryUiRequest::CancelDirectory => self.service.cancel_directory(),
+                crate::GalleryUiRequest::Thumbnails(value) => {
+                    self.service.set_thumbnails_enabled(value);
+                    self.refresh_index();
+                    self.persist_filter_session();
+                }
+                crate::GalleryUiRequest::ShowDescendants(enabled) => {
+                    self.set_descendants(enabled, cx)
+                }
                 crate::GalleryUiRequest::Layout(list) => self.set_layout(list, cx),
+                crate::GalleryUiRequest::RecordCandidate(id, path) => {
+                    self.record_candidates.insert(id, path);
+                }
+                crate::GalleryUiRequest::RelinkRecord(id) => self.relink_record(id, cx),
+                crate::GalleryUiRequest::DeleteMissingRecords => {
+                    if self.confirm_delete_missing {
+                        self.delete_missing_records(cx)
+                    } else {
+                        self.confirm_delete_missing = true;
+                    }
+                }
+                crate::GalleryUiRequest::MissingRecords => {
+                    self.show_records = true;
+                    self.record_read_revision += 1;
+                    self.records_page = 0;
+                }
                 crate::GalleryUiRequest::Statistics => self.show_statistics = true,
                 crate::GalleryUiRequest::BulkActions => {
                     bulk_actions::reset_inputs(self, window, cx);
@@ -48,6 +77,7 @@ impl Render for GalleryView {
                     self.media_actions_item = None;
                 }
                 crate::GalleryUiRequest::CloseDialogs => {
+                    self.show_records = false;
                     self.show_statistics = false;
                     self.bulk_action = None;
                     self.show_selection_details = false;
@@ -162,6 +192,17 @@ impl Render for GalleryView {
             cx.notify();
         }
         self.service.publish_ui_snapshot(crate::GalleryUiSnapshot {
+            records_open: self.show_records,
+            records_count: self
+                .records_read
+                .value()
+                .and_then(|r| r.as_ref().ok())
+                .map(Vec::len),
+            record_candidates: self
+                .record_candidates
+                .iter()
+                .map(|(id, path)| (*id, path.clone()))
+                .collect(),
             browsing: self.snapshot.as_ref().is_ok_and(|s| s.browser.active),
             directories: self
                 .snapshot
@@ -260,11 +301,25 @@ impl Render for GalleryView {
                     .as_ref()
                     .map(|snapshot| {
                         if snapshot.browser.active {
-                            super::rows::build_browser_rows(
-                                snapshot.browser.directories.len(),
-                                snapshot.skeletons.len(),
-                                columns,
-                            )
+                            if self.grouping_mode == photag_plugin_grouping::GroupingMode::None {
+                                super::rows::build_browser_rows(
+                                    snapshot.browser.directories.len(),
+                                    snapshot.skeletons.len(),
+                                    columns,
+                                )
+                            } else {
+                                let mut rows = super::rows::build_browser_rows(
+                                    snapshot.browser.directories.len(),
+                                    0,
+                                    columns,
+                                );
+                                rows.extend(build_gallery_rows(
+                                    &snapshot.group_labels,
+                                    columns,
+                                    &self.collapsed_months,
+                                ));
+                                rows
+                            }
                         } else {
                             build_gallery_rows(
                                 &snapshot.group_labels,
@@ -415,26 +470,7 @@ impl Render for GalleryView {
                                         .unwrap_or(requested_start);
                                     let window_range = requested_start.saturating_sub(columns * 2)
                                         ..requested_end.saturating_add(columns * 2);
-                                    let shifted_window = match &this.snapshot {
-                                        Ok(snapshot) => {
-                                            this.service.ensure_window(snapshot, window_range)
-                                        }
-                                        Err(_) => Ok(None),
-                                    };
-                                    match shifted_window {
-                                        Ok(Some(window)) => {
-                                            if let Ok(snapshot) = &mut this.snapshot {
-                                                snapshot.window_offset = window.offset;
-                                                snapshot.media = window.media;
-                                                snapshot.media_tags = window.media_tags;
-                                            }
-                                            // List layout loads the page after render published
-                                            // its snapshot. Publish the new offset next frame.
-                                            cx.notify();
-                                        }
-                                        Ok(None) => {}
-                                        Err(error) => this.snapshot = Err(error.to_string()),
-                                    }
+                                    this.request_visible_window(window_range);
                                     let mut states = Vec::new();
                                     let view_focused = this.focus_handle.is_focused(window);
                                     let loaded: HashSet<_> = this
@@ -590,6 +626,7 @@ impl Render for GalleryView {
                                                         label,
                                                         layout_row.month_count,
                                                         expanded,
+                                                        snapshot.browser.directory.as_deref(),
                                                         cx,
                                                     )
                                                     .into_any_element()

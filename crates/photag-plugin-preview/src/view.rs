@@ -198,6 +198,9 @@ pub fn preview_view(
                         context_menu_anchor: None,
                         last_playback_source: None,
                         last_seen_source: service.snapshot().source,
+                        file_revision_gate: Default::default(),
+                        index_revision_gate: Default::default(),
+                        image_asset_revision: u64::MAX,
                         image_dimensions_cache: Default::default(),
                         file_info_cache: Default::default(),
                         exif_cache: Default::default(),
@@ -261,6 +264,9 @@ pub(crate) struct PreviewView {
     context_menu_anchor: Option<(f32, f32)>,
     last_playback_source: Option<std::path::PathBuf>,
     last_seen_source: Option<std::path::PathBuf>,
+    file_revision_gate: photag_ui_bridge::refresh::ChangeGate<u64>,
+    index_revision_gate: photag_ui_bridge::refresh::ChangeGate<u64>,
+    image_asset_revision: u64,
     image_dimensions_cache:
         photag_ui_bridge::read_model::ReadModel<std::path::PathBuf, Option<(u32, u32)>>,
     file_info_cache:

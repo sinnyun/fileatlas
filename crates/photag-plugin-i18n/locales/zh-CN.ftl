@@ -712,3 +712,55 @@ msg-ca67bd59cc41 = 条保留
 msg-48acbb9c630a = 条已淘汰
 
 msg-3660315a9af3 = 页
+
+msg-da9f7dc827a7 = 文件夹收藏
+
+msg-7a1f2a83aca9 = 收藏集合
+
+msg-64a56c42b330 = 显示子文件夹
+
+msg-6a9084025c4b = 打开文件夹
+
+msg-ca7bd268ffed = 重新链接缺失文件
+
+msg-a889f116723b = 选择重新链接目录
+
+msg-b5fbdfe3a967 = 删除缺失记录
+
+msg-e215aee886fb = 确认删除缺失记录
+
+msg-1648e7fbf0a4 = 缺失文件
+
+msg-f52edea4c267 = 文件缺失
+
+msg-4674127f8c9e = 选择替换文件
+
+msg-a3cb6bbc41d7 = 确认重新链接
+
+msg-81ee603f024e = 保存的预览
+
+msg-28d03596d24e = 跳过
+
+msg-5f4fcbb593b1 = 重命名收藏
+
+msg-bd847fc7f3b5 = 收藏上移
+
+msg-592f4c04f234 = 收藏下移
+
+msg-4cf8a251abed = 正在读取目录…
+
+msg-e39030df977c = 读取已取消
+
+msg-1b5c49f534aa = 收藏文件夹
+
+msg-52ea54361a4c = 所有已标记文件
+
+msg-1a5db52359a6 = 当前文件夹
+
+msg-0b915d24c388 = 隐藏缩略图
+
+msg-809997f6cb8d = 显示缩略图
+
+msg-179fed85ec50 = 搜索文件
+
+msg-a0840f01f0d5 = 已保存关联文件的大小。

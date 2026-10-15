@@ -2,7 +2,28 @@ use super::*;
 
 impl PreviewView {
     pub(super) fn poll_reads(&mut self) -> bool {
-        let mut changed = self.video_info_cache.poll()
+        let file_changed = self
+            .file_revision_gate
+            .changed(self.service.file_revision());
+        if file_changed {
+            self.file_info_cache = Default::default();
+            self.exif_cache = Default::default();
+            self.video_info_cache = Default::default();
+            self.display_path_cache = Default::default();
+            self.image_dimensions_cache = Default::default();
+        }
+        let index_changed = self
+            .index_revision_gate
+            .changed(self.service.data_revision());
+        if file_changed || index_changed {
+            self.indexed_info_cache = Default::default();
+            self.tag_picker_read = Default::default();
+            self.tag_tree_cache = None;
+            self.tag_picker_cache = None;
+        }
+        let mut changed = file_changed
+            | index_changed
+            | self.video_info_cache.poll()
             | self.file_info_cache.poll()
             | self.exif_cache.poll()
             | self.display_path_cache.poll()

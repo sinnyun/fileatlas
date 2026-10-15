@@ -2,6 +2,9 @@
 //! implementation. Read and write connections stay separate to retain the
 //! original WAL concurrency model.
 
+mod browser_store;
+#[cfg(test)]
+mod browser_tests;
 pub mod db;
 
 use std::path::{Path, PathBuf};
@@ -17,6 +20,7 @@ pub struct DatabaseService {
     writer: Mutex<Connection>,
     reader: Mutex<Connection>,
     path: PathBuf,
+    browser: bool,
 }
 
 impl Service for DatabaseService {
@@ -34,6 +38,7 @@ impl DatabaseService {
             writer: Mutex::new(writer),
             reader: Mutex::new(reader),
             path: default_database_path(),
+            browser: false,
         })
     }
 
@@ -52,6 +57,7 @@ impl DatabaseService {
             writer: Mutex::new(writer),
             reader: Mutex::new(reader),
             path,
+            browser: false,
         })
     }
 
@@ -76,7 +82,11 @@ impl DatabaseService {
     ) -> Result<T, DatabaseAccessError> {
         let span = tracing::info_span!("with_reader",caller=%std::panic::Location::caller());
         let _entered = span.enter();
-        let connection = lock(&self.reader)?;
+        let connection = lock(if self.browser {
+            &self.writer
+        } else {
+            &self.reader
+        })?;
         operation(&connection)
             .map_err(DatabaseAccessError::Sql)
             .inspect_err(|error| tracing::error!(%error,"database operation failed"))
@@ -92,6 +102,9 @@ impl DatabaseService {
         let _entered = span.enter();
         let connection = lock(&self.writer)?;
         let result = operation(&connection);
+        if self.browser {
+            browser_store::persist(&connection)?;
+        }
         self.write_revision
             .fetch_add(1, std::sync::atomic::Ordering::Release);
         result
@@ -162,8 +175,10 @@ impl Plugin for DatabasePlugin {
     async fn apply(&self, context: Context, config: &Self::Input) -> Result<(), Self::ApplyError> {
         let path = config.path.clone();
         let service = tokio::task::spawn_blocking(move || match path {
-            Some(path) => DatabaseService::open_at(path),
-            None => DatabaseService::open_default(),
+            Some(path) => DatabaseService::open_browser_at(path.with_file_name("photag-tags.db")),
+            None => DatabaseService::open_browser_at(
+                default_database_path().with_file_name("photag-tags.db"),
+            ),
         })
         .await
         .map_err(DatabasePluginError::Worker)??;

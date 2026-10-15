@@ -2,6 +2,10 @@
 
 pub use photag_plugin_grouping::GroupingMode;
 mod browser;
+mod live;
+#[cfg(test)]
+mod live_tests;
+mod viewport;
 pub use browser::{BrowserSnapshot, GalleryDirectory};
 mod ui_requests;
 mod view;
@@ -40,6 +44,7 @@ use photag_ui_bridge::{
 pub const MEDIA_WINDOW_SIZE: usize = 200;
 
 /// Current data needed to render and navigate the gallery.
+#[derive(Clone)]
 pub struct GallerySnapshot {
     pub browser: BrowserSnapshot,
     pub skeletons: Vec<MediaSkeleton>,
@@ -56,6 +61,7 @@ pub struct GallerySnapshot {
 }
 
 /// Full-media window returned by viewport-driven prefetch.
+#[derive(Clone)]
 pub struct GalleryWindow {
     pub offset: usize,
     pub media: Vec<MediaItem>,
@@ -63,6 +69,10 @@ pub struct GalleryWindow {
 }
 
 pub struct GalleryService {
+    live: live::LiveBrowser,
+    viewport_request: AtomicU64,
+    thumbnails_disabled: std::sync::atomic::AtomicBool,
+    watcher: Option<Arc<photag_plugin_watcher::WatcherService>>,
     database: Arc<DatabaseService>,
     grouping: Option<Arc<photag_plugin_grouping::GroupingService>>,
     indexing: Option<Arc<photag_plugin_indexing::IndexingService>>,
@@ -117,6 +127,10 @@ impl GalleryService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
         Self {
             database,
+            live: Default::default(),
+            viewport_request: AtomicU64::new(0),
+            thumbnails_disabled: Default::default(),
+            watcher: None,
             grouping: None,
             indexing: None,
             ui_request: Mutex::new(None),
@@ -138,6 +152,52 @@ impl GalleryService {
             .lock()
             .map(|states| states.clone())
             .unwrap_or_default()
+    }
+
+    pub fn browser_enabled(&self) -> bool {
+        self.database.is_browser()
+    }
+    pub fn thumbnails_enabled(&self) -> bool {
+        !self.thumbnails_disabled.load(Ordering::Acquire)
+    }
+    pub fn set_thumbnails_enabled(&self, value: bool) {
+        self.thumbnails_disabled.store(!value, Ordering::Release);
+        self.live.touch();
+    }
+    pub fn show_descendants(&self) -> bool {
+        self.live.recursive()
+    }
+    pub fn set_show_descendants(&self, enabled: bool) {
+        self.live.set_recursive(enabled);
+    }
+    pub fn cancel_directory(&self) {
+        self.live.cancel();
+    }
+    pub fn invalidate_directory(&self) {
+        if let Some(watcher) = &self.watcher {
+            watcher.retry_browse_watch();
+        }
+        self.live.invalidate();
+    }
+    pub fn reconcile_directory_event(&self) {
+        if self
+            .watcher
+            .as_ref()
+            .is_some_and(|watcher| watcher.take_directory_dirty())
+        {
+            self.live.invalidate();
+        } else {
+            self.live.touch();
+        }
+    }
+    pub fn poll_directory(&self) -> bool {
+        self.live.poll()
+    }
+    pub fn directory_worker_active(&self) -> bool {
+        self.live.worker_active()
+    }
+    pub fn directory_status(&self) -> (u64, u64, bool, usize, Option<String>) {
+        self.live.status()
     }
 
     pub fn scan_progress(&self) -> Option<photag_plugin_indexing::scan::ScanProgress> {
@@ -199,10 +259,43 @@ impl GalleryService {
             .and_then(|mut request| request.take())
     }
 
+    fn scope_cache_query(&self, query: &mut MediaQuery) -> Result<(), GalleryError> {
+        if !self.database.is_browser() {
+            return Ok(());
+        }
+        if let Some(id) = query.folder_id.take() {
+            if let Some(folder) = self
+                .database
+                .with_reader(queries::list_folders)?
+                .into_iter()
+                .find(|f| f.id == id)
+            {
+                query.directory_tree = Some(
+                    std::fs::canonicalize(&folder.path)
+                        .map(|p| p.to_string_lossy().into_owned())
+                        .unwrap_or(folder.path),
+                );
+            } else {
+                return Err(photag_plugin_database::DatabaseAccessError::Sql(
+                    rusqlite::Error::QueryReturnedNoRows,
+                )
+                .into());
+            }
+        }
+        if !query.annotated_only
+            && query.tag_ids.as_ref().is_none_or(Vec::is_empty)
+            && query.excluded_tag_ids.as_ref().is_none_or(Vec::is_empty)
+        {
+            query.local_only = true;
+        }
+        Ok(())
+    }
+
     /// Load compact rows for the whole result, plus the first 200 rich media rows.
     /// This keeps gallery layout memory small for libraries with many thousands of items.
     #[tracing::instrument(skip_all, err)]
-    pub fn load(&self, query: MediaQuery) -> Result<GallerySnapshot, GalleryError> {
+    pub fn load(&self, mut query: MediaQuery) -> Result<GallerySnapshot, GalleryError> {
+        self.scope_cache_query(&mut query)?;
         self.load_snapshot(query, photag_plugin_grouping::GroupingMode::None, false)
     }
 
@@ -226,7 +319,17 @@ impl GalleryService {
         } else {
             BrowserSnapshot::default()
         };
-        if browser.active {
+        if browser.active && self.database.is_browser() {
+            query.folder_id = None;
+            query.local_only = browser.directory.is_some();
+            if self.live.recursive() {
+                query.directory_tree = browser.directory.clone();
+                query.direct_directory = None;
+            } else {
+                query.direct_directory = browser.directory.clone();
+            }
+            query.path_prefix = None;
+        } else if browser.active {
             query.direct_directory = browser.directory.clone();
             query.path_prefix = None;
         }
@@ -237,7 +340,7 @@ impl GalleryService {
                 queries::get_media_skeletons(connection, &query)?
             };
             let group_labels = if let Some(grouping) = &self.grouping {
-                let fields = if matches!(
+                let mut fields = if matches!(
                     mode,
                     photag_plugin_grouping::GroupingMode::None
                         | photag_plugin_grouping::GroupingMode::Month
@@ -246,18 +349,31 @@ impl GalleryService {
                 } else {
                     queries::get_media_grouping_fields(connection, &query)?
                 };
+                if self.database.is_browser() {
+                    for field in &mut fields {
+                        field.root_path = browser.directory.clone().unwrap_or_else(|| {
+                            std::path::Path::new(&field.full_path)
+                                .parent()
+                                .map(|p| p.to_string_lossy().into_owned())
+                                .unwrap_or_default()
+                        });
+                    }
+                }
                 grouping.arrange_in_scope(
                     &mut skeletons,
                     &fields,
                     mode,
                     query.sort.unwrap_or(SortOrder::NameAsc),
-                    query.path_prefix.as_deref(),
+                    browser
+                        .directory
+                        .as_deref()
+                        .or(query.path_prefix.as_deref()),
                 )
             } else {
                 vec![None; skeletons.len()]
             };
             let media_count = skeletons.len() as i64;
-            let media = skeletons
+            let mut media = skeletons
                 .iter()
                 .take(MEDIA_WINDOW_SIZE)
                 .map(|s| queries::get_media_by_id(connection, s.id))
@@ -265,6 +381,24 @@ impl GalleryService {
                 .into_iter()
                 .flatten()
                 .collect::<Vec<_>>();
+            if self.database.is_browser() && !browser.active {
+                for item in &mut media {
+                    hydrate_local(item);
+                    if item.missing {
+                        restore_record_preview(connection, item);
+                    }
+                    if !self.thumbnails_enabled() {
+                        item.thumb_path = None;
+                        item.micro_thumb = None;
+                    }
+                }
+            }
+            if self.database.is_browser() && !self.thumbnails_enabled() {
+                for item in &mut media {
+                    item.thumb_path = None;
+                    item.micro_thumb = None;
+                }
+            }
             let media_ids = media.iter().map(|item| item.id).collect::<Vec<_>>();
             let media_tags = queries::get_tags_for_media_batch(connection, &media_ids)?;
             let available_extensions = queries::get_available_extensions(connection)?;
@@ -345,6 +479,7 @@ impl GalleryService {
         mut query: MediaQuery,
         offset: usize,
     ) -> Result<GalleryWindow, GalleryError> {
+        self.scope_cache_query(&mut query)?;
         query.offset = Some(offset as i64);
         query.limit = Some(MEDIA_WINDOW_SIZE as i64);
         Ok(self.database.with_reader(|connection| {
@@ -361,9 +496,21 @@ impl GalleryService {
 
     /// Resolve an item even when it is outside the active viewport window.
     pub fn media_by_id(&self, id: i64) -> Result<Option<MediaItem>, GalleryError> {
-        Ok(self
+        let mut item = self
             .database
-            .with_reader(|connection| queries::get_media_by_id(connection, id))?)
+            .with_reader(|connection| queries::get_media_by_id(connection, id))?;
+        if self.database.is_browser() {
+            if let Some(item) = &mut item {
+                hydrate_local(item);
+                if item.missing {
+                    self.database.with_reader(|conn| {
+                        restore_record_preview(conn, item);
+                        Ok(())
+                    })?;
+                }
+            }
+        }
+        Ok(item)
     }
 
     /// Resolve filesystem paths in the exact order of a drag selection.
@@ -434,7 +581,9 @@ impl GalleryService {
     }
 
     pub fn statistics(&self) -> Result<queries::LibraryStats, GalleryError> {
-        Ok(self.database.with_reader(queries::get_statistics)?)
+        Ok(self
+            .database
+            .with_reader(|conn| queries::get_statistics_scoped(conn, self.database.is_browser()))?)
     }
 
     pub fn data_revision(&self) -> u64 {
@@ -455,242 +604,8 @@ pub enum GalleryError {
     Database(#[from] photag_plugin_database::DatabaseAccessError),
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct GalleryConfig;
-
-pub struct GalleryPlugin;
-
-impl Plugin for GalleryPlugin {
-    type Config = GalleryConfig;
-    type Input = GalleryConfig;
-    type PrepareError = std::convert::Infallible;
-    type ApplyError = GalleryPluginError;
-
-    fn name(&self) -> std::borrow::Cow<'_, str> {
-        "photag.gallery".into()
-    }
-
-    fn prepare(&self, config: Self::Config) -> Result<Self::Input, Self::PrepareError> {
-        Ok(config)
-    }
-
-    #[tracing::instrument(skip_all, err)]
-    async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
-        let database = context
-            .try_service::<DatabaseService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let file_operations = context
-            .try_service::<FileOperationsService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let drag_drop = context
-            .try_service::<DragDropService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let playback = context
-            .try_service::<MediaPlaybackService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let preview = context
-            .try_service::<PreviewService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        preview.configure_playback(Arc::clone(&playback));
-        let session = context
-            .try_service::<SessionService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        // History is optional so Gallery remains usable when the development
-        // history plugin is not part of the active Cordis graph.
-        let history = context
-            .try_service::<photag_plugin_history::HistoryService>()
-            .ok();
-        let settings = context
-            .try_service::<photag_plugin_settings::SettingsService>()
-            .ok();
-        let tagging = context
-            .try_service::<photag_plugin_tagging::TaggingService>()
-            .ok();
-        let runtime = tokio::runtime::Handle::current();
-        let mut service = GalleryService::new(database);
-        service.grouping = Some(
-            context
-                .try_service::<photag_plugin_grouping::GroupingService>()
-                .map_err(|e| GalleryPluginError::Dependency(e.to_string()))?,
-        );
-        service.indexing = context
-            .try_service::<photag_plugin_indexing::IndexingService>()
-            .ok();
-        let service = Arc::new(service);
-        let selected_folder = Arc::new(SelectedFolder::default());
-        let selected_tag = Arc::new(SelectedTag::default());
-        let selected_path = Arc::new(SelectedPath::default());
-        let index_revision = Arc::new(IndexRevision::default());
-        let _selection_publication = context
-            .provide(Arc::clone(&selected_folder))
-            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        let _tag_selection_publication = context
-            .provide(Arc::clone(&selected_tag))
-            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        let _path_selection_publication = context
-            .provide(Arc::clone(&selected_path))
-            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        let _index_revision_publication = context
-            .provide(Arc::clone(&index_revision))
-            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        let selection_state = Arc::clone(&selected_folder);
-        let selection_tag_state = Arc::clone(&selected_tag);
-        let selection_path_state = Arc::clone(&selected_path);
-        let _selection_listener = context
-            .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
-                if let Ok(mut selected) = selection_state.0.lock() {
-                    *selected = folder_id;
-                }
-                if let Ok(mut selected) = selection_tag_state.0.lock() {
-                    *selected = TagFilterSelection::default();
-                }
-                if let Ok(mut selected) = selection_path_state.0.lock() {
-                    *selected = None;
-                }
-                Ok::<_, std::convert::Infallible>(())
-            }))
-            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let tag_state = Arc::clone(&selected_tag);
-        let tag_folder_state = Arc::clone(&selected_folder);
-        let tag_path_state = Arc::clone(&selected_path);
-        let _tag_selection_listener = context
-            .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id: Option<i64>| {
-                if let Ok(mut selected) = tag_state.0.lock() {
-                    *selected = TagFilterSelection {
-                        included: tag_id.into_iter().collect(),
-                        excluded: Vec::new(),
-                    };
-                }
-                if tag_id.is_some() {
-                    if let Ok(mut selected) = tag_folder_state.0.lock() {
-                        *selected = None;
-                    }
-                    if let Ok(mut selected) = tag_path_state.0.lock() {
-                        *selected = None;
-                    }
-                }
-                Ok::<_, std::convert::Infallible>(())
-            }))
-            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let tag_filter_state = Arc::clone(&selected_tag);
-        let tag_filter_folder = Arc::clone(&selected_folder);
-        let tag_filter_path = Arc::clone(&selected_path);
-        let _tag_filter_selection_listener = context
-            .on::<TagFilterSelectionChanged, _>(observer_sync(
-                move |_, selection: TagFilterSelection| {
-                    if let Ok(mut selected) = tag_filter_state.0.lock() {
-                        *selected = selection.clone();
-                    }
-                    if !selection.included.is_empty() || !selection.excluded.is_empty() {
-                        if let Ok(mut selected) = tag_filter_folder.0.lock() {
-                            *selected = None;
-                        }
-                        if let Ok(mut selected) = tag_filter_path.0.lock() {
-                            *selected = None;
-                        }
-                    }
-                    Ok::<_, std::convert::Infallible>(())
-                },
-            ))
-            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let path_state = Arc::clone(&selected_path);
-        let path_folder_state = Arc::clone(&selected_folder);
-        let path_tag_state = Arc::clone(&selected_tag);
-        let _path_selection_listener = context
-            .on::<DirectoryPathSelected, _>(observer_sync(move |_, path| {
-                if let Ok(mut selected) = path_state.0.lock() {
-                    *selected = path;
-                }
-                if let Ok(mut selected) = path_folder_state.0.lock() {
-                    *selected = None;
-                }
-                if let Ok(mut selected) = path_tag_state.0.lock() {
-                    *selected = TagFilterSelection::default();
-                }
-                Ok::<_, std::convert::Infallible>(())
-            }))
-            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let revision = Arc::clone(&index_revision);
-        let _media_index_listener = context
-            .on::<MediaIndexChanged, _>(observer_sync(move |_, ()| {
-                revision.0.fetch_add(1, Ordering::Release);
-                Ok::<_, std::convert::Infallible>(())
-            }))
-            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let _publication = context
-            .provide(Arc::clone(&service))
-            .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        register_for_plugin(
-            &context,
-            "photag.gallery",
-            [
-                UiContribution::new(
-                    "gallery/workspace",
-                    ContributionKind::Layout {
-                        label: "PhoTag workspace".into(),
-                        order: 0,
-                    },
-                ),
-                UiContribution::new(
-                    "gallery/main-slot",
-                    ContributionKind::Slot {
-                        label: "gallery.content".into(),
-                        order: 0,
-                    },
-                ),
-                UiContribution::new(
-                    "gallery/grid",
-                    ContributionKind::Widget {
-                        label: "Media Gallery".into(),
-                        slot: "gallery.content".into(),
-                        order: 0,
-                    },
-                ),
-            ],
-        )
-        .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
-        let bridge = context
-            .try_service::<photag_ui_bridge::UiBridgeService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        register_views_for_plugin(
-            &context,
-            "photag.gallery",
-            view::gallery(
-                service,
-                file_operations,
-                drag_drop,
-                preview,
-                playback,
-                runtime,
-                context.clone(),
-                selected_folder,
-                selected_tag,
-                selected_path,
-                index_revision,
-                session,
-                history,
-                settings,
-                tagging,
-                Arc::clone(&bridge.surfaces),
-                Arc::clone(&bridge.views),
-            ),
-        )
-        .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
-        Ok(())
-    }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum GalleryPluginError {
-    #[error("required gallery dependency unavailable: {0}")]
-    Dependency(String),
-    #[error("gallery service publication failed: {0}")]
-    Publish(String),
-    #[error("gallery UI contribution registration failed: {0}")]
-    UiRegistration(String),
-    #[error("gallery event registration failed: {0}")]
-    EventRegistration(String),
-}
+mod plugin;
+pub use plugin::{GalleryConfig, GalleryPlugin, GalleryPluginError};
 
 #[cfg(test)]
 mod tests;
@@ -700,3 +615,29 @@ mod grouping_tests;
 
 #[cfg(test)]
 mod browser_tests;
+
+fn hydrate_local(item: &mut MediaItem) {
+    match std::fs::metadata(&item.full_path) {
+        Ok(metadata) => {
+            item.file_size = metadata.len() as i64;
+            if let Ok(modified) = metadata.modified().and_then(|v| {
+                v.duration_since(std::time::UNIX_EPOCH)
+                    .map_err(std::io::Error::other)
+            }) {
+                item.modified_at = modified.as_secs() as i64;
+            }
+            item.missing = false;
+        }
+        Err(error) => item.missing = error.kind() == std::io::ErrorKind::NotFound,
+    }
+}
+
+fn restore_record_preview(conn: &rusqlite::Connection, item: &mut MediaItem) {
+    if let Ok(path) = conn.query_row(
+        "SELECT thumb_path FROM tag_previews WHERE media_id=?1",
+        [item.id],
+        |r| r.get::<_, String>(0),
+    ) {
+        item.thumb_path = Some(path);
+    }
+}

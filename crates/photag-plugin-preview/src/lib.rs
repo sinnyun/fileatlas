@@ -39,6 +39,8 @@ pub use view::preview_view;
 
 /// Cordis service for opening and controlling image previews.
 pub struct PreviewService {
+    source_signature: Mutex<Option<(PathBuf, u64, u128)>>,
+    file_revision: AtomicU64,
     state: Mutex<PreviewSnapshot>,
     load_tracker: Mutex<presentation::LoadTracker>,
     cache_dir: PathBuf,
@@ -63,6 +65,36 @@ impl Service for PreviewService {
 }
 
 impl PreviewService {
+    pub fn file_revision(&self) -> u64 {
+        self.file_revision.load(Ordering::Acquire)
+    }
+    pub fn data_revision(&self) -> u64 {
+        self.database().map(|db| db.write_revision()).unwrap_or(0)
+    }
+    /// Only called after explicit refresh or a file notification, on a worker.
+    pub fn refresh_local_source(&self) {
+        let state = self.snapshot();
+        let Some(path) = state.source else { return };
+        let Ok(metadata) = std::fs::metadata(&path) else {
+            self.close();
+            return;
+        };
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|v| v.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let signature = (path.clone(), metadata.len(), modified);
+        let changed = self
+            .source_signature
+            .lock()
+            .is_ok_and(|value| value.as_ref() != Some(&signature));
+        if changed {
+            let _ = self.open_media(path, state.media_id);
+        }
+    }
+
     pub fn open_at(cache_dir: impl Into<PathBuf>) -> std::io::Result<Self> {
         let cache_dir = cache_dir.into();
         std::fs::create_dir_all(&cache_dir)?;
@@ -77,6 +109,8 @@ impl PreviewService {
             Arc::clone(&decode_revision),
         );
         Ok(Self {
+            source_signature: Mutex::new(None),
+            file_revision: AtomicU64::new(0),
             state: Mutex::new(PreviewSnapshot::default()),
             load_tracker: Mutex::new(presentation::LoadTracker::default()),
             cache_dir,
@@ -179,6 +213,36 @@ impl PreviewService {
         if !path.is_file() {
             return Err(PreviewError::MissingSource(path));
         }
+        let metadata =
+            std::fs::metadata(&path).map_err(|_| PreviewError::MissingSource(path.clone()))?;
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|v| v.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let signature = (path.clone(), metadata.len(), modified);
+        if let Ok(mut previous) = self.source_signature.lock() {
+            if previous.as_ref() != Some(&signature) {
+                *previous = Some(signature);
+                self.file_revision.fetch_add(1, Ordering::AcqRel);
+            }
+        }
+        let media_id = if let Some(database) = self.database().filter(|db| db.is_browser()) {
+            let kind = match classify_media_path(&path) {
+                PreviewMediaKind::Image => "image",
+                PreviewMediaKind::Video => "video",
+                PreviewMediaKind::Audio => "audio",
+                PreviewMediaKind::Other => "file",
+            };
+            Some(
+                database
+                    .pin_file(&path.to_string_lossy(), kind, media_id)
+                    .map_err(|_| PreviewError::MissingSource(path.clone()))?,
+            )
+        } else {
+            media_id
+        };
         self.begin_image_load(&path, media_id);
         let mut state = self.state.lock().map_err(|_| PreviewError::StatePoisoned)?;
         state.source = Some(path.clone());
@@ -204,7 +268,7 @@ impl PreviewService {
             if *last_id != Some(media_id) {
                 *last_id = Some(media_id);
                 if let Some(database) = self.database() {
-                    let _ = database.with_writer(|connection| {
+                    let _ = database.with_cache_writer(|connection| {
                         photag_plugin_database::db::increment_open_count(connection, media_id);
                         Ok(())
                     });

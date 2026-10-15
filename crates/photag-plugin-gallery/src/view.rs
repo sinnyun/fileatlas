@@ -17,6 +17,7 @@ mod keyboard;
 mod monitor;
 mod month_header;
 mod read_models;
+mod records;
 mod regions;
 mod render;
 mod rows;
@@ -125,12 +126,26 @@ struct GalleryView {
     thumb_size: f32,
     list_layout: bool,
     grouping_mode: photag_plugin_grouping::GroupingMode,
+    before_descendants_grouping: Option<photag_plugin_grouping::GroupingMode>,
+    restored_file_paths: Vec<String>,
+    restore_in_directory: bool,
+    selection_restore: photag_ui_bridge::read_model::ReadModel<(u64, Vec<String>), Vec<i64>>,
     show_selection_details: bool,
     show_tag_picker: bool,
     media_actions_id: Option<i64>,
     media_actions_item: Option<(i64, photag_plugin_database::db::queries::MediaItem)>,
     slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
+    show_records: bool,
+    records_page: usize,
+    record_read_revision: u64,
+    location_picker_pending: bool,
+    confirm_delete_missing: bool,
+    record_candidates: std::collections::HashMap<i64, String>,
+    records_read: photag_ui_bridge::read_model::ReadModel<
+        (u64, u64),
+        Vec<photag_plugin_database::db::queries::MediaItem>,
+    >,
     statistics_read:
         photag_ui_bridge::read_model::ReadModel<(u64, u64), read_models::StatisticsRead>,
     bulk_read: photag_ui_bridge::read_model::ReadModel<String, bulk_actions::MatchResults>,
@@ -148,6 +163,13 @@ struct GalleryView {
     previous_inspector_tab: photag_ui_bridge::refresh::ChangeGate<Option<String>>,
     confirm_delete: bool,
     snapshot: Result<GallerySnapshot, String>,
+    snapshot_read: photag_ui_bridge::read_model::ReadModel<u64, GallerySnapshot>,
+    snapshot_generation: u64,
+    visible_demand: Option<std::ops::Range<usize>>,
+    viewport_read: photag_ui_bridge::read_model::ReadModel<
+        (u64, u64, Vec<i64>, Vec<i64>),
+        crate::GalleryWindow,
+    >,
     inspector_fallback: Option<InspectorFallback>,
     inspector_read: photag_ui_bridge::read_model::ReadModel<i64, InspectorFallback>,
     selection_details_cache: Option<(i64, i64, Option<card::FileMetadataSnapshot>)>,

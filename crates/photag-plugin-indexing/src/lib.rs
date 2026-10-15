@@ -13,6 +13,7 @@ mod maintenance;
 mod progress;
 mod reconcile;
 pub mod scan;
+mod visible;
 
 /// Cordis service exposing the migrated original scan workflows.
 pub struct IndexingService {

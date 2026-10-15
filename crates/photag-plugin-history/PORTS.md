@@ -1,5 +1,7 @@
 # History plugin ports / 历史操作对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: Cordis service and executable undo/redo handlers are implemented for the five undoable operation types present in PhoTag's source. Gallery records rating, tag-hotkey, tag-picker assignment/removal/clear, and confirmed single-item rename mutations. Gallery handles Ctrl+Z/Ctrl+Y, and the history plugin exposes lifecycle-owned Edit menu command contributions for undo and redo.
 
 ## Lifecycle and dependencies
@@ -48,3 +50,8 @@ Status: Cordis service and executable undo/redo handlers are implemented for the
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+`push` pins session cache handles used by the at-most-100 undo/redo operations through `DatabaseService::pin_history`, so directory eviction cannot discard an untagged file needed for undo. New operations refresh the union of pins; history remains session-only and does not create persistent browse inventory.

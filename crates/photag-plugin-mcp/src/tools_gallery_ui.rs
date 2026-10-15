@@ -199,7 +199,7 @@ impl PhoTagMcpServer {
                 };
                 R::BulkField(index, value.to_owned())
             }
-            "bulk_close" => R::CloseDialogs,
+            "bulk_close" | "close_dialogs" => R::CloseDialogs,
             "bulk_configure" => {
                 let action = match value {
                     "delete" => A::Delete,
@@ -313,7 +313,25 @@ impl PhoTagMcpServer {
                 }
                 R::DirectoryUp
             }
+            "record_candidate" => match request.media_id {
+                Some(id) => R::RecordCandidate(id, value.to_owned()),
+                None => return error_json("media_id required"),
+            },
+            "relink_record" => match request.media_id {
+                Some(id) => R::RelinkRecord(id),
+                None => return error_json("media_id required"),
+            },
+            "delete_missing_records" => R::DeleteMissingRecords,
+            "missing_records" => R::MissingRecords,
             "refresh" => R::Refresh,
+            "cancel_directory" => R::CancelDirectory,
+            "thumbnails" => R::Thumbnails(request.enabled.unwrap_or(true)),
+            "show_descendants" => R::ShowDescendants(request.enabled.unwrap_or(false)),
+            "locate_file" => match request.media_id {
+                Some(id) => R::LocateFile(id),
+                None => return error_json("media_id required"),
+            },
+            "navigate" => R::OpenDirectory(value.to_string()),
             "open_directory" => {
                 if !self
                     .gallery

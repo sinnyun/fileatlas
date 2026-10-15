@@ -7,12 +7,74 @@ use gpui_kit::prelude::FluentBuilder as _;
 use photag_plugin_navigation::{NavigationService, NavigationUiRequest};
 
 impl GalleryView {
+    pub(super) fn locate_file(&mut self, id: i64, cx: &mut Context<Self>) {
+        let Some(item) = self.service.media_by_id(id).ok().flatten() else {
+            return;
+        };
+        let Some(parent) = std::path::Path::new(&item.full_path)
+            .parent()
+            .map(|p| p.to_string_lossy().into_owned())
+        else {
+            return;
+        };
+        self.restored_file_paths = vec![item.full_path];
+        self.restore_in_directory = true;
+        self.selection_restore = Default::default();
+        self.route_directory(NavigationUiRequest::SelectPath(parent), cx);
+        self.media_actions_id = None;
+    }
+
+    pub(super) fn pick_browse_location(&mut self, cx: &mut Context<Self>) {
+        if self.location_picker_pending {
+            return;
+        }
+        self.location_picker_pending = true;
+        let task = self.runtime.spawn(async {
+            rfd::AsyncFileDialog::new()
+                .pick_folder()
+                .await
+                .map(|p| p.path().to_string_lossy().into_owned())
+        });
+        cx.spawn(async move |this, cx| {
+            let result = task.await;
+            let _ = this.update(cx, |view, cx| {
+                view.location_picker_pending = false;
+                if let Ok(Some(path)) = result {
+                    view.route_directory(NavigationUiRequest::SelectPath(path), cx);
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    pub(super) fn set_descendants(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.service.set_show_descendants(enabled);
+        if enabled {
+            self.before_descendants_grouping = Some(self.grouping_mode);
+            self.grouping_mode = photag_plugin_grouping::GroupingMode::Subfolder;
+        } else {
+            self.grouping_mode = self
+                .before_descendants_grouping
+                .take()
+                .unwrap_or(photag_plugin_grouping::GroupingMode::None);
+        }
+        if let Some(settings) = &self.settings {
+            let mode = self.grouping_mode;
+            let _ = settings.update(|s| {
+                s.show_date_dividers = mode == photag_plugin_grouping::GroupingMode::Month
+            });
+        }
+        self.refresh_index();
+        cx.notify();
+    }
+
     #[tracing::instrument(skip_all, fields(path=?path))]
     pub(super) fn open_directory(&mut self, path: String, cx: &mut Context<Self>) {
-        if !self
-            .snapshot
-            .as_ref()
-            .is_ok_and(|s| s.browser.active && s.browser.directories.iter().any(|f| f.path == path))
+        if !self.service.browser_enabled()
+            && !self.snapshot.as_ref().is_ok_and(|s| {
+                s.browser.active && s.browser.directories.iter().any(|f| f.path == path)
+            })
         {
             self.operation_status =
                 Some("Folder is no longer visible. Refresh and try again.".into());
@@ -75,6 +137,7 @@ pub(super) fn refresh_button(cx: &mut Context<GalleryView>) -> Button {
         .icon(theme::icon(IconName::RefreshCw))
         .tooltip(photag_ui_bridge::i18n::tr("Refresh folder"))
         .on_click(cx.listener(|this, _, _, cx| {
+            this.service.invalidate_directory();
             this.refresh_index();
             cx.notify();
         }))
@@ -179,6 +242,12 @@ pub(super) fn empty(
     message: Option<&str>,
     cx: &mut Context<GalleryView>,
 ) -> AnyElement {
+    let loading = view.service.directory_status().2;
+    let message = if loading {
+        Some("Loading folder…")
+    } else {
+        message
+    };
     div()
         .track_focus(&view.focus_handle)
         .on_key_down(cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)))

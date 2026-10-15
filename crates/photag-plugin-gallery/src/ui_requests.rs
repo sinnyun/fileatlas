@@ -5,9 +5,17 @@ use super::*;
 pub enum GalleryUiRequest {
     Layout(bool),
     OpenDirectory(String),
+    LocateFile(i64),
     DirectoryUp,
     Refresh,
+    ShowDescendants(bool),
+    Thumbnails(bool),
+    CancelDirectory,
     Statistics,
+    MissingRecords,
+    RecordCandidate(i64, String),
+    RelinkRecord(i64),
+    DeleteMissingRecords,
     BulkActions,
     ConfigureBulk(crate::BulkActionKind, crate::BulkActionSource),
     BulkField(usize, String),
@@ -40,6 +48,9 @@ pub enum GalleryUiRequest {
 /// Snapshot published by the rendered Gallery entity, not a separate query.
 #[derive(Clone)]
 pub struct GalleryUiSnapshot {
+    pub records_open: bool,
+    pub records_count: Option<usize>,
+    pub record_candidates: Vec<(i64, String)>,
     pub filter: filter::GalleryFilter,
     pub browsing: bool,
     pub directories: Vec<crate::GalleryDirectory>,

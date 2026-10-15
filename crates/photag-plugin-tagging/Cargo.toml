@@ -6,6 +6,8 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
+photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 tracing.workspace = true
 cordis.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }

@@ -88,7 +88,7 @@ pub(super) struct DeleteRequest {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct AddFolderRequest {
-    /// Existing local directory to register and recursively index.
+    /// Existing local directory to bookmark. Browsing does not recursively index.
     pub(super) path: String,
     /// Must be true after the caller has shown the folder path to the user.
     pub(super) confirm: bool,
@@ -168,4 +168,21 @@ pub(super) struct WindowSizeRequest {
     pub(super) width: u32,
     /// Requested outer window height, in physical pixels.
     pub(super) height: u32,
+}
+
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct TagRecordRequest {
+    pub action: String,
+    pub record_id: Option<i64>,
+    pub path: Option<String>,
+    pub record_ids: Option<Vec<i64>>,
+    pub confirm: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct FavoriteRequest {
+    pub(super) action: String,
+    pub(super) folder_id: i64,
+    pub(super) name: Option<String>,
+    pub(super) delta: Option<isize>,
 }

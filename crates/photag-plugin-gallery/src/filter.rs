@@ -181,6 +181,9 @@ impl GalleryFilter {
     pub fn to_query(&self) -> MediaQuery {
         let tags_tab = self.tab == GalleryTab::Tags;
         MediaQuery {
+            local_only: false,
+            annotated_only: false,
+            directory_tree: None,
             direct_directory: None,
             folder_id: if tags_tab || self.path_prefix.is_some() {
                 None

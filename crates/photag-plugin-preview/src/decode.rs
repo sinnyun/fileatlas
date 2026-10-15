@@ -220,6 +220,7 @@ impl PreviewService {
     pub(super) fn decode_cache_path(&self, source: &std::path::Path, max_dim: u32) -> PathBuf {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
         source.hash(&mut hasher);
+        self.file_revision().hash(&mut hasher);
         self.cache_dir
             .join(format!("preview-{max_dim}-{:016x}.jpg", hasher.finish()))
     }

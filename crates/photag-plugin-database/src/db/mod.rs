@@ -38,7 +38,7 @@ pub fn open_read_conn_at(path: impl AsRef<std::path::Path>) -> rusqlite::Result<
     Ok(conn)
 }
 
-fn initialize(conn: &Connection) -> rusqlite::Result<()> {
+pub(crate) fn initialize(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "
         PRAGMA journal_mode = WAL;
@@ -58,7 +58,7 @@ fn initialize(conn: &Connection) -> rusqlite::Result<()> {
         );
 
         CREATE TABLE IF NOT EXISTS media (
-            id              INTEGER PRIMARY KEY,
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
             folder_id       INTEGER NOT NULL REFERENCES folders(id) ON DELETE CASCADE,
             filename        TEXT NOT NULL,
             full_path       TEXT NOT NULL UNIQUE,
@@ -95,7 +95,7 @@ fn initialize(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 /// Run schema migrations for new columns added after initial release.
-fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+pub(crate) fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     // Optimization #2: micro_thumb BLOB — tiny 8x8 placeholder thumbnail
     let has_micro = conn
         .prepare("SELECT micro_thumb FROM media LIMIT 0")

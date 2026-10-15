@@ -71,6 +71,17 @@ pub(super) fn render_media_card(
             32.,
         ));
     }
+    if media.missing {
+        frame = frame.child(
+            div()
+                .absolute()
+                .bottom_1()
+                .left_1()
+                .px_2()
+                .bg(rgb(theme::DANGER))
+                .child(photag_ui_bridge::i18n::tr("File missing")),
+        );
+    }
     let drop_targets = rating_target_ids.clone();
     if media.rating > 0 {
         frame = frame.child(

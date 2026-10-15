@@ -1,5 +1,7 @@
 # Database plugin ports / 数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: implemented source-compatible SQLite service; broad query-by-query regression coverage remains pending. Source of truth: `src/lib.rs` and `src/db/`.
 
 ## Lifecycle and dependency
@@ -47,3 +49,12 @@ durable transaction ID or count of changed rows. No schema, SQL, lock order or
 closure results are changed; direct external SQLite writes are not tracked.
 Gallery statistics/bulk read models use this with their existing event revision
 to remain fresh after direct service operations without repaint-driven reads.
+
+
+## Browser runtime update — 2026-10-15
+
+Runtime now uses `DatabaseService::open_browser_at(path)`; the plugin opens **photag-tags.db**, leaving legacy photag.db untouched. `main` is an in-memory SQLite session cache, `saved` is the attached durable database. Browsing calls `with_cache_writer`; annotation/bookmark commands call `with_writer`, which synchronizes only tagged/rated media and user-owned tables. Unchanged durable rows are not rewritten. No old library migration is performed.
+
+Public additions: `is_browser() -> bool`, `with_cache_writer<T>(FnOnce(&Connection)->rusqlite::Result<T>)`, `begin_directory_cache(&str)`, `pin_file(&str,&str,Option<i64>)->Result<i64,_>`, `pin_history(&[i64])`, `flush_annotations()`, `forget_records(&[String])->Result<usize,_>`. The serialized browser reader uses the same memory connection. Cache IDs are real session row handles; persistent selection uses absolute paths. Recent scope budget: four directories, prune older scopes above 200,000 rows; current directory, annotated/rated files, active preview and history pins may exceed it. `file_versions` and path lists are session only. `favorite_meta` stores aliases/order; `tag_previews` stores independent durable identification thumbnail paths. The hidden folder owner 0 is not a favorite.
+
+`MediaQuery::{local_only,direct_directory,directory_tree,annotated_only}` separate visible filesystem membership from annotation queries. `MediaItem::missing` is a presentation field, not persisted. `LibraryStats::total_files` includes all types. Inspect SQL errors in DatabaseAccessError/tracing; persistence tests cover restart, no untagged inventory, literal path prefix and history cache retention.

@@ -1,5 +1,7 @@
 # Preview plugin ports
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: S5 reflows the full-window image preview around a branded top bar, right-aligned metadata card, lower transform/tag/file toolbar, and image filmstrip with previous/next navigation. The stage uses the solid `SURFACE_EXTREME` token (audio uses its neutral audio surface). Information values render as compact label/value rows with collapsible File, Library, Image/Video, and EXIF groups. The Gallery opens selected media with its database identity. The AI suggestions surface polls local inference, reads live AI settings, and supports assigning/removing suggested tags. Source wheel multiplier, smooth zoom animation, fit/preset/continuous slider zoom, cursor-anchored zoom, drag pan, auto-hiding preview chrome, and the information overlay remain backed by existing service and session state. The AI top-bar action queues the existing request, while its result surface remains in the AI contribution slot. Integrated Windows visual and pointer validation is pending the required PhoTag MCP run.
 
 ## Lifecycle and dependencies
@@ -173,3 +175,8 @@ decode stages are zero, with unknown dimensions as None. `load_status()` adds
 Existing service IDs, Cordis events, SQLite schema and user cache paths remain.
 Tests cover cached reuse, stale/missing fallback, request ownership and finite
 failed attempts. Live timing/coverage: docs/validation-ui/2026-10-15-preview-optimization/README.md.
+
+
+## Browser runtime update — 2026-10-15
+
+Browser files are pinned into the session cache by path for existing preview/filmstrip contracts; no untagged row is persisted. File revision includes path, size and nanosecond mtime. `refresh_local_source` on watcher change closes missing sources or reopens changed sources. Property/EXIF/dimensions and original GPUI assets invalidate with file revision; progressive cache filenames include it. Informational open counts update session cache. A same-path PNG overwrite 60x30 -> 100x80 was exercised with actual full-frame presentation diagnostics. Existing priority, cancellation, seven-item neighborhood and transform behavior are retained.

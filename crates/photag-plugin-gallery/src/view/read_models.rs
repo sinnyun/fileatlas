@@ -79,6 +79,7 @@ impl GalleryView {
                     let audio = service
                         .load(MediaQuery {
                             media_type: Some("audio".into()),
+                            annotated_only: service.browser_enabled(),
                             ..Default::default()
                         })
                         .map(|snapshot| {
@@ -153,5 +154,56 @@ impl GalleryView {
             return true;
         }
         false
+    }
+}
+
+impl GalleryView {
+    pub(super) fn request_visible_window(&mut self, requested: std::ops::Range<usize>) {
+        self.visible_demand = Some(match self.visible_demand.take() {
+            Some(previous) => previous.start.min(requested.start)..previous.end.max(requested.end),
+            None => requested,
+        });
+    }
+    pub(super) fn flush_visible_window(&mut self) {
+        if self.snapshot_read.is_pending() {
+            return;
+        }
+        let Some(requested) = self.visible_demand.take() else {
+            return;
+        };
+        let Ok(snapshot) = &self.snapshot else { return };
+        let total = snapshot.skeletons.len();
+        if total == 0 {
+            return;
+        }
+        let begin = requested.start.min(total);
+        let end = requested.end.min(total).max(begin);
+        let size = 200.max(end - begin).min(total);
+        let offset = ((begin + end) / 2)
+            .saturating_sub(size / 2)
+            .min(total - size);
+        let ids = snapshot.skeletons[offset..offset + size]
+            .iter()
+            .map(|s| s.id)
+            .collect::<Vec<_>>();
+        let visible = snapshot.skeletons[begin..end]
+            .iter()
+            .map(|s| s.id)
+            .collect::<Vec<_>>();
+        let status = self.service.directory_status();
+        let key = (
+            status.0,
+            self.snapshot_generation,
+            ids.clone(),
+            visible.clone(),
+        );
+        if self.viewport_read.key() == Some(&key) {
+            return;
+        }
+        let service = self.service.clone();
+        let request = service.viewport_request.fetch_add(1, Ordering::AcqRel) + 1;
+        self.viewport_read.request(key, move || {
+            service.prepare_window(ids, visible, offset, status.0, request)
+        });
     }
 }

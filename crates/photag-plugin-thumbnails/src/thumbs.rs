@@ -13,6 +13,15 @@ pub fn thumb_path_for(source: &Path, thumb_dir: &Path) -> PathBuf {
     let hash = {
         let mut hasher = Sha256::new();
         hasher.update(source.to_string_lossy().as_bytes());
+        if let Ok(metadata) = std::fs::metadata(source) {
+            hasher.update(metadata.len().to_le_bytes());
+            if let Ok(modified) = metadata.modified().and_then(|time| {
+                time.duration_since(std::time::UNIX_EPOCH)
+                    .map_err(std::io::Error::other)
+            }) {
+                hasher.update(modified.as_nanos().to_le_bytes());
+            }
+        }
         let result = hasher.finalize();
         format!("{:x}", result)[..16].to_string()
     };
@@ -385,7 +394,12 @@ pub fn generate_thumbnail_with_dims(
         let micro = image::open(&thumb_path)
             .ok()
             .map(|img| generate_micro_thumb(&img));
-        return Some((thumb_path.to_string_lossy().to_string(), 0, 0, micro));
+        let (w, h) = image::ImageReader::open(source)
+            .ok()
+            .and_then(|r| r.with_guessed_format().ok())
+            .and_then(|r| r.into_dimensions().ok())
+            .unwrap_or((0, 0));
+        return Some((thumb_path.to_string_lossy().to_string(), w, h, micro));
     }
 
     // === Legacy .webp conversion ===
@@ -398,7 +412,10 @@ pub fn generate_thumbnail_with_dims(
         };
         thumb_dir.join(format!("{}.webp", hash))
     };
-    if legacy_webp.exists() {
+    if legacy_webp.exists()
+        && legacy_webp.metadata().and_then(|m| m.modified()).ok()
+            >= source.metadata().and_then(|m| m.modified()).ok()
+    {
         if let Ok(img) = image::open(&legacy_webp) {
             let micro = generate_micro_thumb(&img);
             if img.save(&thumb_path).is_ok() {

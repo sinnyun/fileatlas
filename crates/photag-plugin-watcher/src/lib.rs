@@ -11,6 +11,7 @@ use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::{DatabaseService, db::queries};
 use photag_plugin_indexing::{IndexingService, scan::classify_media_type};
 
+mod browser;
 mod startup;
 mod watcher;
 pub use startup::LibraryRefreshState;
@@ -28,6 +29,8 @@ pub struct WatcherService {
     indexing: Arc<IndexingService>,
     watcher: Mutex<watcher::FolderWatcher>,
     refresh_state: Arc<Mutex<LibraryRefreshState>>,
+    browse_path: Mutex<Option<(String, bool)>>,
+    directory_dirty: AtomicBool,
     stop: Arc<AtomicBool>,
     poller: Mutex<Option<JoinHandle<()>>>,
     cordis: Option<Context>,
@@ -40,16 +43,19 @@ impl Service for WatcherService {
 
 impl WatcherService {
     fn start_background_reconciliation(service: &Arc<Self>) -> std::io::Result<()> {
+        let browser = service.database.is_browser();
         let refresh = startup::StartupRefresh::new(service);
         if let Ok(mut state) = service.refresh_state.lock() {
-            state.running = true;
+            state.running = !browser;
         }
         let weak: Weak<Self> = Arc::downgrade(service);
         let stop = Arc::clone(&service.stop);
         let worker = std::thread::Builder::new()
             .name("photag-fs-reconcile".into())
             .spawn(move || {
-                refresh.run();
+                if !browser {
+                    refresh.run();
+                }
                 while !stop.load(Ordering::Acquire) {
                     if let Some(service) = weak.upgrade() {
                         if let Err(error) = service.poll_and_reconcile() {
@@ -66,6 +72,36 @@ impl WatcherService {
             .lock()
             .map_err(|_| std::io::Error::other("watcher worker lock poisoned"))? = Some(worker);
         Ok(())
+    }
+
+    pub fn retry_browse_watch(&self) {
+        if let Some((path, recursive)) = self.browse_path.lock().ok().and_then(|v| v.clone()) {
+            if let Ok(watcher) = self.watcher.lock() {
+                watcher.replace_watch(Some(&path), Some(&path), recursive);
+            }
+        }
+    }
+
+    pub fn invalidate_browse_directory(&self) {
+        self.directory_dirty.store(true, Ordering::Release);
+    }
+
+    pub fn set_browse_directory(&self, path: Option<&str>, recursive: bool) {
+        let Ok(mut previous) = self.browse_path.lock() else {
+            return;
+        };
+        let next = path.map(|path| (path.to_owned(), recursive));
+        if *previous == next {
+            return;
+        }
+        if let Ok(watcher) = self.watcher.lock() {
+            watcher.replace_watch(
+                previous.as_ref().map(|(path, _)| path.as_str()),
+                path,
+                recursive,
+            );
+        }
+        *previous = next;
     }
 
     /// Startup reconciliation progress/errors; no UI or filesystem work occurs here.
@@ -102,6 +138,9 @@ impl WatcherService {
             return Ok(ReconcileSummary::default());
         }
 
+        if self.database.is_browser() {
+            return self.reconcile_browser(&added, &removed);
+        }
         let removed_count = removed.len();
         let indexed = self.database.with_writer(|connection| {
             for path in &removed {
@@ -238,13 +277,15 @@ impl Plugin for WatcherPlugin {
                     .collect::<rusqlite::Result<Vec<_>>>()
             })
             .map_err(|error| WatcherPluginError::Database(error.to_string()))?;
-        for folder in folders {
+        for folder in folders.into_iter().filter(|_| !database.is_browser()) {
             watcher.watch(&folder);
         }
         let service = Arc::new(WatcherService {
             database,
             indexing,
             watcher: Mutex::new(watcher),
+            browse_path: Mutex::new(None),
+            directory_dirty: AtomicBool::new(false),
             refresh_state: Arc::default(),
             stop: Arc::new(AtomicBool::new(false)),
             poller: Mutex::new(None),
@@ -347,6 +388,8 @@ mod tests {
             database: Arc::clone(&database),
             indexing,
             watcher: Mutex::new(watcher),
+            browse_path: Mutex::new(None),
+            directory_dirty: AtomicBool::new(false),
             refresh_state: Arc::default(),
             stop: Arc::new(AtomicBool::new(true)),
             poller: Mutex::new(None),

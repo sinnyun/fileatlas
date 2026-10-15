@@ -20,11 +20,16 @@ const MAX_EMIT_PER_POLL: usize = 200;
 /// and overwhelm the channel during scans.
 fn classify(kind: &EventKind) -> Option<EventClass> {
     match kind {
+        EventKind::Modify(ModifyKind::Metadata(notify::event::MetadataKind::AccessTime)) => None,
         EventKind::Create(_) => Some(EventClass::Add),
         EventKind::Remove(_) => Some(EventClass::Remove),
         EventKind::Modify(ModifyKind::Name(RenameMode::From)) => Some(EventClass::Remove),
         EventKind::Modify(ModifyKind::Name(RenameMode::To)) => Some(EventClass::Add),
         EventKind::Modify(ModifyKind::Name(RenameMode::Both)) => Some(EventClass::Add),
+        EventKind::Modify(ModifyKind::Any)
+        | EventKind::Modify(ModifyKind::Data(_))
+        | EventKind::Modify(ModifyKind::Metadata(_))
+        | EventKind::Any => Some(EventClass::Add),
         _ => None,
     }
 }
@@ -40,8 +45,14 @@ pub struct FolderWatcher {
     /// that `watch()` and `unwatch()` calls never block the UI thread —
     /// `notify` on Windows can take noticeable time to register a directory
     /// (especially on slower drives or recursive trees).
-    watcher: Arc<Mutex<RecommendedWatcher>>,
+    watcher: Arc<Mutex<Box<dyn Watcher + Send>>>,
+    generation: Arc<std::sync::atomic::AtomicU64>,
+    normalize_paths: std::sync::atomic::AtomicBool,
     rx: mpsc::Receiver<notify::Result<Event>>,
+    sender: mpsc::SyncSender<notify::Result<Event>>,
+    overflow: Arc<std::sync::atomic::AtomicBool>,
+    watched_path: Arc<Mutex<Option<String>>>,
+    registered_path: Arc<Mutex<Option<String>>>,
     pending_added: HashSet<String>,
     pending_removed: HashSet<String>,
     last_event: Option<Instant>,
@@ -49,15 +60,106 @@ pub struct FolderWatcher {
 
 impl FolderWatcher {
     pub fn new() -> Option<Self> {
-        let (tx, rx) = mpsc::channel();
-        let watcher = RecommendedWatcher::new(tx, Config::default()).ok()?;
+        let (tx, rx) = mpsc::sync_channel(4096);
+        let overflow = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let sender = tx.clone();
+        let overflow_callback = overflow.clone();
+        let handler = move |event| {
+            if sender.try_send(event).is_err() {
+                overflow_callback.store(true, std::sync::atomic::Ordering::Release);
+            }
+        };
+        let watcher: Box<dyn Watcher + Send> =
+            match RecommendedWatcher::new(handler.clone(), Config::default()) {
+                Ok(watcher) => Box::new(watcher),
+                Err(error) => {
+                    tracing::warn!(%error,"native watcher unavailable, using polling");
+                    Box::new(
+                        notify::PollWatcher::new(
+                            handler,
+                            Config::default().with_poll_interval(Duration::from_secs(2)),
+                        )
+                        .ok()?,
+                    )
+                }
+            };
         Some(Self {
             watcher: Arc::new(Mutex::new(watcher)),
+            generation: Arc::default(),
+            normalize_paths: std::sync::atomic::AtomicBool::new(false),
             rx,
+            sender: tx,
+            overflow,
+            watched_path: Arc::default(),
+            registered_path: Arc::default(),
             pending_added: HashSet::new(),
             pending_removed: HashSet::new(),
             last_event: None,
         })
+    }
+
+    pub fn replace_watch(&self, _old: Option<&str>, new: Option<&str>, recursive: bool) {
+        use std::sync::atomic::Ordering;
+        self.normalize_paths.store(true, Ordering::Release);
+        let ticket = self.generation.fetch_add(1, Ordering::AcqRel) + 1;
+        let generation = self.generation.clone();
+        let watcher = self.watcher.clone();
+        let sender = self.sender.clone();
+        let overflow = self.overflow.clone();
+        *self.watched_path.lock().unwrap() = new.map(str::to_owned);
+        let registered = self.registered_path.clone();
+        let new = new.map(str::to_owned);
+        std::thread::spawn(move || {
+            if let Ok(mut watcher) = watcher.lock() {
+                if generation.load(Ordering::Acquire) != ticket {
+                    return;
+                }
+                if let Some(old) = registered.lock().unwrap().take() {
+                    let _ = watcher.unwatch(Path::new(&old));
+                }
+                if let Some(new) = new {
+                    let mode = if recursive {
+                        RecursiveMode::Recursive
+                    } else {
+                        RecursiveMode::NonRecursive
+                    };
+                    if let Err(error) = watcher.watch(Path::new(&new), mode) {
+                        tracing::warn!(%error,path=%new,"directory watch failed, using polling");
+                        let fallback_sender = sender.clone();
+                        let fallback_overflow = overflow.clone();
+                        let handler = move |event| {
+                            if fallback_sender.try_send(event).is_err() {
+                                fallback_overflow.store(true, Ordering::Release);
+                            }
+                        };
+                        match notify::PollWatcher::new(
+                            handler,
+                            Config::default().with_poll_interval(Duration::from_secs(2)),
+                        ) {
+                            Ok(mut fallback) => match fallback.watch(Path::new(&new), mode) {
+                                Ok(()) => {
+                                    *registered.lock().unwrap() = Some(new.clone());
+                                    *watcher = Box::new(fallback);
+                                    let _ = sender.try_send(Ok(
+                                        Event::new(EventKind::Any).add_path(new.into())
+                                    ));
+                                }
+                                Err(error) => {
+                                    tracing::error!(%error,path=%new,"polling directory watch failed")
+                                }
+                            },
+                            Err(error) => {
+                                tracing::error!(%error,path=%new,"polling watcher initialization failed")
+                            }
+                        }
+                    } else {
+                        *registered.lock().unwrap() = Some(new.clone());
+                        let _ =
+                            sender.try_send(Ok(Event::new(EventKind::Any).add_path(new.into())));
+                    }
+                }
+            }
+        });
     }
 
     /// Non-blocking: actually registers the watch on a background thread.
@@ -85,6 +187,15 @@ impl FolderWatcher {
     /// Drain new events from the underlying channel into pending buffers.
     /// Caps work to MAX_DRAIN_PER_POLL to avoid blocking the UI thread.
     fn drain_events(&mut self) {
+        if self
+            .overflow
+            .swap(false, std::sync::atomic::Ordering::AcqRel)
+        {
+            if let Some(root) = self.watched_path.lock().unwrap().clone() {
+                self.pending_added.insert(root);
+                self.last_event = Some(Instant::now() - Duration::from_secs(1));
+            }
+        }
         let mut drained = 0;
         while drained < MAX_DRAIN_PER_POLL {
             let result = match self.rx.try_recv() {
@@ -101,7 +212,25 @@ impl FolderWatcher {
             };
 
             for path in &event.paths {
-                let path_str = path.to_string_lossy().to_string();
+                let normalized = if self
+                    .normalize_paths
+                    .load(std::sync::atomic::Ordering::Acquire)
+                {
+                    std::fs::canonicalize(path)
+                        .or_else(|_| {
+                            let parent = path
+                                .parent()
+                                .ok_or_else(|| std::io::Error::other("no parent"))?;
+                            Ok::<_, std::io::Error>(
+                                std::fs::canonicalize(parent)?
+                                    .join(path.file_name().unwrap_or_default()),
+                            )
+                        })
+                        .unwrap_or_else(|_| path.clone())
+                } else {
+                    path.clone()
+                };
+                let path_str = normalized.to_string_lossy().to_string();
                 match class {
                     EventClass::Add => {
                         self.pending_removed.remove(&path_str);
@@ -111,6 +240,13 @@ impl FolderWatcher {
                         self.pending_added.remove(&path_str);
                         self.pending_removed.insert(path_str);
                     }
+                }
+            }
+            if self.pending_added.len() + self.pending_removed.len() > 4096 {
+                self.pending_added.clear();
+                self.pending_removed.clear();
+                if let Some(root) = self.watched_path.lock().unwrap().clone() {
+                    self.pending_added.insert(root);
                 }
             }
             self.last_event = Some(Instant::now());

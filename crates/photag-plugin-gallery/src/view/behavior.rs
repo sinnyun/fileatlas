@@ -21,6 +21,7 @@ impl GalleryView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.restored_file_paths.clear();
         self.selected_directory = None;
         window.focus(&self.focus_handle, cx);
         let Ok(snapshot) = &self.snapshot else {

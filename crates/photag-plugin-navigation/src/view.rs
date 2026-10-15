@@ -28,6 +28,9 @@ use photag_ui_bridge::{UiViewContribution, theme};
 use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 
 mod construction;
+mod directories;
+mod favorite_menu;
+use favorite_menu::favorite_menu;
 mod folder_picker;
 mod page_state;
 mod projections;
@@ -155,6 +158,7 @@ pub(super) fn sidebar(
                         .as_ref()
                         .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
                         .and_then(|value| NavigationPage::from_key(&value));
+                    let directory_changed = view.poll_directories();
                     let page_changed = surface_page.is_some_and(|page| page != view.active_page);
                     if let Some(page) = surface_page {
                         if page != view.active_page {
@@ -184,8 +188,12 @@ pub(super) fn sidebar(
                     if changed {
                         view.refresh();
                     }
-                    let changed =
-                        requested || ui_requested || changed || page_changed || search_changed;
+                    let changed = requested
+                        || ui_requested
+                        || changed
+                        || directory_changed
+                        || page_changed
+                        || search_changed;
                     if changed {
                         if requested {
                             view.pick_folder(cx);
@@ -282,6 +290,8 @@ struct SidebarView {
     scan_failure: Option<(ScanRetryTarget, String)>,
     scan_progress: Option<ScanProgress>,
     expanded_directories: HashMap<String, Vec<SubdirectoryNode>>,
+    pending_directories: std::collections::VecDeque<String>,
+    directory_read: photag_ui_bridge::read_model::ReadModel<String, Vec<SubdirectoryNode>>,
     expanded_tags: HashSet<i64>,
     restored_folder_id: Option<i64>,
     restored_path: Option<String>,
@@ -304,10 +314,12 @@ struct SidebarView {
     confirm_delete: Option<(i64, String, usize)>,
     delete_clean_parents: bool,
     tag_create_open: bool,
+    rename_favorite: Option<i64>,
 }
 
 #[derive(Clone)]
 enum ScanRetryTarget {
+    Directory(String),
     Folder(i64),
     Path(String),
 }
@@ -336,6 +348,7 @@ impl SidebarView {
     }
 
     fn close_tag_modal(&mut self) {
+        self.rename_favorite = None;
         self.tag_create_open = false;
         self.associated_edit_tag = None;
         self.confirm_delete = None;
@@ -346,6 +359,16 @@ impl SidebarView {
     }
 
     fn rescan(&mut self, folder_id: i64, cx: &mut Context<Self>) {
+        if self.service.browser_enabled() {
+            self.select_folder(Some(folder_id), cx);
+            let cordis = self.cordis.clone();
+            cx.spawn(async move |_, _| {
+                let _ = cordis
+                    .emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+                    .await;
+            })
+            .detach();
+        }
         match self.service.rescan(folder_id) {
             Ok(progress) => {
                 self.active_scan = Some(progress);
@@ -370,6 +393,7 @@ impl SidebarView {
         }
         match self.service.add_folder(path.clone()) {
             Ok((folder, progress)) => {
+                self.select_folder(Some(folder.id), cx);
                 self.active_scan = Some(progress);
                 self.active_scan_folder_id = Some(folder.id);
                 self.scan_progress = None;
@@ -463,6 +487,7 @@ impl SidebarView {
         match target {
             ScanRetryTarget::Folder(folder_id) => self.rescan(folder_id, cx),
             ScanRetryTarget::Path(path) => self.add_folder_path(path, cx),
+            ScanRetryTarget::Directory(path) => self.queue_directory(&path),
         }
         cx.notify();
     }
@@ -665,8 +690,12 @@ impl SidebarView {
 
     fn toggle_directory(&mut self, path: &str) {
         if self.expanded_directories.remove(path).is_none() {
-            self.expanded_directories
-                .insert(path.to_owned(), self.service.subdirectories(path));
+            if self.service.browser_enabled() {
+                self.queue_directory(path);
+            } else {
+                self.expanded_directories
+                    .insert(path.to_owned(), self.service.subdirectories(path));
+            }
         }
         self.persist_directory_expansion();
     }

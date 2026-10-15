@@ -7,11 +7,15 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_database::db::queries::{self, Tag};
 use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
 
+mod records;
+#[cfg(test)]
+mod records_tests;
 pub mod writeback;
 pub mod xmp;
 
 pub struct TaggingService {
     database: Arc<DatabaseService>,
+    thumbnails: Option<Arc<photag_plugin_thumbnails::ThumbnailService>>,
     recent_tag_ids: Mutex<Vec<i64>>,
 }
 
@@ -23,6 +27,7 @@ impl TaggingService {
     pub fn new(database: Arc<DatabaseService>) -> Self {
         Self {
             database,
+            thumbnails: None,
             recent_tag_ids: Mutex::new(Vec::new()),
         }
     }
@@ -50,6 +55,7 @@ impl TaggingService {
         tag_ids: &[i64],
         track_recent: bool,
     ) -> Result<(), TaggingError> {
+        self.capture_sources(media_ids)?;
         self.database
             .with_writer(|connection| queries::assign_tags(connection, media_ids, tag_ids))?;
         if track_recent && let Ok(mut recent) = self.recent_tag_ids.lock() {
@@ -212,8 +218,12 @@ impl Plugin for TaggingPlugin {
         let database = context
             .try_service::<DatabaseService>()
             .map_err(|error| TaggingPluginError::Dependency(error.to_string()))?;
+        let mut service = TaggingService::new(database);
+        service.thumbnails = context
+            .try_service::<photag_plugin_thumbnails::ThumbnailService>()
+            .ok();
         let _publication = context
-            .provide(Arc::new(TaggingService::new(database)))
+            .provide(Arc::new(service))
             .map_err(|error| TaggingPluginError::Publish(error.to_string()))?;
         register_for_plugin(
             &context,

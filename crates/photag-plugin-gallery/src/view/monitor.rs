@@ -12,6 +12,74 @@ pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
 
 fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView>) -> bool {
     let mut repaint = false;
+    if view.service.poll_directory() {
+        view.refresh_index();
+        repaint = true;
+    }
+    if view.snapshot_read.poll() {
+        if let Some(result) = view.snapshot_read.value() {
+            view.snapshot = result
+                .as_ref()
+                .map(|snapshot| snapshot.clone())
+                .map_err(|e| e.clone());
+            view.visible_demand = None;
+            view.row_layout_key = None;
+            view.row_layout = Arc::new(Vec::new());
+        }
+        repaint = true;
+    }
+    if view.viewport_read.poll() {
+        if view.viewport_read.key().is_some_and(|key| {
+            key.0 == view.service.directory_status().0 && key.1 == view.snapshot_generation
+        }) {
+            if let Some(Ok(window)) = view.viewport_read.value() {
+                if let Ok(snapshot) = &mut view.snapshot {
+                    snapshot.window_offset = window.offset;
+                    snapshot.media = window.media.clone();
+                    snapshot.media_tags = window.media_tags.clone();
+                }
+            }
+            repaint = true;
+        }
+    }
+    view.flush_visible_window();
+    let restore_scope_ready = !view.restore_in_directory
+        || view
+            .snapshot
+            .as_ref()
+            .ok()
+            .and_then(|s| s.browser.directory.as_ref())
+            .is_some_and(|directory| {
+                view.restored_file_paths.iter().all(|path| {
+                    std::path::Path::new(path).parent() == Some(std::path::Path::new(directory))
+                })
+            });
+    if !view.restored_file_paths.is_empty()
+        && !view.service.directory_status().2
+        && !view.snapshot_read.is_pending()
+        && restore_scope_ready
+    {
+        let paths = view.restored_file_paths.clone();
+        let service = view.service.clone();
+        let key = (view.service.directory_status().0, paths.clone());
+        view.selection_restore
+            .request(key, move || service.ids_for_paths(&paths));
+        if view.selection_restore.poll() {
+            if let Some(Ok(ids)) = view.selection_restore.value() {
+                if let Ok(snapshot) = &view.snapshot {
+                    view.selection.selected_media_ids = ids
+                        .iter()
+                        .copied()
+                        .filter(|id| snapshot.skeletons.iter().any(|s| s.id == *id))
+                        .collect();
+                    view.selection.anchor_id = view.selection.selected_media_ids.first().copied();
+                }
+            }
+            view.restored_file_paths.clear();
+            view.persist_filter_session();
+            repaint = true;
+        }
+    }
     let popover = view.surfaces.value("gallery.popover");
     if view.previous_popover.changed(popover) {
         repaint = true;
@@ -63,6 +131,12 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
         view.reload();
         repaint = true;
     } else if index_changed {
+        if view.service.browser_enabled() {
+            view.service.reconcile_directory_event();
+            let preview = view.preview.clone();
+            view.runtime
+                .spawn_blocking(move || preview.refresh_local_source());
+        }
         view.refresh_index();
         repaint = true;
     }
@@ -90,6 +164,7 @@ fn tick(view: &mut GalleryView, scroll: &ListState, cx: &mut Context<GalleryView
     }
     let current_scroll = (-f32::from(scroll.scroll_px_offset_for_scrollbar().y)).max(0.);
     repaint |= view.poll_dialog_reads(cx);
+    repaint |= view.poll_records();
     if (current_scroll - view.last_saved_scroll).abs() >= 1.0 {
         view.persist_filter_session();
         view.last_saved_scroll = current_scroll;

@@ -53,6 +53,16 @@ pub(crate) fn gallery(
                 cx,
             )
         });
+        view.update(app, |view, cx| {
+            let sub = cx.observe_window_activation(window, |view, window, cx| {
+                if window.is_window_active() && view.service.browser_enabled() {
+                    view.service.invalidate_directory();
+                    view.refresh_index();
+                    cx.notify();
+                }
+            });
+            view._subscriptions.push(sub);
+        });
         filter_row::subscribe_calendar(&view, window, app);
         view.update(app, |view, cx| monitor::spawn(view, cx));
         *cached = Some(view.clone());

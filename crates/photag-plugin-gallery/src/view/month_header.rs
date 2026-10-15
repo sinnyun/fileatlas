@@ -5,9 +5,19 @@ pub(super) fn render(
     label: String,
     count: usize,
     expanded: f32,
+    scope: Option<&str>,
     cx: &mut Context<GalleryView>,
 ) -> Stateful<Div> {
-    let display = photag_ui_bridge::i18n::tr(&label);
+    let display = scope
+        .and_then(|scope| std::path::Path::new(&label).strip_prefix(scope).ok())
+        .map(|relative| {
+            if relative.as_os_str().is_empty() {
+                photag_ui_bridge::i18n::tr("Current folder")
+            } else {
+                relative.to_string_lossy().into_owned()
+            }
+        })
+        .unwrap_or_else(|| photag_ui_bridge::i18n::tr(&label));
     div()
         .id(format!("gallery-month-{label}"))
         .relative()

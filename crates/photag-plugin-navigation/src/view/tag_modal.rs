@@ -5,6 +5,32 @@ use gpui_kit::component::scroll::ScrollableElement;
 
 impl SidebarView {
     pub(super) fn render_tag_modal(&mut self, cx: &mut Context<Self>) -> Div {
+        if let Some(id) = self.rename_favorite {
+            return modal_shell(
+                photag_ui_bridge::i18n::tr("Rename favorite"),
+                div()
+                    .v_flex()
+                    .gap_3()
+                    .child(Input::new(&self.tag_name))
+                    .child(
+                        Button::new("favorite-rename-save")
+                            .primary()
+                            .label(photag_ui_bridge::i18n::tr("Save"))
+                            .on_click(cx.listener(move |view, _, _, cx| {
+                                let name = view.tag_name.read(cx).value().to_string();
+                                if let Err(error) = view.service.rename_favorite(id, &name) {
+                                    view.snapshot = Err(error.to_string());
+                                } else {
+                                    view.rename_favorite = None;
+                                    view.refresh();
+                                }
+                                cx.notify();
+                            })),
+                    ),
+                modal_close_button(cx),
+                430.,
+            );
+        }
         if self.tag_create_open {
             let create = Button::new("navigation-create-tag-submit")
                 .primary()

@@ -1,5 +1,7 @@
 # Gallery plugin ports / 图库数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: the query/window service and source-backed Gallery interactions are implemented, including virtualized rendering, filters, selection, preview routing, file actions, and bulk actions. C0–C4 coding continuation changes are written but unverified; Windows behavior and full visual parity remain unverified.
 
 ## Lifecycle and dependencies
@@ -220,3 +222,14 @@ background executor and applies only while the opened identity is active.
 Preview consumes the public contract; Gallery does not own preview decoding.
 No schema, filters, events or source file mutation changes. See Preview PORTS
 for thumbnail freshness, fallback, generation cancellation and diagnostics.
+
+
+## Browser runtime update — 2026-10-15
+
+Production browsing is filesystem driven for every grouping. `live.rs` adapts Yazi VfsEntries/Refresher (MIT, pinned reference under vendor/yazi-reference). One directory worker, one latest pending request, cooperative cancellation, generation rejection, a bounded four-message channel, first batch 32 entries then 2048 files. The UI drains at most four messages per shared poll. Filesystem reads/stat and session cache batches run off-thread. Directories include empty/hidden directories; descendant traversal is explicit and does not follow symlink directories. Child read errors produce partial results plus an error.
+
+Public controls: `browser_enabled`, `show_descendants`, `set_show_descendants(bool)`, `thumbnails_enabled`, `set_thumbnails_enabled(bool)`, `invalidate_directory`, `cancel_directory`, `poll_directory`, `directory_worker_active`. `directory_status() -> (u64 generation,u64 revision,bool active,usize scanned,Option<String> error)`. Active means view loading; worker_active separately reports an OS call/producer still running after cancellation. A blocked OS read or an already running decoder is not forcibly interruptible.
+
+Gallery consumes WatcherService and IndexingService. Native watcher changes patch the session cache or invalidate a directory; refresh/reactivation rereads it. Snapshots use ReadModel; row renderers declare demand which is merged once per poll. A 200-row rich window and a small visible overscan request thumbnails; stale generation/request/file versions cannot publish decoded results. Preview is still the existing prioritized decoder. The tools menu includes thumbnail enable/disable and missing-record maintenance. Session restores selection by path, not cached row ID. Favorite home, tag results, locate-and-select, grid/list, groups and existing action surfaces share the accepted layout.
+
+Missing-record UI chooses exact files or proposes same-name candidates from one explicitly picked folder, then applies each row or skips. Delete missing records requires two-step confirmation and revalidates local missing status. No automatic move inference. See browser validation evidence for exercised Windows paths; codec, inaccessible-drive and native picker boundary coverage remains limited.

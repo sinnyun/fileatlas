@@ -29,6 +29,14 @@ pub enum TagClickMode {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SessionState {
     #[serde(default)]
+    pub show_descendants: bool,
+    #[serde(default)]
+    pub thumbnails_disabled: bool,
+    #[serde(default)]
+    pub before_descendants_grouping: Option<String>,
+    #[serde(default)]
+    pub selected_file_paths: Vec<String>,
+    #[serde(default)]
     pub expanded_subdirs: HashSet<String>,
     #[serde(default)]
     pub expanded_tag_ids: HashSet<i64>,

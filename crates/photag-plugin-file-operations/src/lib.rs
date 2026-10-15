@@ -382,7 +382,7 @@ impl FileOperationsService {
             .unwrap_or_else(|| item.filename.clone());
         let folder_id = self.folder_for_path(&dest)?;
         self.database.with_writer(|connection| {
-            if folder_id.is_some() {
+            if folder_id.is_some() || self.database.is_browser() {
                 queries::update_media_path(connection, media_id, &filename, &dest, folder_id)
             } else {
                 queries::delete_media(connection, media_id)
@@ -409,7 +409,7 @@ impl FileOperationsService {
         }
         let folder_id = self.folder_for_path(&dest)?;
         self.database.with_writer(|connection| {
-            if folder_id.is_some() {
+            if folder_id.is_some() || self.database.is_browser() {
                 queries::update_media_path(connection, media_id, &item.filename, &dest, folder_id)
             } else {
                 // PhoTag removes the indexed row when a bulk move leaves all
@@ -461,8 +461,26 @@ impl FileOperationsService {
         if let Some(path) = &item.thumb_path {
             std::fs::remove_file(path).ok();
         }
-        self.database
-            .with_writer(|connection| queries::delete_media(connection, media_id))?;
+        if self.database.is_browser() {
+            if recycle_error.is_none() {
+                self.database.with_cache_writer(|connection| {
+                    connection.execute(
+                        "DELETE FROM live_paths WHERE full_path=?1",
+                        [&item.full_path],
+                    )?;
+                    Ok(())
+                })?;
+            } else {
+                return Ok(DeleteResult {
+                    removed_from_database: false,
+                    recycled: false,
+                    recycle_error,
+                });
+            }
+        } else {
+            self.database
+                .with_writer(|connection| queries::delete_media(connection, media_id))?;
+        }
         Ok(DeleteResult {
             removed_from_database: true,
             recycled: recycle_error.is_none(),
@@ -471,12 +489,21 @@ impl FileOperationsService {
     }
 
     fn media(&self, media_id: i64) -> Result<Option<MediaItem>, FileOperationError> {
-        Ok(self
+        let item = self
             .database
-            .with_reader(|connection| queries::get_media_by_id(connection, media_id))?)
+            .with_reader(|connection| queries::get_media_by_id(connection, media_id))?;
+        if self.database.is_browser() {
+            if let Some(item) = &item {
+                std::fs::metadata(&item.full_path)?;
+            }
+        }
+        Ok(item)
     }
 
     fn folder_for_path(&self, path: &str) -> Result<Option<i64>, FileOperationError> {
+        if self.database.is_browser() {
+            return Ok(Some(0));
+        }
         let folders = self.database.with_reader(queries::list_folders)?;
         Ok(registered_folder_for_path(&folders, path))
     }

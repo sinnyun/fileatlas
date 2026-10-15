@@ -50,7 +50,9 @@ impl MetadataExportService {
 
     /// Return all media rows in source order with source-compatible tag paths.
     pub fn records(&self) -> Result<Vec<MediaExport>, MetadataExportError> {
-        Ok(self.database.with_reader(queries::export_all_metadata)?)
+        Ok(self.database.with_reader(|conn| {
+            queries::export_metadata_scoped(conn, self.database.is_browser())
+        })?)
     }
 
     /// Serialize the same top-level JSON array and field names as PhoTag.

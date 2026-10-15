@@ -42,6 +42,7 @@ pub fn get_media_by_id(conn: &Connection, media_id: i64) -> rusqlite::Result<Opt
     let mut rows = stmt.query(params![media_id])?;
     if let Some(row) = rows.next()? {
         Ok(Some(MediaItem {
+            missing: false,
             id: row.get(0)?,
             folder_id: row.get(1)?,
             filename: row.get(2)?,
@@ -73,26 +74,40 @@ pub fn update_micro_thumb(conn: &Connection, full_path: &str, blob: &[u8]) -> ru
 // ── Statistics ────────────────────────────────────────────────────────────
 
 pub fn get_statistics(conn: &Connection) -> rusqlite::Result<LibraryStats> {
+    get_statistics_scoped(conn, false)
+}
+pub fn get_statistics_scoped(
+    conn: &Connection,
+    annotations: bool,
+) -> rusqlite::Result<LibraryStats> {
+    let source = if annotations {
+        "(SELECT * FROM media WHERE COALESCE(rating,0)<>0 OR EXISTS(SELECT 1 FROM media_tags t WHERE t.media_id=media.id))"
+    } else {
+        "media"
+    };
+    let sql = |query: &str| query.replace("FROM media", &format!("FROM {source}"));
     let total_photos: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM media WHERE media_type = 'image'",
+        &sql("SELECT COUNT(*) FROM media WHERE media_type = 'image'"),
         [],
         |r| r.get(0),
     )?;
     let total_videos: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM media WHERE media_type = 'video'",
+        &sql("SELECT COUNT(*) FROM media WHERE media_type = 'video'"),
         [],
         |r| r.get(0),
     )?;
-    let total_size_bytes: u64 =
-        conn.query_row("SELECT COALESCE(SUM(file_size), 0) FROM media", [], |r| {
-            r.get::<_, i64>(0).map(|v| v as u64)
-        })?;
+    let total_size_bytes: u64 = conn.query_row(
+        &sql("SELECT COALESCE(SUM(file_size), 0) FROM media"),
+        [],
+        |r| r.get::<_, i64>(0).map(|v| v as u64),
+    )?;
 
     // Rating distribution
     let mut rating_counts = [0i64; 6];
     {
-        let mut stmt =
-            conn.prepare("SELECT COALESCE(rating, 0) as r, COUNT(*) FROM media GROUP BY r")?;
+        let mut stmt = conn.prepare(&sql(
+            "SELECT COALESCE(rating, 0) as r, COUNT(*) FROM media GROUP BY r",
+        ))?;
         let rows = stmt.query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)))?;
         for r in rows {
             if let Ok((rating, count)) = r {
@@ -104,11 +119,9 @@ pub fn get_statistics(conn: &Connection) -> rusqlite::Result<LibraryStats> {
 
     // Top 10 tags by assignment count
     let top_tags = {
-        let mut stmt = conn.prepare(
-            "SELECT t.name, COUNT(mt.media_id) as cnt
+        let mut stmt = conn.prepare(&sql("SELECT t.name, COUNT(mt.media_id) as cnt
              FROM tags t JOIN media_tags mt ON mt.tag_id = t.id
-             GROUP BY t.id ORDER BY cnt DESC LIMIT 10",
-        )?;
+             GROUP BY t.id ORDER BY cnt DESC LIMIT 10"))?;
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
         })?;
@@ -117,13 +130,12 @@ pub fn get_statistics(conn: &Connection) -> rusqlite::Result<LibraryStats> {
 
     // Photos per month (last 12 months)
     let monthly_counts = {
-        let mut stmt = conn.prepare(
-            "SELECT strftime('%Y-%m', datetime(COALESCE(date_taken, modified_at), 'unixepoch')) as month,
+        let mut stmt = conn.prepare(&sql("SELECT strftime('%Y-%m', datetime(COALESCE(date_taken, modified_at), 'unixepoch')) as month,
                     COUNT(*)
              FROM media
              GROUP BY month
              ORDER BY month DESC
-             LIMIT 12"
+             LIMIT 12")
         )?;
         let rows = stmt.query_map([], |row| {
             Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?))
@@ -131,7 +143,9 @@ pub fn get_statistics(conn: &Connection) -> rusqlite::Result<LibraryStats> {
         rows.filter_map(|r| r.ok()).collect::<Vec<_>>()
     };
 
+    let total_files = conn.query_row(&sql("SELECT count(*) FROM media"), [], |row| row.get(0))?;
     Ok(LibraryStats {
+        total_files,
         total_photos,
         total_videos,
         total_size_bytes,

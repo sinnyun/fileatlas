@@ -125,6 +125,12 @@ pub(super) fn render_requested(
         )
         .child(div().h(px(1.)).bg(rgb(theme::SEPARATOR)))
         .child(
+            Button::new("gallery-locate-file")
+                .ghost()
+                .label(photag_ui_bridge::i18n::tr("Open containing folder"))
+                .on_click(cx.listener(move |view, _, _, cx| view.locate_file(id, cx))),
+        )
+        .child(
             Button::new("gallery-requested-menu-preview")
                 .ghost()
                 .compact()
@@ -394,6 +400,14 @@ pub(super) fn build(
             }
             menu
         },
+    );
+    let locate_view = menu_view.clone();
+    menu = menu.item(
+        PopupMenuItem::new(photag_ui_bridge::i18n::tr("Open containing folder")).on_click(
+            move |_, _, cx| {
+                let _ = locate_view.update(cx, |view, cx| view.locate_file(media_id, cx));
+            },
+        ),
     );
     let ai_view = menu_view.clone();
     menu = menu.item(

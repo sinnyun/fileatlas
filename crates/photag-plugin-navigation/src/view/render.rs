@@ -55,7 +55,7 @@ impl SidebarView {
                 Button::new("navigation-breadcrumb-all-files")
                     .ghost()
                     .compact()
-                    .label(photag_ui_bridge::i18n::tr("All files"))
+                    .label(photag_ui_bridge::i18n::tr("Favorites"))
                     .text_color(rgb(if all_selected {
                         theme::TEXT_PRIMARY
                     } else {
@@ -147,8 +147,14 @@ impl SidebarView {
                             .map(|ancestor| ancestor.to_string_lossy().into_owned())
                             .collect::<Vec<_>>();
                         for ancestor in ancestors.into_iter().rev() {
-                            self.expanded_directories
-                                .insert(ancestor.clone(), self.service.subdirectories(&ancestor));
+                            if self.service.browser_enabled() {
+                                self.queue_directory(&ancestor);
+                            } else {
+                                self.expanded_directories.insert(
+                                    ancestor.clone(),
+                                    self.service.subdirectories(&ancestor),
+                                );
+                            }
                         }
                         self.persist_directory_expansion();
                         self.select_path(path, cx);
@@ -256,7 +262,7 @@ impl Render for SidebarView {
                                 div()
                                     .font_semibold()
                                     .text_size(px(15.))
-                                    .child(photag_ui_bridge::i18n::tr("Folders")),
+                                    .child(photag_ui_bridge::i18n::tr("Folder favorites")),
                             )
                             .child(
                                 div()
@@ -318,7 +324,7 @@ impl Render for SidebarView {
                     panel = panel.child(
                         folder_row(
                             "navigation-all-media".into(),
-                            photag_ui_bridge::i18n::tr("All files"),
+                            photag_ui_bridge::i18n::tr("Favorites"),
                             snapshot.folders.iter().map(|node| node.media_count).sum(),
                             self.session
                                 .snapshot()
@@ -342,6 +348,20 @@ impl Render for SidebarView {
                                 .h_flex()
                                 .gap_1()
                                 .child(Input::new(&self.folder_path).flex_1())
+                                .child(
+                                    Button::new("navigation-open-path")
+                                        .label(photag_ui_bridge::i18n::tr("Open folder"))
+                                        .on_click(cx.listener(|view, _, _, cx| {
+                                            let path =
+                                                view.folder_path.read(cx).value().trim().to_owned();
+                                            if let Err(error) = view.service.request_ui(
+                                                crate::NavigationUiRequest::SelectPath(path),
+                                            ) {
+                                                view.snapshot = Err(error.to_string());
+                                            }
+                                            cx.notify();
+                                        })),
+                                )
                                 .child(
                                     Button::new("navigation-browse-folder")
                                         .disabled(self.service.folder_picker_pending())
@@ -498,58 +518,12 @@ impl Render for SidebarView {
                                         .w(px(20.))
                                         .h(px(22.))
                                         .bg(rgb(theme::SURFACE_BASE))
-                                        .dropdown_menu(move |mut menu, _, _| {
-                                            let create_path = folder_path.clone();
-                                            let create_view = folder_view.clone();
-                                            menu = menu.item(
-                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                    "New subfolder…",
-                                                ))
-                                                .on_click(move |_, window, cx| {
-                                                    let _ = create_view.update(cx, |this, cx| {
-                                                        this.request_new_subfolder(
-                                                            create_path.clone(),
-                                                            window,
-                                                            cx,
-                                                        )
-                                                    });
-                                                }),
-                                            );
-                                            let rescan_view = folder_view.clone();
-                                            menu = menu.item(
-                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                    "Rescan",
-                                                ))
-                                                .on_click(move |_, _, cx| {
-                                                    let _ = rescan_view.update(cx, |this, cx| {
-                                                        this.rescan(folder_id, cx);
-                                                        cx.notify();
-                                                    });
-                                                }),
-                                            );
-                                            let open_path = folder_path.clone();
-                                            let open_view = folder_view.clone();
-                                            menu = menu.item(
-                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                    "Open in file manager",
-                                                ))
-                                                .on_click(move |_, _, cx| {
-                                                    let _ = open_view.update(cx, |this, _| {
-                                                        this.open_folder_in_explorer(&open_path)
-                                                    });
-                                                }),
-                                            );
-                                            let remove_view = folder_view.clone();
-                                            menu.item(
-                                                PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                    "Remove",
-                                                ))
-                                                .on_click(move |_, _, cx| {
-                                                    let _ = remove_view.update(cx, |this, cx| {
-                                                        this.remove_folder(folder_id, cx);
-                                                        cx.notify();
-                                                    });
-                                                }),
+                                        .dropdown_menu(move |menu, _, _| {
+                                            favorite_menu(
+                                                menu,
+                                                folder_id,
+                                                folder_path.clone(),
+                                                folder_view.clone(),
                                             )
                                         })
                                 }),

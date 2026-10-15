@@ -1,5 +1,7 @@
 # Watcher plugin ports / 文件监视数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: Cordis-managed watcher, bounded reconciliation, and Linux create/remove integration exist. Native Windows delivery and race behavior are unverified.
 
 ## Lifecycle and dependencies
@@ -26,3 +28,10 @@ Create/remove/rename paths are no longer restricted by suffix or dot-prefix. Rec
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by photag.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See photag-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+Browser runtime skips StartupRefresh and does not watch every favorite. `set_browse_directory(Option<&str>,bool)` replaces the active subscription; recursive=false is default, true only for descendant view. `retry_browse_watch()` retries registration on explicit refresh/reactivation. `invalidate_browse_directory`/`take_directory_dirty` coordinate full rereads with Gallery.
+
+notify RecommendedWatcher falls back to PollWatcher (2 seconds) at initialization or registration failure. Subscription operations execute off-thread and check a generation before changing the actually registered path, preventing stale workers from unwatching a newer location. Registering emits one reconciliation hint to cover the listing/subscription gap. File Create/Remove/Rename/Data/Metadata/Any events are verified against local stat; AccessTime is ignored. Preserve 800 ms debounce, at most 4000 channel drains and 200 emitted paths; incoming and coalesced path capacity is 4096. Overflow collapses to root invalidation. External removal clears visible membership, retaining tag records. Errors log exact paths and fallback failures. Native create/delete/overwrite/directory-create were exercised; forced fallback and disconnected network drives have not been exercised.

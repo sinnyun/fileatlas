@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 tracing.workspace = true
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-grouping = { path = "../photag-plugin-grouping" }

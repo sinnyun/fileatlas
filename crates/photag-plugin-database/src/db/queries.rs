@@ -11,6 +11,8 @@ pub struct Folder {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MediaItem {
+    #[serde(default)]
+    pub missing: bool,
     pub id: i64,
     pub folder_id: i64,
     pub filename: String,
@@ -115,6 +117,9 @@ impl SortOrder {
 
 #[derive(Default, Clone)]
 pub struct MediaQuery {
+    pub local_only: bool,
+    pub annotated_only: bool,
+    pub directory_tree: Option<String>,
     pub folder_id: Option<i64>,
     pub tag_ids: Option<Vec<i64>>,
     /// Media that has ANY of these tags is excluded from results.
@@ -157,6 +162,21 @@ fn build_filters(
     let mut sql_extra = String::new();
     let mut conditions: Vec<String> = Vec::new();
     let mut param_values: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+    if query.annotated_only {
+        conditions.push("EXISTS(SELECT 1 FROM media_tags mt WHERE mt.media_id=m.id)".into());
+    }
+    if query.local_only {
+        conditions
+            .push("EXISTS(SELECT 1 FROM live_paths lp WHERE lp.full_path=m.full_path)".into());
+    }
+    if let Some(path) = &query.directory_tree {
+        let prefix = format!("{}/", path.replace('\\', "/").trim_end_matches('/'));
+        let i = param_values.len() + 1;
+        conditions.push(format!(
+            "substr(replace(m.full_path,char(92),'/'),1,length(?{i}))=?{i}"
+        ));
+        param_values.push(Box::new(prefix));
+    }
 
     if let Some(ref tag_ids) = query.tag_ids {
         if !tag_ids.is_empty() {
@@ -304,6 +324,7 @@ fn build_filters(
 }
 
 pub struct LibraryStats {
+    pub total_files: i64,
     pub total_photos: i64,
     pub total_videos: i64,
     pub total_size_bytes: u64,

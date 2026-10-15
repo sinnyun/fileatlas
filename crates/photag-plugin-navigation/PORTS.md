@@ -1,5 +1,7 @@
 # Navigation plugin ports / 导航插件数据对接
 
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
 Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::AsyncFileDialog` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. `library_refresh()` forwards the Watcher startup reconciliation state when that provider is available. Folder and subdirectory menus expose new-subfolder and file-manager actions. The tag UI exposes create, rename, delete, color/icon, display, one-way associated-tag assignment, reparent, merge, and confirmed deletion with optional ancestor-assignment cleanup. Appearance can be applied recursively while skipping descendants that already have an explicit color or icon. Typed GPUI drag/drop moves a dragged tag before/after/into an explicit row target. PhoTag has no folder-tree drag/drop behavior.
 
 ## Lifecycle and dependencies
@@ -148,3 +150,10 @@ idle between changes. SQL ordering/schema and tag command results are unchanged.
 ## Shared refresh ownership (2026-10-15)
 
 Sidebar and scan monitors use UI Bridge refresh::poll. Scan sampling compares scanned/total/phase/error before and after draining events; remaining active without progress does not notify. Completion retains existing refresh and MediaIndexChanged emission, then terminates the finite poller.
+
+
+## Browser runtime update — 2026-10-15
+
+Runtime folder records are **favorites**. `add_folder` saves a bookmark and selects it without indexing; `rescan` requests a fresh browse of that directory, preserving annotations; remove only removes the bookmark. The legacy scan receiver signature remains for source-compatible callers and completes immediately in browser mode. `rename_favorite(i64,&str)` changes an alias; `move_favorite(i64,isize)` changes order. Neither changes local names.
+
+Arbitrary `SelectPath(String)` is accepted for an existing directory. `browse_subdirectories(&str)->io::Result<Vec<SubdirectoryNode>>` reads one level without child probes/count scans; Sidebar queues expanded paths through one ReadModel. Rows optimistically expose an expansion arrow until expanded. Favorites missing from disk remain in navigation, with browse errors. UI contributions and picker ownership retain Cordis cleanup. No favorite watcher or startup scan is installed.

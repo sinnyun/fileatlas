@@ -8,7 +8,7 @@ pub struct GalleryDirectory {
     pub name: String,
     pub path: String,
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct BrowserSnapshot {
     pub active: bool,
     pub directory: Option<String>,
@@ -22,7 +22,7 @@ impl GalleryService {
         query: &MediaQuery,
         mode: GroupingMode,
     ) -> Result<BrowserSnapshot, GalleryError> {
-        if mode != GroupingMode::None {
+        if mode != GroupingMode::None && !self.database.is_browser() {
             return Ok(BrowserSnapshot::default());
         }
         let roots = self.database.with_reader(queries::list_folders)?;
@@ -31,6 +31,20 @@ impl GalleryService {
                 .folder_id
                 .and_then(|id| roots.iter().find(|f| f.id == id).map(|f| f.path.clone()))
         });
+        let directory = if self.database.is_browser() {
+            directory.map(|path| {
+                std::fs::canonicalize(&path)
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .unwrap_or(path)
+            })
+        } else {
+            directory
+        };
+        if self.database.is_browser() && directory.is_none() && self.live.reset() {
+            if let Some(watcher) = &self.watcher {
+                watcher.set_browse_directory(None, false);
+            }
+        }
         // Global search/tag views retain the complete matching file result.
         if directory.is_none()
             && (query.search.as_ref().is_some_and(|s| !s.trim().is_empty())
@@ -48,23 +62,37 @@ impl GalleryService {
             ..Default::default()
         };
         if let Some(path) = &snapshot.directory {
-            snapshot.parent = parent_in_library(path, &roots);
-            match self
-                .indexing
-                .as_ref()
-                .ok_or_else(|| "Directory listing service is unavailable".to_string())
-                .and_then(|indexing| {
-                    indexing
-                        .try_list_subdirectories(path)
-                        .map_err(|error| format!("{path}: {error}"))
-                }) {
-                Ok(directories) => {
-                    snapshot.directories = directories
-                        .into_iter()
-                        .map(|(name, path, _)| GalleryDirectory { name, path })
-                        .collect()
+            if self.database.is_browser() {
+                if self.live.ensure(path, &self.database) {
+                    if let Some(watcher) = &self.watcher {
+                        watcher.set_browse_directory(Some(path), self.live.recursive());
+                    }
                 }
-                Err(error) => snapshot.error = Some(error),
+                snapshot.parent = Path::new(path)
+                    .parent()
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .map(|p| p.to_string_lossy().into_owned());
+                snapshot.directories = self.live.directories();
+                snapshot.error = self.live.status().4;
+            } else {
+                snapshot.parent = parent_in_library(path, &roots);
+                match self
+                    .indexing
+                    .as_ref()
+                    .ok_or_else(|| "Directory listing service is unavailable".to_string())
+                    .and_then(|indexing| {
+                        indexing
+                            .try_list_subdirectories(path)
+                            .map_err(|error| format!("{path}: {error}"))
+                    }) {
+                    Ok(directories) => {
+                        snapshot.directories = directories
+                            .into_iter()
+                            .map(|(name, path, _)| GalleryDirectory { name, path })
+                            .collect()
+                    }
+                    Err(error) => snapshot.error = Some(error),
+                }
             }
         } else {
             snapshot.directories = roots
@@ -82,12 +110,9 @@ impl GalleryService {
                     || (query.search_in_paths && f.path.to_lowercase().contains(&search))
             });
         }
-        snapshot.directories.sort_by(|a, b| {
-            a.name
-                .to_lowercase()
-                .cmp(&b.name.to_lowercase())
-                .then_with(|| a.path.cmp(&b.path))
-        });
+        snapshot
+            .directories
+            .sort_by_cached_key(|entry| (entry.name.to_lowercase(), entry.path.clone()));
         if query.sort == Some(SortOrder::NameDesc) {
             snapshot.directories.reverse();
         }
