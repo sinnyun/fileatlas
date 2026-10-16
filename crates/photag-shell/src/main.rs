@@ -22,7 +22,7 @@ fn dev_plugin_config() -> String {
         "watcher",
         "tagging",
         "history",
-        "media-playback",
+        "quicklook",
         "drag-drop",
         "mcp",
         "dev-test",
@@ -176,10 +176,6 @@ fn main() {
         || enable_history
         || dev_plugin_enabled(&plugin_config, "tagging");
     let enable_history = enable_history || (enable_gallery && enable_tagging);
-    let enable_media_playback = enable_all
-        || enable_mcp
-        || enable_gallery
-        || dev_plugin_enabled(&plugin_config, "media-playback");
     let enable_drag_drop = enable_all
         || enable_mcp
         || enable_gallery
@@ -402,36 +398,16 @@ fn main() {
     } else {
         None
     };
-    // Preview resolves AI, Settings, Tagging, and History while applying its
-    // UI integration, so it starts after all four providers.
-    let preview_fiber = if enable_gallery {
-        let plugin = photag_plugin_preview::PreviewPlugin;
-        let input = plugin
-            .prepare(photag_plugin_preview::PreviewConfig::default())
-            .expect("prepare image preview plugin");
+    let quicklook_fiber = if enable_gallery {
+        let plugin = photag_plugin_quicklook::QuickLookPlugin;
         Some(
             runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start image preview plugin"),
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ())))
+                .expect("start QuickLook plugin"),
         )
     } else {
         None
     };
-    let media_playback_fiber = if enable_media_playback {
-        let plugin = photag_plugin_media_playback::MediaPlaybackPlugin;
-        let input = plugin
-            .prepare(photag_plugin_media_playback::MediaPlaybackConfig::default())
-            .expect("prepare media playback plugin");
-        Some(
-            runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start media playback plugin"),
-        )
-    } else {
-        None
-    };
-    // Gallery requires the media-playback service and optionally consumes
-    // tagging/history services, so start it after all of those providers.
     let grouping_fiber = if enable_gallery {
         let plugin = photag_plugin_grouping::GroupingPlugin;
         Some(
@@ -707,15 +683,10 @@ fn main() {
             .block_on(fiber.dispose())
             .expect("stop grouping plugin");
     }
-    if let Some(fiber) = preview_fiber {
+    if let Some(fiber) = quicklook_fiber {
         runtime
             .block_on(fiber.dispose())
-            .expect("stop image preview plugin");
-    }
-    if let Some(fiber) = media_playback_fiber {
-        runtime
-            .block_on(fiber.dispose())
-            .expect("stop media playback plugin");
+            .expect("stop QuickLook plugin");
     }
     if let Some(fiber) = history_fiber {
         runtime

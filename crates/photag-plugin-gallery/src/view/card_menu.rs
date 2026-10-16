@@ -137,7 +137,7 @@ pub(super) fn render_requested(
                 .h(px(28.))
                 .justify_start()
                 .w_full()
-                .label(photag_ui_bridge::i18n::tr("Preview"))
+                .label("QuickLook")
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.media_actions_id = None;
                     this.preview_media(id, cx);
@@ -323,13 +323,11 @@ pub(super) fn build(
         }))
         .item(PopupMenuItem::separator());
     let preview_view = menu_view.clone();
-    menu = menu.item(
-        PopupMenuItem::new(photag_ui_bridge::i18n::tr("Preview")).on_click(move |_, _, cx| {
-            let _ = preview_view.update(cx, |this, cx| {
-                this.preview_media(media_id, cx);
-            });
-        }),
-    );
+    menu = menu.item(PopupMenuItem::new("QuickLook").on_click(move |_, _, cx| {
+        let _ = preview_view.update(cx, |this, cx| {
+            this.preview_media(media_id, cx);
+        });
+    }));
     let open_view = menu_view.clone();
     menu = menu.item(
         PopupMenuItem::new(photag_ui_bridge::i18n::tr("Open in default app")).on_click(

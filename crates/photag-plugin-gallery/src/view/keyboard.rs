@@ -93,19 +93,20 @@ impl GalleryView {
             if self.handle_tag_hotkey(&event.keystroke.key, cx) {
                 return;
             }
-            if !self.video_preview_open && !self.selection.selected_media_ids.is_empty() {
+            if !self.selection.selected_media_ids.is_empty() {
                 let configured = self.settings.as_ref().and_then(|settings| {
                     settings.snapshot().ok().map(|settings| settings.open_key)
                 });
-                if should_open_preview(configured.as_deref(), &event.keystroke.key) {
+                if !event.is_held
+                    && !event.keystroke.modifiers.control
+                    && !event.keystroke.modifiers.alt
+                    && !event.keystroke.modifiers.shift
+                    && should_open_preview(configured.as_deref(), &event.keystroke.key)
+                {
                     self.open_configured_target(cx);
                     return;
                 }
             }
-        }
-        if event.keystroke.key.eq_ignore_ascii_case("escape") && self.video_preview_open {
-            self.close_video_preview(cx);
-            return;
         }
         if event.keystroke.key.eq_ignore_ascii_case("escape") && self.confirm_delete {
             window.close_dialog(cx);
@@ -124,7 +125,6 @@ impl GalleryView {
         }
         if gallery_focused
             && self.bulk_action.is_none()
-            && !self.video_preview_open
             && !self.confirm_delete
             && event.keystroke.key.eq_ignore_ascii_case("d")
             && event.keystroke.modifiers.control

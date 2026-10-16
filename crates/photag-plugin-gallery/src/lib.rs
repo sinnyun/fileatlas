@@ -33,8 +33,8 @@ use photag_plugin_database::db::queries::{
 };
 use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
-use photag_plugin_media_playback::MediaPlaybackService;
-use photag_plugin_preview::PreviewService;
+use photag_plugin_quicklook::QuickLookService;
+mod ai_suggestions;
 use photag_plugin_session::SessionService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
@@ -80,6 +80,7 @@ pub struct GalleryService {
     database: Arc<DatabaseService>,
     grouping: Option<Arc<photag_plugin_grouping::GroupingService>>,
     indexing: Option<Arc<photag_plugin_indexing::IndexingService>>,
+    ai_target: Arc<ai_suggestions::AiTarget>,
     ui_request: Mutex<Option<GalleryUiRequest>>,
     ui_snapshot: Mutex<Option<GalleryUiSnapshot>>,
     card_states: Mutex<Vec<GalleryCardState>>,
@@ -139,6 +140,7 @@ impl GalleryService {
             watcher: None,
             grouping: None,
             indexing: None,
+            ai_target: Default::default(),
             ui_request: Mutex::new(None),
             ui_snapshot: Mutex::new(None),
             card_states: Mutex::new(Vec::new()),
@@ -569,24 +571,6 @@ impl GalleryService {
             ids.iter()
                 .filter_map(|id| match queries::get_media_by_id(connection, *id) {
                     Ok(Some(media)) => Some(Ok((std::path::PathBuf::from(media.full_path), *id))),
-                    Ok(None) => None,
-                    Err(error) => Some(Err(error)),
-                })
-                .collect::<rusqlite::Result<Vec<_>>>()
-        })?)
-    }
-
-    /// Ordered filmstrip identities plus existing thumbnail caches, resolved off the UI thread.
-    pub fn preview_items_by_ids(
-        &self,
-        ids: &[i64],
-    ) -> Result<Vec<photag_plugin_preview::FilmstripMedia>, GalleryError> {
-        Ok(self.database.with_reader(|connection| {
-            ids.iter()
-                .filter_map(|id| match queries::get_media_by_id(connection, *id) {
-                    Ok(Some(media)) => {
-                        Some(Ok(photag_plugin_preview::FilmstripMedia::from(&media)))
-                    }
                     Ok(None) => None,
                     Err(error) => Some(Err(error)),
                 })

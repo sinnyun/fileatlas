@@ -52,8 +52,7 @@ use photag_plugin_database::db::queries::SortOrder;
 use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_history::{HistoryService, UndoEntry};
-use photag_plugin_media_playback::MediaPlaybackService;
-use photag_plugin_preview::PreviewService;
+use photag_plugin_quicklook::QuickLookService;
 use photag_plugin_session::{MediaTypeFilter as SavedMediaType, SessionService};
 use photag_plugin_settings::SettingsService;
 use photag_plugin_tagging::TaggingService;
@@ -81,8 +80,7 @@ struct GalleryView {
     service: Arc<GalleryService>,
     file_operations: Arc<FileOperationsService>,
     drag_drop: Arc<DragDropService>,
-    preview: Arc<PreviewService>,
-    playback: Arc<MediaPlaybackService>,
+    quicklook: Arc<QuickLookService>,
     runtime: tokio::runtime::Handle,
     cordis: CordisContext,
     selected_folder: Arc<SelectedFolder>,
@@ -161,7 +159,8 @@ struct GalleryView {
     tag_filter_exclude_mode: bool,
     extension_exclude_mode: bool,
     drag_allowed: Arc<AtomicBool>,
-    video_preview_open: bool,
+    quicklook_notice: Option<String>,
+    quicklook_busy: bool,
     show_exif: bool,
     exif_cache: Option<(i64, Result<Vec<(String, String)>, String>)>,
     exif_read: photag_ui_bridge::read_model::ReadModel<(i64, u64, u64), Vec<(String, String)>>,

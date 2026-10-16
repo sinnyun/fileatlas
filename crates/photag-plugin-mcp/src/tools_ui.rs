@@ -15,7 +15,7 @@ pub(super) struct UiRequest {
     /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
     /// {"kind":"remove_quick_access","path":"F:\\library"}.
     action: String,
-    /// Tab: appearance/toolbar/shortcuts/tags/ai/updates. Language: en/zh-CN.
+    /// Tab: appearance/shortcuts/tags/ai/updates. Language: en/zh-CN.
     value: Option<String>,
     /// Structured SidebarUiRequest payload for the sidebar_request action.
     request: Option<serde_json::Value>,
@@ -63,7 +63,7 @@ impl PhoTagMcpServer {
             "gallery_popover": self.surfaces.value("gallery.popover").unwrap_or_default(),
             "tools_open": self.surfaces.is_open("tools"),
             "gallery": gallery,
-            "panels": (["settings", "preview", "playback"].iter().map(|id| json!({"id":id,"open":self.surfaces.is_open(&format!("panel.{id}")),"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>()),
+            "panels": (["settings"].iter().map(|id| json!({"id":id,"open":self.surfaces.is_open(&format!("panel.{id}")),"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>()),
             "open_panel_ids": self.surfaces.open_panel_ids(),
             "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| json!({"id":id,"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>(),
             "active_panel": self.surfaces.value("panel.active"),
@@ -74,7 +74,7 @@ impl PhoTagMcpServer {
             "update_checking": self.surfaces.is_open("settings.update-checking"),
             "update_available": self.surfaces.is_open("settings.update-available"),
             "update_offer_open": self.surfaces.is_open("settings.update-offer"),
-            "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "toolbar".into()),
+            "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "appearance".into()),
             "settings_tag_choices": self.surfaces.value("settings.tag-choices").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
             "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
             "sidebar_folders": self.navigation.sidebar_state(),
@@ -91,7 +91,8 @@ impl PhoTagMcpServer {
             "language": self.i18n.as_ref().map(|service| service.language().code()),
             "translation_revision": photag_ui_bridge::i18n::revision(),
             "region_separation": photag_ui_bridge::theme::region_depth_name(),
-            "preview_chrome_alpha": self.preview.chrome_alpha(),
+            "quicklook": self.quicklook.snapshot(),
+            "quicklook_notice": self.surfaces.value("quicklook.notice"),
             "gallery_cards": self.gallery.card_states().iter().map(|state| json!({
                 "media_id": state.media_id, "hover": state.hover, "selection": state.selection,
             })).collect::<Vec<_>>(),
@@ -125,7 +126,7 @@ impl PhoTagMcpServer {
                 let key = request.value.unwrap_or_default();
                 if !matches!(
                     key.as_str(),
-                    "enter" | "escape" | "ctrl-l" | "alt-left" | "alt-right" | "alt-up"
+                    "space" | "enter" | "escape" | "ctrl-l" | "alt-left" | "alt-right" | "alt-up"
                 ) {
                     return error_json("unsupported navigation key");
                 }
@@ -371,16 +372,7 @@ impl PhoTagMcpServer {
             }
             "settings_tab" => {
                 let value = request.value.as_deref().unwrap_or("");
-                if ![
-                    "appearance",
-                    "toolbar",
-                    "shortcuts",
-                    "tags",
-                    "ai",
-                    "updates",
-                ]
-                .contains(&value)
-                {
+                if !["appearance", "shortcuts", "tags", "ai", "updates"].contains(&value) {
                     return error_json("unsupported Settings tab");
                 }
                 self.surfaces.set_value("settings.tab", value)

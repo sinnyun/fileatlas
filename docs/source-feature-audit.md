@@ -1,5 +1,16 @@
 # PhoTag source audit and migration map
 
+## User-directed viewer replacement (2026-10-16)
+
+| Source behavior inspected | Current mapping | Compatibility boundary |
+|---|---|---|
+| `src/app.rs` preview_media and preview/file action routing; `src/ui/preview.rs`; `src/video.rs` | Removed independent image/audio/video viewers; Gallery → `photag-plugin-quicklook::QuickLookService::open` | User explicitly replaces original-file viewing with installed QuickLook; embedded transforms/filmstrip/transport intentionally removed |
+| `src/thumbs.rs`, Gallery card/inspector preview, tag preview snapshots | Existing Thumbnails/Indexing/Gallery implementation retained | No SQLite or on-disk compatibility migration |
+| AI suggestion/assignment integration formerly attached to Preview | Gallery-owned `ai_suggestions`, existing AI/Tagging/History services | Explicit inference and automatic-analysis preference retained without a file-viewer dependency |
+
+The new adapter does not copy QuickLook code or binaries and does not install,
+download, update or remove QuickLook. See `crates/photag-plugin-quicklook/PORTS.md`.
+
 **Audit baseline:** `36cee242a78c0a8cd9ac6b0d63b64265aa0add90` (2026-08-04),
 PhoTag v0.2.0. Mirrored source: `vendor/photag-source/`. Source count:
 18,434 Rust lines across 22 files. Migration status below was reconciled with

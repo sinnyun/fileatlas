@@ -1,5 +1,36 @@
 # Gallery plugin ports / 图库数据对接
 
+## Original-file viewer replacement — 2026-10-16
+
+This section supersedes historical Preview/MediaPlayback references below.
+Gallery requires `QuickLookService` (`photag/quicklook`) instead of the removed
+PreviewService and MediaPlaybackService. Space, Enter, the retained custom open
+key, file double-click, context-menu Preview, and inspector-thumbnail click send
+all ordinary file kinds to the installed QuickLook. Calls run on a blocking
+worker, with one pending Gallery launch at a time; held/modified Space does not
+toggle repeatedly. A failure opens the shared GPUI alert, including a localized
+instruction to install QuickLook when absent. There is no embedded viewer,
+filmstrip, decoder, playback transport, install workflow or default-player fallback.
+
+`GalleryUiRequest::Preview(i64)` retains its public name and now invokes that
+same handler. `preview_items_by_ids` was removed with its filmstrip consumer;
+`media_paths_by_ids` and `media_path_pairs_by_ids` remain for other operations.
+Gallery file mutations retain selection repair, without advancing/reopening a
+deleted viewer. Thumbnail generation, tag preview snapshots, inspector previews,
+ratings, tags, EXIF, file history, drag/drop and file operations retain ownership.
+
+AI suggestions moved from the removed Preview crate to Gallery's independent
+`AiTarget` and `gallery/ai-suggestions-view` contribution. Explicit Suggest Tags
+selects a target and requests inference without opening QuickLook. Automatic
+analysis on file viewing follows the existing `settings.ai.auto_analyze` flag.
+Polling still uses shared refresh and only notifies for actual changes.
+Passive model-file availability uses a revision-keyed ReadModel, refreshed on
+target changes and download completion; render and timer ticks do not stat the
+model file repeatedly. Explicit Analyze retains fresh action-time validation.
+
+Runtime limits and commands: `../photag-plugin-quicklook/PORTS.md` and
+`../../docs/validation-ui/2026-10-16-quicklook/README.md`.
+
 ## Context inspector and isolated visual fixtures — 2026-10-16
 
 The inspector projects Program / Tag / Folder / File from the actual selection

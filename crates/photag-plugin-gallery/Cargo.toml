@@ -6,6 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
+photag-plugin-ai = { path = "../photag-plugin-ai" }
 photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 tracing.workspace = true
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
@@ -20,8 +21,7 @@ photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 rfd = { version = "0.15", default-features = false }
 photag-plugin-history = { path = "../photag-plugin-history" }
-photag-plugin-media-playback = { path = "../photag-plugin-media-playback" }
-photag-plugin-preview = { path = "../photag-plugin-preview" }
+photag-plugin-quicklook = { path = "../photag-plugin-quicklook" }
 photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }

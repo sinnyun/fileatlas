@@ -23,8 +23,6 @@ mod tabs;
 mod tag_choices;
 #[path = "view/tag_hotkeys.rs"]
 mod tag_hotkeys;
-#[path = "view/toolbar.rs"]
-mod toolbar;
 #[path = "view/updates.rs"]
 mod updates;
 #[path = "view/updates_page.rs"]
@@ -33,7 +31,6 @@ mod updates_page;
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Tab {
     Appearance,
-    Toolbar,
     Shortcuts,
     Tags,
     Ai,
@@ -91,8 +88,7 @@ pub(super) fn settings(
                         confirm_install: false,
                         group_name_input: group_name_input.clone(),
                         editing_group: None,
-                        // Pinned main.rs:130 starts Settings on Toolbar.
-                        tab: Tab::Toolbar,
+                        tab: Tab::Appearance,
                         error: None,
                         capturing_open_key: false,
                         focus_handle: cx.focus_handle(),
@@ -331,40 +327,11 @@ impl SettingsView {
                 "search.files" => s.search_scopes.filenames = !s.search_scopes.filenames,
                 "search.paths" => s.search_scopes.paths = !s.search_scopes.paths,
                 "search.tags" => s.search_scopes.tags = !s.search_scopes.tags,
-                "pos.locked" => s.toolbar_pos.locked = !s.toolbar_pos.locked,
-                "tb.zoom_mode" => s.toolbar.zoom_mode_button = !s.toolbar.zoom_mode_button,
-                "tb.zoom_reset" => s.toolbar.zoom_reset_button = !s.toolbar.zoom_reset_button,
-                "tb.zoom_presets" => s.toolbar.zoom_presets = !s.toolbar.zoom_presets,
-                "tb.rotate" => s.toolbar.rotate_buttons = !s.toolbar.rotate_buttons,
-                "tb.flip" => s.toolbar.flip_buttons = !s.toolbar.flip_buttons,
-                "tb.tags" => s.toolbar.tags_button = !s.toolbar.tags_button,
-                "tb.delete" => s.toolbar.delete_button = !s.toolbar.delete_button,
-                "tb.copy" => s.toolbar.copy_button = !s.toolbar.copy_button,
-                "tb.move" => s.toolbar.move_button = !s.toolbar.move_button,
-                "tb.filmstrip" => s.toolbar.filmstrip_toggle = !s.toolbar.filmstrip_toggle,
-                "tb.explorer" => s.toolbar.explorer_button = !s.toolbar.explorer_button,
-                "tb.external" => s.toolbar.open_external_button = !s.toolbar.open_external_button,
                 _ => {}
             },
             cx,
         );
     }
-    fn enum_button(
-        &self,
-        id: impl Into<String>,
-        label: String,
-        action: impl Fn(&mut Settings) + Send + Sync + 'static,
-        cx: &mut Context<Self>,
-    ) -> Button {
-        let action = Arc::new(action);
-        Button::new(format!("settings-{}", id.into()))
-            .label(photag_ui_bridge::i18n::tr(&(label).to_string()))
-            .on_click(cx.listener(move |this, _, _, cx| {
-                let action = Arc::clone(&action);
-                this.edit(move |settings| action(settings), cx);
-            }))
-    }
-
     fn section(&self, label: &'static str) -> Div {
         div()
             .pt_2()
@@ -376,7 +343,6 @@ impl SettingsView {
         use gpui_kit::assets::IconName;
         for (tab, name, icon) in [
             (Tab::Appearance, "Appearance", IconName::Monitor),
-            (Tab::Toolbar, "Toolbar", IconName::SlidersHorizontal),
             (Tab::Shortcuts, "Shortcuts", IconName::Keyboard),
             (Tab::Tags, "Tags", IconName::Tag),
             (Tab::Ai, "AI", IconName::Sparkles),
@@ -424,7 +390,6 @@ impl SettingsView {
                         this.tab = tab;
                         let name = match tab {
                             Tab::Appearance => "appearance",
-                            Tab::Toolbar => "toolbar",
                             Tab::Shortcuts => "shortcuts",
                             Tab::Tags => "tags",
                             Tab::Ai => "ai",
@@ -453,7 +418,6 @@ impl Render for SettingsView {
         }
         if let Some(tab) = self.surfaces.value("settings.tab") {
             self.tab = match tab.as_str() {
-                "toolbar" => Tab::Toolbar,
                 "shortcuts" => Tab::Shortcuts,
                 "tags" => Tab::Tags,
                 "ai" => Tab::Ai,

@@ -1,4 +1,6 @@
 //! Bottom drawer and status button. The user-requested addition preserves the v2 main layout.
+#[path = "view/selection.rs"]
+mod selection;
 use crate::DebugService;
 use gpui_kit::{
     assets::IconName,
@@ -47,6 +49,13 @@ struct DebugView {
     panel: bool,
     search: Entity<InputState>,
     _subscription: Subscription,
+    focus_handle: FocusHandle,
+    exporting: bool,
+    drag: Option<selection::Drag>,
+    page_ids: Vec<u64>,
+    page_latest: u64,
+    row_bounds: Arc<std::sync::Mutex<std::collections::HashMap<u64, Bounds<Pixels>>>>,
+    list_bounds: Arc<std::sync::Mutex<Option<Bounds<Pixels>>>>,
 }
 impl DebugView {
     fn new(
@@ -66,10 +75,13 @@ impl DebugView {
         });
         let weak = service.clone();
         let mut revision = photag_ui_bridge::refresh::ChangeGate::default();
-        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(250), move |_, _| {
+        photag_ui_bridge::refresh::poll(cx, Duration::from_millis(250), move |view, cx| {
             let Some(service) = weak.upgrade() else {
                 return photag_ui_bridge::refresh::PollResult::until(false, false);
             };
+            if panel && let Some(action) = service.take_action() {
+                view.perform_action(&action, cx);
+            }
             revision.changed(service.view_revision(panel)).into()
         });
         Self {
@@ -77,6 +89,13 @@ impl DebugView {
             panel,
             search,
             _subscription: subscription,
+            focus_handle: cx.focus_handle(),
+            exporting: false,
+            drag: None,
+            page_ids: Vec::new(),
+            page_latest: 0,
+            row_bounds: Default::default(),
+            list_bounds: Default::default(),
         }
     }
 }
@@ -234,6 +253,7 @@ impl Render for DebugView {
                     .label(tr("Clear logs"))
                     .on_click(control(&s, "clear", String::new())),
             )
+            .child(self.selection_controls(&s, cx))
             .child(
                 Button::new("debug-close")
                     .ghost()
@@ -242,7 +262,14 @@ impl Render for DebugView {
                     .on_click(control(&s, "close", String::new())),
             );
         let mut rows = div().v_flex().min_w_0().w_full();
+        self.page_ids = page.records.iter().map(|r| r.id).collect();
+        self.row_bounds
+            .lock()
+            .unwrap()
+            .retain(|id, _| self.page_ids.contains(id));
         for r in &page.records {
+            let row_bounds = Arc::clone(&self.row_bounds);
+            let id = r.id;
             let color = match r.level.as_str() {
                 "ERROR" => theme::DANGER,
                 "WARN" => 0xe6b85c,
@@ -251,6 +278,7 @@ impl Render for DebugView {
             rows = rows.child(
                 div()
                     .id(ElementId::Name(format!("debug-record-{}", r.id).into()))
+                    .relative()
                     .h_flex()
                     .w_full()
                     .min_w_0()
@@ -260,7 +288,7 @@ impl Render for DebugView {
                     .border_b_1()
                     .border_color(rgb(theme::SEPARATOR))
                     .cursor_pointer()
-                    .bg(rgb(if ui.selected == Some(r.id) {
+                    .bg(rgb(if ui.selected_ids.contains(&r.id) {
                         theme::SURFACE_ELEVATED
                     } else {
                         theme::SURFACE_PANEL
@@ -301,7 +329,16 @@ impl Render for DebugView {
                         ),
                     )
                     .child(div().flex_1().min_w_0().truncate().child(r.message.clone()))
-                    .on_click(control(&s, "select", r.id.to_string())),
+                    .child(
+                        canvas(
+                            move |bounds, _, _| {
+                                row_bounds.lock().unwrap().insert(id, bounds);
+                            },
+                            |_, _, _, _| {},
+                        )
+                        .absolute()
+                        .size_full(),
+                    ),
             );
         }
         if page.records.is_empty() {
@@ -343,15 +380,10 @@ impl Render for DebugView {
                     )
                     .child(div().flex_1().child(tr("Details"))),
             )
-            .child(
-                div()
-                    .id("debug-records")
-                    .v_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scrollbar()
-                    .child(rows),
-            );
+            .child(self.selectable_list(rows, page.latest_id, cx));
+        if let Some(message) = ui.feedback {
+            panel = panel.child(div().text_color(rgb(theme::TEXT_MUTED)).child(message));
+        }
         if let Some(r) = selected {
             panel = panel.child(
                 div()

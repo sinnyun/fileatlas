@@ -16,7 +16,7 @@ pub(super) struct DebugQuery {
 }
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct DebugControl {
-    /// open/close/toggle/category/level/search/page/page_size/pause/follow/select/clear.
+    /// open/close/toggle/category/level/search/page/page_size/pause/follow/select/select_ids/select_range/copy/export/clear.
     pub action: String,
     pub value: Option<String>,
 }
@@ -54,7 +54,7 @@ impl PhoTagMcpServer {
         json!({"ui":ui,"logs":s.query(&filter),"view_revision":s.view_revision(true)}).to_string()
     }
     #[tool(
-        description = "Control the real bottom debug drawer: open/close, filters, zero-based page, page_size=25/50/100/200, pause/follow, select ID, clear logs. Requires mutation opt-in."
+        description = "Control the real bottom debug drawer: open/close, filters, zero-based page, page_size=25/50/100/200, pause/follow, select ID(s), select range with start:end, copy selection to clipboard, open .txt export dialog, clear logs. Requires mutation opt-in."
     )]
     fn control_debug(&self, Parameters(request): Parameters<DebugControl>) -> String {
         if let Err(e) = self.mutation_guard() {
@@ -69,6 +69,22 @@ impl PhoTagMcpServer {
         match s.control(&request.action, request.value.as_deref().unwrap_or("")) {
             Ok(()) => json!({"ok":true,"ui":s.ui_state()}).to_string(),
             Err(e) => error_json(&e),
+        }
+    }
+
+    #[tool(
+        description = "Read all selected retained debug logs in the exact text format used by Copy logs and Export .txt."
+    )]
+    fn get_selected_debug_logs(&self) -> String {
+        let Ok(s) = self
+            .context
+            .try_service::<photag_plugin_debug::DebugService>()
+        else {
+            return error_json("Debug service unavailable");
+        };
+        match s.selected_text() {
+            Ok(text) => json!({"text":text,"selected_ids":s.ui_state().selected_ids}).to_string(),
+            Err(error) => error_json(&error),
         }
     }
 }

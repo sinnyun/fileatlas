@@ -1,0 +1,40 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+module.exports=async({call,payload,delay,profile,output,root})=>{
+  const report={steps:[]};
+  const invoke=async(tool,args={})=>payload(await call(tool,args));
+  const save=()=>fs.writeFileSync(path.join(profile,'debug-selection-report.json'),JSON.stringify(report,null,2));
+  const fixture=path.join(profile,'原始文件 空间');
+  await invoke('control_gallery',{action:'navigate',value:fixture});
+  let gallery;for(let n=0;n<100;n++){gallery=await invoke('get_ui_state');if(gallery.gallery?.matched_count>=4&&!gallery.browser.status[2])break;await delay(100);}
+  await invoke('control_gallery',{action:'sort',value:'name_asc'});await delay(250);
+  const search=await invoke('search_media',{limit:20,sort:'name_asc'});
+  const normal=p=>p.replace(/^\\\\\?\\/,'').toLowerCase();
+  const media=search.items.find(item=>normal(item.full_path).startsWith(normal(fixture)));assert(media);
+  await invoke('control_ui',{action:'select_media',value:String(media.id)});await delay(200);
+  await invoke('control_gallery',{action:'preview',media_id:media.id});
+  let state;for(let n=0;n<60;n++){state=await invoke('get_ui_state');if(state.quicklook.error||state.quicklook.outcome)break;await delay(100);}
+  assert.equal(state.quicklook.error,"QuickLook is running as administrator while PhoTag is not. Close QuickLook and relaunch it without 'Run as administrator', then try again.");
+  assert(state.quicklook_notice);assert(state.quicklook_notice.includes('管理员身份'));
+  const external=await invoke('inspect_quicklook');assert(external.higher_integrity_process);
+  assert.deepEqual(external.windows,[]);
+  report.quicklook={state:state.quicklook,notice:state.quicklook_notice,external};save();
+  const appShot=await call('screenshot_window');for(const b of appShot.content??[])if(b.type==='image')fs.writeFileSync(path.join(output,'quicklook-privilege-alert.png'),Buffer.from(b.data,'base64'));
+  await invoke('control_ui',{action:'key_press',value:'escape'});await delay(250);
+  await invoke('control_debug',{action:'open'});await delay(400);
+  const drawerShot=await call('screenshot_window');for(const b of drawerShot.content??[])if(b.type==='image')fs.writeFileSync(path.join(output,'debug-drawer-before-selection.png'),Buffer.from(b.data,'base64'));
+  const debug=await invoke('get_debug_info',{page_size:20});
+  await invoke('control_ui',{action:'pointer_down',value:'420,855'});await delay(100);
+  await invoke('control_ui',{action:'pointer_drag',value:'1000,930'});await delay(100);
+  await invoke('control_ui',{action:'pointer_up',value:'1000,930'});await delay(250);
+  const selected=await invoke('get_selected_debug_logs');
+  assert(selected.selected_ids.length>=2,`drag selection selected ${selected.selected_ids.length} rows`);
+  assert(selected.text.includes('duration='));assert(selected.text.includes('target='));
+  report.selected={ids:selected.selected_ids,preview:selected.text.slice(0,160)};save();
+  await invoke('control_debug',{action:'copy'});await delay(700);
+  const after=await invoke('get_debug_info',{page_size:20});
+  assert(after.ui.feedback?.includes('已复制'));
+  report.copy_feedback=after.ui.feedback;save();
+  const shot=await call('screenshot_window');for(const b of shot.content??[])if(b.type==='image')fs.writeFileSync(path.join(output,'debug-selection.png'),Buffer.from(b.data,'base64'));
+  report.finished=new Date().toISOString();save();
+  console.log(JSON.stringify({quicklook:report.quicklook.notice,selected:report.selected.ids,copy:report.copy_feedback}));
+};

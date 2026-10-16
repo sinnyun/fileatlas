@@ -16,6 +16,7 @@ chrono = "0.4"
 gpui-kit.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 photag-contracts = { path = "../photag-contracts" }
+rfd = { version = "0.15", default-features = false }
 
 [dev-dependencies]
 tokio.workspace = true

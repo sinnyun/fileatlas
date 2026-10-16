@@ -1,5 +1,15 @@
 # Shell composition ports / Shell 对接
 
+## QuickLook replacement — 2026-10-16
+
+Shell starts `photag.quicklook` before Gallery/MCP and stops it after both
+consumers. The Preview and MediaPlayback crates, dependencies, startup and
+shutdown paths are removed. Their historical dependency order below is
+superseded: QuickLook → Gallery → MCP. AI suggestions are registered by Gallery
+through its existing AI/Settings/Tagging/History dependencies. Generic floating
+panels remain available for Settings and other feature contributions. Shell
+has no file-viewing or installation implementation.
+
 `photag-shell` is the host composition root. It publishes `UiBridgeService`, starts Cordis plugins in dependency order, mounts GPUI view factories into host regions (including floating `workspace.modal` views), and dispatches command IDs as Cordis events. The Settings command is contributed by the Settings plugin; its modal open state is shared through `UiSurfaceState` and its floating layer is mounted above application content.
 
 The host chrome and contribution fallback view use `photag_ui_bridge::theme` surface and text tokens; the native base surface consumes source Mica/Acrylic alpha. GPUI Kit typography presets are still used by the shell; parity with source Segoe UI font loading and Windows font availability has not been validated.

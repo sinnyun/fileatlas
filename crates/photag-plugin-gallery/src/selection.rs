@@ -34,10 +34,11 @@ pub struct GallerySelection {
     pub anchor_id: Option<i64>,
 }
 
-/// Whether a key opens the selected media in Preview. Enter is always active,
+/// Whether a key opens the selected file in QuickLook. Space and Enter are always active,
 /// alongside the user-configured open key retained from PhoTag settings.
 pub(crate) fn should_open_preview(configured: Option<&str>, event_key: &str) -> bool {
-    configured.is_some_and(|key| keys_match(key, event_key))
+    keys_match("space", event_key)
+        || configured.is_some_and(|key| keys_match(key, event_key))
         || event_key.eq_ignore_ascii_case("enter")
 }
 
@@ -228,6 +229,15 @@ mod tests {
         assert!(should_open_preview(None, "ENTER"));
         assert!(should_open_preview(Some("space"), " "));
         assert!(!should_open_preview(Some("space"), "x"));
+    }
+
+    #[test]
+    fn quicklook_space_is_available_with_legacy_custom_open_keys() {
+        assert!(should_open_preview(Some("F8"), "space"));
+        assert!(should_open_preview(Some("F8"), " "));
+        assert!(should_open_preview(None, "space"));
+        assert!(should_open_preview(Some("F8"), "f8"));
+        assert!(!should_open_preview(Some("F8"), "x"));
     }
 
     #[test]

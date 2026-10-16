@@ -132,15 +132,8 @@ async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
         )))
         .unwrap();
     let _drag_drop = context.provide(Arc::new(DragDropService)).unwrap();
-    let _playback = context
-        .provide(Arc::new(
-            MediaPlaybackService::new(root.join("playback")).unwrap(),
-        ))
-        .unwrap();
-    let _preview = context
-        .provide(Arc::new(
-            PreviewService::open_at(root.join("preview")).unwrap(),
-        ))
+    let _quicklook = context
+        .provide(Arc::new(QuickLookService::default()))
         .unwrap();
     let _session = context
         .provide(Arc::new(SessionService::open_at(root.join("session.json"))))

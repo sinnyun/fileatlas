@@ -1,5 +1,17 @@
 # 界面重构验证记录
 
+## 2026-10-16：原始文件查看改为 QuickLook
+
+用户要求最简外部查看：空格调用本机QuickLook，缺少时仅提示；独立图片/音频/视频
+查看器、工具栏设置和旧MCP控制已删除。主界面继续沿用sidebar-pages-preview-v2及
+inspector-unified-edit概念，没有新增视觉设计；旧独立查看器mockup由本次用户决定覆盖。
+图库/视频缩略图、右侧预览/信息/历史/标签/评分和文件操作保留；AI建议独立归Gallery。
+fmt、locked Shell check/build、36相关测试、refresh guard通过；同进程MCP9组检查及
+只读重启保护通过，静止日志228→228。首次定位约1.7s，缓存后的桌面派发约20ms，
+不是QuickLook首帧指标。未卸载用户QuickLook验证缺少安装的真实系统状态；Store、
+外部QuickLook渲染/焦点/codec继续未验。命令、截图、完整报告及范围见
+[QuickLook证据](validation-ui/2026-10-16-quicklook/README.md)。
+
 2026-10-13 起项目进入界面重新设计阶段：界面以实现
 [最终设计稿 v5](reference-ui/final-v5/README.md) 为目标，不再以原版 egui 界面为对照标准。本文件记录每个界面改动的实际验证情况。
 
@@ -490,3 +502,30 @@ Windows/150% DPI，Rust 1.97.1 MSVC，locked/-j2：fmt/check/build、UI refresh 
 先使用内置image_gen生成并审阅[概念图](reference-ui/concepts/right-inspector-unified-edit-2026-10-16.md)，再按用户顺序展开名称、颜色、图标、显示开关和底部确认按钮。颜色/图标/开关改为草稿，点击一次确认才调用Navigation既有写命令；移除独立名称保存和折叠更多设置。历史恢复与信息/扩展完全相同的预览、标题、文件名和评分，所有页签只替换正文。覆盖上一轮“紧凑历史身份栏”的设计选择。
 
 隔离同进程MCP62步通过：真实pointer一次确认保存四字段、确认前完整标签对象未变化、统一恢复、子标签显示传播、三文件页签及300宽度/1080窗口；静止日志798→798。三页原始截图的顶部右栏RGB逐像素差异为空。无演示最终构建另20步通过、静止448→448，普通历史不含模拟节点。Gallery/i18n25测试、fmt、locked Shell check/独立输出编译、refresh guard、diff whitespace通过。默认exe被正常运行实例锁定，os error5；未终止该实例，使用独立输出`target/debug/photag-shell-inspector-unified.exe`完成实际验证。截图、提示、命令、首次指针请求排队修正与边界见[本轮完整证据](validation-ui/2026-10-16-inspector-unified-edit/README.md)。未覆盖写入失败/其他DPI/真实版本后端，未宣称全F0完成。
+
+## 2026-10-16 空格查看延迟改为 QuickLook 管道派发并删除自动启动
+
+用户反馈"按下到 QuickLook 界面出现约 1-2 秒"，并要求依据项目源码与官方文档定位、不许猜测。
+根因是每次调用 `QuickLook.exe <路径>` 走的是 QuickLook 第二实例启动器，必须先冷启 .NET/WPF
+再经管道转发（实测 1.06-1.12 s）；第一实例本就监听 `\\.\pipe\QuickLook.App.Pipe.<SID>`。
+改为直接写一行 `Toggle|<路径>|\r\n` 后，同进程 MCP 实测派发 outcome 全部
+`pipe_toggle_sent`，dispatch 15-33 ms，按键到"标题匹配本次文件"的窗口出现 37-254 ms；
+QuickLook 刚启动或首次使用某类插件时为 600-755 ms，属 QuickLook 自身加载插件。
+
+用户随后要求删除"QuickLook 未运行时自动启动"：PhoTag 端不再有启动逻辑，`launch()`、
+`launch.ps1`（桌面 EXE 发现/启动、Store AppsFolder 激活）、`Launch` 错误与
+`desktop_request_sent`/`store_request_sent` 全部移除，该 crate 内已无 `Command::new`/`spawn`。
+无监听实例、被拒绝且非提权或写入失败时返回新的 `NotRunning`，走 Gallery 既有 GPUI Alert 提示
+用户自行启动 QuickLook；提权判定只在管道返回访问拒绝时执行。QuickLook 关闭状态下实测真实
+空格 6 ms 即弹窗，`windows=[]` 且进程表无 `QuickLook.exe`。同轮修掉 `keys.json` 中
+`"{count} selected"` 的重复映射（调试面板新增项覆盖了图库既有项，导致 i18n 目录测试失败）。
+命令、逐条数字、`window_ms` 口径修正、本轮调试误用空连接导致用户 QuickLook 失去监听（已由
+用户重启恢复）的记录与截图，见[本轮完整证据](validation-ui/2026-10-16-quicklook/README.md)。
+
+检查：`cargo +1.97.1 fmt --all -- --check`、`clippy --locked -p photag-plugin-quicklook
+--all-targets -j 2`、`build --locked -p photag-shell -j 2`、
+`test --locked -p photag-plugin-quicklook -p photag-plugin-i18n -p photag-plugin-gallery --lib -j 2`
+（23+4+5 全通过）、`node scripts/check-ui-refresh.cjs`、`git diff --check`。用户启动 QuickLook
+后复跑：完整 10 组用例（含"用同一入口关闭本轮窗口"的收尾）通过，两次运行后只读观测均为
+`instance_listening: true`、`windows: []`。外部窗口首帧/解码/焦点/DPI、Store 版运行时派发、
+QuickLook 忙碌时的重试表现与真实未安装机器仍未验证。

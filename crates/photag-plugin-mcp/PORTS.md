@@ -1,5 +1,21 @@
 # MCP plugin ports / MCP 对接
 
+## QuickLook replacement — 2026-10-16
+
+This section supersedes old Preview/Playback tool contracts below.
+MCP now depends on `QuickLookService`; PreviewService and MediaPlaybackService
+and their crates are removed. `control_preview` and `control_playback` and
+their request payloads are removed from tools/list. `open_media {media_id}` is
+an async, mutation-guarded call to the installed QuickLook for any ordinary
+file type. `get_view_state` returns `{quicklook: LaunchSnapshot}`; dispatch
+success is not external rendering/visibility evidence. `get_ui_state` includes
+the same diagnostics and `quicklook_notice` (the last Gallery failure message).
+`control_gallery {action:"preview",media_id}` exercises the real Gallery alert
+flow; `control_ui {action:"key_press",value:"space"}` dispatches a real
+same-process GPUI key. Settings Toolbar is no longer an accepted tab, and the
+fixed panel diagnostics list only Settings. Other preview terminology, such
+as bulk-match previews and inspector fields, retains its own meaning.
+
 ## Context-inspector validation additions — 2026-10-16
 
 - `get_ui_state.gallery.inspector_context` reads the live rendered context key

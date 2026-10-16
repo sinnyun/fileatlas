@@ -31,13 +31,9 @@ impl Plugin for GalleryPlugin {
         let drag_drop = context
             .try_service::<DragDropService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let playback = context
-            .try_service::<MediaPlaybackService>()
+        let quicklook = context
+            .try_service::<QuickLookService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        let preview = context
-            .try_service::<PreviewService>()
-            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
-        preview.configure_playback(Arc::clone(&playback));
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
@@ -227,6 +223,25 @@ impl Plugin for GalleryPlugin {
         let bridge = context
             .try_service::<photag_ui_bridge::UiBridgeService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        if let (Ok(ai), Some(settings), Some(tagging), Some(history)) = (
+            context.try_service::<photag_plugin_ai::AiService>(),
+            settings.as_ref(),
+            tagging.as_ref(),
+            history.as_ref(),
+        ) {
+            register_views_for_plugin(
+                &context,
+                "photag.gallery",
+                [ai_suggestions::view(
+                    Arc::clone(&service.ai_target),
+                    ai,
+                    Arc::clone(settings),
+                    Arc::clone(tagging),
+                    Arc::clone(history),
+                )],
+            )
+            .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
+        }
         register_views_for_plugin(
             &context,
             "photag.gallery",
@@ -234,8 +249,7 @@ impl Plugin for GalleryPlugin {
                 service,
                 file_operations,
                 drag_drop,
-                preview,
-                playback,
+                quicklook,
                 runtime,
                 context.clone(),
                 selected_folder,

@@ -60,10 +60,10 @@ pub struct SessionState {
     /// Gallery selection restored only when the saved IDs still match the active query.
     #[serde(default)]
     pub selected_media_ids: Vec<i64>,
-    /// Reopen the image preview on startup when the source still exists.
+    /// Legacy embedded-viewer path; retained for JSON compatibility, no longer reopened.
     #[serde(default)]
     pub preview_path: Option<String>,
-    /// Preview transform state is optional so existing PhoTag session files retain defaults.
+    /// Inert legacy transforms retained so existing PhoTag session files retain their data.
     #[serde(default)]
     pub preview_quarter_turns: Option<u8>,
     #[serde(default)]

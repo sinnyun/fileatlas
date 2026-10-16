@@ -166,9 +166,6 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     } else if index_changed {
         if view.service.browser_enabled() {
             view.service.reconcile_directory_event();
-            let preview = view.preview.clone();
-            view.runtime
-                .spawn_blocking(move || preview.refresh_local_source());
         }
         view.refresh_index();
         repaint = true;

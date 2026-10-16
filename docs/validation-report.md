@@ -1,5 +1,19 @@
 # Validation report
 
+## 2026-10-16 user-directed QuickLook viewer replacement
+
+Original-file viewing now calls the user's installed QuickLook through a
+Cordis-owned service. The embedded Preview and MediaPlayback crates and their
+controls are removed, per explicit user direction. Upstream PhoTag behavior was
+traced in `src/app.rs`, `src/ui/preview.rs` and `src/video.rs`; thumbnail extraction
+in `src/thumbs.rs`/`src/video.rs` remains mapped to the existing thumbnail/indexing
+services. No SQLite schema, source-file mutation order or persisted JSON migration
+was introduced. Inert old viewer settings/session values are retained for compatibility.
+The mapping is updated in `source-feature-audit.md`; this supersedes earlier
+embedded-viewer completeness claims. Build, regression and same-process MCP
+evidence, including unverified external-app boundaries, are recorded in
+`validation-ui/2026-10-16-quicklook/README.md`.
+
 **Phase status:** migration-phase record. Interface work from 2026-10-13 onward
 is validated against the redesign references and recorded in
 [`redesign-validation.md`](redesign-validation.md); source-parity statements

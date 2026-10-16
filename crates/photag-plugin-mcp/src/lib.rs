@@ -18,10 +18,9 @@ use photag_plugin_database::db::queries::SortOrder;
 use photag_plugin_dev_test::DevTestService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_gallery::GalleryService;
-use photag_plugin_media_playback::MediaPlaybackService;
 use photag_plugin_metadata_export::MetadataExportService;
 use photag_plugin_navigation::NavigationService;
-use photag_plugin_preview::PreviewService;
+use photag_plugin_quicklook::QuickLookService;
 use photag_plugin_tagging::TaggingService;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
@@ -130,11 +129,8 @@ impl Plugin for McpPlugin {
         let tagging = context
             .try_service::<TaggingService>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
-        let preview = context
-            .try_service::<PreviewService>()
-            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
-        let playback = context
-            .try_service::<MediaPlaybackService>()
+        let quicklook = context
+            .try_service::<QuickLookService>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
         let metadata_export = context
             .try_service::<MetadataExportService>()
@@ -159,8 +155,7 @@ impl Plugin for McpPlugin {
             gallery,
             navigation,
             tagging,
-            preview,
-            playback,
+            quicklook,
             metadata_export,
             file_operations,
             capture,
@@ -218,8 +213,7 @@ struct PhoTagMcpServer {
     gallery: Arc<GalleryService>,
     navigation: Arc<NavigationService>,
     tagging: Arc<TaggingService>,
-    preview: Arc<PreviewService>,
-    playback: Arc<MediaPlaybackService>,
+    quicklook: Arc<QuickLookService>,
     metadata_export: Arc<MetadataExportService>,
     file_operations: Arc<FileOperationsService>,
     capture: Arc<CaptureWindowHandle>,
@@ -234,8 +228,7 @@ impl PhoTagMcpServer {
         gallery: Arc<GalleryService>,
         navigation: Arc<NavigationService>,
         tagging: Arc<TaggingService>,
-        preview: Arc<PreviewService>,
-        playback: Arc<MediaPlaybackService>,
+        quicklook: Arc<QuickLookService>,
         metadata_export: Arc<MetadataExportService>,
         file_operations: Arc<FileOperationsService>,
         capture: Arc<CaptureWindowHandle>,
@@ -257,8 +250,7 @@ impl PhoTagMcpServer {
             gallery,
             navigation,
             tagging,
-            preview,
-            playback,
+            quicklook,
             metadata_export,
             file_operations,
             capture,

@@ -237,13 +237,9 @@ impl GalleryView {
                 let delete = weak.clone();
                 let details = weak.clone();
                 let clear = weak.clone();
-                menu.item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Preview")).on_click(
-                        move |_, _, cx| {
-                            let _ = preview.update(cx, |this, cx| this.preview_selected(cx));
-                        },
-                    ),
-                )
+                menu.item(PopupMenuItem::new("QuickLook").on_click(move |_, _, cx| {
+                    let _ = preview.update(cx, |this, cx| this.preview_selected(cx));
+                }))
                 .item(
                     PopupMenuItem::new(photag_ui_bridge::i18n::tr(
                         "Details, rename, copy, move and ratings",

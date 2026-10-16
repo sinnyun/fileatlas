@@ -1,4 +1,6 @@
 //! Bounded runtime diagnostics. No database or user-profile writes.
+#[path = "selection.rs"]
+mod selection;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, VecDeque},
@@ -64,6 +66,7 @@ pub struct DebugService {
     content_revision: AtomicU64,
     ui_revision: AtomicU64,
     ui: Mutex<UiState>,
+    pending_action: Mutex<Option<String>>,
 }
 impl cordis::Service for DebugService {
     const NAME: &'static str = "photag/debug";
@@ -87,6 +90,7 @@ impl DebugService {
             content_revision: AtomicU64::new(0),
             ui_revision: AtomicU64::new(0),
             ui: Mutex::new(UiState::default()),
+            pending_action: Mutex::new(None),
         }
     }
     pub fn revision(&self) -> u64 {
@@ -322,12 +326,18 @@ pub struct UiState {
     pub open: bool,
     pub filter: Filter,
     pub selected: Option<u64>,
+    pub selected_ids: Vec<u64>,
+    pub anchor: Option<u64>,
+    pub feedback: Option<String>,
 }
 impl Default for UiState {
     fn default() -> Self {
         Self {
             open: false,
             selected: None,
+            selected_ids: Vec::new(),
+            anchor: None,
+            feedback: None,
             filter: Filter {
                 hide_ui_refresh: true,
                 ..Default::default()
@@ -340,6 +350,41 @@ impl DebugService {
         self.ui.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
     pub fn control(&self, action: &str, value: &str) -> Result<(), String> {
+        match action {
+            "select" => {
+                return self.set_selection(
+                    &[value.parse().map_err(|_| "Invalid record ID")?],
+                    Some(value.parse().map_err(|_| "Invalid record ID")?),
+                );
+            }
+            "select_ids" => {
+                return self.set_selection(
+                    &value
+                        .split(',')
+                        .filter(|v| !v.is_empty())
+                        .map(|v| v.parse().map_err(|_| "Invalid record ID"))
+                        .collect::<Result<Vec<u64>, _>>()?,
+                    None,
+                );
+            }
+            "select_range" => {
+                let (start, end) = value.split_once(':').ok_or("Use start:end record IDs")?;
+                return self.select_range(
+                    start.parse().map_err(|_| "Invalid record ID")?,
+                    end.parse().map_err(|_| "Invalid record ID")?,
+                    false,
+                );
+            }
+            "copy" | "export" => {
+                *self
+                    .pending_action
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner()) = Some(action.into());
+                self.ui_revision.fetch_add(1, Ordering::Relaxed);
+                return Ok(());
+            }
+            _ => {}
+        }
         let mut ui = self.ui.lock().unwrap_or_else(|e| e.into_inner());
         match action {
             "toggle" => ui.open = !ui.open,
@@ -379,20 +424,21 @@ impl DebugService {
                 ui.filter.through_id = None;
                 ui.filter.page = 0;
             }
-            "select" => ui.selected = Some(value.parse().map_err(|_| "Invalid record ID")?),
             "clear" => {
                 self.clear();
                 ui.filter.through_id = None;
                 ui.filter.page = 0;
                 ui.selected = None;
+                ui.selected_ids.clear();
+                ui.anchor = None;
+                ui.feedback = None;
             }
             _ => return Err("Unknown debug action".into()),
         }
-        if matches!(
-            action,
-            "category" | "level" | "search" | "page" | "page_size"
-        ) {
+        if matches!(action, "category" | "level" | "search") {
             ui.selected = None;
+            ui.selected_ids.clear();
+            ui.anchor = None;
         }
         self.revision.fetch_add(1, Ordering::Relaxed);
         self.ui_revision.fetch_add(1, Ordering::Relaxed);

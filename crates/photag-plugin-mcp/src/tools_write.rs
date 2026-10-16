@@ -289,222 +289,73 @@ impl super::PhoTagMcpServer {
         }
     }
 
-    #[tool(
-        description = "在 PhoTag 中打开媒体：图片进入图片预览，视频或音频进入播放界面。只改变当前应用视图。"
-    )]
-    fn open_media(&self, Parameters(request): Parameters<MediaIdRequest>) -> String {
+    #[tool(description = "通过本机已安装的 QuickLook 查看原始文件。需要启用修改权限；不安装软件。")]
+    async fn open_media(&self, Parameters(request): Parameters<MediaIdRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
         let media = match self.gallery.media_by_id(request.media_id) {
             Ok(Some(media)) => media,
-            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Ok(None) => return error_json("没有找到该文件记录。"),
             Err(error) => return error_json(&error.to_string()),
         };
-        // `behavior.rs:228-294`: Gallery seeds the filmstrip from the current
-        // page before opening, so an MCP open behaves like a gallery double-click
-        // instead of leaving the strip band empty.
-        let filmstrip = self
-            .gallery
-            .load(Default::default())
-            .and_then(|snapshot| {
-                let ids = snapshot
-                    .skeletons
-                    .iter()
-                    .map(|item| item.id)
-                    .collect::<Vec<_>>();
-                self.gallery.preview_items_by_ids(&ids)
-            })
-            .unwrap_or_default();
-        let view = match media.media_type.as_str() {
-            "image" => {
-                self.preview.set_indexed_filmstrip_items(filmstrip);
-                if let Err(error) = self.preview.open_indexed_media(&media) {
-                    return error_json(&error.to_string());
-                }
-                "preview"
+        let quicklook = Arc::clone(&self.quicklook);
+        match tokio::task::spawn_blocking(move || quicklook.open(media.full_path)).await {
+            Ok(Ok(())) => {
+                json!({"ok":true,"viewer":"quicklook","media_id":request.media_id}).to_string()
             }
-            "video" => {
-                if let Err(error) = self.playback.open_media(&media.full_path, Some(media.id)) {
-                    return error_json(&error.to_string());
-                }
-                "playback"
-            }
-            "audio" => {
-                if let Err(error) = self.playback.open_media(&media.full_path, Some(media.id)) {
-                    return error_json(&error.to_string());
-                }
-                "playback"
-            }
-            _ => return error_json("PhoTag 不支持该媒体类型的预览。"),
-        };
-        serde_json::to_string(&json!({ "ok": true, "view": view, "media_id": media.id }))
-            .unwrap_or_else(|error| error_json(&error.to_string()))
-    }
-
-    #[tool(description = "读取当前图片预览和视频播放的视图状态。")]
-    fn get_view_state(&self) -> String {
-        let preview = self.preview.snapshot();
-        let playback = self.playback.snapshot();
-        serde_json::to_string(&json!({
-            "preview": {
-                "source": preview.source,
-                "quarter_turns": preview.quarter_turns,
-                "flip_horizontal": preview.flip_horizontal,
-                "flip_vertical": preview.flip_vertical,
-                "fit_to_window": preview.fit_to_window,
-                "zoom_percent": preview.zoom_percent,
-                "zoom_scale": preview.zoom_scale,
-                "show_info": preview.show_info,
-                "tags_open": self.surfaces.is_open("preview.tags"),
-                "more_open": self.surfaces.is_open("preview.more"),
-                "media_id": preview.media_id,
-                "filmstrip": self.preview.filmstrip_items(),
-                "revision": preview.revision,
-                "image_load": self.preview.load_status(),
-            },
-            "playback": {
-                "path": playback.path,
-                "media_id": playback.media_id,
-                "playing": playback.playing,
-                "position_seconds": playback.position_seconds,
-                "duration_seconds": playback.duration_seconds,
-                "width": playback.width,
-                "height": playback.height,
-                "speed": playback.speed,
-                "volume": playback.volume,
-                "tags_open": self.surfaces.is_open("playback.tags"),
-                "more_open": self.surfaces.is_open("playback.more"),
-                "audio_available": playback.audio_available,
-                "error": playback.error,
-                "revision": playback.revision,
-            }
-        }))
-        .unwrap_or_else(|error| error_json(&error.to_string()))
-    }
-
-    #[tool(description = "控制当前图片预览的旋转、翻转、适配、缩放和信息面板。")]
-    fn control_preview(&self, Parameters(request): Parameters<PreviewControlRequest>) -> String {
-        tracing::info!(?request, "MCP control request");
-        match request.action.as_str() {
-            "more_open" | "more_close" | "tags_open" | "tags_close" => {
-                let key = if request.action.starts_with("more") {
-                    "preview.more"
-                } else {
-                    "preview.tags"
-                };
-                if let Err(error) = self
-                    .surfaces
-                    .set_open(key, request.action.ends_with("open"))
-                {
-                    return error_json(&error.to_string());
-                }
-            }
-            "filmstrip_show" | "filmstrip_hide" => {
-                if let Err(error) = self.surfaces.set_value(
-                    "preview.filmstrip.request",
-                    if request.action.ends_with("show") {
-                        "true"
-                    } else {
-                        "false"
-                    },
-                ) {
-                    return error_json(&error.to_string());
-                }
-            }
-            "next" | "previous" => {
-                self.preview
-                    .navigate_filmstrip(if request.action == "next" { 1 } else { -1 });
-            }
-            "close" => {
-                self.preview.close();
-                let _ = self.surfaces.set_open("preview.more", false);
-                let _ = self.surfaces.set_open("preview.tags", false);
-            }
-            "rotate_clockwise" => self.preview.rotate_clockwise(),
-            "rotate_counter_clockwise" => self.preview.rotate_counter_clockwise(),
-            "flip_horizontal" => self.preview.flip_horizontal(),
-            "flip_vertical" => self.preview.flip_vertical(),
-            "fit" => self.preview.set_fit(),
-            "toggle_info" => self.preview.toggle_info(),
-            "zoom" => {
-                let Some(percent) = request.zoom_percent else {
-                    return error_json("zoom 操作需要 zoom_percent。");
-                };
-                if ![25, 50, 100, 125, 150, 200].contains(&percent) {
-                    return error_json("缩放值只支持 25、50、100、125、150 或 200。");
-                }
-                self.preview.set_zoom_percent(percent);
-            }
-            _ => return error_json("不支持的预览操作。"),
-        }
-        // A toolbar click or key press restarts the source's chrome fade timer
-        // (`preview.rs:1696` gate plus the per-frame activity reset), so the
-        // service clock is advanced here as the real pointer input would.
-        self.preview.mark_activity();
-        self.get_view_state()
-    }
-
-    #[tool(description = "控制当前视频播放：播放/暂停、定位、逐帧步进、倍速或关闭。")]
-    fn control_playback(&self, Parameters(request): Parameters<PlaybackControlRequest>) -> String {
-        tracing::info!(?request, "MCP control request");
-        let result = match request.action.as_str() {
-            "tags_open" | "tags_close" | "more_open" | "more_close" => {
-                let tags = request.action.starts_with("tags");
-                let open = request.action.ends_with("open");
-                let key = if tags {
-                    "playback.tags"
-                } else {
-                    "playback.more"
-                };
-                if let Err(error) = self.surfaces.set_open(key, open) {
-                    return error_json(&error.to_string());
-                }
-                if open {
-                    let _ = self.surfaces.set_open(
-                        if tags {
-                            "playback.more"
-                        } else {
-                            "playback.tags"
-                        },
-                        false,
-                    );
-                }
-                return self.get_view_state();
-            }
-            "set_volume" => {
-                let Some(volume) = request
-                    .volume
-                    .filter(|value| value.is_finite() && (0.0..=1.5).contains(value))
-                else {
-                    return error_json("set_volume requires a finite volume from 0 to 1.5");
-                };
-                self.playback.set_volume(volume);
-                return self.get_view_state();
-            }
-            "play_pause" => self.playback.toggle_play_pause(),
-            "seek" => match request.seconds {
-                Some(seconds) if seconds.is_finite() && (0.0..=86_400.0).contains(&seconds) => {
-                    self.playback.seek(seconds)
-                }
-                _ => return error_json("seek 需要 0 到 86,400 秒之间的有限 seconds。"),
-            },
-            "step" => match request.frames {
-                Some(frames) if (-300..=300).contains(&frames) => self.playback.step_frames(frames),
-                _ => return error_json("step 需要 -300 到 300 之间的 frames。"),
-            },
-            "set_speed" => match request.speed {
-                Some(speed) if speed.is_finite() && (0.1..=8.0).contains(&speed) => {
-                    self.playback.set_speed(speed)
-                }
-                _ => return error_json("set_speed 需要 0.1 到 8 之间的有限 speed。"),
-            },
-            "close" => {
-                self.playback.close();
-                return self.get_view_state();
-            }
-            _ => return error_json("不支持的播放操作。"),
-        };
-        match result {
-            Ok(()) => self.get_view_state(),
+            Ok(Err(error)) => error_json(&error.to_string()),
             Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(description = "读取 QuickLook 最近调用结果；不代表外部窗口已完成显示。")]
+    fn get_view_state(&self) -> String {
+        json!({"quicklook": self.quicklook.snapshot()}).to_string()
+    }
+
+    #[tool(
+        description = "只读检查本机 QuickLook.exe 的可见窗口标题和尺寸，区别进程派发与实际显示。"
+    )]
+    fn inspect_quicklook(&self) -> String {
+        #[cfg(windows)]
+        {
+            json!({"dispatch":self.quicklook.snapshot(),"windows":photag_plugin_quicklook::windows::visible_windows(),"higher_integrity_process":photag_plugin_quicklook::windows::higher_integrity_quicklook_process(),"pipe_probe":photag_plugin_quicklook::windows::probe()}).to_string()
+        }
+        #[cfg(not(windows))]
+        {
+            error_json("QuickLook requires Windows")
+        }
+    }
+
+    #[tool(description = "截取已验证属于 QuickLook.exe 的可见查看窗口，用于外部查看器集成验收。")]
+    async fn screenshot_quicklook(&self) -> Result<CallToolResult, McpError> {
+        #[cfg(windows)]
+        {
+            let Some(window) = photag_plugin_quicklook::windows::visible_windows()
+                .into_iter()
+                .next()
+            else {
+                return Ok(CallToolResult::error(vec![ContentBlock::text(
+                    "No visible QuickLook window",
+                )]));
+            };
+            match screenshot::capture_png(window.handle as isize) {
+                Ok((png, _, _)) => Ok(CallToolResult::success(vec![
+                    ContentBlock::text(window.title),
+                    ContentBlock::image(
+                        base64::Engine::encode(&base64::engine::general_purpose::STANDARD, png),
+                        "image/png",
+                    ),
+                ])),
+                Err(error) => Ok(CallToolResult::error(vec![ContentBlock::text(error)])),
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(CallToolResult::error(vec![ContentBlock::text(
+                "QuickLook requires Windows",
+            )]))
         }
     }
 

@@ -251,143 +251,77 @@ impl GalleryView {
         self.preview_media(media_id, cx);
     }
 
-    #[tracing::instrument(skip_all, fields(media_id=?media_id))]
+    /// All original files use the installed QuickLook, regardless of media kind.
     pub(super) fn preview_media(&mut self, media_id: i64, cx: &mut Context<Self>) -> bool {
-        // A double-click comes from a loaded card. Use that row directly so the
-        // interaction can show the preview without waiting for another DB read.
-        // Keyboard requests may refer to a selected row outside the current page.
-        let media = self
-            .snapshot
-            .as_ref()
-            .ok()
-            .and_then(|snapshot| {
-                snapshot
-                    .media
-                    .iter()
-                    .find(|media| media.id == media_id)
-                    .cloned()
-            })
-            .map(|media| Ok(Some(media)))
-            .unwrap_or_else(|| self.service.media_by_id(media_id));
-        let opened = match media {
-            Ok(Some(media)) if media.media_type == "image" => {
-                self.set_preview_filmstrip(media_id);
-                match self.preview.open_indexed_media(&media) {
-                    Ok(()) => {
-                        self.operation_status = Some("Image preview opened.".into());
-                        true
-                    }
-                    Err(error) => {
-                        self.operation_status = Some(error.to_string());
-                        false
-                    }
-                }
-            }
-            Ok(Some(media)) if media.media_type == "video" => {
-                self.set_preview_filmstrip(media_id);
-                match self.preview.open_indexed_media(&media) {
-                    Ok(()) => {
-                        self.video_preview_open = true;
-                        self.operation_status = Some("Video preview opened.".into());
-                    }
-                    Err(error) => self.operation_status = Some(error.to_string()),
-                }
-                false
-            }
-            Ok(Some(media)) if media.media_type == "audio" => {
-                self.set_preview_filmstrip(media_id);
-                match self.preview.open_indexed_media(&media) {
-                    Ok(()) => self.operation_status = Some("Audio preview opened.".into()),
-                    Err(error) => self.operation_status = Some(error.to_string()),
-                }
-                false
-            }
-            Ok(Some(_)) => {
-                self.operation_status = Some("This file type cannot be previewed.".into());
-                false
-            }
+        if self.quicklook_busy {
+            return false;
+        }
+        let media = match self.service.media_by_id(media_id) {
+            Ok(Some(media)) => media,
             Ok(None) => {
-                self.operation_status = Some("Selected media is no longer indexed.".into());
-                false
+                self.operation_status = Some("Selected file is no longer indexed.".into());
+                cx.notify();
+                return false;
             }
             Err(error) => {
                 self.operation_status = Some(error.to_string());
-                false
+                cx.notify();
+                return false;
             }
         };
-        cx.notify();
-        opened
-    }
-
-    fn set_preview_filmstrip(&self, current_media_id: i64) {
-        let ids = self
-            .snapshot
-            .as_ref()
-            .map(|snapshot| {
-                snapshot
-                    .skeletons
-                    .iter()
-                    .map(|item| item.id)
-                    .collect::<Vec<_>>()
+        if media.media_type == "image"
+            && self.settings.as_ref().is_some_and(|settings| {
+                settings
+                    .snapshot()
+                    .is_ok_and(|settings| settings.ai.auto_analyze)
             })
-            .unwrap_or_default();
-        let visible_items = self
-            .snapshot
-            .as_ref()
-            .map(|snapshot| {
-                snapshot
-                    .media
-                    .iter()
-                    .map(photag_plugin_preview::FilmstripMedia::from)
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        self.preview.set_indexed_filmstrip_items(visible_items);
-
-        // Resolve the complete filtered strip off the UI thread. The current
-        // window remains usable immediately while the full order is prepared.
-        let service = Arc::clone(&self.service);
-        let preview = Arc::clone(&self.preview);
-        self.runtime.spawn(async move {
-            let result =
-                tokio::task::spawn_blocking(move || service.preview_items_by_ids(&ids)).await;
-            if let Ok(Ok(items)) = result {
-                if preview.snapshot().media_id == Some(current_media_id) {
-                    preview.set_indexed_filmstrip_items(items);
+        {
+            self.service
+                .ai_target
+                .select(media.full_path.clone().into(), media.id, false);
+        }
+        self.quicklook_busy = true;
+        let _ = self.surfaces.set_value("quicklook.notice", "");
+        let quicklook = Arc::clone(&self.quicklook);
+        let task = self
+            .runtime
+            .spawn_blocking(move || quicklook.open(media.full_path));
+        cx.spawn(async move |this, cx| {
+            let result = task
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|result| result.map_err(|e| photag_ui_bridge::i18n::tr(&e.to_string())));
+            let _ = this.update(cx, |this, cx| {
+                this.quicklook_busy = false;
+                match result {
+                    Ok(()) => this.operation_status = Some("Sent to QuickLook.".into()),
+                    Err(error) => {
+                        this.operation_status = Some(error.clone());
+                        this.quicklook_notice = Some(error.clone());
+                        let _ = this.surfaces.set_value("quicklook.notice", &error);
+                    }
                 }
-            }
-        });
+                cx.notify();
+            });
+        })
+        .detach();
+        true
     }
 
     pub(super) fn suggest_tags(&mut self, media_id: i64, cx: &mut Context<Self>) {
         match self.service.media_by_id(media_id) {
             Ok(Some(media)) if media.media_type == "image" => {
-                if self.preview_media(media_id, cx) {
-                    self.preview.request_ai_suggestions(media_id);
-                    self.operation_status = Some("AI tag suggestions requested.".into());
-                    cx.notify();
-                }
+                self.service
+                    .ai_target
+                    .select(media.full_path.into(), media_id, true);
+                self.operation_status = Some("AI tag suggestions requested.".into());
             }
             Ok(Some(_)) => {
-                self.operation_status = Some("AI tag suggestions require an image.".into());
-                cx.notify();
+                self.operation_status = Some("AI tag suggestions require an image.".into())
             }
-            Ok(None) => {
-                self.operation_status = Some("Selected media is no longer indexed.".into());
-                cx.notify();
-            }
-            Err(error) => {
-                self.operation_status = Some(error.to_string());
-                cx.notify();
-            }
+            Ok(None) => self.operation_status = Some("Selected media is no longer indexed.".into()),
+            Err(error) => self.operation_status = Some(error.to_string()),
         }
-    }
-
-    pub(super) fn close_video_preview(&mut self, cx: &mut Context<Self>) {
-        self.playback.close();
-        self.preview.close();
-        self.video_preview_open = false;
-        self.operation_status = Some("Returned to the gallery.".into());
         cx.notify();
     }
 

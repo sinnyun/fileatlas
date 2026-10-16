@@ -1,5 +1,15 @@
 # Settings plugin ports / 设置面板对接
 
+## QuickLook replacement — 2026-10-16
+
+The embedded file viewers and their Toolbar settings section are removed.
+Settings now starts on Appearance and offers Appearance, Shortcuts, Tags, AI and
+Updates. Space and Enter always call QuickLook; the legacy configurable open
+key is still accepted. Old toolbar/filmstrip JSON fields remain as inert
+compatibility data, so existing settings do not lose persisted values. They
+have no active viewer controls or handlers. Later historical descriptions of
+the Toolbar tab are superseded by this section.
+
 Status: the source-compatible settings model and JSON persistence are active. This plugin contributes a Cordis-owned floating Settings window with six source sections, a toggle command, close button, Escape handling, and draggable title bar. Controls write immediately through `SettingsService::update`, so UI state and `%LOCALAPPDATA%/PhoTag/settings.json` stay synchronized. Accent selection updates the shared UI bridge theme state at startup and after edits. Windows visual and interaction validation remains pending.
 
 ## Cordis and UI lifecycle

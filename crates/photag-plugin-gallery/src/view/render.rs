@@ -5,6 +5,15 @@ pub(super) const GRID_PADDING: f32 = 16.;
 
 impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some(message) = self.quicklook_notice.take() {
+            use gpui_kit::component::WindowExt as _;
+            window.open_alert_dialog(cx, move |dialog, _, _| {
+                dialog
+                    .title("QuickLook")
+                    .description(message.clone())
+                    .ok_text(photag_ui_bridge::i18n::tr("OK"))
+            });
+        }
         if let Some(request) = self.service.take_ui_request() {
             match request {
                 crate::GalleryUiRequest::InspectorTagName(name) => {

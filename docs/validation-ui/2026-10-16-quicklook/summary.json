@@ -1,0 +1,58 @@
+{
+  "finished": "2026-10-16T09:35:07.822Z",
+  "executable_sha256": "ad94b3ee2c72892bdd594c4a4dc716149e3111393e051fa99fab7405c232141b",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-quicklook-release-check",
+  "cases": [
+    "old image/audio/video viewer controls removed from MCP",
+    "Gallery dispatches image to installed QuickLook",
+    "Gallery dispatches audio to installed QuickLook",
+    "Gallery dispatches video to installed QuickLook",
+    "Gallery dispatches file to installed QuickLook",
+    "real GPUI Space dispatches selected original, including Unicode, spaces, & and $",
+    "settled viewer state and QuickLook action logs remain unchanged during passive reads",
+    "removed original reports a translated GPUI alert instead of opening a viewer",
+    "Settings starts on Appearance and rejects the removed viewer Toolbar tab"
+  ],
+  "quiet_log_counts": [
+    228,
+    228
+  ],
+  "dispatch_ms": [
+    1667.9263,
+    19.9179,
+    21.3933,
+    20.288400000000003,
+    20.4839
+  ],
+  "items": [
+    {
+      "id": 1,
+      "filename": "01 图片 & $原图.png",
+      "media_type": "image",
+      "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-quicklook-release-check\\thumbs\\161975516e761459.jpg"
+    },
+    {
+      "id": 2,
+      "filename": "02 声音.wav",
+      "media_type": "audio",
+      "thumb_path": null
+    },
+    {
+      "id": 3,
+      "filename": "03 视频.mp4",
+      "media_type": "video",
+      "thumb_path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-quicklook-release-check\\thumbs\\a5396b4be283950c.jpg"
+    },
+    {
+      "id": 4,
+      "filename": "04 文本.txt",
+      "media_type": "file",
+      "thumb_path": null
+    }
+  ],
+  "limits": [
+    "real absent-installation state not exercised; installed user QuickLook was not removed",
+    "Store bridge not exercised",
+    "external QuickLook rendering/focus/codecs are not proven by dispatch"
+  ]
+}

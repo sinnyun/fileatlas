@@ -929,3 +929,17 @@ msg-0862ed6e679c = Metadata date
 
 msg-inspector-confirm-changes = Confirm changes
 msg-inspector-icon = Icon
+
+msg-quicklook-missing = QuickLook is not installed. Please install QuickLook and try again.
+msg-quicklook-not-running = QuickLook is not responding. Start QuickLook and press Space again. If it is not installed, install QuickLook first.
+msg-quicklook-file-missing = The selected file no longer exists.
+msg-quicklook-shortcut = Open the selected file in QuickLook. Space and Enter are always available.
+msg-quicklook-privilege-mismatch = QuickLook is running as administrator while PhoTag is not. Close QuickLook and relaunch it without 'Run as administrator', then try again.
+msg-gallery-rating-shortcut = Use number keys 0–5 to set a rating; 0 clears the rating.
+msg-gallery-tag-shortcut = Choose a tag for each key. Press that key in the gallery to toggle the tag.
+msg-debug-copy-logs = Copy logs
+msg-debug-export-txt = Export .txt
+msg-debug-copied-count = Copied { $count } logs.
+msg-debug-copy-failed = Could not copy logs.
+msg-debug-export-saved = Saved logs to { $path }
+msg-debug-export-cancelled = Export cancelled.

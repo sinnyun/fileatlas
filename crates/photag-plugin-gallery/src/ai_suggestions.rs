@@ -1,4 +1,4 @@
-//! Local MobileNet suggestions and assignment actions for the current preview.
+//! Local MobileNet suggestions and assignment actions, independent of file viewers.
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -15,17 +15,29 @@ use photag_plugin_settings::SettingsService;
 use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
-use crate::PreviewService;
+#[derive(Default)]
+pub(crate) struct AiTarget(std::sync::Mutex<(Option<(PathBuf, i64)>, bool)>);
+impl AiTarget {
+    pub(crate) fn select(&self, path: PathBuf, id: i64, request: bool) {
+        *self.0.lock().expect("AI selection") = (Some((path, id)), request);
+    }
+    fn snapshot(&self) -> Option<(PathBuf, i64)> {
+        self.0.lock().expect("AI selection").0.clone()
+    }
+    fn take_request(&self) -> bool {
+        std::mem::take(&mut self.0.lock().expect("AI selection").1)
+    }
+}
 
 pub fn view(
-    preview: Arc<PreviewService>,
+    preview: Arc<AiTarget>,
     ai: Arc<AiService>,
     settings: Arc<SettingsService>,
     tagging: Arc<TaggingService>,
     history: Arc<HistoryService>,
 ) -> UiViewContribution {
     UiViewContribution::new(
-        "preview/ai-suggestions-view",
+        "gallery/ai-suggestions-view",
         "workspace.main",
         1,
         move |_, app| {
@@ -57,6 +69,8 @@ pub fn view(
                     inference: None,
                     download: None,
                     message: None,
+                    model_read: Default::default(),
+                    model_revision: 0,
                 }
             })
             .into()
@@ -79,21 +93,20 @@ struct AiSuggestionsView {
     inference: Option<Inference>,
     download: Option<Download>,
     message: Option<String>,
+    model_read: photag_ui_bridge::read_model::ReadModel<u64, bool>,
+    model_revision: u64,
 }
 
 impl AiSuggestionsView {
-    fn poll(
-        &mut self,
-        preview: &PreviewService,
-        ai: &AiService,
-        settings: &SettingsService,
-    ) -> bool {
-        let snapshot = preview.snapshot();
-        let current = snapshot
-            .source
-            .clone()
-            .zip(snapshot.media_id)
-            .filter(|(path, _)| is_image(path));
+    fn refresh_model_availability(&mut self) {
+        self.model_revision += 1;
+        let ai = Arc::clone(&self.ai);
+        self.model_read
+            .request(self.model_revision, move || Ok(ai.model_exists()));
+    }
+
+    fn poll(&mut self, preview: &AiTarget, ai: &AiService, settings: &SettingsService) -> bool {
+        let current = preview.snapshot();
         let mut changed = current != self.key;
         if changed {
             let had_pending_work = self.inference.is_some() || self.download.is_some();
@@ -103,16 +116,12 @@ impl AiSuggestionsView {
             self.message = had_pending_work.then(|| "Previous analysis was abandoned after the preview changed; its worker may finish in the background.".into());
             self.inference = None;
             self.download = None;
+            self.refresh_model_availability();
         }
-        if let Some(requested_media_id) = preview.take_ai_suggestion_request() {
-            if self
-                .key
-                .as_ref()
-                .is_some_and(|(_, media_id)| *media_id == requested_media_id)
-            {
-                self.request();
-                changed = true;
-            }
+        changed |= self.model_read.poll();
+        if preview.take_request() {
+            self.request();
+            changed = true;
         }
         let download_result = self.download.as_ref().map(|receiver| receiver.try_recv());
         if let Some(result) = download_result {
@@ -120,6 +129,7 @@ impl AiSuggestionsView {
             match result {
                 Ok(Ok(())) => {
                     self.download = None;
+                    self.refresh_model_availability();
                     self.message = Some("Model ready. Analyzing image…".into());
                     self.begin_inference(current.clone(), ai, settings);
                 }
@@ -171,7 +181,7 @@ impl AiSuggestionsView {
                 && !self.analyzed.contains(key)
                 && self.inference.is_none()
                 && self.download.is_none()
-                && ai.model_exists()
+                && matches!(self.model_read.value(), Some(Ok(true)))
             {
                 self.begin_inference(current, ai, settings);
                 changed = true;
@@ -205,6 +215,7 @@ impl AiSuggestionsView {
         if current.is_none() {
             return;
         }
+        self.refresh_model_availability();
         if !self.ai.model_exists() {
             self.error = None;
             self.message = Some("Downloading MobileNet model…".into());
@@ -253,43 +264,11 @@ impl AiSuggestionsView {
     }
 }
 
-fn is_image(path: &std::path::Path) -> bool {
-    !matches!(
-        path.extension()
-            .and_then(|ext| ext.to_str())
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-            .as_str(),
-        "mp4"
-            | "mov"
-            | "avi"
-            | "mkv"
-            | "wmv"
-            | "flv"
-            | "webm"
-            | "m4v"
-            | "mpg"
-            | "mpeg"
-            | "3gp"
-            | "mp3"
-            | "wav"
-            | "flac"
-            | "aac"
-            | "ogg"
-            | "wma"
-            | "m4a"
-            | "opus"
-            | "ape"
-            | "aiff"
-            | "aif"
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::{
-        AiService, AiSuggestionsView, HistoryService, PreviewService, SettingsService,
-        TagSuggestion, TaggingService,
+        AiService, AiSuggestionsView, AiTarget, HistoryService, SettingsService, TagSuggestion,
+        TaggingService,
     };
     use std::{
         collections::HashSet,
@@ -312,7 +291,7 @@ mod tests {
             .update(|settings| settings.ai.auto_analyze = false)
             .unwrap();
         let ai = Arc::new(AiService);
-        let preview = PreviewService::open_at(directory.join("preview")).unwrap();
+        let preview = AiTarget::default();
         let mut view = AiSuggestionsView {
             ai: Arc::clone(&ai),
             settings: Arc::clone(&settings),
@@ -325,16 +304,22 @@ mod tests {
             inference: None,
             download: None,
             message: None,
+            model_read: Default::default(),
+            model_revision: 0,
         };
         for _ in 0..10 {
             assert!(!view.poll(&preview, &ai, &settings));
         }
-        {
-            let mut snapshot = preview.state.lock().unwrap();
-            snapshot.source = Some("fixture.jpg".into());
-            snapshot.media_id = Some(1);
-        }
+        preview.select("fixture.jpg".into(), 1, false);
         assert!(view.poll(&preview, &ai, &settings));
+        for _ in 0..100 {
+            if !view.model_read.is_pending() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1));
+            view.poll(&preview, &ai, &settings);
+        }
+        assert!(!view.model_read.is_pending());
         let (send, receive) = mpsc::channel();
         view.inference = Some(receive);
         for _ in 0..10 {
@@ -364,7 +349,6 @@ impl Render for AiSuggestionsView {
         if unavailable {
             return div().size_0();
         }
-        let ai = Arc::clone(&self.ai);
         let request = cx.listener(move |this, _: &ClickEvent, _, cx| {
             this.request();
             cx.notify();
@@ -472,7 +456,10 @@ impl Render for AiSuggestionsView {
                         "Open an indexed image to analyze it.",
                     )),
             );
-        } else if !ai.model_exists() && self.inference.is_none() && self.download.is_none() {
+        } else if matches!(self.model_read.value(), Some(Ok(false)))
+            && self.inference.is_none()
+            && self.download.is_none()
+        {
             content = content.child(
                 div()
                     .text_sm()

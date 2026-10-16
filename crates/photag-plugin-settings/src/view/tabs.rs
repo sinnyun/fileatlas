@@ -8,10 +8,6 @@ impl SettingsView {
         }
         let (title, description) = match self.tab {
             Tab::Appearance => ("Appearance", "Choose the accent color used across PhoTag."),
-            Tab::Toolbar => (
-                "Toolbar",
-                "Choose which preview actions and position controls are shown.",
-            ),
             Tab::Shortcuts => (
                 "Shortcuts",
                 "Set the open-media key and assign tags to F1–F9.",
@@ -216,9 +212,6 @@ impl SettingsView {
                         ),
                 );
             }
-            Tab::Toolbar => {
-                b = b.child(self.toolbar_settings(s, cx));
-            }
             Tab::Shortcuts => {
                 b = b.child(self.section("Tag sidebar modifier"));
                 let modifier = s.exclude_modifier;
@@ -286,7 +279,7 @@ impl SettingsView {
                     .child(div().v_flex().gap_1()
                         .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Open selected media")))
                         .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(photag_ui_bridge::i18n::tr("Use this key in the gallery or preview to open the selected file."))))
+                            .child(photag_ui_bridge::i18n::tr("Open the selected file in QuickLook. Space and Enter are always available."))))
                     .child(div().h_flex().items_center().gap_2()
                         .child(div().px_3().py_1().rounded_sm().border_1()
                             .border_color(rgba(theme::HAIRLINE.to_rgba())).bg(rgb(theme::SURFACE_BASE))
@@ -294,11 +287,11 @@ impl SettingsView {
                         .child(self.open_key_capture_button(cx))));
                 b = b.child(self.section("Rating shortcuts"));
                 b = b.child(div().text_sm().child(photag_ui_bridge::i18n::tr(
-                    "Use number keys 0–5 to set a rating; in preview, 0 clears the rating.",
+                    "Use number keys 0–5 to set a rating; 0 clears the rating.",
                 )));
                 b = b.child(self.section("Tag target shortcuts (F1–F9)"));
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr(
-                    "Choose a tag for each key. Press that key in the gallery or preview to toggle the tag.",
+                    "Choose a tag for each key. Press that key in the gallery to toggle the tag.",
                 )));
                 match self.tag_choices.value() {
                     Some(Ok(choices)) => {

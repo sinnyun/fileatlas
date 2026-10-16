@@ -921,3 +921,17 @@ msg-0862ed6e679c = 元数据日期
 
 msg-inspector-confirm-changes = 确认修改
 msg-inspector-icon = 图标
+
+msg-quicklook-missing = 本机未安装 QuickLook。请自行安装 QuickLook 后再按空格查看文件。
+msg-quicklook-not-running = QuickLook 没有响应。请先启动 QuickLook，然后再按空格查看文件；如果尚未安装，请先安装 QuickLook。
+msg-quicklook-file-missing = 所选文件已不存在。
+msg-quicklook-shortcut = 使用 QuickLook 查看选中的文件。空格和 Enter 始终可用。
+msg-quicklook-privilege-mismatch = QuickLook 正以管理员身份运行，而 PhoTag 不是。请关闭 QuickLook，以普通权限重新启动后再试。
+msg-gallery-rating-shortcut = 使用数字键 0–5 评分，0 清除评分。
+msg-gallery-tag-shortcut = 为每个快捷键指定标签，在图库中按键添加或移除该标签。
+msg-debug-copy-logs = 复制日志
+msg-debug-export-txt = 导出 .txt
+msg-debug-copied-count = 已复制 { $count } 条日志。
+msg-debug-copy-failed = 无法复制日志。
+msg-debug-export-saved = 日志已保存到 { $path }
+msg-debug-export-cancelled = 已取消导出。

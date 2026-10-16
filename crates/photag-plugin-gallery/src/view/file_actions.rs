@@ -9,13 +9,6 @@ use photag_plugin_file_operations::{BulkCopyOutcome, BulkDeleteOutcome, BulkMove
 
 use super::GalleryView;
 
-#[derive(Clone, Copy)]
-enum PreviewRemoval {
-    Advance,
-    Close,
-    Ignore,
-}
-
 impl GalleryView {
     /// Open the source-compatible folder picker for a multi-item copy.
     pub(super) fn copy_selected_with_dialog(&mut self, cx: &mut Context<Self>) {
@@ -39,7 +32,6 @@ impl GalleryView {
                     Ok(outcomes) => (format_copy_outcome(requested, &outcomes), Vec::new()),
                 }
             },
-            PreviewRemoval::Ignore,
             false,
             false,
             cx,
@@ -88,14 +80,13 @@ impl GalleryView {
                     }
                 }
             },
-            PreviewRemoval::Ignore,
             true,
             true,
             cx,
         );
     }
 
-    /// The source preview toolbar copies one item through a native Save File dialog.
+    /// Copy one selected item through a native Save File dialog.
     pub(super) fn copy_selected_to_file(&mut self, cx: &mut Context<Self>) {
         let Some(&media_id) = self.selection.selected_media_ids.first() else {
             return;
@@ -119,14 +110,13 @@ impl GalleryView {
                     Err(error) => (format!("Copy failed: {error}"), Vec::new()),
                 }
             },
-            PreviewRemoval::Ignore,
             false,
             false,
             cx,
         );
     }
 
-    /// The source preview toolbar moves one item through a native Save File dialog.
+    /// Move one selected item through a native Save File dialog.
     pub(super) fn move_selected_to_file(&mut self, cx: &mut Context<Self>) {
         let Some(&media_id) = self.selection.selected_media_ids.first() else {
             return;
@@ -166,7 +156,7 @@ impl GalleryView {
                     Err(error) => (format!("Move failed or refresh failed: {error}"), removed),
                 }
             },
-            PreviewRemoval::Advance,
+
             true,
             true,
             cx,
@@ -254,7 +244,6 @@ impl GalleryView {
                     }
                 }
             },
-            PreviewRemoval::Close,
             true,
             false,
             cx,
@@ -332,7 +321,6 @@ impl GalleryView {
                     },
                 }
             },
-            PreviewRemoval::Ignore,
             true,
             false,
             cx,
@@ -342,7 +330,6 @@ impl GalleryView {
     fn start_file_operation<F>(
         &mut self,
         operation: F,
-        preview_removal: PreviewRemoval,
         refresh: bool,
         repair_selection_on_empty: bool,
         cx: &mut Context<Self>,
@@ -363,30 +350,6 @@ impl GalleryView {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
-        let active_preview_path = self
-            .preview
-            .snapshot()
-            .source
-            .or_else(|| self.playback.snapshot().path);
-        let active_preview_id = active_preview_path.as_ref().and_then(|path| {
-            self.snapshot
-                .as_ref()
-                .ok()?
-                .media
-                .iter()
-                .find(|media| std::path::Path::new(&media.full_path) == path)
-                .map(|media| media.id)
-                .or_else(|| {
-                    selected_before.iter().find_map(|id| {
-                        self.service
-                            .media_by_id(*id)
-                            .ok()
-                            .flatten()
-                            .filter(|media| std::path::Path::new(&media.full_path) == path)
-                            .map(|media| media.id)
-                    })
-                })
-        });
         let operation = self.runtime.spawn(operation);
         cx.spawn(async move |this, cx| {
             let result = operation
@@ -419,40 +382,6 @@ impl GalleryView {
                     .collect();
                 this.selection.anchor_id = this.selection.selected_media_ids.first().copied();
 
-                if let Some(preview_id) = active_preview_id {
-                    if removed.contains(&preview_id) {
-                        match preview_removal {
-                            PreviewRemoval::Advance => {
-                                let next = next_or_previous(&skeleton_ids, preview_id, &removed);
-                                if let Some(next_id) = next {
-                                    this.preview_media(next_id, cx);
-                                } else {
-                                    this.preview.close();
-                                    this.playback.close();
-                                    this.video_preview_open = false;
-                                }
-                            }
-                            PreviewRemoval::Close => {
-                                this.preview.close();
-                                this.playback.close();
-                                this.video_preview_open = false;
-                            }
-                            PreviewRemoval::Ignore => {}
-                        }
-                    } else if this
-                        .service
-                        .media_by_id(preview_id)
-                        .ok()
-                        .flatten()
-                        .is_some_and(|media| {
-                            active_preview_path
-                                .as_ref()
-                                .is_some_and(|path| std::path::Path::new(&media.full_path) != path)
-                        })
-                    {
-                        this.preview_media(preview_id, cx);
-                    }
-                }
                 if repair_selection_on_empty
                     && this.selection.selected_media_ids.is_empty()
                     && !selected_before.is_empty()
@@ -472,25 +401,6 @@ impl GalleryView {
         })
         .detach();
     }
-}
-
-fn next_or_previous(
-    order: &[i64],
-    id: i64,
-    removed: &std::collections::HashSet<i64>,
-) -> Option<i64> {
-    let index = order.iter().position(|candidate| *candidate == id)?;
-    order
-        .iter()
-        .skip(index + 1)
-        .find(|candidate| !removed.contains(candidate))
-        .or_else(|| {
-            order[..index]
-                .iter()
-                .rev()
-                .find(|candidate| !removed.contains(candidate))
-        })
-        .copied()
 }
 
 fn next_visible(
