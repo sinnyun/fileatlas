@@ -112,8 +112,19 @@ written.
   concepts notes, then reproduce its structure, controls, and states in GPUI
   Kit. The user's design decisions and in-session direction override any older
   source-layout document. Record which mockup a change implements, and note
-  designed controls or states that are still missing from the app. Screenshots
-  of the running app are for checking the rendered result only.
+  designed controls or states that are still missing from the app.
+- For a substantial visual/style change to a project interface, first use the
+  built-in image generation capability to create a concept image, then
+  implement against that visual reference. Describe the visual hierarchy,
+  palette, spacing/gaps, component separation, and representative states
+  (such as selected, hover, and nested rows) explicitly in the prompt. Inspect
+  the concept before coding; revise it when the user gives visual feedback.
+  Save project-relevant concepts under `docs/reference-ui/concepts/` and record
+  the concept used in the validation notes. Treat generated images as visual
+  direction, not pixel measurements or product data. After implementation,
+  compare a same-process PhoTag MCP screenshot with the concept, refine visible
+  mismatches, and record the result and remaining gaps. Small local tweaks do
+  not need a new concept unless the user asks for one.
 - Preserve SQLite schema and existing `%LOCALAPPDATA%\\PhoTag` files unless a
   tested compatibility migration is supplied.
 - Keep Rust files below 500 lines where practical and below 800 lines.

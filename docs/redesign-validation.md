@@ -424,3 +424,12 @@ Windows/150% DPI，Rust 1.97.1 MSVC，locked/-j2：fmt/check/build、UI refresh 
 重绘；浅色主题、检视器/浮动预览在两种模式下的全部边界、列表布局与胶片条分组标题、非 150% DPI、最小化恢复
 重绘、拖拽与原生选择器；分组颜色只按索引循环取 6 色，用户自定义分组配色尚未提供。截图、脚本、命令与边界见
 [区域区分证据](validation-ui/2026-10-16-region-separation/README.md)。
+
+## 2026-10-16 标签侧栏层级样式
+
+先生成标签树胶囊概念图，再据图将每个标签实现为独立圆角胶囊与细边框，明确区分相邻标签；父子缩进由胶囊位置体现，连续树线穿过子项间隙，媒体数位于胶囊内徽标。通过 `cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-navigation -j 2` 和 `cargo +1.97.1 build --locked -p photag-shell -j 2`。PhoTag MCP 同进程隔离 profile 中创建3个父标签及7个子标签，展开后截图检查通过。截图、profile和未覆盖项见 `validation-ui/2026-10-16-tag-sidebar/README.md`。本轮未覆盖媒体计数非零和实际标签筛选。
+
+
+## 2026-10-16 标签侧栏反馈修订
+
+根据用户指出的计数未右对齐、菜单按钮不可见、标签颜色未体现，继续修订侧栏：计数放入胶囊右侧固定宽度区域并右对齐；“…”按钮保持常显；胶囊底色及边框取自各标签自身颜色，选中态增强同一标签色。基于带色胶囊概念图完成修改，MCP 实测截图显示多色测试标签和真实可打开的操作菜单。格式、Navigation 检查与 Shell 构建通过。详见 `validation-ui/2026-10-16-tag-sidebar/README.md`。隔离测试数据的计数为0，非零计数与筛选未验。

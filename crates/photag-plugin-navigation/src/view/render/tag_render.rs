@@ -20,6 +20,7 @@ pub(in crate::view) fn render_tag(
         .as_deref()
         .and_then(crate::parse_hex_color)
         .unwrap_or([120, 120, 130]);
+    let tag_color = (u32::from(red) << 16) | (u32::from(green) << 8) | u32::from(blue);
     let tag_icon = theme::tag_icon(tag.icon.as_deref());
     let row_group = format!("navigation-tag-row-{}", tag.id);
     let select_name_id = tag.id;
@@ -67,7 +68,7 @@ pub(in crate::view) fn render_tag(
     let view = cx.entity().downgrade();
     let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
         .compact()
-        .opacity(0.)
+        .opacity(0.72)
         .group_hover(row_group.clone(), |style| style.opacity(1.))
         .icon(theme::small_icon(IconName::Ellipsis))
         .accessibility_label(photag_ui_bridge::i18n::tr("Tag actions"))
@@ -182,18 +183,37 @@ pub(in crate::view) fn render_tag(
             )
         });
     let children = if is_expanded {
-        tag.children
+        let rows = tag
+            .children
             .iter()
             .filter(|child| tag_matches(child, query, search_match))
             .map(|child| render_tag(child, expanded, query, search_match, included, excluded, cx))
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        if rows.is_empty() {
+            Vec::new()
+        } else {
+            vec![
+                div()
+                    .relative()
+                    .child(
+                        div()
+                            .absolute()
+                            .left(px(3. + depth as f32 * 12. + 9.))
+                            .top(px(0.))
+                            .bottom(px(0.))
+                            .w(px(1.))
+                            .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                    )
+                    .children(rows),
+            ]
+        }
     } else {
         Vec::new()
     };
     let before_id = tag.id;
     let before = div()
         .w_full()
-        .h(px(20.))
+        .h(px(8.))
         .opacity(0.)
         .items_center()
         .justify_center()
@@ -215,18 +235,25 @@ pub(in crate::view) fn render_tag(
     let into_id = tag.id;
     let row = div()
         .v_flex()
+        .relative()
         .child(
             div()
                 .group(row_group)
                 .relative()
                 .h_flex()
                 .items_center()
-                .pl(px(3. + depth as f32 * 10.))
-                .pr(px(3.))
+                .ml(px(3. + depth as f32 * 12.))
+                .mr(px(3.))
+                .pl(px(6.))
+                .pr(px(5.))
                 .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                .rounded(px(4.))
+                .rounded(px(9.))
+                .bg(rgba((tag_color << 8) | 0x28))
+                .border_1()
+                .border_color(rgba((tag_color << 8) | 0x70))
                 .when(selected, |row| {
-                    row.bg(rgba(theme::accent_alpha(theme::accent(), 65. / 255.)))
+                    row.bg(rgba((tag_color << 8) | 0x72))
+                        .border_color(rgba((tag_color << 8) | 0xc0))
                         .child(
                             div()
                                 .absolute()
@@ -235,7 +262,7 @@ pub(in crate::view) fn render_tag(
                                 .w(px(3.))
                                 .h(px(16.))
                                 .rounded(px(1.5))
-                                .bg(rgb(theme::accent())),
+                                .bg(rgb(tag_color)),
                         )
                 })
                 .child(
@@ -244,21 +271,21 @@ pub(in crate::view) fn render_tag(
                         .flex_1()
                         .min_w_0()
                         .items_center()
-                        .gap_1()
+                        .gap(px(5.))
                         .child(toggle)
-                        .child(div().w_2().h_2().rounded_sm().bg(rgb((u32::from(red) << 16)
-                            | (u32::from(green) << 8)
-                            | u32::from(blue))))
-                        .child(theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)))
-                        .child(drag_name)
                         .child(
                             div()
-                                .text_size(px(10.5))
-                                .text_color(rgb(theme::TEXT_MUTED))
-                                .child(tag.media_count.to_string()),
+                                .w(px(7.))
+                                .h(px(7.))
+                                .rounded_full()
+                                .bg(rgb((u32::from(red) << 16)
+                                    | (u32::from(green) << 8)
+                                    | u32::from(blue))),
                         )
-                        .drag_over::<TagDragPayload>(|style, _, _, _| {
-                            style.bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+                        .child(theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)))
+                        .child(drag_name.flex_1().min_w_0())
+                        .drag_over::<TagDragPayload>(move |style, _, _, _| {
+                            style.bg(rgba((tag_color << 8) | 0x50))
                         })
                         .on_drop::<TagDragPayload>(cx.listener(
                             move |this, payload: &TagDragPayload, _, cx| {
@@ -270,13 +297,46 @@ pub(in crate::view) fn render_tag(
                             },
                         )),
                 )
-                .child(actions),
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(3.))
+                        .flex_shrink_0()
+                        .child(
+                            div()
+                                .w(px(28.))
+                                .h_flex()
+                                .items_center()
+                                .justify_end()
+                                .flex_shrink_0()
+                                .px(px(5.))
+                                .py(px(1.))
+                                .rounded(px(7.))
+                                .bg(rgb(theme::SURFACE_ELEVATED))
+                                .text_size(px(10.))
+                                .text_color(rgb(theme::TEXT_MUTED))
+                                .child(tag.media_count.to_string()),
+                        )
+                        .child(actions),
+                ),
         )
+        .when(depth > 0, |row| {
+            row.child(
+                div()
+                    .absolute()
+                    .left(px(3. + (depth - 1) as f32 * 12. + 9.))
+                    .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
+                    .w(px(8.))
+                    .h(px(1.))
+                    .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+            )
+        })
         .children(children);
     let after_id = tag.id;
     let after = div()
         .w_full()
-        .h(px(20.))
+        .h(px(8.))
         .opacity(0.)
         .items_center()
         .justify_center()
