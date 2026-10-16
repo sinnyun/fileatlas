@@ -7,6 +7,7 @@ use std::path::Path;
 pub struct GalleryDirectory {
     pub name: String,
     pub path: String,
+    pub media_count: i64,
 }
 #[derive(Default, Clone)]
 pub struct BrowserSnapshot {
@@ -85,7 +86,11 @@ impl GalleryService {
                     Ok(directories) => {
                         snapshot.directories = directories
                             .into_iter()
-                            .map(|(name, path, _)| GalleryDirectory { name, path })
+                            .map(|(name, path, _)| GalleryDirectory {
+                                name,
+                                path,
+                                media_count: 0,
+                            })
                             .collect()
                     }
                     Err(error) => snapshot.error = Some(error),
@@ -97,6 +102,7 @@ impl GalleryService {
                 .map(|f| GalleryDirectory {
                     name: f.name,
                     path: f.path,
+                    media_count: 0,
                 })
                 .collect();
         }

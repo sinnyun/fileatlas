@@ -47,6 +47,8 @@ pub const MEDIA_WINDOW_SIZE: usize = 200;
 #[derive(Clone)]
 pub struct GallerySnapshot {
     pub browser: BrowserSnapshot,
+    /// Stored folder rows used to resolve folder context in the inspector.
+    pub folders: Vec<photag_plugin_database::db::queries::Folder>,
     pub skeletons: Vec<MediaSkeleton>,
     pub group_labels: Vec<Option<String>>,
     pub media_count: i64,
@@ -72,6 +74,7 @@ pub struct GalleryService {
     wake: photag_ui_bridge::refresh::Wake,
     live: live::LiveBrowser,
     viewport_request: AtomicU64,
+    navigation_revision: AtomicU64,
     thumbnails_disabled: std::sync::atomic::AtomicBool,
     watcher: Option<Arc<photag_plugin_watcher::WatcherService>>,
     database: Arc<DatabaseService>,
@@ -131,6 +134,7 @@ impl GalleryService {
             database,
             live: Default::default(),
             viewport_request: AtomicU64::new(0),
+            navigation_revision: AtomicU64::new(0),
             thumbnails_disabled: Default::default(),
             watcher: None,
             grouping: None,
@@ -347,6 +351,12 @@ impl GalleryService {
             query.path_prefix = None;
         }
         Ok(self.database.with_reader(|connection| {
+            let folders = queries::list_folders(connection)?;
+            let mut browser = browser;
+            for directory in &mut browser.directories {
+                directory.media_count =
+                    queries::count_media_under_path(connection, &directory.path)?;
+            }
             let status = self.live.status();
             let waiting_for_first_batch = self.database.is_browser()
                 && browser.active
@@ -428,6 +438,7 @@ impl GalleryService {
             let tag_tree = queries::get_tag_tree(connection)?;
             Ok(GallerySnapshot {
                 browser,
+                folders,
                 skeletons,
                 group_labels: group_labels.clone(),
                 media_count,

@@ -85,7 +85,7 @@ impl GalleryView {
                 // The reference keeps a near-square canvas in a roughly 300px
                 // inspector. Width remains fluid; the details below scroll
                 // independently when the window is short.
-                .h(px(220.))
+                .h(px(180.))
                 .rounded(px(theme::ROUND_SM))
                 .overflow_hidden()
                 .bg(rgb(theme::SURFACE_PANEL))
@@ -126,6 +126,7 @@ impl GalleryView {
                     .overflow_hidden()
                     .text_ellipsis()
                     .text_size(px(theme::FONT_SIZE_BODY))
+                    .text_center()
                     .text_color(rgb(theme::TEXT_PRIMARY))
                     .child(media.filename),
             );
@@ -169,7 +170,7 @@ impl GalleryView {
         preview.into_any_element()
     }
 
-    fn inspector_media(&self) -> Option<photag_plugin_database::db::queries::MediaItem> {
+    pub(super) fn inspector_media(&self) -> Option<photag_plugin_database::db::queries::MediaItem> {
         let media_id = *self.selection.selected_media_ids.first()?;
         self.snapshot
             .as_ref()
@@ -183,22 +184,27 @@ impl GalleryView {
     }
 
     fn rating_stars(&self, media_id: i64, rating: u8, cx: &mut Context<Self>) -> Div {
-        let mut stars = div().h_flex().items_center().gap(px(3.));
+        let mut stars = div()
+            .h_flex()
+            .w_full()
+            .justify_center()
+            .items_center()
+            .gap(px(5.));
         for star in 1..=5u8 {
             stars = stars.child(
                 div()
                     .id(format!("gallery-inspector-preview-star-{media_id}-{star}"))
                     .cursor_pointer()
                     .text_color(rgb(if star <= rating {
-                        theme::STAR
+                        theme::accent()
                     } else {
                         theme::TEXT_MUTED
                     }))
-                    .hover(|style| style.text_color(rgb(theme::STAR)))
+                    .hover(|style| style.text_color(rgb(theme::accent())))
                     .child(
                         theme::icon(gpui_kit::assets::IconName::Star).text_color(rgb(
                             if star <= rating {
-                                theme::STAR
+                                theme::accent()
                             } else {
                                 theme::TEXT_MUTED
                             },

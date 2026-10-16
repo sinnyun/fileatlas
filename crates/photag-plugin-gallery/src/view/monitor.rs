@@ -13,6 +13,14 @@ pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
 
 fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     let mut repaint = false;
+    let navigation_revision = view.service.navigation_revision.load(Ordering::Acquire);
+    if navigation_revision != view.observed_navigation_revision {
+        view.observed_navigation_revision = navigation_revision;
+        view.inspector_deselected = false;
+        view.selected_directory = None;
+        view.selection = GallerySelection::default();
+        repaint = true;
+    }
     if view.service.poll_directory() {
         view.snapshot_directory_dirty = true;
     }

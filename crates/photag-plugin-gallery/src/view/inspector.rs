@@ -6,17 +6,33 @@ use gpui_kit::assets::IconName;
 use gpui_kit::base::Disableable;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
+mod contexts;
+mod folder;
 mod helpers;
+pub(super) mod history;
+mod history_tree;
 mod pages;
 mod preview;
+mod program;
+mod tag;
+pub(super) mod tag_editor;
 use super::card;
 use super::*;
 use gpui_kit::component::button::ButtonVariants;
 use helpers::*;
 
 impl GalleryView {
-    pub(super) fn render_inspector(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    pub(super) fn inspector_context_key(&self) -> &'static str {
+        self.inspector_context().key()
+    }
+    pub(super) fn render_inspector(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
         self.ensure_inspector_fallback(cx);
+        let context = self.inspector_context();
+        let tab = self.active_inspector_tab();
         let header = div()
             .h_flex()
             .flex_shrink_0()
@@ -30,21 +46,22 @@ impl GalleryView {
                     .font_family(theme::SEMIBOLD_FONT_FAMILY)
                     .text_size(px(14.))
                     .text_color(rgb(theme::TEXT_PRIMARY))
-                    .child(photag_ui_bridge::i18n::tr("Preview")),
+                    .child(photag_ui_bridge::i18n::tr(context.title())),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
                     .gap(px(4.))
-                    .child(
-                        Button::new("gallery-inspector-open-preview")
-                            .ghost()
-                            .compact()
-                            .icon(theme::icon(IconName::ExternalLink))
-                            .tooltip(photag_ui_bridge::i18n::tr("Open preview"))
-                            .disabled(self.selection.selected_media_ids.is_empty())
-                            .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
+                    .children(
+                        matches!(&context, contexts::InspectorContext::File).then(|| {
+                            Button::new("gallery-inspector-open-preview")
+                                .ghost()
+                                .compact()
+                                .icon(theme::icon(IconName::ExternalLink))
+                                .tooltip(photag_ui_bridge::i18n::tr("Open preview"))
+                                .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx)))
+                        }),
                     )
                     .child(
                         Button::new("gallery-inspector-close")
@@ -60,35 +77,49 @@ impl GalleryView {
                             })),
                     ),
             );
-        let tab = self.active_inspector_tab();
-        let preview = self.inspector_preview(cx);
-        let tabs = self.inspector_tabs(tab, cx);
-        let body = match tab {
-            "history" => self.inspector_history(),
-            "extensions" => self.inspector_extensions(),
-            _ => match self.selection.selected_media_ids.len() {
-                0 => inspector_empty(),
-                1 => self.inspector_single(cx),
-                count => Self::inspector_multi(count, cx),
-            },
-        };
-        let body = if tab == "information" && self.selection.selected_media_ids.len() == 1 {
-            body
+        let (preview, body) = if matches!(&context, contexts::InspectorContext::File) {
+            let body = match tab {
+                "history" => self.inspector_history(cx),
+                "extensions" => self.inspector_extensions(),
+                _ => match self.selection.selected_media_ids.len() {
+                    0 => inspector_empty(),
+                    1 => self.inspector_single(cx),
+                    count => Self::inspector_multi(count, cx),
+                },
+            };
+            let body = if tab == "information" && self.selection.selected_media_ids.len() == 1 {
+                body
+            } else {
+                div()
+                    .size_full()
+                    .min_h_0()
+                    .overflow_y_scrollbar()
+                    .child(body)
+                    .into_any_element()
+            };
+            let preview = self.inspector_preview(cx);
+            (preview, body)
         } else {
-            div()
-                .size_full()
-                .min_h_0()
-                .overflow_y_scrollbar()
-                .child(body)
-                .into_any_element()
+            (
+                context.hero(),
+                div()
+                    .size_full()
+                    .min_h_0()
+                    .overflow_y_scrollbar()
+                    .child(context.body(self, window, cx))
+                    .into_any_element(),
+            )
         };
-        div()
+        let mut panel = div()
             .v_flex()
             .size_full()
             .min_h_0()
             .child(header)
-            .child(preview)
-            .child(tabs)
+            .child(preview);
+        if matches!(&context, contexts::InspectorContext::File) {
+            panel = panel.child(self.inspector_tabs(tab, cx));
+        }
+        panel
             .child(div().v_flex().flex_1().min_h_0().child(body))
             .into_any_element()
     }
@@ -191,7 +222,7 @@ impl GalleryView {
                     .pb(px(6.))
                     .text_size(px(theme::FONT_SIZE_TINY))
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child(media.full_path.clone()),
+                    .child(display_path(&media.full_path)),
             );
         }
         div()
@@ -227,6 +258,7 @@ impl GalleryView {
                     .rounded(px(12.))
                     .border_1()
                     .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .bg(rgba((parse_tag_color(tag.color.as_deref()) << 8) | 0xc0))
                     .child(
                         div()
                             .size(px(8.))
@@ -293,9 +325,9 @@ impl GalleryView {
                 .w_full()
                 .pb(px(6.))
                 .children(
-                    fields
-                        .iter()
-                        .map(|(label, value)| info_row(label, value.clone())),
+                    display_exif_fields(fields)
+                        .into_iter()
+                        .map(|(label, value)| info_row(&label, value)),
                 )
                 .into_any_element(),
             Some(Err(message)) => inspector_message(message),

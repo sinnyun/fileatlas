@@ -433,3 +433,60 @@ Windows/150% DPI，Rust 1.97.1 MSVC，locked/-j2：fmt/check/build、UI refresh 
 ## 2026-10-16 标签侧栏反馈修订
 
 根据用户指出的计数未右对齐、菜单按钮不可见、标签颜色未体现，继续修订侧栏：计数放入胶囊右侧固定宽度区域并右对齐；“…”按钮保持常显；胶囊底色及边框取自各标签自身颜色，选中态增强同一标签色。基于带色胶囊概念图完成修改，MCP 实测截图显示多色测试标签和真实可打开的操作菜单。格式、Navigation 检查与 Shell 构建通过。详见 `validation-ui/2026-10-16-tag-sidebar/README.md`。隔离测试数据的计数为0，非零计数与筛选未验。
+
+## 2026-10-16 右侧信息面板程序与标签上下文
+
+按用户提供的程序信息参考图生成深色概念稿 [`right-inspector-program-dark-2026-10-16.png`](reference-ui/concepts/right-inspector-program-dark-2026-10-16.png)，并生成标签信息/编辑的深色概念图作为面板层级参考。用户确认程序是浏览程序，没有媒体库概念后，程序状态改为“浏览概览、当前浏览位置、程序状态、使用提示”；当前结果数来自活动查询，文件夹数来自当前可见子目录，不显示媒体库容量/占用或扫描任务，也不展示具体标签名。标签模式增加内嵌名称输入与保存、颜色快速色板、缩略图显示切换，写入沿用 `NavigationService`。
+
+验证命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、`node scripts/check-ui-refresh.cjs`，均通过；使用 `cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-inspector-contexts.exe` 构建 MCP 验证可执行文件。程序信息通过 `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-inspector-contexts.exe --profile target/mcp-right-inspector-program --plugins dev-test --plan target/mcp-right-inspector-program-plan.json` 在隔离配置同进程启动，截图 `target/mcp-right-inspector-program/screenshots/program-default.png` 显示真实浏览概览、当前位置空态、当前浏览状态；计数为隔离空 profile 的实际0值，没有展示具体标签名、媒体库容量、磁盘占用或扫描任务。
+
+历史页使用隔离 dev-test profile 的1000条虚拟数据选中 `virtual-000000.jpg`，指令 `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-inspector-contexts.exe --profile target/mcp-right-inspector-history-v3 --plugins dev-test --allow-mutations --plan target/mcp-right-inspector-history-plan.json` 完成运行态截图 `target/mcp-right-inspector-history-v3/screenshots/history-selected.png`。确认当前文件工作副本主线、下方无历史节点空态以及主次创建/切换按钮可见；文件名、大小和时间降为底部小号辅助信息。`dev_test_status` 确认虚拟记录不对应磁盘文件。标签与文件夹上下文及标签色板操作随后在 `target/mcp-inspector-matrix-20261016` 的同进程 MCP 实测，见本节补充记录。
+
+版本历史快照数据与创建/切换行为按用户要求待后续定；当前两项控件禁用并说明快照服务尚未接入。历史概念图里的多个分支/缩略图是目标样式示例，运行界面仅显示实际当前文件节点，不创建伪版本。
+
+## 2026-10-16 右侧信息面板模拟数据实测
+
+使用全新隔离 profile `target/mcp-inspector-matrix-20261016`，同进程启动
+`target/debug/photag-shell-inspector-contexts.exe`。模拟数据包含“风景 / 城市 / 海岸”3个根标签及4个子标签；将5张小型 JPG、PNG、GIF、WebP 图片复制到 profile 内的 `simulated-gallery`，验证本地文件夹浏览和缩略图；另由 dev-test 注入1,000条虚拟记录用于文件/历史详情。未改写仓库原始样例图片或 `%LOCALAPPDATA%\PhoTag`。标签选择和展开、颜色按钮使用项目 MCP 的 `control_ui` 同进程指针操作。
+
+本轮可复核截图：`program-matrix.png` 显示真实快照中的7个标签、1个可见子文件夹和当前结果数；`folder-context.png` 显示样例目录的5个子目录、README及文件夹路径/已索引媒体数；`simulated-folder-content-clear.png` 显示隔离目录的两个真实图像缩略图与文件夹详情；`tag-select-probe.png` 显示选中标签后的父级/媒体数/子标签信息和名称编辑、保存、色板、显示控制；`tag-color.png` 显示色板点击后的红色标签色，`list_library` 返回颜色 `#E36B6B`；`tags-expanded.png` 显示父子行的层级、缩进、树线和胶囊布局；`file-virtual.png` 显示 PNG 类型、8.2 KB、257×192等文件信息及信息/历史/扩展页签；`history-virtual.png` 显示工作副本节点与空历史状态。
+
+运行态核对：点击“风景”后 `gallery.included_tags=[1]` 且面板切换为标签信息；点选红色色板后数据库快照颜色变为 `#E36B6B`。展开“城市”后“建筑 / 夜景”子标签可见。截图发现中文标签编辑面板的色板提示误用英文；已将其接入已有“选择色板”本地化词条，重建后截图确认中文生效。名称保存与“在缩略图上显示”切换控件已核对可见，实际切换/改名未在本轮验证。选中文件使用的是 `virtual-000001.png`，`get_media` 标记 `missing=true`，因此右上预览是缺失文件占位图，文件信息取自虚拟记录；隔离目录的真实 JPG/PNG 缩略图已由浏览画面验证，但浏览模式不索引媒体，不能把它们伪装成历史文件节点。标签媒体数为0，因为给虚拟记录写标签会因其虚构路径不存在而被正确拒绝；非零关联数与写回行为未验证。历史快照服务仍未接入，所以没有旧版本节点，创建/切换按钮保持禁用。这些边界保留到历史数据接入及非虚拟媒体标签流程验证时处理。
+
+命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、`cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-inspector-contexts.exe`、`node scripts/check-ui-refresh.cjs`、`git diff --check`。格式、Shell 检查、UI refresh guard 与 diff whitespace 检查通过。完整截图及 JSON 状态证据见 `target/mcp-inspector-matrix-20261016/`。
+
+## 2026-10-16 右侧信息面板概念图对照与模拟态补全
+
+对照 `docs/reference-ui/concepts/right-inspector-contexts-2026-10-16.png`、程序深色稿和历史树稿，基于右侧面板实际截图调整层级：程序统计卡加清楚的细边框、扩大数值字号和卡片留白；各类详情行增加可见分隔；标签的子标签节点使用标签自身颜色绘制独立浅色卡片。文件历史树保留真实工作副本；新增**显式视觉验收开关** `PHOTAG_DEMO_INSPECTOR=1`，仅在启动时有该环境变量时显示 v1/v0 主线与 v0.1 分支模拟节点，节点上标注 `DEMO` / `Visual sample · not saved`。普通启动仍展示真实空历史态，创建/切换按钮继续禁用，不会把演示数据写入数据库。
+
+使用 profile `target/mcp-inspector-matrix-20261016`，通过 `scripts/photag-mcp-debug.cjs` 同进程 MCP 复查程序、标签、文件夹、文件信息与历史。程序计数和路径来自当前隔离 profile；标签树来自7个实际插入测试库的父子标签；文件夹来自 fixture 与隔离样例目录；文件信息是 `virtual-000001.png` 的开发虚拟记录。历史 demo 的缩略图环境变量已尝试指向隔离 JPG，但当前 GPUI 截图仍显示类型图标占位，因此图像缩略图实际解码/绘制未验通过；不要把这些图标说成照片缩略图。真实旧版数据仍未接入，创建/切换操作和非零标签关联仍未验。
+
+复核截图：
+
+- `target/mcp-inspector-matrix-20261016/screenshots/program-polished.png`：统计卡、当前位置、程序状态和使用提示；无具体标签名、媒体库或磁盘容量。
+- `target/mcp-inspector-matrix-20261016/screenshots/tag-polished.png`：当前选中标签信息与编辑控件。
+- `target/mcp-inspector-matrix-20261016/screenshots/folder-polished.png`：真实 fixture 根目录的文件夹信息。
+- `target/mcp-inspector-matrix-20261016/screenshots/file-polished.png`：开发虚拟文件信息与字段分隔。
+- `target/mcp-inspector-matrix-20261016/screenshots/history-demo-polished.png`：显式演示开关下的主线、侧分支和缩略图占位状态。
+
+检查：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、独立输出 Shell 编译、`node scripts/check-ui-refresh.cjs`、`git diff --check` 均通过。运行环境 Windows、150% DPI、隔离 dev-test profile；没有访问用户 PhoTag 档案。
+
+## 2026-10-16 右侧完整概念 v2：布局、有效内容及真实交互补齐
+
+用户指出上一轮与概念不一致且信息不足后，重新用内置生图生成并审阅[完整状态概念v2](reference-ui/concepts/right-inspector-complete-2026-10-16-v2.md)，提示明确五状态的视觉层级、深色表面、标签配色、卡片间隙、字段对齐及历史分支。按图重排程序2×2统计、标签直接编辑/彩色子项、文件夹实际浏览信息、文件EXIF与路径、紧凑历史树及详情。原始同进程窗口截图、完整命令、脚本与结构化结果见[本轮证据](validation-ui/2026-10-16-inspector-complete/README.md)。
+
+隔离profile为 `target/mcp-inspector-complete-20261016`：根目录18个真实合成JPG、5个子目录各3张图；3根5子共8标签，代表标签关联18文件、5子标签，代表文件4星并关联5标签，有有效缩略图与测试EXIF。程序面板无具体标签名或媒体库；目录显示当前结果及子目录数，无索引/扫描伪字段。测试EXIF仅验证字段解析显示，不代表相机互操作。未触碰用户PhoTag档案。
+
+修正了历史缩略图槽挤掉文本、历史大预览挤掉详情、空白取消选择仍显示文件夹、同目录重选无上下文事件、标签保存被旧快照回填、分支筛选选中信息不匹配、EXIF别名重复等问题。上轮缩略图“解码未通过”的原因实际是引用路径不存在；本轮有效JPG已正常绘制，不再保留该结论。新代码沿用Navigation公共事件、Gallery选择和ReadModel刷新契约；目录更新保留明确取消选择的程序状态。
+
+95步同进程MCP全部通过：真实指针改名/恢复、色板与显示开关、子项菜单、四上下文、背景取消、同目录重选不重扫、真实文件增删18→19→18、模拟版本选择/切换/创建3→4节点/分支筛选，以及360/300宽度和短窗口。静止日志969→969。最终EXIF展示清理后另用无演示变量启动，20步普通运行验证通过，演示关闭且无模拟节点，静止日志426→426。截图均为MCP原始截图，无拼接。
+
+普通运行保留真实工作副本与无历史状态；实际版本存储/恢复按用户此前决定暂缓。模拟历史必须同时启用显式环境变量、dev-test和隔离profile，创建/切换仅在内存生效并标明模拟。扩展页验证真实无贡献空态，没有添加假扩展。
+
+`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2`、Gallery及i18n共25项测试、`node scripts/check-ui-refresh.cjs`、`git diff --check`通过。默认 `target/debug/photag-shell.exe` 已更新，独立检查输出 `target/debug/photag-shell-inspector-complete-final.exe`。仍未覆盖非150%DPI、全部滚轮操作、原生Explorer/复制路径、真实非空扩展贡献及全部相机/格式；不将此轮算作整个F0完成。
+
+## 2026-10-16 用户追加：页签预览一致与标签集中确认
+
+先使用内置image_gen生成并审阅[概念图](reference-ui/concepts/right-inspector-unified-edit-2026-10-16.md)，再按用户顺序展开名称、颜色、图标、显示开关和底部确认按钮。颜色/图标/开关改为草稿，点击一次确认才调用Navigation既有写命令；移除独立名称保存和折叠更多设置。历史恢复与信息/扩展完全相同的预览、标题、文件名和评分，所有页签只替换正文。覆盖上一轮“紧凑历史身份栏”的设计选择。
+
+隔离同进程MCP62步通过：真实pointer一次确认保存四字段、确认前完整标签对象未变化、统一恢复、子标签显示传播、三文件页签及300宽度/1080窗口；静止日志798→798。三页原始截图的顶部右栏RGB逐像素差异为空。无演示最终构建另20步通过、静止448→448，普通历史不含模拟节点。Gallery/i18n25测试、fmt、locked Shell check/独立输出编译、refresh guard、diff whitespace通过。默认exe被正常运行实例锁定，os error5；未终止该实例，使用独立输出`target/debug/photag-shell-inspector-unified.exe`完成实际验证。截图、提示、命令、首次指针请求排队修正与边界见[本轮完整证据](validation-ui/2026-10-16-inspector-unified-edit/README.md)。未覆盖写入失败/其他DPI/真实版本后端，未宣称全F0完成。

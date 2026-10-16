@@ -1,5 +1,52 @@
 # Gallery plugin ports / 图库数据对接
 
+## Context inspector and isolated visual fixtures — 2026-10-16
+
+The inspector projects Program / Tag / Folder / File from the actual selection
+and current Gallery snapshot. `GalleryUiSnapshot::inspector_context` publishes
+`program|tag|folder|file`. Clearing selection shows Program while preserving the
+active path and counts. An internal Navigation action revision restores folder
+or tag context even when the same target is selected; background data changes
+preserve explicit deselection. No parallel navigation model is introduced.
+
+Tag rename/appearance/display actions use NavigationService and preserve its
+existing descendant behavior. `GalleryUiRequest::InspectorTagName(String)` fills
+the live name InputState for MCP verification, without saving. The expanded
+editor orders name, color, icon, display and one Confirm button. Color/icon/display
+controls update a view-owned draft; Confirm revalidates the target and invokes
+the existing rename/appearance/display services only for changed fields. These
+are sequential existing commands, not a new atomic DB transaction; failures use
+operation status and reload the model. An unchanged display flag does not
+reapply descendant visibility when changing only name/color/icon. Icon selection
+uses the 14 existing theme identifiers; unknown persisted icons/colors are
+preserved until that field is changed. Folder statistics come from the current browse
+projection; unopened child folders show unknown counts instead of fabricated 0.
+
+History is separate from global undo/redo. Normal use shows the actual working
+copy with its thumbnail/metadata and an empty-history state. Real snapshot
+storage and version creation/restoration remain deferred by the user.
+
+The explicit visual demo is constructed once when `PHOTAG_DEMO_INSPECTOR=1`,
+`PHOTAG_DEV_PLUGINS` includes `dev-test`, and `PHOTAG_DEV_TEST_DIR` is configured.
+`PHOTAG_DEMO_HISTORY_THUMBS` accepts semicolon-separated thumbnail paths; the
+legacy singular `PHOTAG_DEMO_HISTORY_THUMB` is also accepted. It seeds v1/v0 on
+the main line and v0.1 on a curved side branch. Select/filter/create/switch and
+node menus only modify a bounded (16-node maximum) in-memory model. The panel
+labels it as a preview. No version row/source file is written; normal controls
+stay disabled until the real backend exists. Real file identity, tags and EXIF
+stay real. Render does not read environment variables or stat files.
+
+Failures use the existing operation status, Navigation errors, thumbnail
+fallback and read-model errors. Implementation is under `src/view/inspector/`.
+Design and evidence: `docs/reference-ui/concepts/right-inspector-complete-2026-10-16-v2.md`
+and `docs/validation-ui/2026-10-16-inspector-complete/README.md`.
+
+User follow-up supersedes the compact history identity: all File tabs now share
+the same `inspector_preview` (180 logical-pixel image, filename, rating), header,
+and fixed tab row. Only the scrollable body changes. Latest design/evidence:
+`docs/reference-ui/concepts/right-inspector-unified-edit-2026-10-16.md` and
+`docs/validation-ui/2026-10-16-inspector-unified-edit/README.md`.
+
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
 Status: the query/window service and source-backed Gallery interactions are implemented, including virtualized rendering, filters, selection, preview routing, file actions, and bulk actions. C0–C4 coding continuation changes are written but unverified; Windows behavior and full visual parity remain unverified.

@@ -1,0 +1,342 @@
+{
+  "demo_steps": 95,
+  "normal_steps": 20,
+  "passed": true,
+  "demo_quiet": [
+    969,
+    969
+  ],
+  "normal_quiet": [
+    426,
+    426
+  ],
+  "normal_demo_enabled": false,
+  "screens": [
+    {
+      "image": "tag-complete.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "tag-renamed-final.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "tag-restored-final.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "tag-display-off.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "tag-complete.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "tag-child-menu.png",
+      "context": "tag",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "folder-complete.png",
+      "context": "folder",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "program-complete.png",
+      "context": "program",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "folder-reselected.png",
+      "context": "folder",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "program-blank-click.png",
+      "context": "program",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "program-real-change.png",
+      "context": "program",
+      "count": 19,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "program-complete.png",
+      "context": "program",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "file-complete.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "file-exif-complete.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "file-extensions-empty.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-complete.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v1",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-selected-v0.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v0",
+        "active": "v1",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-switched-v0.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v0",
+        "active": "v0",
+        "count": 3,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-created-v2.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v2",
+        "active": "v2",
+        "count": 4,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-branch-menu.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v2",
+        "active": "v2",
+        "count": 4,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-branch-filtered.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v0.1",
+        "active": "v2",
+        "count": 4,
+        "filter": "2"
+      }
+    },
+    {
+      "image": "history-standard-height.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v0.1",
+        "active": "v2",
+        "count": 4,
+        "filter": "0"
+      }
+    },
+    {
+      "image": "history-narrow.png",
+      "context": "file",
+      "count": 18,
+      "demo": {
+        "enabled": true,
+        "selected": "v0.1",
+        "active": "v2",
+        "count": 4,
+        "filter": "0"
+      }
+    }
+  ],
+  "tag_changes": [
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行 · 测试",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#3185ED",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": false,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    },
+    {
+      "name": "旅行",
+      "color": "#E36B6B",
+      "display": true,
+      "media_count": 18
+    }
+  ]
+}

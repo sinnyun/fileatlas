@@ -826,3 +826,106 @@ msg-626d318debdc = Separate the sidebar, content and preview regions with a hair
 msg-da89baadab59 = Library folders
 
 msg-113c41d6412d = Favorite groups
+
+msg-202610160001 = Program information
+msg-202610160002 = Tag information
+msg-202610160003 = Folder information
+msg-202610160004 = Local photo library
+msg-202610160005 = Library overview
+msg-202610160006 = Media files
+msg-202610160007 = About PhoTag
+msg-202610160008 = Choose a folder or tag in the sidebar, or select a file to inspect its details.
+msg-202610160009 = Version
+msg-20261016000a = Tag details
+msg-20261016000b = Tag name
+msg-20261016000c = Parent tag
+msg-20261016000d = Media count
+msg-20261016000e = Child tags
+msg-20261016000f = Folder details
+msg-202610160010 = Folder name
+msg-202610160011 = Location
+msg-202610160012 = Indexed media
+msg-202610160013 = Scan status
+msg-202610160014 = Last scan
+msg-202610160015 = Folder is registered in the library.
+msg-202610160016 = Folder details are based on the current indexed directory.
+msg-202610160017 = Library status
+msg-202610160018 = File versions
+msg-202610160019 = Current file
+msg-20261016001a = Working copy
+msg-20261016001b = No earlier versions are stored for this file.
+msg-20261016001c = Current file details
+msg-20261016001d = Select one file to view its version history.
+msg-20261016001e = Storage location
+msg-202610160020 = Program status
+msg-202610160021 = Library snapshot
+msg-202610160022 = Ready
+msg-202610160023 = Usage tips
+msg-202610160024 = Select a folder or tag on the left to view its details, or select a file to inspect it.
+msg-202610160025 = No library folders are registered.
+msg-202610160026 = Edit tag
+msg-202610160027 = Color
+msg-202610160028 = Choose a swatch
+msg-202610160029 = Save name
+msg-20261016002a = Show on thumbnails
+msg-20261016002b = Professional local photo manager
+msg-20261016002c = Library folders
+msg-20261016002d = Current results
+msg-20261016002e = Visible folders
+msg-20261016002f = Current browsing location
+msg-202610160030 = Current folder
+msg-202610160031 = No folder is open.
+msg-202610160032 = Browsing state
+msg-202610160033 = Browsing
+msg-202610160034 = Subfolders
+msg-202610160035 = Create version
+msg-202610160036 = Switch version
+msg-202610160037 = Version snapshots are not connected yet.
+msg-202610160038 = No saved versions are available.
+msg-202610160039 = Working copy line
+msg-20261016003a = Browse overview
+msg-20261016003b = No earlier versions
+msg-20261016003c = Only the current working copy is available.
+msg-20261016003d = This folder is registered for browsing.
+msg-20261016003e = Folder details reflect the current browse results.
+
+msg-3392bcc1d1c9 = Main branch
+
+msg-2f039cd48754 = Alternate branch
+
+msg-fe69615d60e3 = All branches
+
+msg-f988b674dd79 = Selected version
+
+msg-16f5c708752f = Sample versions · changes stay in this preview.
+
+msg-225e909ec74e = Preview sample versions without changing files.
+
+msg-7569c61676ac = More tag settings
+
+msg-975ac9549255 = No child tags.
+
+msg-605de7856b2e = Open this folder to see its current contents.
+
+msg-607572ea2b6d = Favorite collection
+
+msg-031a8f0f659d = Failed
+
+msg-ff8059dc6752 = Actions
+
+msg-720ff4160412 = Copy path
+
+msg-ba3bbbe10d8b = Loading…
+
+msg-f89f1abda5ff = Local photo browser and organizer
+
+msg-0e9161011702 = Refresh
+
+msg-6653fac9f54e = No more versions
+
+msg-63352fdc2cd6 = { $count } files
+
+msg-0862ed6e679c = Metadata date
+
+msg-inspector-confirm-changes = Confirm changes
+msg-inspector-icon = Icon

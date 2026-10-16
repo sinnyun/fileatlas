@@ -72,7 +72,7 @@ impl Render for GalleryRegion {
             Region::Status => view.render_status(cx),
             Region::Tools => view.render_tools(cx),
             Region::Modal => view.render_modal(window, cx),
-            Region::Inspector => view.render_inspector(cx),
+            Region::Inspector => view.render_inspector(window, cx),
         })
     }
 }

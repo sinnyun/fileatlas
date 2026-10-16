@@ -1,0 +1,179 @@
+//! Program overview follows the dedicated dark concept: identity, 2×2
+//! metrics, location well, status rows, and a separate tip card.
+use super::*;
+
+pub(super) fn render(view: &GalleryView) -> AnyElement {
+    let snapshot = view.snapshot.as_ref().ok();
+    let folders = snapshot.map_or(0, |s| s.browser.directories.len());
+    let tags = snapshot.map_or(0, |s| contexts::count_tags(&s.tag_tree));
+    let location = snapshot.and_then(|s| s.browser.directory.as_deref());
+    let busy = view.service.directory_worker_active();
+    let error = view
+        .snapshot
+        .as_ref()
+        .err()
+        .cloned()
+        .or_else(|| snapshot.and_then(|s| s.browser.error.clone()));
+    let state = if error.is_some() {
+        "Failed"
+    } else if busy {
+        "Loading…"
+    } else {
+        "Ready"
+    };
+    let status_color = if error.is_some() {
+        theme::DANGER
+    } else if busy {
+        theme::WARNING
+    } else {
+        theme::SUCCESS
+    };
+    let mut body =
+        div()
+            .v_flex()
+            .w_full()
+            .min_w_0()
+            .px(px(16.))
+            .pb(px(20.))
+            .child(section_title("Browse overview"))
+            .child(
+                div()
+                    .v_flex()
+                    .w_full()
+                    .gap(px(10.))
+                    .child(
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .gap(px(10.))
+                            .child(metric(
+                                "Current results",
+                                snapshot.map_or(0, |s| s.media_count).to_string(),
+                                IconName::Image,
+                                0x4099f0,
+                            ))
+                            .child(metric(
+                                "Visible folders",
+                                folders.to_string(),
+                                IconName::Folder,
+                                0xe3bd68,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .gap(px(10.))
+                            .child(metric("Tags", tags.to_string(), IconName::Tag, 0xb379e8))
+                            .child(metric(
+                                "Version",
+                                env!("CARGO_PKG_VERSION").into(),
+                                IconName::Info,
+                                0x38b9ce,
+                            )),
+                    ),
+            )
+            .child(inspector_divider())
+            .child(section_title("Current browsing location"))
+            .child(
+                well()
+                    .h_flex()
+                    .items_center()
+                    .gap(px(10.))
+                    .child(
+                        theme::icon(IconName::Folder)
+                            .size(px(23.))
+                            .flex_shrink_0()
+                            .text_color(rgb(0xe3bd68)),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .text_size(px(13.))
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(location.map(display_path).unwrap_or_else(|| {
+                                photag_ui_bridge::i18n::tr("Favorite collection")
+                            })),
+                    ),
+            )
+            .child(inspector_divider())
+            .child(section_title("Program status"))
+            .child(
+                div()
+                    .h_flex()
+                    .w_full()
+                    .items_center()
+                    .justify_between()
+                    .py(px(9.))
+                    .border_b_1()
+                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .child(
+                        div()
+                            .text_size(px(13.))
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr("Browsing state")),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap(px(7.))
+                            .child(div().size(px(7.)).rounded_full().bg(rgb(status_color)))
+                            .child(
+                                div()
+                                    .text_size(px(13.))
+                                    .text_color(rgb(theme::TEXT_PRIMARY))
+                                    .child(photag_ui_bridge::i18n::tr(state)),
+                            ),
+                    ),
+            )
+            .child(detail_row(
+                IconName::Folder,
+                "Subfolders",
+                folders.to_string(),
+            ));
+    if let Some(error) = error {
+        body = body.child(inspector_message(&error));
+    }
+    body.child(inspector_divider()).child(section_title("Usage tips"))
+        .child(well().h_flex().items_center().gap(px(12.))
+            .child(theme::icon(IconName::Info).size(px(25.)).flex_shrink_0().text_color(rgb(theme::accent())))
+            .child(div().flex_1().min_w_0().text_size(px(13.)).text_color(rgb(theme::TEXT_SECONDARY))
+                .child(photag_ui_bridge::i18n::tr("Select a folder or tag on the left to view its details, or select a file to inspect it."))))
+        .into_any_element()
+}
+
+fn metric(title: &str, value: String, icon: IconName, color: u32) -> Div {
+    well()
+        .flex_1()
+        .min_h(px(86.))
+        .p(px(13.))
+        .gap(px(10.))
+        .child(
+            div()
+                .h_flex()
+                .items_center()
+                .gap(px(7.))
+                .child(
+                    theme::icon(icon)
+                        .size(px(17.))
+                        .flex_shrink_0()
+                        .text_color(rgb(color)),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(title)),
+                ),
+        )
+        .child(
+            div()
+                .pl(px(24.))
+                .text_size(px(25.))
+                .font_family(theme::SEMIBOLD_FONT_FAMILY)
+                .text_color(rgb(theme::TEXT_PRIMARY))
+                .child(value),
+        )
+}

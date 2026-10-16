@@ -7,6 +7,10 @@ impl Render for GalleryView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if let Some(request) = self.service.take_ui_request() {
             match request {
+                crate::GalleryUiRequest::InspectorTagName(name) => {
+                    self.inspector_tag_name
+                        .update(cx, |input, cx| input.set_value(name, window, cx));
+                }
                 crate::GalleryUiRequest::LocateFile(id) => self.locate_file(id, cx),
                 crate::GalleryUiRequest::OpenDirectory(path) => self.open_directory(path, cx),
                 crate::GalleryUiRequest::DirectoryUp => self.directory_up(cx),
@@ -99,6 +103,7 @@ impl Render for GalleryView {
                     self.preview_media(id, cx);
                 }
                 crate::GalleryUiRequest::Deselect => {
+                    self.inspector_deselected = true;
                     self.selected_directory = None;
                     self.selection = GallerySelection::default();
                     self.persist_filter_session();
@@ -253,6 +258,7 @@ impl Render for GalleryView {
                 .map(|snapshot| snapshot.media.len())
                 .unwrap_or(0),
             inspector_sections: self.inspector_expanded.iter().copied().collect(),
+            inspector_context: self.inspector_context_key(),
             bulk_action: self.bulk_action.map(|action| action.label()),
             bulk_source: self.bulk_source.label(),
             statistics_open: self.show_statistics,

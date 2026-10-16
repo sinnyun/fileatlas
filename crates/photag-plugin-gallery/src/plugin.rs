@@ -86,6 +86,7 @@ impl Plugin for GalleryPlugin {
         let selection_tag_state = Arc::clone(&selected_tag);
         let selection_path_state = Arc::clone(&selected_path);
         let ready = service.wake.clone();
+        let inspector_selection = Arc::clone(&service);
         let _selection_listener = context
             .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
                 if let Ok(mut selected) = selection_state.0.lock() {
@@ -97,6 +98,9 @@ impl Plugin for GalleryPlugin {
                 if let Ok(mut selected) = selection_path_state.0.lock() {
                     *selected = None;
                 }
+                inspector_selection
+                    .navigation_revision
+                    .fetch_add(1, Ordering::Release);
                 ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -105,6 +109,7 @@ impl Plugin for GalleryPlugin {
         let tag_folder_state = Arc::clone(&selected_folder);
         let tag_path_state = Arc::clone(&selected_path);
         let ready = service.wake.clone();
+        let inspector_selection = Arc::clone(&service);
         let _tag_selection_listener = context
             .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id: Option<i64>| {
                 if let Ok(mut selected) = tag_state.0.lock() {
@@ -121,6 +126,9 @@ impl Plugin for GalleryPlugin {
                         *selected = None;
                     }
                 }
+                inspector_selection
+                    .navigation_revision
+                    .fetch_add(1, Ordering::Release);
                 ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -129,6 +137,7 @@ impl Plugin for GalleryPlugin {
         let tag_filter_folder = Arc::clone(&selected_folder);
         let tag_filter_path = Arc::clone(&selected_path);
         let ready = service.wake.clone();
+        let inspector_selection = Arc::clone(&service);
         let _tag_filter_selection_listener = context
             .on::<TagFilterSelectionChanged, _>(observer_sync(
                 move |_, selection: TagFilterSelection| {
@@ -143,6 +152,9 @@ impl Plugin for GalleryPlugin {
                             *selected = None;
                         }
                     }
+                    inspector_selection
+                        .navigation_revision
+                        .fetch_add(1, Ordering::Release);
                     ready.trigger();
                     Ok::<_, std::convert::Infallible>(())
                 },
@@ -152,6 +164,7 @@ impl Plugin for GalleryPlugin {
         let path_folder_state = Arc::clone(&selected_folder);
         let path_tag_state = Arc::clone(&selected_tag);
         let ready = service.wake.clone();
+        let inspector_selection = Arc::clone(&service);
         let _path_selection_listener = context
             .on::<DirectoryPathSelected, _>(observer_sync(move |_, path| {
                 if let Ok(mut selected) = path_state.0.lock() {
@@ -163,6 +176,9 @@ impl Plugin for GalleryPlugin {
                 if let Ok(mut selected) = path_tag_state.0.lock() {
                     *selected = TagFilterSelection::default();
                 }
+                inspector_selection
+                    .navigation_revision
+                    .fetch_add(1, Ordering::Release);
                 ready.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))

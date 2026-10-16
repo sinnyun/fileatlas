@@ -11,6 +11,7 @@ pub(super) struct GalleryViewInputs {
     pub bulk_date_from: Entity<DatePickerState>,
     pub bulk_date_to: Entity<DatePickerState>,
     pub rename_input: Entity<InputState>,
+    pub inspector_tag_name: Entity<InputState>,
     pub bulk_inputs: Vec<Entity<InputState>>,
 }
 
@@ -59,6 +60,7 @@ pub(super) fn build_inputs(
     let rename_input = app.new(|cx| {
         InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
     });
+    let inspector_tag_name = app.new(|cx| InputState::new(window, cx));
     let bulk_date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let bulk_date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let bulk_inputs = [
@@ -83,6 +85,7 @@ pub(super) fn build_inputs(
         bulk_date_from,
         bulk_date_to,
         rename_input,
+        inspector_tag_name,
         bulk_inputs,
     }
 }
@@ -119,6 +122,7 @@ impl GalleryView {
             bulk_date_from,
             bulk_date_to,
             rename_input,
+            inspector_tag_name,
             bulk_inputs,
         } = inputs;
         let saved = session.snapshot().unwrap_or_default();
@@ -276,6 +280,7 @@ impl GalleryView {
             .as_ref()
             .map(|_| writeback_failure_signature())
             .unwrap_or_default();
+        let observed_navigation_revision = service.navigation_revision.load(Ordering::Acquire);
         Self {
             _ready_task: None,
             month_motion: std::collections::HashMap::new(),
@@ -310,6 +315,11 @@ impl GalleryView {
             bulk_date_from_value: None,
             bulk_date_to_value: None,
             rename_input,
+            inspector_tag_name,
+            inspector_tag_loaded: None,
+            inspector_tag_draft: None,
+            inspector_history_demo: inspector::history::DemoHistory::from_environment()
+                .inspect(|demo| demo.publish(&surfaces)),
             bulk_inputs,
             bulk_action: None,
             bulk_source: BulkActionSource::WholeLibrary,
@@ -324,6 +334,8 @@ impl GalleryView {
             filter,
             selection,
             selected_directory: None,
+            inspector_deselected: false,
+            observed_navigation_revision,
             rubberband: None,
             scroll,
             pending_scroll_restore: Some(restored_scroll),

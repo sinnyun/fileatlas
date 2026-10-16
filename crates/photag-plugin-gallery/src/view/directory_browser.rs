@@ -187,6 +187,7 @@ pub(super) fn tile(
             window.focus(&this.focus_handle, cx);
             this.selection = GallerySelection::default();
             this.selected_directory = Some(path.clone());
+            this.inspector_deselected = false;
             this.persist_filter_session();
             if event.click_count() >= 2 {
                 this.open_directory(path.clone(), cx);

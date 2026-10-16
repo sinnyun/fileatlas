@@ -1,36 +1,7 @@
-//! Read-only Inspector History and executable extension catalog pages.
-
+//! Executable extension catalog for the file inspector.
 use super::*;
 
 impl GalleryView {
-    pub(super) fn inspector_history(&self) -> AnyElement {
-        let Some(history) = &self.history else {
-            return inspector_message("History service is unavailable.");
-        };
-        let undo = history.undo_description();
-        let redo = history.redo_description();
-        if undo.is_none() && redo.is_none() {
-            return inspector_message("No available media history.");
-        }
-        let mut body = div()
-            .v_flex()
-            .w_full()
-            .h_full()
-            .min_h_0()
-            .gap(px(8.))
-            .p(px(14.))
-            .child(inspector_message(
-                "Recent actions are global and are not tied to a single file.",
-            ));
-        if let Some(undo) = undo {
-            body = body.child(info_row("Undo", undo));
-        }
-        if let Some(redo) = redo {
-            body = body.child(info_row("Redo", redo));
-        }
-        body.into_any_element()
-    }
-
     pub(super) fn inspector_extensions(&self) -> AnyElement {
         let Ok(views) = self.ui_views.snapshot() else {
             return inspector_message("Extensions could not be loaded.");

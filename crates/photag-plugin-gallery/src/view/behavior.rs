@@ -36,6 +36,7 @@ impl GalleryView {
                 shift: modifiers.shift,
             },
         );
+        self.inspector_deselected = self.selection.selected_media_ids.is_empty();
         self.show_exif = false;
         self.exif_cache = None;
         self.confirm_delete = false;
@@ -163,6 +164,7 @@ impl GalleryView {
     pub(super) fn finish_rubberband(&mut self, _: &MouseUpEvent, cx: &mut Context<Self>) {
         if let Some(rubberband) = self.rubberband.take() {
             if !rubberband.dragged && rubberband.clear_on_click {
+                self.inspector_deselected = true;
                 self.selection.selected_media_ids.clear();
                 self.selection.anchor_id = None;
                 self.show_exif = false;

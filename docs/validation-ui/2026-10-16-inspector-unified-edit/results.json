@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "draft_unchanged": true,
+  "one_confirm_saved_all": true,
+  "restored": true,
+  "quiet": [
+    798,
+    798
+  ],
+  "steps": 62,
+  "header_comparison": {
+    "box": [
+      1370,
+      130,
+      1908,
+      553
+    ],
+    "difference_bounds": {
+      "information": null,
+      "history": null,
+      "extensions": null
+    },
+    "all_identical": true
+  },
+  "normal": {
+    "passed": true,
+    "demo_enabled": false,
+    "quiet": [
+      448,
+      448
+    ],
+    "steps": 20
+  }
+}

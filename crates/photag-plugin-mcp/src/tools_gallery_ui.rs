@@ -32,12 +32,15 @@ pub(super) struct NavigationControl {
     folder_id: Option<i64>,
     /// Existing directory for select_path, or a search term for folder_search.
     value: Option<String>,
+    /// tag_appearance sets both color and icon; omitted values clear them.
+    color: Option<String>,
+    icon: Option<String>,
 }
 
 #[tool_router(router = gallery_ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Open or close the live Navigation tag dialogs using the feature's public request queue. Actions: all, create, edit, delete, merge, move, close. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1. No tag mutation is committed by this tool."
+        description = "Control live Navigation dialogs and selection through public requests: all, create, edit, delete, merge, move, close, select_path, expand_path, expand_folder. tag_appearance directly sets both color and icon on an existing tag through NavigationService; omitted values clear the field. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1."
     )]
     fn control_navigation(&self, Parameters(request): Parameters<NavigationControl>) -> String {
         tracing::info!(?request, "MCP control request");
@@ -47,6 +50,34 @@ impl PhoTagMcpServer {
         use photag_plugin_navigation::NavigationUiRequest as R;
         let action =
             match request.action.as_str() {
+                "tag_appearance" => {
+                    let Some(id) = request.tag_id.filter(|id| *id > 0) else {
+                        return error_json("positive tag_id required");
+                    };
+                    if !self
+                        .tagging
+                        .tag_tree()
+                        .ok()
+                        .is_some_and(|tags| contains_tag(&tags, id))
+                    {
+                        return error_json("tag not found");
+                    }
+                    if request
+                        .color
+                        .as_deref()
+                        .is_some_and(|c| photag_ui_bridge::theme::parse_hex_color(c).is_none())
+                    {
+                        return error_json("invalid tag color");
+                    }
+                    return match self.navigation.set_tag_appearance(
+                        id,
+                        request.color.as_deref(),
+                        request.icon.as_deref(),
+                    ) {
+                        Ok(()) => json!({"accepted": true}).to_string(),
+                        Err(error) => error_json(&error.to_string()),
+                    };
+                }
                 "folder_search" => {
                     return match self.surfaces.set_value(
                         "navigation.folder-search",
@@ -122,6 +153,12 @@ impl PhoTagMcpServer {
         };
         let value = request.value.as_deref().unwrap_or("");
         let action = match request.action.as_str() {
+            "inspector_tag_name" => {
+                if value.trim().is_empty() || value.len() > 1024 {
+                    return error_json("tag name must contain 1–1024 bytes");
+                }
+                R::InspectorTagName(value.to_string())
+            }
             "layout" => match value {
                 "grid" => R::Layout(false),
                 "list" => R::Layout(true),

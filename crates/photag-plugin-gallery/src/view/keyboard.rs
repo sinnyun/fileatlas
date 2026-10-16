@@ -70,6 +70,7 @@ impl GalleryView {
             && event.keystroke.key == "escape"
             && self.selected_directory.take().is_some()
         {
+            self.inspector_deselected = true;
             cx.notify();
             return;
         }
@@ -171,6 +172,9 @@ impl GalleryView {
                 shift: event.keystroke.modifiers.shift,
             },
         );
+        if matches!(key, GalleryKey::Escape) && self.selection.selected_media_ids.is_empty() {
+            self.inspector_deselected = true;
+        }
         self.persist_filter_session();
         match effect {
             SelectionEffect::ApplyRating { media_ids, rating } => {

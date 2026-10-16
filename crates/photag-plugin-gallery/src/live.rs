@@ -309,6 +309,7 @@ fn enumerate(request: &Request) -> Result<(), String> {
                     dirs.push(GalleryDirectory {
                         name: entry.file_name().to_string_lossy().into_owned(),
                         path: path.to_string_lossy().into_owned(),
+                        media_count: 0,
                     });
                 }
                 if request.recursive && !kind.is_symlink() {

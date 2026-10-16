@@ -1,5 +1,24 @@
 # MCP plugin ports / MCP 对接
 
+## Context-inspector validation additions — 2026-10-16
+
+- `get_ui_state.gallery.inspector_context` reads the live rendered context key
+  `program|tag|folder|file` without another database query.
+- `control_gallery {action:"inspector_tag_name",value:string}` queues
+  `GalleryUiRequest::InspectorTagName(String)` (1–1024 bytes). It changes the
+  live input only. Click Save through same-process pointer events to commit.
+- `control_navigation {action:"tag_appearance",tag_id,color?,icon?}` is mutating
+  and uses `NavigationService::set_tag_appearance`. It checks the ID and hex
+  color, sets both fields, and clears omitted values. It seeds isolated fixtures.
+- `get_ui_state.inspector_demo` exposes enabled/selected/active/count/filter
+  from the explicit visual demo through existing UiSurfaceState. Normal launches
+  return enabled=false. Actual GPUI pointer events exercise node selection,
+  menus, branch filtering and in-memory Create/Switch; these fields do not imply
+  a persistent file-version backend.
+
+The mutation guard and same-process child/window boundary remain in force.
+Evidence: `docs/validation-ui/2026-10-16-inspector-complete/README.md`.
+
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
 Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Windows `PrintWindow` capture and live MCP round trips have been exercised with the isolated dev-test profile; see `docs/validation-report.md` for the checked interactions and remaining limits.

@@ -408,3 +408,7 @@ ReadModel 身份和过期拒绝，不照搬无界队列。真实 D 盘与输入�
 validation-ui/2026-10-16-navigation-latency/README.md。
 
 对照 vendor/photag-source/src/main.rs:41-53 的 session selected_path/selected_folder_id 恢复与 ui/sidebar.rs:292-411 的文件夹选择语义。旧 Navigation render_breadcrumb 只显示“收藏集合 / 末级名称”；现按用户参考图圈定位置替换为盘符至当前目录完整面包屑和路径编辑，Navigation 的目录事件与 Gallery 浏览查询继续复用。新的 location.rs 是窗口内最多 200 项的纯导航历史，不复用文件操作 undo/redo、不新增 DB 表。Session 范围恢复改为只发对应路径/文件夹/标签事件，避免后续空路径事件清空前一个范围。外部目录/标签导航也进入同一历史，明确的新能力以本轮用户要求为准。验证：validation-ui/2026-10-16-address/README.md。
+
+## 2026-10-16 标签内嵌统一确认映射
+
+本轮只组合既有公开命令，不改SQL/schema或新增Tag服务。追踪 `vendor/photag-source/src/app.rs` 的 `PendingAction::UpdateTagAppearance`：名称、appearance、display统一确认；display向所有后代传播，appearance只有明确apply_to_children时传播。Gallery `view/inspector/tag_editor.rs` 先保留名称/颜色/图标/显示草稿，确认时对照Navigation新快照验证目标并调用既有 `rename_tag`、`set_tag_appearance`、`set_tag_display`。本内嵌入口只修改自身appearance，display发生变化时沿用既有后代传播。不同服务调用依次执行，未宣称跨命令原子提交；错误保留反馈。现有完整标签管理器的关联/合并/父级等结构操作不在本轮四字段编辑范围。运行证据见 `validation-ui/2026-10-16-inspector-unified-edit/README.md`。
