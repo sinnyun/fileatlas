@@ -75,12 +75,17 @@ impl DebugView {
                     .save_file()
                     .await;
                 let message = if let Some(file) = file {
-                    match file.write(text.as_bytes()).await {
-                        Ok(()) => photag_ui_bridge::i18n::tr_args(
-                            "Saved logs to {path}",
-                            &[("path", file.path().display().to_string())],
-                        ),
-                        Err(error) => error.to_string(),
+                    let path = file.path();
+                    if !is_txt_export_path(path) {
+                        tr("Choose a .txt file for the log export.")
+                    } else {
+                        match file.write(text.as_bytes()).await {
+                            Ok(()) => photag_ui_bridge::i18n::tr_args(
+                                "Saved logs to {path}",
+                                &[("path", path.display().to_string())],
+                            ),
+                            Err(error) => error.to_string(),
+                        }
                     }
                 } else {
                     tr("Export cancelled.")
@@ -267,6 +272,11 @@ impl DebugView {
         }
         list.into_any_element()
     }
+}
+
+fn is_txt_export_path(path: &std::path::Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("txt"))
 }
 
 fn selection_bounds(drag: &Drag) -> Bounds<Pixels> {

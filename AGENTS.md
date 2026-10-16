@@ -221,5 +221,8 @@ that all behavior is complete.
   execute IO or log/notify repeatedly. Pollers deliver read completions.
 - Preserve event/action semantics and fresh action-time target validation.
   Do not hide logs to disguise repeated work. New/changed flows require same-process
-  MCP quiet-state and real-change checks. Run `node scripts/check-ui-refresh.cjs`.
+  MCP quiet-state and real-change checks. Run `node scripts/check-ui-refresh.cjs`,
+`node scripts/check-architecture.cjs` and `node scripts/check-feature-ledger.cjs`
+(see `docs/engineering-governance.md`; architecture baselines regenerate with
+`--update-baseline` after reviewing the diff).
 - Contract and examples: `docs/ui-refresh-contract.md`.

@@ -46,6 +46,12 @@ jobs:
       - name: Enforce shared UI polling
         run: node scripts/check-ui-refresh.cjs
 
+      - name: Enforce architecture and debt ratchets
+        run: node scripts/check-architecture.cjs
+
+      - name: Validate feature ledger links and statuses
+        run: node scripts/check-feature-ledger.cjs
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 

@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! PhoTag's complete metadata backup export exposed as a Cordis service.
 
 mod view;

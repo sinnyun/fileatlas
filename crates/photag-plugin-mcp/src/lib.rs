@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! MCP server adapter for PhoTag's Cordis-owned application services.
 
 mod input_activity;

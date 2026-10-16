@@ -935,3 +935,4 @@ msg-debug-copied-count = 已复制 { $count } 条日志。
 msg-debug-copy-failed = 无法复制日志。
 msg-debug-export-saved = 日志已保存到 { $path }
 msg-debug-export-cancelled = 已取消导出。
+msg-debug-export-invalid-extension = 请为日志导出选择 .txt 文件。

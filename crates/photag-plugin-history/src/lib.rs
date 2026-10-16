@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! Source-compatible undo/redo history for PhoTag's currently supported actions.
 
 use std::sync::{Arc, Mutex};

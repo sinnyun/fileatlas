@@ -8,3 +8,6 @@ license.workspace = true
 [dependencies]
 cordis.workspace = true
 serde.workspace = true
+
+[lints]
+workspace = true

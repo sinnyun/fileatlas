@@ -776,5 +776,6 @@
   "Copied {count} logs.": "msg-debug-copied-count",
   "Could not copy logs.": "msg-debug-copy-failed",
   "Saved logs to {path}": "msg-debug-export-saved",
-  "Export cancelled.": "msg-debug-export-cancelled"
+  "Export cancelled.": "msg-debug-export-cancelled",
+  "Choose a .txt file for the log export.": "msg-debug-export-invalid-extension"
 }

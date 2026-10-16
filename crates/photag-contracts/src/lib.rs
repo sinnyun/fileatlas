@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! Shared, UI-framework-neutral contracts for PhoTag feature plugins.
 //!
 //! This crate deliberately contains no file-management behavior yet. The

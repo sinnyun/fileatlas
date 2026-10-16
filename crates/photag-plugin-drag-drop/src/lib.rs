@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! Windows Explorer and application drag-out for indexed PhoTag media.
 //!
 //! The host supplies selected filesystem paths from its current media model.

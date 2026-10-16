@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! Cordis service for PhoTag's local MobileNetV2 tag suggestions.
 //!
 //! Inference and model download run on worker threads, matching the source

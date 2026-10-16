@@ -943,3 +943,4 @@ msg-debug-copied-count = Copied { $count } logs.
 msg-debug-copy-failed = Could not copy logs.
 msg-debug-export-saved = Saved logs to { $path }
 msg-debug-export-cancelled = Export cancelled.
+msg-debug-export-invalid-extension = Choose a .txt file for the log export.
