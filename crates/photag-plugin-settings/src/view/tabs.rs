@@ -110,6 +110,64 @@ impl SettingsView {
                             "System follows the Windows accent color.",
                         )),
                 );
+                b = b.child(self.section("Region separation"));
+                let separation_view = cx.entity().downgrade();
+                let separation = s.region_separation.clone();
+                b = b.child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .justify_between()
+                        .gap_3()
+                        .child(
+                            div()
+                                .v_flex()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_xs()
+                                        .text_color(rgb(theme::TEXT_SECONDARY))
+                                        .child(photag_ui_bridge::i18n::tr(
+                                            "Separate the sidebar, content and preview regions with a hairline border or a shadow.",
+                                        )),
+                                ),
+                        )
+                        .child(
+                            Button::new("settings-region-separation")
+                                .w(px(100.))
+                                .label(photag_ui_bridge::i18n::tr(
+                                    if s.region_separation == "shadow" {
+                                        "Shadow"
+                                    } else {
+                                        "Border"
+                                    },
+                                ))
+                                .dropdown_caret(true)
+                                .dropdown_menu(move |mut menu, _, _| {
+                                    for (value, label) in
+                                        [("border", "Border"), ("shadow", "Shadow")]
+                                    {
+                                        let weak = separation_view.clone();
+                                        menu = menu.item(
+                                            PopupMenuItem::new(photag_ui_bridge::i18n::tr(label))
+                                                .checked(separation == value)
+                                                .on_click(move |_, _, cx| {
+                                                    let _ = weak.update(cx, |view, cx| {
+                                                        view.edit(
+                                                            |settings| {
+                                                                settings.region_separation =
+                                                                    value.to_owned()
+                                                            },
+                                                            cx,
+                                                        )
+                                                    });
+                                                }),
+                                        );
+                                    }
+                                    menu
+                                }),
+                        ),
+                );
                 b = b.child(self.section("Interface preview")).child(
                     div()
                         .h_flex()

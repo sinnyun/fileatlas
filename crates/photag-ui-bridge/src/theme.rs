@@ -24,6 +24,20 @@ pub const SURFACE_FAINT: u32 = 0x1e2126;
 pub const SURFACE_AUDIO: u32 = 0x1a1d21;
 /// Lowest contrast surface.
 pub const SURFACE_EXTREME: u32 = 0x151719;
+/// Leftmost navigation rail: darker than the window base so the rail, the
+/// sidebar and the content column read as three separate regions.
+pub const SURFACE_RAIL: u32 = 0x171a1d;
+/// Sidebar panel between the rail and the content column.
+pub const SURFACE_SIDEBAR: u32 = 0x1f2328;
+/// Inset well behind a bounded sidebar region (drives, favorites, …).
+pub const SURFACE_REGION: u32 = 0x1a1d21;
+/// Region rule in border mode, as 0xRRGGBBAA. `SEPARATOR` is darker than every
+/// surface, so region edges need a light hairline to read on the dark theme.
+pub const REGION_EDGE: u32 = 0xffffff2e;
+/// Raised band behind a browser group title.
+pub const SURFACE_GROUP_HEADER: u32 = 0x343e49;
+/// Hover fill for a browser group title.
+pub const SURFACE_GROUP_HEADER_HOVER: u32 = 0x404d5c;
 pub const TEXT_PRIMARY: u32 = 0xe9ebee;
 pub const TEXT_SECONDARY: u32 = 0xa9aeb5;
 pub const TEXT_MUTED: u32 = 0x7b8189;
@@ -66,6 +80,14 @@ pub const SIDEBAR_MIN_WIDTH: f32 = 200.0;
 pub const SIDEBAR_MAX_WIDTH: f32 = 400.0;
 pub const SIDEBAR_ROW_HEIGHT: f32 = 30.0;
 pub const SIDEBAR_ARROW_SLOT: f32 = 18.0;
+/// Height of a browser group title band.
+pub const GROUP_HEADER_HEIGHT: f32 = 40.0;
+/// Vertical gap between a group title band and that group's content cards.
+pub const GROUP_HEADER_GAP: f32 = 10.0;
+/// Vertical gap between two consecutive browser groups.
+pub const GROUP_TOP_GAP: f32 = 18.0;
+/// Height of a sidebar region header row.
+pub const REGION_HEADER_HEIGHT: f32 = 26.0;
 /// Right-hand file information column.
 pub const INSPECTOR_WIDTH: f32 = 300.0;
 pub const SEARCH_FIELD_HEIGHT: f32 = 32.0;
@@ -454,6 +476,90 @@ pub fn backdrop_active() -> bool {
 }
 pub fn set_backdrop_active(active: bool) {
     BACKDROP_ACTIVE.store(active, Ordering::Relaxed);
+}
+
+/// How the application separates its regions from each other.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegionDepth {
+    /// Hairline rule on the shared edge.
+    Border,
+    /// Drop shadow cast toward the neighbouring region.
+    Shadow,
+}
+
+pub const REGION_DEPTH_BORDER: &str = "border";
+pub const REGION_DEPTH_SHADOW: &str = "shadow";
+static REGION_DEPTH: AtomicU32 = AtomicU32::new(0);
+
+pub fn region_depth() -> RegionDepth {
+    if REGION_DEPTH.load(Ordering::Relaxed) == 1 {
+        RegionDepth::Shadow
+    } else {
+        RegionDepth::Border
+    }
+}
+
+/// Name form stored in the settings document.
+pub fn region_depth_name() -> &'static str {
+    match region_depth() {
+        RegionDepth::Border => REGION_DEPTH_BORDER,
+        RegionDepth::Shadow => REGION_DEPTH_SHADOW,
+    }
+}
+
+/// Apply a persisted settings value; unknown values keep the hairline default.
+pub fn set_region_depth_name(name: &str) {
+    REGION_DEPTH.store(u32::from(name == REGION_DEPTH_SHADOW), Ordering::Relaxed);
+}
+
+/// Sides of a region that carry the separation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RegionEdge {
+    All,
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+/// Apply the configured region separation to a panel. Shadow mode replaces
+/// the rule with a soft drop shadow, so callers must not add their own border.
+pub fn separate_region(region: gpui_kit::Div, edge: RegionEdge) -> gpui_kit::Div {
+    if region_depth() == RegionDepth::Shadow {
+        return region.shadow(region_shadows(edge));
+    }
+    let region = region.border_color(gpui_kit::rgba(REGION_EDGE));
+    match edge {
+        RegionEdge::All => region.border_1(),
+        RegionEdge::Left => region.border_l_1(),
+        RegionEdge::Right => region.border_r_1(),
+        RegionEdge::Top => region.border_t_1(),
+        RegionEdge::Bottom => region.border_b_1(),
+    }
+}
+
+fn region_shadows(edge: RegionEdge) -> Vec<gpui_kit::BoxShadow> {
+    use gpui_kit::{BoxShadow, hsla, px};
+    let (offset_x, offset_y) = match edge {
+        RegionEdge::All => (0., 6.),
+        RegionEdge::Left => (-10., 0.),
+        RegionEdge::Right => (10., 0.),
+        RegionEdge::Top => (0., -10.),
+        RegionEdge::Bottom => (0., 10.),
+    };
+    vec![
+        BoxShadow::new(px(offset_x), px(offset_y), hsla(0., 0., 0., 0.72))
+            .blur_radius(px(18.))
+            .spread_radius(px(-2.)),
+    ]
+}
+
+/// Header tints used to tell the custom sidebar groups apart.
+pub const GROUP_TINTS: &[u32] = &[0x5a7fa0, 0x6a9a78, 0xa0654a, 0x8a7098, 0x5a8a88, 0xa07478];
+
+/// Deterministic tint for the group at `index`.
+pub fn group_tint(index: usize) -> u32 {
+    GROUP_TINTS[index % GROUP_TINTS.len()]
 }
 
 /// Source card opacity (232/255 with Mica/Acrylic, opaque otherwise).

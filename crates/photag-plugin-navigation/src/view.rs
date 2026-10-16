@@ -53,6 +53,30 @@ use support::{
     tag_matches,
 };
 
+/// Bounded container for one sidebar region: drives, quick access or favorites.
+/// The theme decides whether regions are separated by a hairline or a shadow.
+fn sidebar_region(body: Div) -> Div {
+    theme::separate_region(
+        body.v_flex()
+            .w_full()
+            .gap(px(2.))
+            .p(px(6.))
+            .rounded(px(theme::ROUND_MD))
+            .bg(rgb(theme::SURFACE_REGION)),
+        theme::RegionEdge::All,
+    )
+}
+
+/// Caption naming a sub-block inside a sidebar region.
+fn region_caption(label: &'static str) -> Div {
+    div()
+        .pt(px(4.))
+        .text_size(px(11.))
+        .font_semibold()
+        .text_color(rgb(theme::TEXT_MUTED))
+        .child(photag_ui_bridge::i18n::tr(label))
+}
+
 pub(super) fn sidebar(
     service: Arc<NavigationService>,
     cordis: CordisContext,

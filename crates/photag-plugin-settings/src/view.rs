@@ -291,8 +291,10 @@ impl SettingsView {
         });
         match self.service.update(f) {
             Ok(settings) => {
-                photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
                 photag_ui_bridge::theme::apply_accent_components(cx);
+                // Paint-time tokens (accent, region separation) live in every region, so
+                // repaint all windows instead of waiting for each view's next notify.
+                cx.refresh_windows();
                 let new_preferences = (
                     settings.exclude_modifier,
                     settings.tag_search_match,

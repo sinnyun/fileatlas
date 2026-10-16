@@ -806,3 +806,15 @@ msg-26fc1cffd287 = 转到文件夹
 msg-2cabb20c5124 = 导航位置不可用
 
 msg-52077acd046b = 请输入完整的文件夹地址
+
+msg-bc8415fe53fe = 区域区分方式
+
+msg-3b4bdff339e9 = 边框
+
+msg-4c764cb6248e = 阴影
+
+msg-626d318debdc = 用细边框或阴影区分侧栏、内容与预览等区域。
+
+msg-da89baadab59 = 库文件夹
+
+msg-113c41d6412d = 收藏分组

@@ -5688,6 +5688,7 @@ dependencies = [
  "photag-plugin-metadata-export",
  "photag-plugin-navigation",
  "photag-plugin-preview",
+ "photag-plugin-settings",
  "photag-plugin-tagging",
  "photag-ui-bridge",
  "rmcp",

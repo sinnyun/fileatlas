@@ -64,6 +64,10 @@ fn default_open_key() -> String {
 fn default_accent_name() -> String {
     "System".to_string()
 }
+/// Mirrors `theme::REGION_DEPTH_BORDER`; kept literal so this model stays UI-free.
+fn default_region_separation() -> String {
+    "border".to_string()
+}
 fn default_show_date_dividers() -> bool {
     true
 }
@@ -174,6 +178,10 @@ pub struct Settings {
     /// to the default if the stored value is unknown (e.g. after a rename).
     #[serde(default = "default_accent_name")]
     pub accent_name: String,
+    /// How the UI separates its regions: `"border"` hairlines or `"shadow"`.
+    /// Applied to `theme::set_region_depth_name` at startup and on change.
+    #[serde(default = "default_region_separation")]
+    pub region_separation: String,
     /// When true and the gallery is sorted by date, group thumbnails into
     /// month sections separated by `Month Year` headers. Off → flat grid.
     #[serde(default = "default_show_date_dividers")]
@@ -270,6 +278,7 @@ impl Default for Settings {
             exclude_modifier: ExcludeModifier::Ctrl,
             open_key: default_open_key(),
             accent_name: default_accent_name(),
+            region_separation: default_region_separation(),
             show_date_dividers: default_show_date_dividers(),
             search_scopes: SearchScopes::default(),
             tag_search_match: default_tag_search_match(),

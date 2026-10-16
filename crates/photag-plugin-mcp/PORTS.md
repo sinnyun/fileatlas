@@ -302,3 +302,16 @@ Mutation-guarded control_ui action address_bar accepts request:{kind:back/forwar
 control_ui key_press accepts only enter, escape, ctrl-l, alt-left, alt-right, alt-up in value. CaptureWindowHandle::{queue_key,key_pending,take_key} carries a single pending String to Shell; the existing MCP input poll/dispatch lease delivers PlatformInput::KeyDown through the same GPUI window, not OS injection. The field prefer_character_input is false. Input text in scenarios uses the real InputState via set_text; actual keyboard/paste/IME entry is not claimed by that setup. tools require PHOTAG_MCP_ALLOW_MUTATIONS=1.
 
 Checked-in scripts: validate-address-bar.cjs (semantic routes + actual Enter/Escape), validate-address-pointer.cjs (real pointer controls), validate-address-restart.cjs and prepare-address-tag-restart.cjs (scope stability). See docs/validation-ui/2026-10-16-address/README.md.
+
+
+## Region separation probe and control (2026-10-16)
+
+`get_ui_state.region_separation` reports the applied theme token (`border`/`shadow`)
+read straight from `theme::region_depth_name()`, so tests observe what the paint-time
+helpers actually use instead of re-reading the JSON file. Mutation-guarded
+`control_ui {action:"region_separation", value:"border"|"shadow"}` resolves
+`photag_plugin_settings::SettingsService` from the Cordis context and calls the same
+`update` path the Settings view uses; an unknown value is rejected before any write.
+It does not touch GPUI directly, so the live repaint still comes from the Settings
+view's `cx.refresh_windows()`; pointer evidence for the real dropdown is recorded in
+docs/validation-ui/2026-10-16-region-separation/README.md.

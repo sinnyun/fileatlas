@@ -126,7 +126,12 @@ impl GalleryView {
                     continue;
                 };
                 let row_y = bounds.origin.y;
-                let card_y = row_y + px(if row.month_label.is_some() { 40. } else { 0. });
+                let card_y = row_y
+                    + px(if row.month_label.is_some() {
+                        theme::GROUP_HEADER_HEIGHT + theme::GROUP_HEADER_GAP
+                    } else {
+                        0.
+                    });
                 if card_y + card_height < visible_band.top() || card_y > visible_band.bottom() {
                     continue;
                 }

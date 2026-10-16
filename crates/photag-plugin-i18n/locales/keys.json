@@ -683,5 +683,11 @@
   "Edit folder address": "msg-9b11043d221a",
   "Go to folder": "msg-26fc1cffd287",
   "Navigation target is unavailable": "msg-2cabb20c5124",
-  "Enter an absolute folder address": "msg-52077acd046b"
+  "Enter an absolute folder address": "msg-52077acd046b",
+  "Region separation": "msg-bc8415fe53fe",
+  "Border": "msg-3b4bdff339e9",
+  "Shadow": "msg-4c764cb6248e",
+  "Separate the sidebar, content and preview regions with a hairline border or a shadow.": "msg-626d318debdc",
+  "Library folders": "msg-da89baadab59",
+  "Favorite groups": "msg-113c41d6412d"
 }

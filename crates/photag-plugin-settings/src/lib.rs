@@ -99,12 +99,16 @@ impl SettingsService {
         Ok(())
     }
 
+    /// Write the source-compatible JSON, then republish the theme tokens it owns so
+    /// every writer (Settings view, MCP, future panels) applies the same state.
     fn persist(&self, settings: &Settings) -> Result<(), SettingsServiceError> {
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)?;
         }
         let serialized = serde_json::to_string_pretty(settings)?;
         std::fs::write(&self.path, serialized)?;
+        photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+        photag_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
         Ok(())
     }
 }
@@ -190,6 +194,7 @@ impl Plugin for SettingsPlugin {
             .try_service::<photag_plugin_session::SessionService>()
             .ok();
         photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+        photag_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
         let publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;

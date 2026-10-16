@@ -130,47 +130,46 @@ impl Render for PhoTagShell {
         }) {
             tool_commands.push(button);
         }
-        let divider = rgb(theme::SEPARATOR);
         let settings_entry = {
             let cordis = self.cordis.clone();
             let executor = self.executor.clone();
-            div()
-                .v_flex()
-                .w(px(48.))
-                .flex_shrink_0()
-                .h(px(56.))
-                .items_center()
-                .justify_center()
-                .gap(px(4.))
-                .flex_shrink_0()
-                .border_r_1()
-                .border_t_1()
-                .border_color(divider)
-                .id("shell-settings-entry")
-                .cursor_pointer()
-                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
-                .child(
-                    theme::icon(IconName::Settings)
-                        .size(px(16.))
-                        .text_color(rgb(theme::TEXT_SECONDARY)),
-                )
-                .child(
-                    div()
-                        .text_size(px(10.))
-                        .child(photag_ui_bridge::i18n::tr("Settings")),
-                )
-                .on_click(move |_, _, _| {
-                    let cordis = cordis.clone();
-                    let executor = executor.clone();
-                    executor.spawn(async move {
-                        if let Err(error) = cordis
-                            .emit::<UiCommandInvoked>(Routing::Unscoped, "settings/toggle".into())
-                            .await
-                        {
-                            tracing::error!("settings toggle failed: {error}");
-                        }
-                    });
-                })
+            theme::separate_region(
+                div()
+                    .v_flex()
+                    .w(px(48.))
+                    .flex_shrink_0()
+                    .h(px(56.))
+                    .items_center()
+                    .justify_center()
+                    .gap(px(4.))
+                    .bg(rgb(theme::SURFACE_RAIL))
+                    .child(
+                        theme::icon(IconName::Settings)
+                            .size(px(16.))
+                            .text_color(rgb(theme::TEXT_SECONDARY)),
+                    )
+                    .child(
+                        div()
+                            .text_size(px(10.))
+                            .child(photag_ui_bridge::i18n::tr("Settings")),
+                    ),
+                theme::RegionEdge::Top,
+            )
+            .id("shell-settings-entry")
+            .cursor_pointer()
+            .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+            .on_click(move |_, _, _| {
+                let cordis = cordis.clone();
+                let executor = executor.clone();
+                executor.spawn(async move {
+                    if let Err(error) = cordis
+                        .emit::<UiCommandInvoked>(Routing::Unscoped, "settings/toggle".into())
+                        .await
+                    {
+                        tracing::error!("settings toggle failed: {error}");
+                    }
+                });
+            })
         };
         let sidebar_toggle = Button::new("shell-sidebar")
             .ghost()
@@ -206,87 +205,93 @@ impl Render for PhoTagShell {
         // v5 title band: logo zone tracks the sidebar width; breadcrumb fills
         // the content column; size search Tools and the inspector toggle sit
         // on the right, mirroring docs/reference-ui/final-v5/00-main-library.png.
-        let title_band = div()
+        let logo_zone = div()
             .h_flex()
-            .w_full()
-            .flex_shrink_0()
-            .h(px(theme::TITLE_BAND_HEIGHT))
-            .border_b_1()
-            .border_color(divider)
-            .child(
-                div()
-                    .h_flex()
-                    .h_full()
-                    .items_center()
-                    .gap(px(8.))
-                    .pl(px(10.))
-                    .pr(px(12.))
-                    .when(self.sidebar_open, |zone| {
-                        zone.w(px(self.sidebar_width))
-                            .border_r_1()
-                            .border_color(divider)
-                            .pr(px(8.))
-                    })
-                    .child(sidebar_toggle)
-                    .child(theme::large_icon(IconName::Aperture).text_color(rgb(theme::accent())))
-                    .child(
-                        div()
-                            .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                            .text_size(px(theme::FONT_SIZE_HEADING))
-                            .child("PhoTag"),
-                    ),
-            )
-            .child(
-                div()
-                    .h_flex()
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .items_center()
-                    .gap(px(10.))
-                    .px(px(16.))
-                    .overflow_hidden()
-                    .children(breadcrumb_views),
-            )
-            .child(
-                div()
-                    .h_flex()
-                    .h_full()
-                    .items_center()
-                    .gap(px(10.))
-                    .pr(px(10.))
-                    .children(size_views)
-                    .children(search_views)
-                    .child(
-                        Button::new("shell-tools")
-                            .ghost()
-                            .compact()
-                            .label(photag_ui_bridge::i18n::tr("Tools"))
-                            .dropdown_caret(true)
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.tools_open = !this.tools_open;
-                                let _ = this.surfaces.set_open("tools", this.tools_open);
-                                cx.notify();
-                            })),
-                    )
-                    .child(inspector_toggle),
-            );
-        let mut sidebar_column = div()
-            .v_flex()
-            .w(px(self.sidebar_width))
             .h_full()
-            .flex_shrink_0()
-            .min_h_0()
-            .border_r_1()
-            .border_color(divider)
-            .child(
-                div()
-                    .v_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .children(sidebar_views),
-            );
+            .items_center()
+            .gap(px(8.))
+            .pl(px(10.))
+            .pr(px(12.))
+            .when(self.sidebar_open, |zone| {
+                theme::separate_region(
+                    zone.w(px(self.sidebar_width)).pr(px(8.)),
+                    theme::RegionEdge::Right,
+                )
+            });
+        let title_band = theme::separate_region(
+            div()
+                .h_flex()
+                .w_full()
+                .flex_shrink_0()
+                .h(px(theme::TITLE_BAND_HEIGHT))
+                .child(
+                    logo_zone
+                        .child(sidebar_toggle)
+                        .child(
+                            theme::large_icon(IconName::Aperture).text_color(rgb(theme::accent())),
+                        )
+                        .child(
+                            div()
+                                .font_family(theme::SEMIBOLD_FONT_FAMILY)
+                                .text_size(px(theme::FONT_SIZE_HEADING))
+                                .child("PhoTag"),
+                        ),
+                ),
+            theme::RegionEdge::Bottom,
+        )
+        .child(
+            div()
+                .h_flex()
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .items_center()
+                .gap(px(10.))
+                .px(px(16.))
+                .overflow_hidden()
+                .children(breadcrumb_views),
+        )
+        .child(
+            div()
+                .h_flex()
+                .h_full()
+                .items_center()
+                .gap(px(10.))
+                .pr(px(10.))
+                .children(size_views)
+                .children(search_views)
+                .child(
+                    Button::new("shell-tools")
+                        .ghost()
+                        .compact()
+                        .label(photag_ui_bridge::i18n::tr("Tools"))
+                        .dropdown_caret(true)
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.tools_open = !this.tools_open;
+                            let _ = this.surfaces.set_open("tools", this.tools_open);
+                            cx.notify();
+                        })),
+                )
+                .child(inspector_toggle),
+        );
+        let mut sidebar_column = theme::separate_region(
+            div()
+                .v_flex()
+                .w(px(self.sidebar_width))
+                .h_full()
+                .flex_shrink_0()
+                .min_h_0()
+                .bg(rgb(theme::SURFACE_SIDEBAR)),
+            theme::RegionEdge::Right,
+        )
+        .child(
+            div()
+                .v_flex()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .children(sidebar_views),
+        );
         if settings_available {
             sidebar_column = sidebar_column.child(
                 div()
@@ -399,18 +404,17 @@ impl Render for PhoTagShell {
                     .when(self.sidebar_open, |row| row.child(sidebar_column))
                     .child(content_column)
                     .when(self.inspector_open, |row| {
-                        row.child(
+                        row.child(theme::separate_region(
                             div()
                                 .v_flex()
                                 .w(px(self.inspector_width))
                                 .h_full()
                                 .flex_shrink_0()
                                 .min_h_0()
-                                .border_l_1()
-                                .border_color(divider)
                                 .bg(rgb(theme::SURFACE_CARD))
                                 .children(inspector_views),
-                        )
+                            theme::RegionEdge::Left,
+                        ))
                     })
                     .when(self.sidebar_open, |row| {
                         row.child(self.panel_splitter(PanelSide::Sidebar, cx))
@@ -420,7 +424,7 @@ impl Render for PhoTagShell {
                     }),
             )
             .children(bottom_views)
-            .child(
+            .child(theme::separate_region(
                 // v5 status band: selection summary and featured actions.
                 div()
                     .h_flex()
@@ -428,8 +432,6 @@ impl Render for PhoTagShell {
                     .flex_shrink_0()
                     .h(px(theme::STATUS_BAR_HEIGHT))
                     .items_center()
-                    .border_t_1()
-                    .border_color(divider)
                     .px(px(16.))
                     .child(
                         div()
@@ -440,7 +442,8 @@ impl Render for PhoTagShell {
                             .children(status_views),
                     )
                     .children(debug_status),
-            );
+                theme::RegionEdge::Top,
+            ));
         if self.tools_open {
             shell = shell.child(
                 div()

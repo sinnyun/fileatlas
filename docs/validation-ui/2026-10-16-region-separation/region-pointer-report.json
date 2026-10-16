@@ -1,0 +1,34 @@
+{
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-region-sep",
+  "clicks": {
+    "button": "1019,571",
+    "item": "1005,632"
+  },
+  "startup_separation": "border",
+  "geometry": {
+    "scale_factor": 1.5,
+    "client_size": {
+      "width": 2176,
+      "height": 1183.3333740234375
+    },
+    "screenshot_to_pointer": {
+      "offset_x": 11,
+      "offset_y": 45,
+      "divide_by": 1.5
+    }
+  },
+  "bounds": {
+    "x": 277,
+    "y": 129,
+    "width": 3286,
+    "height": 1831
+  },
+  "change": {
+    "before": "border",
+    "after": "shadow",
+    "disk": "shadow"
+  },
+  "cases": [
+    "pointer click on the Settings dropdown changed the live region separation"
+  ]
+}

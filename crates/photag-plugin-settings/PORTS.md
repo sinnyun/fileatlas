@@ -120,3 +120,17 @@ change; navigation never reads settings directly (cycle-safe event flow).
 ## Sidebar persistence review — 2026-10-16
 
 `SettingsService::replace/update` serialize disk publication under the state write lock and publish the new memory snapshot only after success. The SidebarFoldersChanged observer rejects stale revisions; a failed revision can retry. It propagates save errors to Navigation for visible retry feedback. Normal JSON fields and paths are unchanged. Tests cover concurrent edits, stale delivery and failure/retry; this is not a crash-safe filesystem transaction guarantee.
+
+
+## Region separation token (2026-10-16)
+
+`Settings.region_separation` (`"border"` default, `"shadow"`) joins the existing
+source-compatible JSON schema; older files keep working through `serde(default)`.
+`SettingsService::persist` is the single write funnel and now republishes the
+paint-time tokens it owns (`set_accent_name`, `set_region_depth_name`) after a
+successful disk write, so the Settings view, `control_ui {action:"region_separation"}`
+and any future writer apply the same state; a failed write leaves both disk and
+theme untouched. The Settings view keeps `apply_accent_components(cx)` (it needs
+`&mut App`) and adds `cx.refresh_windows()`, the same full-window repaint the
+language switch uses, because region edges are painted by every region.
+Startup still applies the loaded values in `SettingsPlugin::apply`.

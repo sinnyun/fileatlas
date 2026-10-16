@@ -11,5 +11,8 @@ cordis.workspace = true
 gpui-kit.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 
+[dev-dependencies]
+tokio = { workspace = true, features = ["sync", "time"] }
+
 [lints]
 workspace = true

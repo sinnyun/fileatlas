@@ -28,6 +28,7 @@ tokio.workspace = true
 thiserror = "2"
 
 photag-plugin-i18n = { path = "../photag-plugin-i18n" }
+photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 
 [target.'cfg(target_os = "windows")'.dependencies]

@@ -10,6 +10,7 @@ pub(super) struct UiRequest {
     /// inspector_open/close, sidebar_open/close, export_open/close,
     /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
     /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
+    /// region_separation: value border|shadow, saved through the Settings service.
     /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
     /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
     /// {"kind":"remove_quick_access","path":"F:\\library"}.
@@ -23,7 +24,7 @@ pub(super) struct UiRequest {
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Read Settings, language, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
+        description = "Read Settings, language, region separation mode, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
     )]
     fn get_ui_state(&self) -> String {
         let gallery = self.gallery.ui_snapshot().map(|state| {
@@ -82,6 +83,7 @@ impl PhoTagMcpServer {
             "inspector_width": self.surfaces.value("shell.inspector-width").and_then(|value| value.parse::<f32>().ok()),
             "language": self.i18n.as_ref().map(|service| service.language().code()),
             "translation_revision": photag_ui_bridge::i18n::revision(),
+            "region_separation": photag_ui_bridge::theme::region_depth_name(),
             "preview_chrome_alpha": self.preview.chrome_alpha(),
             "gallery_cards": self.gallery.card_states().iter().map(|state| json!({
                 "media_id": state.media_id, "hover": state.hover, "selection": state.selection,
@@ -382,6 +384,27 @@ impl PhoTagMcpServer {
                 };
                 photag_plugin_i18n::Language::parse(request.value.as_deref().unwrap_or(""))
                     .and_then(|language| service.set_language(language))
+                    .map_err(|error| error.to_string())
+            }
+            "region_separation" => {
+                let value = request.value.as_deref().unwrap_or("");
+                if ![
+                    photag_ui_bridge::theme::REGION_DEPTH_BORDER,
+                    photag_ui_bridge::theme::REGION_DEPTH_SHADOW,
+                ]
+                .contains(&value)
+                {
+                    return error_json("region_separation must be border or shadow");
+                }
+                let Ok(settings) = self
+                    .context
+                    .try_service::<photag_plugin_settings::SettingsService>()
+                else {
+                    return error_json("settings plugin unavailable");
+                };
+                settings
+                    .update(|state| state.region_separation = value.to_owned())
+                    .map(|_| ())
                     .map_err(|error| error.to_string())
             }
             _ => return error_json("unsupported UI action"),

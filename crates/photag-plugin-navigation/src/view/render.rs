@@ -196,10 +196,11 @@ impl Render for SidebarView {
             .pr(px(6.))
             .pt(px(2.))
             .pb(px(8.));
+        let mut favorites_region: Option<Div> = None;
         if self.active_page == NavigationPage::Folders {
             panel = panel
-                .child(self.render_drives_section(cx))
-                .child(self.render_quick_access_section(cx));
+                .child(sidebar_region(self.render_drives_section(cx)))
+                .child(sidebar_region(self.render_quick_access_section(cx)));
             if matches!(
                 self.sidebar_editor,
                 Some(SidebarEditor::AddQuickAccess | SidebarEditor::RenameQuickAccess { .. })
@@ -215,7 +216,8 @@ impl Render for SidebarView {
                 if self.active_page == NavigationPage::Folders {
                     let query = self.folder_search.read(cx).value().trim().to_owned();
                     let lowered_query = query.to_lowercase();
-                    panel = panel.child(
+                    let mut favorites = div().v_flex().gap(px(2.));
+                    favorites = favorites.child(
                         div()
                             .h_flex()
                             .items_center()
@@ -284,8 +286,9 @@ impl Render for SidebarView {
                                     ),
                             ),
                     );
-                    panel = panel.child(Input::new(&self.folder_search).w_full());
-                    panel = panel.child(
+                    favorites = favorites.child(Input::new(&self.folder_search).w_full());
+                    favorites = favorites.child(region_caption("Library folders"));
+                    favorites = favorites.child(
                         folder_row(
                             "navigation-all-media".into(),
                             photag_ui_bridge::i18n::tr("Favorites"),
@@ -307,7 +310,7 @@ impl Render for SidebarView {
                         })),
                     );
                     if self.show_folder_path_entry {
-                        panel = panel.child(
+                        favorites = favorites.child(
                             div()
                                 .h_flex()
                                 .gap_1()
@@ -344,7 +347,7 @@ impl Render for SidebarView {
                         );
                     }
                     if let Some(parent) = &self.new_folder_parent {
-                        panel = panel.child(
+                        favorites = favorites.child(
                             div()
                                 .v_flex()
                                 .gap_1()
@@ -387,7 +390,7 @@ impl Render for SidebarView {
                         })
                         .collect::<Vec<_>>();
                     if !lowered_query.is_empty() && visible_folders.is_empty() {
-                        panel = panel.child(
+                        favorites = favorites.child(
                             div()
                                 .text_xs()
                                 .text_color(rgb(theme::TEXT_MUTED))
@@ -397,7 +400,7 @@ impl Render for SidebarView {
                     for node in visible_folders {
                         let expanded = self.expanded_directories.get(&node.folder.path);
                         let row_group = format!("navigation-folder-row-{}", node.folder.id);
-                        panel = panel.child(
+                        favorites = favorites.child(
                             div()
                                 .group(row_group.clone())
                                 .relative()
@@ -481,7 +484,7 @@ impl Render for SidebarView {
                                         ))
                                         .w(px(20.))
                                         .h(px(22.))
-                                        .bg(rgb(theme::SURFACE_BASE))
+                                        .bg(rgb(theme::SURFACE_REGION))
                                         .dropdown_menu(move |menu, _, _| {
                                             favorite_menu(
                                                 menu,
@@ -511,7 +514,7 @@ impl Render for SidebarView {
                                 })
                                 .collect::<Vec<_>>();
                             if !child_rows.is_empty() {
-                                panel = panel.child(
+                                favorites = favorites.child(
                                     div()
                                         .v_flex()
                                         .ml(px(22.))
@@ -523,6 +526,7 @@ impl Render for SidebarView {
                             }
                         }
                     }
+                    favorites_region = Some(sidebar_region(favorites));
                 }
                 if self.active_page == NavigationPage::Tags {
                     let tag_view = cx.entity().downgrade();
@@ -714,19 +718,19 @@ impl Render for SidebarView {
                     .child(format!("Could not load library: {error}")),
             ),
         };
-        let panel = if self.active_page == NavigationPage::Folders {
-            let panel = if self.sidebar_editor.is_some()
+        let panel = if let Some(region) = favorites_region {
+            let region = if self.sidebar_editor.is_some()
                 && !matches!(
                     self.sidebar_editor,
                     Some(SidebarEditor::AddQuickAccess | SidebarEditor::RenameQuickAccess { .. })
                 )
                 && let Some(editor_row) = self.render_sidebar_editor_row(cx)
             {
-                panel.child(editor_row)
+                region.child(editor_row)
             } else {
-                panel
+                region
             };
-            panel.child(self.render_favorites_section(cx))
+            panel.child(self.render_favorite_groups(region, cx))
         } else {
             panel
         };

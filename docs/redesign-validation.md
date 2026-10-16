@@ -386,3 +386,41 @@ Windows/150% DPI，Rust 1.97.1 MSVC，locked/-j2：fmt/check/build、UI refresh 
 [真实D盘证据](validation-ui/2026-10-16-navigation-latency/README.md)。
 
 完整根至当前目录面包屑、路径编辑、后退/前进/上一级已集成 Navigation 既有贡献。历史统一目录/Home/标签范围，窗口内最多200项，真实路径在动作时验证；当前层级不重载，非法路径保留状态。窗口启动只恢复一个对应范围事件，避免空路径清空标签/收藏。34项测试、locked check、独立输出构建、fmt、UI refresh guard通过；同进程MCP 11项语义/实际Enter-Escape-Ctrl+L、4项真实pointer、文件夹及标签只读重启验证通过，重复刷新回归通过。设计来源为用户圈定截图；截图、命令、接口与未覆盖网络/输入系统边界见 [地址栏证据](validation-ui/2026-10-16-address/README.md)。
+
+
+## 2026-10-16 用户标注四项界面改动：区域区分/分组间隙/收藏区域/导轨配色
+
+设计来源是用户 2026-10-16 的标注截图（浏览模式，深色石墨主题），四条标注即本次范围；整体布局沿用
+已接受的 dev-baseline-2026-10-14，只改区域边界、分组间隙与侧栏收藏容器，未新增面板或改动结构。
+
+- 各区域明显区分 + 可切换边框/阴影：`photag-ui-bridge/src/theme.rs` 建立表面阶梯
+  `SURFACE_RAIL`(0x171a1d) → `SURFACE_SIDEBAR`(0x1f2328) → `SURFACE_REGION`(0x1a1d21) → 内容列 →
+  `SURFACE_CARD` 检视器，并把区域边界收敛为唯一原语 `separate_region(div, RegionEdge)`：边框模式画
+  `REGION_EDGE`(0xffffff2e) 亮细线（`SEPARATOR` 比所有表面都暗，深色主题下不可见，故新增亮色细线），
+  阴影模式改用偏移 ±10/6、模糊 18、alpha 0.72 的投影。Shell 的标题带/logo 区/侧栏列/检视器/状态栏/
+  设置入口与 Navigation、Gallery 全部走该原语。配置项 `region_separation`（默认 border，兼容旧 JSON）
+  进入 Appearance 页“区域区分方式”下拉；`SettingsService::persist` 成为唯一写入口，落盘成功后统一
+  重发 accent 与 region-depth 绘制令牌，视图侧新增 `cx.refresh_windows()` 与语言切换同一全窗口重绘路径。
+- 分组标题与卡片间隙：`GROUP_HEADER_GAP`(10) + 非首组 `GROUP_TOP_GAP`(18)，`gallery_row_height` 与
+  橡皮筋命中测试同步这两个偏移，避免选中框错位。
+- 收藏区域：`render_favorite_groups()` 把自定义分组并入同一个 `sidebar_region()`，分组间
+  `mt/pt 8px + border_t_1` 隔断，标题行按 `group_tint(index)` 上色（星形图标 + 透明底纹）。
+- 最左导轨与可折叠侧栏使用不同表面令牌并各有右边界。
+
+静态与自动回归：`cargo +1.97.1 fmt --all -- --check`、`check --workspace --locked --offline -j 2`、
+`node scripts/check-ui-refresh.cjs`（UI timer ownership: passed）通过，49 项测试通过
+（navigation 20、ui-bridge 12、gallery 10、i18n 4、settings 3）。顺带修复既存问题：
+`photag-ui-bridge/Cargo.toml` 缺 `tokio` 的 `time` dev-dependency，使 `refresh.rs` 测试自 e0932a3 起无法编译。
+
+同进程 PhoTag MCP（隔离 dev-test profile `target/mcp-region-sep`，未触碰 `%LOCALAPPDATA%\PhoTag`）实测：
+6 条语义用例全通过——启动即应用 JSON 中的 shadow 令牌、按修改时间分组得 3 个月份带且标题与卡片有间隙、
+侧栏只有一个内含 3 个自定义分组的收藏区域、真实指针点击把 border 改为 shadow 并写盘（先用
+`window_status.geometry.screenshot_to_pointer` 校准 `pointer = (screenshot_px - (11,45)) / 1.5`）、
+非法值被拒绝不写盘、切换生效 3 秒后调试日志 `latest_id` 282→282 无重复 IO/重绘。边框与阴影两模式截图
+肉眼可分。MCP 新增只读 `get_ui_state.region_separation` 与受 mutation 开关保护的
+`control_ui{action:"region_separation"}`。
+
+仍未验证：MCP 直接写服务不经过 GPUI 视图，场景靠开合 Settings 面板触发重绘，未单独证明非视图写入也能即时
+重绘；浅色主题、检视器/浮动预览在两种模式下的全部边界、列表布局与胶片条分组标题、非 150% DPI、最小化恢复
+重绘、拖拽与原生选择器；分组颜色只按索引循环取 6 色，用户自定义分组配色尚未提供。截图、脚本、命令与边界见
+[区域区分证据](validation-ui/2026-10-16-region-separation/README.md)。

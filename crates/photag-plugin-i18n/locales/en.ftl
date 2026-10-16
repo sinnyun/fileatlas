@@ -814,3 +814,15 @@ msg-26fc1cffd287 = Go to folder
 msg-2cabb20c5124 = Navigation target is unavailable
 
 msg-52077acd046b = Enter an absolute folder address
+
+msg-bc8415fe53fe = Region separation
+
+msg-3b4bdff339e9 = Border
+
+msg-4c764cb6248e = Shadow
+
+msg-626d318debdc = Separate the sidebar, content and preview regions with a hairline border or a shadow.
+
+msg-da89baadab59 = Library folders
+
+msg-113c41d6412d = Favorite groups

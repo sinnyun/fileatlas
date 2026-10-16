@@ -635,7 +635,12 @@ impl Render for GalleryView {
                                                 .unwrap_or_else(|| div().into_any_element());
                                             let month_top_gap = if row_index > 0 && has_month_label
                                             {
-                                                14.0
+                                                theme::GROUP_TOP_GAP
+                                            } else {
+                                                0.0
+                                            };
+                                            let header_gap = if has_month_label {
+                                                theme::GROUP_HEADER_GAP
                                             } else {
                                                 0.0
                                             };
@@ -657,6 +662,7 @@ impl Render for GalleryView {
                                                     .child(
                                                         div()
                                                             .h_flex()
+                                                            .mt(px(header_gap))
                                                             .gap(px(GRID_GAP))
                                                             .children(cards),
                                                     ),
@@ -732,9 +738,13 @@ pub(super) fn gallery_row_height(
     thumb: f32,
     list: bool,
 ) -> f32 {
-    let header = if row.month_label.is_some() { 40. } else { 0. };
+    let header = if row.month_label.is_some() {
+        theme::GROUP_HEADER_HEIGHT + theme::GROUP_HEADER_GAP
+    } else {
+        0.
+    };
     let month_gap = if index > 0 && row.month_label.is_some() {
-        14.
+        theme::GROUP_TOP_GAP
     } else {
         0.
     };

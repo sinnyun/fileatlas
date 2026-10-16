@@ -7,16 +7,18 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
         (NavigationPage::Tags, IconName::Tag, "Tags"),
         (NavigationPage::Extensions, IconName::Puzzle, "Add-ons"),
     ];
-    let mut rail = div()
-        .v_flex()
-        .w(px(48.))
-        .h_full()
-        .flex_shrink_0()
-        .items_center()
-        .gap(px(5.))
-        .py(px(6.))
-        .border_r_1()
-        .border_color(rgb(theme::SEPARATOR));
+    let mut rail = theme::separate_region(
+        div()
+            .v_flex()
+            .w(px(48.))
+            .h_full()
+            .flex_shrink_0()
+            .items_center()
+            .gap(px(5.))
+            .py(px(6.))
+            .bg(rgb(theme::SURFACE_RAIL)),
+        theme::RegionEdge::Right,
+    );
     for (page, icon, label) in items {
         let selected = view.active_page == page;
         rail = rail.child(
