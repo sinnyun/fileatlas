@@ -156,3 +156,23 @@ theme untouched. The Settings view keeps `apply_accent_components(cx)` (it needs
 `&mut App`) and adds `cx.refresh_windows()`, the same full-window repaint the
 language switch uses, because region edges are painted by every region.
 Startup still applies the loaded values in `SettingsPlugin::apply`.
+
+## External software check (2026-10-17)
+
+The `software` settings tab uses a revision-keyed background `ReadModel` to read
+QuickLook/Everything installation records, executable paths and versions. It
+publishes `settings.software-check` with `state`, `revision`, and `software`
+entries (`name`, `purpose`, `state`, `version`, `path`, `project_url`,
+`download_url`, `github_url`, `github_note`). Opening the tab and explicit
+Refresh request a new read; settled renders do not repeat filesystem IO.
+Links have software-specific GPUI IDs. Link actions open project/download pages;
+this page does not install, execute or upgrade external software. Everything
+requires 1.5 for the separately owned search adapter. The ES GitHub link is
+identified as the command-line tool, not the Everything application installer.
+See the Everything-search validation evidence for the same-process software
+page and missing/incompatible/ready inline Gallery states.
+
+Search location (2026-10-17): `Settings.search_entire_computer: bool` defaults to
+false when absent. Gallery saves it through `SettingsService::update` only on
+explicit location changes and restores it at view construction. This changes no
+Everything settings and does not replace the persisted navigation path.

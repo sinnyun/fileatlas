@@ -5,6 +5,7 @@ mod browser;
 mod live;
 #[cfg(test)]
 mod live_tests;
+mod search;
 mod viewport;
 pub use browser::{BrowserSnapshot, GalleryDirectory};
 mod ui_requests;
@@ -21,7 +22,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 mod filter;
-pub use filter::{MediaTypeFilter, parse_date_input};
+pub use filter::{MediaTypeFilter, SearchScope, parse_date_input};
 pub mod selection;
 
 use cordis::event::observer_sync;
@@ -45,8 +46,9 @@ use photag_ui_bridge::{
 pub const MEDIA_WINDOW_SIZE: usize = 200;
 
 /// Current data needed to render and navigate the gallery.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GallerySnapshot {
+    pub search_provider: &'static str,
     pub browser: BrowserSnapshot,
     /// Stored folder rows used to resolve folder context in the inspector.
     pub folders: Vec<photag_plugin_database::Folder>,
@@ -76,11 +78,14 @@ pub struct GalleryService {
     live: live::LiveBrowser,
     viewport_request: AtomicU64,
     navigation_revision: AtomicU64,
+    search_provider: std::sync::atomic::AtomicU8,
+    search_provider_detail: Mutex<Option<String>>,
     thumbnails_disabled: std::sync::atomic::AtomicBool,
     watcher: Option<Arc<photag_plugin_watcher::WatcherService>>,
     database: Arc<DatabaseService>,
     grouping: Option<Arc<photag_plugin_grouping::GroupingService>>,
     indexing: Option<Arc<photag_plugin_indexing::IndexingService>>,
+    everything: Option<Arc<photag_plugin_everything_search::EverythingSearchService>>,
     ai_target: Arc<ai_suggestions::AiTarget>,
     ui_request: Mutex<Option<GalleryUiRequest>>,
     ui_snapshot: Mutex<Option<GalleryUiSnapshot>>,
@@ -146,10 +151,13 @@ impl GalleryService {
             live: Default::default(),
             viewport_request: AtomicU64::new(0),
             navigation_revision: AtomicU64::new(0),
+            search_provider: std::sync::atomic::AtomicU8::new(0),
+            search_provider_detail: Mutex::new(None),
             thumbnails_disabled: Default::default(),
             watcher: None,
             grouping: None,
             indexing: None,
+            everything: None,
             ai_target: Default::default(),
             ui_request: Mutex::new(None),
             ui_snapshot: Mutex::new(None),
@@ -175,6 +183,20 @@ impl GalleryService {
 
     pub fn browser_enabled(&self) -> bool {
         self.database.is_browser()
+    }
+    pub fn search_provider(&self) -> &'static str {
+        match self.search_provider.load(Ordering::Acquire) {
+            2 => "everything",
+            1 => "sqlite-fallback",
+            _ => "sqlite",
+        }
+    }
+
+    pub fn search_provider_detail(&self) -> Option<String> {
+        self.search_provider_detail
+            .lock()
+            .ok()
+            .and_then(|detail| detail.clone())
     }
     pub fn thumbnails_enabled(&self) -> bool {
         !self.thumbnails_disabled.load(Ordering::Acquire)
@@ -307,6 +329,89 @@ impl GalleryService {
         Ok(())
     }
 
+    /// Replace filename/path matching with Everything candidate paths when its
+    /// local IPC service is available. Remaining filters stay in PhoTag's DB.
+    fn prepare_everything_search(&self, query: &mut MediaQuery) -> Result<(), GalleryError> {
+        self.scope_text_search(query)?;
+        query.external_search_paths = None;
+        self.search_provider.store(1, Ordering::Release);
+        if let Ok(mut detail) = self.search_provider_detail.lock() {
+            *detail = None;
+        }
+        if query
+            .search
+            .as_deref()
+            .is_none_or(|value| value.trim().is_empty())
+            || !(query.search_in_filenames || query.search_in_paths)
+        {
+            if let Ok(mut detail) = self.search_provider_detail.lock() {
+                *detail = Some(
+                    "Everything skipped: empty query or filename/path scopes are disabled.".into(),
+                );
+            }
+            return Ok(());
+        }
+        let Some(everything) = &self.everything else {
+            if let Ok(mut detail) = self.search_provider_detail.lock() {
+                *detail = Some("Everything adapter service is unavailable.".into());
+            }
+            return Ok(());
+        };
+        let roots = match if query.search_entire_computer {
+            Ok(Vec::new())
+        } else {
+            self.database.folder_paths()
+        } {
+            Ok(roots) => roots,
+            Err(error) => {
+                if let Ok(mut detail) = self.search_provider_detail.lock() {
+                    *detail = Some(format!("Couldn't read search roots: {error}"));
+                }
+                return Ok(());
+            }
+        };
+        let roots = query
+            .path_prefix
+            .as_ref()
+            .or(query.direct_directory.as_ref())
+            .or(query.directory_tree.as_ref())
+            .cloned()
+            .map(|root| vec![root])
+            .or_else(|| {
+                query.folder_id.and_then(|id| {
+                    self.database
+                        .list_folders()
+                        .ok()
+                        .and_then(|folders| folders.into_iter().find(|folder| folder.id == id))
+                        .map(|folder| vec![folder.path])
+                })
+            })
+            .unwrap_or(roots);
+        match everything.search_paths(query.search.as_deref().unwrap_or_default(), &roots) {
+            Ok(paths) => {
+                let paths = self.cache_everything_paths(paths)?;
+                if self.database.is_browser() {
+                    query.local_only = false;
+                }
+                if let Ok(mut detail) = self.search_provider_detail.lock() {
+                    *detail = Some(format!(
+                        "Everything SDK 3 returned {} file candidates.",
+                        paths.len()
+                    ));
+                }
+                query.external_search_paths = Some(paths);
+                self.search_provider.store(2, Ordering::Release);
+            }
+            Err(error) => {
+                if let Ok(mut detail) = self.search_provider_detail.lock() {
+                    *detail = Some(error.to_string());
+                }
+                tracing::debug!(%error, "Everything unavailable; using PhoTag SQL search")
+            }
+        }
+        Ok(())
+    }
+
     /// Load compact rows for the whole result, plus the first 200 rich media rows.
     /// This keeps gallery layout memory small for libraries with many thousands of items.
     #[tracing::instrument(skip_all, err)]
@@ -340,6 +445,7 @@ impl GalleryService {
         browse: bool,
         window_offset: usize,
     ) -> Result<GallerySnapshot, GalleryError> {
+        self.prepare_everything_search(&mut query)?;
         let browser = if browse {
             self.browser_snapshot(&query, mode)?
         } else {
@@ -347,7 +453,7 @@ impl GalleryService {
         };
         if browser.active && self.database.is_browser() {
             query.folder_id = None;
-            query.local_only = browser.directory.is_some();
+            query.local_only = browser.directory.is_some() && query.external_search_paths.is_none();
             if self.live.recursive() {
                 query.directory_tree = browser.directory.clone();
                 query.direct_directory = None;
@@ -425,6 +531,11 @@ impl GalleryService {
         }
         let group_labels = data.group_labels;
         Ok(GallerySnapshot {
+            search_provider: if query.external_search_paths.is_some() {
+                "everything"
+            } else {
+                "sqlite-fallback"
+            },
             browser,
             folders: data.folders,
             skeletons: data.skeletons,
@@ -494,6 +605,7 @@ impl GalleryService {
         offset: usize,
     ) -> Result<GalleryWindow, GalleryError> {
         self.scope_cache_query(&mut query)?;
+        self.prepare_everything_search(&mut query)?;
         query.offset = Some(offset as i64);
         query.limit = Some(MEDIA_WINDOW_SIZE as i64);
         let (media, media_tags) = self.database.get_media_page_with_tags(&query)?;

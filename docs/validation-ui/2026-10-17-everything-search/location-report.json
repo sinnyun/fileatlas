@@ -1,0 +1,28 @@
+{
+  "method": "same-process PhoTag MCP",
+  "cases": [
+    "Current folder searches direct and nested files while excluding the sibling folder; Show subfolders is off",
+    "Entire computer finds all three real indexed files, including an unregistered sibling directory",
+    "Actual GPUI button click switches back to two local hits; quiet state does not refresh",
+    "Clearing search restores original directory browsing",
+    "Search location is persisted in isolated settings"
+  ],
+  "results": [
+    {
+      "search_entire_computer": false,
+      "matched_count": 2,
+      "search_provider": "everything",
+      "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-everything-location\\search-location\\selected"
+    },
+    {
+      "search_entire_computer": true,
+      "matched_count": 3,
+      "search_provider": "everything",
+      "path_prefix": "F:\\AI\\geren\\pho_cordis\\target\\mcp-everything-location\\search-location\\selected"
+    }
+  ],
+  "restart_restored": true,
+  "rust": "1.97.1 Windows MSVC",
+  "dpi": "150%",
+  "everything": "1.5.0.1423"
+}

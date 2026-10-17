@@ -14,7 +14,7 @@ fn temporary(name: &str) -> PathBuf {
 #[test]
 fn both_catalogs_format_every_message_and_preserve_arguments() {
     let service = I18nService::open(temporary("catalog/language.json")).unwrap();
-    let args: [(&str, String); 19] = [
+    let args: [(&str, String); 20] = [
         ("count", "9".into()),
         ("folders", "2".into()),
         ("files", "5".into()),
@@ -34,6 +34,7 @@ fn both_catalogs_format_every_message_and_preserve_arguments() {
         ("scanned", "120".into()),
         ("base", "01 original".into()),
         ("matched", "02 edited".into()),
+        ("version", "1.5.0.1423".into()),
     ];
     for key in service.keys.values() {
         let mut fluent_args = FluentArgs::new();

@@ -7,6 +7,7 @@ mod browser_store;
 mod browser_tests;
 mod database_api;
 mod db;
+mod search_cache;
 mod version_metadata;
 pub(crate) use db::get_open_count;
 pub use db::queries::{
@@ -628,6 +629,11 @@ mod tests {
             ..MediaQuery::default()
         };
         assert_eq!(ids_for(&query), vec![11, 12]);
+
+        query.external_search_paths = Some(vec![r"D:\Archive\trip.jpg".into()]);
+        assert_eq!(ids_for(&query), vec![11]);
+        query.external_search_paths = Some(Vec::new());
+        assert!(ids_for(&query).is_empty());
 
         query = MediaQuery {
             path_prefix: Some(r"D:\Archive".into()),

@@ -337,6 +337,7 @@ impl SettingsView {
                 "search.files" => s.search_scopes.filenames = !s.search_scopes.filenames,
                 "search.paths" => s.search_scopes.paths = !s.search_scopes.paths,
                 "search.tags" => s.search_scopes.tags = !s.search_scopes.tags,
+                "search.time" => s.search_scopes.time = !s.search_scopes.time,
                 _ => {}
             },
             cx,

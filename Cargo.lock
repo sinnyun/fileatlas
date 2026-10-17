@@ -6388,6 +6388,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-everything-search"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
 name = "photag-plugin-file-operations"
 version = "0.1.0"
 dependencies = [
@@ -6415,6 +6424,7 @@ dependencies = [
  "photag-plugin-ai",
  "photag-plugin-database",
  "photag-plugin-drag-drop",
+ "photag-plugin-everything-search",
  "photag-plugin-file-operations",
  "photag-plugin-grouping",
  "photag-plugin-history",
@@ -6713,6 +6723,7 @@ dependencies = [
  "photag-plugin-debug",
  "photag-plugin-dev-test",
  "photag-plugin-drag-drop",
+ "photag-plugin-everything-search",
  "photag-plugin-file-operations",
  "photag-plugin-gallery",
  "photag-plugin-grouping",

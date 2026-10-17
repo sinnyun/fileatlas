@@ -147,6 +147,7 @@ impl GalleryView {
             && let Ok(settings_snapshot) = settings.snapshot()
         {
             filter.search_scopes = settings_snapshot.search_scopes.into();
+            filter.search_entire_computer = settings_snapshot.search_entire_computer;
         }
         filter.search = saved.search_query.clone();
         filter.sort = saved.sort_order.unwrap_or(SortOrder::NewestFirst);
@@ -265,23 +266,21 @@ impl GalleryView {
             });
         service.set_show_descendants(saved.show_descendants);
         service.set_thumbnails_enabled(!saved.thumbnails_disabled);
-        let snapshot = service
-            .load_grouped(filter.to_query(), grouping_mode)
-            .map_err(|error| error.to_string());
+        // Initial search can prepare/load Everything. Keep startup responsive
+        // and run the first real query through the same ReadModel as reloads.
+        let snapshot = Ok(GallerySnapshot {
+            search_provider: "loading",
+            ..Default::default()
+        });
         let mut selection = GallerySelection::default();
-        if let Ok(snapshot) = &snapshot {
-            let mut restored_ids = std::collections::HashSet::new();
-            selection.selected_media_ids = saved
-                .selected_media_ids
-                .iter()
-                .copied()
-                .filter(|id| {
-                    restored_ids.insert(*id)
-                        && snapshot.skeletons.iter().any(|media| media.id == *id)
-                })
-                .collect();
-            selection.anchor_id = selection.selected_media_ids.first().copied();
-        }
+        let mut restored_ids = std::collections::HashSet::new();
+        selection.selected_media_ids = saved
+            .selected_media_ids
+            .iter()
+            .copied()
+            .filter(|id| restored_ids.insert(*id))
+            .collect();
+        selection.anchor_id = selection.selected_media_ids.first().copied();
         let scroll = ListState::new(0, ListAlignment::Top, px(240.));
         let restored_scroll = if saved.gallery_scroll.is_finite() {
             saved.gallery_scroll.max(0.)
@@ -293,7 +292,7 @@ impl GalleryView {
             .map(|tagging| writeback_failure_signature(tagging))
             .unwrap_or_default();
         let observed_navigation_revision = service.navigation_revision.load(Ordering::Acquire);
-        Self {
+        let mut view = Self {
             _ready_task: None,
             month_motion: std::collections::HashMap::new(),
             hovered_cards: HashSet::new(),
@@ -381,6 +380,7 @@ impl GalleryView {
             list_layout: saved.gallery_list_layout,
             show_selection_details: false,
             show_tag_picker: false,
+            search_scopes_open: false,
             inspector_tag_picker_open: false,
             media_actions_id: None,
             media_actions_item: None,
@@ -427,6 +427,9 @@ impl GalleryView {
             selection_details_read: Default::default(),
             selected_drag_paths_cache: None,
             selected_drag_read: Default::default(),
+            everything_installation: Default::default(),
+            everything_check_revision: 0,
+            observed_everything_revision: 0,
             observed_index_revision,
             last_saved_scroll: restored_scroll,
             previous_scan_progress: Default::default(),
@@ -434,7 +437,9 @@ impl GalleryView {
                 surfaces.value("gallery.popover"),
             ),
             _subscriptions,
-        }
+        };
+        view.reload_state(false);
+        view
     }
 
     pub(super) fn refresh_index(&mut self) {

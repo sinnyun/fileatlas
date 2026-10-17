@@ -14,6 +14,7 @@ const layers = [
     'photag-plugin-drag-drop',
     'photag-plugin-updater',
     'photag-plugin-file-operations',
+    'photag-plugin-everything-search',
     'photag-plugin-session',
     'photag-plugin-version-info',
   ],

@@ -120,6 +120,7 @@ impl super::PhoTagMcpServer {
             ..Default::default()
         };
         let result = self.gallery.load(query.clone()).and_then(|snapshot| {
+            let search_provider = snapshot.search_provider;
             let page = if offset == 0 {
                 snapshot.media.into_iter().take(limit).collect()
             } else {
@@ -127,7 +128,7 @@ impl super::PhoTagMcpServer {
                     .load_page(query, offset)
                     .map(|page| page.media.into_iter().take(limit).collect::<Vec<_>>())?
             };
-            Ok(json!({ "total": snapshot.media_count, "offset": offset, "items": page }))
+            Ok(json!({ "total": snapshot.media_count, "offset": offset, "items": page, "search_provider": search_provider }))
         });
         match result {
             Ok(value) => {

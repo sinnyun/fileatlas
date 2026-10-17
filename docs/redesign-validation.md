@@ -555,3 +555,54 @@ Watcher/HistoryChanged失效，新增只读MCP状态。实际00.png经同进程M
 Cargo最后复制失败，已使用成功链接的产物完成实测并另存
 `target/debug/photag-shell-version-status.exe`，未重启用户窗口。
 命令、截图、JSON、未覆盖范围见 validation-ui/2026-10-17-version-status/README.md。
+
+## 2026-10-17 Everything 搜索及安装提示
+
+按用户要求在已接受的 sidebar-pages-preview v2 主窗上局部增加顶栏搜索范围按钮、
+Everything 安装/兼容性提示和重新检查入口；设置软件页保留既有浮窗结构，
+只读检查 QuickLook/Everything 并提供官方与 GitHub 链接。标签、时间范围、评分
+仍由现有 SQLite 语义过滤；真实 Everything 候选可包含从未浏览或扫描的文件。
+
+Windows / 150% DPI / Rust 1.97.1 Windows MSVC / Everything 1.5.0.1423。
+`cargo +1.97.1 build --locked -p photag-shell -j 2`、
+`cargo +1.97.1 fmt --all -- --check`、
+`cargo +1.97.1 test --locked -p photag-plugin-everything-search -p photag-plugin-database -p photag-plugin-gallery -p photag-plugin-mcp -p photag-plugin-i18n -j 2`
+通过（40 项测试）。check-ui-refresh、check-architecture、check-feature-ledger、
+check-layering 和 diff --check 通过；保留 SDK 静态库 LNK4098 链接警告。
+
+同进程运行命令：
+`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-everything-final --plugins dev-test --allow-mutations --scenario scripts/validate-everything-search.cjs`。
+8 组场景通过：真实 SDK provider、未浏览中文特殊文件名、目录限制、分页、类型、
+无结果、顶栏搜索、范围弹层与时间开关、空闲不重复刷新及软件检查页。
+先前软件页复用链接按钮 ID 引发 GPUI a11y 崩溃，已按软件分配独立 ID，
+最终重建后完整场景通过。
+
+状态场景使用同一脚本入口，profile `target/mcp-everything-status`、
+scenario `scripts/validate-everything-status.cjs`；环境
+`PHOTAG_EVERYTHING_EXE=F:\AI\geren\pho_cordis\target\mcp-everything-status\portable\Everything.exe`、
+`PHOTAG_EVERYTHING_GOOD_FIXTURE=C:\Program Files\Everything\Everything.exe`。
+隔离测试文件按不存在→官方 1.4 EXE→本机 1.5 EXE 切换，只读取版本资源、不执行安装。
+三组状态、重新检查及静置检查通过。截图已逐一对照目标局部控件及既有布局，
+未出现裁切；安装 URL 已核对，未运行下载或安装。最终长时间冷索引自动恢复、
+网络盘/离线盘、超长路径、大规模上限仍未实测。
+
+截图、精简报告和更正前期服务/版本误诊见
+[Everything 验证记录](validation-ui/2026-10-17-everything-search/README.md)。
+
+### 搜索位置切换追加（2026-10-17）
+
+按用户方向对已接受顶栏作局部更新，不新建整体视觉概念。
+当前文件夹（含全部子文件夹）/整台电脑按钮并排位于搜索框、字段范围和
+Everything 状态之间。当前目录模式用 SDK 根路径与 SQL 递归目录保持一致；
+全机模式移除登记目录限制，使用 Everything 已有索引配置。清空搜索恢复原浏览。
+
+环境：Windows / 150% DPI / Everything 1.5.0.1423 / Rust 1.97.1 MSVC。
+`cargo +1.97.1 build --locked -p photag-shell -j 2`、
+`cargo +1.97.1 fmt --all -- --check`、四项治理脚本与 diff --check 通过。
+本次不新增/重跑单元测试。运行命令：
+`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-everything-location --plugins dev-test --allow-mutations --scenario scripts/validate-everything-location.cjs`。
+两个目录三个唯一命名真实文件实测：本地含子目录 2 项、全机含未登记相邻目录 3 项、
+GPUI 指针实际点击切回 2 项；静置 revision 不变；清空恢复原目录；设置保存与同进程
+MCP 重启读取均通过。已查看完整窗口截图，顶部新按钮无裁切，主窗结构保持。
+边界：全机只包含 Everything 已索引位置；当前未选择目录时，本地沿用收藏集合登记目录。
+截图与摘要：validation-ui/2026-10-17-everything-search/location-report.json 及同目录 README。

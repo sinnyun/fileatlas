@@ -54,6 +54,17 @@ impl PhoTagMcpServer {
                 "dialog_reads": dialog_reads,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             });
+            snapshot["search_scopes_open"] = json!(state.search_scopes_open);
+            snapshot["search_entire_computer"] = json!(state.filter.search_entire_computer);
+            snapshot["search_scopes"] = json!({
+                "filenames":state.filter.search_scopes.filenames,
+                "paths":state.filter.search_scopes.paths,
+                "tags":state.filter.search_scopes.tags,
+                "time":state.filter.search_scopes.time
+            });
+            snapshot["search_provider"] = json!(state.search_provider);
+            snapshot["everything"] = json!({"state":state.everything_state,"version":state.everything_version,
+                "path":state.everything_path,"index_loading":state.everything_loading});
             snapshot["version_states_loading"] = json!(state.version_states_loading);
             snapshot["version_states"] = json!(state.version_states.iter().map(|item| json!({"media_id":item.media_id,"path":item.path,"state":item.state,"error":item.error,"badge_visible":item.state.as_ref().is_some_and(|state| state.status == photag_plugin_versions::FileVersionStatus::Modified)})).collect::<Vec<_>>());
             snapshot
@@ -64,7 +75,7 @@ impl PhoTagMcpServer {
                 .as_ref()
                 .and_then(|state| state["inspector_context"].as_str())
                 == Some("file");
-        json!({
+        let mut state = json!({
             "browser": {"filesystem":self.gallery.browser_enabled(), "show_descendants":self.gallery.show_descendants(),"worker_active":self.gallery.directory_worker_active(),"status":self.gallery.directory_status()},
             "input_activity": self.capture.input_snapshot(),
             "window_status": crate::screenshot::window_status(self.capture.get()),
@@ -121,8 +132,10 @@ impl PhoTagMcpServer {
                 photag_plugin_metadata_export::MetadataExportStatus::Failed(error) => json!({"state":"failed","error":error}),
             }),
             "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
-        })
-        .to_string()
+        });
+        state["gallery_search_provider"] = json!(self.gallery.search_provider());
+        state["gallery_search_provider_detail"] = json!(self.gallery.search_provider_detail());
+        state.to_string()
     }
 
     #[tool(

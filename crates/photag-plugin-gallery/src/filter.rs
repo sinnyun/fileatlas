@@ -33,6 +33,7 @@ pub struct SearchScopes {
     pub filenames: bool,
     pub paths: bool,
     pub tags: bool,
+    pub time: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +41,7 @@ pub enum SearchScope {
     Filenames,
     Paths,
     Tags,
+    Time,
 }
 
 /// Parse a date edit; `None` means temporarily invalid, while `Some(None)` clears it.
@@ -59,6 +61,7 @@ impl Default for SearchScopes {
             filenames: true,
             paths: true,
             tags: true,
+            time: true,
         }
     }
 }
@@ -69,6 +72,7 @@ impl From<photag_plugin_settings::SearchScopes> for SearchScopes {
             filenames: scopes.filenames,
             paths: scopes.paths,
             tags: scopes.tags,
+            time: scopes.time,
         }
     }
 }
@@ -79,6 +83,7 @@ impl From<SearchScopes> for photag_plugin_settings::SearchScopes {
             filenames: scopes.filenames,
             paths: scopes.paths,
             tags: scopes.tags,
+            time: scopes.time,
         }
     }
 }
@@ -93,6 +98,7 @@ pub struct GalleryFilter {
     pub excluded_tag_ids: Vec<i64>,
     pub search: String,
     pub search_scopes: SearchScopes,
+    pub search_entire_computer: bool,
     pub media_type: MediaTypeFilter,
     pub extensions: Vec<String>,
     pub excluded_extensions: Vec<String>,
@@ -113,6 +119,7 @@ impl Default for GalleryFilter {
             excluded_tag_ids: Vec::new(),
             search: String::new(),
             search_scopes: SearchScopes::default(),
+            search_entire_computer: false,
             media_type: MediaTypeFilter::All,
             extensions: Vec::new(),
             excluded_extensions: Vec::new(),
@@ -131,6 +138,7 @@ impl GalleryFilter {
             SearchScope::Filenames => self.search_scopes.filenames = !self.search_scopes.filenames,
             SearchScope::Paths => self.search_scopes.paths = !self.search_scopes.paths,
             SearchScope::Tags => self.search_scopes.tags = !self.search_scopes.tags,
+            SearchScope::Time => self.search_scopes.time = !self.search_scopes.time,
         }
     }
 
@@ -179,7 +187,8 @@ impl GalleryFilter {
 
     /// Convert UI state into the exact query semantics used by PhoTag's source AppState.
     pub fn to_query(&self) -> MediaQuery {
-        let tags_tab = self.tab == GalleryTab::Tags;
+        let tags_tab = self.tab == GalleryTab::Tags
+            && (self.search.trim().is_empty() || self.search_entire_computer);
         MediaQuery {
             local_only: false,
             annotated_only: false,
@@ -198,6 +207,7 @@ impl GalleryFilter {
                 self.path_prefix.clone()
             },
             search: (!self.search.trim().is_empty()).then(|| self.search.clone()),
+            search_entire_computer: self.search_entire_computer,
             search_in_filenames: self.search_scopes.filenames,
             search_in_paths: self.search_scopes.paths,
             search_in_tags: self.search_scopes.tags,
@@ -205,11 +215,17 @@ impl GalleryFilter {
             extensions: non_empty(self.extensions.clone()),
             excluded_extensions: non_empty(self.excluded_extensions.clone()),
             date_from: self
-                .date_from
+                .search_scopes
+                .time
+                .then(|| self.date_from)
+                .flatten()
                 .and_then(|date| date.and_hms_opt(0, 0, 0))
                 .map(|datetime| datetime.and_utc().timestamp()),
             date_to: self
-                .date_to
+                .search_scopes
+                .time
+                .then(|| self.date_to)
+                .flatten()
                 .and_then(|date| date.and_hms_opt(23, 59, 59))
                 .map(|datetime| datetime.and_utc().timestamp()),
             rating_min: (self.rating_min > 0).then_some(self.rating_min),
@@ -219,6 +235,7 @@ impl GalleryFilter {
             limit: None,
             size_min: None,
             size_max: None,
+            external_search_paths: None,
         }
     }
 }
@@ -243,6 +260,7 @@ mod tests {
             filenames: true,
             paths: false,
             tags: true,
+            time: true,
         };
         filter.media_type = MediaTypeFilter::Videos;
         filter.extensions = vec!["mp4".into()];
@@ -349,7 +367,23 @@ mod tests {
         assert_eq!(filter.to_query().search_in_paths, false);
         filter.toggle_search_scope(SearchScope::Filenames);
         filter.toggle_search_scope(SearchScope::Tags);
+        filter.toggle_search_scope(SearchScope::Time);
         let query = filter.to_query();
         assert!(!query.search_in_filenames && !query.search_in_paths && !query.search_in_tags);
+        assert!(!filter.search_scopes.time);
+    }
+
+    #[test]
+    fn disabling_time_scope_omits_date_bounds_from_search_query() {
+        let mut filter = GalleryFilter::default();
+        filter.date_from = Some(NaiveDate::MIN);
+        filter.date_to = Some(NaiveDate::MAX);
+        assert!(filter.to_query().date_from.is_some());
+        assert!(filter.to_query().date_to.is_some());
+
+        filter.toggle_search_scope(SearchScope::Time);
+        let query = filter.to_query();
+        assert_eq!(query.date_from, None);
+        assert_eq!(query.date_to, None);
     }
 }

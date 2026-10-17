@@ -160,20 +160,24 @@ impl SettingsView {
                     let github_url = item.github_url;
                     let mut links = div().h_flex().items_center().gap_2();
                     links = links.child(link_button(
-                        "settings-software-project",
+                        format!("settings-software-{}-project", item.name),
                         "Project page",
                         project_url,
                         cx,
                     ));
                     links = links.child(link_button(
-                        "settings-software-download",
+                        format!("settings-software-{}-download", item.name),
                         "Official download",
                         download_url,
                         cx,
                     ));
                     if let Some(url) = github_url {
-                        links =
-                            links.child(link_button("settings-software-github", "GitHub", url, cx));
+                        links = links.child(link_button(
+                            format!("settings-software-{}-github", item.name),
+                            "GitHub",
+                            url,
+                            cx,
+                        ));
                     }
                     details = details.child(links);
                     if let Some(url) = github_url {
@@ -230,7 +234,7 @@ impl SettingsView {
 }
 
 fn link_button(
-    id: &'static str,
+    id: String,
     label: &'static str,
     url: &'static str,
     cx: &mut Context<SettingsView>,
@@ -258,7 +262,7 @@ fn check_software() -> Vec<SoftwareStatus> {
         ),
         software_status(
             "Everything",
-            "Planned file-search provider; this page only checks whether it is installed.",
+            "Requires Everything 1.5. PhoTag prepares its background client when searching filenames and paths.",
             "Everything.exe",
             &["Everything", "Everything_is1"],
             "https://www.voidtools.com/",

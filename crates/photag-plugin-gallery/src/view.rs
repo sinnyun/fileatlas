@@ -8,6 +8,7 @@ mod card_menu;
 mod card_motion;
 mod directory_browser;
 mod empty_state;
+mod everything;
 mod factory;
 mod file_actions;
 mod file_format;
@@ -158,6 +159,7 @@ struct GalleryView {
     selection_restore: photag_ui_bridge::read_model::ReadModel<(u64, Vec<String>), Vec<i64>>,
     show_selection_details: bool,
     show_tag_picker: bool,
+    search_scopes_open: bool,
     inspector_tag_picker_open: bool,
     media_actions_id: Option<i64>,
     media_actions_item: Option<(i64, photag_plugin_database::MediaItem)>,
@@ -206,6 +208,12 @@ struct GalleryView {
         photag_ui_bridge::read_model::ReadModel<i64, (i64, Option<card::FileMetadataSnapshot>)>,
     selected_drag_paths_cache: Option<(Vec<i64>, Vec<PathBuf>)>,
     selected_drag_read: photag_ui_bridge::read_model::ReadModel<Vec<i64>, Vec<PathBuf>>,
+    everything_installation: photag_ui_bridge::read_model::ReadModel<
+        u64,
+        photag_plugin_everything_search::EverythingInstallation,
+    >,
+    everything_check_revision: u64,
+    observed_everything_revision: u64,
     observed_index_revision: u64,
     last_saved_scroll: f32,
     previous_scan_progress: photag_ui_bridge::refresh::ChangeGate<Option<(usize, usize, String)>>,

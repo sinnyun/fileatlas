@@ -152,11 +152,10 @@ impl GalleryView {
 
     fn render_search(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         self.refresh_locale(window, cx);
-        let show_scopes = !self.filter.search.is_empty()
-            && self.search.read(cx).focus_handle(cx).is_focused(window);
-        let mut field = div()
-            .relative()
+        let search_field = div()
             .w_full()
+            .min_w(px(220.))
+            .max_w(px(280.))
             .h(px(32.))
             .rounded(px(theme::ROUND_MD))
             .bg(rgb(theme::SURFACE_FAINT))
@@ -170,28 +169,20 @@ impl GalleryView {
                     .w_full()
                     .text_size(px(13.5)),
             );
-        if show_scopes {
-            field = field.child(
-                div()
-                    .absolute()
-                    .left(px(8.))
-                    .top(px(38.))
-                    .min_w(px(150.))
-                    .v_flex()
-                    .gap(px(2.))
-                    .px(px(12.))
-                    .py(px(10.))
-                    .rounded(px(8.))
-                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                    .child(filter_row::search_scope_panel(self, cx)),
-            );
-        }
+        let search_bar = div()
+            .h_flex()
+            .items_center()
+            .gap(px(6.))
+            .child(search_field)
+            .child(self.render_search_location(cx))
+            .child(filter_row::search_scope_popover(self, cx))
+            .child(self.render_everything_status(cx));
         div()
             .h_flex()
             .flex_1()
             .min_w_0()
             .justify_center()
-            .child(div().w_full().min_w(px(220.)).max_w(px(280.)).child(field))
+            .child(search_bar)
             .into_any_element()
     }
 

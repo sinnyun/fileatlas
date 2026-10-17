@@ -27,7 +27,7 @@ impl DatabaseService {
         cache.execute_batch("PRAGMA foreign_keys=ON")?;
         // Files are independent of bookmarks. This private owner is never shown in navigation.
         cache.execute("INSERT OR IGNORE INTO folders(id,path) VALUES(0,'')", [])?;
-        cache.execute_batch("CREATE TABLE cache_scopes(path TEXT PRIMARY KEY,seen INTEGER NOT NULL); CREATE TABLE pinned_paths(full_path TEXT PRIMARY KEY); CREATE TABLE history_media_ids(id INTEGER PRIMARY KEY); CREATE TABLE live_paths(full_path TEXT PRIMARY KEY); CREATE TABLE file_versions(full_path TEXT PRIMARY KEY, version TEXT NOT NULL);")?;
+        cache.execute_batch("CREATE TABLE cache_scopes(path TEXT PRIMARY KEY,seen INTEGER NOT NULL); CREATE TABLE pinned_paths(full_path TEXT PRIMARY KEY); CREATE TABLE history_media_ids(id INTEGER PRIMARY KEY); CREATE TABLE live_paths(full_path TEXT PRIMARY KEY); CREATE TABLE file_versions(full_path TEXT PRIMARY KEY, version TEXT NOT NULL); CREATE TABLE search_paths(full_path TEXT PRIMARY KEY);")?;
         Ok(Self {
             write_revision: Default::default(),
             writer: Mutex::new(cache),
@@ -64,7 +64,7 @@ impl DatabaseService {
             conn.execute("DELETE FROM cache_scopes WHERE path NOT IN(SELECT path FROM cache_scopes ORDER BY seen DESC LIMIT 4)",[])?;
             conn.execute("DELETE FROM live_paths",[])?;
             loop {
-                conn.execute("DELETE FROM media WHERE COALESCE(rating,0)=0 AND NOT EXISTS(SELECT 1 FROM media_tags t WHERE t.media_id=media.id) AND id NOT IN(SELECT id FROM history_media_ids) AND full_path NOT IN(SELECT full_path FROM pinned_paths) AND NOT EXISTS(SELECT 1 FROM cache_scopes s WHERE substr(replace(media.full_path,char(92),'/'),1,length(s.path)+1)=s.path||'/')",[])?;
+                conn.execute("DELETE FROM media WHERE COALESCE(rating,0)=0 AND NOT EXISTS(SELECT 1 FROM media_tags t WHERE t.media_id=media.id) AND id NOT IN(SELECT id FROM history_media_ids) AND full_path NOT IN(SELECT full_path FROM pinned_paths) AND full_path NOT IN(SELECT full_path FROM search_paths) AND NOT EXISTS(SELECT 1 FROM cache_scopes s WHERE substr(replace(media.full_path,char(92),'/'),1,length(s.path)+1)=s.path||'/')",[])?;
                 let count:i64=conn.query_row("SELECT count(*) FROM media",[],|r|r.get(0))?;
                 let scopes:i64=conn.query_row("SELECT count(*) FROM cache_scopes",[],|r|r.get(0))?;
                 if count<=200_000 || scopes<=1 {break}

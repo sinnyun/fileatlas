@@ -33,7 +33,7 @@ Everything desktop application repository.
   `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-software-check-20261017 --allow-mutations --scenario scripts/validate-software-check.cjs`.
 - Result: page reached ready state and detected QuickLook 4.5.0 at
   `C:\Users\Administrator\AppData\Local\Programs\QuickLook\QuickLook.exe`
-  and Everything 1.4.1.1002 at `C:\Program Files\Everything\Everything.exe`.
+  and Everything 1.5.0.1423 at `C:\Program Files\Everything\Everything.exe`.
   Visible download/GitHub links were checked. The target applications were not
   launched, installed, or queried.
 - Screenshot: [settings-software-check.png](../../../target/mcp-software-check-20261017/screenshots/settings-software-check.png)

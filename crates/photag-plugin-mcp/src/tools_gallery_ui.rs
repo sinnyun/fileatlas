@@ -5,9 +5,9 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct GalleryControl {
-    /// popover/search/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll/preview.
+    /// popover/search/search_scope/search_scopes_open/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/scroll/preview.
     action: String,
-    /// Popover: type/tags/extensions/date/rating/sort/close. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
+    /// Popover: type/tags/extensions/date/rating/sort/close. Search scopes: filenames/paths/tags/time. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
     value: Option<String>,
     /// Bulk source: all/folder/tag/selection.
     bulk_source: Option<String>,
@@ -272,6 +272,16 @@ impl PhoTagMcpServer {
                 R::Preview(id)
             }
             "search" => R::Search(value.to_string()),
+            "search_scopes_open" => R::SearchScopesOpen(request.enabled.unwrap_or(true)),
+            "search_entire_computer" => R::SearchEntireComputer(request.enabled.unwrap_or(true)),
+            "everything_recheck" => R::EverythingRecheck,
+            "search_scope" => R::SearchScope(match value {
+                "filenames" => photag_plugin_gallery::SearchScope::Filenames,
+                "paths" => photag_plugin_gallery::SearchScope::Paths,
+                "tags" => photag_plugin_gallery::SearchScope::Tags,
+                "time" => photag_plugin_gallery::SearchScope::Time,
+                _ => return error_json("search_scope must be filenames, paths, tags, or time"),
+            }),
             "media_type" => R::MediaType(match value {
                 "all" => M::All,
                 "photos" => M::Photos,

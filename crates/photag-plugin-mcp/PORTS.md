@@ -1,5 +1,25 @@
 # MCP plugin ports / MCP 对接
 
+## Everything search diagnostics — 2026-10-17
+
+`get_ui_state.gallery.search_provider` reports `everything` only after a successful
+SDK IPC query; `sqlite-fallback` means Gallery used its original database search
+because the optional adapter/query was unavailable. `search_media` routes
+through GalleryService and exercises the same provider as the Gallery query.
+`search_media.search_provider` and `get_ui_state.gallery.search_provider` retain
+the provider of that specific result/snapshot. `gallery.everything` contains
+`state`, actual EXE `version`, `path`, and `index_loading`. Installation inspection
+is read-only; only a real filename/path search can prepare the background client.
+`control_gallery {action:"everything_recheck"}` refreshes the installation
+ReadModel and retries the current text search. The state transition scenario is
+`scripts/validate-everything-status.cjs`; it reads actual 1.4/1.5 EXE resources in
+an isolated portable-path override without installing or executing those fixtures.
+The isolated integration scenario is `scripts/validate-everything-search.cjs`.
+`control_gallery {action:"search_scopes_open",enabled}` opens/closes the live
+top-bar scope panel; `search_scope` accepts `filenames|paths|tags|time` and
+uses Gallery's persisted scope toggle. `get_ui_state.gallery.search_scopes`
+and `search_scopes_open` expose the rendered choices for same-process checks.
+
 ## Unsaved version status — 2026-10-17
 
 `get_file_version_state {media_id}` is read-only and returns the path plus
@@ -423,3 +443,9 @@ listed applications. `scripts/validate-software-check.cjs` exercises the page
 and snapshot with an isolated profile. Everything's app download is voidtools'
 website; its linked GitHub repository is the official ES command-line tool,
 not the Everything application.
+
+Search location (2026-10-17): mutation-guarded `control_gallery` action
+`search_entire_computer` accepts `enabled` (default true) and calls the same
+Gallery action as the top-bar toggle. `get_ui_state.gallery.search_entire_computer`
+reports the rendered selection. Scope semantics are verified against real SDK
+results and a same-process GPUI click; no OS input injection is used.

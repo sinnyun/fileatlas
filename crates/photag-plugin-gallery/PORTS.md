@@ -1,5 +1,26 @@
 # Gallery plugin ports / 图库数据对接
 
+## Everything filename/path search (2026-10-17)
+
+Gallery optionally reads `EverythingSearchService` (`photag/everything-search`)
+for filename/path text searches. The adapter scopes current-directory queries
+to that directory, collection searches to registered roots, and searches the
+whole Everything index when there are no roots. `GalleryService::prepare_everything_search`
+is called in snapshot and page reads, which already run off the GPUI render
+path. Candidate paths are a prefilter; SQLite reapplies the checked filename,
+path and tag scopes and retains library, type, extension, date, rating,
+grouping, ordering and pagination behavior. Browser mode materializes real SDK
+hits through `cache_search_files`; an unvisited nested file can therefore appear
+without recursive scanning. Search inventory is session-only. Normal/extended
+Windows paths reuse existing row identities and preserve annotations.
+Missing adapter, unavailable IPC, unsupported platform, or oversized results use
+SQLite fallback. Search can prepare an installed compatible background client.
+After index loading, one readiness revision causes the existing monitor to retry
+the current search; idle checks do not notify. The search bar uses a ReadModel
+for EXE installation/version reads, shows install/compatible-version prompts,
+opens only the official download page, and offers explicit rechecking. See `../photag-plugin-everything-search/PORTS.md` and
+`docs/validation-ui/2026-10-17-everything-search/README.md`.
+
 ## Original-file viewer replacement — 2026-10-16
 
 This section supersedes historical Preview/MediaPlayback references below.
@@ -373,3 +394,19 @@ are available in History and `GalleryUiSnapshot.version_states`; they are not
 classified as modified. Snapshot fields also expose `version_states_loading`.
 Real filesystem changes and `HistoryChanged` invalidate the cached state.
 Validation: `docs/validation-ui/2026-10-17-version-status/README.md`.
+
+## Search location switch — 2026-10-17
+
+`GalleryFilter.search_entire_computer` maps to `MediaQuery.search_entire_computer`.
+The top search button toggles current-folder/all-computer modes through
+`GalleryUiRequest::SearchEntireComputer(bool)`, saving
+`Settings.search_entire_computer` (serde default false). Active text search
+normalizes the folder/path to a recursive `directory_tree`, independently of
+the direct/recursive browsing setting. The all-computer mode clears folder,
+path and live-cache restrictions and passes no roots to Everything; results
+therefore follow Everything's configured indexed volumes, folders and exclusions.
+It does not edit Everything settings. Other PhoTag filters remain active.
+Without a selected folder the local mode retains registered collection roots;
+its tooltip explains this fallback. Clearing text restores ordinary browsing
+and the selected navigation location. Gallery changes do not replace Navigation
+selection or history. Same-process evidence: Everything search validation README.

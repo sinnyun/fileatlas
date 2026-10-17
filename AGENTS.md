@@ -10,13 +10,19 @@ optimization and feature development**, not continued wholesale UI redesign.
 Read `docs/development-baseline-2026-10-14.md` and
 `docs/functional-development-plan.md` before continuing. Preserve the accepted
 layout unless the user requests a change or a feature needs a targeted update.
+The product direction is a personal all-purpose workbench for the user's own
+use: preserve the photo library as a completed core capability while adding
+distinct, optional capabilities as compile-time Cordis feature plugins. Future
+plugins may serve unrelated needs and may integrate scripts, links, or suitable
+open-source libraries; do not assume a fixed product category or that every
+proposed idea will be built.
 
 **Automatic continuation:** when the user says “continue” without naming a
 section, advance the first incomplete F0–F3 item in the functional development
 plan. Start F0 with real folder/filter/selection/preview flows, then tagging,
-undo/redo, file operations and indexing feedback. New feature specifics follow
-the user's requirements; do not infer a plugin store or dynamic extension
-platform from “feature development”. Existing architecture limits remain.
+undo/redo, file operations and indexing feedback. Explicit new feature requests
+take priority and should be documented as feature plugins with clear purpose
+and behavior. Existing architecture limits remain.
 
 The C0–C4/V1–V4 ledger in
 `docs/development-handoff-2026-10-14.md` is historical UI-phase context. Its
@@ -51,6 +57,14 @@ written.
 - GPUI and GPUI Kit own native GUI rendering. Do not add egui to the new app.
 - `photag-shell` is only startup, runtime construction, and top-level app
   composition. Product behavior belongs to compile-time feature crates.
+- The personal workbench grows through independent compile-time feature
+  plugins. Most feature UIs should reuse the existing generic floating-panel
+  facility. Plugins implement only their own feature behavior and internal
+  layout, and reuse the host's existing data, persistence, settings, events,
+  commands, and UI infrastructure through public contracts wherever those
+  facilities apply. Do not create duplicate infrastructure or assume each
+  plugin needs its own data subsystem. Cordis owns plugin lifecycle and cleanup.
+  This does not imply dynamic DLL loading or an external plugin store.
 - Feature UI contributions (layout/dock/panel/slot/widget/command/menu/keymap)
   must have lifecycle ownership and be removed on plugin stop.
 - `photag-ui-bridge` is the shared UI registration contract, metadata catalog,
@@ -131,7 +145,7 @@ written.
 - Plugins communicate through public contracts; avoid cross-plugin private
   imports and duplicated framework facilities.
 - Keep source attribution/license notices when copying upstream code.
-- No dynamic DLL loading, plugin store, sandbox, or cloud sync.
+- No dynamic DLL loading, external plugin store, sandbox, or cloud sync.
 - Do not add TODOs, mocks, or empty handlers as substitutes for functionality.
 
 ## Local Rust toolchain selection

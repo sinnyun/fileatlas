@@ -61,6 +61,9 @@ impl Plugin for GalleryPlugin {
         service.indexing = context
             .try_service::<photag_plugin_indexing::IndexingService>()
             .ok();
+        service.everything = context
+            .try_service::<photag_plugin_everything_search::EverythingSearchService>()
+            .ok();
         service.watcher = context
             .try_service::<photag_plugin_watcher::WatcherService>()
             .ok();

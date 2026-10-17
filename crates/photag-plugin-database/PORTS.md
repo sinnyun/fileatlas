@@ -21,6 +21,12 @@ Status: implemented source-compatible SQLite service; broad query-by-query regre
 
 Keep closures short; move expensive scans/metadata work off the GPUI render thread. On a missing-service error, check startup ordering and Cordis plugin lifetime first; on a database error, record the operation and SQLite error without logging media contents.
 
+`MediaQuery::external_search_paths` optionally supplies candidate full paths
+from Everything. The database still applies active filename/path substring
+scopes and tag search, along with all PhoTag-owned filters. The field is a
+query optimization and does not alter the persistent SQLite schema. Gallery
+owns provider selection and fallback; database code never calls Everything.
+
 ## Generic file type (2026-10-14)
 
 `MediaItem.media_type` / `MediaQuery.media_type` support `file` alongside `image`, `video`, and `audio`. The existing SQLite text column and unfiltered queries already accommodate this value; no schema or persisted-file migration is needed. Decoder support does not determine row visibility. Image/video statistics remain media-specific; all-file totals include generic rows.
@@ -59,7 +65,17 @@ Public additions: `is_browser() -> bool`, `with_cache_writer<T>(FnOnce(&Connecti
 
 `MediaQuery::{local_only,direct_directory,directory_tree,annotated_only}` separate visible filesystem membership from annotation queries. `MediaItem::missing` is a presentation field, not persisted. `LibraryStats::total_files` includes all types. Inspect SQL errors in DatabaseAccessError/tracing; persistence tests cover restart, no untagged inventory, literal path prefix and history cache retention.
 
+## Everything search cache
+
+Everything search integration adds `cache_search_files(&[BrowserFile]) -> Result<Vec<String>, DatabaseAccessError>`.
+It materializes real SDK hits in the session database without changing live-directory membership.
+Normal/extended Windows path aliases reuse row IDs; same path/version sets are a no-op and do not
+advance the write revision. New search sets prune old derived hits while retaining directory scopes,
+ratings/tags and preview/history pins. `search_paths` is memory-only; durable annotation persistence
+does not save search inventories. Directory and search ingestion share `search_cache::cache_file`.
+
 ## Lore version metadata
+
 
 `versions`, `version_graph`, and `version_metadata_imports` are durable typed
 tables owned by this service. `VersionInfoService` delegates to typed methods;
@@ -67,3 +83,9 @@ feature crates must not open a second SQLite connection or use raw SQL
 callbacks. Browser-mode persistence includes these tables so version history
 survives process restarts. Legacy `version-info.sqlite3` is imported
 idempotently and preserved as a rollback copy.
+
+Search-location contract (2026-10-17): `MediaQuery.search_entire_computer: bool`
+is a Gallery orchestration flag (default false), not a SQLite schema field.
+Gallery normalizes active search directory constraints before invoking the DB;
+SQL continues to apply `directory_tree`, tag/date/rating and candidate predicates.
+No migration or persistent inventory changes are introduced by this flag.

@@ -417,6 +417,7 @@ impl SettingsView {
                     ("search.files", "Filenames", s.search_scopes.filenames),
                     ("search.paths", "Paths", s.search_scopes.paths),
                     ("search.tags", "Tags", s.search_scopes.tags),
+                    ("search.time", "Time range", s.search_scopes.time),
                 ] {
                     b = b.child(self.toggle_button(key, label, enabled, cx));
                 }

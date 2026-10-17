@@ -131,9 +131,14 @@ pub struct MediaQuery {
     /// controlled by the `search_in_*` flags below; if every flag is false
     /// the search clause is dropped entirely.
     pub search: Option<String>,
+    /// Gallery search domain; true removes folder restrictions for Everything.
+    pub search_entire_computer: bool,
     pub search_in_filenames: bool,
     pub search_in_paths: bool,
     pub search_in_tags: bool,
+    /// Candidate paths returned by Everything. SQLite still applies the
+    /// selected filename/path substring scopes and every PhoTag-owned filter.
+    pub external_search_paths: Option<Vec<String>>,
     /// "image" | "video" | "audio" | "file" — None means all.
     pub media_type: Option<String>,
     /// Lower-case extensions WITHOUT a leading dot (e.g. "jpg", "mp4"). Items
@@ -233,15 +238,40 @@ fn build_filters(
         if !trimmed.is_empty() && any_scope {
             let needle = format!("%{}%", trimmed.to_lowercase());
             let mut ors: Vec<String> = Vec::new();
-            if query.search_in_filenames {
-                let i = param_values.len() + 1;
-                ors.push(format!("LOWER(m.filename) LIKE ?{}", i));
-                param_values.push(Box::new(needle.clone()));
-            }
-            if query.search_in_paths {
-                let i = param_values.len() + 1;
-                ors.push(format!("LOWER(m.full_path) LIKE ?{}", i));
-                param_values.push(Box::new(needle.clone()));
+            if let Some(paths) = &query.external_search_paths {
+                if query.search_in_filenames || query.search_in_paths {
+                    let i = param_values.len() + 1;
+                    param_values.push(Box::new(
+                        serde_json::to_string(paths).unwrap_or_else(|_| "[]".into()),
+                    ));
+                    let candidate = format!(
+                        "m.full_path COLLATE NOCASE IN \
+                         (SELECT value COLLATE NOCASE FROM json_each(?{i}))"
+                    );
+                    let mut scoped = Vec::new();
+                    if query.search_in_filenames {
+                        let index = param_values.len() + 1;
+                        scoped.push(format!("LOWER(m.filename) LIKE ?{index}"));
+                        param_values.push(Box::new(needle.clone()));
+                    }
+                    if query.search_in_paths {
+                        let index = param_values.len() + 1;
+                        scoped.push(format!("LOWER(m.full_path) LIKE ?{index}"));
+                        param_values.push(Box::new(needle.clone()));
+                    }
+                    ors.push(format!("({candidate} AND ({}))", scoped.join(" OR ")));
+                }
+            } else {
+                if query.search_in_filenames {
+                    let i = param_values.len() + 1;
+                    ors.push(format!("LOWER(m.filename) LIKE ?{}", i));
+                    param_values.push(Box::new(needle.clone()));
+                }
+                if query.search_in_paths {
+                    let i = param_values.len() + 1;
+                    ors.push(format!("LOWER(m.full_path) LIKE ?{}", i));
+                    param_values.push(Box::new(needle.clone()));
+                }
             }
             if query.search_in_tags {
                 // EXISTS subquery: match if ANY tag assigned to this media

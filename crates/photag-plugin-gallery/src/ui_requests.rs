@@ -29,6 +29,10 @@ pub enum GalleryUiRequest {
     Deselect,
     Hover(Option<i64>),
     Search(String),
+    SearchScopesOpen(bool),
+    EverythingRecheck,
+    SearchScope(filter::SearchScope),
+    SearchEntireComputer(bool),
     MediaType(filter::MediaTypeFilter),
     Sort(photag_plugin_database::SortOrder),
     RatingRange(i32, i32),
@@ -51,6 +55,11 @@ pub enum GalleryUiRequest {
 /// Snapshot published by the rendered Gallery entity, not a separate query.
 #[derive(Clone)]
 pub struct GalleryUiSnapshot {
+    pub search_provider: &'static str,
+    pub everything_state: &'static str,
+    pub everything_version: Option<String>,
+    pub everything_path: Option<String>,
+    pub everything_loading: bool,
     pub version_states: Vec<GalleryVersionState>,
     pub version_states_loading: bool,
     pub snapshot_revision: u64,
@@ -58,6 +67,7 @@ pub struct GalleryUiSnapshot {
     pub records_count: Option<usize>,
     pub record_candidates: Vec<(i64, String)>,
     pub filter: filter::GalleryFilter,
+    pub search_scopes_open: bool,
     pub browsing: bool,
     pub directories: Vec<crate::GalleryDirectory>,
     pub current_directory: Option<String>,

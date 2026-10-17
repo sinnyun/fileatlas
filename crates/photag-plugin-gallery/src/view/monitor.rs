@@ -13,6 +13,19 @@ pub(super) fn spawn(view: &mut GalleryView, cx: &mut Context<GalleryView>) {
 
 fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     let mut repaint = false;
+    repaint |= view.poll_everything_installation();
+    let search_revision = view
+        .service
+        .everything
+        .as_ref()
+        .map_or(0, |service| service.revision());
+    if search_revision != view.observed_everything_revision {
+        view.observed_everything_revision = search_revision;
+        if !view.filter.search.trim().is_empty() {
+            view.reload();
+            repaint = true;
+        }
+    }
     let navigation_revision = view.service.navigation_revision.load(Ordering::Acquire);
     if navigation_revision != view.observed_navigation_revision {
         view.observed_navigation_revision = navigation_revision;

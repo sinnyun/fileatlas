@@ -12,6 +12,7 @@ use gpui_kit::component::popover::Popover;
 use gpui_kit::component::radio::Radio;
 
 use super::*;
+use crate::filter::SearchScopes;
 use gpui_kit::prelude::FluentBuilder as _;
 
 mod helpers;
@@ -40,9 +41,32 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> A
     row.into_any_element()
 }
 
-/// Checkbox list panel body under the search field (mockup 05-1).
-pub(super) fn search_scope_panel(view: &GalleryView, cx: &mut Context<GalleryView>) -> Div {
+/// Scoped-search control in the top bar, using the managed popover layer so
+/// the panel is not clipped by the command-row layout.
+pub(super) fn search_scope_popover(view: &GalleryView, cx: &mut Context<GalleryView>) -> Popover {
     let scopes = view.filter.search_scopes;
+    let weak = cx.entity().downgrade();
+    let open_weak = weak.clone();
+    Popover::new("gallery-search-scopes-popover")
+        .anchor(gpui_kit::Anchor::TopRight)
+        .open(view.search_scopes_open)
+        .on_open_change(move |open, _, cx| {
+            let _ = open_weak.update(cx, |this, cx| {
+                this.search_scopes_open = *open;
+                cx.notify();
+            });
+        })
+        .trigger(
+            Button::new("gallery-search-scopes")
+                .ghost()
+                .compact()
+                .label(photag_ui_bridge::i18n::tr("Scope"))
+                .toggled(view.search_scopes_open),
+        )
+        .content(move |_, _, _| search_scope_popover_panel(scopes, weak.clone()))
+}
+
+fn search_scope_popover_panel(scopes: SearchScopes, weak: WeakEntity<GalleryView>) -> Div {
     let mut panel = div()
         .v_flex()
         .w(px(260.))
@@ -69,6 +93,13 @@ pub(super) fn search_scope_panel(view: &GalleryView, cx: &mut Context<GalleryVie
             "Tags",
             "Match file tags",
             scopes.tags,
+        ),
+        (
+            "search-scope-time",
+            SearchScope::Time,
+            "Time range",
+            "Apply the selected date range",
+            scopes.time,
         ),
     ] {
         panel = panel.child(
@@ -99,7 +130,12 @@ pub(super) fn search_scope_panel(view: &GalleryView, cx: &mut Context<GalleryVie
                                 .child(photag_ui_bridge::i18n::tr(subtitle)),
                         ),
                 )
-                .on_click(cx.listener(move |this, _, _, cx| this.toggle_search_scope(scope, cx))),
+                .on_click({
+                    let weak = weak.clone();
+                    move |_, _, cx| {
+                        let _ = weak.update(cx, |this, cx| this.toggle_search_scope(scope, cx));
+                    }
+                }),
         );
     }
     panel

@@ -152,6 +152,9 @@ pub struct SearchScopes {
     pub paths: bool,
     #[serde(default = "default_true")]
     pub tags: bool,
+    /// Apply the currently selected date range when searching.
+    #[serde(default = "default_true")]
+    pub time: bool,
 }
 
 impl Default for SearchScopes {
@@ -160,6 +163,7 @@ impl Default for SearchScopes {
             filenames: true,
             paths: true,
             tags: true,
+            time: true,
         }
     }
 }
@@ -190,6 +194,9 @@ pub struct Settings {
     /// last-selected scope set survives restarts.
     #[serde(default = "default_search_scopes")]
     pub search_scopes: SearchScopes,
+    /// Search all Everything-indexed locations instead of the selected folder tree.
+    #[serde(default)]
+    pub search_entire_computer: bool,
     /// How the Tags-tab search box matches names against the query.
     #[serde(default = "default_tag_search_match")]
     pub tag_search_match: TagSearchMatch,
@@ -281,6 +288,7 @@ impl Default for Settings {
             region_separation: default_region_separation(),
             show_date_dividers: default_show_date_dividers(),
             search_scopes: SearchScopes::default(),
+            search_entire_computer: false,
             tag_search_match: default_tag_search_match(),
             tag_search_persist: default_tag_search_persist(),
             tag_merge_children: default_tag_merge_children(),

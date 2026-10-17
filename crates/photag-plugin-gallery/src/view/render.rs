@@ -152,6 +152,16 @@ impl Render for GalleryView {
                     self.filter.search = query;
                     self.reload();
                 }
+                crate::GalleryUiRequest::SearchScopesOpen(open) => {
+                    self.search_scopes_open = open;
+                }
+                crate::GalleryUiRequest::EverythingRecheck => self.recheck_everything(cx),
+                crate::GalleryUiRequest::SearchEntireComputer(enabled) => {
+                    self.set_search_entire_computer(enabled, cx)
+                }
+                crate::GalleryUiRequest::SearchScope(scope) => {
+                    self.toggle_search_scope(scope, cx);
+                }
                 crate::GalleryUiRequest::MediaType(value) => self.set_media_type(value, cx),
                 crate::GalleryUiRequest::Sort(value) => self.set_sort(value, cx),
                 crate::GalleryUiRequest::RatingRange(min, max) => {
@@ -235,6 +245,21 @@ impl Render for GalleryView {
                 .map(|(id, path)| (*id, path.clone()))
                 .collect(),
             browsing: self.snapshot.as_ref().is_ok_and(|s| s.browser.active),
+            search_provider: self.snapshot.as_ref().map_or("idle", |s| s.search_provider),
+            everything_state: self
+                .everything_status()
+                .map_or("checking", |status| status.state),
+            everything_version: self
+                .everything_status()
+                .and_then(|status| status.version.clone()),
+            everything_path: self
+                .everything_status()
+                .and_then(|status| status.path.as_ref().map(|path| path.display().to_string())),
+            everything_loading: self
+                .service
+                .everything
+                .as_ref()
+                .is_some_and(|service| service.index_loading()),
             directories: self
                 .snapshot
                 .as_ref()
@@ -257,6 +282,7 @@ impl Render for GalleryView {
                 .and_then(|s| s.browser.error.clone()),
             selected_directory: self.selected_directory.clone(),
             filter: self.filter.clone(),
+            search_scopes_open: self.search_scopes_open,
             selected_media_ids: self.selection.selected_media_ids.clone(),
             matched_count: self
                 .snapshot
@@ -390,6 +416,16 @@ impl Render for GalleryView {
         match &self.snapshot {
             Ok(snapshot) => {
                 if snapshot.skeletons.is_empty() && snapshot.browser.directories.is_empty() {
+                    if self.snapshot_read.is_pending() {
+                        return div()
+                            .size_full()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr("Loading…"))
+                            .into_any_element();
+                    }
                     if snapshot.browser.active {
                         return directory_browser::empty(
                             self,

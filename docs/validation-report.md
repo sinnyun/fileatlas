@@ -1,5 +1,20 @@
 # Validation report
 
+## 2026-10-17 Everything search adapter
+
+Added the official Everything SDK 3 IPC adapter as an optional Cordis provider.
+Gallery snapshot and page queries use indexed-file candidates for registered
+PhoTag roots; database substring scopes and other PhoTag filters remain in
+SQLite. MCP `search_media` already routes through GalleryService, so it shares
+the provider and fallback behavior. Search can prepare an already installed
+background client. Software checking and installation links remain read-only.
+The earlier Session 0 version diagnosis was incorrect: PID 38460 was the
+Everything.exe -svc indexing service, not an SDK search client. Starting the
+existing 1.5.0.1423 search client made real SDK search work. Browser mode now
+materializes actual hits in session-only rows without recursive scanning or
+persisting unannotated file inventories. Search/version prompts, exact commands and
+remaining runtime boundaries are in `validation-ui/2026-10-17-everything-search/README.md`.
+
 ## 2026-10-16 user-directed QuickLook viewer replacement
 
 Original-file viewing now calls the user's installed QuickLook through a

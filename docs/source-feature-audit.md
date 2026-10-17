@@ -444,6 +444,14 @@ validation-ui/2026-10-16-navigation-latency/README.md。
 
 官方资料、参考项目缺少的预处理及回归证据见 validation-ui/2026-10-17-lore-version-history/official-api-rewind-save.md。
 
+## 2026-10-17 Everything 搜索映射
+
+源项目 `src/db/queries.rs::MediaQuery/build_filters` 将搜索定义为大小写不敏感的文件名、路径和标签子串 OR，图库 `src/app.rs::load_media` 通过同一查询构造器执行筛选、排序和窗口加载。本项目沿用这些PhoTag可见语义：Everything SDK IPC仅提供注册目录内的候选文件路径，数据库再次执行启用的文件名/路径子串和标签条件；媒体类型、扩展名、日期、评分、目录、分组、排序与分页仍由原SQLite查询完成。适配器不可用时走原SQL查询，不改变数据库schema。实现和验证边界见 `validation-ui/2026-10-17-everything-search/README.md`。
+
+顶部搜索范围控件提供文件名、路径、标签和时间范围开关；新增时间项启用或忽略现有日期起止条件，不改写日期筛选语义，默认启用以兼容旧设置。设置通过已有 `SearchScopes` JSON 字段持久化，旧配置缺失 `time` 时按启用处理。
+
+后续修正：SDK 3用转义正则保留原SQL LIKE子串语义，避免把`!`等合法文件名字符解释为搜索操作符。真实SDK命中通过数据库公开`cache_search_files`进入临时会话，不要求文件预先浏览/扫描；共用原浏览缓存upsert顺序，保留行ID/标签/评分，未注释清单不持久化。搜索可准备已安装后台客户端；被动安装/版本读取使用ReadModel，搜索栏在缺少或版本不兼容时提供安装链接。数据库兼容测试、真实IPC/中文路径/分页和提示状态截图见本轮实现记录。
+
 ## 2026-10-17 画廊未保存版本提示映射
 
 用户新增提示能力，延续参考项目 VersionInfo 的稳定版本ID/当前标记协议；
@@ -454,3 +462,15 @@ validation-ui/2026-10-16-navigation-latency/README.md。
 原Watcher的800ms防抖及HistoryChanged失效，在可见窗口后台读取。
 只对不存在于任何已存版本的内容显示琥珀点，点击打开History手动保存。
 验证与边界见 validation-ui/2026-10-17-version-status/README.md。
+
+### Search location mapping — 2026-10-17
+
+| Source / requirement | Current mapping | Compatibility |
+|---|---|---|
+| vendor/photag-source/src/app.rs search_query and selected_path/selected_folder_id; src/db/queries.rs MediaQuery folder/path and filename/path/tag predicates | GalleryFilter carries explicit search_entire_computer; search.rs scope_text_search normalizes the current directory to a recursive directory_tree, or removes directory restrictions for all-computer SDK queries | New user-requested switch; no source UI equivalent. Existing field/date/tag filtering remains; empty search preserves original direct/recursive browser semantics. No database migration. |
+
+Everything receives the selected directory as its query root in local mode;
+global mode supplies no roots and follows its configured index. It does not
+reconfigure indexed drives or exclusion rules. Real same-process 2→3→2 hits,
+button click, quiet state and settings restart evidence are recorded in
+validation-ui/2026-10-17-everything-search/README.md.

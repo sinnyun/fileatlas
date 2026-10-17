@@ -20,6 +20,7 @@ photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
+photag-plugin-everything-search = { path = "../photag-plugin-everything-search" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }

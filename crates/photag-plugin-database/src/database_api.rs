@@ -437,18 +437,17 @@ impl DatabaseService {
         self.with_cache_writer(|connection| {
             let mut unknown_removal = false;
             for path in removed_paths {
-                let known: bool = connection.query_row("SELECT EXISTS(SELECT 1 FROM media WHERE full_path=?1)", [path], |row| row.get(0))?;
+                let known: bool = connection.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM media WHERE full_path=?1)",
+                    [path],
+                    |row| row.get(0),
+                )?;
                 unknown_removal |= !known;
                 connection.execute("DELETE FROM live_paths WHERE full_path=?1", [path])?;
             }
             for file in added_files {
-                let previous: Option<String> = connection.query_row("SELECT version FROM file_versions WHERE full_path=?1", [&file.path], |row| row.get(0)).ok();
-                if previous.as_ref() != Some(&file.version) {
-                    connection.execute("UPDATE media SET thumb_path=NULL,micro_thumb=NULL,width=NULL,height=NULL WHERE full_path=?1", [&file.path])?;
-                }
-                queries::scan_upsert_media(connection, 0, &file.filename, &file.path, &file.media_type, file.file_size, file.modified_at, None)?;
+                crate::search_cache::cache_file(connection, file)?;
                 connection.execute("INSERT OR IGNORE INTO live_paths VALUES(?1)", [&file.path])?;
-                connection.execute("INSERT OR REPLACE INTO file_versions VALUES(?1,?2)", rusqlite::params![file.path,file.version])?;
             }
             Ok(unknown_removal)
         })
@@ -456,7 +455,7 @@ impl DatabaseService {
 
     pub fn folder_paths(&self) -> Result<Vec<String>, DatabaseAccessError> {
         self.with_reader(|connection| {
-            let mut statement = connection.prepare("SELECT path FROM folders")?;
+            let mut statement = connection.prepare("SELECT path FROM folders WHERE path<>''")?;
             statement
                 .query_map([], |row| row.get::<_, String>(0))?
                 .collect()

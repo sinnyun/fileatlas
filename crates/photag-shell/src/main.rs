@@ -403,6 +403,18 @@ fn main() {
     let settings_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
         .expect("start settings plugin");
+    // Publish the optional local Everything IPC adapter before Gallery starts.
+    // The adapter never launches the external Everything application.
+    let everything_fiber = if enable_gallery {
+        let plugin = photag_plugin_everything_search::EverythingSearchPlugin;
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ())))
+                .expect("start Everything search adapter"),
+        )
+    } else {
+        None
+    };
     // Start AI after Settings so future consumers can read the user's
     // mandatory tag groups before requesting suggestions.
     let ai_fiber = if enable_ai {
@@ -723,6 +735,11 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = everything_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop Everything search adapter");
     }
     if let Some(fiber) = versions_fiber {
         runtime
