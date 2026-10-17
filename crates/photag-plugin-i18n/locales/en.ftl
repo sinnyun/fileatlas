@@ -944,3 +944,9 @@ msg-debug-copy-failed = Could not copy logs.
 msg-debug-export-saved = Saved logs to { $path }
 msg-debug-export-cancelled = Export cancelled.
 msg-debug-export-invalid-extension = Choose a .txt file for the log export.
+msg-version-unsaved = Content changed, not yet saved as a version. Base: { $base }. Open History to save a version manually.
+msg-version-saved = File content matches the saved version: { $base }.
+msg-version-matched = Content already matches { $matched }; selected version: { $base }. No new version is needed.
+msg-version-check-failed = Version status could not be checked.
+
+msg-version-baseline = Version baseline

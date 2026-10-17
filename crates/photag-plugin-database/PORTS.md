@@ -12,9 +12,9 @@ Status: implemented source-compatible SQLite service; broad query-by-query regre
 
 ## Input / output
 
-- Read: `with_reader(|&Connection| -> rusqlite::Result<T>)`; use only for short read operations.
-- Write: `with_writer(|&Connection| -> rusqlite::Result<T>)`; serialized through the writer mutex.
-- Query/domain API: `DatabaseService::db::queries` retains PhoTag query functions and source schema. A callback returns `T`, wrapped in `Result<T, DatabaseAccessError>`; SQLite and poisoned-lock failures are surfaced.
+- Preferred interface: typed `DatabaseService` operations for folders, media, Gallery snapshots/pages, tag and rating mutations, scan batches, watcher reconciliation, browser cache updates, metadata export, and statistics. Composite reads/writes keep their SQL and lock/transaction scope inside the database crate.
+- Compatibility/debug interface: `with_reader` and `with_writer` still exist for database-owned operations and focused tests. Production feature crates must not pass arbitrary SQL callbacks; `scripts/check-layering.cjs` rejects their use outside the database crate (inline unit-test modules are excluded).
+- Query facade: `photag_plugin_database::queries` remains public for source-compatible query/domain types and database crate internals. New production behavior should call typed service methods rather than execute query functions from a consumer crate. The SQLite connection and `db` implementation module are private. Typed methods return `Result<T, DatabaseAccessError>`; SQLite and poisoned-lock failures are surfaced.
 - Persistent contract: existing `photag.db`, tables, columns, migrations, WAL settings, and separate read connection. Do not change schema or row semantics without a legacy fixture and reopen test.
 
 ## Consumer rules / debugging
@@ -29,7 +29,7 @@ Keep closures short; move expensive scans/metadata work off the GPUI render thre
 
 ## Compact grouping inputs (2026-10-14)
 
-`db::queries::get_media_grouping_fields(&Connection, &MediaQuery) -> rusqlite::Result<Vec<MediaGroupingFields>>` returns filtered distinct id/full_path/modified_at/root_path using the existing filter builder and registered folders. Call through DatabaseService. It ignores paging like skeletons; no created-at column or schema migration is added. Grouping owns filesystem creation-time reads. Gallery fetches viewport rich rows by arranged IDs; SQL query/SortOrder meanings remain unchanged.
+`queries::get_media_grouping_fields(&Connection, &MediaQuery) -> rusqlite::Result<Vec<MediaGroupingFields>>` returns filtered distinct id/full_path/modified_at/root_path using the existing filter builder and registered folders. Call through DatabaseService. It ignores paging like skeletons; no created-at column or schema migration is added. Grouping owns filesystem creation-time reads. Gallery fetches viewport rich rows by arranged IDs; SQL query/SortOrder meanings remain unchanged.
 
 ## Immediate-directory query (2026-10-14)
 

@@ -22,6 +22,10 @@ use gpui_kit::component::button::ButtonVariants;
 use helpers::*;
 
 impl GalleryView {
+    pub(super) fn current_inspector_media(&self) -> Option<photag_plugin_database::MediaItem> {
+        self.inspector_media()
+    }
+
     pub(super) fn inspector_context_key(&self) -> &'static str {
         self.inspector_context().key()
     }
@@ -237,7 +241,7 @@ impl GalleryView {
     fn tag_capsules(
         &self,
         media_id: i64,
-        tags: &[photag_plugin_database::db::queries::Tag],
+        tags: &[photag_plugin_database::Tag],
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let mut capsules = div()

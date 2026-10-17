@@ -22,6 +22,7 @@ fn dev_plugin_config() -> String {
         "watcher",
         "tagging",
         "history",
+        "versions",
         "quicklook",
         "drag-drop",
         "mcp",
@@ -81,7 +82,7 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
         ContributionKind::Panel { slot, .. } => ("Panel", slot.clone()),
         ContributionKind::Slot { label, .. } => ("Slot", label.clone()),
         ContributionKind::Widget { slot, .. } => ("Widget", slot.clone()),
-        ContributionKind::Command { label } => ("Command", label.clone()),
+        ContributionKind::Command { label, .. } => ("Command", label.clone()),
         ContributionKind::MenuItem { menu, .. } => ("Menu", menu.clone()),
         ContributionKind::Keybinding { key, .. } => ("Keybinding", key.clone()),
     };
@@ -140,7 +141,9 @@ fn main() {
         || enable_mcp
         || enable_history
         || enable_dev_test
-        || dev_plugin_enabled(&plugin_config, "gallery");
+        || dev_plugin_enabled(&plugin_config, "gallery")
+        || dev_plugin_enabled(&plugin_config, "versions");
+    let enable_versions = enable_gallery || dev_plugin_enabled(&plugin_config, "versions");
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
     let enable_navigation = enable_all
@@ -156,6 +159,7 @@ fn main() {
         || dev_plugin_enabled(&plugin_config, "file-operations");
     let enable_thumbnails = enable_all
         || enable_mcp
+        || enable_versions
         || enable_navigation
         || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "thumbnails")
@@ -302,6 +306,48 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start thumbnail plugin"),
+        )
+    } else {
+        None
+    };
+    let version_info_fiber = if enable_versions {
+        let database = cordis
+            .try_service::<photag_plugin_database::DatabaseService>()
+            .expect("database service is required for version metadata location");
+        let path = database
+            .path()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join("version-info.sqlite3");
+        let plugin = photag_plugin_version_info::VersionInfoPlugin;
+        let input = plugin
+            .prepare(photag_plugin_version_info::VersionInfoConfig { path })
+            .expect("prepare version-info plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start version-info plugin"),
+        )
+    } else {
+        None
+    };
+    let versions_fiber = if enable_versions {
+        let database = cordis
+            .try_service::<photag_plugin_database::DatabaseService>()
+            .expect("database service is required for version storage location");
+        let root = database
+            .path()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."))
+            .join("versions");
+        let plugin = photag_plugin_versions::VersionsPlugin;
+        let input = plugin
+            .prepare(photag_plugin_versions::VersionsConfig { root })
+            .expect("prepare Lore versions plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start Lore versions plugin"),
         )
     } else {
         None
@@ -677,6 +723,16 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop gallery plugin");
+    }
+    if let Some(fiber) = versions_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop Lore versions plugin");
+    }
+    if let Some(fiber) = version_info_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop version-info plugin");
     }
     if let Some(fiber) = grouping_fiber {
         runtime

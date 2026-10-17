@@ -30,6 +30,8 @@ photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 photag-plugin-quicklook = { path = "../photag-plugin-quicklook" }
 photag-plugin-ai = { path = "../photag-plugin-ai" }
 photag-plugin-history = { path = "../photag-plugin-history" }
+photag-plugin-version-info = { path = "../photag-plugin-version-info" }
+photag-plugin-versions = { path = "../photag-plugin-versions" }
 photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-mcp = { path = "../photag-plugin-mcp" }
 photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }

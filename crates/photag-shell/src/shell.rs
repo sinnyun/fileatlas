@@ -97,7 +97,7 @@ impl Render for PhoTagShell {
         let mut tool_commands = Vec::new();
         let mut settings_available = false;
         for button in contributions.iter().filter_map(|owned| {
-            let ContributionKind::Command { label } = &owned.contribution.kind else {
+            let ContributionKind::Command { label, .. } = &owned.contribution.kind else {
                 return None;
             };
             if owned.contribution.id == "settings/toggle" {

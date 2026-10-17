@@ -2,7 +2,7 @@
 //! Month behavior follows PhoTag commit 36cee242a78c0a8cd9ac6b0d63b64265aa0add90.
 //! Upstream license: `vendor/photag-source/LICENSE`.
 use cordis::{Context, Plugin, Service};
-use photag_plugin_database::db::queries::{MediaGroupingFields, MediaSkeleton, SortOrder};
+use photag_plugin_database::{MediaGroupingFields, MediaSkeleton, SortOrder};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, ops::Range, sync::Arc};
 

@@ -154,6 +154,7 @@ so this is a behavior mapping, not a requirement for one-to-one function names.
 | `src/ui/sidebar.rs`, `src/db/queries.rs`: folder/tag trees, lazy children, edits, associations, merge | Navigation and Database services; Tagging commands | Corresponding folder/tag operations and UI flows exist, including lazy loading and tag placement/association controls. Native picker, drag and confirmation behavior still needs Windows validation. |
 | `src/ui/preview.rs`, `src/ui/info.rs`, `src/thumbs.rs`, `src/video.rs`: preview, metadata, image transforms, filmstrip, playback | Preview, Thumbnails, Media Playback, File Operations and Tagging services | Corresponding source feature areas are present. Live Windows validation corrected the preview to a full-window modal overlay and centered generated PNG rendering. Remaining controls, DPI sizes, Windows devices, codecs and metadata corpus still need validation. |
 | `src/scan.rs`, `src/watcher.rs`, `src/app.rs`: indexing, progress/cancel, reconciliation | Indexing, Thumbnails, Watcher and Database services | Corresponding scan, backfill, notification and reconciliation paths exist; native event delivery and filesystem races remain unverified. |
+| `src/db/queries.rs`: folder/media/tag CRUD, scanner batches, watcher reconciliation and grouped Gallery reads | Typed `DatabaseService` methods in `photag-plugin-database` | Production feature crates use named service methods; multi-query operations retain their single reader/writer lock or transaction scope in Database. Raw callback compatibility methods remain available, while `check-layering.cjs` prevents production consumers from using them. SQL semantics and the SQLite schema are unchanged by this boundary migration. |
 | `src/ai.rs`, `src/xmp.rs`: inference, suggestions, model download, metadata writeback | AI and Tagging services plus Preview suggestion view | Corresponding analysis, assignment, history and writeback paths exist. One explicit semantic difference remains: source auto-analysis leaves failed image IDs eligible for retry, while migrated `AiSuggestionsView::poll` marks failed/disconnected inference as analyzed to prevent automatic retry loops. Manual Analyze remains available. |
 | `src/settings.rs`, `src/session.rs`, `src/theme.rs`, `src/update.rs`, `src/drag.rs`, `src/winfx.rs` | Settings, Session, UI Bridge, Updater, Drag/Drop and Shell | Corresponding persistence, theme, updater and OLE feature areas have code counterparts. OS-specific effects remain unverified on Windows. |
 
@@ -423,3 +424,33 @@ validation-ui/2026-10-16-navigation-latency/README.md。
 ## 2026-10-16 标签内嵌统一确认映射
 
 本轮只组合既有公开命令，不改SQL/schema或新增Tag服务。追踪 `vendor/photag-source/src/app.rs` 的 `PendingAction::UpdateTagAppearance`：名称、appearance、display统一确认；display向所有后代传播，appearance只有明确apply_to_children时传播。Gallery `view/inspector/tag_editor.rs` 先保留名称/颜色/图标/显示草稿，确认时对照Navigation新快照验证目标并调用既有 `rename_tag`、`set_tag_appearance`、`set_tag_display`。本内嵌入口只修改自身appearance，display发生变化时沿用既有后代传播。不同服务调用依次执行，未宣称跨命令原子提交；错误保留反馈。现有完整标签管理器的关联/合并/父级等结构操作不在本轮四字段编辑范围。运行证据见 `validation-ui/2026-10-16-inspector-unified-edit/README.md`。
+
+## 2026-10-17 Lore 历史回退与显示保留映射
+
+| 参考原始代码 | 当前实现 | 修复行为 |
+| --- | --- | --- |
+| newworkspace/src-tauri/src/plugins/version_info/graph.rs::graph_view；InspectorPanel.vue::versionGraph 的 metadata fallback | VersionsService::list、VersionInfoService::list | 以完整持久化版本目录作为列表主体；回退后的较新版本仍可显示和切回，顺序稳定。 |
+| newworkspace/src/plugins/versions/service.ts::call；InspectorPanel.vue::activateVersion | Gallery history_generation、ReadModel；activate_history_version | 写后失效并重新读取版本状态，保留原有版本身份。 |
+| newworkspace/src/composables/useWorkspace.ts::refreshEntry | BrowserSnapshot.loading；Gallery monitor::tick | 目录重扫的空/部分结果不再清除文件选择，完成结果仍修复真实消失的选择。 |
+
+逐文件对照、参考项目完整投影协议与当前差异见 validation-ui/2026-10-17-lore-version-history/reference-source-trace.md。
+
+## 2026-10-17 历史 checkout 再提交映射
+
+| 官方/固定来源 | 当前实现 | 行为 |
+| --- | --- | --- |
+| Lore shared-store 官方恢复顺序；lore-vm storage_shared_store_sync.rs::concurrent_branch_advance_is_rejected_until_sync | versions/commits.rs::prepare_snapshot_commit | 比较本地分支 tip；仅取消失败的私有 content 暂存，按明确本地 revision sync/reset，再复制当前源文件 stage/commit。 |
+| Lore GUI RevisionSyncArgs / BranchListEntry.latest | VersionsService::create_version | 离线不使用空 revision，忽略初始全零 tip；03按顺序追加，保留01/02，源文件不被同步覆盖。 |
+
+官方资料、参考项目缺少的预处理及回归证据见 validation-ui/2026-10-17-lore-version-history/official-api-rewind-save.md。
+
+## 2026-10-17 画廊未保存版本提示映射
+
+用户新增提示能力，延续参考项目 VersionInfo 的稳定版本ID/当前标记协议；
+不是 vendor/photag-source 中已有的版本提示。固定 Lore GUI 的
+`ops/file/hash.rs::hash` 和 `ops/file/info.rs::info` 提供真实内容hash、size及
+指定不可变revision查询；本项目 `versions/state.rs::file_state` 先比较当前
+所选版本，再比较其余已存版本。Gallery `version_badges` 复用共享ReadModel、
+原Watcher的800ms防抖及HistoryChanged失效，在可见窗口后台读取。
+只对不存在于任何已存版本的内容显示琥珀点，点击打开History手动保存。
+验证与边界见 validation-ui/2026-10-17-version-status/README.md。

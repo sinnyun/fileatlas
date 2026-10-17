@@ -53,19 +53,26 @@ uses the 14 existing theme identifiers; unknown persisted icons/colors are
 preserved until that field is changed. Folder statistics come from the current browse
 projection; unopened child folders show unknown counts instead of fabricated 0.
 
-History is separate from global undo/redo. Normal use shows the actual working
-copy with its thumbnail/metadata and an empty-history state. Real snapshot
-storage and version creation/restoration remain deferred by the user.
+History is separate from global undo/redo. The earlier visual fixture shown in
+`docs/validation-ui/2026-10-16-inspector-complete/README.md` was a bounded
+in-memory demonstration and is now historical evidence only.
 
-The explicit visual demo is constructed once when `PHOTAG_DEMO_INSPECTOR=1`,
-`PHOTAG_DEV_PLUGINS` includes `dev-test`, and `PHOTAG_DEV_TEST_DIR` is configured.
-`PHOTAG_DEMO_HISTORY_THUMBS` accepts semicolon-separated thumbnail paths; the
-legacy singular `PHOTAG_DEMO_HISTORY_THUMB` is also accepted. It seeds v1/v0 on
-the main line and v0.1 on a curved side branch. Select/filter/create/switch and
-node menus only modify a bounded (16-node maximum) in-memory model. The panel
-labels it as a preview. No version row/source file is written; normal controls
-stay disabled until the real backend exists. Real file identity, tags and EXIF
-stay real. Render does not read environment variables or stat files.
+## Lore-backed file history — 2026-10-17
+
+The File > History page now reads and writes actual Lore revisions through
+`VersionsService`; version titles, parent revisions, timestamps, size, preview
+path and active revision state are held by the separate `VersionInfoService`.
+Create asks for a title. Switching refuses to discard uncommitted source or
+Lore worktree changes. On success, Gallery refreshes filesystem-derived media
+metadata and image thumbnails while retaining ratings/tags/capture metadata.
+Global undo/redo remains a separate action history.
+
+MCP exposes `list_file_versions`, `create_file_version` and
+`activate_file_version`. Writes remain disabled unless explicitly enabled in
+the MCP process. See `../photag-plugin-versions/PORTS.md` and
+`../photag-plugin-version-info/PORTS.md` for service identities, storage and
+limits. Windows runtime/MCP exercise remains unverified until performed against
+the same-process PhoTag MCP server.
 
 Failures use the existing operation status, Navigation errors, thumbnail
 fallback and read-model errors. Implementation is under `src/view/inspector/`.
@@ -322,7 +329,7 @@ Directory chunk changes coalesce while a snapshot read is in flight. A finished 
 
 Window activation no longer invalidates the browser or retries its subscription. The current native/PollWatcher remains active while unfocused; actual file events and explicit refresh still update the view. LiveBrowser registers the selected watch before queuing enumeration; its worker waits cooperatively on WatcherService::browse_registration_pending (off the UI thread, cancellable). The old synthetic root change on registration is removed. Initial snapshots wait for the first current enumeration batch instead of briefly showing an earlier cached inventory.
 
-Background refresh keeps existing rows, scroll, selection, dialogs and the current 200-row rich window until the new result arrives; load_grouped_window is a crate-private query variant preserving its offset. Selection is validated against the delivered skeletons. Explicit navigation/filter reloads retain reset semantics. GalleryUiSnapshot.snapshot_revision:u64 is a read-only diagnostic for query scheduling, exposed as MCP gallery.snapshot_revision. Same-process lifecycle and external-change evidence: docs/validation-ui/2026-10-16-refresh/README.md.
+Background refresh keeps existing rows, scroll, selection, dialogs and the current 200-row rich window until the new result arrives; load_grouped_window is a crate-private query variant preserving its offset. BrowserSnapshot.loading marks partial directory results; selection is validated only against complete delivered skeletons, so a version restore's temporary empty result cannot replace the file History inspector with folder information. Explicit navigation/filter reloads retain reset semantics. GalleryUiSnapshot.snapshot_revision:u64 is a read-only diagnostic for query scheduling, exposed as MCP gallery.snapshot_revision. Same-process lifecycle and external-change evidence: docs/validation-ui/2026-10-16-refresh/README.md.
 
 
 ## Address bar integration — 2026-10-16
@@ -338,3 +345,19 @@ a second result arrives before GPUI measures reset rows. No extra persistence or
 source-file writes. Evidence: docs/validation-ui/2026-10-16-navigation-latency.
 
 The duplicate Up button is removed from command.size; Navigation now places Up before the full breadcrumb/address field. Gallery's folder cards, picker, locate and existing Alt+Up still route through NavigationUiRequest::SelectPath. Gallery-focused Ctrl+L and Alt+Left/Right enqueue public AddressBarRequest variants. Navigation owns history/input; Gallery does not implement a parallel history. Existing selection/file-operation undo history is separate and unchanged.
+
+## Unsaved version indicator — 2026-10-17
+
+Gallery requests `VersionsService::file_state` for up to 200 visible files through
+`ReadModel`, keyed by snapshot/history/data revisions and file identity. IO runs
+on a worker; rendering reads cached results and completion polling stops when idle.
+`Modified` adds an amber dot at the thumbnail's top left in grid layout and before
+the filename in list layout, avoiding overlap with small thumbnail format labels.
+Its tooltip identifies the selected saved baseline. Clicking selects that file and
+opens History; it never creates or switches versions. Unversioned files, an unchanged
+old selected revision, and content matching another saved revision have no dot.
+History explains the current baseline and any other matched revision. Read errors
+are available in History and `GalleryUiSnapshot.version_states`; they are not
+classified as modified. Snapshot fields also expose `version_states_loading`.
+Real filesystem changes and `HistoryChanged` invalidate the cached state.
+Validation: `docs/validation-ui/2026-10-17-version-status/README.md`.

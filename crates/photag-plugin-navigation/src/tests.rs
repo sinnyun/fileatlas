@@ -1,5 +1,5 @@
 use super::*;
-use photag_plugin_database::db::queries;
+use photag_plugin_database::queries;
 use photag_plugin_thumbnails::ThumbnailService;
 
 fn temp_root() -> std::path::PathBuf {

@@ -23,7 +23,7 @@ Navigation registers folders and consumes scan lifecycle; gallery observes the i
 
 ## All-file notifications (2026-10-14)
 
-Create/remove/rename paths are no longer restricted by suffix or dot-prefix. Reconciliation accepts ordinary files only (`metadata.is_file()`), preventing directory rows. Classification reuses the public Indexing `scan::classify_media_type`, including `audio` and generic `file`. The 800 ms debounce, 4,000-event drain and 200-path emission limits are unchanged. The Windows integration regression covers hidden unknown files, extensionless files, audio, directory exclusion and removal. Generic modify events remain ignored as before; the startup traversal refreshes file size and modification time after the next restart. This is not exhaustive race/rename-directory coverage.
+Create/remove/rename paths are no longer restricted by suffix or dot-prefix. Reconciliation accepts ordinary files only (`metadata.is_file()`), preventing directory rows. Classification reuses the public Indexing `classify_media_type`, including `audio` and generic `file`. The 800 ms debounce, 4,000-event drain and 200-path emission limits are unchanged. The Windows integration regression covers hidden unknown files, extensionless files, audio, directory exclusion and removal. Generic modify events remain ignored as before; the startup traversal refreshes file size and modification time after the next restart. This is not exhaustive race/rename-directory coverage.
 
 ## Runtime diagnostics (2026-10-14)
 

@@ -14,8 +14,11 @@ photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
 notify = "8.2"
-rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
+
+[dev-dependencies]
+photag-plugin-database = { path = "../photag-plugin-database", features = ["test-api"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [lints]
 workspace = true

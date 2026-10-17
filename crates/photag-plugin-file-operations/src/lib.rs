@@ -9,7 +9,9 @@ use std::sync::Arc;
 use cordis::{Context, Routing, Service};
 use photag_contracts::MediaIndexChanged;
 use photag_plugin_database::DatabaseService;
-use photag_plugin_database::db::queries::{self, Folder, MediaItem};
+#[cfg(test)]
+use photag_plugin_database::queries;
+use photag_plugin_database::{Folder, MediaItem};
 
 mod model;
 mod plugin;
@@ -300,10 +302,7 @@ impl FileOperationsService {
                         if let Some(path) = &item.thumb_path {
                             std::fs::remove_file(path).ok();
                         }
-                        match service
-                            .database
-                            .with_writer(|connection| queries::delete_media(connection, media_id))
-                        {
+                        match service.database.delete_media(media_id) {
                             Ok(()) => {
                                 changed = true;
                                 BulkDeleteOutcome {
@@ -381,13 +380,12 @@ impl FileOperationsService {
             .map(|name| name.to_string_lossy().into_owned())
             .unwrap_or_else(|| item.filename.clone());
         let folder_id = self.folder_for_path(&dest)?;
-        self.database.with_writer(|connection| {
-            if folder_id.is_some() || self.database.is_browser() {
-                queries::update_media_path(connection, media_id, &filename, &dest, folder_id)
-            } else {
-                queries::delete_media(connection, media_id)
-            }
-        })?;
+        if folder_id.is_some() || self.database.is_browser() {
+            self.database
+                .update_media_path(media_id, &filename, &dest, folder_id)?;
+        } else {
+            self.database.delete_media(media_id)?;
+        }
         Ok(true)
     }
 
@@ -408,16 +406,15 @@ impl FileOperationsService {
             return Ok(false);
         }
         let folder_id = self.folder_for_path(&dest)?;
-        self.database.with_writer(|connection| {
-            if folder_id.is_some() || self.database.is_browser() {
-                queries::update_media_path(connection, media_id, &item.filename, &dest, folder_id)
-            } else {
-                // PhoTag removes the indexed row when a bulk move leaves all
-                // registered library roots. Keep the moved file on disk, but
-                // stop presenting it as library media.
-                queries::delete_media(connection, media_id)
-            }
-        })?;
+        if folder_id.is_some() || self.database.is_browser() {
+            self.database
+                .update_media_path(media_id, &item.filename, &dest, folder_id)?;
+        } else {
+            // PhoTag removes the indexed row when a bulk move leaves all
+            // registered library roots. Keep the moved file on disk, but
+            // stop presenting it as library media.
+            self.database.delete_media(media_id)?;
+        }
         Ok(true)
     }
 
@@ -445,9 +442,8 @@ impl FileOperationsService {
         }
         std::fs::rename(&item.full_path, &destination)?;
         let path = destination.to_string_lossy().into_owned();
-        self.database.with_writer(|connection| {
-            queries::update_media_path(connection, media_id, new_filename, &path, None)
-        })?;
+        self.database
+            .update_media_path(media_id, new_filename, &path, None)?;
         Ok(true)
     }
 
@@ -463,13 +459,7 @@ impl FileOperationsService {
         }
         if self.database.is_browser() {
             if recycle_error.is_none() {
-                self.database.with_cache_writer(|connection| {
-                    connection.execute(
-                        "DELETE FROM live_paths WHERE full_path=?1",
-                        [&item.full_path],
-                    )?;
-                    Ok(())
-                })?;
+                self.database.remove_live_path(&item.full_path)?;
             } else {
                 return Ok(DeleteResult {
                     removed_from_database: false,
@@ -478,8 +468,7 @@ impl FileOperationsService {
                 });
             }
         } else {
-            self.database
-                .with_writer(|connection| queries::delete_media(connection, media_id))?;
+            self.database.delete_media(media_id)?;
         }
         Ok(DeleteResult {
             removed_from_database: true,
@@ -489,9 +478,7 @@ impl FileOperationsService {
     }
 
     fn media(&self, media_id: i64) -> Result<Option<MediaItem>, FileOperationError> {
-        let item = self
-            .database
-            .with_reader(|connection| queries::get_media_by_id(connection, media_id))?;
+        let item = self.database.get_media_by_id(media_id)?;
         if self.database.is_browser() {
             if let Some(item) = &item {
                 std::fs::metadata(&item.full_path)?;
@@ -504,7 +491,7 @@ impl FileOperationsService {
         if self.database.is_browser() {
             return Ok(Some(0));
         }
-        let folders = self.database.with_reader(queries::list_folders)?;
+        let folders = self.database.list_folders()?;
         Ok(registered_folder_for_path(&folders, path))
     }
 

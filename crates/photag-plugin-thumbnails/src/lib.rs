@@ -6,7 +6,7 @@ use std::sync::Arc;
 use cordis::{Context, Plugin, Service};
 
 mod budget;
-pub mod thumbs;
+mod thumbs;
 
 /// Shared thumbnail generation service available to feature plugins.
 pub struct ThumbnailService {
@@ -45,6 +45,17 @@ impl ThumbnailService {
         self.maintain_cache(result.as_ref().map(|v| v.0.as_str()));
         result
     }
+
+    /// Return the cache path used for a video poster thumbnail.
+    pub fn video_thumbnail_path(&self, source: impl AsRef<Path>) -> PathBuf {
+        thumbs::thumb_path_for(source.as_ref(), &self.directory)
+    }
+
+    /// Produce PhoTag's compact card thumbnail bytes from an already-decoded image.
+    pub fn generate_micro_thumbnail(&self, image: &image::DynamicImage) -> Vec<u8> {
+        thumbs::generate_micro_thumb(image)
+    }
+
     /// Called on the requesting worker after image or video thumbnail demand.
     pub fn maintain_cache(&self, protected: Option<&str>) {
         if self

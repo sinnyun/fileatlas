@@ -44,7 +44,7 @@ pub(super) fn render(
     selected: usize,
     active: usize,
     filter: u8,
-    demo: bool,
+    interactive: bool,
     cx: &mut Context<GalleryView>,
 ) -> Div {
     let line_color = if filter == 2 {
@@ -97,8 +97,10 @@ pub(super) fn render(
         let is_selected = selected == index;
         let nested = version.branch && filter != 2;
         let menu_view = cx.entity().downgrade();
+        let activation_revision = version.version_id.clone();
+        let selection_revision = version.version_id.clone();
         let mut row = div()
-            .id(format!("inspector-history-version-{index}"))
+            .id(format!("inspector-history-version-{}", version.version_id))
             .relative()
             .h_flex()
             .w_full()
@@ -169,10 +171,9 @@ pub(super) fn render(
                                     )
                                     .when(index == active, |row| {
                                         row.child(
-                                            div()
-                                                .text_size(px(10.))
-                                                .text_color(rgb(color))
-                                                .child(photag_ui_bridge::i18n::tr("Current file")),
+                                            div().text_size(px(10.)).text_color(rgb(color)).child(
+                                                photag_ui_bridge::i18n::tr("Version baseline"),
+                                            ),
                                         )
                                     }),
                             )
@@ -184,13 +185,14 @@ pub(super) fn render(
                             ),
                     )
                     .child(
-                        Button::new(format!("inspector-history-menu-{index}"))
+                        Button::new(format!("inspector-history-menu-{}", version.version_id))
                             .ghost()
                             .compact()
                             .icon(theme::icon(IconName::Ellipsis))
-                            .disabled(!demo)
+                            .disabled(!interactive || active == index)
                             .dropdown_menu(move |menu, _, _| {
                                 let menu_view = menu_view.clone();
+                                let revision = activation_revision.clone();
                                 menu.item(
                                     PopupMenuItem::new(photag_ui_bridge::i18n::tr(
                                         "Switch version",
@@ -198,8 +200,7 @@ pub(super) fn render(
                                     .on_click(
                                         move |_, _, cx| {
                                             let _ = menu_view.update(cx, |view, cx| {
-                                                view.demo_history_action("select", index, cx);
-                                                view.demo_history_action("switch", 0, cx);
+                                                view.activate_history_version(&revision, cx);
                                             });
                                         },
                                     ),
@@ -207,10 +208,12 @@ pub(super) fn render(
                             }),
                     ),
             );
-        if demo {
-            row = row.cursor_pointer().on_click(
-                cx.listener(move |view, _, _, cx| view.demo_history_action("select", index, cx)),
-            );
+        if interactive {
+            row = row
+                .cursor_pointer()
+                .on_click(cx.listener(move |view, _, _, cx| {
+                    view.select_history_version(&selection_revision, cx)
+                }));
         }
         tree = tree.child(row);
     }

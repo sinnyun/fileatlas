@@ -12,8 +12,9 @@ mod ffmpeg;
 mod maintenance;
 mod progress;
 mod reconcile;
-pub mod scan;
+mod scan;
 mod visible;
+pub use scan::{ScanProgress, classify_media_type};
 
 /// Cordis service exposing the migrated original scan workflows.
 pub struct IndexingService {
@@ -27,6 +28,55 @@ impl Service for IndexingService {
 }
 
 impl IndexingService {
+    /// Rebuild cached file metadata after an explicit version restore.
+    pub fn refresh_restored_file(&self, media_id: i64) -> Result<(), String> {
+        let media = self
+            .database
+            .get_media_by_id(media_id)
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "The restored file is no longer indexed.".to_string())?;
+        let metadata = std::fs::metadata(&media.full_path).map_err(|e| e.to_string())?;
+        let modified = metadata
+            .modified()
+            .ok()
+            .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|time| time.as_secs().min(i64::MAX as u64) as i64)
+            .unwrap_or(media.modified_at);
+        let media_type = classify_media_type(
+            std::path::Path::new(&media.filename)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .unwrap_or(""),
+        );
+        let thumbnail = if media_type == "image" {
+            self.thumbnails
+                .generate_image(&media.full_path)
+                .map(|(path, width, height, micro)| {
+                    let micro = micro.unwrap_or_else(|| vec![0; 8 * 8 * 3]);
+                    (path, width as i64, height as i64, micro)
+                })
+        } else {
+            None
+        };
+        let size = metadata.len().min(i64::MAX as u64) as i64;
+        match thumbnail {
+            Some((path, width, height, micro)) => self
+                .database
+                .refresh_restored_file(
+                    media_id,
+                    media_type,
+                    size,
+                    modified,
+                    Some((&path, width, height, &micro)),
+                )
+                .map_err(|e| e.to_string()),
+            None => self
+                .database
+                .refresh_restored_file(media_id, media_type, size, modified, None)
+                .map_err(|e| e.to_string()),
+        }
+    }
+
     /// Construct the indexing API from the shared database and cache services.
     pub fn new(database: Arc<DatabaseService>, thumbnails: Arc<ThumbnailService>) -> Self {
         Self {
@@ -43,7 +93,7 @@ impl IndexingService {
         folder_id: i64,
         folder_path: String,
         cancel: Arc<AtomicBool>,
-    ) -> mpsc::Receiver<Option<scan::ScanProgress>> {
+    ) -> mpsc::Receiver<Option<ScanProgress>> {
         self.progress.track(scan::scan_folder_async(
             Arc::clone(self),
             folder_id,
@@ -58,7 +108,7 @@ impl IndexingService {
         self: &Arc<Self>,
         items: Vec<(String, String)>,
         cancel: Arc<AtomicBool>,
-    ) -> mpsc::Receiver<Option<scan::ScanProgress>> {
+    ) -> mpsc::Receiver<Option<ScanProgress>> {
         self.progress
             .track(maintenance::generate_missing_thumbnails_async(
                 Arc::clone(self),
@@ -68,7 +118,7 @@ impl IndexingService {
     }
 
     /// Latest active scan/backfill, including scans started outside Navigation.
-    pub fn current_progress(&self) -> Option<scan::ScanProgress> {
+    pub fn current_progress(&self) -> Option<ScanProgress> {
         self.progress.current()
     }
 
@@ -137,7 +187,7 @@ pub enum IndexingPluginError {
 mod tests {
     use super::*;
     use image::{ImageBuffer, Rgb};
-    use photag_plugin_database::db::queries;
+    use photag_plugin_database::queries;
 
     #[test]
     fn scan_indexes_all_files_and_preserves_video_posters() {

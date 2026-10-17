@@ -50,6 +50,10 @@
 - `snapshot() -> LaunchSnapshot` returns the last attempted path and the dispatch
   outcome/error. `pipe_toggle_sent` only means dispatch; it does not assert
   external rendering, codecs, current visibility or focus.
+- Windows MCP diagnostics use `QuickLookService::inspect()` and
+  `visible_windows()`; the Win32 window/process/pipe implementation stays private
+  to this crate. `QuickLookInspection` is read-only diagnostic state and does
+  not claim that QuickLook rendered or focused a file.
 
 ## Consumers and failure inspection
 

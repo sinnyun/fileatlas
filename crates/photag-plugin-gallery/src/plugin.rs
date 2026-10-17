@@ -37,6 +37,9 @@ impl Plugin for GalleryPlugin {
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let versions = context
+            .try_service::<photag_plugin_versions::VersionsService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         // History is optional so Gallery remains usable when the development
         // history plugin is not part of the active Cordis graph.
         let history = context
@@ -250,6 +253,7 @@ impl Plugin for GalleryPlugin {
                 file_operations,
                 drag_drop,
                 quicklook,
+                versions,
                 runtime,
                 context.clone(),
                 selected_folder,

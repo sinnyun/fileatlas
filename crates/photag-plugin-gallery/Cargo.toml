@@ -21,13 +21,13 @@ photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 rfd = { version = "0.15", default-features = false }
 photag-plugin-history = { path = "../photag-plugin-history" }
+photag-plugin-versions = { path = "../photag-plugin-versions" }
 photag-plugin-quicklook = { path = "../photag-plugin-quicklook" }
 photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
-rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
 chrono = "0.4"
 image = "0.25"
@@ -37,4 +37,7 @@ kamadak-exif = "0.6.1"
 workspace = true
 
 [dev-dependencies]
+photag-plugin-version-info = { path = "../photag-plugin-version-info" }
+photag-plugin-database = { path = "../photag-plugin-database", features = ["test-api"] }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+rusqlite = { version = "0.31", features = ["bundled"] }

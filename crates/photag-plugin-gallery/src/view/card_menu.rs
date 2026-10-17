@@ -8,7 +8,7 @@ use gpui_kit::prelude::FluentBuilder as _;
 /// Render an application-owned action menu for explicit MCP or keyboard opens.
 /// Actions delegate to the same GalleryView methods used by the native card menu.
 pub(super) fn render_requested(
-    media: &photag_plugin_database::db::queries::MediaItem,
+    media: &photag_plugin_database::MediaItem,
     cx: &mut Context<GalleryView>,
 ) -> Div {
     let id = media.id;
@@ -268,10 +268,10 @@ pub(super) fn render_requested(
 
 pub(super) fn build(
     mut menu: PopupMenu,
-    media: photag_plugin_database::db::queries::MediaItem,
+    media: photag_plugin_database::MediaItem,
     menu_targets: Vec<i64>,
     rating_target_ids: Vec<i64>,
-    tag_tree: Arc<Vec<photag_plugin_database::db::queries::Tag>>,
+    tag_tree: Arc<Vec<photag_plugin_database::Tag>>,
     menu_view: WeakEntity<GalleryView>,
     window: &mut Window,
     cx: &mut Context<PopupMenu>,

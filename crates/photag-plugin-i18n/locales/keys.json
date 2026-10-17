@@ -777,5 +777,10 @@
   "Could not copy logs.": "msg-debug-copy-failed",
   "Saved logs to {path}": "msg-debug-export-saved",
   "Export cancelled.": "msg-debug-export-cancelled",
-  "Choose a .txt file for the log export.": "msg-debug-export-invalid-extension"
+  "Choose a .txt file for the log export.": "msg-debug-export-invalid-extension",
+  "Version baseline": "msg-version-baseline",
+  "Unsaved version changes. Base: {base}. Open History to save a version.": "msg-version-unsaved",
+  "File content matches the saved version: {base}.": "msg-version-saved",
+  "Content already matches {matched}; selected version: {base}. No new version is needed.": "msg-version-matched",
+  "Version status could not be checked.": "msg-version-check-failed"
 }

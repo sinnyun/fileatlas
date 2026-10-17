@@ -21,6 +21,194 @@ impl PhoTagMcpServer {
     }
 }
 
+#[tool_router(router = version_write_tool_router, vis = "pub(super)")]
+impl super::PhoTagMcpServer {
+    #[tool(description = "管理单个文件的 Lore 分支。写操作均需启用 MCP 修改权限及 confirm=true。")]
+    async fn manage_file_branch(
+        &self,
+        Parameters(request): Parameters<ManageFileBranchRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("文件分支写操作需要 confirm=true。 ");
+        }
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        let path = media.full_path;
+        let mut file_changed = false;
+        let result = match request.action.as_str() {
+            "create" => match request.name.as_deref() {
+                Some(name) => self
+                    .versions
+                    .create_branch(&path, name)
+                    .await
+                    .map(|branch| json!({"ok":true,"action":"create","branch":branch})),
+                None => return error_json("create 操作需要 name。"),
+            },
+            "switch" => match request.name.as_deref() {
+                Some(name) => self
+                    .versions
+                    .switch_branch(&path, name, request.overwrite)
+                    .await
+                    .map(|name| {
+                        file_changed = true;
+                        json!({"ok":true,"action":"switch","branch":name})
+                    }),
+                None => return error_json("switch 操作需要 name。"),
+            },
+            "archive" => match request.name.as_deref() {
+                Some(name) => self
+                    .versions
+                    .archive_branch(&path, name)
+                    .await
+                    .map(|()| json!({"ok":true,"action":"archive","branch":name})),
+                None => return error_json("archive 操作需要 name。"),
+            },
+            "merge" => match request.source_branch.as_deref() {
+                Some(source) => self
+                    .versions
+                    .merge_branch(&path, source)
+                    .await
+                    .map(|result| {
+                        file_changed = result.completed;
+                        json!({"ok":true,"action":"merge","result":result})
+                    }),
+                None => return error_json("merge 操作需要 source_branch。"),
+            },
+            "resolve" => match request.strategy.as_deref() {
+                Some(strategy) => {
+                    self.versions
+                        .resolve_merge(&path, strategy)
+                        .await
+                        .map(|result| {
+                            file_changed = result.completed;
+                            json!({"ok":true,"action":"resolve","result":result})
+                        })
+                }
+                None => return error_json("resolve 操作需要 strategy=ours|theirs。"),
+            },
+            "abort" => self
+                .versions
+                .abort_merge(&path)
+                .await
+                .map(|()| json!({"ok":true,"action":"abort"})),
+            _ => return error_json("action 必须是 create/switch/archive/merge/resolve/abort。"),
+        };
+        let value = match result {
+            Ok(value) => value,
+            Err(error) => return error_json(&error.to_string()),
+        };
+        if file_changed {
+            let gallery = Arc::clone(&self.gallery);
+            if let Err(error) =
+                tokio::task::spawn_blocking(move || gallery.refresh_restored_file(request.media_id))
+                    .await
+                    .map_err(|error| error.to_string())
+                    .and_then(|result| result)
+            {
+                return error_json(&error);
+            }
+            if let Err(error) = self
+                .context
+                .emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+                .await
+            {
+                tracing::error!(%error, "branch operation index event could not be dispatched");
+            }
+        }
+        self.gallery
+            .request_ui(photag_plugin_gallery::GalleryUiRequest::HistoryChanged(
+                request.media_id,
+            ));
+        serde_json::to_string(&value).unwrap_or_else(|error| error_json(&error.to_string()))
+    }
+
+    #[tool(
+        description = "Create a durable Lore snapshot for one indexed file. Requires mutations enabled and confirm=true."
+    )]
+    async fn create_file_version(
+        &self,
+        Parameters(request): Parameters<CreateVersionRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("创建历史版本需要 confirm=true。 ");
+        }
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        match self
+            .versions
+            .create_version(&media.full_path, &request.title)
+            .await
+        {
+            Ok(version) => {
+                self.gallery
+                    .request_ui(photag_plugin_gallery::GalleryUiRequest::HistoryChanged(
+                        request.media_id,
+                    ));
+                json!({"ok":true,"media_id":request.media_id,"version":version}).to_string()
+            }
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Restore one Lore revision to its original file path. Requires mutations enabled and confirm=true; unsaved edits must first be saved as a version."
+    )]
+    async fn activate_file_version(
+        &self,
+        Parameters(request): Parameters<ActivateVersionRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("切换历史版本需要 confirm=true。 ");
+        }
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        if let Err(error) = self
+            .versions
+            .activate(&media.full_path, &request.version_id)
+            .await
+        {
+            return error_json(&error.to_string());
+        }
+        let gallery = Arc::clone(&self.gallery);
+        let id = request.media_id;
+        match tokio::task::spawn_blocking(move || gallery.refresh_restored_file(id)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(error)) => return error_json(&error),
+            Err(error) => return error_json(&error.to_string()),
+        }
+        if let Err(error) = self
+            .context
+            .emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+            .await
+        {
+            tracing::error!(%error,"version restore index event could not be dispatched");
+        }
+        self.gallery
+            .request_ui(photag_plugin_gallery::GalleryUiRequest::HistoryChanged(
+                request.media_id,
+            ));
+        json!({"ok":true,"media_id":request.media_id,"version_id":request.version_id,"activated":true}).to_string()
+    }
+}
+
 #[tool_router(router = write_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
     #[tool(
@@ -320,7 +508,8 @@ impl super::PhoTagMcpServer {
     fn inspect_quicklook(&self) -> String {
         #[cfg(windows)]
         {
-            json!({"dispatch":self.quicklook.snapshot(),"windows":photag_plugin_quicklook::windows::visible_windows(),"higher_integrity_process":photag_plugin_quicklook::windows::higher_integrity_quicklook_process(),"pipe_probe":photag_plugin_quicklook::windows::probe()}).to_string()
+            serde_json::to_string(&self.quicklook.inspect())
+                .unwrap_or_else(|error| error_json(&error.to_string()))
         }
         #[cfg(not(windows))]
         {
@@ -332,10 +521,7 @@ impl super::PhoTagMcpServer {
     async fn screenshot_quicklook(&self) -> Result<CallToolResult, McpError> {
         #[cfg(windows)]
         {
-            let Some(window) = photag_plugin_quicklook::windows::visible_windows()
-                .into_iter()
-                .next()
-            else {
+            let Some(window) = self.quicklook.visible_windows().into_iter().next() else {
                 return Ok(CallToolResult::error(vec![ContentBlock::text(
                     "No visible QuickLook window",
                 )]));

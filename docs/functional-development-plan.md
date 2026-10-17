@@ -9,6 +9,19 @@ AI标签建议迁入Gallery，保留显式请求与自动分析设置。
 此项用户决定覆盖基线中有关内置独立查看器的描述，不包含安装/下载/更新QuickLook。
 实现和实测边界见[本轮记录](validation-ui/2026-10-16-quicklook/README.md)。
 
+## 用户指定：Lore 历史版本切换（2026-10-17）
+
+File > History 接入单文件 Lore 版本仓库、标题版本创建、历史列表、当前版本标记、原路径切换、
+分支创建/切换/归档/合并、冲突选择/放弃、版本元数据维护和操作后重新索引。源码参考
+`F:\AI\geren\newworkspace` 中固定 Lore GUI 版本。
+Cordis 拆为 `photag-plugin-versions` 与 `photag-plugin-version-info`；实现及剩余边界见
+[本轮记录](validation-ui/2026-10-17-lore-version-history/README.md)。
+
+2026-10-17 补充：画廊缩略图用琥珀点提示已纳入版本的文件存在未保存新内容；
+点击选择文件并打开历史页，由用户手动创建版本。基准为当前所选版本，支持回退旧版；
+匹配其他已保存版本时明确显示对应名称，不提示重复保存。后台读取和实际点击证据见
+[未保存版本提示](validation-ui/2026-10-17-version-status/README.md)。
+
 2026-10-14：用户确认当前版本为开发基线，并将下一阶段转向优化程序功能操作和扩展程序功能。开始前阅读[开发基线](development-baseline-2026-10-14.md)、AGENTS.md及受影响crate的PORTS.md。
 
 ## 工作方式

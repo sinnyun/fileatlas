@@ -31,6 +31,11 @@ scale checks. It is development tooling and is not enabled by `core` or `all`.
   scanned fixture rows and physical files remain intact.
 - Operations run off the GPUI thread and emit `MediaIndexChanged(())` after
   completion so Gallery reloads the database.
+- All database work uses typed `DatabaseService` operations. The benchmark
+  replace/clear methods keep reserved-prefix deletion and row insertion in one
+  writer transaction. Browser-mode benchmark rows use the session cache and do
+  not persist rated synthetic media; replace/clear also remove reserved-prefix
+  rows persisted by older runs. Progress callbacks report every 10,000 rows.
 
 ## Data isolation and debugging
 

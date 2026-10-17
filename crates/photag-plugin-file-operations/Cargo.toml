@@ -15,5 +15,11 @@ thiserror.workspace = true
 tokio.workspace = true
 trash = "5"
 
+[dev-dependencies]
+photag-plugin-database = { path = "../photag-plugin-database", features = ["test-api"] }
+thiserror.workspace = true
+tokio.workspace = true
+trash = "5"
+
 [lints]
 workspace = true

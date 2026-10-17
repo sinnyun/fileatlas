@@ -12,7 +12,7 @@ use gpui_kit::component::calendar::Date;
 use gpui_kit::component::date_picker::DatePicker;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::{MediaItem, MediaQuery};
+use photag_plugin_database::{MediaItem, MediaQuery};
 use photag_ui_bridge::theme;
 use read_model::MatchRequest;
 pub(super) use read_model::{MatchResults, poll_matches};

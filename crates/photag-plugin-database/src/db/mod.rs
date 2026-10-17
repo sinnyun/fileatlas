@@ -1,4 +1,7 @@
+#[cfg(feature = "test-api")]
 pub mod queries;
+#[cfg(not(feature = "test-api"))]
+pub(crate) mod queries;
 
 use rusqlite::Connection;
 
@@ -181,15 +184,6 @@ pub(crate) fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     }
 
     Ok(())
-}
-
-/// Increment the open_count for a media row. Best-effort; silently ignores
-/// errors (the count is informational, not critical).
-pub fn increment_open_count(conn: &Connection, media_id: i64) {
-    let _ = conn.execute(
-        "UPDATE media SET open_count = COALESCE(open_count, 0) + 1 WHERE id = ?1",
-        rusqlite::params![media_id],
-    );
 }
 
 /// Read the open_count for a single media row. Returns 0 on any error

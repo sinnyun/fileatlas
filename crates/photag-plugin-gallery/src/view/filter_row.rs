@@ -458,11 +458,9 @@ fn media_type_label(media_type: MediaTypeFilter) -> &'static str {
     }
 }
 
-fn flatten_tag_tree(
-    tags: &[photag_plugin_database::db::queries::Tag],
-) -> Vec<(i64, String, usize)> {
+fn flatten_tag_tree(tags: &[photag_plugin_database::Tag]) -> Vec<(i64, String, usize)> {
     fn visit(
-        tags: &[photag_plugin_database::db::queries::Tag],
+        tags: &[photag_plugin_database::Tag],
         depth: usize,
         out: &mut Vec<(i64, String, usize)>,
     ) {

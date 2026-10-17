@@ -9,7 +9,9 @@ mod viewport;
 pub use browser::{BrowserSnapshot, GalleryDirectory};
 mod ui_requests;
 mod view;
-pub use ui_requests::{GalleryDialogReads, GalleryUiRequest, GalleryUiSnapshot};
+pub use ui_requests::{
+    GalleryDialogReads, GalleryUiRequest, GalleryUiSnapshot, GalleryVersionState,
+};
 pub use view::bulk_actions::{BulkActionKind, BulkActionSource};
 
 use std::collections::HashMap;
@@ -18,7 +20,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-pub mod filter;
+mod filter;
+pub use filter::{MediaTypeFilter, parse_date_input};
 pub mod selection;
 
 use cordis::event::observer_sync;
@@ -28,9 +31,7 @@ use photag_contracts::{
     TagFilterSelectionChanged, TagSelectionChanged,
 };
 use photag_plugin_database::DatabaseService;
-use photag_plugin_database::db::queries::{
-    self, MediaItem, MediaQuery, MediaSkeleton, SortOrder, Tag,
-};
+use photag_plugin_database::{self, MediaItem, MediaQuery, MediaSkeleton, SortOrder, Tag};
 use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_quicklook::QuickLookService;
@@ -48,7 +49,7 @@ pub const MEDIA_WINDOW_SIZE: usize = 200;
 pub struct GallerySnapshot {
     pub browser: BrowserSnapshot,
     /// Stored folder rows used to resolve folder context in the inspector.
-    pub folders: Vec<photag_plugin_database::db::queries::Folder>,
+    pub folders: Vec<photag_plugin_database::Folder>,
     pub skeletons: Vec<MediaSkeleton>,
     pub group_labels: Vec<Option<String>>,
     pub media_count: i64,
@@ -129,6 +130,15 @@ impl Service for GalleryService {
 }
 
 impl GalleryService {
+    pub fn refresh_restored_file(&self, media_id: i64) -> Result<(), String> {
+        self.indexing
+            .as_ref()
+            .ok_or_else(|| {
+                "File indexing is unavailable to refresh the restored version.".to_string()
+            })?
+            .refresh_restored_file(media_id)
+    }
+
     pub fn new(database: Arc<DatabaseService>) -> Self {
         Self {
             wake: Default::default(),
@@ -209,7 +219,7 @@ impl GalleryService {
         self.live.status()
     }
 
-    pub fn scan_progress(&self) -> Option<photag_plugin_indexing::scan::ScanProgress> {
+    pub fn scan_progress(&self) -> Option<photag_plugin_indexing::ScanProgress> {
         self.indexing.as_ref()?.current_progress()
     }
 
@@ -275,7 +285,7 @@ impl GalleryService {
         if let Some(id) = query.folder_id.take() {
             if let Some(folder) = self
                 .database
-                .with_reader(queries::list_folders)?
+                .list_folders()?
                 .into_iter()
                 .find(|f| f.id == id)
             {
@@ -285,10 +295,7 @@ impl GalleryService {
                         .unwrap_or(folder.path),
                 );
             } else {
-                return Err(photag_plugin_database::DatabaseAccessError::Sql(
-                    rusqlite::Error::QueryReturnedNoRows,
-                )
-                .into());
+                return Err(photag_plugin_database::DatabaseAccessError::NotFound.into());
             }
         }
         if !query.annotated_only
@@ -352,117 +359,95 @@ impl GalleryService {
             query.direct_directory = browser.directory.clone();
             query.path_prefix = None;
         }
-        Ok(self.database.with_reader(|connection| {
-            let folders = queries::list_folders(connection)?;
-            let mut browser = browser;
-            for directory in &mut browser.directories {
-                directory.media_count =
-                    queries::count_media_under_path(connection, &directory.path)?;
-            }
-            let status = self.live.status();
-            let waiting_for_first_batch = self.database.is_browser()
-                && browser.active
-                && browser.directory.is_some()
-                && status.2
-                && status.3 == 0;
-            let mut skeletons =
-                if browser.active && browser.directory.is_none() || waiting_for_first_batch {
-                    Vec::new()
+        let mut browser = browser;
+        let status = self.live.status();
+        browser.loading = self.database.is_browser() && browser.active && status.2;
+        let waiting_for_first_batch = self.database.is_browser()
+            && browser.active
+            && browser.directory.is_some()
+            && status.2
+            && status.3 == 0;
+        let directory_paths = browser
+            .directories
+            .iter()
+            .map(|item| item.path.clone())
+            .collect::<Vec<_>>();
+        let grouping_enabled = self.grouping.is_some()
+            && !matches!(
+                mode,
+                photag_plugin_grouping::GroupingMode::None
+                    | photag_plugin_grouping::GroupingMode::Month
+            );
+        let data = self.database.gallery_snapshot(
+            &query,
+            &directory_paths,
+            grouping_enabled,
+            browser.directory.as_deref(),
+            browser.active && browser.directory.is_none() || waiting_for_first_batch,
+            window_offset,
+            MEDIA_WINDOW_SIZE,
+            |skeletons, fields| {
+                if let Some(grouping) = &self.grouping {
+                    grouping.arrange_in_scope(
+                        skeletons,
+                        fields,
+                        mode,
+                        query.sort.unwrap_or(SortOrder::NameAsc),
+                        browser
+                            .directory
+                            .as_deref()
+                            .or(query.path_prefix.as_deref()),
+                    )
                 } else {
-                    queries::get_media_skeletons(connection, &query)?
-                };
-            let group_labels = if let Some(grouping) = &self.grouping {
-                let mut fields = if matches!(
-                    mode,
-                    photag_plugin_grouping::GroupingMode::None
-                        | photag_plugin_grouping::GroupingMode::Month
-                ) {
-                    Vec::new()
-                } else {
-                    queries::get_media_grouping_fields(connection, &query)?
-                };
-                if self.database.is_browser() {
-                    for field in &mut fields {
-                        field.root_path = browser.directory.clone().unwrap_or_else(|| {
-                            std::path::Path::new(&field.full_path)
-                                .parent()
-                                .map(|p| p.to_string_lossy().into_owned())
-                                .unwrap_or_default()
-                        });
-                    }
+                    vec![None; skeletons.len()]
                 }
-                grouping.arrange_in_scope(
-                    &mut skeletons,
-                    &fields,
-                    mode,
-                    query.sort.unwrap_or(SortOrder::NameAsc),
-                    browser
-                        .directory
-                        .as_deref()
-                        .or(query.path_prefix.as_deref()),
-                )
-            } else {
-                vec![None; skeletons.len()]
-            };
-            let media_count = skeletons.len() as i64;
-            let window_offset = window_offset.min(skeletons.len().saturating_sub(1));
-            let mut media = skeletons
-                .iter()
-                .skip(window_offset)
-                .take(MEDIA_WINDOW_SIZE)
-                .map(|s| queries::get_media_by_id(connection, s.id))
-                .collect::<rusqlite::Result<Vec<_>>>()?
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
-            if self.database.is_browser() && !browser.active {
-                for item in &mut media {
-                    hydrate_local(item);
-                    if item.missing {
-                        restore_record_preview(connection, item);
-                    }
-                    if !self.thumbnails_enabled() {
-                        item.thumb_path = None;
-                        item.micro_thumb = None;
-                    }
-                }
+            },
+        )?;
+        for directory in &mut browser.directories {
+            directory.media_count = data
+                .directory_counts
+                .get(&directory.path)
+                .copied()
+                .unwrap_or(0);
+        }
+        let mut media = data.media;
+        if self.database.is_browser() && !browser.active {
+            for item in &mut media {
+                hydrate_local(item);
             }
-            if self.database.is_browser() && !self.thumbnails_enabled() {
-                for item in &mut media {
-                    item.thumb_path = None;
-                    item.micro_thumb = None;
-                }
+            self.database.restore_record_previews(&mut media)?;
+        }
+        if self.database.is_browser() && !self.thumbnails_enabled() {
+            for item in &mut media {
+                item.thumb_path = None;
+                item.micro_thumb = None;
             }
-            let media_ids = media.iter().map(|item| item.id).collect::<Vec<_>>();
-            let media_tags = queries::get_tags_for_media_batch(connection, &media_ids)?;
-            let available_extensions = queries::get_available_extensions(connection)?;
-            let folder_counts = queries::count_media_per_folder(connection)?;
-            let tag_tree = queries::get_tag_tree(connection)?;
-            Ok(GallerySnapshot {
-                browser,
-                folders,
-                skeletons,
-                group_labels: group_labels.clone(),
-                media_count,
-                window_offset,
-                media,
-                media_tags,
-                available_extensions,
-                folder_counts,
-                tag_tree,
-                groups: {
-                    let mut groups = Vec::<(String, usize)>::new();
-                    for label in group_labels.iter().flatten() {
-                        if let Some(last) = groups.last_mut().filter(|g| g.0 == *label) {
-                            last.1 += 1;
-                        } else {
-                            groups.push((label.clone(), 1));
-                        }
+        }
+        let group_labels = data.group_labels;
+        Ok(GallerySnapshot {
+            browser,
+            folders: data.folders,
+            skeletons: data.skeletons,
+            group_labels: group_labels.clone(),
+            media_count: data.media_count,
+            window_offset: data.window_offset,
+            media,
+            media_tags: data.media_tags,
+            available_extensions: data.available_extensions,
+            folder_counts: data.folder_counts,
+            tag_tree: data.tag_tree,
+            groups: {
+                let mut groups = Vec::<(String, usize)>::new();
+                for label in group_labels.iter().flatten() {
+                    if let Some(last) = groups.last_mut().filter(|g| g.0 == *label) {
+                        last.1 += 1;
+                    } else {
+                        groups.push((label.clone(), 1));
                     }
-                    groups
-                },
-            })
-        })?)
+                }
+                groups
+            },
+        })
     }
 
     /// Load the visible range plus its surrounding cache window. The window
@@ -489,22 +474,16 @@ impl GalleryService {
         let offset = midpoint
             .saturating_sub(half)
             .min(total.saturating_sub(window_size));
-        Ok(self.database.with_reader(|connection| {
-            let media = snapshot.skeletons[offset..(offset + window_size).min(total)]
-                .iter()
-                .map(|s| queries::get_media_by_id(connection, s.id))
-                .collect::<rusqlite::Result<Vec<_>>>()?
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
-            let ids = media.iter().map(|item| item.id).collect::<Vec<_>>();
-            let media_tags = queries::get_tags_for_media_batch(connection, &ids)?;
-            Ok(Some(GalleryWindow {
-                offset,
-                media,
-                media_tags,
-            }))
-        })?)
+        let ids = snapshot.skeletons[offset..(offset + window_size).min(total)]
+            .iter()
+            .map(|s| s.id)
+            .collect::<Vec<_>>();
+        let (media, media_tags) = self.database.get_media_window(&ids)?;
+        Ok(Some(GalleryWindow {
+            offset,
+            media,
+            media_tags,
+        }))
     }
 
     /// Load the next source-ordered page of full media rows and their tags.
@@ -517,31 +496,22 @@ impl GalleryService {
         self.scope_cache_query(&mut query)?;
         query.offset = Some(offset as i64);
         query.limit = Some(MEDIA_WINDOW_SIZE as i64);
-        Ok(self.database.with_reader(|connection| {
-            let media = queries::get_media(connection, &query)?;
-            let ids = media.iter().map(|item| item.id).collect::<Vec<_>>();
-            let media_tags = queries::get_tags_for_media_batch(connection, &ids)?;
-            Ok(GalleryWindow {
-                offset,
-                media,
-                media_tags,
-            })
-        })?)
+        let (media, media_tags) = self.database.get_media_page_with_tags(&query)?;
+        Ok(GalleryWindow {
+            offset,
+            media,
+            media_tags,
+        })
     }
 
     /// Resolve an item even when it is outside the active viewport window.
     pub fn media_by_id(&self, id: i64) -> Result<Option<MediaItem>, GalleryError> {
-        let mut item = self
-            .database
-            .with_reader(|connection| queries::get_media_by_id(connection, id))?;
+        let mut item = self.database.get_media_by_id(id)?;
         if self.database.is_browser() {
             if let Some(item) = &mut item {
                 hydrate_local(item);
                 if item.missing {
-                    self.database.with_reader(|conn| {
-                        restore_record_preview(conn, item);
-                        Ok(())
-                    })?;
+                    self.database.restore_record_preview(item)?;
                 }
             }
         }
@@ -550,16 +520,7 @@ impl GalleryService {
 
     /// Resolve filesystem paths in the exact order of a drag selection.
     pub fn media_paths_by_ids(&self, ids: &[i64]) -> Result<Vec<std::path::PathBuf>, GalleryError> {
-        Ok(self.database.with_reader(|connection| {
-            let items = ids
-                .iter()
-                .map(|id| {
-                    queries::get_media_by_id(connection, *id)
-                        .map(|media| media.map(|item| std::path::PathBuf::from(item.full_path)))
-                })
-                .collect::<rusqlite::Result<Vec<_>>>()?;
-            Ok(items.into_iter().flatten().collect())
-        })?)
+        Ok(self.database.media_paths_by_ids(ids)?)
     }
 
     /// Resolve surviving media identities and paths in caller order.
@@ -567,24 +528,12 @@ impl GalleryService {
         &self,
         ids: &[i64],
     ) -> Result<Vec<(std::path::PathBuf, i64)>, GalleryError> {
-        Ok(self.database.with_reader(|connection| {
-            ids.iter()
-                .filter_map(|id| match queries::get_media_by_id(connection, *id) {
-                    Ok(Some(media)) => Some(Ok((std::path::PathBuf::from(media.full_path), *id))),
-                    Ok(None) => None,
-                    Err(error) => Some(Err(error)),
-                })
-                .collect::<rusqlite::Result<Vec<_>>>()
-        })?)
+        Ok(self.database.media_path_pairs_by_ids(ids)?)
     }
 
     /// Read the informational open counter stored by PhoTag's original schema.
     pub fn open_count(&self, media_id: i64) -> Result<i64, GalleryError> {
-        Ok(self.database.with_reader(|connection| {
-            Ok(photag_plugin_database::db::get_open_count(
-                connection, media_id,
-            ))
-        })?)
+        Ok(self.database.open_count(media_id))
     }
 
     /// Resolve assigned tags even when the media row is outside the viewport window.
@@ -592,15 +541,13 @@ impl GalleryService {
         &self,
         media_ids: &[i64],
     ) -> Result<HashMap<i64, Vec<Tag>>, GalleryError> {
-        Ok(self
-            .database
-            .with_reader(|connection| queries::get_tags_for_media_batch(connection, media_ids))?)
+        Ok(self.database.get_tags_for_media_batch(media_ids)?)
     }
 
-    pub fn statistics(&self) -> Result<queries::LibraryStats, GalleryError> {
+    pub fn statistics(&self) -> Result<photag_plugin_database::LibraryStats, GalleryError> {
         Ok(self
             .database
-            .with_reader(|conn| queries::get_statistics_scoped(conn, self.database.is_browser()))?)
+            .get_statistics_scoped(self.database.is_browser())?)
     }
 
     pub fn data_revision(&self) -> u64 {
@@ -609,9 +556,9 @@ impl GalleryService {
 
     /// Persist a selection rating using PhoTag's clamped bulk update query.
     pub fn apply_rating(&self, media_ids: &[i64], rating: u8) -> Result<(), GalleryError> {
-        Ok(self.database.with_writer(|connection| {
-            queries::set_rating_bulk(connection, media_ids, i32::from(rating))
-        })?)
+        Ok(self
+            .database
+            .set_rating_bulk(media_ids, i32::from(rating))?)
     }
 }
 
@@ -646,15 +593,5 @@ fn hydrate_local(item: &mut MediaItem) {
             item.missing = false;
         }
         Err(error) => item.missing = error.kind() == std::io::ErrorKind::NotFound,
-    }
-}
-
-fn restore_record_preview(conn: &rusqlite::Connection, item: &mut MediaItem) {
-    if let Ok(path) = conn.query_row(
-        "SELECT thumb_path FROM tag_previews WHERE media_id=?1",
-        [item.id],
-        |r| r.get::<_, String>(0),
-    ) {
-        item.thumb_path = Some(path);
     }
 }

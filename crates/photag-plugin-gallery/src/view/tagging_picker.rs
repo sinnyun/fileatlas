@@ -228,7 +228,7 @@ pub(super) fn render(
 }
 
 fn tag_tree_rows(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     depth: usize,
     query: &str,
     selected: &std::collections::HashSet<i64>,
@@ -271,7 +271,7 @@ fn tag_tree_rows(
 }
 
 fn collect_recent_labels(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     recent_ids: &[i64],
     out: &mut Vec<(i64, String)>,
 ) {
@@ -285,10 +285,7 @@ fn collect_recent_labels(
     }
 }
 
-fn find_tag(
-    tags: &[photag_plugin_database::db::queries::Tag],
-    id: i64,
-) -> Option<&photag_plugin_database::db::queries::Tag> {
+fn find_tag(tags: &[photag_plugin_database::Tag], id: i64) -> Option<&photag_plugin_database::Tag> {
     tags.iter().find_map(|tag| {
         (tag.id == id)
             .then_some(tag)
@@ -578,8 +575,8 @@ impl GalleryView {
     }
 }
 
-fn list_empty(tags: &[photag_plugin_database::db::queries::Tag], query: &str) -> bool {
-    fn has(tags: &[photag_plugin_database::db::queries::Tag], query: &str) -> bool {
+fn list_empty(tags: &[photag_plugin_database::Tag], query: &str) -> bool {
+    fn has(tags: &[photag_plugin_database::Tag], query: &str) -> bool {
         tags.iter().any(|tag| {
             query.is_empty()
                 || tag.name.to_lowercase().contains(query)

@@ -3,19 +3,7 @@ use super::*;
 impl GalleryService {
     pub fn ids_for_paths(&self, paths: &[String]) -> Result<Vec<i64>, String> {
         self.database
-            .with_reader(|conn| {
-                let mut ids = Vec::new();
-                for path in paths {
-                    if let Ok(id) =
-                        conn.query_row("SELECT id FROM media WHERE full_path=?1", [path], |r| {
-                            r.get::<_, i64>(0)
-                        })
-                    {
-                        ids.push(id);
-                    }
-                }
-                Ok(ids)
-            })
+            .ids_for_paths(paths)
             .map_err(|e| e.to_string())
     }
 
@@ -27,17 +15,10 @@ impl GalleryService {
         generation: u64,
         request: u64,
     ) -> Result<GalleryWindow, String> {
-        let mut media = self
+        let (mut media, _) = self
             .database
-            .with_reader(|conn| {
-                ids.iter()
-                    .map(|id| queries::get_media_by_id(conn, *id))
-                    .collect::<rusqlite::Result<Vec<_>>>()
-            })
-            .map_err(|e| e.to_string())?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+            .get_media_window(&ids)
+            .map_err(|e| e.to_string())?;
         for item in &mut media {
             if self.database.is_browser() {
                 if self.live.status().0 != generation
@@ -47,24 +28,16 @@ impl GalleryService {
                 }
                 let before = source_version(&item.full_path);
                 if let Some(version) = &before {
-                    self.database
-                        .with_reader(|conn| {
-                            let previous: Option<String> = conn
-                                .query_row(
-                                    "SELECT version FROM file_versions WHERE full_path=?1",
-                                    [&item.full_path],
-                                    |r| r.get(0),
-                                )
-                                .ok();
-                            if previous.as_ref() != Some(version) {
-                                item.thumb_path = None;
-                                item.width = None;
-                                item.height = None;
-                                item.micro_thumb = None;
-                            }
-                            Ok(())
-                        })
-                        .map_err(|e| e.to_string())?;
+                    if self
+                        .database
+                        .file_version_changed(&item.full_path, version)
+                        .map_err(|e| e.to_string())?
+                    {
+                        item.thumb_path = None;
+                        item.width = None;
+                        item.height = None;
+                        item.micro_thumb = None;
+                    }
                 }
                 if item
                     .thumb_path
@@ -78,10 +51,7 @@ impl GalleryService {
                 hydrate_local(item);
                 if item.missing {
                     self.database
-                        .with_reader(|conn| {
-                            restore_record_preview(conn, item);
-                            Ok(())
-                        })
+                        .restore_record_preview(item)
                         .map_err(|e| e.to_string())?;
                 }
                 if before.is_some()
@@ -104,11 +74,17 @@ impl GalleryService {
                             item.width = w.map(i64::from);
                             item.height = h.map(i64::from);
                             item.micro_thumb = micro.clone();
-                            self.database.with_cache_writer(|conn| {
-                                conn.execute("UPDATE media SET thumb_path=?1,width=?2,height=?3,micro_thumb=?4 WHERE id=?5 AND full_path=?6",rusqlite::params![thumb,item.width,item.height,micro,item.id,item.full_path])?;
-                                if let Some(version)=&before {conn.execute("INSERT OR REPLACE INTO file_versions VALUES(?1,?2)",rusqlite::params![item.full_path,version])?;}
-                                Ok(())
-                            }).map_err(|e|e.to_string())?;
+                            self.database
+                                .store_visible_thumbnail(
+                                    item.id,
+                                    &item.full_path,
+                                    &thumb,
+                                    item.width,
+                                    item.height,
+                                    micro.as_deref(),
+                                    before.as_deref(),
+                                )
+                                .map_err(|e| e.to_string())?;
                         }
                     }
                 }

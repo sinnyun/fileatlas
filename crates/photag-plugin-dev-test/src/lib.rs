@@ -11,7 +11,7 @@ use std::time::Instant;
 
 use cordis::{Context, Plugin, Service};
 use photag_contracts::{FolderSelectionChanged, MediaIndexChanged};
-use photag_plugin_database::{DatabaseService, db::queries};
+use photag_plugin_database::DatabaseService;
 use photag_plugin_indexing::IndexingService;
 use photag_ui_bridge::register_views_for_plugin;
 use tokio::runtime::Handle;
@@ -111,9 +111,7 @@ impl DevTestService {
         self: &Arc<Self>,
     ) -> Result<(i64, usize, std::time::Duration), DevTestError> {
         let root = Self::fixture_root()?;
-        let folder = self
-            .database
-            .with_writer(|connection| queries::add_folder(connection, &root.to_string_lossy()))?;
+        let folder = self.database.add_folder(&root.to_string_lossy())?;
         let cancel = Arc::new(AtomicBool::new(false));
         let receiver = self
             .indexing
@@ -126,14 +124,8 @@ impl DevTestService {
                 progress.phase, progress.scanned, progress.total
             ));
         }
-        let count = self.database.with_reader(|connection| {
-            connection.query_row(
-                "SELECT COUNT(*) FROM media WHERE folder_id = ?1",
-                [folder.id],
-                |row| row.get(0),
-            )
-        })?;
-        Ok((folder.id, count, started.elapsed()))
+        let count = self.database.count_media_in_folder(folder.id)?;
+        Ok((folder.id, count as usize, started.elapsed()))
     }
 
     pub fn inject_virtual(self: &Arc<Self>, count: usize) -> bool {
@@ -320,7 +312,7 @@ pub enum DevTestPluginError {
 mod tests {
     use super::benchmark::{clear_virtual_records, replace_virtual_records};
     use super::*;
-    use photag_plugin_database::db::queries;
+    use photag_plugin_database::queries;
     use photag_plugin_thumbnails::ThumbnailService;
 
     fn temp_root(label: &str) -> PathBuf {
@@ -426,5 +418,57 @@ mod tests {
         assert_eq!(clear_virtual_records(&database, &root).unwrap().0, 0);
         drop(database);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn browser_virtual_rows_do_not_persist_and_legacy_rows_are_removed()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = temp_root("browser-virtual");
+        std::fs::create_dir_all(&root)?;
+        let path = root.join("photag.sqlite");
+        let marker =
+            root.join(VIRTUAL_DIR).to_string_lossy().into_owned() + std::path::MAIN_SEPARATOR_STR;
+        let preview = DevTestService::fixture_root()?.join(".dev-support/preview.png");
+
+        // Simulate the old behavior where browser-mode writer persistence
+        // retained rated synthetic rows between application launches.
+        let database = DatabaseService::open_browser_at(&path)?;
+        let folder = database.add_folder(&root.to_string_lossy())?;
+        let legacy_path = format!("{marker}virtual-000001.png");
+        database.with_writer(|connection| {
+            let media_id = queries::insert_media(
+                connection,
+                folder.id,
+                "virtual-000001.png",
+                &legacy_path,
+                "image",
+                10,
+                1,
+                None,
+                None,
+                None,
+            )?;
+            connection.execute("UPDATE media SET rating=1 WHERE id=?1", [media_id])?;
+            Ok(())
+        })?;
+        drop(database);
+
+        let database = DatabaseService::open_browser_at(&path)?;
+        assert_eq!(database.count_media_in_folder(folder.id)?, 1);
+        replace_virtual_records(&database, &root, &preview, 1_000, |_| {})?;
+        assert_eq!(database.count_media_in_folder(folder.id)?, 1_000);
+        drop(database);
+
+        let database = DatabaseService::open_browser_at(&path)?;
+        assert_eq!(database.count_media_in_folder(folder.id)?, 0);
+        replace_virtual_records(&database, &root, &preview, 1_000, |_| {})?;
+        assert_eq!(database.count_media_in_folder(folder.id)?, 1_000);
+        clear_virtual_records(&database, &root)?;
+        drop(database);
+        let database = DatabaseService::open_browser_at(&path)?;
+        assert_eq!(database.count_media_in_folder(folder.id)?, 0);
+        drop(database);
+        let _ = std::fs::remove_dir_all(root);
+        Ok(())
     }
 }

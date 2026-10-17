@@ -227,7 +227,7 @@ pub enum ContributionKind {
         order: i32,
     },
     /// Executable command exposed to menus and keybindings.
-    Command { label: String },
+    Command { label: String, needs: CommandNeeds },
     /// Menu entry referring to a command identifier.
     MenuItem {
         label: String,
@@ -237,6 +237,49 @@ pub enum ContributionKind {
     },
     /// Key chord referring to a command identifier.
     Keybinding { key: String, command_id: String },
+}
+
+/// Preconditions used by the shared command catalog and MCP dispatcher.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CommandNeeds {
+    /// No operation-specific precondition.
+    #[default]
+    None,
+    /// Requires the host's explicit MCP mutation opt-in.
+    MutationOptIn,
+    /// Requires an available undo entry and the MCP mutation opt-in.
+    UndoAvailable,
+    /// Requires an available redo entry and the MCP mutation opt-in.
+    RedoAvailable,
+    /// Requires mutation opt-in and `confirm: true` on MCP invocation.
+    ConfirmedMutation,
+}
+
+/// Menu placement metadata associated with a registered command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandMenuItem {
+    pub id: String,
+    pub label: String,
+    pub menu: String,
+    pub order: i32,
+}
+
+/// Keybinding metadata associated with a registered command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandKeybinding {
+    pub id: String,
+    pub key: String,
+}
+
+/// Stable command metadata projected from lifecycle-owned UI contributions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegisteredCommand {
+    pub owner: String,
+    pub id: String,
+    pub label: String,
+    pub needs: CommandNeeds,
+    pub menu_items: Vec<CommandMenuItem>,
+    pub keybindings: Vec<CommandKeybinding>,
 }
 
 /// App chrome locations supported by the panel host.
@@ -406,6 +449,68 @@ impl UiCatalog {
             .map(|registered| registered.values().cloned().collect())
             .map_err(|_| RegistrationError::LockPoisoned)
     }
+
+    /// Return commands with their related menu items and keybindings. This is
+    /// the common metadata source used by the Shell UI and MCP command tools.
+    pub fn commands(&self) -> Result<Vec<RegisteredCommand>, RegistrationError> {
+        let registered = self
+            .contributions
+            .read()
+            .map_err(|_| RegistrationError::LockPoisoned)?;
+        let mut commands = BTreeMap::<String, RegisteredCommand>::new();
+        for owned in registered.values() {
+            if let ContributionKind::Command { label, needs } = &owned.contribution.kind {
+                commands.insert(
+                    owned.contribution.id.clone(),
+                    RegisteredCommand {
+                        owner: owned.owner.clone(),
+                        id: owned.contribution.id.clone(),
+                        label: label.clone(),
+                        needs: *needs,
+                        menu_items: Vec::new(),
+                        keybindings: Vec::new(),
+                    },
+                );
+            }
+        }
+        for owned in registered.values() {
+            match &owned.contribution.kind {
+                ContributionKind::MenuItem {
+                    label,
+                    menu,
+                    command_id,
+                    order,
+                } => {
+                    if let Some(command) = commands.get_mut(command_id) {
+                        command.menu_items.push(CommandMenuItem {
+                            id: owned.contribution.id.clone(),
+                            label: label.clone(),
+                            menu: menu.clone(),
+                            order: *order,
+                        });
+                    }
+                }
+                ContributionKind::Keybinding { key, command_id } => {
+                    if let Some(command) = commands.get_mut(command_id) {
+                        command.keybindings.push(CommandKeybinding {
+                            id: owned.contribution.id.clone(),
+                            key: key.clone(),
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+        for command in commands.values_mut() {
+            command
+                .menu_items
+                .sort_by_key(|item| (item.order, item.id.clone()));
+            command
+                .keybindings
+                .sort_by(|left, right| left.id.cmp(&right.id));
+        }
+        Ok(commands.into_values().collect())
+    }
 }
 
 /// Typed event raised by the GPUI host when a contributed command is invoked.
@@ -464,6 +569,50 @@ mod tests {
         let snapshot = catalog.snapshot().unwrap();
         assert_eq!(snapshot.len(), 1);
         assert_eq!(snapshot[0].contribution.id, "tags/tree");
+    }
+
+    #[test]
+    fn command_registry_joins_command_policy_menu_items_and_keybindings() {
+        let catalog = UiCatalog::default();
+        catalog
+            .register(
+                "history",
+                [
+                    UiContribution::new(
+                        "history/undo",
+                        ContributionKind::Command {
+                            label: "Undo".into(),
+                            needs: CommandNeeds::UndoAvailable,
+                        },
+                    ),
+                    UiContribution::new(
+                        "history/undo-menu",
+                        ContributionKind::MenuItem {
+                            label: "Undo last action".into(),
+                            menu: "Edit".into(),
+                            command_id: "history/undo".into(),
+                            order: 10,
+                        },
+                    ),
+                    UiContribution::new(
+                        "history/undo-key",
+                        ContributionKind::Keybinding {
+                            key: "Ctrl+Z".into(),
+                            command_id: "history/undo".into(),
+                        },
+                    ),
+                ],
+            )
+            .unwrap();
+
+        let commands = catalog.commands().unwrap();
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0].owner, "history");
+        assert_eq!(commands[0].id, "history/undo");
+        assert_eq!(commands[0].needs, CommandNeeds::UndoAvailable);
+        assert_eq!(commands[0].menu_items[0].menu, "Edit");
+        assert_eq!(commands[0].menu_items[0].order, 10);
+        assert_eq!(commands[0].keybindings[0].key, "Ctrl+Z");
     }
 
     struct RegisteringFeature;

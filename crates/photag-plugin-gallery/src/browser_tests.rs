@@ -17,61 +17,55 @@ fn browser_projects_immediate_files_folders_and_safe_cache_windows() {
     std::fs::create_dir_all(&empty).unwrap();
     let database = Arc::new(DatabaseService::open_at(temp.join("db.sqlite")).unwrap());
     let root_string = root.to_string_lossy().into_owned();
-    let folder = database
-        .with_writer(|c| queries::add_folder(c, &root_string))
-        .unwrap();
-    database
-        .with_writer(|c| {
-            for i in 0..245 {
-                let name = format!("file-{i:03}.txt");
-                let path = root.join(&name);
-                std::fs::write(&path, b"file").unwrap();
-                queries::insert_media(
-                    c,
-                    folder.id,
-                    &name,
-                    &path.to_string_lossy(),
-                    "file",
-                    4,
-                    1_700_000_000,
-                    None,
-                    None,
-                    None,
-                )?;
-            }
-            for path in [sub.join("child.txt"), deep.join("deep.txt")] {
-                std::fs::write(&path, b"nested").unwrap();
-                queries::insert_media(
-                    c,
-                    folder.id,
-                    &path.file_name().unwrap().to_string_lossy(),
-                    &path.to_string_lossy(),
-                    "file",
-                    6,
-                    1_700_000_000,
-                    None,
-                    None,
-                    None,
-                )?;
-            }
-            // LIKE metacharacters in the directory name must not select a sibling.
-            let sibling = temp.join("root_XX");
-            std::fs::create_dir_all(&sibling).unwrap();
-            queries::insert_media(
-                c,
+    let folder = database.add_folder(&root_string).unwrap();
+    (|| -> Result<(), photag_plugin_database::DatabaseAccessError> {
+        for i in 0..245 {
+            let name = format!("file-{i:03}.txt");
+            let path = root.join(&name);
+            std::fs::write(&path, b"file").unwrap();
+            database.insert_media(
                 folder.id,
-                "wrong.txt",
-                &sibling.join("wrong.txt").to_string_lossy(),
+                &name,
+                &path.to_string_lossy(),
                 "file",
-                1,
+                4,
                 1_700_000_000,
                 None,
                 None,
                 None,
             )?;
-            Ok(())
-        })
-        .unwrap();
+        }
+        for path in [sub.join("child.txt"), deep.join("deep.txt")] {
+            std::fs::write(&path, b"nested").unwrap();
+            database.insert_media(
+                folder.id,
+                &path.file_name().unwrap().to_string_lossy(),
+                &path.to_string_lossy(),
+                "file",
+                6,
+                1_700_000_000,
+                None,
+                None,
+                None,
+            )?;
+        }
+        // LIKE metacharacters in the directory name must not select a sibling.
+        let sibling = temp.join("root_XX");
+        std::fs::create_dir_all(&sibling).unwrap();
+        database.insert_media(
+            folder.id,
+            "wrong.txt",
+            &sibling.join("wrong.txt").to_string_lossy(),
+            "file",
+            1,
+            1_700_000_000,
+            None,
+            None,
+            None,
+        )?;
+        Ok(())
+    })()
+    .unwrap();
     let mut service = GalleryService::new(database.clone());
     service.grouping = Some(Arc::new(photag_plugin_grouping::GroupingService));
     service.indexing = Some(Arc::new(photag_plugin_indexing::IndexingService::new(

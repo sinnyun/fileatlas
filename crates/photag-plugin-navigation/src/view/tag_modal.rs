@@ -745,7 +745,7 @@ fn tag_badge(name: &str, color: u32) -> Div {
 }
 
 fn collect_association_rows(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     excluded_id: i64,
     rows: &mut Vec<(i64, String)>,
 ) {

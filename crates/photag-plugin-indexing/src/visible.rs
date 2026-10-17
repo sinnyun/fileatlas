@@ -16,10 +16,7 @@ impl IndexingService {
                 .generate_image(source)
                 .map(|(p, w, h, m)| (p, (w > 0).then_some(w), (h > 0).then_some(h), m)),
             "video" => {
-                let target = photag_plugin_thumbnails::thumbs::thumb_path_for(
-                    source,
-                    self.thumbnails.directory(),
-                );
+                let target = self.thumbnails.video_thumbnail_path(source);
                 if !target.exists()
                     && !ffmpeg::extract_video_thumbnail(path, &target.to_string_lossy())
                 {

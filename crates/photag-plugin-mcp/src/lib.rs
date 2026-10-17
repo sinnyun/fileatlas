@@ -4,6 +4,7 @@
 mod input_activity;
 mod params;
 mod screenshot;
+mod tools_commands;
 mod tools_debug;
 mod tools_dev_test;
 mod tools_gallery_ui;
@@ -15,7 +16,7 @@ use std::sync::Arc;
 
 use cordis::{Context, Plugin, Service};
 use params::*;
-use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_database::SortOrder;
 use photag_plugin_dev_test::DevTestService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_gallery::GalleryService;
@@ -23,6 +24,7 @@ use photag_plugin_metadata_export::MetadataExportService;
 use photag_plugin_navigation::NavigationService;
 use photag_plugin_quicklook::QuickLookService;
 use photag_plugin_tagging::TaggingService;
+use photag_plugin_versions::VersionsService;
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -148,9 +150,15 @@ impl Plugin for McpPlugin {
             .ok();
         let surfaces = context
             .try_service::<photag_ui_bridge::UiBridgeService>()
-            .map_err(|error| McpPluginError::Dependency(error.to_string()))?
-            .surfaces
-            .clone();
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let command_catalog = surfaces.catalog.clone();
+        let surfaces = surfaces.surfaces.clone();
+        let history = context
+            .try_service::<photag_plugin_history::HistoryService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let versions = context
+            .try_service::<VersionsService>()
+            .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
 
         let server = PhoTagMcpServer::new(
             gallery,
@@ -163,6 +171,9 @@ impl Plugin for McpPlugin {
             dev_test,
             i18n,
             surfaces,
+            command_catalog,
+            history,
+            versions,
             context.clone(),
         );
         let task = tokio::spawn(async move {
@@ -211,6 +222,9 @@ struct PhoTagMcpServer {
     context: Context,
     #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
+    command_catalog: Arc<photag_ui_bridge::UiCatalog>,
+    history: Arc<photag_plugin_history::HistoryService>,
+    versions: Arc<VersionsService>,
     gallery: Arc<GalleryService>,
     navigation: Arc<NavigationService>,
     tagging: Arc<TaggingService>,
@@ -236,18 +250,26 @@ impl PhoTagMcpServer {
         dev_test: Option<Arc<DevTestService>>,
         i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
+        command_catalog: Arc<photag_ui_bridge::UiCatalog>,
+        history: Arc<photag_plugin_history::HistoryService>,
+        versions: Arc<VersionsService>,
         context: Context,
     ) -> Self {
         Self {
             context,
             tool_router: Self::read_tool_router()
                 + Self::write_tool_router()
+                + Self::version_write_tool_router()
                 + Self::dev_test_tool_router()
+                + Self::commands_tool_router()
                 + Self::ui_tool_router()
                 + Self::gallery_ui_tool_router()
                 + Self::debug_tool_router(),
             i18n,
             surfaces,
+            command_catalog,
+            history,
+            versions,
             gallery,
             navigation,
             tagging,

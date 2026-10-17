@@ -1,6 +1,5 @@
 //! Remove offline deletions only after successful traversal, preserving unavailable roots.
 use crate::IndexingService;
-use photag_plugin_database::db::queries;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -18,15 +17,7 @@ pub(super) fn finish_scan(
     }
     let rows = service
         .database
-        .with_reader(|connection| {
-            let mut statement =
-                connection.prepare("SELECT id, full_path FROM media WHERE folder_id = ?1")?;
-            statement
-                .query_map([folder_id], |row| {
-                    Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-                })?
-                .collect::<rusqlite::Result<Vec<_>>>()
-        })
+        .media_paths_for_folder(folder_id)
         .map_err(|error| error.to_string())?;
     let missing = rows
         .into_iter()
@@ -45,19 +36,11 @@ pub(super) fn finish_scan(
         }
         service
             .database
-            .with_writer(|connection| {
-                for id in chunk {
-                    connection.execute(
-                        "DELETE FROM media WHERE id = ?1 AND folder_id = ?2",
-                        rusqlite::params![id, folder_id],
-                    )?;
-                }
-                Ok(())
-            })
+            .delete_media_for_folder(folder_id, chunk)
             .map_err(|error| error.to_string())?;
     }
     service
         .database
-        .with_writer(|connection| queries::update_folder_scan_time(connection, folder_id))
+        .update_folder_scan_time(folder_id)
         .map_err(|error| error.to_string())
 }

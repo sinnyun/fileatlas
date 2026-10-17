@@ -1024,3 +1024,60 @@ single-run/cache limits, test harness corrections and remaining boundaries.
 validation-ui/2026-10-16-navigation-latency/README.md。
 
 完整根至当前目录面包屑、路径编辑、后退/前进/上一级已集成 Navigation 既有贡献。历史统一目录/Home/标签范围，窗口内最多200项，真实路径在动作时验证；当前层级不重载，非法路径保留状态。窗口启动只恢复一个对应范围事件，避免空路径清空标签/收藏。34项测试、locked check、独立输出构建、fmt、UI refresh guard通过；同进程MCP 11项语义/实际Enter-Escape-Ctrl+L、4项真实pointer、文件夹及标签只读重启验证通过，重复刷新回归通过。设计来源为用户圈定截图；截图、命令、接口与未覆盖网络/输入系统边界见 [地址栏证据](validation-ui/2026-10-16-address/README.md)。
+
+## 2026-10-16 DatabaseService 查询边界迁移
+
+生产消费端的 SQLite 回调已收口到具名 `DatabaseService` 操作。复合 Gallery
+快照、索引批次、Watcher 协调、Tagging 记录与虚拟数据写入均在 Database 内
+持锁/事务；源查询 SQL、schema 和批次顺序保持。守卫现在阻止业务 crate 在生产
+代码中调用原始 reader/writer/cache-writer 回调或运行时依赖 `rusqlite`。Dev Test
+只通过 Cordis 发布的 `DatabaseService`、`IndexingService` 注入/扫描，不持有连接；
+其生产路径不导入 SQL 查询函数，`rusqlite` 仅在单元测试夹具中使用。
+
+验证：`cargo +1.97.1 check --locked --workspace -j 2`、`cargo +1.97.1 build
+--locked --bin photag-shell -j 2`、格式检查和四项治理脚本通过。相关 crate
+测试累计 58 项通过，Indexing 另 1 项 FFmpeg 依赖测试忽略。同进程 MCP 使用
+隔离 profile `target/mcp-db-boundary-validation`。首次重启回归暴露旧版浏览器
+模式曾将带评分的虚拟行写入持久库，已增加会话缓存写入、历史保留前缀清理及
+跨重启单测。重建可执行文件后，同进程 MCP 注入 1,000 行（6.04 ms）并清理
+1,000 行；最终 Gallery 库计数为 0，持久库保留前缀行数为 0。两次只读调试状态
+采样无数据库错误且 view revision 稳定。未验证视频 FFmpeg
+扩展测试及其他 Windows 原生输入/文件系统竞态。
+# Lore-backed historical version switching — 2026-10-17
+
+PhoTag now separates Lore revision storage (`photag-plugin-versions`) from
+durable SQLite display/current-revision metadata (`photag-plugin-version-info`).
+The Gallery History inspector and same-process MCP use the version service for
+revision create/restore and the Lore branch create/switch/archive/merge lifecycle.
+Pending conflicts persist across service restarts and support whole-file ours,
+theirs, or abort. Branch switching verifies a clean snapshot unless an MCP
+caller explicitly confirms overwrite; file-changing operations refresh the
+existing indexed media row. Locked Shell compilation, the metadata test, and
+the Lore branch conflict/archive lifecycle test pass. Full validation evidence,
+single-file limits, and live Windows/MCP blockers are recorded in
+`docs/validation-ui/2026-10-17-lore-version-history/README.md`.
+
+
+## 2026-10-17 Lore 历史回退显示回归
+
+原始参考源码对照确认：VersionInfo 完整目录必须保留 Lore 当前祖先链未返回的 revision。VersionsService 列表已修正，按持久化 revision number 稳定排列；激活只改当前标记，既有版本行不删除。Gallery 选择与刷新修复见 redesign-validation.md。
+
+27 项 Gallery/VersionInfo/Versions 测试、locked Shell 构建和静态守卫通过。原路径 D:\桌面文件夹\测试\临时文件\00.png 在隔离 MCP profile 中实际创建两版本并通过 GPUI 指针往返切换；两个版本、当前标记、字节和页面选择均保持正确。参考源码映射与证据见 validation-ui/2026-10-17-lore-version-history/reference-source-trace.md 和同目录 README.md。
+
+## 2026-10-17 从旧版编辑后创建03的 BranchAdvanced 修复
+
+修复前服务回归复现用户的完全相同错误。对照 Lore 官方 shared-store 文档和固定 lore-vm 测试，确认 checkout01 不等于分支 tip02；创建快照前需在私有工作树同步最新本地 tip、重新暂存。已处理失败暂存的下一次创建恢复，并保留源文件、01/02及无修改拒绝语义。
+
+cargo +1.97.1 test --locked -j 2 -p photag-plugin-versions -p photag-plugin-version-info 四项通过；包含01→02→01修改创建03、三个版本恢复、人工失败暂存后创建04、无修改拒绝、原有分支冲突/解决/归档。locked Shell 构建、fmt、Node语法和三项治理守卫通过；既有 LNK4098 与两个 orphan 目录警告仍保留。
+
+PHOTAG_LORE_TEST_FILE 指向原路径 D:\桌面文件夹\测试\临时文件\00.png，运行同进程 MCP 场景，profile 为 target/mcp-lore-edit-after-rewind-20261017。已在实际源文件上完成01/02实点往返、停01修改创建03、恢复三份版本字节及可见页验证。quiet snapshot 22→22，文件选中项保留。源文件恢复开始时内容和时间戳，SHA-256 为 3D246F8B6BD16F794EFAA92060439A6CF1B6EE2CC85D3C5250E2579528B253AF，前后一致。证据：validation-ui/2026-10-17-lore-version-history/edit-after-rewind.json 和 edit-after-rewind-restoration.json。
+
+## 2026-10-17 未保存版本内容状态
+
+用户新增画廊修改提示。沿用参考项目VersionInfo稳定ID和当前标记，固定Lore的
+file.hash/file.info按immutable revision比对hash/size，先当前基准再所有已存版本；
+不以mtime、branch.latest或私有暂存副本判断。服务测试覆盖同大小内容改变、旧版
+未变、时间变化、匹配另一版本、失败暂存与缺失文件。Versions4、Gallery23、
+i18n4通过；实际00.png同进程MCP验证监听更新、版本创建/回退/再提交、提示点击，
+没有因读取/点击增加版本。检查失败暴露未确认状态，不谎报未保存。
+详见 validation-ui/2026-10-17-version-status/README.md。

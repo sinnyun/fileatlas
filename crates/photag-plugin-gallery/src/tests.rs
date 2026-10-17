@@ -1,5 +1,4 @@
 use super::*;
-use photag_plugin_database::db::queries;
 
 #[test]
 fn keeps_full_rows_windowed_and_loads_new_viewport_range() {
@@ -14,30 +13,26 @@ fn keeps_full_rows_windowed_and_loads_new_viewport_range() {
     let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
     let folder_path = root.join("library").to_string_lossy().into_owned();
     std::fs::create_dir_all(&folder_path).unwrap();
-    let folder = database
-        .with_writer(|connection| queries::add_folder(connection, &folder_path))
-        .unwrap();
-    database
-        .with_writer(|connection| {
-            for index in 0..245 {
-                let filename = format!("image-{index:03}.png");
-                let path = format!("{folder_path}/{filename}");
-                queries::insert_media(
-                    connection,
-                    folder.id,
-                    &filename,
-                    &path,
-                    "image",
-                    index,
-                    1_700_000_000 + index,
-                    None,
-                    None,
-                    None,
-                )?;
-            }
-            Ok(())
-        })
-        .unwrap();
+    let folder = database.add_folder(&folder_path).unwrap();
+    (|| -> Result<(), photag_plugin_database::DatabaseAccessError> {
+        for index in 0..245 {
+            let filename = format!("image-{index:03}.png");
+            let path = format!("{folder_path}/{filename}");
+            database.insert_media(
+                folder.id,
+                &filename,
+                &path,
+                "image",
+                index,
+                1_700_000_000 + index,
+                None,
+                None,
+                None,
+            )?;
+        }
+        Ok(())
+    })()
+    .unwrap();
 
     let gallery = GalleryService::new(database);
     let snapshot = gallery.load(MediaQuery::default()).unwrap();
@@ -79,23 +74,21 @@ fn applies_bulk_rating_with_source_range_clamping() {
             .as_nanos()
     ));
     let database = Arc::new(DatabaseService::open_at(root.join("photag.sqlite")).unwrap());
-    let media_id = database
-        .with_writer(|connection| {
-            let folder = queries::add_folder(connection, "/rating-test")?;
-            queries::insert_media(
-                connection,
-                folder.id,
-                "sample.jpg",
-                "/rating-test/sample.jpg",
-                "image",
-                12,
-                1_700_000_000,
-                None,
-                None,
-                None,
-            )
-        })
-        .unwrap();
+    let media_id = (|| -> Result<_, photag_plugin_database::DatabaseAccessError> {
+        let folder = database.add_folder("/rating-test")?;
+        database.insert_media(
+            folder.id,
+            "sample.jpg",
+            "/rating-test/sample.jpg",
+            "image",
+            12,
+            1_700_000_000,
+            None,
+            None,
+            None,
+        )
+    })()
+    .unwrap();
     let gallery = GalleryService::new(Arc::clone(&database));
     gallery.apply_rating(&[media_id], 6).unwrap();
     assert_eq!(gallery.media_by_id(media_id).unwrap().unwrap().rating, 5);
@@ -105,7 +98,8 @@ fn applies_bulk_rating_with_source_range_clamping() {
 }
 
 #[tokio::test]
-async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
+async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal()
+-> Result<(), Box<dyn std::error::Error>> {
     use cordis::{Context, Plugin, PreparedPlugin, Routing};
     use photag_contracts::{DirectoryPathSelected, FolderSelectionChanged, TagSelectionChanged};
     use photag_ui_bridge::{UiBridgeService, UiCatalog};
@@ -141,6 +135,20 @@ async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
     let _grouping = context
         .provide(Arc::new(photag_plugin_grouping::GroupingService))
         .unwrap();
+    let _version_info = context.provide(Arc::new(
+        photag_plugin_version_info::VersionInfoService::open_at(root.join("version-info.sqlite"))?,
+    ))?;
+    let _thumbnails = context.provide(Arc::new(
+        photag_plugin_thumbnails::ThumbnailService::open_at(root.join("thumbs"))?,
+    ))?;
+    let versions_plugin = photag_plugin_versions::VersionsPlugin;
+    let versions_input = versions_plugin.prepare(photag_plugin_versions::VersionsConfig {
+        root: root.join("versions"),
+    })?;
+    let versions_fiber = context
+        .spawn(PreparedPlugin::from_input(versions_plugin, versions_input))
+        .await?;
+    versions_fiber.ready().await?;
     let plugin = GalleryPlugin;
     let input = plugin.prepare(GalleryConfig).unwrap();
     let fiber = context
@@ -198,5 +206,7 @@ async fn plugin_registers_gallery_ui_and_cleans_it_on_disposal() {
     );
     fiber.dispose().await.unwrap();
     assert!(catalog.snapshot().unwrap().is_empty());
+    versions_fiber.dispose().await?;
     let _ = std::fs::remove_dir_all(root);
+    Ok(())
 }

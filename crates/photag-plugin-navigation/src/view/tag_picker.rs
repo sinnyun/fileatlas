@@ -129,7 +129,7 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
 }
 
 fn collect_matches(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     query: &str,
     excluded: &HashSet<i64>,
     rows: &mut Vec<(i64, String, usize)>,

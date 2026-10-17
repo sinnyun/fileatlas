@@ -1,6 +1,6 @@
 //! Expanded draft editor. Only Confirm invokes the existing Navigation writes.
 use super::*;
-use photag_plugin_database::db::queries::Tag;
+use photag_plugin_database::Tag;
 use photag_plugin_navigation::NavigationService;
 
 #[derive(Clone)]

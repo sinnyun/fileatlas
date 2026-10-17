@@ -170,7 +170,7 @@ impl GalleryView {
         preview.into_any_element()
     }
 
-    pub(super) fn inspector_media(&self) -> Option<photag_plugin_database::db::queries::MediaItem> {
+    pub(super) fn inspector_media(&self) -> Option<photag_plugin_database::MediaItem> {
         let media_id = *self.selection.selected_media_ids.first()?;
         self.snapshot
             .as_ref()

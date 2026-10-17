@@ -1,6 +1,6 @@
 //! File-manager-style projection for ungrouped directory views.
 use super::*;
-use photag_plugin_database::db::queries::Folder;
+use photag_plugin_database::Folder;
 use std::path::Path;
 
 #[derive(Clone, Debug)]
@@ -12,6 +12,8 @@ pub struct GalleryDirectory {
 #[derive(Default, Clone)]
 pub struct BrowserSnapshot {
     pub active: bool,
+    /// The file rows are a partial directory result, not a deletion verdict.
+    pub loading: bool,
     pub directory: Option<String>,
     pub parent: Option<String>,
     pub directories: Vec<GalleryDirectory>,
@@ -26,7 +28,7 @@ impl GalleryService {
         if mode != GroupingMode::None && !self.database.is_browser() {
             return Ok(BrowserSnapshot::default());
         }
-        let roots = self.database.with_reader(queries::list_folders)?;
+        let roots = self.database.list_folders()?;
         let directory = query.path_prefix.clone().or_else(|| {
             query
                 .folder_id

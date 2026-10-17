@@ -5,7 +5,7 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::MediaItem;
+use photag_plugin_database::MediaItem;
 use photag_ui_bridge::theme;
 pub(super) fn section_title(label: &'static str) -> Div {
     div()
@@ -197,7 +197,7 @@ fn bulk_tag_tree(view: &GalleryView, cx: &mut Context<GalleryView>) -> impl Into
 }
 
 fn bulk_tag_rows(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     depth: usize,
     selected: &[i64],
     cx: &mut Context<GalleryView>,

@@ -1,5 +1,5 @@
 use super::*;
-use db::queries;
+use queries;
 
 #[test]
 fn browsing_is_ephemeral_but_bookmarks_and_annotations_survive_restart() {

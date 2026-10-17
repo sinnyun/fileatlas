@@ -10,7 +10,7 @@ use std::sync::{Mutex, OnceLock};
 #[cfg(test)]
 use std::time::Duration;
 
-use photag_plugin_database::{DatabaseService, db::queries};
+use photag_plugin_database::DatabaseService;
 
 const MAX_RECORDED_FAILURES: usize = 100;
 
@@ -66,8 +66,7 @@ fn schedule_with_writer(
     if media_ids.is_empty() {
         return Ok(());
     }
-    let entries = database
-        .with_reader(|connection| queries::get_paths_and_current_tags(connection, media_ids))?;
+    let entries = database.get_paths_and_current_tags(media_ids)?;
     if entries.is_empty() {
         return Ok(());
     }
@@ -323,7 +322,7 @@ mod tests {
     use super::{
         TEST_LOCK, clear_failure, failures, schedule, schedule_with_writer, state, wait_until_idle,
     };
-    use photag_plugin_database::{DatabaseService, db::queries};
+    use photag_plugin_database::{DatabaseService, queries};
     use std::path::Path;
     use std::sync::{Arc, Mutex, mpsc};
     use std::time::{Duration, SystemTime};

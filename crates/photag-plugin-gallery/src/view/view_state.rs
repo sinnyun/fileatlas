@@ -12,6 +12,8 @@ pub(super) struct GalleryViewInputs {
     pub bulk_date_to: Entity<DatePickerState>,
     pub rename_input: Entity<InputState>,
     pub inspector_tag_name: Entity<InputState>,
+    pub history_title: Entity<InputState>,
+    pub history_branch_name: Entity<InputState>,
     pub bulk_inputs: Vec<Entity<InputState>>,
 }
 
@@ -61,6 +63,12 @@ pub(super) fn build_inputs(
         InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("New filename"))
     });
     let inspector_tag_name = app.new(|cx| InputState::new(window, cx));
+    let history_title = app.new(|cx| {
+        InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Version title"))
+    });
+    let history_branch_name = app.new(|cx| {
+        InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Branch name"))
+    });
     let bulk_date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let bulk_date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let bulk_inputs = [
@@ -86,6 +94,8 @@ pub(super) fn build_inputs(
         bulk_date_to,
         rename_input,
         inspector_tag_name,
+        history_title,
+        history_branch_name,
         bulk_inputs,
     }
 }
@@ -97,6 +107,7 @@ impl GalleryView {
         file_operations: Arc<FileOperationsService>,
         drag_drop: Arc<DragDropService>,
         quicklook: Arc<QuickLookService>,
+        versions: Arc<photag_plugin_versions::VersionsService>,
         runtime: tokio::runtime::Handle,
         cordis: CordisContext,
         selected_folder: Arc<SelectedFolder>,
@@ -122,6 +133,8 @@ impl GalleryView {
             bulk_date_to,
             rename_input,
             inspector_tag_name,
+            history_title,
+            history_branch_name,
             bulk_inputs,
         } = inputs;
         let saved = session.snapshot().unwrap_or_default();
@@ -277,7 +290,7 @@ impl GalleryView {
         };
         let initial_writeback_failures = tagging
             .as_ref()
-            .map(|_| writeback_failure_signature())
+            .map(|tagging| writeback_failure_signature(tagging))
             .unwrap_or_default();
         let observed_navigation_revision = service.navigation_revision.load(Ordering::Acquire);
         Self {
@@ -290,6 +303,7 @@ impl GalleryView {
             file_operations,
             drag_drop,
             quicklook,
+            versions,
             runtime,
             cordis,
             selected_folder,
@@ -314,10 +328,18 @@ impl GalleryView {
             bulk_date_to_value: None,
             rename_input,
             inspector_tag_name,
+            history_title,
+            history_branch_name,
             inspector_tag_loaded: None,
             inspector_tag_draft: None,
-            inspector_history_demo: inspector::history::DemoHistory::from_environment()
-                .inspect(|demo| demo.publish(&surfaces)),
+            history_read: Default::default(),
+            version_states: Default::default(),
+            history_branches: Default::default(),
+            history_generation: 0,
+            history_selected: None,
+            history_create_open: false,
+            history_busy: false,
+            history_error: None,
             bulk_inputs,
             bulk_action: None,
             bulk_source: BulkActionSource::WholeLibrary,
@@ -421,19 +443,12 @@ impl GalleryView {
             .pending_scroll_restore
             .unwrap_or_else(|| self.scroll_offset());
         self.reload_state(false);
-        if let Ok(snapshot) = &self.snapshot {
-            let valid = snapshot
-                .skeletons
-                .iter()
-                .map(|item| item.id)
-                .collect::<HashSet<_>>();
-            self.selection.selected_media_ids = selected
-                .into_iter()
-                .filter(|id| valid.contains(id))
-                .collect();
-            self.selection.anchor_id = anchor.filter(|id| valid.contains(id));
-            self.pending_scroll_restore = Some(scroll);
-        }
+        // The retained snapshot can itself be a partial directory result.
+        // Validate selection when monitor receives a complete replacement, not
+        // against the old rows while scheduling that replacement.
+        self.selection.selected_media_ids = selected;
+        self.selection.anchor_id = anchor;
+        self.pending_scroll_restore = Some(scroll);
         self.persist_filter_session();
     }
 

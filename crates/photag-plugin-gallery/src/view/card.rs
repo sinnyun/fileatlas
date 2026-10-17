@@ -20,7 +20,7 @@ use super::GalleryView;
 pub(super) const CARD_CAPTION_HEIGHT: f32 = 38.;
 
 pub(super) fn render_media_card(
-    media: &photag_plugin_database::db::queries::MediaItem,
+    media: &photag_plugin_database::MediaItem,
     hover: f32,
     selection: f32,
     keyboard_focus: bool,
@@ -30,8 +30,9 @@ pub(super) fn render_media_card(
     thumb_size: f32,
     list_width: Option<f32>,
     micro_thumb: Option<&[u8]>,
+    version_state: Option<&photag_plugin_versions::FileVersionState>,
     rating_target_ids: Vec<i64>,
-    tag_tree: Arc<Vec<photag_plugin_database::db::queries::Tag>>,
+    tag_tree: Arc<Vec<photag_plugin_database::Tag>>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
@@ -154,6 +155,17 @@ pub(super) fn render_media_card(
                 .border_color(rgba((theme::accent() << 8) | 0x80)),
         );
     }
+    if let Some(state) = version_state
+        && state.status == photag_plugin_versions::FileVersionStatus::Modified
+        && list_width.is_none()
+    {
+        image_area = image_area.child(
+            super::version_badges::badge(media_id, state, cx)
+                .absolute()
+                .left(px(5.))
+                .top(px(5.)),
+        );
+    }
     let mut caption = div()
         .w_full()
         .pt(px(5.))
@@ -204,10 +216,22 @@ pub(super) fn render_media_card(
             .px_3()
             .child(
                 div()
-                    .text_sm()
-                    .text_ellipsis()
-                    .overflow_hidden()
-                    .child(media.filename.clone()),
+                    .h_flex()
+                    .items_center()
+                    .gap(px(6.))
+                    .when_some(version_state, |row, state| {
+                        row.when(
+                            state.status == photag_plugin_versions::FileVersionStatus::Modified,
+                            |row| row.child(super::version_badges::badge(media_id, state, cx)),
+                        )
+                    })
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_ellipsis()
+                            .overflow_hidden()
+                            .child(media.filename.clone()),
+                    ),
             )
             .child(
                 div()
@@ -291,7 +315,7 @@ pub(super) fn render_media_card(
 
 /// Second caption line. The source schema stores no media duration, so
 /// video/audio rows keep the type glyph and omit a fabricated time.
-fn caption_metadata(media: &photag_plugin_database::db::queries::MediaItem) -> Option<String> {
+fn caption_metadata(media: &photag_plugin_database::MediaItem) -> Option<String> {
     match media.media_type.as_str() {
         "video" | "audio" => None,
         _ => media
@@ -301,12 +325,8 @@ fn caption_metadata(media: &photag_plugin_database::db::queries::MediaItem) -> O
     }
 }
 
-pub(super) fn flatten_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> Vec<TagMenuEntry> {
-    fn visit(
-        tags: &[photag_plugin_database::db::queries::Tag],
-        depth: usize,
-        entries: &mut Vec<TagMenuEntry>,
-    ) {
+pub(super) fn flatten_tags(tags: &[photag_plugin_database::Tag]) -> Vec<TagMenuEntry> {
+    fn visit(tags: &[photag_plugin_database::Tag], depth: usize, entries: &mut Vec<TagMenuEntry>) {
         for tag in tags {
             entries.push(TagMenuEntry {
                 id: tag.id,
@@ -354,8 +374,8 @@ impl Render for FileDragGhost {
 }
 
 pub(super) fn render_media_details(
-    media: &photag_plugin_database::db::queries::MediaItem,
-    tags: &[photag_plugin_database::db::queries::Tag],
+    media: &photag_plugin_database::MediaItem,
+    tags: &[photag_plugin_database::Tag],
     open_count: i64,
     filesystem: Option<&FileMetadataSnapshot>,
     show_exif: bool,

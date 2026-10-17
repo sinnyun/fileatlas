@@ -529,3 +529,29 @@ QuickLook 刚启动或首次使用某类插件时为 600-755 ms，属 QuickLook 
 后复跑：完整 10 组用例（含"用同一入口关闭本轮窗口"的收尾）通过，两次运行后只读观测均为
 `instance_listening: true`、`windows: []`。外部窗口首帧/解码/焦点/DPI、Store 版运行时派发、
 QuickLook 忙碌时的重试表现与真实未安装机器仍未验证。
+
+## 2026-10-17 真实文件 Lore 回退后历史消失修复
+
+直接核对 F:\AI\geren\newworkspace 的 InspectorPanel.vue、版本前端 service、VersionInfo graph_view、Lore activate 与 projection 原始源码。已按完整持久化目录保留历史版本，行与操作绑定稳定 versionId；目录重扫的空/部分/失败结果不再清空文件选择，完整结果仍验证真实存在性。现有 Inspector 概念结构不变。
+
+环境 Windows / 150% DPI / Rust 1.97.1。cargo +1.97.1 fmt --all -- --check、cargo +1.97.1 test --locked -j 2 -p photag-plugin-versions -p photag-plugin-version-info -p photag-plugin-gallery（27 项）、cargo +1.97.1 build --locked -j 2 -p photag-shell、Node 语法与三项治理守卫均通过。Gallery 旧测试夹具的私有 queries 引用已改公开 DatabaseService；插件生命周期夹具补实际 Versions/VersionInfo/Thumbnail 依赖。架构基线仅新增测试用 Gallery→VersionInfo 边，83 edges / 711 debt；两处旧 orphan 目录警告仍在。
+
+PHOTAG_LORE_TEST_FILE=D:\桌面文件夹\测试\临时文件\00.png；执行 node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-lore-real-file-complete-20261017 --plugins dev-test --allow-mutations --scenario scripts/validate-lore-history-click.cjs。同一 MCP/GPUI 子进程对原路径创建两个版本，实点 History、旧版行、Switch、新版行、Switch；文件字节、列表数量/顺序、当前标记、选中项和页面可见性均通过；settled snapshot revision 9→9。文件已恢复起始字节/时间戳，SHA-256 相同。
+
+证据与原始源码逐文件对照：docs/validation-ui/2026-10-17-lore-version-history/README.md。参考项目完整 dirty/generation 投影故障恢复协议仍未全部移植，本轮不声称其全覆盖。
+
+2026-10-17 后续：从历史01编辑创建03的 shared-store BranchAdvanced 已按官方 API 流程修复。Windows / 150% DPI / Rust1.97.1；四项 Versions/VersionInfo 测试、locked Shell 构建和治理检查通过。原路径00.png的同进程MCP再次验证01/02实点往返、停01编辑创建03、三份内容恢复、历史页可见及quiet代次22→22。当前用户修改已恢复，SHA-256前后一致。官方API对应、精确命令与证据见 validation-ui/2026-10-17-lore-version-history/official-api-rewind-save.md 及同目录README。没有重新设计界面。
+
+## 2026-10-17 画廊未保存版本提示
+
+在已确认的sidebar-pages-preview v2/Inspector complete v2布局上增加小范围提示。
+Grid左上琥珀点，List文件名前琥珀点（避免小缩略图格式标重叠）；悬停显示所选基准，
+真实点击打开History手动创建。历史树的“当前文件”改称“版本基准”，
+当前内容匹配其他已保存版本时说明两者，不提示重复保存。
+VersionsService比较固定Lore不可变revision内容，Gallery后台ReadModel缓存、
+Watcher/HistoryChanged失效，新增只读MCP状态。实际00.png经同进程MCP跑完整
+01/02/回退01/编辑03、网格/列表、悬停/点击/静置流程，文件最终恢复原始字节。
+31相关自动化测试、fmt、shell check和治理脚本通过。运行中用户EXE被占用导致
+Cargo最后复制失败，已使用成功链接的产物完成实测并另存
+`target/debug/photag-shell-version-status.exe`，未重启用户窗口。
+命令、截图、JSON、未覆盖范围见 validation-ui/2026-10-17-version-status/README.md。

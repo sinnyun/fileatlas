@@ -1,6 +1,6 @@
 //! Send the user's QuickLook a request; never start, stop or own that program.
 #[cfg(windows)]
-pub mod windows;
+mod windows;
 use cordis::{Context, Plugin, Service};
 use std::{
     path::{Path, PathBuf},
@@ -72,7 +72,12 @@ impl QuickLookService {
                 }
             }
             Err(error) => {
-                tracing::info!(%pipe_path, ?error, "No QuickLook instance accepts requests; the user starts QuickLook");
+                let reason = match &error {
+                    windows::PipeError::Other(reason) => reason.as_str(),
+                    windows::PipeError::Unavailable => "pipe unavailable",
+                    windows::PipeError::Denied => "pipe access denied",
+                };
+                tracing::info!(%pipe_path, %reason, "No QuickLook instance accepts requests; the user starts QuickLook");
                 Err(QuickLookError::NotRunning)
             }
         }
@@ -96,6 +101,37 @@ impl QuickLookService {
     pub fn snapshot(&self) -> LaunchSnapshot {
         self.state.lock().expect("QuickLook snapshot").clone()
     }
+
+    /// Inspect the dispatch target through the service that owns the QuickLook
+    /// integration. This remains diagnostic state, not proof of rendering.
+    #[cfg(windows)]
+    pub fn inspect(&self) -> QuickLookInspection {
+        QuickLookInspection {
+            dispatch: self.snapshot(),
+            windows: windows::visible_windows(),
+            higher_integrity_process: windows::higher_integrity_quicklook_process(),
+            pipe_probe: windows::probe(),
+        }
+    }
+
+    /// Return visible QuickLook windows for same-process integration capture.
+    #[cfg(windows)]
+    pub fn visible_windows(&self) -> Vec<QuickLookWindow> {
+        windows::visible_windows()
+    }
+}
+
+#[cfg(windows)]
+pub use windows::{PipeProbe as QuickLookPipeProbe, ViewerWindow as QuickLookWindow};
+
+/// Read-only diagnostics collected by the QuickLook integration service.
+#[cfg(windows)]
+#[derive(serde::Serialize)]
+pub struct QuickLookInspection {
+    pub dispatch: LaunchSnapshot,
+    pub windows: Vec<QuickLookWindow>,
+    pub higher_integrity_process: Option<u32>,
+    pub pipe_probe: QuickLookPipeProbe,
 }
 
 /// Third-party viewers expect ordinary DOS/UNC paths, not Rust canonical verbatim paths.

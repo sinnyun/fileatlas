@@ -372,24 +372,34 @@ fn commit(request: &Request, batch: &mut Vec<LocalEntry>) -> Result<usize, Strin
         })
         .collect::<Vec<_>>();
     let count = entries.len();
-    request.database.with_cache_writer(|conn| {
-        conn.execute_batch("SAVEPOINT local_batch")?;
-        let mut previous_query=conn.prepare_cached("SELECT version FROM file_versions WHERE full_path=?1")?;
-        let mut upsert=conn.prepare_cached("INSERT INTO media(folder_id,filename,full_path,media_type,file_size,modified_at) VALUES(0,?1,?2,?3,?4,?5) ON CONFLICT(full_path) DO UPDATE SET folder_id=0,filename=excluded.filename,media_type=excluded.media_type,file_size=excluded.file_size,modified_at=excluded.modified_at,thumb_path=CASE WHEN ?6 THEN NULL ELSE media.thumb_path END,width=CASE WHEN ?6 THEN NULL ELSE media.width END,height=CASE WHEN ?6 THEN NULL ELSE media.height END,micro_thumb=CASE WHEN ?6 THEN NULL ELSE media.micro_thumb END")?;
-        let mut live=conn.prepare_cached("INSERT OR IGNORE INTO live_paths VALUES(?1)")?;
-        let mut versions=conn.prepare_cached("INSERT OR REPLACE INTO file_versions VALUES(?1,?2)")?;
-        for (path,size,mtime,version) in entries {
-            if request.cancel.load(Ordering::Acquire) {break;}
-            let path = path.to_string_lossy();
-            let previous: Option<String> = previous_query.query_row([path.as_ref()],|row|row.get(0)).ok();
-            let filename=Path::new(path.as_ref()).file_name().unwrap_or_default().to_string_lossy();
-            let ext=Path::new(path.as_ref()).extension().unwrap_or_default().to_string_lossy();
-            upsert.execute(rusqlite::params![filename,path.as_ref(),photag_plugin_indexing::scan::classify_media_type(&ext),size,mtime,previous.as_deref()!=Some(&version)])?;
-            live.execute([path.as_ref()])?;
-            versions.execute(rusqlite::params![path.as_ref(),version])?;
-        }
-        conn.execute_batch("RELEASE local_batch")?;
-        Ok(())
-    }).map_err(|e|e.to_string())?;
+    let files = entries
+        .into_iter()
+        .take_while(|_| !request.cancel.load(Ordering::Acquire))
+        .map(|(path, file_size, modified_at, version)| {
+            let path = path.to_string_lossy().into_owned();
+            let filename = Path::new(&path)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+            let extension = Path::new(&path)
+                .extension()
+                .unwrap_or_default()
+                .to_string_lossy();
+            let media_type = photag_plugin_indexing::classify_media_type(&extension).to_owned();
+            photag_plugin_database::BrowserFile {
+                path,
+                filename,
+                media_type,
+                file_size,
+                modified_at,
+                version,
+            }
+        })
+        .collect::<Vec<_>>();
+    request
+        .database
+        .reconcile_browser_files(&files, &[])
+        .map_err(|error| error.to_string())?;
     Ok(count)
 }

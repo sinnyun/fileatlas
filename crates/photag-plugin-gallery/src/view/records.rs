@@ -29,7 +29,7 @@ impl GalleryView {
     fn start_record_picker(
         &mut self,
         id: Option<i64>,
-        items: Vec<photag_plugin_database::db::queries::MediaItem>,
+        items: Vec<photag_plugin_database::MediaItem>,
         cx: &mut Context<Self>,
     ) {
         if self.location_picker_pending {

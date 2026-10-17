@@ -1,6 +1,7 @@
 //! Native GPUI rendering for the windowed media gallery.
 
 mod behavior;
+mod branch_actions;
 pub(crate) mod bulk_actions;
 mod card;
 mod card_menu;
@@ -26,6 +27,7 @@ mod selection_panel;
 mod sliders;
 mod statistics;
 mod tagging_picker;
+mod version_badges;
 mod view_state;
 mod writeback_failure;
 
@@ -48,7 +50,7 @@ use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTim
 use gpui_kit::component::input::{Input, InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
-use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_database::SortOrder;
 use photag_plugin_drag_drop::DragDropService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_history::{HistoryService, UndoEntry};
@@ -72,6 +74,10 @@ use crate::{
 pub(crate) use factory::gallery;
 
 struct GalleryView {
+    version_states: photag_ui_bridge::read_model::ReadModel<
+        version_badges::StateKey,
+        Vec<crate::GalleryVersionState>,
+    >,
     _ready_task: Option<Task<()>>,
     month_motion: std::collections::HashMap<String, card_motion::CardMotion>,
     hovered_cards: HashSet<i64>,
@@ -81,6 +87,7 @@ struct GalleryView {
     file_operations: Arc<FileOperationsService>,
     drag_drop: Arc<DragDropService>,
     quicklook: Arc<QuickLookService>,
+    versions: Arc<photag_plugin_versions::VersionsService>,
     runtime: tokio::runtime::Handle,
     cordis: CordisContext,
     selected_folder: Arc<SelectedFolder>,
@@ -107,7 +114,21 @@ struct GalleryView {
     inspector_tag_name: Entity<InputState>,
     inspector_tag_loaded: Option<(i64, String)>,
     inspector_tag_draft: Option<inspector::tag_editor::TagDraft>,
-    inspector_history_demo: Option<inspector::history::DemoHistory>,
+    history_title: Entity<InputState>,
+    history_branch_name: Entity<InputState>,
+    history_read: photag_ui_bridge::read_model::ReadModel<
+        (i64, String, u64),
+        Vec<photag_plugin_versions::VersionEntry>,
+    >,
+    history_branches: photag_ui_bridge::read_model::ReadModel<
+        (i64, String, u64),
+        photag_plugin_versions::VersionGraph,
+    >,
+    history_generation: u64,
+    history_selected: Option<(i64, String)>,
+    history_create_open: bool,
+    history_busy: bool,
+    history_error: Option<String>,
     bulk_inputs: Vec<Entity<InputState>>,
     bulk_action: Option<BulkActionKind>,
     bulk_source: BulkActionSource,
@@ -138,7 +159,7 @@ struct GalleryView {
     show_selection_details: bool,
     show_tag_picker: bool,
     media_actions_id: Option<i64>,
-    media_actions_item: Option<(i64, photag_plugin_database::db::queries::MediaItem)>,
+    media_actions_item: Option<(i64, photag_plugin_database::MediaItem)>,
     slider_drag: Option<sliders::SliderDrag>,
     show_statistics: bool,
     show_records: bool,
@@ -147,10 +168,8 @@ struct GalleryView {
     location_picker_pending: bool,
     confirm_delete_missing: bool,
     record_candidates: std::collections::HashMap<i64, String>,
-    records_read: photag_ui_bridge::read_model::ReadModel<
-        (u64, u64),
-        Vec<photag_plugin_database::db::queries::MediaItem>,
-    >,
+    records_read:
+        photag_ui_bridge::read_model::ReadModel<(u64, u64), Vec<photag_plugin_database::MediaItem>>,
     statistics_read:
         photag_ui_bridge::read_model::ReadModel<(u64, u64), read_models::StatisticsRead>,
     bulk_read: photag_ui_bridge::read_model::ReadModel<String, bulk_actions::MatchResults>,
@@ -196,8 +215,8 @@ struct GalleryView {
 #[derive(Clone)]
 struct InspectorFallback {
     media_id: i64,
-    media: Option<photag_plugin_database::db::queries::MediaItem>,
-    tags: Vec<photag_plugin_database::db::queries::Tag>,
+    media: Option<photag_plugin_database::MediaItem>,
+    tags: Vec<photag_plugin_database::Tag>,
 }
 
 impl Drop for GalleryView {
@@ -206,8 +225,9 @@ impl Drop for GalleryView {
     }
 }
 
-pub(super) fn writeback_failure_signature() -> Vec<(String, String)> {
-    photag_plugin_tagging::writeback::failures()
+pub(super) fn writeback_failure_signature(tagging: &TaggingService) -> Vec<(String, String)> {
+    tagging
+        .writeback_failures()
         .into_iter()
         .map(|failure| (failure.path.display().to_string(), failure.error))
         .collect()

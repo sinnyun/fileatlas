@@ -1,5 +1,22 @@
 # MCP plugin ports / MCP 对接
 
+## Unsaved version status — 2026-10-17
+
+`get_file_version_state {media_id}` is read-only and returns the path plus
+`state.status`, `currentVersionId/currentTitle`, `matchingVersionId/matchingTitle`.
+It compares immutable content and never auto-creates or switches versions.
+`get_ui_state.gallery.version_states` exposes visible-window read results,
+per-file errors and `badge_visible`; `version_states_loading` reports bounded
+ReadModel work. Only confirmed `modified` shows the amber card dot.
+
+## History visibility diagnostics — 2026-10-17
+
+`get_ui_state.inspector_history.visible` is true only when the Inspector is open,
+the History tab is selected and Gallery's current Inspector context is a file.
+The other history surface fields retain their last rendered values when hidden;
+use `visible` and `gallery.selected_media_ids` to verify the live page after a
+version switch rather than treating stale count/current values as visibility.
+
 ## QuickLook replacement — 2026-10-16
 
 This section supersedes old Preview/Playback tool contracts below.
@@ -32,8 +49,38 @@ as bulk-match previews and inspector fields, retains its own meaning.
   menus, branch filtering and in-memory Create/Switch; these fields do not imply
   a persistent file-version backend.
 
+## Lore-backed historical versions — 2026-10-17
+
+`list_file_versions {media_id}` reads the Lore revision history for the indexed
+file and returns titled revisions, timestamps, sizes, thumbnails, parents, and
+the active revision. `create_file_version {media_id,title,confirm:true}` saves
+the current file bytes as a titled revision. `activate_file_version
+{media_id,version_id,confirm:true}` restores a revision and refreshes that
+media row's derived file metadata and thumbnail. Create/activate require
+`PHOTAG_MCP_ALLOW_MUTATIONS=1` and explicit `confirm:true`. The same-process
+Gallery History tab invokes the same Versions service. Plugin lifecycle
+dependencies are `photag/versions` → `photag/version-info` and
+`photag/thumbnails`; the durable SQLite projection is `version-info.sqlite3`,
+separate from the PhoTag annotation database. MCP service operations have passed
+same-process validation. The History tab, revision selection and version switch
+were clicked through the MCP child's GPUI window; pending conflicts were read
+and aborted after restarting that child with the same profile. See
+`docs/validation-ui/2026-10-17-lore-version-history/README.md`.
+
+`list_file_branches {media_id,include_archived?}` reads branch heads, ancestry,
+per-branch revisions and pending merge conflicts. `manage_file_branch` accepts
+`action`=`create|switch|archive|merge|resolve|abort` plus the relevant `name`,
+`source_branch`, `strategy` and `overwrite` fields. All writes require the
+mutation guard and `confirm:true`. Byte-changing switch/merge operations refresh
+the Gallery row and emit `MediaIndexChanged`; resolve accepts `ours` or `theirs`.
+
 The mutation guard and same-process child/window boundary remain in force.
-Evidence: `docs/validation-ui/2026-10-16-inspector-complete/README.md`.
+Version/branch round trips, Gallery History pointer interaction and pending
+merge recovery across restart are exercised by the
+`scripts/validate-lore-*` scenarios through `photag-mcp-debug.cjs` with isolated
+profiles. Evidence:
+`docs/validation-ui/2026-10-17-lore-version-history/README.md` and
+`docs/validation-ui/2026-10-16-inspector-complete/README.md`.
 
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
@@ -52,6 +99,16 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP c
   an error. No localhost/network listener is started.
 
 ## Tool contracts
+
+- `command_list` reads the live UI Bridge command registry and reports command
+  IDs, owner, label, menu/keybinding placement, `CommandNeeds`, and current
+  availability. `command_run { command_id, confirm? }` dispatches the same
+  `UiCommandInvoked` Cordis event used by UI command contributions. Undo/redo
+  require an available history entry and MCP mutation opt-in; confirmed
+  mutations additionally require `confirm: true`. The response means the event
+  was queued, not that an asynchronous action completed. The current metadata
+  export UI command opens its panel; the separate `export_metadata` tool runs
+  an export with its destination and confirmation contract.
 
 - `screenshot_window`: captures only the PhoTag top-level HWND on Windows with `PrintWindow(PW_RENDERFULLCONTENT)`, encodes the result as PNG, and returns MCP image content plus pixel dimensions. A missing, minimized, invalid, or unsupported window returns an error. Visual output has been inspected for Gallery and Preview on the isolated validation profile; other screens and DPI/window-size configurations remain to be checked.
 - `resize_window`: changes the current PhoTag HWND outer size for isolated layout checks. Width is limited to 640–4096 and height to 480–2160; the result includes requested and actual window bounds because Windows DPI and monitor work-area limits can clamp the request. It does not move, activate, or reorder the window; capture afterward with `screenshot_window` to check the rendered layout.

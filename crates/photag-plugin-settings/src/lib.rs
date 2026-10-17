@@ -243,6 +243,7 @@ impl Plugin for SettingsPlugin {
                     "settings/toggle",
                     ContributionKind::Command {
                         label: "Settings".into(),
+                        needs: photag_ui_bridge::CommandNeeds::None,
                     },
                 ),
                 UiContribution::new(

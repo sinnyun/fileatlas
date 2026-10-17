@@ -3,28 +3,26 @@ use super::*;
 fn reordered_groups_keep_full_row_windows_and_filters_aligned() {
     let root = std::env::temp_dir().join(format!("photag-group-window-{}", std::process::id()));
     let database = Arc::new(DatabaseService::open_at(root.join("db.sqlite")).unwrap());
-    database
-        .with_writer(|c| {
-            let folder = queries::add_folder(c, "C:/group-test")?;
-            for i in 0..245 {
-                let ext = if i % 2 == 0 { "png" } else { "pdf" };
-                let filename = format!("item-{i:03}.{ext}");
-                queries::insert_media(
-                    c,
-                    folder.id,
-                    &filename,
-                    &format!("C:/group-test/sub/{filename}"),
-                    "file",
-                    i,
-                    1_700_000_000,
-                    None,
-                    None,
-                    None,
-                )?;
-            }
-            Ok(())
-        })
-        .unwrap();
+    (|| -> Result<(), photag_plugin_database::DatabaseAccessError> {
+        let folder = database.add_folder("C:/group-test")?;
+        for i in 0..245 {
+            let ext = if i % 2 == 0 { "png" } else { "pdf" };
+            let filename = format!("item-{i:03}.{ext}");
+            database.insert_media(
+                folder.id,
+                &filename,
+                &format!("C:/group-test/sub/{filename}"),
+                "file",
+                i,
+                1_700_000_000,
+                None,
+                None,
+                None,
+            )?;
+        }
+        Ok(())
+    })()
+    .unwrap();
     let mut service = GalleryService::new(database);
     service.grouping = Some(Arc::new(photag_plugin_grouping::GroupingService));
     let snapshot = service

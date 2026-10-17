@@ -22,7 +22,7 @@ Navigation starts/cancels scans; watcher backfill can request missing thumbnails
 
 ## All-file indexing (2026-10-14)
 
-`scan::classify_media_type(extension: &str) -> &'static str` is the shared, case-insensitive classifier used by scanning and Watcher. It returns `image`, `video`, `audio`, or `file`; empty and unrecognized extensions return `file`. Recursive scans index every accessible ordinary file, including dot-prefixed files/directories and extensionless files. Image files paired with a video remain independent rows while still supplying its poster. Only recognized image/video types request decoder thumbnails; unsupported files retain no fabricated thumbnails. `list_subdirectories` includes dot-prefixed directories. Traversal errors still produce a terminal error, and cancellation/batch limits remain in force. Reconciliation deletes rows for offline-deleted files only after a complete traversal of an available root; an unavailable root keeps its cached rows. Repeated scans refresh file size and modified time while preserving IDs, ratings, dates, tags, and cached dimensions. Navigation Rebuild/Rescan retains its explicit clear-and-rebuild behavior.
+`classify_media_type(extension: &str) -> &'static str` is the shared, case-insensitive classifier used by scanning and Watcher. It returns `image`, `video`, `audio`, or `file`; empty and unrecognized extensions return `file`. Recursive scans index every accessible ordinary file, including dot-prefixed files/directories and extensionless files. Image files paired with a video remain independent rows while still supplying its poster. Only recognized image/video types request decoder thumbnails; unsupported files retain no fabricated thumbnails. `list_subdirectories` includes dot-prefixed directories. Traversal errors still produce a terminal error, and cancellation/batch limits remain in force. Reconciliation deletes rows for offline-deleted files only after a complete traversal of an available root; an unavailable root keeps its cached rows. Repeated scans refresh file size and modified time while preserving IDs, ratings, dates, tags, and cached dimensions. Navigation Rebuild/Rescan retains its explicit clear-and-rebuild behavior.
 
 Repeated image thumbnail-cache hits may return no decoded dimensions/micro bytes. Scan batch updates retain existing width/height/micro via COALESCE rather than clearing those values. Regression and same-process repeat-scan query cover retained dimensions.
 
@@ -40,5 +40,7 @@ Runtime diagnostics observe tracked production progress streams: phase transitio
 
 
 ## Browser runtime update — 2026-10-15
+
+Indexing obtains video cache paths and micro-thumbnail generation through `ThumbnailService`; it does not import thumbnail implementation modules.
 
 Normal startup, folder browsing and favorite clicks do not invoke recursive indexing. `visible_thumbnail(&str,&str)->Option<(String,Option<u32>,Option<u32>,Option<Vec<u8>>)>` reuses the image thumbnail and ffmpeg video poster pipelines for current visible demand. Paths inside the derived thumbnail directory are excluded to prevent cache self-generation. The recursive scan API remains for isolated dev fixtures and legacy regression coverage, not the browser product entry point.

@@ -1,10 +1,9 @@
-//! File-version presentation. The explicit isolated demo owns an in-memory
-//! graph; production still has no snapshot backend or restore operation.
+//! Lore-backed file history and version switching.
 use super::*;
-use gpui_kit::prelude::FluentBuilder;
 
 #[derive(Clone)]
 pub(super) struct Version {
+    pub version_id: String,
     pub label: String,
     pub branch: bool,
     pub modified: i64,
@@ -13,124 +12,135 @@ pub(super) struct Version {
     pub thumbnail: Option<PathBuf>,
 }
 
-pub(crate) struct DemoHistory {
-    pub(super) versions: Vec<Version>,
-    pub(super) selected: usize,
-    pub(super) active: usize,
-    pub(super) filter: u8,
-}
-
-impl DemoHistory {
-    pub(crate) fn publish(&self, surfaces: &photag_ui_bridge::UiSurfaceState) {
-        for (key, value) in [
-            ("enabled", "true".to_string()),
-            ("selected", self.versions[self.selected].label.clone()),
-            ("active", self.versions[self.active].label.clone()),
-            ("count", self.versions.len().to_string()),
-            ("filter", self.filter.to_string()),
-        ] {
-            let _ = surfaces.set_value(&format!("gallery.inspector.demo-{key}"), &value);
-        }
-    }
-    pub(crate) fn from_environment() -> Option<Self> {
-        let enabled = std::env::var("PHOTAG_DEMO_INSPECTOR").ok().as_deref() == Some("1")
-            && std::env::var("PHOTAG_DEV_PLUGINS")
-                .is_ok_and(|v| v.split(',').any(|v| v.trim() == "dev-test"))
-            && std::env::var_os("PHOTAG_DEV_TEST_DIR").is_some();
-        if !enabled {
-            return None;
-        }
-        let paths = std::env::var("PHOTAG_DEMO_HISTORY_THUMBS")
-            .ok()
-            .or_else(|| std::env::var("PHOTAG_DEMO_HISTORY_THUMB").ok())
-            .unwrap_or_default()
-            .split(';')
-            .filter(|p| !p.is_empty())
-            .map(PathBuf::from)
-            .collect::<Vec<_>>();
-        let versions = [
-            ("v1", false, 1792119180, 32665, "320 × 200"),
-            ("v0", false, 1792111200, 28672, "320 × 200"),
-            ("v0.1", true, 1792110300, 25190, "320 × 200"),
-        ]
-        .into_iter()
-        .enumerate()
-        .map(|(i, (label, branch, modified, size, dimensions))| Version {
-            label: label.into(),
-            branch,
-            modified,
-            size,
-            dimensions: dimensions.into(),
-            thumbnail: paths.get(i).or(paths.first()).cloned(),
-        })
-        .collect();
-        Some(Self {
-            versions,
-            selected: 0,
-            active: 0,
-            filter: 0,
-        })
+fn to_version(
+    entry: &photag_plugin_versions::VersionEntry,
+    media: &photag_plugin_database::MediaItem,
+) -> Version {
+    Version {
+        version_id: entry.version_id.clone(),
+        label: entry.title.clone(),
+        branch: false,
+        modified: chrono::DateTime::parse_from_rfc3339(&entry.created_at)
+            .map(|time| time.timestamp())
+            .unwrap_or(media.modified_at),
+        size: entry.size_bytes.min(i64::MAX as u64) as i64,
+        dimensions: dimensions(media),
+        thumbnail: entry.thumbnail_path.as_ref().map(PathBuf::from),
     }
 }
 
 impl GalleryView {
-    pub(super) fn inspector_history(&self, cx: &mut Context<Self>) -> AnyElement {
+    fn request_history(&mut self, media: &photag_plugin_database::MediaItem) {
+        let key = (media.id, media.full_path.clone(), self.history_generation);
+        let path = media.full_path.clone();
+        let versions = self.versions.clone();
+        let runtime = self.runtime.clone();
+        self.history_read.request(key, move || {
+            runtime
+                .block_on(versions.list(&path))
+                .map_err(|error| error.to_string())
+        });
+        let key = (media.id, media.full_path.clone(), self.history_generation);
+        let path = media.full_path.clone();
+        let versions = self.versions.clone();
+        let runtime = self.runtime.clone();
+        self.history_branches.request(key, move || {
+            runtime
+                .block_on(versions.branch_graph(&path, false))
+                .map_err(|error| error.to_string())
+        });
+    }
+
+    pub(super) fn inspector_history(&mut self, cx: &mut Context<Self>) -> AnyElement {
         let Some(media) = self.inspector_media() else {
             return inspector_message("Select one file to view its version history.");
         };
-        let demo = self.inspector_history_demo.as_ref();
-        let versions = demo.map(|d| d.versions.clone()).unwrap_or_else(|| {
-            vec![Version {
-                label: photag_ui_bridge::i18n::tr("Working copy"),
-                branch: false,
-                modified: media.modified_at,
-                size: media.file_size,
-                dimensions: dimensions(&media),
-                thumbnail: media.thumb_path.as_ref().map(PathBuf::from),
-            }]
-        });
-        let selected = demo.map_or(0, |d| d.selected).min(versions.len() - 1);
-        let active = demo.map_or(0, |d| d.active);
-        let filter = demo.map_or(0, |d| d.filter);
-        let selected_version = &versions[selected];
+        self.request_history(&media);
+        let loading = self.history_read.is_pending();
+        let read = self.history_read.value();
+        let error = read.and_then(|result| result.as_ref().err()).cloned();
+        let records = read
+            .and_then(|result| result.as_ref().ok())
+            .cloned()
+            .unwrap_or_default();
+        let versions = records
+            .iter()
+            .map(|entry| to_version(entry, &media))
+            .collect::<Vec<_>>();
+        let active = records.iter().position(|entry| entry.is_current);
+        let selected = self
+            .history_selected
+            .as_ref()
+            .filter(|(id, _)| *id == media.id)
+            .and_then(|(_, revision)| {
+                records
+                    .iter()
+                    .position(|entry| &entry.version_id == revision)
+            })
+            .or(active)
+            .unwrap_or(0);
+        let _ = self
+            .surfaces
+            .set_value("gallery.inspector.history-enabled", "true");
+        let _ = self.surfaces.set_value(
+            "gallery.inspector.history-count",
+            &records.len().to_string(),
+        );
+        let _ = self.surfaces.set_value(
+            "gallery.inspector.history-active",
+            &active
+                .and_then(|index| records.get(index))
+                .map(|entry| entry.version_id.as_str())
+                .unwrap_or(""),
+        );
+        let _ = self.surfaces.set_value(
+            "gallery.inspector.history-selected",
+            &records
+                .get(selected)
+                .map(|entry| entry.version_id.as_str())
+                .unwrap_or(""),
+        );
+        let selected_version = versions.get(selected);
+        let selected_revision = records
+            .get(selected)
+            .map(|entry| entry.version_id.clone())
+            .unwrap_or_default();
         let weak = cx.entity().downgrade();
-        let branch = Button::new("inspector-history-branch")
-            .outline()
-            .w_full()
-            .h(px(36.))
-            .label(photag_ui_bridge::i18n::tr(match filter {
-                1 => "Main branch",
-                2 => "Alternate branch",
-                _ => "All branches",
-            }))
-            .icon(theme::icon(IconName::ChevronDown))
-            .disabled(demo.is_none())
-            .dropdown_menu(move |mut menu, _, _| {
-                for (filter, label) in [
-                    (0, "All branches"),
-                    (1, "Main branch"),
-                    (2, "Alternate branch"),
-                ] {
-                    let weak = weak.clone();
-                    menu = menu.item(
-                        PopupMenuItem::new(photag_ui_bridge::i18n::tr(label)).on_click(
-                            move |_, _, cx| {
-                                let _ = weak.update(cx, |view, cx| {
-                                    view.demo_history_action("filter", filter, cx)
-                                });
-                            },
+        let create_open = self.history_create_open;
+        let mut body = div().v_flex().w_full().min_w_0().gap(px(9.)).p(px(16.));
+        if create_open {
+            body = body
+                .child(Input::new(&self.history_title).w_full().min_w_0())
+                .child(
+                    div()
+                        .h_flex()
+                        .gap(px(8.))
+                        .child(
+                            Button::new("inspector-history-save")
+                                .primary()
+                                .flex_1()
+                                .label(photag_ui_bridge::i18n::tr("Save version"))
+                                .disabled(
+                                    self.history_busy
+                                        || self.history_title.read(cx).value().trim().is_empty(),
+                                )
+                                .on_click(
+                                    cx.listener(|view, _, _, cx| view.create_history_version(cx)),
+                                ),
+                        )
+                        .child(
+                            Button::new("inspector-history-cancel")
+                                .outline()
+                                .label(photag_ui_bridge::i18n::tr("Cancel"))
+                                .disabled(self.history_busy)
+                                .on_click(cx.listener(|view, _, _, cx| {
+                                    view.history_create_open = false;
+                                    cx.notify();
+                                })),
                         ),
-                    );
-                }
-                menu
-            });
-        div()
-            .v_flex()
-            .w_full()
-            .min_w_0()
-            .gap(px(9.))
-            .p(px(16.))
-            .child(
+                );
+        } else {
+            body = body.child(
                 div()
                     .h_flex()
                     .w_full()
@@ -142,14 +152,11 @@ impl GalleryView {
                             .h(px(36.))
                             .icon(theme::icon(IconName::Plus))
                             .label(photag_ui_bridge::i18n::tr("Create version"))
-                            .disabled(demo.is_none() || versions.len() >= 16)
-                            .tooltip(photag_ui_bridge::i18n::tr(if demo.is_some() {
-                                "Preview sample versions without changing files."
-                            } else {
-                                "Version snapshots are not connected yet."
-                            }))
+                            .disabled(self.history_busy)
                             .on_click(cx.listener(|view, _, _, cx| {
-                                view.demo_history_action("create", 0, cx)
+                                view.history_error = None;
+                                view.history_create_open = true;
+                                cx.notify();
                             })),
                     )
                     .child(
@@ -158,158 +165,251 @@ impl GalleryView {
                             .flex_1()
                             .h(px(36.))
                             .label(photag_ui_bridge::i18n::tr("Switch version"))
-                            .disabled(demo.is_none() || selected == active)
-                            .on_click(cx.listener(|view, _, _, cx| {
-                                view.demo_history_action("switch", 0, cx)
+                            .disabled(
+                                self.history_busy
+                                    || selected_version.is_none()
+                                    || active == Some(selected),
+                            )
+                            .on_click(cx.listener(move |view, _, _, cx| {
+                                view.activate_history_version(&selected_revision, cx)
                             })),
                     ),
-            )
-            .child(branch)
-            .child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)))
-            .child(history_tree::render(
-                &versions,
-                selected,
-                active,
-                filter,
-                demo.is_some(),
-                cx,
-            ))
-            .child(
-                well()
-                    .min_h(px(60.))
-                    .items_center()
-                    .justify_center()
-                    .child(
-                        theme::icon(IconName::Plus)
-                            .size(px(23.))
-                            .text_color(rgb(theme::TEXT_MUTED)),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(photag_ui_bridge::i18n::tr(if versions.len() > 1 {
-                                "No more versions"
-                            } else {
-                                "No earlier versions"
-                            })),
-                    ),
-            )
-            .child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)))
-            .child(
-                well()
-                    .gap(px(7.))
-                    .child(section_title("Selected version"))
-                    .child(
-                        div()
-                            .h_flex()
-                            .w_full()
-                            .min_w_0()
-                            .items_start()
-                            .gap(px(10.))
-                            .child(history_tree::thumbnail(
-                                selected_version.thumbnail.clone(),
-                                72.,
-                                54.,
-                            ))
-                            .child(
-                                div()
-                                    .v_flex()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .child(info_row("Version", selected_version.label.clone()))
-                                    .child(info_row(
-                                        "Modified",
-                                        card::format_timestamp(selected_version.modified),
-                                    ))
-                                    .child(info_row(
-                                        "File size",
-                                        card::format_bytes(selected_version.size),
-                                    ))
-                                    .child(info_row(
-                                        "Image dimensions",
-                                        selected_version.dimensions.clone(),
-                                    )),
-                            ),
-                    ),
-            )
-            .when(demo.is_some(), |body| {
-                body.child(
+            );
+        }
+        body = body.child(
+            div()
+                .h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .child(section_title("Version history"))
+                .child(
                     div()
                         .text_size(px(11.))
-                        .text_color(rgb(theme::TEXT_MUTED))
-                        .child(photag_ui_bridge::i18n::tr(
-                            "Sample versions · changes stay in this preview.",
-                        )),
-                )
-            })
-            .into_any_element()
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(format!("{} versions · Lore", versions.len())),
+                ),
+        );
+        body = body.child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)));
+        if let Some(message) = error.or_else(|| self.history_error.clone()) {
+            body = body.child(inspector_message(&message));
+        } else if loading && versions.is_empty() {
+            body = body.child(inspector_message("Loading version history…"));
+        } else if versions.is_empty() {
+            body = body.child(inspector_message(
+                "No saved versions. Create a version to start this file’s history.",
+            ));
+        } else {
+            body = body.child(history_tree::render(
+                &versions,
+                selected,
+                active.unwrap_or(usize::MAX),
+                0,
+                !self.history_busy,
+                cx,
+            ));
+            if let Some(selected_version) = selected_version {
+                body = body
+                    .child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)))
+                    .child(
+                        well()
+                            .gap(px(7.))
+                            .child(section_title("Selected version"))
+                            .child(
+                                div()
+                                    .h_flex()
+                                    .w_full()
+                                    .min_w_0()
+                                    .items_start()
+                                    .gap(px(10.))
+                                    .child(history_tree::thumbnail(
+                                        selected_version.thumbnail.clone(),
+                                        72.,
+                                        54.,
+                                    ))
+                                    .child(
+                                        div()
+                                            .v_flex()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .child(info_row(
+                                                "Version",
+                                                selected_version.label.clone(),
+                                            ))
+                                            .child(info_row(
+                                                "Modified",
+                                                card::format_timestamp(selected_version.modified),
+                                            ))
+                                            .child(info_row(
+                                                "File size",
+                                                card::format_bytes(selected_version.size),
+                                            ))
+                                            .child(info_row(
+                                                "Image dimensions",
+                                                selected_version.dimensions.clone(),
+                                            )),
+                                    ),
+                            ),
+                    );
+            }
+        }
+        if let Some(status) = self.version_state(media.id, &media.full_path) {
+            if let Some(state) = &status.state
+                && state.status != photag_plugin_versions::FileVersionStatus::Unversioned
+            {
+                let color = if state.status == photag_plugin_versions::FileVersionStatus::Modified {
+                    0xffb340
+                } else {
+                    theme::TEXT_SECONDARY
+                };
+                body = body.child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(color))
+                        .child(super::super::version_badges::message(state)),
+                );
+            }
+            if let Some(error) = &status.error {
+                body = body.child(inspector_message(&format!(
+                    "{} {error}",
+                    photag_ui_bridge::i18n::tr("Version status could not be checked.")
+                )));
+            }
+        }
+        body = body.child(super::super::branch_actions::render_history_branches(
+            self, cx,
+        ));
+        let _ = weak;
+        body.into_any_element()
     }
 
-    pub(super) fn demo_history_action(
-        &mut self,
-        action: &str,
-        index: usize,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(demo) = self.inspector_history_demo.as_mut() else {
+    pub(super) fn select_history_version(&mut self, version_id: &str, cx: &mut Context<Self>) {
+        if self.history_busy {
+            return;
+        }
+        let Some(media) = self.inspector_media() else {
             return;
         };
-        let changed = match action {
-            "select" if index < demo.versions.len() && demo.selected != index => {
-                demo.selected = index;
-                true
-            }
-            "switch" if demo.active != demo.selected => {
-                demo.active = demo.selected;
-                true
-            }
-            "filter" if index <= 2 && demo.filter != index as u8 => {
-                demo.filter = index as u8;
-                if index != 0 && demo.versions[demo.selected].branch != (index == 2) {
-                    if let Some(selected) =
-                        demo.versions.iter().position(|v| v.branch == (index == 2))
-                    {
-                        demo.selected = selected;
-                    }
-                }
-                true
-            }
-            "create" if demo.versions.len() < 16 => {
-                let mut version = demo.versions[demo.active].clone();
-                version.label = format!("v{}", demo.versions.len() - 1);
-                version.modified = chrono::Utc::now().timestamp();
-                version.branch = false;
-                demo.versions.insert(0, version);
-                demo.selected = 0;
-                demo.active = 0;
-                demo.filter = 0;
-                true
-            }
-            _ => false,
+        let Some(Ok(entries)) = self.history_read.value() else {
+            return;
         };
-        if changed {
-            let _ = self.surfaces.set_value(
-                "gallery.inspector.demo-selected",
-                &demo.versions[demo.selected].label,
-            );
-            let _ = self.surfaces.set_value(
-                "gallery.inspector.demo-active",
-                &demo.versions[demo.active].label,
-            );
-            let _ = self.surfaces.set_value(
-                "gallery.inspector.demo-count",
-                &demo.versions.len().to_string(),
-            );
-            let _ = self
-                .surfaces
-                .set_value("gallery.inspector.demo-filter", &demo.filter.to_string());
-            cx.notify();
+        let Some(entry) = entries.iter().find(|entry| entry.version_id == version_id) else {
+            return;
+        };
+        self.history_selected = Some((media.id, entry.version_id.clone()));
+        let _ = self
+            .surfaces
+            .set_value("gallery.inspector.history-selected", &entry.version_id);
+        cx.notify();
+    }
+
+    pub(super) fn create_history_version(&mut self, cx: &mut Context<Self>) {
+        if self.history_busy {
+            return;
         }
+        let Some(media) = self.inspector_media() else {
+            return;
+        };
+        let title = self.history_title.read(cx).value().trim().to_string();
+        if title.is_empty() {
+            return;
+        }
+        self.history_busy = true;
+        self.history_error = None;
+        let path = media.full_path.clone();
+        let versions = self.versions.clone();
+        let operation = self.runtime.spawn(async move {
+            versions
+                .create_version(&path, &title)
+                .await
+                .map_err(|e| e.to_string())
+        });
+        cx.spawn(async move |this, cx| {
+            let result = operation
+                .await
+                .unwrap_or_else(|e| Err(format!("Version task failed: {e}")));
+            let _ = this.update(cx, |view, cx| {
+                view.history_busy = false;
+                match result {
+                    Ok(entry) => {
+                        view.history_generation = view.history_generation.wrapping_add(1);
+                        view.history_selected = Some((media.id, entry.version_id.clone()));
+                        view.history_create_open = false;
+                        let _ = view
+                            .surfaces
+                            .set_value("gallery.inspector.history-last-created", &entry.version_id);
+                    }
+                    Err(error) => view.history_error = Some(error),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
+    pub(super) fn activate_history_version(&mut self, version_id: &str, cx: &mut Context<Self>) {
+        if self.history_busy {
+            return;
+        }
+        let Some(media) = self.inspector_media() else {
+            return;
+        };
+        let Some(Ok(entries)) = self.history_read.value() else {
+            return;
+        };
+        let Some(entry) = entries.iter().find(|entry| entry.version_id == version_id) else {
+            return;
+        };
+        if entry.is_current {
+            return;
+        }
+        let revision = entry.version_id.clone();
+        let activation_revision = revision.clone();
+        let path = media.full_path.clone();
+        let service = self.versions.clone();
+        let gallery = self.service.clone();
+        let media_id = media.id;
+        let operation = self.runtime.spawn(async move {
+            service
+                .activate(&path, &activation_revision)
+                .await
+                .map_err(|error| error.to_string())?;
+            tokio::task::spawn_blocking(move || gallery.refresh_restored_file(media_id))
+                .await
+                .map_err(|error| format!("Index refresh task failed: {error}"))??;
+            Ok::<(), String>(())
+        });
+        self.history_busy = true;
+        self.history_error = None;
+        cx.spawn(async move |this, cx| {
+            let result = operation
+                .await
+                .unwrap_or_else(|error| Err(format!("Version task failed: {error}")));
+            let _ = this.update(cx, |view, cx| {
+                view.history_busy = false;
+                match result {
+                    Ok(()) => {
+                        view.history_generation = view.history_generation.wrapping_add(1);
+                        view.history_selected = Some((media.id, revision.clone()));
+                        view.refresh_index();
+                        view.operation_status =
+                            Some("Switched to the selected file version.".into());
+                        let _ = view
+                            .surfaces
+                            .set_value("gallery.inspector.history-current", &revision);
+                    }
+                    Err(error) => view.history_error = Some(error),
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+        cx.notify();
     }
 }
 
-fn dimensions(media: &photag_plugin_database::db::queries::MediaItem) -> String {
+fn dimensions(media: &photag_plugin_database::MediaItem) -> String {
     media
         .width
         .zip(media.height)

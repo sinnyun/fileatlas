@@ -108,7 +108,7 @@ impl super::PhoTagMcpServer {
         {
             return error_json("media_type 只支持 image、video、audio 或 file。");
         }
-        let query = photag_plugin_database::db::queries::MediaQuery {
+        let query = photag_plugin_database::MediaQuery {
             folder_id: request.folder_id,
             tag_ids: request.tag_ids,
             search_in_filenames: request.search.is_some(),
@@ -154,5 +154,63 @@ impl super::PhoTagMcpServer {
         };
         serde_json::to_string(&json!({ "media": media, "tags": tags }))
             .unwrap_or_else(|error| error_json(&error.to_string()))
+    }
+
+    #[tool(description = "Read the persistent Lore version history for one indexed media file.")]
+    async fn list_file_versions(&self, Parameters(request): Parameters<MediaIdRequest>) -> String {
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        match self.versions.list(&media.full_path).await {
+            Ok(versions) => serde_json::to_string(
+                &json!({"media_id":request.media_id,"path":media.full_path,"versions":versions}),
+            )
+            .unwrap_or_else(|error| error_json(&error.to_string())),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Compare file content with immutable saved revisions; distinguish unsaved edits, an unchanged historical revision, and content already stored in another version. No mutation."
+    )]
+    async fn get_file_version_state(
+        &self,
+        Parameters(request): Parameters<MediaIdRequest>,
+    ) -> String {
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        match self.versions.file_state(&media.full_path).await {
+            Ok(state) => json!({"media_id":request.media_id,"path":media.full_path,"state":state})
+                .to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(description = "读取单个文件的 Lore 分支、分支版本链和待处理合并冲突。")]
+    async fn list_file_branches(
+        &self,
+        Parameters(request): Parameters<BranchGraphRequest>,
+    ) -> String {
+        let media = match self.gallery.media_by_id(request.media_id) {
+            Ok(Some(media)) => media,
+            Ok(None) => return error_json("没有找到该媒体记录。"),
+            Err(error) => return error_json(&error.to_string()),
+        };
+        match self
+            .versions
+            .branch_graph(&media.full_path, request.include_archived)
+            .await
+        {
+            Ok(graph) => serde_json::to_string(
+                &json!({"media_id":request.media_id,"path":media.full_path,"graph":graph}),
+            )
+            .unwrap_or_else(|error| error_json(&error.to_string())),
+            Err(error) => error_json(&error.to_string()),
+        }
     }
 }

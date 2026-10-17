@@ -148,8 +148,7 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         use photag_plugin_gallery::{
-            BulkActionKind as A, BulkActionSource as S, GalleryUiRequest as R,
-            filter::MediaTypeFilter as M,
+            BulkActionKind as A, BulkActionSource as S, GalleryUiRequest as R, MediaTypeFilter as M,
         };
         let value = request.value.as_deref().unwrap_or("");
         let action = match request.action.as_str() {
@@ -326,7 +325,7 @@ impl PhoTagMcpServer {
             "tag_mode" => R::TagFilterMode(request.exclude.unwrap_or(false)),
             "extension_mode" => R::ExtensionMode(request.exclude.unwrap_or(false)),
             "date_from" | "date_to" => {
-                let Some(date) = photag_plugin_gallery::filter::parse_date_input(value) else {
+                let Some(date) = photag_plugin_gallery::parse_date_input(value) else {
                     return error_json("date must be YYYY-MM-DD or empty");
                 };
                 R::DateBound(request.action == "date_from", date)
@@ -394,7 +393,7 @@ impl PhoTagMcpServer {
     }
 }
 
-fn contains_tag(tags: &[photag_plugin_database::db::queries::Tag], id: i64) -> bool {
+fn contains_tag(tags: &[photag_plugin_database::Tag], id: i64) -> bool {
     tags.iter()
         .any(|tag| tag.id == id || contains_tag(&tag.children, id))
 }

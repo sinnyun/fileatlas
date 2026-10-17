@@ -2,6 +2,7 @@
 
 use crate::scan::{self, ScanProgress};
 use crate::{IndexingService, ffmpeg};
+use photag_plugin_database::ThumbnailRecord;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, mpsc};
@@ -15,7 +16,6 @@ use std::sync::{Arc, mpsc};
 pub(super) fn process_videos_parallel(
     db: &Arc<IndexingService>,
     video_paths: &[String],
-    thumb_dir: &std::path::Path,
     cancel: &Arc<AtomicBool>,
     tx: &mpsc::Sender<Option<ScanProgress>>,
     phase_name: &str,
@@ -32,7 +32,7 @@ pub(super) fn process_videos_parallel(
     std::thread::scope(|scope| -> Result<(), String> {
         for _ in 0..VIDEO_WORKERS {
             let rtx = result_tx.clone();
-            let td = thumb_dir.to_path_buf();
+            let thumbnails = db.thumbnails.clone();
             let idx = work_idx.clone();
             let cancel = cancel.clone();
             let paths = video_paths;
@@ -47,7 +47,7 @@ pub(super) fn process_videos_parallel(
                     }
                     let full_path = &paths[i];
                     let path = std::path::Path::new(full_path);
-                    let vid_thumb = photag_plugin_thumbnails::thumbs::thumb_path_for(path, &td);
+                    let vid_thumb = thumbnails.video_thumbnail_path(path);
 
                     if !vid_thumb.exists() {
                         let out_str = vid_thumb.to_string_lossy().to_string();
@@ -58,7 +58,7 @@ pub(super) fn process_videos_parallel(
                     let out_str = vid_thumb.to_string_lossy().to_string();
                     let micro = image::open(&vid_thumb)
                         .ok()
-                        .map(|img| photag_plugin_thumbnails::thumbs::generate_micro_thumb(&img));
+                        .map(|img| thumbnails.generate_micro_thumbnail(&img));
                     rtx.send((full_path.clone(), out_str, micro)).ok();
                 }
             });
@@ -75,27 +75,14 @@ pub(super) fn process_videos_parallel(
             if batch.is_empty() {
                 return Ok(());
             }
-            db.database
-                .with_writer(|conn| {
-                    conn.execute_batch("BEGIN")?;
-                    let updates = (|| {
-                        let mut stmt = conn.prepare_cached(
-                        "UPDATE media SET thumb_path = ?1, micro_thumb = ?2 WHERE full_path = ?3"
-                    )?;
-                        for (full_path, thumb_path, micro) in batch.iter() {
-                            let micro_ref: Option<&[u8]> = micro.as_deref();
-                            stmt.execute(rusqlite::params![thumb_path, micro_ref, full_path])?;
-                        }
-                        Ok::<(), rusqlite::Error>(())
-                    })();
-                    match updates {
-                        Ok(()) => conn.execute_batch("COMMIT"),
-                        Err(error) => {
-                            let _ = conn.execute_batch("ROLLBACK");
-                            Err(error)
-                        }
-                    }
+            let updates = batch
+                .iter()
+                .map(|(full_path, thumb_path, micro)| {
+                    (full_path.clone(), thumb_path.clone(), micro.clone())
                 })
+                .collect::<Vec<_>>();
+            db.database
+                .update_video_thumbnails(&updates)
                 .map_err(|error| error.to_string())?;
             batch.clear();
             Ok(())
@@ -131,7 +118,6 @@ pub fn generate_missing_thumbnails_async(
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let worker_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            let thumb_dir = db.thumbnails.directory().to_path_buf();
             let total = items.len();
             if total == 0 {
                 return;
@@ -205,28 +191,19 @@ pub fn generate_missing_thumbnails_async(
                         if batch.is_empty() {
                             return Ok(());
                         }
-                        db.database.with_writer(|conn| {
-                        conn.execute_batch("BEGIN")?;
-                        let updates = (|| {
-                            let mut stmt = conn.prepare_cached(
-                                "UPDATE media SET thumb_path = ?1, width = ?2, height = ?3, micro_thumb = ?4 WHERE full_path = ?5"
-                            )?;
-                            for (full_path, thumb_path, w, h, micro) in batch.iter() {
-                                let micro_ref: Option<&[u8]> = micro.as_deref();
-                                let w_param = if *w > 0 { Some(*w as i64) } else { None };
-                                let h_param = if *h > 0 { Some(*h as i64) } else { None };
-                                stmt.execute(rusqlite::params![thumb_path, w_param, h_param, micro_ref, full_path])?;
-                            }
-                            Ok::<(), rusqlite::Error>(())
-                        })();
-                        match updates {
-                            Ok(()) => conn.execute_batch("COMMIT"),
-                            Err(error) => {
-                                let _ = conn.execute_batch("ROLLBACK");
-                                Err(error)
-                            }
-                        }
-                    }).map_err(|error| error.to_string())?;
+                        let updates = batch
+                            .iter()
+                            .map(|(full_path, thumb_path, w, h, micro)| ThumbnailRecord {
+                                full_path: full_path.clone(),
+                                thumb_path: thumb_path.clone(),
+                                width: (*w > 0).then_some(*w as i64),
+                                height: (*h > 0).then_some(*h as i64),
+                                micro_thumb: micro.clone(),
+                            })
+                            .collect::<Vec<_>>();
+                        db.database
+                            .update_backfilled_thumbnails(&updates)
+                            .map_err(|error| error.to_string())?;
                         batch.clear();
                         Ok(())
                     };
@@ -269,7 +246,6 @@ pub fn generate_missing_thumbnails_async(
                 if let Err(error) = process_videos_parallel(
                     &db,
                     &video_paths,
-                    &thumb_dir,
                     &cancel,
                     &tx,
                     "Generating video thumbnails",

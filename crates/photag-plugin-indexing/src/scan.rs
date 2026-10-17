@@ -1,5 +1,5 @@
 use crate::{IndexingService, ffmpeg};
-use photag_plugin_database::db::queries;
+use photag_plugin_database::{ScanFileRecord, ThumbnailRecord};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -171,68 +171,54 @@ fn scan_folder_impl(
         if cancel.load(Ordering::Relaxed) {
             return Ok(());
         }
-        let mut invalidated_thumbnails = Vec::new();
-        db.database
-            .with_writer(|conn| {
-                conn.execute_batch("BEGIN")?;
-                let insert_result = (|| {
-                    for entry in chunk {
-                        let path = &entry.path;
-                        let filename = path
-                            .file_name()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .to_string();
-                        let full_path = path.to_string_lossy().to_string();
-                        let ext = path
-                            .extension()
-                            .unwrap_or_default()
-                            .to_string_lossy()
-                            .to_string();
-                        let media_type = classify_media_type(&ext);
-                        let metadata = std::fs::metadata(path).ok();
-                        let file_size = metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
-                        let modified_at = metadata
-                            .as_ref()
-                            .and_then(|m| m.modified().ok())
-                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                            .map(|d| d.as_secs() as i64)
-                            .unwrap_or(0);
-                        let thumb_path_str = entry
-                            .thumb_image
-                            .as_ref()
-                            .map(|p| p.to_string_lossy().to_string());
-                        let old_thumb_path = queries::scan_upsert_media(
-                            conn,
-                            folder_id,
-                            &filename,
-                            &full_path,
-                            media_type,
-                            file_size,
-                            modified_at,
-                            thumb_path_str.as_deref(),
-                        )?;
-                        let paired_poster_path = entry
-                            .thumb_image
-                            .as_ref()
-                            .map(|poster| poster.to_string_lossy());
-                        if let Some(old_thumb_path) = old_thumb_path
-                            && paired_poster_path.as_deref() != Some(old_thumb_path.as_str())
-                        {
-                            invalidated_thumbnails.push(PathBuf::from(old_thumb_path));
-                        }
-                    }
-                    Ok::<(), rusqlite::Error>(())
-                })();
-                match insert_result {
-                    Ok(()) => conn.execute_batch("COMMIT"),
-                    Err(error) => {
-                        let _ = conn.execute_batch("ROLLBACK");
-                        Err(error)
-                    }
-                }
-            })
+        let mut files = Vec::with_capacity(chunk.len());
+        for entry in chunk {
+            let path = &entry.path;
+            let filename = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let full_path = path.to_string_lossy().to_string();
+            let ext = path
+                .extension()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
+            let media_type = classify_media_type(&ext).to_string();
+            let metadata = std::fs::metadata(path).ok();
+            let file_size = metadata.as_ref().map(|m| m.len() as i64).unwrap_or(0);
+            let modified_at = metadata
+                .as_ref()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0);
+            let poster_path = entry
+                .thumb_image
+                .as_ref()
+                .map(|p| p.to_string_lossy().to_string());
+            files.push(ScanFileRecord {
+                filename,
+                full_path,
+                media_type,
+                file_size,
+                modified_at,
+                poster_path,
+            });
+        }
+        let old_thumbnails = db
+            .database
+            .upsert_scanned_files(folder_id, &files)
             .map_err(|error| error.to_string())?;
+        let invalidated_thumbnails = old_thumbnails
+            .into_iter()
+            .zip(files.iter())
+            .filter_map(|(old, file)| {
+                old.filter(|old| file.poster_path.as_deref() != Some(old.as_str()))
+            })
+            .map(PathBuf::from)
+            .collect::<Vec<_>>();
         for stale_thumbnail in invalidated_thumbnails {
             if let Err(error) = std::fs::remove_file(&stale_thumbnail)
                 && error.kind() != std::io::ErrorKind::NotFound
@@ -254,7 +240,6 @@ fn scan_folder_impl(
     }
 
     // Phase 2: Generate image thumbnails + micro-thumbnails (parallel)
-    let thumb_dir = db.thumbnails.directory().to_path_buf();
     let mut image_paths: Vec<(PathBuf, String)> = entries
         .iter()
         .filter(|e| e.media_type == "image")
@@ -328,28 +313,19 @@ fn scan_folder_impl(
                 if batch.is_empty() {
                     return Ok(());
                 }
-                db.database.with_writer(|conn| {
-                    conn.execute_batch("BEGIN")?;
-                    let updates = (|| {
-                        let mut stmt = conn.prepare_cached(
-                            "UPDATE media SET thumb_path = ?1, width = COALESCE(?2, width), height = COALESCE(?3, height), micro_thumb = COALESCE(?4, micro_thumb) WHERE full_path = ?5"
-                        )?;
-                        for (full_path, thumb_path, w, h, micro) in batch.iter() {
-                            let micro_ref: Option<&[u8]> = micro.as_deref();
-                            let w_param = if *w > 0 { Some(*w as i64) } else { None };
-                            let h_param = if *h > 0 { Some(*h as i64) } else { None };
-                            stmt.execute(rusqlite::params![thumb_path, w_param, h_param, micro_ref, full_path])?;
-                        }
-                        Ok::<(), rusqlite::Error>(())
-                    })();
-                    match updates {
-                        Ok(()) => conn.execute_batch("COMMIT"),
-                        Err(error) => {
-                            let _ = conn.execute_batch("ROLLBACK");
-                            Err(error)
-                        }
-                    }
-                }).map_err(|error| error.to_string())?;
+                let updates = batch
+                    .iter()
+                    .map(|(full_path, thumb_path, w, h, micro)| ThumbnailRecord {
+                        full_path: full_path.clone(),
+                        thumb_path: thumb_path.clone(),
+                        width: (*w > 0).then_some(*w as i64),
+                        height: (*h > 0).then_some(*h as i64),
+                        micro_thumb: micro.clone(),
+                    })
+                    .collect::<Vec<_>>();
+                db.database
+                    .update_scanned_thumbnails(&updates)
+                    .map_err(|error| error.to_string())?;
                 batch.clear();
                 Ok(())
             };
@@ -385,7 +361,6 @@ fn scan_folder_impl(
         crate::maintenance::process_videos_parallel(
             db,
             &video_paths,
-            &thumb_dir,
             cancel,
             tx,
             "Video thumbnails",

@@ -1,6 +1,6 @@
 //! Gallery selection and keyboard navigation ported from PhoTag's grid handler.
 
-use photag_plugin_database::db::queries::MediaSkeleton;
+use photag_plugin_database::MediaSkeleton;
 
 /// Keyboard inputs relevant to the source gallery grid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use cordis::{Context, Plugin, Routing, Service};
 use photag_contracts::MediaIndexChanged;
-use photag_plugin_database::{DatabaseService, db::queries};
-use photag_plugin_indexing::{IndexingService, scan::classify_media_type};
+use photag_plugin_database::{DatabaseService, WatchedFile};
+use photag_plugin_indexing::{IndexingService, classify_media_type};
 
 mod browser;
 mod startup;
@@ -151,68 +151,46 @@ impl WatcherService {
             return self.reconcile_browser(&added, &removed);
         }
         let removed_count = removed.len();
-        let indexed = self.database.with_writer(|connection| {
-            for path in &removed {
-                connection.execute(
-                    "DELETE FROM media WHERE full_path = ?1",
-                    rusqlite::params![path],
-                )?;
-            }
-            let folders = {
-                let mut statement = connection.prepare("SELECT id, path FROM folders")?;
-                statement
-                    .query_map([], |row| {
-                        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
-                    })?
-                    .collect::<rusqlite::Result<Vec<_>>>()?
-            };
-            let mut indexed = Vec::new();
-            for full_path in &added {
+        let candidates = added
+            .iter()
+            .filter_map(|full_path| {
                 let path = Path::new(full_path);
-                let Some((folder_id, _)) = folders
-                    .iter()
-                    .filter(|(_, folder)| path.starts_with(folder))
-                    .max_by_key(|(_, folder)| folder.len())
-                else {
-                    continue;
-                };
-                let Ok(metadata) = std::fs::metadata(path) else {
-                    continue;
-                };
+                let metadata = std::fs::metadata(path).ok()?;
                 if !metadata.is_file() {
-                    continue;
+                    return None;
                 }
                 let filename = path
                     .file_name()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .into_owned();
-                let ext = path
+                let extension = path
                     .extension()
                     .unwrap_or_default()
                     .to_string_lossy()
                     .to_lowercase();
-                let media_type = classify_media_type(&ext);
-                let file_size = metadata.len() as i64;
                 let modified_at = metadata
                     .modified()
                     .ok()
                     .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
                     .map(|duration| duration.as_secs() as i64)
                     .unwrap_or(0);
-                queries::watcher_upsert_media(
-                    connection,
-                    *folder_id,
-                    &filename,
-                    full_path,
-                    media_type,
-                    file_size,
+                Some(WatchedFile {
+                    path: full_path.clone(),
+                    filename,
+                    media_type: classify_media_type(&extension).to_owned(),
+                    file_size: metadata.len() as i64,
                     modified_at,
-                )?;
-                indexed.push((full_path.clone(), media_type.to_owned()));
-            }
-            Ok(indexed)
-        })?;
+                    version: None,
+                })
+            })
+            .collect::<Vec<_>>();
+        let indexed = self
+            .database
+            .reconcile_watched_files(&removed, &candidates)?
+            .into_iter()
+            .map(|file| (file.path, file.media_type))
+            .collect::<Vec<_>>();
 
         if !indexed.is_empty() {
             let _thumbnail_progress = self
@@ -279,12 +257,7 @@ impl Plugin for WatcherPlugin {
             .map_err(|error| WatcherPluginError::Dependency(error.to_string()))?;
         let watcher = watcher::FolderWatcher::new().ok_or(WatcherPluginError::Unavailable)?;
         let folders = database
-            .with_reader(|connection| {
-                let mut statement = connection.prepare("SELECT path FROM folders")?;
-                statement
-                    .query_map([], |row| row.get::<_, String>(0))?
-                    .collect::<rusqlite::Result<Vec<_>>>()
-            })
+            .folder_paths()
             .map_err(|error| WatcherPluginError::Database(error.to_string()))?;
         for folder in folders.into_iter().filter(|_| !database.is_browser()) {
             watcher.watch(&folder);
@@ -340,7 +313,7 @@ pub enum WatcherError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use photag_plugin_database::db::queries;
+    use photag_plugin_database::queries;
     use std::sync::atomic::AtomicUsize;
     use std::time::Duration;
 

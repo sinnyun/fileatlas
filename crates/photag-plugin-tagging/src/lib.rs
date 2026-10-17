@@ -4,14 +4,15 @@ use std::sync::{Arc, Mutex};
 
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
-use photag_plugin_database::db::queries::{self, Tag};
+use photag_plugin_database::{self, Tag, TagDropPos};
 use photag_ui_bridge::{ContributionKind, UiContribution, register_for_plugin};
 
 mod records;
 #[cfg(test)]
 mod records_tests;
-pub mod writeback;
+mod writeback;
 pub mod xmp;
+pub use writeback::{ScheduleError, WritebackFailure};
 
 pub struct TaggingService {
     database: Arc<DatabaseService>,
@@ -56,8 +57,7 @@ impl TaggingService {
         track_recent: bool,
     ) -> Result<(), TaggingError> {
         self.capture_sources(media_ids)?;
-        self.database
-            .with_writer(|connection| queries::assign_tags(connection, media_ids, tag_ids))?;
+        self.database.assign_tags(media_ids, tag_ids)?;
         if track_recent && let Ok(mut recent) = self.recent_tag_ids.lock() {
             for &tag_id in tag_ids.iter().rev() {
                 recent.retain(|id| *id != tag_id);
@@ -77,18 +77,34 @@ impl TaggingService {
             .unwrap_or_default()
     }
 
+    /// Snapshot metadata write failures owned by this service.
+    pub fn writeback_failures(&self) -> Vec<WritebackFailure> {
+        writeback::failures()
+    }
+
+    /// Retry the exact payload retained for a failed media path.
+    pub fn retry_writeback_failure(
+        &self,
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<bool, ScheduleError> {
+        writeback::retry_failure(path)
+    }
+
+    /// Dismiss the retained writeback failure for a media path.
+    pub fn dismiss_writeback_failure(&self, path: impl AsRef<std::path::Path>) {
+        writeback::clear_failure(path);
+    }
+
     #[tracing::instrument(skip_all, err)]
     pub fn remove(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
-        self.database
-            .with_writer(|connection| queries::remove_tags(connection, media_ids, tag_ids))?;
+        self.database.remove_tags(media_ids, tag_ids)?;
         self.schedule_xmp_sync(media_ids);
         Ok(())
     }
 
     #[tracing::instrument(skip_all, err)]
     pub fn clear(&self, media_ids: &[i64]) -> Result<(), TaggingError> {
-        self.database
-            .with_writer(|connection| queries::remove_all_tags(connection, media_ids))?;
+        self.database.remove_all_tags(media_ids)?;
         self.schedule_xmp_sync(media_ids);
         Ok(())
     }
@@ -101,37 +117,22 @@ impl TaggingService {
         media_id: i64,
         labels: &[String],
     ) -> Result<Vec<i64>, TaggingError> {
-        let tag_ids = self.database.with_writer(|connection| {
-            let parent = queries::find_or_create_tag(connection, "AI Suggested");
-            let mut ids = std::collections::BTreeSet::new();
-            for label in labels {
-                if let Some(id) = queries::find_tag_by_name(connection, label) {
-                    ids.insert(id);
-                } else if let Ok(tag) = queries::create_tag(connection, label, parent) {
-                    ids.insert(tag.id);
-                }
-            }
-            Ok::<_, rusqlite::Error>(ids.into_iter().collect::<Vec<_>>())
-        })?;
+        let tag_ids = self.database.create_or_find_ai_tags(labels)?;
         self.assign(&[media_id], &tag_ids)?;
         Ok(tag_ids)
     }
 
     pub fn for_media(&self, media_id: i64) -> Result<Vec<Tag>, TaggingError> {
-        Ok(self
-            .database
-            .with_reader(|connection| queries::get_media_tags(connection, media_id))?)
+        Ok(self.database.get_media_tags(media_id)?)
     }
 
     /// Return the current hierarchical tag tree for assignment pickers.
     pub fn tag_tree(&self) -> Result<Vec<Tag>, TaggingError> {
-        Ok(self.database.with_reader(queries::get_tag_tree)?)
+        Ok(self.database.get_tag_tree()?)
     }
 
     pub fn associated_with(&self, tag_id: i64) -> Result<Vec<i64>, TaggingError> {
-        Ok(self
-            .database
-            .with_reader(|connection| queries::get_associated_tags(connection, tag_id))?)
+        Ok(self.database.get_associated_tags(tag_id)?)
     }
 
     #[tracing::instrument(skip_all, err)]
@@ -140,9 +141,7 @@ impl TaggingService {
         tag_id: i64,
         associated_ids: &[i64],
     ) -> Result<(), TaggingError> {
-        Ok(self.database.with_writer(|connection| {
-            queries::set_associated_tags(connection, tag_id, associated_ids)
-        })?)
+        Ok(self.database.set_associated_tags(tag_id, associated_ids)?)
     }
 
     #[tracing::instrument(skip_all, err)]
@@ -152,12 +151,9 @@ impl TaggingService {
         target_id: i64,
         reparent_children: bool,
     ) -> Result<(), TaggingError> {
-        let affected = self
-            .database
-            .with_reader(|connection| queries::get_media_ids_with_tag(connection, source_id))?;
-        self.database.with_writer(|connection| {
-            queries::merge_tag(connection, source_id, target_id, reparent_children)
-        })?;
+        let affected = self.database.get_media_ids_with_tag(source_id)?;
+        self.database
+            .merge_tag(source_id, target_id, reparent_children)?;
         self.schedule_xmp_sync(&affected);
         Ok(())
     }
@@ -168,11 +164,9 @@ impl TaggingService {
     pub fn move_tag(
         &self,
         source_id: i64,
-        drop_position: queries::TagDropPos,
+        drop_position: TagDropPos,
     ) -> Result<Vec<i64>, TaggingError> {
-        let affected = self
-            .database
-            .with_writer(|connection| queries::move_tag(connection, source_id, drop_position))?;
+        let affected = self.database.move_tag(source_id, drop_position)?;
         self.schedule_xmp_sync(&affected);
         Ok(affected)
     }
@@ -193,6 +187,8 @@ impl TaggingService {
 pub enum TaggingError {
     #[error(transparent)]
     DatabaseAccess(#[from] photag_plugin_database::DatabaseAccessError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -256,7 +252,7 @@ pub enum TaggingPluginError {
 mod tests {
     use super::*;
     use crate::writeback::{TEST_LOCK, wait_until_idle};
-    use photag_plugin_database::db::queries;
+    use photag_plugin_database::queries;
     use std::time::Duration;
 
     fn temp_root() -> std::path::PathBuf {

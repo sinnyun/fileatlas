@@ -22,6 +22,8 @@ members = [
     "crates/photag-plugin-quicklook",
     "crates/photag-plugin-ai",
     "crates/photag-plugin-history",
+    "crates/photag-plugin-version-info",
+    "crates/photag-plugin-versions",
     "crates/photag-plugin-drag-drop",
     "crates/photag-plugin-mcp",
     "crates/photag-plugin-dev-test",
@@ -44,6 +46,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 gpui-kit = "=0.7.1"
+
+# Keep the same Lore GUI engine revision used by the reference workspace.
+lore-vm = { git = "https://github.com/BiloxiStudios/loregui.git", rev = "35eaf6ed1273397a5b18a283dda560949bb94ca4", package = "lore-vm" }
+
+[patch.crates-io]
+quinn-proto = { git = "https://github.com/EpicGames/lore.git", rev = "da73d9fbe793f8ff10db848c9920b83f63c346f2" }
 
 [profile.dev]
 debug = 0

@@ -34,7 +34,13 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
             view.row_layout_key = None;
             // Keep old geometry until render replaces it; another ready chunk
             // may need the logical scroll anchor before that paint.
-            if let Ok(snapshot) = &view.snapshot {
+            // A restore triggers a directory refresh. Its initial empty/partial
+            // snapshot must not deselect the file and replace History with the
+            // folder inspector before the complete file list arrives.
+            if let Ok(snapshot) = &view.snapshot
+                && !snapshot.browser.loading
+                && snapshot.browser.error.is_none()
+            {
                 let valid = snapshot
                     .skeletons
                     .iter()
@@ -74,6 +80,13 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
             }
             repaint = true;
         }
+    }
+    if view.history_read.poll() {
+        repaint = true;
+    }
+    repaint |= view.version_states.poll();
+    if view.history_branches.poll() {
+        repaint = true;
     }
     view.flush_visible_window();
     let restore_scope_ready = !view.restore_in_directory
@@ -171,7 +184,11 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
         repaint = true;
     }
     if view.tagging.is_some() {
-        let current = writeback_failure_signature();
+        let current = view
+            .tagging
+            .as_deref()
+            .map(writeback_failure_signature)
+            .unwrap_or_default();
         if current != view.writeback_failure_signature {
             view.writeback_failure_signature = current;
             repaint = true;

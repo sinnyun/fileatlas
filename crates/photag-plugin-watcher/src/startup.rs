@@ -33,7 +33,7 @@ impl StartupRefresh {
     // Own resources rather than Arc<WatcherService>: plugin stop can drop the
     // service, signal cancellation and join this worker even during a scan.
     pub(super) fn run(self) {
-        let folders = match self.database.with_reader(queries::list_folders) {
+        let folders = match self.database.list_folders() {
             Ok(folders) => folders,
             Err(error) => {
                 self.failure("", error.to_string());

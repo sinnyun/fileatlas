@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Routing, Service};
 use photag_contracts::MediaIndexChanged;
-use photag_plugin_database::{DatabaseService, db::queries};
+use photag_plugin_database::DatabaseService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_tagging::TaggingService;
 use photag_ui_bridge::{ContributionKind, UiCommandInvoked, UiContribution, register_for_plugin};
@@ -105,9 +105,7 @@ impl HistoryService {
 
     /// Capture the exact current assignments before the caller clears tags.
     pub fn cleared_tags_entry(&self, media_ids: Vec<i64>) -> Result<UndoEntry, HistoryError> {
-        let tags = self
-            .database
-            .with_reader(|connection| queries::get_tags_for_media_batch(connection, &media_ids))?;
+        let tags = self.database.get_tags_for_media_batch(&media_ids)?;
         let previous_tags = media_ids
             .iter()
             .map(|id| {
@@ -158,9 +156,7 @@ impl HistoryService {
                 old_rating,
                 ..
             } => {
-                let _ = self.database.with_writer(|connection| {
-                    queries::set_rating_bulk(connection, media_ids, *old_rating)
-                });
+                let _ = self.database.set_rating_bulk(media_ids, *old_rating);
             }
             UndoEntry::Renamed {
                 media_id,
@@ -205,9 +201,7 @@ impl HistoryService {
                 new_rating,
                 ..
             } => {
-                let _ = self.database.with_writer(|connection| {
-                    queries::set_rating_bulk(connection, media_ids, *new_rating)
-                });
+                let _ = self.database.set_rating_bulk(media_ids, *new_rating);
             }
             UndoEntry::Renamed {
                 media_id,
@@ -346,6 +340,7 @@ impl Plugin for HistoryPlugin {
                     UNDO_COMMAND_ID,
                     ContributionKind::Command {
                         label: "Undo".into(),
+                        needs: photag_ui_bridge::CommandNeeds::UndoAvailable,
                     },
                 ),
                 UiContribution::new(
@@ -361,6 +356,7 @@ impl Plugin for HistoryPlugin {
                     REDO_COMMAND_ID,
                     ContributionKind::Command {
                         label: "Redo".into(),
+                        needs: photag_ui_bridge::CommandNeeds::RedoAvailable,
                     },
                 ),
                 UiContribution::new(

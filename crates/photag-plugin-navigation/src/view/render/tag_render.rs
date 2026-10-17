@@ -2,7 +2,7 @@ use super::super::*;
 use gpui_kit::assets::IconName;
 
 pub(in crate::view) fn render_tag(
-    tag: &photag_plugin_database::db::queries::Tag,
+    tag: &photag_plugin_database::Tag,
     expanded: &HashSet<i64>,
     query: &str,
     search_match: TagSearchMatch,
@@ -228,111 +228,110 @@ pub(in crate::view) fn render_tag(
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
                 payload.source_id,
-                photag_plugin_database::db::queries::TagDropPos::Before(before_id),
+                photag_plugin_database::TagDropPos::Before(before_id),
                 cx,
             );
         }));
     let into_id = tag.id;
-    let row = div()
-        .v_flex()
-        .relative()
-        .child(
-            div()
-                .group(row_group)
-                .relative()
-                .h_flex()
-                .items_center()
-                .ml(px(3. + depth as f32 * 12.))
-                .mr(px(3.))
-                .pl(px(6.))
-                .pr(px(5.))
-                .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                .rounded(px(9.))
-                .bg(rgba((tag_color << 8) | 0x28))
-                .border_1()
-                .border_color(rgba((tag_color << 8) | 0x70))
-                .when(selected, |row| {
-                    row.bg(rgba((tag_color << 8) | 0x72))
-                        .border_color(rgba((tag_color << 8) | 0xc0))
-                        .child(
-                            div()
-                                .absolute()
-                                .left(px(1.))
-                                .top(px(5.))
-                                .w(px(3.))
-                                .h(px(16.))
-                                .rounded(px(1.5))
-                                .bg(rgb(tag_color)),
-                        )
-                })
-                .child(
-                    div()
-                        .h_flex()
-                        .flex_1()
-                        .min_w_0()
-                        .items_center()
-                        .gap(px(5.))
-                        .child(toggle)
-                        .child(
-                            div()
-                                .w(px(7.))
-                                .h(px(7.))
-                                .rounded_full()
-                                .bg(rgb((u32::from(red) << 16)
-                                    | (u32::from(green) << 8)
-                                    | u32::from(blue))),
-                        )
-                        .child(theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)))
-                        .child(drag_name.flex_1().min_w_0())
-                        .drag_over::<TagDragPayload>(move |style, _, _, _| {
-                            style.bg(rgba((tag_color << 8) | 0x50))
-                        })
-                        .on_drop::<TagDragPayload>(cx.listener(
-                            move |this, payload: &TagDragPayload, _, cx| {
-                                this.move_tag_to(
-                                    payload.source_id,
-                                    photag_plugin_database::db::queries::TagDropPos::Into(into_id),
-                                    cx,
-                                );
-                            },
-                        )),
-                )
-                .child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap(px(3.))
-                        .flex_shrink_0()
-                        .child(
-                            div()
-                                .w(px(28.))
-                                .h_flex()
-                                .items_center()
-                                .justify_end()
-                                .flex_shrink_0()
-                                .px(px(5.))
-                                .py(px(1.))
-                                .rounded(px(7.))
-                                .bg(rgb(theme::SURFACE_ELEVATED))
-                                .text_size(px(10.))
-                                .text_color(rgb(theme::TEXT_MUTED))
-                                .child(tag.media_count.to_string()),
-                        )
-                        .child(actions),
-                ),
-        )
-        .when(depth > 0, |row| {
-            row.child(
+    let row =
+        div()
+            .v_flex()
+            .relative()
+            .child(
                 div()
-                    .absolute()
-                    .left(px(3. + (depth - 1) as f32 * 12. + 9.))
-                    .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
-                    .w(px(8.))
-                    .h(px(1.))
-                    .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                    .group(row_group)
+                    .relative()
+                    .h_flex()
+                    .items_center()
+                    .ml(px(3. + depth as f32 * 12.))
+                    .mr(px(3.))
+                    .pl(px(6.))
+                    .pr(px(5.))
+                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                    .rounded(px(9.))
+                    .bg(rgba((tag_color << 8) | 0x28))
+                    .border_1()
+                    .border_color(rgba((tag_color << 8) | 0x70))
+                    .when(selected, |row| {
+                        row.bg(rgba((tag_color << 8) | 0x72))
+                            .border_color(rgba((tag_color << 8) | 0xc0))
+                            .child(
+                                div()
+                                    .absolute()
+                                    .left(px(1.))
+                                    .top(px(5.))
+                                    .w(px(3.))
+                                    .h(px(16.))
+                                    .rounded(px(1.5))
+                                    .bg(rgb(tag_color)),
+                            )
+                    })
+                    .child(
+                        div()
+                            .h_flex()
+                            .flex_1()
+                            .min_w_0()
+                            .items_center()
+                            .gap(px(5.))
+                            .child(toggle)
+                            .child(div().w(px(7.)).h(px(7.)).rounded_full().bg(rgb((u32::from(
+                                red,
+                            ) << 16)
+                                | (u32::from(green) << 8)
+                                | u32::from(blue))))
+                            .child(
+                                theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)),
+                            )
+                            .child(drag_name.flex_1().min_w_0())
+                            .drag_over::<TagDragPayload>(move |style, _, _, _| {
+                                style.bg(rgba((tag_color << 8) | 0x50))
+                            })
+                            .on_drop::<TagDragPayload>(cx.listener(
+                                move |this, payload: &TagDragPayload, _, cx| {
+                                    this.move_tag_to(
+                                        payload.source_id,
+                                        photag_plugin_database::TagDropPos::Into(into_id),
+                                        cx,
+                                    );
+                                },
+                            )),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap(px(3.))
+                            .flex_shrink_0()
+                            .child(
+                                div()
+                                    .w(px(28.))
+                                    .h_flex()
+                                    .items_center()
+                                    .justify_end()
+                                    .flex_shrink_0()
+                                    .px(px(5.))
+                                    .py(px(1.))
+                                    .rounded(px(7.))
+                                    .bg(rgb(theme::SURFACE_ELEVATED))
+                                    .text_size(px(10.))
+                                    .text_color(rgb(theme::TEXT_MUTED))
+                                    .child(tag.media_count.to_string()),
+                            )
+                            .child(actions),
+                    ),
             )
-        })
-        .children(children);
+            .when(depth > 0, |row| {
+                row.child(
+                    div()
+                        .absolute()
+                        .left(px(3. + (depth - 1) as f32 * 12. + 9.))
+                        .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
+                        .w(px(8.))
+                        .h(px(1.))
+                        .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                )
+            })
+            .children(children);
     let after_id = tag.id;
     let after = div()
         .w_full()
@@ -351,7 +350,7 @@ pub(in crate::view) fn render_tag(
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
                 payload.source_id,
-                photag_plugin_database::db::queries::TagDropPos::After(after_id),
+                photag_plugin_database::TagDropPos::After(after_id),
                 cx,
             );
         }));
@@ -571,7 +570,7 @@ pub(in crate::view) fn merge_target_buttons(
     let query = view.merge_search.read(cx).value().trim().to_owned();
     let mut targets = Vec::new();
     fn walk(
-        tags: &[photag_plugin_database::db::queries::Tag],
+        tags: &[photag_plugin_database::Tag],
         excluded: &HashSet<i64>,
         query: &str,
         mode: TagSearchMatch,

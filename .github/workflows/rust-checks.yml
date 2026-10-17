@@ -49,6 +49,9 @@ jobs:
       - name: Enforce architecture and debt ratchets
         run: node scripts/check-architecture.cjs
 
+      - name: Enforce crate layering and database boundaries
+        run: node scripts/check-layering.cjs
+
       - name: Validate feature ledger links and statuses
         run: node scripts/check-feature-ledger.cjs
 

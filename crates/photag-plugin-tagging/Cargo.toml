@@ -12,8 +12,11 @@ tracing.workspace = true
 cordis.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
-rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror = "2"
+
+[dev-dependencies]
+photag-plugin-database = { path = "../photag-plugin-database", features = ["test-api"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [lints]
 workspace = true

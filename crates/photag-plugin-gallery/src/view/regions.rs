@@ -643,7 +643,11 @@ impl GalleryView {
                     .child(status.clone()),
             );
         }
-        let failures = photag_plugin_tagging::writeback::failures();
+        let failures = self
+            .tagging
+            .as_ref()
+            .map(|tagging| tagging.writeback_failures())
+            .unwrap_or_default();
         if !failures.is_empty() {
             root = root.child(
                 div()

@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
-use photag_plugin_database::db::queries::{self, MediaExport};
+use photag_plugin_database::MediaExport;
 use photag_ui_bridge::{
     ContributionKind, UiCommandInvoked, UiContribution, register_for_plugin,
     register_views_for_plugin,
@@ -51,9 +51,9 @@ impl MetadataExportService {
 
     /// Return all media rows in source order with source-compatible tag paths.
     pub fn records(&self) -> Result<Vec<MediaExport>, MetadataExportError> {
-        Ok(self.database.with_reader(|conn| {
-            queries::export_metadata_scoped(conn, self.database.is_browser())
-        })?)
+        Ok(self
+            .database
+            .export_metadata_scoped(self.database.is_browser())?)
     }
 
     /// Serialize the same top-level JSON array and field names as PhoTag.
@@ -239,6 +239,7 @@ impl Plugin for MetadataExportPlugin {
                     EXPORT_COMMAND_ID,
                     ContributionKind::Command {
                         label: "Export metadata…".into(),
+                        needs: photag_ui_bridge::CommandNeeds::None,
                     },
                 ),
                 UiContribution::new(

@@ -4,7 +4,7 @@ use gpui_kit::assets::IconName;
 
 pub(super) enum InspectorContext {
     Program,
-    Tag(photag_plugin_database::db::queries::Tag),
+    Tag(photag_plugin_database::Tag),
     Folder(FolderInfo),
     File,
 }
@@ -231,14 +231,14 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
         .into_any_element()
 }
 
-pub(super) fn count_tags(tags: &[photag_plugin_database::db::queries::Tag]) -> usize {
+pub(super) fn count_tags(tags: &[photag_plugin_database::Tag]) -> usize {
     tags.iter().map(|tag| 1 + count_tags(&tag.children)).sum()
 }
 
 pub(super) fn find_tag(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     id: i64,
-) -> Option<&photag_plugin_database::db::queries::Tag> {
+) -> Option<&photag_plugin_database::Tag> {
     tags.iter().find_map(|tag| {
         if tag.id == id {
             Some(tag)

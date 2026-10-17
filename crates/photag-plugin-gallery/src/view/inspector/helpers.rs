@@ -1,9 +1,7 @@
 //! Inspector sections and real media metadata formatting.
 use super::*;
 
-pub(super) fn basic_info_rows(
-    media: &photag_plugin_database::db::queries::MediaItem,
-) -> AnyElement {
+pub(super) fn basic_info_rows(media: &photag_plugin_database::MediaItem) -> AnyElement {
     let extension = std::path::Path::new(&media.filename)
         .extension()
         .and_then(|value| value.to_str())

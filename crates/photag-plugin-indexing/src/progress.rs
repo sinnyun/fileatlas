@@ -1,5 +1,5 @@
 //! Observe production streams without consuming the caller's progress channel.
-use crate::scan::ScanProgress;
+use crate::ScanProgress;
 use std::collections::BTreeMap;
 use std::sync::{
     Arc, Mutex,

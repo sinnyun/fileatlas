@@ -5,13 +5,14 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::*;
+use photag_plugin_tagging::WritebackFailure;
 use photag_ui_bridge::theme;
 
 use super::GalleryView;
 
 pub(super) fn render(
     _view: &mut GalleryView,
-    failure: photag_plugin_tagging::writeback::WritebackFailure,
+    failure: WritebackFailure,
     cx: &mut Context<GalleryView>,
 ) -> Div {
     let path = failure.path;
@@ -22,6 +23,7 @@ pub(super) fn render(
         .unwrap_or_else(|| path.display().to_string());
     let retry_id = format!("writeback-retry-{}", path.display());
     let dismiss_id = format!("writeback-dismiss-{}", path.display());
+    let retry_path_for_click = retry_path.clone();
 
     div()
         .w_full()
@@ -79,17 +81,24 @@ pub(super) fn render(
                         .compact()
                         .label(photag_ui_bridge::i18n::tr("Retry"))
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            this.operation_status =
-                                match photag_plugin_tagging::writeback::retry_failure(&retry_path) {
-                                    Ok(true) => Some("Metadata writeback retry queued.".into()),
-                                    Ok(false) => Some(
-                                        "This writeback failure is no longer available.".into(),
-                                    ),
-                                    Err(error) => Some(photag_ui_bridge::i18n::tr_args(
-                                        "Could not retry metadata writeback: {error}",
-                                        &[("error", error.to_string())],
-                                    )),
-                                };
+                            this.operation_status = match this
+                                .tagging
+                                .as_ref()
+                                .ok_or_else(|| "Tagging service unavailable".to_owned())
+                                .and_then(|tagging| {
+                                    tagging
+                                        .retry_writeback_failure(&retry_path_for_click)
+                                        .map_err(|error| error.to_string())
+                                }) {
+                                Ok(true) => Some("Metadata writeback retry queued.".into()),
+                                Ok(false) => {
+                                    Some("This writeback failure is no longer available.".into())
+                                }
+                                Err(error) => Some(photag_ui_bridge::i18n::tr_args(
+                                    "Could not retry metadata writeback: {error}",
+                                    &[("error", error)],
+                                )),
+                            };
                             cx.notify();
                         })),
                 )
@@ -98,8 +107,10 @@ pub(super) fn render(
                         .ghost()
                         .compact()
                         .label(photag_ui_bridge::i18n::tr("Dismiss"))
-                        .on_click(cx.listener(move |_, _, _, cx| {
-                            photag_plugin_tagging::writeback::clear_failure(&path);
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if let Some(tagging) = &this.tagging {
+                                tagging.dismiss_writeback_failure(&path);
+                            }
                             cx.notify();
                         })),
                 ),

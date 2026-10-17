@@ -1,5 +1,5 @@
 use super::*;
-use photag_plugin_database::db::queries::{LibraryStats, MediaQuery};
+use photag_plugin_database::{LibraryStats, MediaQuery};
 
 pub(super) type StatisticsRead = (LibraryStats, Result<i64, String>);
 
@@ -174,6 +174,7 @@ impl GalleryView {
         let Ok(snapshot) = &self.snapshot else { return };
         let total = snapshot.skeletons.len();
         if total == 0 {
+            self.request_version_states(&[]);
             return;
         }
         let begin = requested.start.min(total);
@@ -191,6 +192,7 @@ impl GalleryView {
             .map(|s| s.id)
             .collect::<Vec<_>>();
         let status = self.service.directory_status();
+        self.request_version_states(&visible);
         let key = (
             status.0,
             self.snapshot_generation,

@@ -13,13 +13,14 @@ photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 gpui-kit.workspace = true
-rusqlite = { version = "0.31", features = ["bundled"] }
 thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+photag-plugin-database = { path = "../photag-plugin-database", features = ["test-api"] }
 image = "0.25"
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [lints]
 workspace = true

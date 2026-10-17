@@ -1,9 +1,6 @@
 use super::*;
 
-pub(super) fn collect_tag_ids(
-    tag: &photag_plugin_database::db::queries::Tag,
-    output: &mut HashSet<i64>,
-) {
+pub(super) fn collect_tag_ids(tag: &photag_plugin_database::Tag, output: &mut HashSet<i64>) {
     output.insert(tag.id);
     for child in &tag.children {
         collect_tag_ids(child, output);
@@ -11,7 +8,7 @@ pub(super) fn collect_tag_ids(
 }
 
 pub(super) fn tag_matches(
-    tag: &photag_plugin_database::db::queries::Tag,
+    tag: &photag_plugin_database::Tag,
     query: &str,
     mode: TagSearchMatch,
 ) -> bool {
@@ -32,9 +29,9 @@ pub(super) fn tag_matches(
 }
 
 pub(super) fn find_tag(
-    tags: &[photag_plugin_database::db::queries::Tag],
+    tags: &[photag_plugin_database::Tag],
     id: i64,
-) -> Option<&photag_plugin_database::db::queries::Tag> {
+) -> Option<&photag_plugin_database::Tag> {
     tags.iter().find_map(|tag| {
         if tag.id == id {
             Some(tag)
@@ -45,7 +42,7 @@ pub(super) fn find_tag(
 }
 
 pub(super) fn collect_tag_appearance_descendants(
-    tag: &photag_plugin_database::db::queries::Tag,
+    tag: &photag_plugin_database::Tag,
     output: &mut Vec<(i64, bool)>,
 ) {
     for child in &tag.children {

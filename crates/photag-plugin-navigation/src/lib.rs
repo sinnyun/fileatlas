@@ -21,8 +21,8 @@ use std::sync::{Arc, Mutex, mpsc};
 
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::DatabaseService;
-use photag_plugin_database::db::queries::{self, Folder, Tag, TagDropPos};
-use photag_plugin_indexing::{IndexingService, scan::ScanProgress};
+use photag_plugin_database::{Folder, Tag, TagDropPos};
+use photag_plugin_indexing::{IndexingService, ScanProgress};
 use photag_plugin_watcher::WatcherService;
 use photag_ui_bridge::{
     ContributionKind, UiContribution, register_for_plugin, register_views_for_plugin,
@@ -244,9 +244,7 @@ impl NavigationService {
             ));
         }
         let path = path.to_string_lossy().into_owned();
-        let folder = self
-            .database
-            .with_writer(|connection| queries::add_folder(connection, &path))?;
+        let folder = self.database.add_folder(&path)?;
         if !self.database.is_browser()
             && let Some(watcher) = &self.watcher
         {
@@ -268,12 +266,12 @@ impl NavigationService {
         folder_id: i64,
     ) -> Result<mpsc::Receiver<Option<ScanProgress>>, NavigationError> {
         self.cancel_scan(folder_id)?;
-        let folder = self.database.with_reader(|connection| {
-            queries::list_folders(connection)?
-                .into_iter()
-                .find(|folder| folder.id == folder_id)
-                .ok_or(rusqlite::Error::QueryReturnedNoRows)
-        })?;
+        let folder = self
+            .database
+            .list_folders()?
+            .into_iter()
+            .find(|folder| folder.id == folder_id)
+            .ok_or(photag_plugin_database::DatabaseAccessError::NotFound)?;
         if self.database.is_browser() {
             self.request_ui(NavigationUiRequest::SelectPath(folder.path.clone()))
                 .map_err(|e| NavigationError::NotDirectory(e.to_string()))?;
@@ -284,13 +282,7 @@ impl NavigationService {
             let _ = tx.send(None);
             return Ok(rx);
         }
-        self.database.with_writer(|connection| {
-            connection.execute(
-                "DELETE FROM media WHERE folder_id = ?1",
-                rusqlite::params![folder_id],
-            )?;
-            Ok(())
-        })?;
+        self.database.clear_folder_media(folder_id)?;
         self.start_scan(&folder)
     }
 
@@ -298,21 +290,13 @@ impl NavigationService {
     #[tracing::instrument(skip_all, err)]
     pub fn remove_folder(&self, folder_id: i64) -> Result<Folder, NavigationError> {
         self.cancel_scan(folder_id)?;
-        let folder = self.database.with_reader(|connection| {
-            queries::list_folders(connection)?
-                .into_iter()
-                .find(|folder| folder.id == folder_id)
-                .ok_or(rusqlite::Error::QueryReturnedNoRows)
-        })?;
-        self.database.with_writer(|connection| {
-            if self.database.is_browser() {
-                connection.execute(
-                    "UPDATE media SET folder_id=0 WHERE folder_id=?1",
-                    [folder_id],
-                )?;
-            }
-            queries::remove_folder(connection, folder_id)
-        })?;
+        let folder = self
+            .database
+            .list_folders()?
+            .into_iter()
+            .find(|folder| folder.id == folder_id)
+            .ok_or(photag_plugin_database::DatabaseAccessError::NotFound)?;
+        self.database.remove_library_folder(folder_id)?;
         if let Some(watcher) = &self.watcher {
             watcher.unwatch(&folder.path);
         }
@@ -320,42 +304,38 @@ impl NavigationService {
     }
 
     pub fn snapshot(&self) -> Result<NavigationSnapshot, NavigationError> {
-        Ok(self.database.with_reader(|connection| {
-            let folders = queries::list_folders(connection)?;
-            let counts = queries::count_media_per_folder(connection)?;
-            let mut folders: Vec<FolderNode> = folders
+        let data = self.database.navigation_snapshot()?;
+        let mut folders: Vec<FolderNode> = data
+            .folders
+            .into_iter()
+            .map(|folder| FolderNode {
+                media_count: data.folder_counts.get(&folder.id).copied().unwrap_or(0),
+                folder,
+            })
+            .collect();
+        if self.database.is_browser() {
+            let metadata = data
+                .favorite_meta
                 .into_iter()
-                .map(|folder| FolderNode {
-                    media_count: counts.get(&folder.id).copied().unwrap_or(0),
-                    folder,
-                })
-                .collect();
-            if self.database.is_browser() {
-                let metadata = connection
-                    .prepare("SELECT id,name,position FROM favorite_meta")?
-                    .query_map([], |r| {
-                        Ok((
-                            r.get::<_, i64>(0)?,
-                            (r.get::<_, String>(1)?, r.get::<_, i64>(2)?),
-                        ))
-                    })?
-                    .collect::<rusqlite::Result<HashMap<_, _>>>()?;
-                for node in &mut folders {
-                    if let Some((name, _)) = metadata.get(&node.folder.id) {
-                        node.folder.name = name.clone();
-                    }
-                    node.media_count = 0;
+                .map(|(id, name, position)| (id, (name, position)))
+                .collect::<HashMap<_, _>>();
+            for node in &mut folders {
+                if let Some((name, _)) = metadata.get(&node.folder.id) {
+                    node.folder.name = name.clone();
                 }
-                folders.sort_by_key(|node| {
-                    metadata
-                        .get(&node.folder.id)
-                        .map(|(_, position)| *position)
-                        .unwrap_or(node.folder.id)
-                });
+                node.media_count = 0;
             }
-            let tags = queries::get_tag_tree(connection)?;
-            Ok(NavigationSnapshot { folders, tags })
-        })?)
+            folders.sort_by_key(|node| {
+                metadata
+                    .get(&node.folder.id)
+                    .map(|(_, position)| *position)
+                    .unwrap_or(node.folder.id)
+            });
+        }
+        Ok(NavigationSnapshot {
+            folders,
+            tags: data.tags,
+        })
     }
 
     pub fn browse_subdirectories(&self, path: &str) -> std::io::Result<Vec<SubdirectoryNode>> {
@@ -385,10 +365,7 @@ impl NavigationService {
             .list_subdirectories(path)
             .into_iter()
             .map(|(name, path, has_children)| {
-                let media_count = self
-                    .database
-                    .with_reader(|connection| queries::count_media_under_path(connection, &path))
-                    .unwrap_or(0);
+                let media_count = self.database.count_media_under_path(&path).unwrap_or(0);
                 SubdirectoryNode {
                     name,
                     path,
@@ -405,39 +382,24 @@ impl NavigationService {
     }
 
     pub fn create_tag(&self, name: &str, parent: Option<i64>) -> Result<Tag, NavigationError> {
-        let tag = self
-            .database
-            .with_writer(|c| queries::create_tag(c, name, parent))?;
+        let tag = self.database.create_tag(name, parent)?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(tag)
     }
     pub fn rename_tag(&self, id: i64, name: &str) -> Result<(), NavigationError> {
-        self.database
-            .with_writer(|c| queries::rename_tag(c, id, name))?;
+        self.database.rename_tag(id, name)?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(())
     }
     /// Delete a tag and optionally remove its ancestors from media that had
     /// the tag, matching PhoTag's explicit "clean parents" confirmation.
     pub fn delete_tag(&self, id: i64, clean_parents: bool) -> Result<Vec<i64>, NavigationError> {
-        let affected = self.database.with_writer(|connection| {
-            let affected = queries::get_media_ids_with_tag(connection, id)?;
-            if clean_parents && !affected.is_empty() {
-                let ancestors = queries::get_ancestor_ids(connection, id)?;
-                if !ancestors.is_empty() {
-                    queries::remove_tags(connection, &affected, &ancestors)?;
-                }
-            }
-            queries::delete_tag(connection, id)?;
-            Ok(affected)
-        })?;
+        let affected = self.database.delete_tag_with_cleanup(id, clean_parents)?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(affected)
     }
     pub fn move_tag(&self, id: i64, drop: TagDropPos) -> Result<Vec<i64>, NavigationError> {
-        let affected = self
-            .database
-            .with_writer(|c| queries::move_tag(c, id, drop))?;
+        let affected = self.database.move_tag(id, drop)?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(affected)
     }
@@ -447,44 +409,14 @@ impl NavigationService {
         color: Option<&str>,
         icon: Option<&str>,
     ) -> Result<(), NavigationError> {
-        self.database
-            .with_writer(|c| queries::update_tag_appearance(c, id, color, icon))?;
+        self.database.update_tag_appearance(id, color, icon)?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(())
     }
     pub fn set_tag_display(&self, id: i64, display: bool) -> Result<(), NavigationError> {
-        let tree = self
-            .database
-            .with_reader(|connection| queries::get_tag_tree(connection))?;
-        fn descendants(tags: &[Tag], id: i64, output: &mut Vec<i64>) -> bool {
-            for tag in tags {
-                if tag.id == id {
-                    output.push(tag.id);
-                    fn collect(children: &[Tag], output: &mut Vec<i64>) {
-                        for child in children {
-                            output.push(child.id);
-                            collect(&child.children, output);
-                        }
-                    }
-                    collect(&tag.children, output);
-                    return true;
-                }
-                if descendants(&tag.children, id, output) {
-                    return true;
-                }
-            }
-            false
-        }
-        let mut affected = Vec::new();
-        if !descendants(&tree, id, &mut affected) {
+        if !self.database.set_tag_display_subtree(id, display)? {
             return Err(NavigationError::TagNotFound(id));
         }
-        self.database.with_writer(|connection| {
-            for tag_id in affected {
-                queries::set_tag_display(connection, tag_id, display)?;
-            }
-            Ok(())
-        })?;
         self.tag_revision.fetch_add(1, Ordering::Release);
         Ok(())
     }

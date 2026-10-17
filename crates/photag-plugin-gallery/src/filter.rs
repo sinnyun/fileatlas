@@ -1,7 +1,7 @@
 //! Host-neutral PhoTag gallery search and filter state.
 
 use chrono::NaiveDate;
-use photag_plugin_database::db::queries::{MediaQuery, SortOrder};
+use photag_plugin_database::{MediaQuery, SortOrder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GalleryTab {

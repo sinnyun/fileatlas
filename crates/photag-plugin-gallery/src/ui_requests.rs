@@ -30,7 +30,7 @@ pub enum GalleryUiRequest {
     Hover(Option<i64>),
     Search(String),
     MediaType(filter::MediaTypeFilter),
-    Sort(queries::SortOrder),
+    Sort(photag_plugin_database::SortOrder),
     RatingRange(i32, i32),
     Extension(String, bool),
     TagFilter(i64, bool),
@@ -40,6 +40,8 @@ pub enum GalleryUiRequest {
     ClearFilters,
     InspectorSection(&'static str),
     InspectorTagName(String),
+    HistoryChanged(i64),
+    HistorySelect(i64, String),
     TagPicker,
     MonthGrouping(bool),
     Grouping(photag_plugin_grouping::GroupingMode),
@@ -49,6 +51,8 @@ pub enum GalleryUiRequest {
 /// Snapshot published by the rendered Gallery entity, not a separate query.
 #[derive(Clone)]
 pub struct GalleryUiSnapshot {
+    pub version_states: Vec<GalleryVersionState>,
+    pub version_states_loading: bool,
     pub snapshot_revision: u64,
     pub records_open: bool,
     pub records_count: Option<usize>,
@@ -78,6 +82,14 @@ pub struct GalleryUiSnapshot {
     pub tag_picker_open: bool,
     pub media_actions_open: bool,
     pub media_actions_id: Option<i64>,
+}
+
+#[derive(Clone)]
+pub struct GalleryVersionState {
+    pub media_id: i64,
+    pub path: String,
+    pub state: Option<photag_plugin_versions::FileVersionState>,
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Default)]

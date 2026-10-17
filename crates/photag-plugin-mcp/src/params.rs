@@ -100,6 +100,43 @@ pub(super) struct MediaIdRequest {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct CreateVersionRequest {
+    pub(super) media_id: i64,
+    pub(super) title: String,
+    /// Must be true after the title and target file have been presented to the user.
+    pub(super) confirm: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct ActivateVersionRequest {
+    pub(super) media_id: i64,
+    pub(super) version_id: String,
+    /// Must be true after the target historical revision has been presented to the user.
+    pub(super) confirm: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct BranchGraphRequest {
+    pub(super) media_id: i64,
+    #[serde(default)]
+    pub(super) include_archived: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub(super) struct ManageFileBranchRequest {
+    pub(super) media_id: i64,
+    /// create, switch, archive, merge, resolve, or abort
+    pub(super) action: String,
+    pub(super) name: Option<String>,
+    pub(super) source_branch: Option<String>,
+    pub(super) strategy: Option<String>,
+    #[serde(default)]
+    pub(super) overwrite: bool,
+    /// Must be true after the caller has presented the branch and file operation.
+    pub(super) confirm: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct CreateTagRequest {
     pub(super) name: String,
     pub(super) parent_id: Option<i64>,

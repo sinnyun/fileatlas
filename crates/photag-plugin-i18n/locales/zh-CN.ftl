@@ -936,3 +936,9 @@ msg-debug-copy-failed = 无法复制日志。
 msg-debug-export-saved = 日志已保存到 { $path }
 msg-debug-export-cancelled = 已取消导出。
 msg-debug-export-invalid-extension = 请为日志导出选择 .txt 文件。
+msg-version-unsaved = 内容已修改，尚未保存为版本。基准：{ $base }。点击标记打开历史页，手动创建版本。
+msg-version-saved = 当前文件内容与已保存版本「{ $base }」一致。
+msg-version-matched = 当前内容已匹配版本「{ $matched }」；所选基准为「{ $base }」，无需重复保存。
+msg-version-check-failed = 暂时无法确认版本状态。
+
+msg-version-baseline = 版本基准

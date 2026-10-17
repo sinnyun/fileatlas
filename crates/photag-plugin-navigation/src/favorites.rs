@@ -7,10 +7,7 @@ impl NavigationService {
                 "Favorite name is empty".into(),
             ));
         }
-        self.database.with_writer(|conn| {
-            conn.execute("INSERT INTO favorite_meta(id,name,position) VALUES(?1,?2,?1) ON CONFLICT(id) DO UPDATE SET name=excluded.name",rusqlite::params![id,name])?;
-            Ok(())
-        })?;
+        self.database.set_favorite_name(id, name)?;
         Ok(())
     }
     pub fn move_favorite(&self, id: i64, delta: isize) -> Result<(), NavigationError> {
@@ -20,12 +17,11 @@ impl NavigationService {
         };
         let target = index.saturating_add_signed(delta).min(folders.len() - 1);
         folders.swap(index, target);
-        self.database.with_writer(|conn| {
-            for (i,node) in folders.iter().enumerate() {
-                conn.execute("INSERT INTO favorite_meta(id,name,position) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET position=excluded.position",rusqlite::params![node.folder.id,node.folder.name,i as i64])?;
-            }
-            Ok(())
-        })?;
+        let entries = folders
+            .iter()
+            .map(|node| (node.folder.id, node.folder.name.clone()))
+            .collect::<Vec<_>>();
+        self.database.set_favorite_order(&entries)?;
         Ok(())
     }
 }

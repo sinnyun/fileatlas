@@ -245,10 +245,10 @@ impl SidebarView {
             cx.notify();
             return;
         };
-        match self.service.move_tag(
-            id,
-            photag_plugin_database::db::queries::TagDropPos::Into(target),
-        ) {
+        match self
+            .service
+            .move_tag(id, photag_plugin_database::TagDropPos::Into(target))
+        {
             Ok(affected) => {
                 self.refresh();
                 self.move_target_tag_id = None;
@@ -264,13 +264,13 @@ impl SidebarView {
     pub(super) fn move_tag_to(
         &mut self,
         source: i64,
-        drop: photag_plugin_database::db::queries::TagDropPos,
+        drop: photag_plugin_database::TagDropPos,
         cx: &mut Context<Self>,
     ) {
         let target = match drop {
-            photag_plugin_database::db::queries::TagDropPos::Before(id)
-            | photag_plugin_database::db::queries::TagDropPos::After(id)
-            | photag_plugin_database::db::queries::TagDropPos::Into(id) => id,
+            photag_plugin_database::TagDropPos::Before(id)
+            | photag_plugin_database::TagDropPos::After(id)
+            | photag_plugin_database::TagDropPos::Into(id) => id,
         };
         if source == target {
             return;

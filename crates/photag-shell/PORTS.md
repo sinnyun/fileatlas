@@ -12,6 +12,10 @@ has no file-viewing or installation implementation.
 
 `photag-shell` is the host composition root. It publishes `UiBridgeService`, starts Cordis plugins in dependency order, mounts GPUI view factories into host regions (including floating `workspace.modal` views), and dispatches command IDs as Cordis events. The Settings command is contributed by the Settings plugin; its modal open state is shared through `UiSurfaceState` and its floating layer is mounted above application content.
 
+The same UI Bridge command catalog is exposed by MCP `command_list` and
+`command_run`; Shell rendering and MCP dispatch therefore use lifecycle-owned
+command IDs and policy metadata. Handlers retain action-time validation.
+
 The host chrome and contribution fallback view use `photag_ui_bridge::theme` surface and text tokens; the native base surface consumes source Mica/Acrylic alpha. GPUI Kit typography presets are still used by the shell; parity with source Segoe UI font loading and Windows font availability has not been validated.
 
 The shell restores `SessionState.sidebar_width` when it is between 200 and 400 logical pixels (otherwise 264 px) and saves the width when the sidebar divider drag ends. The updater is started before Settings. When Settings confirms an update it persists the current session snapshot, queues the staged path, and quits GPUI; after the application loop returns, the shell installs and relaunches the staged build before disposing the updater service. This update shutdown path still needs interactive Windows validation.

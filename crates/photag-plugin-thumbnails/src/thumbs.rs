@@ -2,13 +2,6 @@ use image::{GenericImageView, ImageDecoder};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
-pub fn get_thumb_dir() -> PathBuf {
-    let base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
-    let dir = base.join("PhoTag").join("thumbs");
-    std::fs::create_dir_all(&dir).ok();
-    dir
-}
-
 pub fn thumb_path_for(source: &Path, thumb_dir: &Path) -> PathBuf {
     let hash = {
         let mut hasher = Sha256::new();

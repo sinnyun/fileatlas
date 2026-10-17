@@ -20,6 +20,20 @@ impl Render for GalleryView {
                     self.inspector_tag_name
                         .update(cx, |input, cx| input.set_value(name, window, cx));
                 }
+                crate::GalleryUiRequest::HistoryChanged(media_id) => {
+                    self.history_generation = self.history_generation.wrapping_add(1);
+                    if self.selection.selected_media_ids.first() == Some(&media_id) {
+                        self.history_error = None;
+                    }
+                }
+                crate::GalleryUiRequest::HistorySelect(media_id, version_id) => {
+                    if self.selection.selected_media_ids.first() == Some(&media_id) {
+                        self.history_selected = Some((media_id, version_id.clone()));
+                        let _ = self
+                            .surfaces
+                            .set_value("gallery.inspector.history-selected", &version_id);
+                    }
+                }
                 crate::GalleryUiRequest::LocateFile(id) => self.locate_file(id, cx),
                 crate::GalleryUiRequest::OpenDirectory(path) => self.open_directory(path, cx),
                 crate::GalleryUiRequest::DirectoryUp => self.directory_up(cx),
@@ -206,6 +220,8 @@ impl Render for GalleryView {
             cx.notify();
         }
         self.service.publish_ui_snapshot(crate::GalleryUiSnapshot {
+            version_states: self.version_state_snapshot(),
+            version_states_loading: self.version_states.is_pending(),
             snapshot_revision: self.snapshot_generation,
             records_open: self.show_records,
             records_count: self
@@ -596,6 +612,13 @@ impl Render for GalleryView {
                                                                 card_size,
                                                                 list_width,
                                                                 media.micro_thumb.as_deref(),
+                                                                this.version_state(
+                                                                    media.id,
+                                                                    &media.full_path,
+                                                                )
+                                                                .and_then(|status| {
+                                                                    status.state.as_ref()
+                                                                }),
                                                                 rating_target_ids,
                                                                 Arc::clone(&card_tag_tree),
                                                                 cx,

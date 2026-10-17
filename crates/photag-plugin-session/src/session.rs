@@ -5,7 +5,7 @@
 //! expanded, what the user had selected, and where the gallery was scrolled.
 //! Stored as JSON next to `settings.json`.
 
-use photag_plugin_database::db::queries::SortOrder;
+use photag_plugin_database::SortOrder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::PathBuf;

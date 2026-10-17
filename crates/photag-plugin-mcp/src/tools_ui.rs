@@ -31,7 +31,7 @@ impl PhoTagMcpServer {
             let statistics = json!({"state":state.dialog_reads.statistics_state,"error":state.dialog_reads.statistics_error,"photos":state.dialog_reads.photos,"videos":state.dialog_reads.videos,"audio":state.dialog_reads.audio,"rating_counts":state.dialog_reads.rating_counts});
                     let bulk = json!({"state":state.dialog_reads.bulk_state,"error":state.dialog_reads.bulk_error,"count":state.dialog_reads.bulk_count,"preview_ids":state.dialog_reads.bulk_preview_ids});
                     let dialog_reads = json!({"statistics":statistics,"bulk":bulk});
-                    json!({
+                    let mut snapshot = json!({
                 "records_open":state.records_open,"records_count":state.records_count,"record_candidates":state.record_candidates,
                 "browsing": state.browsing, "current_directory": state.current_directory, "parent_directory": state.parent_directory,
                 "directories": state.directories.iter().map(|f| json!({"name":f.name,"path":f.path})).collect::<Vec<_>>(),
@@ -53,7 +53,17 @@ impl PhoTagMcpServer {
                 "statistics_open": state.statistics_open, "tag_picker_open": state.tag_picker_open,
                 "dialog_reads": dialog_reads,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
-            })});
+            });
+            snapshot["version_states_loading"] = json!(state.version_states_loading);
+            snapshot["version_states"] = json!(state.version_states.iter().map(|item| json!({"media_id":item.media_id,"path":item.path,"state":item.state,"error":item.error,"badge_visible":item.state.as_ref().is_some_and(|state| state.status == photag_plugin_versions::FileVersionStatus::Modified)})).collect::<Vec<_>>());
+            snapshot
+        });
+        let history_visible = self.surfaces.is_open("inspector")
+            && self.surfaces.value("gallery.inspector.tab").as_deref() == Some("history")
+            && gallery
+                .as_ref()
+                .and_then(|state| state["inspector_context"].as_str())
+                == Some("file");
         json!({
             "browser": {"filesystem":self.gallery.browser_enabled(), "show_descendants":self.gallery.show_descendants(),"worker_active":self.gallery.directory_worker_active(),"status":self.gallery.directory_status()},
             "input_activity": self.capture.input_snapshot(),
@@ -79,12 +89,13 @@ impl PhoTagMcpServer {
             "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
             "sidebar_folders": self.navigation.sidebar_state(),
             "inspector_tab": self.surfaces.value("gallery.inspector.tab").unwrap_or_else(|| "information".into()),
-            "inspector_demo": {
-                "enabled": self.surfaces.value("gallery.inspector.demo-enabled").as_deref() == Some("true"),
-                "selected": self.surfaces.value("gallery.inspector.demo-selected"),
-                "active": self.surfaces.value("gallery.inspector.demo-active"),
-                "count": self.surfaces.value("gallery.inspector.demo-count").and_then(|s| s.parse::<usize>().ok()),
-                "filter": self.surfaces.value("gallery.inspector.demo-filter"),
+            "inspector_history": {
+                "visible": history_visible,
+                "enabled": self.surfaces.value("gallery.inspector.history-enabled").as_deref() == Some("true"),
+                "selected": self.surfaces.value("gallery.inspector.history-selected"),
+                "active": self.surfaces.value("gallery.inspector.history-active"),
+                "count": self.surfaces.value("gallery.inspector.history-count").and_then(|s| s.parse::<usize>().ok()),
+                "last_created": self.surfaces.value("gallery.inspector.history-last-created"),
             },
             "sidebar_width": self.surfaces.value("shell.sidebar-width").and_then(|value| value.parse::<f32>().ok()),
             "inspector_width": self.surfaces.value("shell.inspector-width").and_then(|value| value.parse::<f32>().ok()),
@@ -108,7 +119,7 @@ impl PhoTagMcpServer {
                 photag_plugin_metadata_export::MetadataExportStatus::Succeeded { path, records } => json!({"state":"succeeded","path":path,"records":records}),
                 photag_plugin_metadata_export::MetadataExportStatus::Failed(error) => json!({"state":"failed","error":error}),
             }),
-            "writeback_failures": photag_plugin_tagging::writeback::failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
+            "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         })
         .to_string()
     }
@@ -261,18 +272,20 @@ impl PhoTagMcpServer {
                 let Some(path) = request.value.as_deref() else {
                     return error_json("writeback action requires a recorded failure path");
                 };
-                if !photag_plugin_tagging::writeback::failures()
+                if !self
+                    .tagging
+                    .writeback_failures()
                     .iter()
                     .any(|failure| failure.path.to_string_lossy() == path)
                 {
                     return error_json("writeback failure not found");
                 }
                 if request.action == "writeback_retry" {
-                    if let Err(error) = photag_plugin_tagging::writeback::retry_failure(path) {
+                    if let Err(error) = self.tagging.retry_writeback_failure(path) {
                         return error_json(&error.to_string());
                     }
                 } else {
-                    photag_plugin_tagging::writeback::clear_failure(path);
+                    self.tagging.dismiss_writeback_failure(path);
                 }
                 return self.get_ui_state();
             }

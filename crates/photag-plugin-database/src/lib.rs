@@ -5,13 +5,20 @@
 mod browser_store;
 #[cfg(test)]
 mod browser_tests;
-pub mod db;
+mod database_api;
+mod db;
+pub(crate) use db::get_open_count;
+pub use db::queries::{
+    Folder, LibraryStats, MediaExport, MediaGroupingFields, MediaItem, MediaQuery, MediaSkeleton,
+    SortOrder, Tag, TagDropPos,
+};
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::{Mutex, MutexGuard};
 
 use cordis::{Context, Plugin, Service};
+use db::queries;
 use rusqlite::Connection;
 
 /// PhoTag database service available to scanner and feature plugins.
@@ -73,6 +80,115 @@ impl DatabaseService {
             .load(std::sync::atomic::Ordering::Acquire)
     }
 
+    /// Read the folder/tag navigation projection in one reader-lock scope.
+    pub fn navigation_snapshot(&self) -> Result<NavigationDatabaseSnapshot, DatabaseAccessError> {
+        self.with_reader(|connection| {
+            let folders = queries::list_folders(connection)?;
+            let folder_counts = queries::count_media_per_folder(connection)?;
+            let tags = queries::get_tag_tree(connection)?;
+            let favorite_meta = if self.browser {
+                connection
+                    .prepare("SELECT id,name,position FROM favorite_meta")?
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, i64>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, i64>(2)?,
+                        ))
+                    })?
+                    .collect::<rusqlite::Result<Vec<_>>>()?
+            } else {
+                Vec::new()
+            };
+            Ok(NavigationDatabaseSnapshot {
+                folders,
+                folder_counts,
+                tags,
+                favorite_meta,
+            })
+        })
+    }
+
+    /// Clear a folder's indexed media before a source-compatible rescan.
+    pub fn clear_folder_media(&self, folder_id: i64) -> Result<(), DatabaseAccessError> {
+        self.with_writer(|connection| {
+            connection.execute("DELETE FROM media WHERE folder_id = ?1", [folder_id])?;
+            Ok(())
+        })
+    }
+
+    /// Remove a registered folder; browser rows are reassigned to the virtual
+    /// folder first, matching the browser-mode navigation behavior.
+    pub fn remove_library_folder(&self, folder_id: i64) -> Result<(), DatabaseAccessError> {
+        self.with_writer(|connection| {
+            if self.browser {
+                connection.execute(
+                    "UPDATE media SET folder_id=0 WHERE folder_id=?1",
+                    [folder_id],
+                )?;
+            }
+            queries::remove_folder(connection, folder_id)
+        })
+    }
+
+    /// Delete one tag and optionally remove its ancestors from affected media
+    /// in the same serialized write operation.
+    pub fn delete_tag_with_cleanup(
+        &self,
+        tag_id: i64,
+        clean_parents: bool,
+    ) -> Result<Vec<i64>, DatabaseAccessError> {
+        self.with_writer(|connection| {
+            let affected = queries::get_media_ids_with_tag(connection, tag_id)?;
+            if clean_parents && !affected.is_empty() {
+                let ancestors = queries::get_ancestor_ids(connection, tag_id)?;
+                if !ancestors.is_empty() {
+                    queries::remove_tags(connection, &affected, &ancestors)?;
+                }
+            }
+            queries::delete_tag(connection, tag_id)?;
+            Ok(affected)
+        })
+    }
+
+    /// Set the display flag on a tag and its descendants atomically.
+    pub fn set_tag_display_subtree(
+        &self,
+        tag_id: i64,
+        display: bool,
+    ) -> Result<bool, DatabaseAccessError> {
+        self.with_writer(|connection| {
+            let tree = queries::get_tag_tree(connection)?;
+            fn collect(tags: &[queries::Tag], id: i64, result: &mut Vec<i64>) -> bool {
+                for tag in tags {
+                    if tag.id == id {
+                        result.push(tag.id);
+                        fn descendants(tags: &[queries::Tag], result: &mut Vec<i64>) {
+                            for tag in tags {
+                                result.push(tag.id);
+                                descendants(&tag.children, result);
+                            }
+                        }
+                        descendants(&tag.children, result);
+                        return true;
+                    }
+                    if collect(&tag.children, id, result) {
+                        return true;
+                    }
+                }
+                false
+            }
+            let mut affected = Vec::new();
+            if !collect(&tree, tag_id, &mut affected) {
+                return Ok(false);
+            }
+            for id in affected {
+                queries::set_tag_display(connection, id, display)?;
+            }
+            Ok(true)
+        })
+    }
+
     /// Run a short read-only SQL operation on the independent UI/read
     /// connection. Callers should offload expensive work from the GUI thread.
     #[track_caller]
@@ -113,6 +229,79 @@ impl DatabaseService {
     }
 }
 
+/// Read-only source data needed to render the navigation plugin's tree.
+pub struct NavigationDatabaseSnapshot {
+    pub folders: Vec<queries::Folder>,
+    pub folder_counts: std::collections::HashMap<i64, i64>,
+    pub tags: Vec<queries::Tag>,
+    pub favorite_meta: Vec<(i64, String, i64)>,
+}
+
+/// One lock-consistent read projection for Gallery's skeleton and visible row window.
+pub struct GalleryDatabaseSnapshot {
+    pub folders: Vec<queries::Folder>,
+    pub directory_counts: std::collections::HashMap<String, i64>,
+    pub skeletons: Vec<queries::MediaSkeleton>,
+    pub group_labels: Vec<Option<String>>,
+    pub media_count: i64,
+    pub window_offset: usize,
+    pub media: Vec<queries::MediaItem>,
+    pub media_tags: std::collections::HashMap<i64, Vec<queries::Tag>>,
+    pub available_extensions: Vec<String>,
+    pub folder_counts: std::collections::HashMap<i64, i64>,
+    pub tag_tree: Vec<queries::Tag>,
+}
+
+/// Filesystem metadata verified by Watcher before it enters the database service.
+#[derive(Debug, Clone)]
+pub struct WatchedFile {
+    pub path: String,
+    pub filename: String,
+    pub media_type: String,
+    pub file_size: i64,
+    pub modified_at: i64,
+    pub version: Option<String>,
+}
+
+/// Files from the browser's live directory session.
+#[derive(Debug, Clone)]
+pub struct BrowserFile {
+    pub path: String,
+    pub filename: String,
+    pub media_type: String,
+    pub file_size: i64,
+    pub modified_at: i64,
+    pub version: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScanFileRecord {
+    pub filename: String,
+    pub full_path: String,
+    pub media_type: String,
+    pub file_size: i64,
+    pub modified_at: i64,
+    pub poster_path: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ThumbnailRecord {
+    pub full_path: String,
+    pub thumb_path: String,
+    pub width: Option<i64>,
+    pub height: Option<i64>,
+    pub micro_thumb: Option<Vec<u8>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaggedMediaSourceUpdate {
+    pub media_id: i64,
+    pub file_size: i64,
+    pub modified_at: i64,
+    pub preview_path: Option<String>,
+    pub thumbnail: Option<ThumbnailRecord>,
+}
+
 fn lock(connection: &Mutex<Connection>) -> Result<MutexGuard<'_, Connection>, DatabaseAccessError> {
     connection.lock().map_err(|_| DatabaseAccessError::Poisoned)
 }
@@ -141,6 +330,9 @@ pub enum DatabaseAccessError {
     /// Another thread panicked while holding a connection lock.
     #[error("database connection lock is poisoned")]
     Poisoned,
+    /// A requested persisted record no longer exists.
+    #[error("database record was not found")]
+    NotFound,
     /// SQLite rejected the operation.
     #[error(transparent)]
     Sql(#[from] rusqlite::Error),
@@ -236,12 +428,12 @@ mod tests {
         );
 
         let folder = database
-            .with_writer(|connection| db::queries::add_folder(connection, "D:/PhoTag-test"))
+            .with_writer(|connection| queries::add_folder(connection, "D:/PhoTag-test"))
             .unwrap();
         assert_eq!(folder.path, "D:/PhoTag-test");
         assert_eq!(database.write_revision(), 1);
         let failed: Result<(), _> = database.with_writer(|connection| {
-            db::queries::create_tag(connection, "partial-write", None)?;
+            queries::create_tag(connection, "partial-write", None)?;
             Err(rusqlite::Error::InvalidQuery)
         });
         assert!(failed.is_err());
@@ -308,10 +500,10 @@ mod tests {
         let database = DatabaseService::open_at(&path).unwrap();
         database
             .with_reader(|connection| {
-                let item = db::queries::get_media_by_id(connection, 11)?.unwrap();
+                let item = queries::get_media_by_id(connection, 11)?.unwrap();
                 assert_eq!(item.full_path, "D:/Archive/frame.jpg");
                 assert_eq!(item.rating, 0);
-                let tag_ids = db::queries::get_media_tags(connection, 11)?;
+                let tag_ids = queries::get_media_tags(connection, 11)?;
                 assert_eq!(tag_ids.len(), 1);
                 assert_eq!(tag_ids[0].full_path, "Travel");
                 assert_eq!(db::get_open_count(connection, 11), 0);
@@ -341,10 +533,10 @@ mod tests {
         reopened
             .with_reader(|connection| {
                 assert_eq!(
-                    db::queries::get_media_count(connection, &db::queries::MediaQuery::default())?,
+                    queries::get_media_count(connection, &queries::MediaQuery::default())?,
                     1
                 );
-                assert_eq!(db::queries::get_media_tags(connection, 11)?.len(), 1);
+                assert_eq!(queries::get_media_tags(connection, 11)?.len(), 1);
                 Ok(())
             })
             .unwrap();
@@ -354,7 +546,7 @@ mod tests {
 
     #[test]
     fn media_query_filters_and_sort_orders_match_the_source_contract() {
-        use db::queries::{MediaQuery, SortOrder};
+        use queries::{MediaQuery, SortOrder};
 
         let path = std::env::temp_dir().join(format!(
             "photag-plugin-query-{}-{}.sqlite",
@@ -367,7 +559,7 @@ mod tests {
         let database = DatabaseService::open_at(&path).unwrap();
         let folder_id = database
             .with_writer(|connection| {
-                let folder = db::queries::add_folder(connection, r"D:\Archive")?;
+                let folder = queries::add_folder(connection, r"D:\Archive")?;
                 connection.execute_batch(
                     "INSERT INTO tags (id, name, full_path) VALUES (13, 'Travel', 'Travel'), (14, 'Family', 'Family');
                      INSERT INTO media (id, folder_id, filename, full_path, media_type, file_size, modified_at, date_taken, rating) VALUES
@@ -383,7 +575,7 @@ mod tests {
         let ids_for = |query: &MediaQuery| {
             database
                 .with_reader(|connection| {
-                    Ok(db::queries::get_media_skeletons(connection, query)?
+                    Ok(queries::get_media_skeletons(connection, query)?
                         .into_iter()
                         .map(|row| row.id)
                         .collect::<Vec<_>>())
@@ -453,8 +645,8 @@ mod tests {
         let database = DatabaseService::open_at(&path).unwrap();
         let (media_id, parent_id, child_id, associated_id) = database
             .with_writer(|connection| {
-                let folder = db::queries::add_folder(connection, "D:/Cascade")?;
-                let media_id = db::queries::insert_media(
+                let folder = queries::add_folder(connection, "D:/Cascade")?;
+                let media_id = queries::insert_media(
                     connection,
                     folder.id,
                     "frame.jpg",
@@ -466,11 +658,11 @@ mod tests {
                     None,
                     None,
                 )?;
-                let parent = db::queries::create_tag(connection, "Parent", None)?;
-                let child = db::queries::create_tag(connection, "Child", Some(parent.id))?;
-                let associated = db::queries::create_tag(connection, "Associated", None)?;
-                db::queries::set_associated_tags(connection, child.id, &[associated.id])?;
-                db::queries::assign_tags(connection, &[media_id], &[child.id])?;
+                let parent = queries::create_tag(connection, "Parent", None)?;
+                let child = queries::create_tag(connection, "Child", Some(parent.id))?;
+                let associated = queries::create_tag(connection, "Associated", None)?;
+                queries::set_associated_tags(connection, child.id, &[associated.id])?;
+                queries::assign_tags(connection, &[media_id], &[child.id])?;
                 Ok((media_id, parent.id, child.id, associated.id))
             })
             .unwrap();

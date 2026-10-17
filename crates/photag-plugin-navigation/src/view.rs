@@ -21,7 +21,7 @@ use photag_contracts::{
     TagExcludeModifier, TagFilterSelection, TagFilterSelectionChanged, TagInteractionPreferences,
     TagSearchMatch,
 };
-use photag_plugin_indexing::scan::ScanProgress;
+use photag_plugin_indexing::ScanProgress;
 use photag_plugin_session::SessionService;
 use photag_ui_bridge::{UiViewContribution, theme};
 
@@ -734,12 +734,8 @@ impl SidebarView {
         cx.notify();
     }
 
-    fn select_all_tags(
-        &mut self,
-        tags: &[photag_plugin_database::db::queries::Tag],
-        cx: &mut Context<Self>,
-    ) {
-        fn collect(tags: &[photag_plugin_database::db::queries::Tag], ids: &mut Vec<i64>) {
+    fn select_all_tags(&mut self, tags: &[photag_plugin_database::Tag], cx: &mut Context<Self>) {
+        fn collect(tags: &[photag_plugin_database::Tag], ids: &mut Vec<i64>) {
             for tag in tags {
                 ids.push(tag.id);
                 collect(&tag.children, ids);

@@ -1,6 +1,6 @@
 //! Inline editing uses the existing Navigation commands and real tag fields.
 use super::*;
-use photag_plugin_database::db::queries::Tag;
+use photag_plugin_database::Tag;
 use photag_plugin_navigation::{NavigationService, NavigationUiRequest};
 
 pub(super) fn render(
