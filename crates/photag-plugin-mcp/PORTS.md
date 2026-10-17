@@ -60,8 +60,10 @@ media row's derived file metadata and thumbnail. Create/activate require
 `PHOTAG_MCP_ALLOW_MUTATIONS=1` and explicit `confirm:true`. The same-process
 Gallery History tab invokes the same Versions service. Plugin lifecycle
 dependencies are `photag/versions` → `photag/version-info` and
-`photag/thumbnails`; the durable SQLite projection is `version-info.sqlite3`,
-separate from the PhoTag annotation database. MCP service operations have passed
+`photag/thumbnails`; durable version and branch metadata uses typed
+`DatabaseService` tables in the PhoTag browser database. Existing sibling
+`version-info.sqlite3` data is imported idempotently and retained as a rollback
+copy. MCP service operations have passed
 same-process validation. The History tab, revision selection and version switch
 were clicked through the MCP child's GPUI window; pending conflicts were read
 and aborted after restarting that child with the same profile. See
@@ -125,7 +127,7 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP c
   is false, then use `search_media` / `list_library` and `screenshot_window` to
   inspect the same running application. The isolated `target/dev-test` data
   directory is selected by the Shell profile, not by MCP tool arguments.
-- `set_rating`, `assign_tags`, `remove_tags`, `create_tag`, `rename_tag`, `delete_tag`, `add_folder`, `remove_folder`, `rescan_folder`, `rename_media`, `copy_media`, `move_media`, `delete_media`, and `export_metadata` are mutating tools. They require `PHOTAG_MCP_ALLOW_MUTATIONS=1`; file/export, folder, tag-delete, and rescan tools also require `confirm: true`. Batch limits are 100 media IDs and 50 tag IDs. Tag assignment follows the PhoTag best-effort XMP/IPTC writeback behavior.
+- `set_rating`, `assign_tags`, `remove_tags`, `create_tag`, `rename_tag`, `delete_tag`, `add_folder`, `remove_folder`, `rescan_folder`, `rename_media`, `copy_media`, `move_media`, `delete_media`, and `export_metadata` are mutating tools. They require `PHOTAG_MCP_ALLOW_MUTATIONS=1`; file/export, folder, tag-delete, and rescan tools also require `confirm: true`. Batch limits are 100 media IDs and 50 tag IDs. Tag assignment/removal update SQLite only and do not write IPTC or create XMP sidecars.
 - `delete_tag` removes the requested tag and its direct associations; it passes `clean_parents: false` because the MCP request only confirms deleting that tag and does not separately request ancestor-assignment cleanup. The Navigation service's affected media IDs are intentionally omitted from the existing `{ "ok": true }` response.
 
 Mutations are disabled by default. `confirm: true` is an explicit call-site acknowledgement, not proof of a human interaction; configure the MCP host to ask the user before invoking mutating tools. Copy/move destinations and media paths use the existing FileOperations service. Do not run this MCP server for an untrusted client.
@@ -407,3 +409,17 @@ helpers actually use instead of re-reading the JSON file. Mutation-guarded
 It does not touch GPUI directly, so the live repaint still comes from the Settings
 view's `cx.refresh_windows()`; pointer evidence for the real dropdown is recorded in
 docs/validation-ui/2026-10-16-region-separation/README.md.
+
+## Settings software check (2026-10-17)
+
+`get_ui_state.settings_software_check` publishes the passive snapshot shown by
+Settings > Software: `state` (`loading`/`ready`/`failed`), `revision`, and
+`software` containing display identity, installation state, detected version/path,
+purpose, and project/download/GitHub URLs. `control_ui {action:"settings_tab",
+value:"software"}` selects the view for same-process validation. The detector
+reads Windows uninstall/App Paths registry entries and conventional executable
+locations in a background ReadModel; it does not launch, install, or query the
+listed applications. `scripts/validate-software-check.cjs` exercises the page
+and snapshot with an isolated profile. Everything's app download is voidtools'
+website; its linked GitHub repository is the official ES command-line tool,
+not the Everything application.

@@ -381,6 +381,7 @@ impl GalleryView {
             list_layout: saved.gallery_list_layout,
             show_selection_details: false,
             show_tag_picker: false,
+            inspector_tag_picker_open: false,
             media_actions_id: None,
             media_actions_item: None,
             slider_drag: None,

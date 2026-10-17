@@ -1,12 +1,17 @@
 //! Program overview follows the dedicated dark concept: identity, 2×2
-//! metrics, location well, status rows, and a separate tip card.
+//! metrics, data storage paths, status rows, and a separate tip card.
 use super::*;
 
 pub(super) fn render(view: &GalleryView) -> AnyElement {
     let snapshot = view.snapshot.as_ref().ok();
     let folders = snapshot.map_or(0, |s| s.browser.directories.len());
     let tags = snapshot.map_or(0, |s| contexts::count_tags(&s.tag_tree));
-    let location = snapshot.and_then(|s| s.browser.directory.as_deref());
+    let database_path = view
+        .cordis
+        .try_service::<photag_plugin_database::DatabaseService>()
+        .ok()
+        .map(|database| database.path().display().to_string());
+    let lore_path = view.versions.storage_path().display().to_string();
     let busy = view.service.directory_worker_active();
     let error = view
         .snapshot
@@ -28,111 +33,100 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
     } else {
         theme::SUCCESS
     };
-    let mut body =
-        div()
-            .v_flex()
-            .w_full()
-            .min_w_0()
-            .px(px(16.))
-            .pb(px(20.))
-            .child(section_title("Browse overview"))
-            .child(
-                div()
-                    .v_flex()
-                    .w_full()
-                    .gap(px(10.))
-                    .child(
-                        div()
-                            .h_flex()
-                            .w_full()
-                            .gap(px(10.))
-                            .child(metric(
-                                "Current results",
-                                snapshot.map_or(0, |s| s.media_count).to_string(),
-                                IconName::Image,
-                                0x4099f0,
-                            ))
-                            .child(metric(
-                                "Visible folders",
-                                folders.to_string(),
-                                IconName::Folder,
-                                0xe3bd68,
-                            )),
-                    )
-                    .child(
-                        div()
-                            .h_flex()
-                            .w_full()
-                            .gap(px(10.))
-                            .child(metric("Tags", tags.to_string(), IconName::Tag, 0xb379e8))
-                            .child(metric(
-                                "Version",
-                                env!("CARGO_PKG_VERSION").into(),
-                                IconName::Info,
-                                0x38b9ce,
-                            )),
-                    ),
-            )
-            .child(inspector_divider())
-            .child(section_title("Current browsing location"))
-            .child(
-                well()
-                    .h_flex()
-                    .items_center()
-                    .gap(px(10.))
-                    .child(
-                        theme::icon(IconName::Folder)
-                            .size(px(23.))
-                            .flex_shrink_0()
-                            .text_color(rgb(0xe3bd68)),
-                    )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(location.map(display_path).unwrap_or_else(|| {
-                                photag_ui_bridge::i18n::tr("Favorite collection")
-                            })),
-                    ),
-            )
-            .child(inspector_divider())
-            .child(section_title("Program status"))
-            .child(
-                div()
-                    .h_flex()
-                    .w_full()
-                    .items_center()
-                    .justify_between()
-                    .py(px(9.))
-                    .border_b_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
-                    .child(
-                        div()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(photag_ui_bridge::i18n::tr("Browsing state")),
-                    )
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap(px(7.))
-                            .child(div().size(px(7.)).rounded_full().bg(rgb(status_color)))
-                            .child(
-                                div()
-                                    .text_size(px(13.))
-                                    .text_color(rgb(theme::TEXT_PRIMARY))
-                                    .child(photag_ui_bridge::i18n::tr(state)),
-                            ),
-                    ),
-            )
-            .child(detail_row(
-                IconName::Folder,
-                "Subfolders",
-                folders.to_string(),
-            ));
+    let mut body = div()
+        .v_flex()
+        .w_full()
+        .min_w_0()
+        .px(px(16.))
+        .pb(px(20.))
+        .child(section_title("Browse overview"))
+        .child(
+            div()
+                .v_flex()
+                .w_full()
+                .gap(px(10.))
+                .child(
+                    div()
+                        .h_flex()
+                        .w_full()
+                        .gap(px(10.))
+                        .child(metric(
+                            "Current results",
+                            snapshot.map_or(0, |s| s.media_count).to_string(),
+                            IconName::Image,
+                            0x4099f0,
+                        ))
+                        .child(metric(
+                            "Visible folders",
+                            folders.to_string(),
+                            IconName::Folder,
+                            0xe3bd68,
+                        )),
+                )
+                .child(
+                    div()
+                        .h_flex()
+                        .w_full()
+                        .gap(px(10.))
+                        .child(metric("Tags", tags.to_string(), IconName::Tag, 0xb379e8))
+                        .child(metric(
+                            "Version",
+                            env!("CARGO_PKG_VERSION").into(),
+                            IconName::Info,
+                            0x38b9ce,
+                        )),
+                ),
+        )
+        .child(inspector_divider())
+        .child(section_title("Database storage locations"))
+        .child(storage_row(
+            "Application database",
+            database_path.as_deref().unwrap_or("Unavailable"),
+            IconName::Info,
+            0x4099f0,
+        ))
+        .child(storage_row(
+            "Lore version storage",
+            &lore_path,
+            IconName::Folder,
+            0xb379e8,
+        ))
+        .child(inspector_divider())
+        .child(section_title("Program status"))
+        .child(
+            div()
+                .h_flex()
+                .w_full()
+                .items_center()
+                .justify_between()
+                .py(px(9.))
+                .border_b_1()
+                .border_color(rgba(theme::SEPARATOR_LIGHT))
+                .child(
+                    div()
+                        .text_size(px(13.))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr("Browsing state")),
+                )
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(7.))
+                        .child(div().size(px(7.)).rounded_full().bg(rgb(status_color)))
+                        .child(
+                            div()
+                                .text_size(px(13.))
+                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .child(photag_ui_bridge::i18n::tr(state)),
+                        ),
+                ),
+        )
+        .child(detail_row(
+            IconName::Folder,
+            "Subfolders",
+            folders.to_string(),
+        ));
     if let Some(error) = error {
         body = body.child(inspector_message(&error));
     }
@@ -142,6 +136,34 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
             .child(div().flex_1().min_w_0().text_size(px(13.)).text_color(rgb(theme::TEXT_SECONDARY))
                 .child(photag_ui_bridge::i18n::tr("Select a folder or tag on the left to view its details, or select a file to inspect it."))))
         .into_any_element()
+}
+
+fn storage_row(title: &str, path: &str, icon: IconName, color: u32) -> Div {
+    well()
+        .v_flex()
+        .w_full()
+        .gap(px(7.))
+        .child(
+            div()
+                .h_flex()
+                .items_center()
+                .gap(px(8.))
+                .child(theme::icon(icon).size(px(16.)).text_color(rgb(color)))
+                .child(
+                    div()
+                        .text_size(px(12.))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(photag_ui_bridge::i18n::tr(title)),
+                ),
+        )
+        .child(
+            div()
+                .w_full()
+                .min_w_0()
+                .text_size(px(12.))
+                .text_color(rgb(theme::TEXT_PRIMARY))
+                .child(path.to_owned()),
+        )
 }
 
 fn metric(title: &str, value: String, icon: IconName, color: u32) -> Div {

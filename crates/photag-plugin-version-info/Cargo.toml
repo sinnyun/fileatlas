@@ -7,11 +7,14 @@ license.workspace = true
 
 [dependencies]
 cordis.workspace = true
-rusqlite = { version = "0.31", features = ["bundled"] }
-serde.workspace = true
-serde_json.workspace = true
+photag-plugin-database = { path = "../photag-plugin-database" }
+tokio.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde_json.workspace = true
 
 [lints]
 workspace = true

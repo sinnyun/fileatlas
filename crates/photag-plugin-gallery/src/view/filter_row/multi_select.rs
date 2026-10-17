@@ -66,8 +66,8 @@ pub(super) fn tags_chip(
             if tags.is_empty() {
                 list = list.child(empty_hint("No tags yet"));
             }
-            for (tag_id, label, depth) in &tags {
-                let tag_id = *tag_id;
+            for (tag, depth) in &tags {
+                let tag_id = tag.id;
                 let checked = if exclude_mode {
                     excluded.contains(&tag_id)
                 } else {
@@ -82,13 +82,13 @@ pub(super) fn tags_chip(
                                 .checked(checked),
                         )
                         .child(
-                            div()
+                            photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                                .color(tag.color.as_deref())
+                                .icon(tag.icon.as_deref())
+                                .selected(checked)
+                                .render()
                                 .flex_1()
-                                .min_w_0()
-                                .overflow_hidden()
-                                .text_ellipsis()
-                                .text_size(px(theme::FONT_SIZE_BUTTON))
-                                .child(label.clone()),
+                                .min_w_0(),
                         )
                         .on_click(cx.listener(move |_, _, _, cx| {
                             let _ = weak.update(cx, |this, cx| {

@@ -180,10 +180,7 @@ impl SidebarView {
 
     pub(super) fn delete_tag(&mut self, id: i64, clean_parents: bool, cx: &mut Context<Self>) {
         match self.service.delete_tag(id, clean_parents) {
-            Ok(affected) => {
-                if let Some(tagging) = &self.tagging {
-                    tagging.schedule_xmp_sync(&affected);
-                }
+            Ok(_) => {
                 self.refresh();
                 self.retain_existing_tag_filters();
                 self.emit_tag_selection(cx);

@@ -38,20 +38,52 @@ impl VersionsService {
             matching_version_id: None,
             matching_title: None,
         };
-        if records.is_empty() {
-            return Ok(state);
-        }
-        let current = records
-            .iter()
-            .find(|record| record.is_current)
-            .ok_or(VersionsError::NotFound)?;
-        state.current_version_id = Some(current.version_id.clone());
-        state.current_title = Some(current.title.clone());
         let (_, work, store) = self.paths(&key);
         if !work.join(".lore").exists() {
-            return Err(VersionsError::NotFound);
+            return if records.is_empty() {
+                Ok(state)
+            } else {
+                Err(VersionsError::NotFound)
+            };
         }
         let api = self.open(&key, &work, &store).await?;
+        let head = VersionsService::status(&api, true)
+            .await?
+            .revision
+            .map(|revision| revision.revision);
+        let current = head
+            .as_deref()
+            .and_then(|id| records.iter().find(|record| record.version_id == id))
+            .or_else(|| {
+                head.is_none()
+                    .then(|| records.iter().find(|record| record.is_current))
+                    .flatten()
+            });
+        if let Some(current) = current {
+            state.current_version_id = Some(current.version_id.clone());
+            state.current_title = Some(current.title.clone());
+        } else if let Some(head) = head.as_deref() {
+            // Lore commit is authoritative if the following metadata write failed.
+            let info = lore_vm::ops::revision::info::info(
+                &api,
+                lore_vm::ops::revision::info::RevisionInfoArgs {
+                    revision: head.to_owned(),
+                    delta: false,
+                    metadata: false,
+                },
+            )
+            .await?;
+            state.current_version_id = Some(head.to_owned());
+            state.current_title = Some(
+                info.message()
+                    .unwrap_or("Recovered saved version")
+                    .to_owned(),
+            );
+        } else if records.is_empty() {
+            return Ok(state);
+        } else {
+            return Err(VersionsError::NotFound);
+        }
         let before = fs::metadata(&path)?;
         // Use the engine's own content hash, including its chunking semantics.
         let source = hash::hash(
@@ -65,14 +97,48 @@ impl VersionsService {
         .into_iter()
         .next()
         .ok_or(VersionsError::NotFound)?;
-        for record in
-            std::iter::once(current).chain(records.iter().filter(|record| !record.is_current))
+        let current_id = state.current_version_id.as_deref();
+        let mut revisions = records
+            .iter()
+            .map(|record| {
+                (
+                    record.version_id.as_str(),
+                    record.title.as_str(),
+                    current_id == Some(record.version_id.as_str()),
+                )
+            })
+            .collect::<Vec<_>>();
+        if let Some(head) = head
+            .as_deref()
+            .filter(|head| !records.iter().any(|record| record.version_id == *head))
         {
+            revisions.insert(
+                0,
+                (
+                    head,
+                    state
+                        .current_title
+                        .as_deref()
+                        .unwrap_or("Recovered saved version"),
+                    true,
+                ),
+            );
+        }
+        if let Some(current_id) = current_id {
+            revisions.sort_by_key(|(id, _, is_current)| {
+                if *is_current || *id == current_id {
+                    0
+                } else {
+                    1
+                }
+            });
+        }
+        for (version_id, title, is_current) in revisions {
             let saved = file_info::info(
                 &api,
                 FileInfoArgs {
                     paths: vec!["content".into()],
-                    revision: record.version_id.clone(),
+                    revision: version_id.to_owned(),
                     local: false,
                     filtered: false,
                 },
@@ -83,13 +149,13 @@ impl VersionsService {
             .find(|entry| entry.is_file)
             .ok_or(VersionsError::NotFound)?;
             if source.hash == saved.hash && source.size == saved.size {
-                state.status = if record.is_current {
+                state.status = if is_current {
                     FileVersionStatus::Saved
                 } else {
                     FileVersionStatus::MatchesSavedVersion
                 };
-                state.matching_version_id = Some(record.version_id.clone());
-                state.matching_title = Some(record.title.clone());
+                state.matching_version_id = Some(version_id.to_owned());
+                state.matching_title = Some(title.to_owned());
                 self.verify_state_read(&path, &before)?;
                 return Ok(state);
             }
@@ -132,12 +198,15 @@ mod tests {
             root: root.join("versions"),
             info: Arc::new(VersionInfoService::open_at(root.join("info.sqlite"))?),
             thumbs: Arc::new(ThumbnailService::open_at(root.join("thumbs"))?),
-            locks: Mutex::new(HashMap::new()),
+            locks: Arc::new(Mutex::new(HashMap::new())),
         };
         assert_eq!(
             service.file_state(&path).await?.status,
             FileVersionStatus::Unversioned
         );
+        let locks = service.locks.lock().map_err(|_| "lock poisoned")?;
+        assert!(locks.is_empty());
+        drop(locks);
         let first = service.create_version(&path, "01").await?;
         assert_eq!(
             service.file_state(&path).await?.status,
@@ -181,6 +250,40 @@ mod tests {
         );
         fs::remove_file(&file)?;
         assert!(service.file_state(&path).await.is_err());
+        let _ = fs::remove_dir_all(root);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn recognizes_lore_head_when_metadata_write_was_lost()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "photag-version-recover-{}-{}",
+            std::process::id(),
+            now().replace(':', "-")
+        ));
+        fs::create_dir_all(&root)?;
+        let file = root.join("photo.png");
+        fs::write(&file, b"committed bytes")?;
+        let path = file.to_string_lossy().into_owned();
+        let metadata_path = root.join("info.sqlite");
+        let service = VersionsService {
+            root: root.join("versions"),
+            info: Arc::new(VersionInfoService::open_at(&metadata_path)?),
+            thumbs: Arc::new(ThumbnailService::open_at(root.join("thumbs"))?),
+            locks: Arc::new(Mutex::new(HashMap::new())),
+        };
+        let saved = service.create_version(&path, "recovered").await?;
+        rusqlite::Connection::open(&metadata_path)?.execute("DELETE FROM versions", [])?;
+        let state = service.file_state(&path).await?;
+        assert_eq!(state.status, FileVersionStatus::Saved);
+        assert_eq!(
+            state.current_version_id.as_deref(),
+            Some(saved.version_id.as_str())
+        );
+        assert_eq!(state.current_title.as_deref(), Some("recovered"));
+        let locks = service.locks.lock().map_err(|_| "lock poisoned")?;
+        assert!(locks.is_empty());
         let _ = fs::remove_dir_all(root);
         Ok(())
     }

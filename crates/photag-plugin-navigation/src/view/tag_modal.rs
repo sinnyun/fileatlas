@@ -493,23 +493,16 @@ impl SidebarView {
         }
 
         if let Some(source_id) = self.merge_source {
-            let source_name = self
+            let source_tag = self
                 .snapshot
                 .as_ref()
                 .ok()
                 .and_then(|s| find_tag(&s.tags, source_id))
+                .cloned();
+            let source_name = source_tag
+                .as_ref()
                 .map(|tag| tag.name.clone())
                 .unwrap_or_else(|| "tag".into());
-            let source_color = self
-                .snapshot
-                .as_ref()
-                .ok()
-                .and_then(|snapshot| find_tag(&snapshot.tags, source_id))
-                .and_then(|tag| tag.color.as_deref().and_then(crate::parse_hex_color))
-                .map(|[red, green, blue]| {
-                    (u32::from(red) << 16) | (u32::from(green) << 8) | u32::from(blue)
-                })
-                .unwrap_or(theme::TEXT_MUTED);
             let targets = super::render::merge_target_buttons(self, source_id, cx);
             let child_count = self
                 .snapshot
@@ -529,7 +522,20 @@ impl SidebarView {
                             .items_center()
                             .gap_2()
                             .child(div().font_family(theme::SEMIBOLD_FONT_FAMILY).child(photag_ui_bridge::i18n::tr("Source tag")))
-                            .child(tag_badge(&source_name, source_color)),
+                            .child(
+                                photag_ui_bridge::tag_capsule::TagCapsule::new(source_name)
+                                    .color(
+                                        source_tag
+                                            .as_ref()
+                                            .and_then(|tag| tag.color.as_deref()),
+                                    )
+                                    .icon(
+                                        source_tag
+                                            .as_ref()
+                                            .and_then(|tag| tag.icon.as_deref()),
+                                    )
+                                    .render(),
+                            ),
                     )
                     .child(
                         div()
@@ -727,21 +733,6 @@ fn field_label(label: &str) -> Div {
         .text_size(px(11.))
         .text_color(rgb(theme::TEXT_SECONDARY))
         .child(photag_ui_bridge::i18n::tr(label))
-}
-
-fn tag_badge(name: &str, color: u32) -> Div {
-    div()
-        .h_flex()
-        .items_center()
-        .gap(px(6.))
-        .pl(px(9.))
-        .pr(px(9.))
-        .pt(px(4.))
-        .pb(px(4.))
-        .rounded(px(4.))
-        .bg(rgb(theme::SURFACE_ELEVATED))
-        .child(div().w(px(8.)).h(px(8.)).rounded(px(4.)).bg(rgb(color)))
-        .child(name.to_owned())
 }
 
 fn collect_association_rows(

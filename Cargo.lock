@@ -6336,6 +6336,7 @@ dependencies = [
  "dirs 5.0.1",
  "rusqlite",
  "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -6656,10 +6657,11 @@ name = "photag-plugin-version-info"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "photag-plugin-database",
  "rusqlite",
- "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
 ]
 
@@ -6674,6 +6676,7 @@ dependencies = [
  "mime_guess",
  "photag-plugin-thumbnails",
  "photag-plugin-version-info",
+ "rusqlite",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

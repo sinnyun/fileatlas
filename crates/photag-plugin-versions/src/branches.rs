@@ -593,7 +593,7 @@ mod tests {
             root: root.join("versions"),
             info,
             thumbs,
-            locks: Mutex::new(HashMap::new()),
+            locks: Arc::new(Mutex::new(HashMap::new())),
         };
         let path = library_file.to_string_lossy().into_owned();
         let base = service.create_version(&path, "Base").await?;
@@ -705,7 +705,7 @@ mod tests {
             root: root.join("versions"),
             info,
             thumbs,
-            locks: Mutex::new(HashMap::new()),
+            locks: Arc::new(Mutex::new(HashMap::new())),
         };
         let path = library_file.to_string_lossy().into_owned();
 

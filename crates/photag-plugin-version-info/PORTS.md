@@ -3,9 +3,9 @@
 ## Lifecycle and ownership
 
 - Cordis plugin: `photag.version-info`; service: `photag/version-info` (`VersionInfoService`).
-- Starts before `photag.versions`; owns `version-info.sqlite3` beside PhoTag's active database.
+- Starts after `photag.database` and before `photag.versions`; obtains the shared `DatabaseService` and publishes the typed `VersionInfoService` facade.
 - Stores display metadata, current-revision flags, branch ancestry projections and pending-merge conflict state. Lore owns file contents and revision objects.
-- Separate database file; PhoTag's existing `photag.db` / `photag-tags.db` schema is not migrated.
+- Version rows and branch snapshots live in typed tables managed by `photag-plugin-database`, including browser mode's durable store. On startup, a legacy sibling `version-info.sqlite3` is imported once, idempotently, and retained as a rollback copy; it is never opened for writes.
 
 ## Service contract
 
@@ -18,4 +18,4 @@
 
 ## Errors and inspection
 
-SQLite, JSON and I/O errors are returned as `VersionInfoError`; a poisoned service lock fails the call. Inspect this crate's service methods and `version-info.sqlite3` in the isolated profile. It does not expose arbitrary SQL or rewrite PhoTag annotation records.
+Database and JSON errors are returned as `VersionInfoError`. Inspect typed service methods and the `versions` / `version_graph` tables through DatabaseService diagnostics. The facade does not expose arbitrary SQL or rewrite PhoTag annotation records.

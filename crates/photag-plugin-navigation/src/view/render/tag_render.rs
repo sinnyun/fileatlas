@@ -21,7 +21,6 @@ pub(in crate::view) fn render_tag(
         .and_then(crate::parse_hex_color)
         .unwrap_or([120, 120, 130]);
     let tag_color = (u32::from(red) << 16) | (u32::from(green) << 8) | u32::from(blue);
-    let tag_icon = theme::tag_icon(tag.icon.as_deref());
     let row_group = format!("navigation-tag-row-{}", tag.id);
     let select_name_id = tag.id;
     let name = Button::new(format!("navigation-tag-name-{}", tag.id))
@@ -36,7 +35,15 @@ pub(in crate::view) fn render_tag(
         .when(is_excluded, |button| {
             button.icon(theme::small_icon(IconName::CircleSlash))
         })
-        .label(tag.name.clone())
+        .child(
+            photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                .color(tag.color.as_deref())
+                .icon(tag.icon.as_deref())
+                .selected(selected)
+                .render()
+                .flex_1()
+                .min_w_0(),
+        )
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(select_name_id, event.modifiers(), cx)
         }));
@@ -233,105 +240,96 @@ pub(in crate::view) fn render_tag(
             );
         }));
     let into_id = tag.id;
-    let row =
-        div()
-            .v_flex()
-            .relative()
-            .child(
-                div()
-                    .group(row_group)
-                    .relative()
-                    .h_flex()
-                    .items_center()
-                    .ml(px(3. + depth as f32 * 12.))
-                    .mr(px(3.))
-                    .pl(px(6.))
-                    .pr(px(5.))
-                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                    .rounded(px(9.))
-                    .bg(rgba((tag_color << 8) | 0x28))
-                    .border_1()
-                    .border_color(rgba((tag_color << 8) | 0x70))
-                    .when(selected, |row| {
-                        row.bg(rgba((tag_color << 8) | 0x72))
-                            .border_color(rgba((tag_color << 8) | 0xc0))
-                            .child(
-                                div()
-                                    .absolute()
-                                    .left(px(1.))
-                                    .top(px(5.))
-                                    .w(px(3.))
-                                    .h(px(16.))
-                                    .rounded(px(1.5))
-                                    .bg(rgb(tag_color)),
-                            )
-                    })
-                    .child(
-                        div()
-                            .h_flex()
-                            .flex_1()
-                            .min_w_0()
-                            .items_center()
-                            .gap(px(5.))
-                            .child(toggle)
-                            .child(div().w(px(7.)).h(px(7.)).rounded_full().bg(rgb((u32::from(
-                                red,
-                            ) << 16)
-                                | (u32::from(green) << 8)
-                                | u32::from(blue))))
-                            .child(
-                                theme::small_icon(tag_icon).text_color(rgb(theme::TEXT_SECONDARY)),
-                            )
-                            .child(drag_name.flex_1().min_w_0())
-                            .drag_over::<TagDragPayload>(move |style, _, _, _| {
-                                style.bg(rgba((tag_color << 8) | 0x50))
-                            })
-                            .on_drop::<TagDragPayload>(cx.listener(
-                                move |this, payload: &TagDragPayload, _, cx| {
-                                    this.move_tag_to(
-                                        payload.source_id,
-                                        photag_plugin_database::TagDropPos::Into(into_id),
-                                        cx,
-                                    );
-                                },
-                            )),
-                    )
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap(px(3.))
-                            .flex_shrink_0()
-                            .child(
-                                div()
-                                    .w(px(28.))
-                                    .h_flex()
-                                    .items_center()
-                                    .justify_end()
-                                    .flex_shrink_0()
-                                    .px(px(5.))
-                                    .py(px(1.))
-                                    .rounded(px(7.))
-                                    .bg(rgb(theme::SURFACE_ELEVATED))
-                                    .text_size(px(10.))
-                                    .text_color(rgb(theme::TEXT_MUTED))
-                                    .child(tag.media_count.to_string()),
-                            )
-                            .child(actions),
-                    ),
-            )
-            .when(depth > 0, |row| {
-                row.child(
+    let row = div()
+        .v_flex()
+        .relative()
+        .child(
+            div()
+                .group(row_group)
+                .relative()
+                .h_flex()
+                .items_center()
+                .ml(px(3. + depth as f32 * 12.))
+                .mr(px(3.))
+                .pl(px(6.))
+                .pr(px(5.))
+                .h(px(theme::SIDEBAR_ROW_HEIGHT))
+                .rounded(px(9.))
+                .bg(rgb(theme::SURFACE_BASE))
+                .border_1()
+                .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                .when(selected, |row| {
+                    row.bg(rgb(theme::accent_alpha(theme::accent(), 0.18)))
+                        .border_color(rgb(theme::accent()))
+                        .child(
+                            div()
+                                .absolute()
+                                .left(px(1.))
+                                .top(px(5.))
+                                .w(px(3.))
+                                .h(px(16.))
+                                .rounded(px(1.5))
+                                .bg(rgb(theme::accent())),
+                        )
+                })
+                .child(
                     div()
-                        .absolute()
-                        .left(px(3. + (depth - 1) as f32 * 12. + 9.))
-                        .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
-                        .w(px(8.))
-                        .h(px(1.))
-                        .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                        .h_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .items_center()
+                        .gap(px(5.))
+                        .child(toggle)
+                        .child(drag_name.flex_1().min_w_0())
+                        .drag_over::<TagDragPayload>(move |style, _, _, _| {
+                            style.bg(rgba((tag_color << 8) | 0x50))
+                        })
+                        .on_drop::<TagDragPayload>(cx.listener(
+                            move |this, payload: &TagDragPayload, _, cx| {
+                                this.move_tag_to(
+                                    payload.source_id,
+                                    photag_plugin_database::TagDropPos::Into(into_id),
+                                    cx,
+                                );
+                            },
+                        )),
                 )
-            })
-            .children(children);
+                .child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(3.))
+                        .flex_shrink_0()
+                        .child(
+                            div()
+                                .w(px(28.))
+                                .h_flex()
+                                .items_center()
+                                .justify_end()
+                                .flex_shrink_0()
+                                .px(px(5.))
+                                .py(px(1.))
+                                .rounded(px(7.))
+                                .bg(rgb(theme::SURFACE_ELEVATED))
+                                .text_size(px(10.))
+                                .text_color(rgb(theme::TEXT_MUTED))
+                                .child(tag.media_count.to_string()),
+                        )
+                        .child(actions),
+                ),
+        )
+        .when(depth > 0, |row| {
+            row.child(
+                div()
+                    .absolute()
+                    .left(px(3. + (depth - 1) as f32 * 12. + 9.))
+                    .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
+                    .w(px(8.))
+                    .h(px(1.))
+                    .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+            )
+        })
+        .children(children);
     let after_id = tag.id;
     let after = div()
         .w_full()
@@ -574,16 +572,11 @@ pub(in crate::view) fn merge_target_buttons(
         excluded: &HashSet<i64>,
         query: &str,
         mode: TagSearchMatch,
-        output: &mut Vec<(i64, String, usize, i64)>,
+        output: &mut Vec<(photag_plugin_database::Tag, usize)>,
     ) {
         for tag in tags {
             if !excluded.contains(&tag.id) && tag_matches(tag, query, mode) {
-                output.push((
-                    tag.id,
-                    tag.name.clone(),
-                    tag.full_path.matches('>').count(),
-                    tag.media_count,
-                ));
+                output.push((tag.clone(), tag.full_path.matches('>').count()));
             }
             walk(&tag.children, excluded, query, mode, output);
         }
@@ -604,13 +597,28 @@ pub(in crate::view) fn merge_target_buttons(
     }
     targets
         .into_iter()
-        .map(|(id, name, depth, count)| {
+        .map(|(tag, depth)| {
+            let id = tag.id;
             div().child(
                 Button::new(format!("navigation-merge-target-{id}"))
                     .ghost()
                     .w_full()
                     .pl(px(8. + depth as f32 * 14.))
-                    .label(photag_ui_bridge::i18n::tr(&format!("{}  ({count})", name)))
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .flex_1()
+                            .min_w_0()
+                            .justify_between()
+                            .child(
+                                photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                                    .color(tag.color.as_deref())
+                                    .icon(tag.icon.as_deref())
+                                    .render(),
+                            )
+                            .child(div().text_xs().child(tag.media_count.to_string())),
+                    )
                     .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
             )
         })

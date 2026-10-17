@@ -86,6 +86,7 @@ impl PhoTagMcpServer {
             "update_offer_open": self.surfaces.is_open("settings.update-offer"),
             "settings_tab": self.surfaces.value("settings.tab").unwrap_or_else(|| "appearance".into()),
             "settings_tag_choices": self.surfaces.value("settings.tag-choices").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
+            "settings_software_check": self.surfaces.value("settings.software-check").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
             "navigation_tab": self.surfaces.value("navigation.tab").unwrap_or_else(|| "folders".into()),
             "sidebar_folders": self.navigation.sidebar_state(),
             "inspector_tab": self.surfaces.value("gallery.inspector.tab").unwrap_or_else(|| "information".into()),
@@ -385,7 +386,16 @@ impl PhoTagMcpServer {
             }
             "settings_tab" => {
                 let value = request.value.as_deref().unwrap_or("");
-                if !["appearance", "shortcuts", "tags", "ai", "updates"].contains(&value) {
+                if ![
+                    "appearance",
+                    "shortcuts",
+                    "tags",
+                    "ai",
+                    "updates",
+                    "software",
+                ]
+                .contains(&value)
+                {
                     return error_json("unsupported Settings tab");
                 }
                 self.surfaces.set_value("settings.tab", value)

@@ -102,33 +102,43 @@ impl SidebarView {
                     );
                 }
             } else {
-                let label = match self.address.history.current() {
+                match self.address.history.current() {
                     Location::Tags { included, excluded } => {
-                        let names = included
-                            .iter()
-                            .chain(excluded)
-                            .filter_map(|id| {
-                                self.snapshot
-                                    .as_ref()
-                                    .ok()
-                                    .and_then(|s| find_tag(&s.tags, *id))
-                                    .map(|t| t.name.clone())
-                            })
-                            .collect::<Vec<_>>();
-                        format!(
-                            "{} / {}",
-                            photag_ui_bridge::i18n::tr("Tags"),
-                            names.join(", ")
-                        )
+                        trail = trail.child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .child(photag_ui_bridge::i18n::tr("Tags")),
+                        );
+                        if let Some(snapshot) = self.snapshot.as_ref().ok() {
+                            for (id, selected) in included
+                                .iter()
+                                .map(|id| (*id, true))
+                                .chain(excluded.iter().map(|id| (*id, false)))
+                            {
+                                if let Some(tag) = find_tag(&snapshot.tags, id) {
+                                    trail = trail.child(
+                                        photag_ui_bridge::tag_capsule::TagCapsule::new(
+                                            tag.name.clone(),
+                                        )
+                                        .color(tag.color.as_deref())
+                                        .icon(tag.icon.as_deref())
+                                        .selected(selected)
+                                        .render(),
+                                    );
+                                }
+                            }
+                        }
                     }
-                    _ => photag_ui_bridge::i18n::tr("Favorites"),
-                };
-                trail = trail.child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(label),
-                );
+                    _ => {
+                        trail = trail.child(
+                            div()
+                                .text_sm()
+                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .child(photag_ui_bridge::i18n::tr("Favorites")),
+                        );
+                    }
+                }
             }
             address = address
                 .child(trail)

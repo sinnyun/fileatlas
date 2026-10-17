@@ -331,6 +331,18 @@ Window activation no longer invalidates the browser or retries its subscription.
 
 Background refresh keeps existing rows, scroll, selection, dialogs and the current 200-row rich window until the new result arrives; load_grouped_window is a crate-private query variant preserving its offset. BrowserSnapshot.loading marks partial directory results; selection is validated only against complete delivered skeletons, so a version restore's temporary empty result cannot replace the file History inspector with folder information. Explicit navigation/filter reloads retain reset semantics. GalleryUiSnapshot.snapshot_revision:u64 is a read-only diagnostic for query scheduling, exposed as MCP gallery.snapshot_revision. Same-process lifecycle and external-change evidence: docs/validation-ui/2026-10-16-refresh/README.md.
 
+## Tag assignment refresh scope — 2026-10-17
+
+Inspector tag assign/remove/clear actions patch `GallerySnapshot.media_tags` and
+the selected-file fallback cache for the affected media IDs. They do not reload
+the gallery query or reset its list state. If an include/exclude tag filter is
+active, assignment can change result membership, so the Gallery refreshes only
+the current query window through `refresh_index`; that path retains the current
+logical scroll anchor and selection while replacing the window. Explicit
+filter/navigation reloads keep their existing reset behavior. Same-process
+scroll-middle assignment evidence is in
+`docs/validation-ui/2026-10-17-gallery-tag-scroll/README.md`.
+
 
 ## Address bar integration — 2026-10-16
 

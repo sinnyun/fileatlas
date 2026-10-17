@@ -68,7 +68,6 @@ pub(super) fn render(
         for child in &tag.children {
             let child_id = child.id;
             let child_menu = cx.entity().downgrade();
-            let child_color = parse_tag_color(child.color.as_deref());
             body = body.child(
                 div()
                     .h_flex()
@@ -81,22 +80,15 @@ pub(super) fn render(
                     .my(px(3.))
                     .rounded(px(7.))
                     .border_1()
-                    .border_color(rgba((child_color << 8) | 0x45))
-                    .bg(rgba((child_color << 8) | 0x13))
+                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                    .bg(rgb(theme::SURFACE_BASE))
                     .child(
-                        theme::icon(theme::tag_icon(child.icon.as_deref()))
-                            .size(px(17.))
-                            .text_color(rgb(child_color)),
-                    )
-                    .child(
-                        div()
+                        photag_ui_bridge::tag_capsule::TagCapsule::new(child.name.clone())
+                            .color(child.color.as_deref())
+                            .icon(child.icon.as_deref())
+                            .render()
                             .flex_1()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .text_ellipsis()
-                            .text_size(px(13.))
-                            .text_color(rgb(theme::TEXT_PRIMARY))
-                            .child(child.name.clone()),
+                            .min_w_0(),
                     )
                     .child(
                         div()

@@ -10,9 +10,9 @@ PhoTag now has two Cordis-owned plugins:
 - `photag-plugin-versions`: creates a private Lore repository/shared store per
   canonical file path, saves titled revisions, lists revisions and restores a
   saved revision to the original path with rollback-aware replacement.
-- `photag-plugin-version-info`: persists display metadata/current revision and
-  graph projection in `version-info.sqlite3`, separate from PhoTag's existing
-  annotation database.
+- `photag-plugin-version-info`: typed facade over the shared DatabaseService;
+  legacy `version-info.sqlite3` rows are imported idempotently and that source
+  file is retained as a rollback copy.
 
 Gallery's History tab uses keyed background `ReadModel`s for versions and the
 Lore branch graph. It supports branch creation, switching, merge, archive,
@@ -92,6 +92,26 @@ versions passed; History remained visible and quiet snapshot stayed 22→22.
 Original bytes/timestamp were restored, with starting/final SHA-256 equal.
 Evidence: [report](edit-after-rewind.json), [source restoration](edit-after-rewind-restoration.json),
 [three-version screenshot](edit-after-rewind.png).
+
+## Review follow-up — shared metadata service and bounded state reads
+
+Version metadata now uses typed `DatabaseService` operations in the existing
+`photag-tags.db` durable store. A legacy sibling `version-info.sqlite3` is
+imported idempotently and kept as a rollback copy. Browser persistence clears
+the saved current marker for affected entities before syncing version rows, so
+branch activation cannot transiently violate the one-current-revision index.
+Gallery limits visible-file Lore state reads to eight concurrent operations;
+per-file locks are reclaimed after the last operation/waiter leaves. If a Lore
+commit succeeds but its metadata write fails, Gallery state recovers the Lore
+HEAD and does not report the file as unversioned.
+
+Validation on Windows with Rust 1.97.1:
+
+- `cargo +1.97.1 test --locked -p photag-plugin-database -p photag-plugin-version-info -p photag-plugin-versions -j 2`: 15 tests passed, including browser-mode current-marker persistence and lost-metadata Lore HEAD recovery.
+- `cargo +1.97.1 check --locked -p photag-shell -p photag-plugin-gallery -p photag-plugin-versions -p photag-plugin-version-info -j 2` and `cargo +1.97.1 build --locked -j 2 -p photag-shell` passed. The existing LNK4098 warning remains.
+- `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-lore-version-review-fix2-20261017 --plugins dev-test --allow-mutations --scenario scripts/validate-lore-version-mcp.cjs` passed all four scenarios, including branch switches, merge conflict abort/resolution, and version activation.
+- The same-process GPUI click scenario passed using profile `target/mcp-lore-history-review-fix-20261017`; it exercised History selection, restore, edit-after-rewind and three-version byte checks. The settled Gallery snapshot stayed at revision 25→25, with the selected file and History panel retained. Report and screenshot are in that profile's output directory.
+- `cargo +1.97.1 fmt --all -- --check`, `node scripts/check-layering.cjs`, `node scripts/check-architecture.cjs`, `node scripts/check-feature-ledger.cjs`, and `node scripts/check-ui-refresh.cjs` passed. The reviewed architecture baseline adds the intentional `photag-plugin-version-info -> photag-plugin-database` edge; existing orphan warnings for `media-playback` and `preview` remain.
 
 ## Current limits
 

@@ -158,6 +158,7 @@ struct GalleryView {
     selection_restore: photag_ui_bridge::read_model::ReadModel<(u64, Vec<String>), Vec<i64>>,
     show_selection_details: bool,
     show_tag_picker: bool,
+    inspector_tag_picker_open: bool,
     media_actions_id: Option<i64>,
     media_actions_item: Option<(i64, photag_plugin_database::MediaItem)>,
     slider_drag: Option<sliders::SliderDrag>,

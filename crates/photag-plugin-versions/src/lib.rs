@@ -97,13 +97,38 @@ pub struct VersionsService {
     root: PathBuf,
     info: Arc<VersionInfoService>,
     thumbs: Arc<ThumbnailService>,
-    locks: Mutex<HashMap<String, Arc<AsyncMutex<()>>>>,
+    locks: Arc<Mutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
+}
+
+struct FileOperationGuard {
+    key: String,
+    locks: Arc<Mutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
+    lock: Arc<AsyncMutex<()>>,
+    guard: Option<OwnedMutexGuard<()>>,
+}
+
+impl Drop for FileOperationGuard {
+    fn drop(&mut self) {
+        self.guard.take();
+        if let Ok(mut locks) = self.locks.lock()
+            && locks
+                .get(&self.key)
+                .is_some_and(|lock| Arc::ptr_eq(lock, &self.lock) && Arc::strong_count(lock) == 2)
+        {
+            locks.remove(&self.key);
+        }
+    }
 }
 impl Service for VersionsService {
     const NAME: &'static str = "photag/versions";
 }
 
 impl VersionsService {
+    /// Root directory containing Lore worktrees, shared stores, and previews.
+    pub fn storage_path(&self) -> &Path {
+        &self.root
+    }
+
     fn key(path: &Path) -> Result<(String, PathBuf), VersionsError> {
         let path = fs::canonicalize(path)?;
         if !fs::symlink_metadata(&path)?.is_file() {
@@ -115,14 +140,20 @@ impl VersionsService {
             path,
         ))
     }
-    async fn lock(&self, key: &str) -> Result<OwnedMutexGuard<()>, VersionsError> {
+    async fn lock(&self, key: &str) -> Result<FileOperationGuard, VersionsError> {
         let lock = {
             let mut map = self.locks.lock().map_err(|_| VersionsError::Lock)?;
             map.entry(key.into())
                 .or_insert_with(|| Arc::new(AsyncMutex::new(())))
                 .clone()
         };
-        Ok(lock.lock_owned().await)
+        let guard = lock.clone().lock_owned().await;
+        Ok(FileOperationGuard {
+            key: key.to_owned(),
+            locks: self.locks.clone(),
+            lock,
+            guard: Some(guard),
+        })
     }
     fn paths(&self, key: &str) -> (PathBuf, PathBuf, PathBuf) {
         let work = self.root.join("worktrees").join(key);
@@ -545,7 +576,7 @@ impl Plugin for VersionsPlugin {
                 root: input.config.root.clone(),
                 info,
                 thumbs,
-                locks: Mutex::new(HashMap::new()),
+                locks: Arc::new(Mutex::new(HashMap::new())),
             }))
             .map_err(|e| VersionsError::Publish(e.to_string()))?;
         *input.publication.lock().map_err(|_| VersionsError::Lock)? = Some(publication);

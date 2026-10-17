@@ -159,6 +159,13 @@ fn tables(conn: &Connection) -> rusqlite::Result<Vec<String>> {
 pub(super) fn persist(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch("SAVEPOINT persist_annotations; PRAGMA defer_foreign_keys=ON;")?;
     let result = (|| {
+        // The active-version partial unique index spans each entity's rows.
+        // Row-by-row UPSERT order is unspecified, so remove the saved marker
+        // before syncing a browser-cache entity whose current version changed.
+        conn.execute(
+            "UPDATE saved.versions SET is_current=0 WHERE entity_id IN (SELECT DISTINCT entity_id FROM main.versions)",
+            [],
+        )?;
         for table in [
             "folders",
             "tags",
@@ -167,6 +174,9 @@ pub(super) fn persist(conn: &Connection) -> rusqlite::Result<()> {
             "media_tags",
             "favorite_meta",
             "tag_previews",
+            "versions",
+            "version_graph",
+            "version_metadata_imports",
         ] {
             let columns = conn
                 .prepare(&format!("PRAGMA main.table_info({table})"))?

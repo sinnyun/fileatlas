@@ -1081,3 +1081,15 @@ file.hash/file.info按immutable revision比对hash/size，先当前基准再所�
 i18n4通过；实际00.png同进程MCP验证监听更新、版本创建/回退/再提交、提示点击，
 没有因读取/点击增加版本。检查失败暴露未确认状态，不谎报未保存。
 详见 validation-ui/2026-10-17-version-status/README.md。
+
+## 2026-10-17 标签数据库优先与 Inspector 内联添加
+
+按用户要求关闭常规标签赋值/移除/清空/合并/重挂时的自动 IPTC/XMP 写回，
+避免在媒体目录创建 XMP 侧车文件；标签关系仅由 SQLite 管理。显式集成 API
+仍保留为 opt-in。文件信息右侧 Tags 区域将原加号打开的独立标签面板替换为
+原位搜索、多选层级下拉和“添加所选”操作；标签移除 chips 保留。Gallery 批量
+标签操作与 Preview 标签选择器不在本次范围内。
+
+参考实现：`vendor/photag-source/src/xmp.rs`（差异：源程序会自动写文件元数据，
+当前 PhoTag 根据用户决定只在明确调用集成 API 时写回）。实现记录和验证边界：
+`validation-ui/2026-10-17-tagging-inspector/README.md`。

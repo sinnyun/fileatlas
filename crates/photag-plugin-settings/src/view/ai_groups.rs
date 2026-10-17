@@ -14,12 +14,7 @@ impl SettingsView {
             .tag_choices
             .value()
             .and_then(|value| value.as_ref().ok())
-            .map(|choices| {
-                choices
-                    .iter()
-                    .map(|tag| (tag.name.clone(), tag.label.clone()))
-                    .collect::<Vec<_>>()
-            })
+            .map(|choices| choices.clone())
             .unwrap_or_default();
         if let Some(Err(error)) = self.tag_choices.value() {
             panel = panel.child(div().text_color(rgb(theme::DANGER)).child(error.clone()));
@@ -140,26 +135,23 @@ impl SettingsView {
                 );
             }
             for (tag_index, tag) in group_settings.tags.iter().enumerate() {
+                let chip = available_tags
+                    .iter()
+                    .find(|choice| choice.name == *tag)
+                    .map(|choice| {
+                        photag_ui_bridge::tag_capsule::TagCapsule::new(choice.name.clone())
+                            .color(choice.color.as_deref())
+                            .icon(choice.icon.as_deref())
+                            .render()
+                    })
+                    .unwrap_or_else(|| photag_ui_bridge::tag_capsule::name_only(tag.clone()));
                 group = group.child(
                     div()
                         .h_flex()
                         .flex_wrap()
                         .items_center()
                         .gap_1()
-                        .child(
-                            div()
-                                .h_flex()
-                                .items_center()
-                                .gap_1()
-                                .px_2()
-                                .py_1()
-                                .rounded_sm()
-                                .border_1()
-                                .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                                .bg(rgb(theme::SURFACE_BASE))
-                                .child(theme::small_icon(gpui_kit::assets::IconName::Tag))
-                                .child(tag.clone()),
-                        )
+                        .child(chip)
                         .child(
                             Button::new(format!("settings-group-tag-remove-{index}-{tag_index}"))
                                 .icon(theme::small_icon(gpui_kit::assets::IconName::X))
@@ -183,7 +175,7 @@ impl SettingsView {
 
             let candidates: Vec<_> = available_tags
                 .iter()
-                .filter(|(name, _)| !group_settings.tags.contains(name))
+                .filter(|choice| !group_settings.tags.contains(&choice.name))
                 .cloned()
                 .collect();
             if !candidates.is_empty() {
@@ -193,8 +185,9 @@ impl SettingsView {
                         .dropdown_menu({
                             let view = cx.entity().downgrade();
                             move |mut menu, _, _| {
-                                for (name, display) in &candidates {
-                                    let name = name.clone();
+                                for choice in &candidates {
+                                    let name = choice.name.clone();
+                                    let display = choice.label.clone();
                                     let view = view.clone();
                                     menu = menu.item(PopupMenuItem::new(display.clone()).on_click(
                                         move |_, _, cx| {

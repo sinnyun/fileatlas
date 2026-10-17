@@ -22,6 +22,12 @@ Cordis 拆为 `photag-plugin-versions` 与 `photag-plugin-version-info`；实现
 匹配其他已保存版本时明确显示对应名称，不提示重复保存。后台读取和实际点击证据见
 [未保存版本提示](validation-ui/2026-10-17-version-status/README.md)。
 
+## 用户指定：软件检查页（2026-10-17）
+
+设置新增“软件”检查页，当前只读检测 QuickLook 与 Everything，并展示版本/路径及官方获取链接；本轮不安装、启动或调用这两个程序，也不接入 Everything 搜索。Everything 应用本身从 voidtools 官网下载；GitHub 的 voidtools/ES 是其命令行工具仓库，不是 Everything 应用仓库。检测及同进程界面验证见[软件检查记录](validation-ui/2026-10-17-software-check/README.md)。
+
+未来若实现 Everything 搜索适配器，需单独设计其服务调用与生命周期；当前列表中的“计划用于搜索”仅表达方向，不代表已集成。
+
 2026-10-14：用户确认当前版本为开发基线，并将下一阶段转向优化程序功能操作和扩展程序功能。开始前阅读[开发基线](development-baseline-2026-10-14.md)、AGENTS.md及受影响crate的PORTS.md。
 
 ## 工作方式

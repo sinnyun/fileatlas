@@ -98,6 +98,51 @@ fn browsing_is_ephemeral_but_bookmarks_and_annotations_survive_restart() {
 }
 
 #[test]
+fn browser_persists_version_current_marker_changes_atomically()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = std::env::temp_dir().join(format!(
+        "photag-browser-versions-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&root)?;
+    let path = root.join("tags.db");
+    let database = DatabaseService::open_browser_at(&path)?;
+    let record = |version_id: &str, revision_number, is_current| VersionRecord {
+        entity_id: "file-key".into(),
+        version_id: version_id.into(),
+        revision_number,
+        parent_revision_ids: Vec::new(),
+        title: version_id.into(),
+        created_at: "now".into(),
+        size_bytes: 1,
+        content_type: None,
+        thumbnail_path: None,
+        is_current,
+    };
+    database.save_version_record(&record("r1", 1, true))?;
+    database.save_version_record(&record("r2", 2, true))?;
+    database.set_current_version("file-key", "r1")?;
+    drop(database);
+
+    let reopened = DatabaseService::open_browser_at(&path)?;
+    let records = reopened.version_records("file-key")?;
+    assert_eq!(
+        records
+            .iter()
+            .filter(|record| record.is_current)
+            .map(|record| record.version_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["r1"]
+    );
+    drop(reopened);
+    std::fs::remove_dir_all(root)?;
+    Ok(())
+}
+
+#[test]
 fn recent_cache_eviction_preserves_history_and_literal_path_identity() {
     let root = std::env::temp_dir().join(format!(
         "photag-cache-{}-{}",

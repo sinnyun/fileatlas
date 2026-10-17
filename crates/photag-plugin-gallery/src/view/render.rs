@@ -620,6 +620,11 @@ impl Render for GalleryView {
                                                                     status.state.as_ref()
                                                                 }),
                                                                 rating_target_ids,
+                                                                snapshot
+                                                                    .media_tags
+                                                                    .get(&media.id)
+                                                                    .map(Vec::as_slice)
+                                                                    .unwrap_or_default(),
                                                                 Arc::clone(&card_tag_tree),
                                                                 cx,
                                                             )

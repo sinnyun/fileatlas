@@ -458,14 +458,16 @@ fn media_type_label(media_type: MediaTypeFilter) -> &'static str {
     }
 }
 
-fn flatten_tag_tree(tags: &[photag_plugin_database::Tag]) -> Vec<(i64, String, usize)> {
+fn flatten_tag_tree(
+    tags: &[photag_plugin_database::Tag],
+) -> Vec<(photag_plugin_database::Tag, usize)> {
     fn visit(
         tags: &[photag_plugin_database::Tag],
         depth: usize,
-        out: &mut Vec<(i64, String, usize)>,
+        out: &mut Vec<(photag_plugin_database::Tag, usize)>,
     ) {
         for tag in tags {
-            out.push((tag.id, tag.full_path.clone(), depth));
+            out.push((tag.clone(), depth));
             visit(&tag.children, depth + 1, out);
         }
     }

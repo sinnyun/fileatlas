@@ -32,6 +32,7 @@ pub(super) fn render_media_card(
     micro_thumb: Option<&[u8]>,
     version_state: Option<&photag_plugin_versions::FileVersionState>,
     rating_target_ids: Vec<i64>,
+    media_tags: &[photag_plugin_database::Tag],
     tag_tree: Arc<Vec<photag_plugin_database::Tag>>,
     cx: &mut Context<GalleryView>,
 ) -> impl IntoElement + 'static {
@@ -89,7 +90,7 @@ pub(super) fn render_media_card(
             div()
                 .absolute()
                 .left(px(6.))
-                .bottom(px(6.))
+                .top(px(6.))
                 .h(px(18.))
                 .rounded_full()
                 .bg(rgba(0x00000096))
@@ -117,6 +118,60 @@ pub(super) fn render_media_card(
                 .text_color(rgb(theme::TEXT_PRIMARY))
                 .child(theme::small_icon(IconName::Play)),
         );
+    }
+    if list_width.is_none() {
+        let visible_tags = media_tags
+            .iter()
+            .filter(|tag| tag.display)
+            .cloned()
+            .collect::<Vec<_>>();
+        if !visible_tags.is_empty() {
+            let shown_count = if thumb_size < 112. && visible_tags.len() > 2 {
+                2
+            } else {
+                visible_tags.len().min(3)
+            };
+            let overflow = visible_tags.len().saturating_sub(shown_count);
+            let available_width = (thumb_size - 10.).max(24.);
+            let count_width = if overflow > 0 { 24. } else { 0. };
+            let slot_gaps = 3. * (shown_count + usize::from(overflow > 0)).saturating_sub(1) as f32;
+            let capsule_width = ((available_width - count_width - slot_gaps)
+                / shown_count.max(1) as f32)
+                .clamp(22., 48.);
+            let mut chips = div()
+                .absolute()
+                .right(px(5.))
+                .bottom(px(5.))
+                .max_w(px(available_width))
+                .h_flex()
+                .items_center()
+                .justify_end()
+                .gap(px(3.))
+                .overflow_hidden();
+            for tag in visible_tags.iter().take(shown_count) {
+                chips = chips.child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .compact()
+                        .render()
+                        .max_w(px(capsule_width)),
+                );
+            }
+            if overflow > 0 {
+                chips = chips.child(
+                    div()
+                        .h(px(18.))
+                        .px(px(4.))
+                        .rounded_full()
+                        .bg(rgba(0x000000d8))
+                        .text_size(px(theme::FONT_SIZE_TINY))
+                        .text_color(rgb(theme::TEXT_PRIMARY))
+                        .child(format!("+{overflow}")),
+                );
+            }
+            frame = frame.child(chips);
+        }
     }
     if hover > 0.01 {
         frame = frame.child(

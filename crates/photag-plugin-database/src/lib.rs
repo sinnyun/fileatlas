@@ -7,10 +7,14 @@ mod browser_store;
 mod browser_tests;
 mod database_api;
 mod db;
+mod version_metadata;
 pub(crate) use db::get_open_count;
 pub use db::queries::{
     Folder, LibraryStats, MediaExport, MediaGroupingFields, MediaItem, MediaQuery, MediaSkeleton,
     SortOrder, Tag, TagDropPos,
+};
+pub use version_metadata::{
+    PendingVersionMerge, VersionBranch, VersionBranchPoint, VersionGraph, VersionRecord,
 };
 
 use std::path::{Path, PathBuf};
@@ -336,6 +340,9 @@ pub enum DatabaseAccessError {
     /// SQLite rejected the operation.
     #[error(transparent)]
     Sql(#[from] rusqlite::Error),
+    /// A typed database payload could not be serialized or parsed.
+    #[error("database payload serialization failed: {0}")]
+    Serialization(#[from] serde_json::Error),
 }
 
 /// Database plugin configuration. `None` selects PhoTag's original local path.

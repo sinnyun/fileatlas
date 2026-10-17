@@ -15,6 +15,7 @@ const layers = [
     'photag-plugin-updater',
     'photag-plugin-file-operations',
     'photag-plugin-session',
+    'photag-plugin-version-info',
   ],
   ['photag-plugin-indexing', 'photag-plugin-watcher'],
   [
@@ -29,6 +30,7 @@ const layers = [
     'photag-plugin-i18n',
   ],
   ['photag-plugin-settings'],
+  ['photag-plugin-versions'],
   ['photag-plugin-ai'],
   ['photag-plugin-gallery'],
   ['photag-plugin-mcp', 'photag-shell'],

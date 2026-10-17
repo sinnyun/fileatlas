@@ -4,7 +4,10 @@ use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 impl SettingsView {
     pub(super) fn render_tab(&self, s: &Settings, cx: &mut Context<Self>) -> impl IntoElement {
         if self.tab == Tab::Updates {
-            return self.render_updates_page(s, cx);
+            return self.render_updates_page(s, cx).into_any_element();
+        }
+        if self.tab == Tab::Software {
+            return self.render_software_page(cx).into_any_element();
         }
         let (title, description) = match self.tab {
             Tab::Appearance => ("Appearance", "Choose the accent color used across PhoTag."),
@@ -24,6 +27,7 @@ impl SettingsView {
                 "Updates",
                 "Check for releases and choose when to install them.",
             ),
+            Tab::Software => ("Software", "Check optional software used by PhoTag."),
         };
         let mut b = div().v_flex().gap_3().line_height(relative(1.)).child(
             div()
@@ -295,10 +299,7 @@ impl SettingsView {
                 )));
                 match self.tag_choices.value() {
                     Some(Ok(choices)) => {
-                        let flat_tags = choices
-                            .iter()
-                            .map(|tag| (tag.id, tag.label.clone()))
-                            .collect::<Vec<_>>();
+                        let flat_tags = choices.clone();
                         let mut rows = div().v_flex().gap(px(3.));
                         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
                             let selected = s
@@ -475,7 +476,8 @@ impl SettingsView {
                 b = b.child(self.ai_groups(s, cx));
             }
             Tab::Updates => {}
+            Tab::Software => {}
         }
-        b
+        b.into_any_element()
     }
 }

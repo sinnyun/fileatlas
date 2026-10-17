@@ -5,6 +5,7 @@
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Disableable;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
+use gpui_kit::component::popover::Popover;
 
 mod contexts;
 mod folder;
@@ -201,7 +202,7 @@ impl GalleryView {
             .child(inspector_divider())
             .child(section_header("tags", "Tags", tags_open, cx));
         if tags_open {
-            body = body.child(self.tag_capsules(media_id, tags, cx));
+            body = body.child(self.tag_capsules(media_id, tags, &snapshot.tag_tree, cx));
         }
         if media.media_type == "image" {
             let exif_open = self.inspector_expanded.contains("exif");
@@ -242,6 +243,7 @@ impl GalleryView {
         &self,
         media_id: i64,
         tags: &[photag_plugin_database::Tag],
+        tag_tree: &[photag_plugin_database::Tag],
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let mut capsules = div()
@@ -256,24 +258,12 @@ impl GalleryView {
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(5.))
-                    .h(px(24.))
-                    .px(px(9.))
-                    .rounded(px(12.))
-                    .border_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
-                    .bg(rgba((parse_tag_color(tag.color.as_deref()) << 8) | 0xc0))
+                    .gap(px(3.))
                     .child(
-                        div()
-                            .size(px(8.))
-                            .rounded_full()
-                            .bg(rgb(parse_tag_color(tag.color.as_deref()))),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::TEXT_PRIMARY))
-                            .child(tag.name.clone()),
+                        photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                            .color(tag.color.as_deref())
+                            .icon(tag.icon.as_deref())
+                            .render(),
                     )
                     .child(
                         div()
@@ -291,29 +281,134 @@ impl GalleryView {
                     ),
             );
         }
-        capsules = capsules.child(
-            div()
-                .id("gallery-inspector-tag-add")
-                .size(px(24.))
-                .rounded(px(theme::ROUND_SM))
-                .border_1()
-                .border_color(rgba(theme::SEPARATOR_LIGHT))
-                .cursor_pointer()
-                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
-                .flex()
-                .items_center()
-                .justify_center()
-                .child(
-                    theme::icon(IconName::Plus)
-                        .size(px(13.))
-                        .text_color(rgb(theme::TEXT_SECONDARY)),
-                )
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.show_tag_picker = true;
+        let query = self
+            .tag_picker_search
+            .read(cx)
+            .value()
+            .trim()
+            .to_lowercase();
+        let mut selected_tags = Vec::new();
+        let mut all_tags = Vec::new();
+        let selected_ids = tags
+            .iter()
+            .map(|tag| tag.id)
+            .collect::<std::collections::HashSet<_>>();
+        flatten_inspector_tag_choices(tag_tree, 0, &mut all_tags);
+        for (tag, depth) in &all_tags {
+            if selected_ids.contains(&tag.id)
+                && (query.is_empty() || tag.name.to_lowercase().contains(&query))
+            {
+                selected_tags.push((tag.clone(), *depth));
+            }
+        }
+        let available = all_tags
+            .into_iter()
+            .filter(|(tag, _)| {
+                !selected_ids.contains(&tag.id)
+                    && (query.is_empty() || tag.name.to_lowercase().contains(&query))
+            })
+            .collect::<Vec<_>>();
+        let search_input = self.tag_picker_search.clone();
+        let picker_open = self.inspector_tag_picker_open;
+        let weak = cx.entity().downgrade();
+        let open_view = weak.clone();
+        let picker = Popover::new("gallery-inspector-tag-picker")
+            .open(picker_open)
+            .on_open_change(move |open, window, cx| {
+                let _ = open_view.update(cx, |this, cx| {
+                    this.inspector_tag_picker_open = *open;
+                    if *open {
+                        this.tag_picker_search.update(cx, |input, cx| {
+                            input.set_value("", window, cx);
+                        });
+                    }
                     cx.notify();
-                })),
-        );
-        capsules
+                });
+            })
+            .trigger(
+                Button::new("gallery-inspector-tag-add")
+                    .ghost()
+                    .compact()
+                    .icon(theme::icon(IconName::Plus))
+                    .label(photag_ui_bridge::i18n::tr("Add tags")),
+            )
+            .content(move |_, _, cx| {
+                let mut input = div()
+                    .h_flex()
+                    .w_full()
+                    .h(px(38. + 27. * selected_tags.len().saturating_sub(1) as f32))
+                    .flex_wrap()
+                    .items_center()
+                    .gap(px(5.))
+                    .px(px(8.))
+                    .py(px(5.))
+                    .rounded(px(8.))
+                    .border_1()
+                    .border_color(rgb(theme::accent()))
+                    .bg(rgb(theme::SURFACE_ELEVATED));
+                for (tag, _) in &selected_tags {
+                    let tag_id = tag.id;
+                    let chip_view = weak.clone();
+                    input = input.child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap(px(4.))
+                            .child(
+                                photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                                    .color(tag.color.as_deref())
+                                    .icon(tag.icon.as_deref())
+                                    .render(),
+                            )
+                            .child(
+                                div()
+                                    .id(format!("gallery-inspector-tag-remove-{tag_id}"))
+                                    .cursor_pointer()
+                                    .child(theme::small_icon(IconName::X))
+                                    .on_click(cx.listener(move |_, _, _, cx| {
+                                        let _ = chip_view.update(cx, |this, cx| {
+                                            this.remove_context_tag(&[media_id], tag_id, cx);
+                                        });
+                                    })),
+                            ),
+                    );
+                }
+                input = input.child(Input::new(&search_input).flex_1().min_w(px(70.)));
+                let selected_rows = inspector_tag_choice_rows(
+                    media_id,
+                    &selected_tags,
+                    &selected_ids,
+                    weak.clone(),
+                    cx,
+                );
+                let available_rows = inspector_tag_choice_rows(
+                    media_id,
+                    &available,
+                    &selected_ids,
+                    weak.clone(),
+                    cx,
+                );
+                let mut panel = div()
+                    .v_flex()
+                    .w(px(320.))
+                    .max_h(px(620.))
+                    .gap(px(8.))
+                    .child(input);
+                if !selected_rows.is_empty() {
+                    panel = panel.child(inspector_picker_section("已选中", selected_rows, None));
+                }
+                panel = panel.child(inspector_picker_section(
+                    "所有值",
+                    available_rows,
+                    Some(px(380.)),
+                ));
+                panel
+            });
+        div()
+            .v_flex()
+            .w_full()
+            .gap(px(8.))
+            .child(capsules.child(picker))
     }
 
     fn exif_rows(&self, media_id: i64) -> AnyElement {
@@ -477,4 +572,98 @@ impl GalleryView {
         }
         cx.notify();
     }
+}
+
+fn flatten_inspector_tag_choices(
+    tags: &[photag_plugin_database::Tag],
+    depth: usize,
+    choices: &mut Vec<(photag_plugin_database::Tag, usize)>,
+) {
+    for tag in tags {
+        choices.push((tag.clone(), depth));
+        flatten_inspector_tag_choices(&tag.children, depth + 1, choices);
+    }
+}
+
+fn inspector_picker_section(title: &str, rows: Vec<Div>, max_height: Option<Pixels>) -> AnyElement {
+    let heading = div()
+        .w_full()
+        .px(px(7.))
+        .py(px(3.))
+        .text_size(px(theme::FONT_SIZE_SMALL))
+        .text_color(rgb(theme::TEXT_SECONDARY))
+        .child(photag_ui_bridge::i18n::tr(title));
+    let section = div().v_flex().w_full().child(heading);
+    if rows.is_empty() {
+        if let Some(max_height) = max_height {
+            section
+                .max_h(max_height)
+                .overflow_y_scrollbar()
+                .child(inspector_message("No matching tags."))
+                .into_any_element()
+        } else {
+            section
+                .child(inspector_message("No matching tags."))
+                .into_any_element()
+        }
+    } else {
+        if let Some(max_height) = max_height {
+            section
+                .max_h(max_height)
+                .overflow_y_scrollbar()
+                .children(rows)
+                .into_any_element()
+        } else {
+            section.children(rows).into_any_element()
+        }
+    }
+}
+
+fn inspector_tag_choice_rows(
+    media_id: i64,
+    tags: &[(photag_plugin_database::Tag, usize)],
+    selected: &std::collections::HashSet<i64>,
+    weak: WeakEntity<GalleryView>,
+    cx: &mut Context<gpui_kit::component::popover::PopoverState>,
+) -> Vec<Div> {
+    tags.iter()
+        .map(|(tag, depth)| {
+            let id = tag.id;
+            let checked = selected.contains(&id);
+            let row_view = weak.clone();
+            div()
+                .h_flex()
+                .w_full()
+                .min_h(px(32.))
+                .items_center()
+                .gap(px(6.))
+                .pl(px((*depth as f32) * 14. + 7.))
+                .child(
+                    Button::new(format!("gallery-inspector-tag-choice-{id}"))
+                        .compact()
+                        .icon(theme::small_icon(if checked {
+                            IconName::Check
+                        } else {
+                            IconName::Square
+                        }))
+                        .on_click(cx.listener(move |_, _, _, cx| {
+                            let _ = row_view.update(cx, |this, cx| {
+                                if checked {
+                                    this.remove_context_tag(&[media_id], id, cx);
+                                } else {
+                                    this.assign_context_tag(&[media_id], id, cx);
+                                }
+                            });
+                        })),
+                )
+                .child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .render()
+                        .flex_1()
+                        .min_w_0(),
+                )
+        })
+        .collect()
 }

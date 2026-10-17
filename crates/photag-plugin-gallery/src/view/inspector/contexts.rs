@@ -43,22 +43,7 @@ impl InspectorContext {
                 &photag_ui_bridge::i18n::tr("Local photo browser and organizer"),
                 Some(0x3185ed),
             ),
-            Self::Tag(tag) => {
-                let color = parse_tag_color(tag.color.as_deref());
-                hero(
-                    theme::tag_icon(tag.icon.as_deref()),
-                    &tag.name,
-                    &format!(
-                        "{} · {}",
-                        photag_ui_bridge::i18n::tr_args(
-                            "{count} files",
-                            &[("count", tag.media_count.to_string())]
-                        ),
-                        tag.full_path
-                    ),
-                    Some(color),
-                )
-            }
+            Self::Tag(tag) => tag_hero(tag),
             Self::Folder(folder) => hero(
                 IconName::Folder,
                 &folder.name,
@@ -82,6 +67,42 @@ impl InspectorContext {
             Self::File => inspector_empty(),
         }
     }
+}
+
+fn tag_hero(tag: &photag_plugin_database::Tag) -> AnyElement {
+    div()
+        .w_full()
+        .flex_shrink_0()
+        .p(px(14.))
+        .child(
+            well()
+                .v_flex()
+                .min_h(px(108.))
+                .items_start()
+                .justify_center()
+                .gap(px(10.))
+                .p(px(16.))
+                .child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .render(),
+                )
+                .child(
+                    div()
+                        .text_size(px(theme::FONT_SIZE_SMALL))
+                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(format!(
+                            "{} · {}",
+                            photag_ui_bridge::i18n::tr_args(
+                                "{count} files",
+                                &[("count", tag.media_count.to_string())]
+                            ),
+                            tag.full_path
+                        )),
+                ),
+        )
+        .into_any_element()
 }
 
 impl GalleryView {

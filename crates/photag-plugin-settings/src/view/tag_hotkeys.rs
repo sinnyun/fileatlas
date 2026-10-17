@@ -1,4 +1,5 @@
 use super::SettingsView;
+use super::tag_choices::TagChoice;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
@@ -6,12 +7,13 @@ use gpui_kit::*;
 pub(super) fn button(
     key: &'static str,
     selected: Option<i64>,
-    choices: Vec<(i64, String)>,
+    choices: Vec<TagChoice>,
     view: WeakEntity<SettingsView>,
 ) -> impl IntoElement {
-    let label = selected
-        .and_then(|id| choices.iter().find(|(tag_id, _)| *tag_id == id))
-        .map(|(_, label)| label.clone())
+    let selected_tag = selected.and_then(|id| choices.iter().find(|tag| tag.id == id).cloned());
+    let label = selected_tag
+        .as_ref()
+        .map(|tag| tag.label.clone())
         .unwrap_or_else(|| {
             if selected.is_some() {
                 photag_ui_bridge::i18n::tr("(deleted tag)")
@@ -19,11 +21,22 @@ pub(super) fn button(
                 photag_ui_bridge::i18n::tr("None")
             }
         });
-    Button::new(format!("settings-tag-hotkey-{key}"))
+    let mut button = Button::new(format!("settings-tag-hotkey-{key}"))
         .compact()
         .w(px(360.))
-        .h(px(28.))
-        .label(label)
+        .h(px(28.));
+    if let Some(tag) = selected_tag {
+        button = button.child(
+            photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name)
+                .color(tag.color.as_deref())
+                .icon(tag.icon.as_deref())
+                .render()
+                .max_w(px(320.)),
+        );
+    } else {
+        button = button.label(label);
+    }
+    button
         .dropdown_caret(true)
         .dropdown_menu(move |mut menu, _, _| {
             let none_view = view.clone();
@@ -41,9 +54,9 @@ pub(super) fn button(
                         });
                     }),
             );
-            for (tag_id, tag_label) in &choices {
-                let tag_id = *tag_id;
-                let tag_label = tag_label.clone();
+            for tag in &choices {
+                let tag_id = tag.id;
+                let tag_label = tag.label.clone();
                 let view = view.clone();
                 menu = menu.item(
                     PopupMenuItem::new(tag_label)

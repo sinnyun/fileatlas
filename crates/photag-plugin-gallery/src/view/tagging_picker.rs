@@ -5,7 +5,6 @@ use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
-use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 use photag_plugin_history::UndoEntry;
 use photag_ui_bridge::theme;
@@ -82,14 +81,20 @@ pub(super) fn render(
     }
     if !recent.is_empty() {
         let mut recent_row = div().h_flex().flex_wrap().gap_1();
-        for (id, label) in recent {
+        for tag in recent {
+            let id = tag.id;
             let selected = view.tag_picker_selected.contains(&id);
             recent_row = recent_row.child(
-                Button::new(format!("gallery-tag-recent-{id}"))
-                    .when(selected, |button| {
-                        button.icon(theme::small_icon(gpui_kit::assets::IconName::Check))
-                    })
-                    .label(photag_ui_bridge::i18n::tr(&label))
+                div()
+                    .id(format!("gallery-tag-recent-{id}"))
+                    .cursor_pointer()
+                    .child(
+                        photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                            .color(tag.color.as_deref())
+                            .icon(tag.icon.as_deref())
+                            .selected(selected)
+                            .render(),
+                    )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         if !this.tag_picker_selected.remove(&id) {
                             this.tag_picker_selected.insert(id);
@@ -262,7 +267,15 @@ fn tag_tree_rows(
                                 cx.notify();
                             })),
                     )
-                    .child(div().text_sm().child(tag.name.clone())),
+                    .child(
+                        photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                            .color(tag.color.as_deref())
+                            .icon(tag.icon.as_deref())
+                            .selected(checked)
+                            .render()
+                            .flex_1()
+                            .min_w_0(),
+                    ),
             );
         }
         rows.extend(tag_tree_rows(&tag.children, depth + 1, query, selected, cx));
@@ -273,14 +286,14 @@ fn tag_tree_rows(
 fn collect_recent_labels(
     tags: &[photag_plugin_database::Tag],
     recent_ids: &[i64],
-    out: &mut Vec<(i64, String)>,
+    out: &mut Vec<photag_plugin_database::Tag>,
 ) {
     for id in recent_ids {
-        if out.iter().any(|(existing, _)| existing == id) {
+        if out.iter().any(|existing| existing.id == *id) {
             continue;
         }
         if let Some(tag) = find_tag(tags, *id) {
-            out.push((*id, tag.name.clone()));
+            out.push(tag.clone());
         }
     }
 }
@@ -402,13 +415,10 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
             let mut chips = div().h_flex().w_full().flex_wrap().gap_1();
             for tag in tags_for_media.into_iter().take(6) {
                 chips = chips.child(
-                    div()
-                        .rounded_sm()
-                        .bg(rgb(theme::SURFACE_PANEL))
-                        .px_2()
-                        .py(px(2.))
-                        .text_xs()
-                        .child(tag.name),
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name)
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .render(),
                 );
             }
             preview = preview.child(chips);
@@ -449,8 +459,7 @@ impl GalleryView {
                     });
                 }
                 self.operation_status = Some("Tag assigned.".into());
-                self.reload();
-                self.restore_selection(media_ids.to_vec());
+                self.refresh_tag_assignments(media_ids);
             }
             Err(error) => self.operation_status = Some(format!("Tag update failed: {error}")),
         }
@@ -476,8 +485,7 @@ impl GalleryView {
                 }
                 self.operation_status =
                     Some(photag_ui_bridge::i18n::tr("Tag removed.").to_string());
-                self.reload();
-                self.restore_selection(media_ids.to_vec());
+                self.refresh_tag_assignments(media_ids);
             }
             Err(error) => {
                 self.operation_status = Some(
@@ -529,8 +537,7 @@ impl GalleryView {
                     }
                     .into(),
                 );
-                self.reload();
-                self.restore_selection(media_ids);
+                self.refresh_tag_assignments(&media_ids);
             }
             Err(error) => self.operation_status = Some(format!("Tag update failed: {error}")),
         }
@@ -555,12 +562,52 @@ impl GalleryView {
                     history.push(entry);
                 }
                 self.operation_status = Some("All tags cleared from selected items.".into());
-                self.reload();
-                self.restore_selection(media_ids);
+                self.refresh_tag_assignments(&media_ids);
             }
             Err(error) => self.operation_status = Some(format!("Tag update failed: {error}")),
         }
         cx.notify();
+    }
+
+    fn refresh_tag_assignments(&mut self, media_ids: &[i64]) {
+        // Tag mutations do not change file rows unless the active query itself
+        // filters by tags. Patch only the affected tag cache in the common case
+        // so the virtual list, scroll position, selection, and loaded window are
+        // left untouched.
+        if !self.filter.selected_tag_ids.is_empty() || !self.filter.excluded_tag_ids.is_empty() {
+            self.refresh_index();
+            return;
+        }
+
+        let Some(tagging) = &self.tagging else {
+            return;
+        };
+        let updates = media_ids
+            .iter()
+            .copied()
+            .map(|media_id| tagging.for_media(media_id).map(|tags| (media_id, tags)))
+            .collect::<Result<Vec<_>, _>>();
+        let Ok(updates) = updates else {
+            tracing::warn!(
+                "could not refresh changed gallery tag assignments; scheduling a window refresh"
+            );
+            self.refresh_index();
+            return;
+        };
+
+        if let Ok(snapshot) = &mut self.snapshot {
+            for (media_id, tags) in &updates {
+                snapshot.media_tags.insert(*media_id, tags.clone());
+            }
+        }
+        if let Some(fallback) = &mut self.inspector_fallback {
+            if let Some((_, tags)) = updates
+                .iter()
+                .find(|(media_id, _)| *media_id == fallback.media_id)
+            {
+                fallback.tags.clone_from(tags);
+            }
+        }
     }
 
     pub(super) fn restore_selection(&mut self, media_ids: Vec<i64>) {

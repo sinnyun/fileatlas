@@ -65,7 +65,6 @@ impl TaggingService {
             }
             recent.truncate(8);
         }
-        self.schedule_xmp_sync(media_ids);
         Ok(())
     }
 
@@ -98,14 +97,12 @@ impl TaggingService {
     #[tracing::instrument(skip_all, err)]
     pub fn remove(&self, media_ids: &[i64], tag_ids: &[i64]) -> Result<(), TaggingError> {
         self.database.remove_tags(media_ids, tag_ids)?;
-        self.schedule_xmp_sync(media_ids);
         Ok(())
     }
 
     #[tracing::instrument(skip_all, err)]
     pub fn clear(&self, media_ids: &[i64]) -> Result<(), TaggingError> {
         self.database.remove_all_tags(media_ids)?;
-        self.schedule_xmp_sync(media_ids);
         Ok(())
     }
 
@@ -151,10 +148,8 @@ impl TaggingService {
         target_id: i64,
         reparent_children: bool,
     ) -> Result<(), TaggingError> {
-        let affected = self.database.get_media_ids_with_tag(source_id)?;
         self.database
             .merge_tag(source_id, target_id, reparent_children)?;
-        self.schedule_xmp_sync(&affected);
         Ok(())
     }
 
@@ -167,12 +162,11 @@ impl TaggingService {
         drop_position: TagDropPos,
     ) -> Result<Vec<i64>, TaggingError> {
         let affected = self.database.move_tag(source_id, drop_position)?;
-        self.schedule_xmp_sync(&affected);
         Ok(affected)
     }
 
-    /// Rewrite IPTC or XMP tags after a tag mutation. File writes run on a
-    /// detached worker, matching PhoTag's best-effort synchronization policy.
+    /// Explicitly write database tags to file metadata when requested by an
+    /// integration. Normal tag edits remain database-only.
     pub fn schedule_xmp_sync(&self, media_ids: &[i64]) {
         if media_ids.is_empty() {
             return;

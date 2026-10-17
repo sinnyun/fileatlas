@@ -122,7 +122,6 @@ impl TaggingService {
         self.database
             .flush_annotations()
             .map_err(|e| e.to_string())?;
-        self.schedule_xmp_sync(&[record_id]);
         Ok(())
     }
 

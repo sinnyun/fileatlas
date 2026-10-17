@@ -338,14 +338,14 @@ impl super::PhoTagMcpServer {
     }
 
     #[tool(
-        description = "为最多 100 个媒体分配最多 50 个标签。此操作也会按 PhoTag 语义安排 XMP/IPTC 写回。修改工具默认关闭。"
+        description = "为最多 100 个媒体分配最多 50 个标签，只更新 PhoTag 数据库，不修改媒体文件或创建 XMP 文件。修改工具默认关闭。"
     )]
     fn assign_tags(&self, Parameters(request): Parameters<TagMutationRequest>) -> String {
         self.mutate_tags(request, true)
     }
 
     #[tool(
-        description = "从最多 100 个媒体移除最多 50 个标签。此操作也会按 PhoTag 语义安排 XMP/IPTC 写回。修改工具默认关闭。"
+        description = "从最多 100 个媒体移除最多 50 个标签，只更新 PhoTag 数据库，不修改媒体文件或创建 XMP 文件。修改工具默认关闭。"
     )]
     fn remove_tags(&self, Parameters(request): Parameters<TagMutationRequest>) -> String {
         self.mutate_tags(request, false)

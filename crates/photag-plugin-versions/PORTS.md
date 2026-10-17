@@ -6,6 +6,7 @@
 - Requires `VersionInfoService` and PhoTag `ThumbnailService`; Shell starts both local plugins for Gallery/MCP.
 - Lore GUI `lore-vm` is pinned to commit `35eaf6ed1273397a5b18a283dda560949bb94ca4`, matching `F:\AI\geren\newworkspace`.
 - Data lives below the active database directory: `versions/worktrees/<entity>/`, `versions/stores/<entity>/shared-store/`, and immutable preview copies in `versions/previews/<entity>/`.
+- `VersionsService::storage_path() -> &Path` exposes the active Lore storage root for status and diagnostics; revision metadata itself is stored in the shared PhoTag database service.
 - Each regular file has a Lore repository and private shared object store. Lore never receives a remote URL or a user's library root as a repository root.
 
 ## Operations
@@ -20,7 +21,9 @@
 - `create_branch`, `switch_branch`, and `archive_branch` use Lore branch operations. Switching restores the selected branch snapshot and updates active revision metadata; archiving the current branch is rejected.
 - `merge_branch` merges into the current branch. Conflicts persist in VersionInfo and leave the library source untouched. `resolve_merge(path, "ours"|"theirs")` resolves the single-file conflict set and restores the merge result; `abort_merge` invokes Lore's merge abort and clears the pending state.
 - No network synchronization, shelling out to Git, or directory snapshots are supported. The plugin accepts regular files, matching PhoTag History's media-file scope.
-- A failed VersionInfo write after Lore commit can leave a valid Lore revision missing its metadata row; listing still discovers it from Lore and uses commit message/time/delta size where available.
+- If a VersionInfo write fails after Lore commit, listing and Gallery status recover the Lore HEAD from the repository, so a missing metadata row does not make a saved file appear unversioned. The next successful snapshot writes normal catalog metadata.
+- Per-file async operation locks are removed when no operation or waiter retains them; the service does not accumulate one lock entry for every path ever viewed.
+- Gallery requests visible file states with at most eight concurrent Lore reads. Work remains proportional to visible files and saved revisions; it runs outside render and does not form one serial chain across the whole viewport.
 
 ## Consumers and event flow
 

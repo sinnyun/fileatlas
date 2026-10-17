@@ -1,10 +1,12 @@
 use super::*;
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 pub(super) struct TagChoice {
     pub id: i64,
     pub name: String,
     pub label: String,
+    pub color: Option<String>,
+    pub icon: Option<String>,
 }
 
 impl SettingsView {
@@ -36,6 +38,8 @@ impl SettingsView {
                     id: tag.id,
                     name: tag.name,
                     label: tag.full_path.replace('>', " > "),
+                    color: tag.color,
+                    icon: tag.icon,
                 });
                 pending.extend(tag.children.into_iter().rev());
             }

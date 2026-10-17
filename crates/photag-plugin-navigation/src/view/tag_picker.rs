@@ -11,20 +11,24 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
         .unwrap_or_default();
     let selected = view
         .parent_tag_id
-        .and_then(|id| find_tag(&tags, id).map(|tag| tag.full_path.clone()));
+        .and_then(|id| find_tag(&tags, id).cloned());
     let mut matching = Vec::new();
     collect_matches(&tags, &query, &HashSet::new(), &mut matching);
     let rows = matching
         .into_iter()
-        .map(|(id, path, depth)| {
+        .map(|(tag, depth)| {
+            let id = tag.id;
             Button::new(format!("navigation-parent-tag-{id}"))
                 .ghost()
                 .w_full()
-                .label(photag_ui_bridge::i18n::tr(&format!(
-                    "{}{}",
-                    "  ".repeat(depth),
-                    path.replace('>', " › ")
-                )))
+                .pl(px(depth as f32 * 12.))
+                .child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .selected(selected.as_ref().is_some_and(|selected| selected.id == id))
+                        .render(),
+                )
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.parent_tag_id = Some(id);
                     this.tag_parent
@@ -40,11 +44,21 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
             div()
                 .text_xs()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(
-                    selected
-                        .map(|path| format!("{} {path}", photag_ui_bridge::i18n::tr("Parent")))
-                        .unwrap_or_else(|| photag_ui_bridge::i18n::tr("Root tag")),
-                ),
+                .child(if let Some(tag) = &selected {
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(photag_ui_bridge::i18n::tr("Parent"))
+                        .child(
+                            photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                                .color(tag.color.as_deref())
+                                .icon(tag.icon.as_deref())
+                                .render(),
+                        )
+                } else {
+                    div().child(photag_ui_bridge::i18n::tr("Root tag"))
+                }),
         )
         .child(Input::new(&view.tag_parent))
         .child(
@@ -83,20 +97,24 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
     }
     let selected = view
         .move_target_tag_id
-        .and_then(|id| find_tag(&tags, id).map(|tag| tag.full_path.clone()));
+        .and_then(|id| find_tag(&tags, id).cloned());
     let mut matching = Vec::new();
     collect_matches(&tags, &query, &excluded, &mut matching);
     let rows = matching
         .into_iter()
-        .map(|(id, path, depth)| {
+        .map(|(tag, depth)| {
+            let id = tag.id;
             Button::new(format!("navigation-move-target-{id}"))
                 .ghost()
                 .w_full()
-                .label(photag_ui_bridge::i18n::tr(&format!(
-                    "{}{}",
-                    "  ".repeat(depth),
-                    path.replace('>', " › ")
-                )))
+                .pl(px(depth as f32 * 12.))
+                .child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .selected(selected.as_ref().is_some_and(|selected| selected.id == id))
+                        .render(),
+                )
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.move_target_tag_id = Some(id);
                     this.tag_move_target
@@ -112,11 +130,21 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
             div()
                 .text_xs()
                 .text_color(rgb(theme::TEXT_SECONDARY))
-                .child(
-                    selected
-                        .map(|path| format!("{} {path}", photag_ui_bridge::i18n::tr("Target")))
-                        .unwrap_or_else(|| photag_ui_bridge::i18n::tr("Choose a target tag")),
-                ),
+                .child(if let Some(tag) = &selected {
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .child(photag_ui_bridge::i18n::tr("Target"))
+                        .child(
+                            photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                                .color(tag.color.as_deref())
+                                .icon(tag.icon.as_deref())
+                                .render(),
+                        )
+                } else {
+                    div().child(photag_ui_bridge::i18n::tr("Choose a target tag"))
+                }),
         )
         .child(Input::new(&view.tag_move_target))
         .child(
@@ -132,15 +160,11 @@ fn collect_matches(
     tags: &[photag_plugin_database::Tag],
     query: &str,
     excluded: &HashSet<i64>,
-    rows: &mut Vec<(i64, String, usize)>,
+    rows: &mut Vec<(photag_plugin_database::Tag, usize)>,
 ) {
     for tag in tags {
         if !excluded.contains(&tag.id) && tag_matches(tag, query, TagSearchMatch::Contains) {
-            rows.push((
-                tag.id,
-                tag.full_path.clone(),
-                tag.full_path.matches('>').count(),
-            ));
+            rows.push((tag.clone(), tag.full_path.matches('>').count()));
         }
         collect_matches(&tag.children, query, excluded, rows);
     }

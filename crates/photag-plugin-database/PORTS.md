@@ -58,3 +58,12 @@ Runtime now uses `DatabaseService::open_browser_at(path)`; the plugin opens **ph
 Public additions: `is_browser() -> bool`, `with_cache_writer<T>(FnOnce(&Connection)->rusqlite::Result<T>)`, `begin_directory_cache(&str)`, `pin_file(&str,&str,Option<i64>)->Result<i64,_>`, `pin_history(&[i64])`, `flush_annotations()`, `forget_records(&[String])->Result<usize,_>`. The serialized browser reader uses the same memory connection. Cache IDs are real session row handles; persistent selection uses absolute paths. Recent scope budget: four directories, prune older scopes above 200,000 rows; current directory, annotated/rated files, active preview and history pins may exceed it. `file_versions` and path lists are session only. `favorite_meta` stores aliases/order; `tag_previews` stores independent durable identification thumbnail paths. The hidden folder owner 0 is not a favorite.
 
 `MediaQuery::{local_only,direct_directory,directory_tree,annotated_only}` separate visible filesystem membership from annotation queries. `MediaItem::missing` is a presentation field, not persisted. `LibraryStats::total_files` includes all types. Inspect SQL errors in DatabaseAccessError/tracing; persistence tests cover restart, no untagged inventory, literal path prefix and history cache retention.
+
+## Lore version metadata
+
+`versions`, `version_graph`, and `version_metadata_imports` are durable typed
+tables owned by this service. `VersionInfoService` delegates to typed methods;
+feature crates must not open a second SQLite connection or use raw SQL
+callbacks. Browser-mode persistence includes these tables so version history
+survives process restarts. Legacy `version-info.sqlite3` is imported
+idempotently and preserved as a rollback copy.

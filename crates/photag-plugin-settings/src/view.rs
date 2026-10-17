@@ -17,6 +17,8 @@ use std::sync::{Arc, Weak, atomic::AtomicU64, mpsc};
 mod ai_groups;
 #[path = "view/checkbox.rs"]
 mod checkbox;
+#[path = "view/software.rs"]
+mod software;
 #[path = "view/tabs.rs"]
 mod tabs;
 #[path = "view/tag_choices.rs"]
@@ -35,6 +37,7 @@ enum Tab {
     Tags,
     Ai,
     Updates,
+    Software,
 }
 pub(super) fn settings(
     service: Arc<SettingsService>,
@@ -94,6 +97,9 @@ pub(super) fn settings(
                         focus_handle: cx.focus_handle(),
                         surface_visible: view_surfaces.is_open("settings"),
                         tag_choices: Default::default(),
+                        software_check: Default::default(),
+                        software_revision: 0,
+                        software_tab_active: false,
                     };
                     let surface_poll = Arc::clone(&view_surfaces);
                     let mut surface_gate = photag_ui_bridge::refresh::ChangeGate::new((
@@ -108,7 +114,8 @@ pub(super) fn settings(
                             let changed =
                                 surface_gate.changed((visible, surface_poll.value("settings.tab")));
                             view.surface_visible = visible;
-                            let mut changed = view.poll_tag_choices() | changed;
+                            let mut changed =
+                                view.poll_tag_choices() | view.poll_software_check() | changed;
                             if surface_poll.is_open("settings.check-updates") {
                                 let _ = surface_poll.set_open("settings.check-updates", false);
                                 if view.update_check.is_none() {
@@ -182,6 +189,9 @@ pub(super) struct SettingsView {
     focus_handle: FocusHandle,
     surface_visible: bool,
     tag_choices: photag_ui_bridge::read_model::ReadModel<(bool, u64), Vec<tag_choices::TagChoice>>,
+    software_check: photag_ui_bridge::read_model::ReadModel<u64, Vec<software::SoftwareStatus>>,
+    software_revision: u64,
+    software_tab_active: bool,
 }
 impl SettingsView {
     fn close_surface(&mut self, cx: &mut Context<Self>) {
@@ -347,6 +357,7 @@ impl SettingsView {
             (Tab::Tags, "Tags", IconName::Tag),
             (Tab::Ai, "AI", IconName::Sparkles),
             (Tab::Updates, "Updates", IconName::RefreshCw),
+            (Tab::Software, "Software", IconName::Info),
         ] {
             let active = self.tab == tab;
             rail = rail.child(
@@ -394,6 +405,7 @@ impl SettingsView {
                             Tab::Tags => "tags",
                             Tab::Ai => "ai",
                             Tab::Updates => "updates",
+                            Tab::Software => "software",
                         };
                         let _ = this.surfaces.set_value("settings.tab", name);
                         cx.notify()
@@ -422,6 +434,7 @@ impl Render for SettingsView {
                 "tags" => Tab::Tags,
                 "ai" => Tab::Ai,
                 "updates" => Tab::Updates,
+                "software" => Tab::Software,
                 _ => Tab::Appearance,
             };
         }

@@ -93,6 +93,32 @@ pub(crate) fn initialize(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag_id);
         CREATE INDEX IF NOT EXISTS idx_media_tags_media ON media_tags(media_id);
         CREATE INDEX IF NOT EXISTS idx_tags_parent ON tags(parent_id);
+
+        CREATE TABLE IF NOT EXISTS versions (
+            entity_id TEXT NOT NULL,
+            version_id TEXT NOT NULL,
+            revision_number INTEGER NOT NULL,
+            parents TEXT NOT NULL,
+            title TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL,
+            content_type TEXT,
+            thumbnail_path TEXT,
+            is_current INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (entity_id, version_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_versions_entity_revision
+            ON versions(entity_id, revision_number DESC);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_versions_current
+            ON versions(entity_id) WHERE is_current=1;
+        CREATE TABLE IF NOT EXISTS version_graph (
+            entity_id TEXT PRIMARY KEY,
+            snapshot TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS version_metadata_imports (
+            legacy_path TEXT PRIMARY KEY,
+            imported_at INTEGER NOT NULL
+        );
     ",
     )
 }

@@ -39,9 +39,24 @@ impl GalleryView {
         self.version_states.set_wake(self.service.wake.clone());
         self.version_states.request(key, move || {
             runtime.block_on(async move {
-                let mut states = Vec::with_capacity(paths.len());
-                for (media_id, path) in paths {
-                    let result = versions.file_state(&path).await;
+                let mut tasks = tokio::task::JoinSet::new();
+                let mut pending = paths.into_iter();
+                let mut states = Vec::new();
+                loop {
+                    while tasks.len() < 8 {
+                        let Some((media_id, path)) = pending.next() else {
+                            break;
+                        };
+                        let versions = versions.clone();
+                        tasks.spawn(async move {
+                            (media_id, path.clone(), versions.file_state(&path).await)
+                        });
+                    }
+                    let Some(result) = tasks.join_next().await else {
+                        break;
+                    };
+                    let (media_id, path, result) =
+                        result.map_err(|error| format!("version state task failed: {error}"))?;
                     let (state, error) = match result {
                         Ok(state) => (Some(state), None),
                         Err(error) => (None, Some(error.to_string())),

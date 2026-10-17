@@ -3,8 +3,8 @@
 ## QuickLook replacement — 2026-10-16
 
 The embedded file viewers and their Toolbar settings section are removed.
-Settings now starts on Appearance and offers Appearance, Shortcuts, Tags, AI and
-Updates. Space and Enter always call QuickLook; the legacy configurable open
+Settings now starts on Appearance and offers Appearance, Shortcuts, Tags, AI,
+Updates and Software. Space and Enter always call QuickLook; the legacy configurable open
 key is still accepted. Old toolbar/filmstrip JSON fields remain as inert
 compatibility data, so existing settings do not lose persisted values. They
 have no active viewer controls or handlers. Later historical descriptions of
@@ -21,7 +21,19 @@ Status: the source-compatible settings model and JSON persistence are active. Th
 
 ## Migrated settings controls
 
-The panel has Appearance, Toolbar, Shortcuts, Tags, AI and Updates sections. Direct toggles/options cover every `ToolbarSettings` boolean; accent preset name (System plus all seven pinned original names); date dividers; sidebar exclusion modifier; search scopes; tag search match and persistence; tag merge child behavior; AI automatic analysis; mandatory group editing; updater auto-check; filmstrip startup visibility; floating toolbar lock and position offsets. Every control persists through the same serde model.
+The panel has Appearance, Shortcuts, Tags, AI, Updates and Software sections. Direct controls cover accent selection, date dividers, sidebar exclusion modifier, search scopes, tag search match and persistence, tag merge child behavior, AI automatic analysis, mandatory group editing, updater auto-check and open-key/tag shortcuts. Preference controls persist through the same serde model; Software is a read-only detector and does not persist.
+
+## External software check — 2026-10-17
+
+The Software tab detects QuickLook and Everything from registered uninstall and
+App Paths entries plus common executable locations. It reads registry values
+and checks file existence only; it never launches either application or invokes
+an installer. Refresh requests a new background `ReadModel` snapshot. Results
+include installation state, detected version/path, project/download URLs and
+the official GitHub URL where one exists. Everything's GitHub URL points to
+voidtools/ES (the official command-line utility), while Everything itself is
+downloaded from voidtools.com. The current tab only reports Everything's
+presence; it does not query Everything or integrate its search.
 
 ## Remaining UI ports
 
@@ -45,7 +57,7 @@ The floating Settings panel uses the shared backdrop-aware base and modal surfac
 ## Code map
 
 - `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and the six-page host.
-- `src/view/tabs.rs` renders Appearance, Toolbar, Shortcuts, Tags, and AI; `src/view/ai_groups.rs` owns mandatory-group editing and `tag_hotkeys.rs` owns F1–F9 assignment menus. `src/view/updates_page.rs` renders release/check/download/install states; `updates.rs` owns update lifecycle and the floating offer.
+- `src/view/tabs.rs` renders Appearance, Shortcuts, Tags and AI; `src/view/software.rs` owns the external-software snapshot and Software page; `src/view/ai_groups.rs` owns mandatory-group editing and `tag_hotkeys.rs` owns F1–F9 assignment menus. `src/view/updates_page.rs` renders release/check/download/install states; `updates.rs` owns update lifecycle and the floating offer.
 - `src/settings.rs` owns the source-compatible preference schema/defaults and JSON service persistence.
 
 ## Localization and live Settings validation (2026-10-13)
@@ -57,16 +69,16 @@ settings persistence, control placement and event payloads are preserved.
 
 Settings mounts lifecycle-owned `settings.language` view contributions in
 Appearance. The i18n provider owns the language preference and controls.
-`UiSurfaceState` settings.tab accepts appearance/toolbar/shortcuts/tags/ai/updates;
+`UiSurfaceState` settings.tab accepts appearance/shortcuts/tags/ai/updates/software;
 the existing GPUI poller observes it as well as open/close requests for MCP tests.
 Visible labels and input placeholders update through UI Bridge translation.
 
 The redesign uses six vertically stacked navigation entries beside the active
 page, a bounded scrolling content area, and a footer that says changes save
 automatically. All existing page controls remain in the page renderer.
-Appearance keeps the seven source accent choices plus System; Toolbar retains
-its action visibility and position controls; Shortcuts retains key capture and
-F1–F9 tag assignments; Tags, AI, and Updates retain their source-backed settings.
+Appearance keeps the seven source accent choices plus System; Shortcuts retains
+key capture and F1–F9 tag assignments; Tags, AI, and Updates retain their
+source-backed settings. Software runs the read-only external-software check.
 The Updates page separates current version, startup-check preference, live check
 status, available release notes/download verification, and the explicit staged
 restart/install action. Automatic checks continue to populate status quietly;

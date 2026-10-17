@@ -232,7 +232,15 @@ fn bulk_tag_rows(
                             cx.notify();
                         })),
                 )
-                .child(div().text_xs().child(tag.name.clone())),
+                .child(
+                    photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
+                        .color(tag.color.as_deref())
+                        .icon(tag.icon.as_deref())
+                        .selected(checked)
+                        .render()
+                        .flex_1()
+                        .min_w_0(),
+                ),
         );
         rows.extend(bulk_tag_rows(&tag.children, depth + 1, selected, cx));
     }

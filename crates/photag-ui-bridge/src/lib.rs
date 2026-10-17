@@ -10,6 +10,7 @@ pub mod panel_catalog;
 pub mod panels;
 pub mod read_model;
 pub mod refresh;
+pub mod tag_capsule;
 pub mod theme;
 mod views;
 pub mod winfx;
