@@ -1,11 +1,184 @@
 //! Native directory tiles and Navigation-service routing for ungrouped views.
 use super::*;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::Disableable;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use photag_plugin_navigation::{NavigationService, NavigationUiRequest};
 
+fn parent_path(path: &str) -> Option<String> {
+    std::path::Path::new(path)
+        .parent()
+        .map(|parent| parent.to_string_lossy().into_owned())
+        .filter(|parent| !parent.is_empty() && !same_path(parent, path))
+}
+
+fn same_path(left: &str, right: &str) -> bool {
+    left.trim_end_matches(['\\', '/'])
+        .eq_ignore_ascii_case(right.trim_end_matches(['\\', '/']))
+}
+
 impl GalleryView {
+    pub(super) fn render_column_address(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let current = self.filter.path_prefix.clone().unwrap_or_default();
+        if self.address.read(cx).value().is_empty() && !current.is_empty() {
+            self.address
+                .update(cx, |input, cx| input.set_value(&current, window, cx));
+        }
+        let path = self.filter.path_prefix.as_deref();
+        let parent = path.and_then(parent_path);
+        div()
+            .h_flex()
+            .items_center()
+            .gap(px(3.))
+            .w_full()
+            .px(px(6.))
+            .child(self.address_nav_button(
+                "back",
+                IconName::ArrowLeft,
+                "Back",
+                self.address_history_index > 0,
+                cx,
+            ))
+            .child(self.address_nav_button(
+                "forward",
+                IconName::ArrowRight,
+                "Forward",
+                self.address_history_index + 1 < self.address_history.len(),
+                cx,
+            ))
+            .child(self.address_nav_button(
+                "up",
+                IconName::ArrowUp,
+                "Up one folder",
+                parent.is_some(),
+                cx,
+            ))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(photag_ui_bridge::components::text_input(&self.address)),
+            )
+            .child(
+                Button::new(format!("gallery-column-{0}-address-go", self.column_index))
+                    .ghost()
+                    .compact()
+                    .label(photag_ui_bridge::i18n::tr("Go"))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        let path = this.address.read(cx).value().to_string();
+                        if !path.trim().is_empty() {
+                            this.open_column_path(path, cx);
+                        }
+                    })),
+            )
+            .into_any_element()
+    }
+
+    fn address_nav_button(
+        &mut self,
+        action: &'static str,
+        icon: IconName,
+        label: &'static str,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) -> Button {
+        let column = self.column_index;
+        Button::new(format!("gallery-column-{column}-address-{action}"))
+            .ghost()
+            .compact()
+            .w(px(28.))
+            .h(px(28.))
+            .icon(theme::small_icon(icon))
+            .tooltip(photag_ui_bridge::i18n::tr(label))
+            .accessibility_label(photag_ui_bridge::i18n::tr(label))
+            .disabled(!enabled)
+            .on_click(cx.listener(move |this, _, _, cx| match action {
+                "back" => this.address_history_step(false, cx),
+                "forward" => this.address_history_step(true, cx),
+                "up" => {
+                    if let Some(path) = this.filter.path_prefix.as_deref().and_then(parent_path) {
+                        this.open_column_path(path, cx);
+                    }
+                }
+                _ => {}
+            }))
+    }
+
+    fn open_column_path(&mut self, path: String, cx: &mut Context<Self>) {
+        self.navigate_column_path(path, true, cx);
+    }
+
+    fn navigate_column_path(&mut self, path: String, record_history: bool, cx: &mut Context<Self>) {
+        let path = path.trim().to_string();
+        if path.is_empty() {
+            return;
+        }
+        if !std::path::Path::new(&path).is_dir() {
+            self.operation_status = Some("Folder does not exist".into());
+            cx.notify();
+            return;
+        }
+        if record_history {
+            self.record_address_history(&path);
+        }
+        if let Ok(mut selected) = self.selected_path.0.lock() {
+            *selected = Some(path.clone());
+        }
+        if let Ok(mut selected) = self.selected_folder.0.lock() {
+            *selected = None;
+        }
+        if let Ok(mut selected) = self.selected_tag.0.lock() {
+            *selected = Default::default();
+        }
+        self.filter.folder_id = None;
+        self.filter.path_prefix = Some(path);
+        self.selected_directory = None;
+        self.service
+            .navigation_revision
+            .fetch_add(1, std::sync::atomic::Ordering::Release);
+        self.reload();
+        self.persist_filter_session();
+        cx.notify();
+    }
+
+    fn address_history_step(&mut self, forward: bool, cx: &mut Context<Self>) {
+        let target = if forward {
+            self.address_history_index.checked_add(1)
+        } else {
+            self.address_history_index.checked_sub(1)
+        };
+        let Some(index) = target.filter(|index| *index < self.address_history.len()) else {
+            return;
+        };
+        let Some(path) = self.address_history.get(index).cloned() else {
+            return;
+        };
+        self.address_history_index = index;
+        self.navigate_column_path(path, false, cx);
+    }
+
+    pub(super) fn record_address_history(&mut self, path: &str) {
+        if self
+            .address_history
+            .get(self.address_history_index)
+            .is_some_and(|current| same_path(current, path))
+        {
+            return;
+        }
+        self.address_history
+            .truncate(self.address_history_index + 1);
+        self.address_history.push(path.to_owned());
+        if self.address_history.len() > 200 {
+            self.address_history.remove(0);
+        }
+        self.address_history_index = self.address_history.len().saturating_sub(1);
+    }
+
     pub(super) fn locate_file(&mut self, id: i64, cx: &mut Context<Self>) {
         let Some(item) = self.service.media_by_id(id).ok().flatten() else {
             return;
@@ -99,6 +272,31 @@ impl GalleryView {
         self.route_directory(request, cx);
     }
     fn route_directory(&mut self, request: NavigationUiRequest, cx: &mut Context<Self>) {
+        if self.column_index > 0 {
+            match request {
+                NavigationUiRequest::SelectPath(path) => self.open_column_path(path, cx),
+                NavigationUiRequest::AllFiles => {
+                    if let Ok(mut selected) = self.selected_path.0.lock() {
+                        *selected = None;
+                    }
+                    if let Ok(mut selected) = self.selected_folder.0.lock() {
+                        *selected = None;
+                    }
+                    if let Ok(mut selected) = self.selected_tag.0.lock() {
+                        *selected = Default::default();
+                    }
+                    self.filter.path_prefix = None;
+                    self.filter.folder_id = None;
+                    self.reload();
+                    cx.notify();
+                }
+                _ => {
+                    self.operation_status =
+                        Some("This action is not available in a column address.".into())
+                }
+            }
+            return;
+        }
         let result = self
             .cordis
             .try_service::<NavigationService>()

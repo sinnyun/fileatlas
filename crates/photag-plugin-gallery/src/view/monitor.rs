@@ -183,6 +183,10 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     let index_changed = revision != view.observed_index_revision;
     view.observed_index_revision = revision;
     if changed {
+        if let Some(path) = selected_path.as_deref() {
+            view.record_address_history(path);
+        }
+        view.pending_workspace_address = Some(selected_path.clone().unwrap_or_default());
         view.filter.folder_id = selected;
         view.filter.selected_tag_ids = selected_tags.included;
         view.filter.excluded_tag_ids = selected_tags.excluded;

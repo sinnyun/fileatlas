@@ -175,6 +175,12 @@ impl Plugin for McpPlugin {
         let history = context
             .try_service::<photag_plugin_history::HistoryService>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
+        let columns = context
+            .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            .ok();
+        let workspaces = context
+            .try_service::<photag_plugin_workspaces::WorkspaceService>()
+            .ok();
         let settings = context
             .try_service::<photag_plugin_settings::SettingsService>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
@@ -200,6 +206,8 @@ impl Plugin for McpPlugin {
                 .try_service::<photag_contracts::mcp::McpToolRegistry>()
                 .map_err(|error| McpPluginError::Dependency(error.to_string()))?,
             settings,
+            columns,
+            workspaces,
             context.clone(),
         )?;
         let use_stdio = self.stdio;
@@ -371,6 +379,8 @@ struct PhoTagMcpServer {
     i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     settings: Arc<photag_plugin_settings::SettingsService>,
+    columns: Option<Arc<photag_plugin_columns::ColumnLayoutService>>,
+    workspaces: Option<Arc<photag_plugin_workspaces::WorkspaceService>>,
     mcp_tools: Arc<photag_contracts::mcp::McpToolRegistry>,
 }
 
@@ -389,6 +399,8 @@ impl PhoTagMcpServer {
         history: Arc<photag_plugin_history::HistoryService>,
         mcp_tools: Arc<photag_contracts::mcp::McpToolRegistry>,
         settings: Arc<photag_plugin_settings::SettingsService>,
+        columns: Option<Arc<photag_plugin_columns::ColumnLayoutService>>,
+        workspaces: Option<Arc<photag_plugin_workspaces::WorkspaceService>>,
         context: Context,
     ) -> Result<Self, McpPluginError> {
         let tool_router =
@@ -418,6 +430,8 @@ impl PhoTagMcpServer {
             capture,
             screenshot,
             settings,
+            columns,
+            workspaces,
             mcp_tools,
         })
     }

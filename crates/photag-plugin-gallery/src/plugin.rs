@@ -49,6 +49,9 @@ impl Plugin for GalleryPlugin {
         let session = context
             .try_service::<SessionService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let workspaces = context
+            .try_service::<photag_plugin_workspaces::WorkspaceService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
         let versions = context
             .try_service::<photag_plugin_versions::VersionsService>()
             .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
@@ -80,120 +83,145 @@ impl Plugin for GalleryPlugin {
             .try_service::<photag_plugin_watcher::WatcherService>()
             .ok();
         let service = Arc::new(service);
-        let selected_folder = Arc::new(SelectedFolder::default());
-        let selected_tag = Arc::new(SelectedTag::default());
-        let selected_path = Arc::new(SelectedPath::default());
+        let columns = context
+            .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            .map_err(|error| GalleryPluginError::Dependency(error.to_string()))?;
+        let column_services: [Arc<GalleryService>; 4] = std::array::from_fn(|index| {
+            if index == 0 {
+                Arc::clone(&service)
+            } else {
+                Arc::new(service.fork_for_column())
+            }
+        });
+        let selected_folders: [Arc<SelectedFolder>; 4] =
+            std::array::from_fn(|_| Arc::new(SelectedFolder::default()));
+        let selected_tags: [Arc<SelectedTag>; 4] =
+            std::array::from_fn(|_| Arc::new(SelectedTag::default()));
+        let selected_paths: [Arc<SelectedPath>; 4] =
+            std::array::from_fn(|_| Arc::new(SelectedPath::default()));
         let index_revision = Arc::new(IndexRevision::default());
         let _selection_publication = context
-            .provide(Arc::clone(&selected_folder))
+            .provide(Arc::clone(&selected_folders[0]))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let _tag_selection_publication = context
-            .provide(Arc::clone(&selected_tag))
+            .provide(Arc::clone(&selected_tags[0]))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let _path_selection_publication = context
-            .provide(Arc::clone(&selected_path))
+            .provide(Arc::clone(&selected_paths[0]))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
         let _index_revision_publication = context
             .provide(Arc::clone(&index_revision))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
-        let selection_state = Arc::clone(&selected_folder);
-        let selection_tag_state = Arc::clone(&selected_tag);
-        let selection_path_state = Arc::clone(&selected_path);
-        let ready = service.wake.clone();
-        let inspector_selection = Arc::clone(&service);
+        let selection_states = selected_folders.clone();
+        let selection_tag_states = selected_tags.clone();
+        let selection_path_states = selected_paths.clone();
+        let selection_services = column_services.clone();
+        let selection_columns = Arc::clone(&columns);
         let _selection_listener = context
             .on::<FolderSelectionChanged, _>(observer_sync(move |_, folder_id| {
-                if let Ok(mut selected) = selection_state.0.lock() {
+                let index = selection_columns
+                    .snapshot()
+                    .map(|state| state.active_index.min(3))
+                    .unwrap_or(0);
+                if let Ok(mut selected) = selection_states[index].0.lock() {
                     *selected = folder_id;
                 }
-                if let Ok(mut selected) = selection_tag_state.0.lock() {
+                if let Ok(mut selected) = selection_tag_states[index].0.lock() {
                     *selected = TagFilterSelection::default();
                 }
-                if let Ok(mut selected) = selection_path_state.0.lock() {
+                if let Ok(mut selected) = selection_path_states[index].0.lock() {
                     *selected = None;
                 }
-                inspector_selection
-                    .navigation_revision
-                    .fetch_add(1, Ordering::Release);
-                ready.trigger();
+                let target = &selection_services[index];
+                target.navigation_revision.fetch_add(1, Ordering::Release);
+                target.wake.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let tag_state = Arc::clone(&selected_tag);
-        let tag_folder_state = Arc::clone(&selected_folder);
-        let tag_path_state = Arc::clone(&selected_path);
-        let ready = service.wake.clone();
-        let inspector_selection = Arc::clone(&service);
+        let tag_states = selected_tags.clone();
+        let tag_folder_states = selected_folders.clone();
+        let tag_path_states = selected_paths.clone();
+        let tag_services = column_services.clone();
+        let tag_columns = Arc::clone(&columns);
         let _tag_selection_listener = context
             .on::<TagSelectionChanged, _>(observer_sync(move |_, tag_id: Option<i64>| {
-                if let Ok(mut selected) = tag_state.0.lock() {
+                let index = tag_columns
+                    .snapshot()
+                    .map(|state| state.active_index.min(3))
+                    .unwrap_or(0);
+                if let Ok(mut selected) = tag_states[index].0.lock() {
                     *selected = TagFilterSelection {
                         included: tag_id.into_iter().collect(),
                         excluded: Vec::new(),
                     };
                 }
                 if tag_id.is_some() {
-                    if let Ok(mut selected) = tag_folder_state.0.lock() {
+                    if let Ok(mut selected) = tag_folder_states[index].0.lock() {
                         *selected = None;
                     }
-                    if let Ok(mut selected) = tag_path_state.0.lock() {
+                    if let Ok(mut selected) = tag_path_states[index].0.lock() {
                         *selected = None;
                     }
                 }
-                inspector_selection
-                    .navigation_revision
-                    .fetch_add(1, Ordering::Release);
-                ready.trigger();
+                let target = &tag_services[index];
+                target.navigation_revision.fetch_add(1, Ordering::Release);
+                target.wake.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let tag_filter_state = Arc::clone(&selected_tag);
-        let tag_filter_folder = Arc::clone(&selected_folder);
-        let tag_filter_path = Arc::clone(&selected_path);
-        let ready = service.wake.clone();
-        let inspector_selection = Arc::clone(&service);
+        let tag_filter_states = selected_tags.clone();
+        let tag_filter_folders = selected_folders.clone();
+        let tag_filter_paths = selected_paths.clone();
+        let tag_filter_services = column_services.clone();
+        let tag_filter_columns = Arc::clone(&columns);
         let _tag_filter_selection_listener = context
             .on::<TagFilterSelectionChanged, _>(observer_sync(
                 move |_, selection: TagFilterSelection| {
-                    if let Ok(mut selected) = tag_filter_state.0.lock() {
+                    let index = tag_filter_columns
+                        .snapshot()
+                        .map(|state| state.active_index.min(3))
+                        .unwrap_or(0);
+                    if let Ok(mut selected) = tag_filter_states[index].0.lock() {
                         *selected = selection.clone();
                     }
                     if !selection.included.is_empty() || !selection.excluded.is_empty() {
-                        if let Ok(mut selected) = tag_filter_folder.0.lock() {
+                        if let Ok(mut selected) = tag_filter_folders[index].0.lock() {
                             *selected = None;
                         }
-                        if let Ok(mut selected) = tag_filter_path.0.lock() {
+                        if let Ok(mut selected) = tag_filter_paths[index].0.lock() {
                             *selected = None;
                         }
                     }
-                    inspector_selection
-                        .navigation_revision
-                        .fetch_add(1, Ordering::Release);
-                    ready.trigger();
+                    let target = &tag_filter_services[index];
+                    target.navigation_revision.fetch_add(1, Ordering::Release);
+                    target.wake.trigger();
                     Ok::<_, std::convert::Infallible>(())
                 },
             ))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
-        let path_state = Arc::clone(&selected_path);
-        let path_folder_state = Arc::clone(&selected_folder);
-        let path_tag_state = Arc::clone(&selected_tag);
-        let ready = service.wake.clone();
-        let inspector_selection = Arc::clone(&service);
+        let path_states = selected_paths.clone();
+        let path_folder_states = selected_folders.clone();
+        let path_tag_states = selected_tags.clone();
+        let path_services = column_services.clone();
+        let path_columns = Arc::clone(&columns);
         let _path_selection_listener = context
             .on::<DirectoryPathSelected, _>(observer_sync(move |_, path| {
-                if let Ok(mut selected) = path_state.0.lock() {
+                let index = path_columns
+                    .snapshot()
+                    .map(|state| state.active_index.min(3))
+                    .unwrap_or(0);
+                if let Ok(mut selected) = path_states[index].0.lock() {
                     *selected = path;
                 }
-                if let Ok(mut selected) = path_folder_state.0.lock() {
+                if let Ok(mut selected) = path_folder_states[index].0.lock() {
                     *selected = None;
                 }
-                if let Ok(mut selected) = path_tag_state.0.lock() {
+                if let Ok(mut selected) = path_tag_states[index].0.lock() {
                     *selected = TagFilterSelection::default();
                 }
-                inspector_selection
-                    .navigation_revision
-                    .fetch_add(1, Ordering::Release);
-                ready.trigger();
+                let target = &path_services[index];
+                target.navigation_revision.fetch_add(1, Ordering::Release);
+                target.wake.trigger();
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
@@ -272,16 +300,16 @@ impl Plugin for GalleryPlugin {
             &context,
             "photag.gallery",
             view::gallery(
-                service,
+                column_services,
                 file_operations,
                 drag_drop,
                 quicklook,
                 versions,
                 runtime,
                 context.clone(),
-                selected_folder,
-                selected_tag,
-                selected_path,
+                selected_folders,
+                selected_tags,
+                selected_paths,
                 index_revision,
                 session,
                 history,
@@ -289,6 +317,7 @@ impl Plugin for GalleryPlugin {
                 tagging,
                 Arc::clone(&bridge.surfaces),
                 Arc::clone(&bridge.views),
+                workspaces,
             ),
         )
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;

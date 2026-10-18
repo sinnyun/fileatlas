@@ -14,7 +14,7 @@
 | 主窗及文件预览侧栏 | [sidebar-pages-preview v2](concepts/sidebar-pages-preview-2026-10-14-v2.png) | [开发基线](../development-baseline-2026-10-14.md) 及相邻概念说明；其他已明确选用的局部稿继续覆盖对应局部 |
 | 剪贴板工作台 | [clipboard-workbench v2](concepts/clipboard-workbench-layout-2026-10-18-v2.png) | [v2 布局](concepts/clipboard-workbench-layout-2026-10-18-v2.md)；图片历史显示补充[图片预览清单](concepts/clipboard-workbench-images-2026-10-18.md) |
 | 截图快捷启动管理 | 轻量管理面板；设置 → 软件显示安装状态 | [Shotoshot 集成清单](concepts/shotoshot-launcher-2026-10-18.md)：PhoTag 启动时只检测一次；缺失时用户自行安装。截图选区、编辑、标注均由上游提供，最终图像保存到 PhoTag 专用目录 |
-| 主工作区多栏与程序工作区 | [用户红框参考图](concepts/multi-column-workspaces-2026-10-19.md) | 红框整体作为每栏；独立地址/筛选/排列/文件视图；程序工作区定义并恢复双栏或四栏布局 |
+| 主工作区多栏与程序工作区 | [多栏概念图](concepts/multi-column-workspaces-2026-10-19.png)及[最新用户标注与清单](concepts/multi-column-workspaces-2026-10-19.md) | 沿用现有控件样式；网格/列表旁增加分栏按钮，选择单栏/双栏/四栏；操作带分为筛选/视图区与搜索/功能区；Everything 配置迁入设置 |
 
 这是活动参考导航，不是功能完成清单。实际实现、截图和验证边界记录于
 [redesign-validation.md](../redesign-validation.md) 与其中链接的 `validation-ui/` 证据。

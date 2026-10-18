@@ -1153,3 +1153,29 @@ msg-settings-status-0 = Enabled
 msg-settings-status-1 = Disabled
 
 msg-settings-status-2 = Tool entry
+
+msg-workspaces-title = Program workspaces
+
+msg-workspaces-default-workspace = Default workspace
+
+msg-workspaces-name = Workspace name
+
+msg-workspaces-create = Create workspace
+
+msg-workspaces-save-current = Save current
+
+msg-workspaces-description = Save launch layouts with independent folders and view settings for each column.
+
+msg-workspaces-read-error = Could not read program workspaces
+
+msg-workspaces-save-name = Save name
+
+msg-workspaces-default = Default
+
+msg-workspaces-active = Active
+
+msg-workspaces-open = Open
+
+msg-workspaces-set-default = Set default
+
+msg-workspaces-new = New workspace

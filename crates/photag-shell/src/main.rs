@@ -14,6 +14,8 @@ fn dev_plugin_config() -> String {
         "core",
         "all",
         "gallery",
+        "columns",
+        "workspaces",
         "navigation",
         "metadata-export",
         "launcher",
@@ -146,6 +148,10 @@ fn main() {
         || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "gallery")
         || dev_plugin_enabled(&plugin_config, "versions");
+    let enable_columns =
+        enable_gallery || enable_all || dev_plugin_enabled(&plugin_config, "columns");
+    let enable_workspaces =
+        enable_columns || enable_all || dev_plugin_enabled(&plugin_config, "workspaces");
     let enable_clipboard = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -270,6 +276,35 @@ fn main() {
     let session_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(session_plugin, session_input)))
         .expect("start session plugin");
+    let _workspace_fiber = if enable_workspaces {
+        let plugin = photag_plugin_workspaces::WorkspacesPlugin;
+        let input = photag_plugin_workspaces::WorkspacesConfig {
+            path: dev_test_dir
+                .as_ref()
+                .map(|path| path.join("workspaces.json")),
+        };
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start program workspaces plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let _columns_fiber = if enable_columns {
+        let plugin = photag_plugin_columns::ColumnsPlugin;
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ()))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start gallery columns plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
     let updater_plugin = photag_plugin_updater::UpdaterPlugin;
     let updater_input = updater_plugin
         .prepare(photag_plugin_updater::UpdaterConfig)
@@ -951,6 +986,8 @@ fn main() {
                     inspector_open: true,
                     native_panels: Default::default(),
                     panel_signature: (false, None),
+                    column_refresh_task: None,
+                    column_revision: 0,
                 }
             })
         })

@@ -135,6 +135,32 @@ impl Service for GalleryService {
 }
 
 impl GalleryService {
+    /// Creates an independent browsing service over the same shared data providers.
+    /// The live directory browser, viewport revision, transient UI requests and
+    /// diagnostics are owned by the returned service.
+    pub(crate) fn fork_for_column(&self) -> Self {
+        Self {
+            wake: Default::default(),
+            live: Default::default(),
+            viewport_request: AtomicU64::new(0),
+            navigation_revision: AtomicU64::new(self.navigation_revision.load(Ordering::Acquire)),
+            search_provider: std::sync::atomic::AtomicU8::new(0),
+            search_provider_detail: Mutex::new(None),
+            thumbnails_disabled: std::sync::atomic::AtomicBool::new(
+                self.thumbnails_disabled.load(Ordering::Acquire),
+            ),
+            watcher: self.watcher.clone(),
+            database: Arc::clone(&self.database),
+            grouping: self.grouping.clone(),
+            indexing: self.indexing.clone(),
+            everything: self.everything.clone(),
+            ai_target: Default::default(),
+            ui_request: Mutex::new(None),
+            ui_snapshot: Mutex::new(None),
+            card_states: Mutex::new(Vec::new()),
+            card_frames: Mutex::new(std::collections::VecDeque::new()),
+        }
+    }
     pub fn refresh_restored_file(&self, media_id: i64) -> Result<(), String> {
         self.indexing
             .as_ref()

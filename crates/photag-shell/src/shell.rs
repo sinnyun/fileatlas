@@ -28,10 +28,35 @@ pub(super) struct PhoTagShell {
     pub(super) inspector_open: bool,
     pub(super) native_panels: native_panels::NativePanels,
     pub(super) panel_signature: (bool, Option<String>),
+    pub(super) column_refresh_task: Option<gpui_kit::Task<()>>,
+    pub(super) column_revision: u64,
 }
 
 impl Render for PhoTagShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.column_refresh_task.is_none() {
+            if let Ok(service) = self
+                .cordis
+                .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            {
+                let wake = service.wake();
+                self.column_revision = service.snapshot().map(|state| state.revision).unwrap_or(0);
+                self.column_refresh_task = Some(photag_ui_bridge::refresh::listen(
+                    cx,
+                    wake,
+                    move |shell, _cx| {
+                        let Ok(state) = service.snapshot() else {
+                            return false;
+                        };
+                        if state.revision == shell.column_revision {
+                            return false;
+                        }
+                        shell.column_revision = state.revision;
+                        true
+                    },
+                ));
+            }
+        }
         self.viewport_width = f32::from(window.bounds().size.width);
         self.dispatch_mcp_pointer(window, cx);
         let mut previous = std::mem::take(&mut self.views);
@@ -61,12 +86,23 @@ impl Render for PhoTagShell {
         let mut search_views = Vec::new();
         let mut size_views = Vec::new();
         let mut filter_views = Vec::new();
+        let mut column_control_views = Vec::new();
         let mut status_views = Vec::new();
         let mut debug_status = Vec::new();
         let mut bottom_views = Vec::new();
         let mut tool_views = Vec::new();
         let mut sidebar_views = Vec::new();
         let mut content_views = Vec::new();
+        let mut column_addresses: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_contents: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_filters: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_searches: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_sizes: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_status: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_tools: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_inspectors: [Vec<gpui_kit::AnyView>; 4] =
+            std::array::from_fn(|_| Vec::new());
+        let mut column_modals: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
         let mut context_views = Vec::new();
         let mut inspector_views = Vec::new();
         let mut auxiliary_views = Vec::new();
@@ -79,12 +115,50 @@ impl Render for PhoTagShell {
                 "command.search" => search_views.push(view.clone()),
                 "command.size" => size_views.push(view.clone()),
                 "command.filters" => filter_views.push(view.clone()),
+                "command.columns" => column_control_views.push(view.clone()),
+                slot if slot.starts_with("command.column.") => {
+                    let mut parts = slot.split('.');
+                    let _ = parts.next();
+                    let _ = parts.next();
+                    if let (Some(index), Some(region)) = (parts.next(), parts.next()) {
+                        if let Ok(index) = index.parse::<usize>() {
+                            if index < 4 {
+                                match region {
+                                    "filters" => column_filters[index].push(view.clone()),
+                                    "search" => column_searches[index].push(view.clone()),
+                                    "size" => column_sizes[index].push(view.clone()),
+                                    "status" => column_status[index].push(view.clone()),
+                                    "tools" => column_tools[index].push(view.clone()),
+                                    "inspector" => column_inspectors[index].push(view.clone()),
+                                    "modal" => column_modals[index].push(view.clone()),
+                                    _ => auxiliary_views.push(view.clone()),
+                                }
+                            }
+                        }
+                    }
+                }
                 "workspace.status" => status_views.push(view.clone()),
                 "workspace.debug-status" => debug_status.push(view.clone()),
                 "workspace.bottom" => bottom_views.push(view.clone()),
                 "command.tools" => tool_views.push(view.clone()),
                 "workspace.sidebar" => sidebar_views.push(view.clone()),
                 "gallery.content" => content_views.push(view.clone()),
+                slot if slot.starts_with("gallery.column.") => {
+                    let mut parts = slot.split('.');
+                    let _ = parts.next();
+                    let _ = parts.next();
+                    if let (Some(index), Some(region)) = (parts.next(), parts.next()) {
+                        if let Ok(index) = index.parse::<usize>() {
+                            if index < 4 {
+                                match region {
+                                    "address" => column_addresses[index].push(view.clone()),
+                                    "content" => column_contents[index].push(view.clone()),
+                                    _ => auxiliary_views.push(view.clone()),
+                                }
+                            }
+                        }
+                    }
+                }
                 "gallery.inspector" => inspector_views.push(view.clone()),
                 "workspace.main" => context_views.push(view.clone()),
                 "workspace.modal" => {
@@ -97,6 +171,20 @@ impl Render for PhoTagShell {
                 _ => auxiliary_views.push(view.clone()),
             }
         }
+        let active_column = self
+            .cordis
+            .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            .ok()
+            .and_then(|service| service.snapshot().ok())
+            .map(|state| state.active_index)
+            .unwrap_or(0)
+            .min(3);
+        filter_views.extend(column_filters[active_column].clone());
+        search_views.extend(column_searches[active_column].clone());
+        status_views.extend(column_status[active_column].clone());
+        tool_views.extend(column_tools[active_column].clone());
+        inspector_views.extend(column_inspectors[active_column].clone());
+        modal_views.extend(column_modals[active_column].clone());
         modal_views.extend(active_panel);
         let mut tool_commands = Vec::new();
         let mut settings_available = false;
@@ -206,9 +294,8 @@ impl Render for PhoTagShell {
                 this.inspector_open = next;
                 cx.notify();
             }));
-        // v5 title band: logo zone tracks the sidebar width; breadcrumb fills
-        // the content column; size search Tools and the inspector toggle sit
-        // on the right, mirroring docs/reference-ui/final-v5/00-main-library.png.
+        // Shared operation band: filters/view controls and search/functions are
+        // separate groups. Address navigation stays in the row below.
         let logo_zone = div()
             .h_flex()
             .h_full()
@@ -228,6 +315,8 @@ impl Render for PhoTagShell {
                 .w_full()
                 .flex_shrink_0()
                 .h(px(theme::TITLE_BAND_HEIGHT))
+                .items_center()
+                .gap(px(8.))
                 .child(
                     logo_zone
                         .child(sidebar_toggle)
@@ -240,45 +329,62 @@ impl Render for PhoTagShell {
                                 .text_size(px(theme::FONT_SIZE_HEADING))
                                 .child("PhoTag"),
                         ),
-                ),
-            theme::RegionEdge::Bottom,
-        )
-        .child(
-            div()
-                .h_flex()
-                .flex_1()
-                .min_w_0()
-                .h_full()
-                .items_center()
-                .gap(px(10.))
-                .px(px(16.))
-                .overflow_hidden()
-                .children(breadcrumb_views),
-        )
-        .child(
-            div()
-                .h_flex()
-                .h_full()
-                .items_center()
-                .gap(px(10.))
-                .pr(px(10.))
-                .children(size_views)
-                .children(search_views)
-                .child(
-                    Button::new("shell-tools")
-                        .ghost()
-                        .compact()
-                        .icon(theme::icon(IconName::Wrench))
-                        .tooltip(photag_ui_bridge::i18n::tr("Tools"))
-                        .accessibility_label(photag_ui_bridge::i18n::tr("Tools"))
-                        .toggled(self.tools_open)
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.tools_open = !this.tools_open;
-                            let _ = this.surfaces.set_open("tools", this.tools_open);
-                            cx.notify();
-                        })),
                 )
+                .child(
+                    div()
+                        .h_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .h_full()
+                        .items_center()
+                        .overflow_hidden()
+                        .children(filter_views)
+                        .children(column_control_views),
+                )
+                .child(theme::separate_region(
+                    div()
+                        .h_flex()
+                        .h_full()
+                        .flex_shrink_0()
+                        .items_center()
+                        .gap(px(6.))
+                        .pl(px(8.))
+                        .pr(px(8.))
+                        .children(search_views)
+                        .child(
+                            Button::new("shell-workspaces")
+                                .ghost()
+                                .compact()
+                                .label(photag_ui_bridge::i18n::tr("Workspaces"))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    if let Err(error) =
+                                        this.surfaces.set_open("workspace-manager", true)
+                                    {
+                                        tracing::error!(
+                                            "could not open workspace manager: {error}"
+                                        );
+                                    }
+                                    cx.notify();
+                                })),
+                        )
+                        .child(
+                            Button::new("shell-tools")
+                                .ghost()
+                                .compact()
+                                .icon(theme::icon(IconName::Wrench))
+                                .tooltip(photag_ui_bridge::i18n::tr("Tools"))
+                                .accessibility_label(photag_ui_bridge::i18n::tr("Tools"))
+                                .toggled(self.tools_open)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.tools_open = !this.tools_open;
+                                    let _ = this.surfaces.set_open("tools", this.tools_open);
+                                    cx.notify();
+                                })),
+                        ),
+                    theme::RegionEdge::Left,
+                ))
                 .child(inspector_toggle),
+            theme::RegionEdge::Bottom,
         );
         let mut sidebar_column = theme::separate_region(
             div()
@@ -307,6 +413,116 @@ impl Render for PhoTagShell {
                     .child(settings_entry),
             );
         }
+        let layout = self
+            .cordis
+            .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            .ok()
+            .and_then(|service| service.snapshot().ok());
+        let active_column = layout.map(|state| state.active_index).unwrap_or(0);
+        let column_count = layout
+            .map(|state| state.layout.column_count())
+            .unwrap_or(1)
+            .min(4);
+        let has_column_contributions = (0..column_count)
+            .any(|index| !column_contents[index].is_empty() || !column_addresses[index].is_empty());
+        let multi_content = if column_count == 1 {
+            div()
+                .v_flex()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .overflow_hidden()
+                .children(content_views.clone())
+                .into_any_element()
+        } else if has_column_contributions {
+            let column_service = self
+                .cordis
+                .try_service::<photag_plugin_columns::ColumnLayoutService>()
+                .ok();
+            let make_column = |index: usize| {
+                let mut column = div()
+                    .v_flex()
+                    .flex_1()
+                    .h_full()
+                    .min_h_0()
+                    .min_w(px(240.))
+                    .overflow_hidden()
+                    .when(index > 0, |column| {
+                        column
+                            .border_l_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    })
+                    .when(index == active_column && column_count > 1, |column| {
+                        column.border_1().border_color(rgb(theme::accent()))
+                    })
+                    .children(column_addresses[index].clone())
+                    .children(column_sizes[index].clone())
+                    .child(
+                        div()
+                            .v_flex()
+                            .flex_1()
+                            .min_h_0()
+                            .overflow_hidden()
+                            .children(column_contents[index].clone()),
+                    );
+                if let Some(service) = column_service.clone() {
+                    column = column.on_mouse_down(MouseButton::Left, move |_, _, _| {
+                        let _ = service.activate(index);
+                    });
+                }
+                column
+            };
+            if column_count == 2 {
+                div()
+                    .h_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .overflow_x_scrollbar()
+                    .child(make_column(0))
+                    .child(make_column(1))
+                    .into_any_element()
+            } else {
+                div()
+                    .v_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .overflow_hidden()
+                    .child(
+                        div()
+                            .h_flex()
+                            .flex_1()
+                            .min_h_0()
+                            .w_full()
+                            .overflow_x_scrollbar()
+                            .child(make_column(0))
+                            .child(make_column(1)),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .flex_1()
+                            .min_h_0()
+                            .w_full()
+                            .overflow_x_scrollbar()
+                            .border_t_1()
+                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .child(make_column(2))
+                            .child(make_column(3)),
+                    )
+                    .into_any_element()
+            }
+        } else {
+            div()
+                .v_flex()
+                .flex_1()
+                .min_h_0()
+                .w_full()
+                .overflow_hidden()
+                .children(content_views.clone())
+                .into_any_element()
+        };
         let mut content_column = div()
             .v_flex()
             .flex_1()
@@ -316,27 +532,21 @@ impl Render for PhoTagShell {
             .relative()
             .overflow_hidden()
             .bg(rgb(theme::SURFACE_PANEL))
-            .child(
-                div()
-                    .h_flex()
-                    .w_full()
-                    .flex_shrink_0()
-                    .items_center()
-                    .gap(px(6.))
-                    .px(px(16.))
-                    .pt(px(10.))
-                    .pb(px(6.))
-                    .children(filter_views),
-            )
-            .child(
-                div()
-                    .v_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .overflow_hidden()
-                    .children(content_views),
-            )
+            .when(column_count == 1, |content| {
+                content.child(
+                    div()
+                        .h_flex()
+                        .w_full()
+                        .flex_shrink_0()
+                        .h(px(40.))
+                        .items_center()
+                        .gap(px(8.))
+                        .px(px(16.))
+                        .children(breadcrumb_views)
+                        .children(size_views),
+                )
+            })
+            .child(multi_content)
             .child(
                 div()
                     .absolute()

@@ -1,5 +1,26 @@
 # Gallery plugin ports / 图库数据对接
 
+## Independent Gallery columns (2026-10-19)
+
+Gallery publishes `gallery.column.0..3.content` and matching
+`gallery.column.0..3.address` UI view slots. Each column lazily owns its own
+`GalleryView`, `GalleryService` browsing worker, filter/search input, selection,
+scroll state and transient UI requests. The service fork shares the database,
+indexing, watcher, grouping and Everything providers, while keeping browser
+snapshots and navigation revisions local. Every column's address controls
+navigate its own path/folder/tag state. Navigation plugin folder/tag selection
+events are routed by the Shell to the active column. Only column 0 writes the
+legacy single-view `SessionService` record, avoiding competing session writers.
+Column state is persisted through `ProgramWorkspace` by the host; the Gallery
+crate does not own workspace storage.
+
+Each pane separately publishes `command.column.{i}.filters`, `.search`, `.size`,
+`.tools`, `.status`, `.modal`, and `.inspector`; the host should display the
+control/status/modal/inspector slot for the active index. Current limit: the
+global Navigation sidebar still emits events to column 0; host-side active-pane
+routing is required before sidebar selections follow the active pane. Some
+inspector/file operations continue to use global feature services.
+
 ## MCP contributions (2026-10-19)
 
 Gallery contributes `gallery.search_media` and `gallery.get_media` through the

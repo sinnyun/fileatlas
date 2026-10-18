@@ -6446,6 +6446,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-columns"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "photag-plugin-workspaces",
+ "photag-ui-bridge",
+ "serde",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
 name = "photag-plugin-database"
 version = "0.1.0"
 dependencies = [
@@ -6543,6 +6556,7 @@ dependencies = [
  "kamadak-exif",
  "photag-contracts",
  "photag-plugin-ai",
+ "photag-plugin-columns",
  "photag-plugin-database",
  "photag-plugin-drag-drop",
  "photag-plugin-everything-search",
@@ -6559,6 +6573,7 @@ dependencies = [
  "photag-plugin-version-info",
  "photag-plugin-versions",
  "photag-plugin-watcher",
+ "photag-plugin-workspaces",
  "photag-ui-bridge",
  "rfd",
  "rusqlite",
@@ -6659,6 +6674,7 @@ dependencies = [
  "cordis-rs",
  "image",
  "photag-contracts",
+ "photag-plugin-columns",
  "photag-plugin-database",
  "photag-plugin-gallery",
  "photag-plugin-history",
@@ -6669,6 +6685,7 @@ dependencies = [
  "photag-plugin-screenshot",
  "photag-plugin-settings",
  "photag-plugin-tagging",
+ "photag-plugin-workspaces",
  "photag-ui-bridge",
  "rmcp",
  "serde",
@@ -6897,6 +6914,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-workspaces"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "photag-ui-bridge",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "photag-shell"
 version = "0.1.0"
 dependencies = [
@@ -6906,6 +6936,7 @@ dependencies = [
  "photag-contracts",
  "photag-plugin-ai",
  "photag-plugin-clipboard",
+ "photag-plugin-columns",
  "photag-plugin-database",
  "photag-plugin-debug",
  "photag-plugin-dev-test",
@@ -6932,6 +6963,7 @@ dependencies = [
  "photag-plugin-version-info",
  "photag-plugin-versions",
  "photag-plugin-watcher",
+ "photag-plugin-workspaces",
  "photag-ui-bridge",
  "raw-window-handle",
  "tokio",

@@ -1,7 +1,5 @@
 //! Inline dependency feedback. Passive registry/file reads stay off render.
 use super::*;
-use gpui_kit::component::button::ButtonVariants;
-
 impl GalleryView {
     pub(super) fn set_search_entire_computer(&mut self, enabled: bool, cx: &mut Context<Self>) {
         if self.filter.search_entire_computer == enabled {
@@ -76,59 +74,5 @@ impl GalleryView {
         self.everything_installation
             .value()
             .and_then(|value| value.as_ref().ok())
-    }
-
-    pub(super) fn render_everything_status(&self, cx: &mut Context<Self>) -> AnyElement {
-        if self.service.everything.is_none() {
-            return div().into_any_element();
-        }
-        let installation = self.everything_status();
-        let state = installation.map_or("checking", |value| value.state);
-        let loading = self
-            .service
-            .everything
-            .as_ref()
-            .is_some_and(|service| service.index_loading());
-        let (label, install) = match state {
-            "missing" => ("Install Everything", true),
-            "incompatible" => ("Install compatible Everything", true),
-            "ready" if loading => ("Everything is loading…", false),
-            "ready" => ("Everything", false),
-            _ => ("Checking Everything…", false),
-        };
-        let version = installation
-            .and_then(|value| value.version.as_deref())
-            .unwrap_or("—");
-        let tooltip = photag_ui_bridge::i18n::tr_args(
-            "Requires Everything 1.5 or later. Detected: {version}",
-            &[("version", version.to_owned())],
-        );
-        let mut status = view_controls::button(
-            "gallery-everything-status",
-            gpui_kit::assets::IconName::Search,
-            label,
-        )
-        .tooltip(format!("{} · {tooltip}", photag_ui_bridge::i18n::tr(label)));
-        if install {
-            status = status
-                .text_color(rgb(theme::WARNING))
-                .on_click(|_, _, cx| cx.open_url("https://www.voidtools.com/downloads/"));
-        } else {
-            status = status.on_click(cx.listener(|view, _, _, cx| view.recheck_everything(cx)));
-        }
-        div()
-            .h_flex()
-            .items_center()
-            .gap_1()
-            .child(status)
-            .child(
-                Button::new("gallery-everything-recheck")
-                    .ghost()
-                    .compact()
-                    .icon(theme::icon(gpui_kit::assets::IconName::RefreshCw))
-                    .tooltip(photag_ui_bridge::i18n::tr("Recheck Everything"))
-                    .on_click(cx.listener(|view, _, _, cx| view.recheck_everything(cx))),
-            )
-            .into_any_element()
     }
 }

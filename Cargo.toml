@@ -9,6 +9,8 @@ members = [
     "crates/photag-plugin-indexing",
     "crates/photag-plugin-watcher",
     "crates/photag-plugin-gallery",
+    "crates/photag-plugin-columns",
+    "crates/photag-plugin-workspaces",
     "crates/photag-plugin-everything-search",
     "crates/photag-plugin-launcher",
     "crates/photag-plugin-shortcuts",

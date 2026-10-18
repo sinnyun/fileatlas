@@ -1145,3 +1145,29 @@ msg-settings-status-0 = 已启用
 msg-settings-status-1 = 已停用
 
 msg-settings-status-2 = 工具入口
+
+msg-workspaces-title = 程序工作区
+
+msg-workspaces-default-workspace = 默认工作区
+
+msg-workspaces-name = 工作区名称
+
+msg-workspaces-create = 新建工作区
+
+msg-workspaces-save-current = 保存当前状态
+
+msg-workspaces-description = 保存启动布局，并为每个栏目分别记忆文件夹和视图设置。
+
+msg-workspaces-read-error = 无法读取程序工作区
+
+msg-workspaces-save-name = 保存名称
+
+msg-workspaces-default = 默认
+
+msg-workspaces-active = 当前
+
+msg-workspaces-open = 打开
+
+msg-workspaces-set-default = 设为默认
+
+msg-workspaces-new = 新工作区

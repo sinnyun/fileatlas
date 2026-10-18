@@ -7,6 +7,7 @@ use photag_ui_bridge::components::WorkbenchStyle as _;
 
 #[derive(Clone, Copy)]
 enum Region {
+    Address,
     Search,
     Size,
     Filters,
@@ -24,54 +25,77 @@ struct GalleryRegion {
 
 impl Render for GalleryRegion {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.gallery.update(cx, |view, cx| match self.region {
-            Region::Search => view.render_search(window, cx),
-            Region::Size => div()
-                .h_flex()
-                .items_center()
-                .gap_1()
-                .child(
-                    Button::new("gallery-open-folder")
-                        .ghost()
-                        .compact()
-                        .icon(theme::icon(gpui_kit::assets::IconName::FolderOpen))
-                        .tooltip(photag_ui_bridge::i18n::tr("Open folder"))
-                        .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
-                )
-                .child(directory_browser::refresh_button(cx))
-                .into_any_element(),
-            Region::Filters => view.render_filters(cx),
-            Region::Status => view.render_status(cx),
-            Region::Tools => view.render_tools(cx),
-            Region::Modal => view.render_modal(window, cx),
-            Region::Inspector => view.render_inspector(window, cx),
+        self.gallery.update(cx, |view, cx| {
+            view.apply_pending_workspace_inputs(window, cx);
+            match self.region {
+                Region::Address => view.render_column_address(window, cx),
+                Region::Search => view.render_search(window, cx),
+                Region::Size => div()
+                    .h_flex()
+                    .items_center()
+                    .gap_1()
+                    .child(
+                        Button::new("gallery-open-folder")
+                            .ghost()
+                            .compact()
+                            .icon(theme::icon(gpui_kit::assets::IconName::FolderOpen))
+                            .tooltip(photag_ui_bridge::i18n::tr("Open folder"))
+                            .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
+                    )
+                    .child(directory_browser::refresh_button(cx))
+                    .into_any_element(),
+                Region::Filters => view.render_filters(cx),
+                Region::Status => view.render_status(cx),
+                Region::Tools => view.render_tools(cx),
+                Region::Modal => view.render_modal(window, cx),
+                Region::Inspector => view.render_inspector(window, cx),
+            }
         })
     }
 }
 
-pub(super) fn contributions(
+pub(super) fn column_contributions(
     create: Arc<dyn Fn(&mut Window, &mut App) -> Entity<GalleryView> + Send + Sync>,
+    column: usize,
 ) -> Vec<UiViewContribution> {
     let grid = create.clone();
     let mut views = vec![UiViewContribution::new(
-        "gallery/media-grid-view",
-        "gallery.content",
+        format!("gallery/column-{column}-content"),
+        format!("gallery.column.{column}.content"),
         0,
         move |window, cx| grid(window, cx).into(),
     )];
+    let address = create.clone();
+    views.push(UiViewContribution::new(
+        format!("gallery/column-{column}-address"),
+        format!("gallery.column.{column}.address"),
+        0,
+        move |window, cx| {
+            let gallery = address(window, cx);
+            cx.new(|cx| {
+                let subscription = cx.observe(&gallery, |_, _, cx| cx.notify());
+                GalleryRegion {
+                    gallery,
+                    region: Region::Address,
+                    _subscription: subscription,
+                }
+            })
+            .into()
+        },
+    ));
     for (region, id, slot) in [
-        (Region::Search, "search", "command.search"),
-        (Region::Size, "size", "command.size"),
-        (Region::Filters, "filters", "command.filters"),
-        (Region::Status, "status", "workspace.status"),
-        (Region::Tools, "tools", "command.tools"),
-        (Region::Modal, "modal", "workspace.modal"),
-        (Region::Inspector, "inspector", "gallery.inspector"),
+        (Region::Search, "search", "search"),
+        (Region::Size, "size", "size"),
+        (Region::Filters, "filters", "filters"),
+        (Region::Status, "status", "status"),
+        (Region::Tools, "tools", "tools"),
+        (Region::Modal, "modal", "modal"),
+        (Region::Inspector, "inspector", "inspector"),
     ] {
         let create = create.clone();
         views.push(UiViewContribution::new(
-            format!("gallery/{id}"),
-            slot,
+            format!("gallery/column-{column}-{id}"),
+            format!("command.column.{column}.{slot}"),
             0,
             move |window, cx| {
                 let gallery = create(window, cx);
@@ -136,8 +160,7 @@ impl GalleryView {
             .gap(px(6.))
             .child(search_field)
             .child(self.render_search_location(cx))
-            .child(filter_row::search_scope_popover(self, cx))
-            .child(self.render_everything_status(cx));
+            .child(filter_row::search_scope_popover(self, cx));
         div()
             .h_flex()
             .flex_1()

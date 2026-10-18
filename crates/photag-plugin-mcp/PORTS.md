@@ -587,6 +587,27 @@ Read-only `get_ui_state.theme` exposes `id` (`workbench-navy`), current `accent`
 notification; they prove selected tokens, while `screenshot_window` from the same
 process proves their actual visible application. No new mutation tool is added;
 accent changes are exercised through real Settings controls.
+
+## Program workspace and columns diagnostics (2026-10-19)
+
+`get_ui_state.program_workspace` is a read-only snapshot when the optional
+`photag.columns` and `photag.workspaces` services are active. It reports the
+runtime layout, zero-based active column, layout revision, active workspace
+definition, default workspace ID, all saved workspace/column definitions, and
+whether the workspace manager panel is open. It is `null` when either plugin
+is unavailable. Workspace addresses and filter definitions are configuration
+data; this diagnostic does not enumerate media or touch the Gallery database.
+
+For isolated same-process UI verification, mutation-guarded `control_ui` actions
+are available at Standard or Full access: `columns_layout` with `value` set to
+`single`, `dual`, or `quad`; `activate_column` with a zero-based numeric `value`
+(service validation rejects indexes outside the active layout); `workspace_select`
+with an existing workspace ID; and `workspace_manager` with `open` or `close`.
+Workspace selection uses the public WorkspaceService and updates the active
+workspace; layout and column activation use ColumnLayoutService. These actions
+cannot delete, rename, or rewrite workspace definitions. `workspace_manager`
+only changes the panel open state. Re-read `get_ui_state.program_workspace`
+after each action to verify the resulting service state.
 # Unified favorite groups (2026-10-18)
 
 `control_ui {action:"sidebar_request", request:{kind:"add_current_favorite",group_id}}`

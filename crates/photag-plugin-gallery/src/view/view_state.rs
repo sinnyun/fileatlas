@@ -5,6 +5,7 @@ use super::*;
 pub(super) struct GalleryViewInputs {
     pub tag_picker_search: Entity<InputState>,
     pub search: Entity<InputState>,
+    pub address: Entity<InputState>,
     pub date_from: Entity<DatePickerState>,
     pub date_to: Entity<DatePickerState>,
     pub date_calendar: Entity<CalendarState>,
@@ -20,20 +21,21 @@ pub(super) struct GalleryViewInputs {
 pub(super) fn build_inputs(
     window: &mut Window,
     app: &mut App,
-    session: &Arc<SessionService>,
+    _session: &Arc<SessionService>,
+    workspace_column: &photag_plugin_workspaces::ColumnDefinition,
 ) -> GalleryViewInputs {
-    let saved = session.snapshot().unwrap_or_default();
     let search = app.new(|cx| {
         InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Search files"))
     });
+    let address = app.new(|cx| InputState::new(window, cx).placeholder("Folder path"));
     let date_from = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
     let date_to = app.new(|cx| DatePickerState::new(window, cx).date_format("%Y-%m-%d"));
-    let saved_date_from = saved
+    let saved_date_from = workspace_column
         .date_from
         .as_deref()
         .and_then(parse_date_input)
         .flatten();
-    let saved_date_to = saved
+    let saved_date_to = workspace_column
         .date_to
         .as_deref()
         .and_then(parse_date_input)
@@ -51,8 +53,11 @@ pub(super) fn build_inputs(
         InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Find tags to assign"))
     });
     search.update(app, |input, cx| {
-        input.set_value(&saved.search_query, window, cx)
+        input.set_value(&workspace_column.search, window, cx)
     });
+    if let Some(path) = workspace_column.address.as_deref() {
+        address.update(app, |input, cx| input.set_value(path, window, cx));
+    }
     if let Some(date) = saved_date_from {
         date_from.update(app, |picker, cx| picker.set_date(date, window, cx));
     }
@@ -87,6 +92,7 @@ pub(super) fn build_inputs(
     GalleryViewInputs {
         tag_picker_search,
         search,
+        address,
         date_from,
         date_to,
         date_calendar,
@@ -97,6 +103,19 @@ pub(super) fn build_inputs(
         history_title,
         history_branch_name,
         bulk_inputs,
+    }
+}
+
+fn parse_workspace_sort(value: &str) -> SortOrder {
+    match value.to_ascii_lowercase().replace(['_', ' '], "").as_str() {
+        "oldest" | "oldestfirst" => SortOrder::OldestFirst,
+        "biggest" | "biggestfirst" | "largestfirst" => SortOrder::BiggestFirst,
+        "smallest" | "smallestfirst" => SortOrder::SmallestFirst,
+        "nameasc" | "nameascending" | "az" => SortOrder::NameAsc,
+        "namedesc" | "namedescending" | "za" => SortOrder::NameDesc,
+        "highestrated" | "ratingdescending" => SortOrder::HighestRated,
+        "lowestrated" | "ratingascending" => SortOrder::LowestRated,
+        _ => SortOrder::NewestFirst,
     }
 }
 
@@ -120,12 +139,15 @@ impl GalleryView {
         tagging: Option<Arc<TaggingService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
         ui_views: Arc<photag_ui_bridge::UiViewCatalog>,
+        column_index: usize,
+        workspace_column: photag_plugin_workspaces::ColumnDefinition,
         inputs: GalleryViewInputs,
         cx: &mut Context<Self>,
     ) -> Self {
         let GalleryViewInputs {
             tag_picker_search,
             search,
+            address,
             date_from,
             date_to,
             date_calendar,
@@ -138,6 +160,16 @@ impl GalleryView {
             bulk_inputs,
         } = inputs;
         let saved = session.snapshot().unwrap_or_default();
+        let (address_history, address_history_index) =
+            if workspace_column.address_history.is_empty() {
+                let history = workspace_column.address.iter().cloned().collect::<Vec<_>>();
+                (history, 0)
+            } else {
+                let index = workspace_column
+                    .address_history_index
+                    .min(workspace_column.address_history.len() - 1);
+                (workspace_column.address_history.clone(), index)
+            };
         if surfaces.value("gallery.inspector.tab").is_none() {
             let _ = surfaces.set_value("gallery.inspector.tab", "information");
         }
@@ -149,35 +181,51 @@ impl GalleryView {
             filter.search_scopes = settings_snapshot.search_scopes.into();
             filter.search_entire_computer = settings_snapshot.search_entire_computer;
         }
-        filter.search = saved.search_query.clone();
-        filter.sort = saved.sort_order.unwrap_or(SortOrder::NewestFirst);
-        filter.media_type = match saved.media_type_filter.unwrap_or(SavedMediaType::All) {
-            SavedMediaType::All => MediaTypeFilter::All,
-            SavedMediaType::Photos => MediaTypeFilter::Photos,
-            SavedMediaType::Videos => MediaTypeFilter::Videos,
-            SavedMediaType::Audio => MediaTypeFilter::Audio,
+        filter.search = workspace_column.search.clone();
+        filter.sort = parse_workspace_sort(&workspace_column.sort_order);
+        filter.media_type = match workspace_column.media_type.as_str() {
+            "photos" | "images" => MediaTypeFilter::Photos,
+            "videos" | "video" => MediaTypeFilter::Videos,
+            "audio" => MediaTypeFilter::Audio,
+            _ => MediaTypeFilter::All,
         };
-        filter.extensions = saved.selected_extensions.clone();
-        filter.excluded_extensions = saved.excluded_extensions.clone();
-        filter.date_from = saved
+        filter.search_scopes = crate::filter::SearchScopes {
+            filenames: workspace_column.search_in_name,
+            paths: workspace_column.search_in_path,
+            tags: workspace_column.search_in_tags,
+            time: workspace_column.search_in_time,
+        };
+        filter.folder_id = workspace_column.folder_id;
+        filter.path_prefix = workspace_column.address.clone();
+        filter.extensions = workspace_column.included_extensions.clone();
+        filter.excluded_extensions = workspace_column.excluded_extensions.clone();
+        filter.date_from = workspace_column
             .date_from
             .as_deref()
             .and_then(parse_date_input)
             .flatten();
-        filter.date_to = saved
+        filter.date_to = workspace_column
             .date_to
             .as_deref()
             .and_then(parse_date_input)
             .flatten();
-        filter.rating_min = saved.rating_min.clamp(0, 5);
-        filter.rating_max = saved.rating_max.unwrap_or(5).clamp(filter.rating_min, 5);
-        filter.selected_tag_ids = saved.selected_tag_ids.clone();
-        filter.excluded_tag_ids = saved.excluded_tag_ids.clone();
+        filter.rating_min = i32::from(workspace_column.rating_min.min(5));
+        filter.rating_max = i32::from(
+            workspace_column
+                .rating_max
+                .clamp(workspace_column.rating_min.min(5), 5),
+        );
+        filter.selected_tag_ids = workspace_column.included_tag_ids.clone();
+        filter.excluded_tag_ids = workspace_column.excluded_tag_ids.clone();
+        if let Ok(mut selected_path_state) = selected_path.0.lock() {
+            *selected_path_state = workspace_column.address.clone();
+        }
+        if let Ok(mut selected_folder_state) = selected_folder.0.lock() {
+            *selected_folder_state = workspace_column.folder_id;
+        }
         if let Ok(mut selected_tags) = selected_tag.0.lock() {
-            if selected_tags.included.is_empty() && selected_tags.excluded.is_empty() {
-                selected_tags.included = saved.selected_tag_ids.clone();
-                selected_tags.excluded = saved.excluded_tag_ids.clone();
-            }
+            selected_tags.included = workspace_column.included_tag_ids.clone();
+            selected_tags.excluded = workspace_column.excluded_tag_ids.clone();
         }
         let focus_handle = cx.focus_handle();
         let mut _subscriptions = vec![
@@ -235,8 +283,7 @@ impl GalleryView {
             .0
             .lock()
             .map(|selected| *selected)
-            .unwrap_or(None)
-            .or(saved.selected_folder_id);
+            .unwrap_or(workspace_column.folder_id);
         filter.folder_id = selected;
         if let Ok(selected_tag) = selected_tag.0.lock() {
             filter.selected_tag_ids = selected_tag.included.clone();
@@ -253,10 +300,13 @@ impl GalleryView {
             .as_ref()
             .and_then(|settings| settings.snapshot().ok())
             .map(|settings| settings.show_date_dividers);
-        let grouping_mode = saved
-            .grouping_mode
-            .as_deref()
-            .and_then(photag_plugin_grouping::GroupingMode::parse)
+        let grouping_mode = photag_plugin_grouping::GroupingMode::parse(&workspace_column.grouping)
+            .or_else(|| {
+                saved
+                    .grouping_mode
+                    .as_deref()
+                    .and_then(photag_plugin_grouping::GroupingMode::parse)
+            })
             .unwrap_or_else(|| {
                 if settings_group_by_month.unwrap_or_else(|| saved.group_by_month.unwrap_or(true)) {
                     photag_plugin_grouping::GroupingMode::Month
@@ -264,28 +314,28 @@ impl GalleryView {
                     photag_plugin_grouping::GroupingMode::None
                 }
             });
-        service.set_show_descendants(saved.show_descendants);
-        service.set_thumbnails_enabled(!saved.thumbnails_disabled);
+        service.set_show_descendants(workspace_column.show_subfolders);
+        service.set_thumbnails_enabled(workspace_column.thumbnails_enabled);
         // Initial search can prepare/load Everything. Keep startup responsive
         // and run the first real query through the same ReadModel as reloads.
         let snapshot = Ok(GallerySnapshot {
             search_provider: "loading",
             ..Default::default()
         });
-        let mut selection = GallerySelection::default();
-        let mut restored_ids = std::collections::HashSet::new();
-        selection.selected_media_ids = saved
-            .selected_media_ids
-            .iter()
-            .copied()
-            .filter(|id| restored_ids.insert(*id))
-            .collect();
-        selection.anchor_id = selection.selected_media_ids.first().copied();
+        let selection = GallerySelection::default();
         let scroll = ListState::new(0, ListAlignment::Top, px(240.));
-        let restored_scroll = if saved.gallery_scroll.is_finite() {
-            saved.gallery_scroll.max(0.)
+        let restored_scroll = if workspace_column.scroll_offset.is_finite() {
+            workspace_column.scroll_offset.max(0.)
         } else {
             0.
+        };
+        let restored_file_paths = if workspace_column.selected_file_paths.is_empty()
+            && workspace_column.address.is_none()
+            && column_index == 0
+        {
+            saved.selected_file_paths.clone()
+        } else {
+            workspace_column.selected_file_paths.clone()
         };
         let initial_writeback_failures = tagging
             .as_ref()
@@ -318,6 +368,15 @@ impl GalleryView {
             tag_picker_search,
             tag_picker_selected: Default::default(),
             search,
+            address,
+            column_index,
+            _workspace_task: None,
+            workspace_id: String::new(),
+            pending_workspace_search: None,
+            pending_workspace_address: None,
+            pending_workspace_dates: None,
+            address_history,
+            address_history_index,
             date_from,
             date_to,
             date_calendar,
@@ -361,8 +420,7 @@ impl GalleryView {
             columns: 4,
             row_layout: Arc::new(Vec::new()),
             row_layout_key: None,
-            thumb_size: saved
-                .thumb_size
+            thumb_size: Some(workspace_column.thumbnail_size)
                 .filter(|size| {
                     size.is_finite()
                         && (theme::THUMB_SIZE_MIN..=theme::THUMB_SIZE_MAX).contains(size)
@@ -373,11 +431,10 @@ impl GalleryView {
                 .before_descendants_grouping
                 .as_deref()
                 .and_then(photag_plugin_grouping::GroupingMode::parse),
-            restored_file_paths: saved.selected_file_paths.clone(),
-            restore_in_directory: saved.selected_path.is_some()
-                || saved.selected_folder_id.is_some(),
+            restored_file_paths,
+            restore_in_directory: workspace_column.address.is_some(),
             selection_restore: Default::default(),
-            list_layout: saved.gallery_list_layout,
+            list_layout: workspace_column.list_layout,
             show_selection_details: false,
             show_tag_picker: false,
             search_scopes_open: false,
@@ -439,6 +496,7 @@ impl GalleryView {
             _subscriptions,
         };
         view.reload_state(false);
+        view.publish_workspace_snapshot();
         view
     }
 
@@ -472,6 +530,144 @@ impl GalleryView {
             })
             .sum::<f32>()
             + f32::from(top.offset_in_item)
+    }
+
+    pub(super) fn watch_workspace(
+        &mut self,
+        workspaces: Arc<photag_plugin_workspaces::WorkspaceService>,
+        cx: &mut Context<Self>,
+    ) {
+        self.workspace_id = workspaces
+            .active()
+            .map(|workspace| workspace.id)
+            .unwrap_or_default();
+        let wake = workspaces.wake();
+        self._workspace_task = Some(photag_ui_bridge::refresh::listen(
+            cx,
+            wake,
+            move |view: &mut GalleryView, _cx| {
+                let Ok(workspace) = workspaces.active() else {
+                    return false;
+                };
+                if workspace.id == view.workspace_id {
+                    return false;
+                }
+                view.workspace_id = workspace.id;
+                let column = workspace
+                    .columns
+                    .get(view.column_index)
+                    .cloned()
+                    .unwrap_or_default();
+                view.apply_workspace_column(column);
+                view.reload();
+                true
+            },
+        ));
+    }
+
+    fn apply_workspace_column(&mut self, column: photag_plugin_workspaces::ColumnDefinition) {
+        self.filter.search = column.search.clone();
+        self.pending_workspace_search = Some(column.search);
+        self.filter.search_scopes = crate::filter::SearchScopes {
+            filenames: column.search_in_name,
+            paths: column.search_in_path,
+            tags: column.search_in_tags,
+            time: column.search_in_time,
+        };
+        self.filter.path_prefix = column.address.clone();
+        self.filter.folder_id = column.folder_id;
+        self.pending_workspace_address = Some(column.address.unwrap_or_default());
+        self.address_history = column.address_history;
+        if self.address_history.is_empty() {
+            if let Some(path) = self.filter.path_prefix.clone() {
+                self.address_history.push(path);
+            }
+        }
+        self.address_history_index = column
+            .address_history_index
+            .min(self.address_history.len().saturating_sub(1));
+        self.restored_file_paths = column.selected_file_paths;
+        self.pending_scroll_restore = Some(column.scroll_offset.max(0.0));
+        self.restore_in_directory = self.filter.path_prefix.is_some();
+        self.filter.media_type = match column.media_type.as_str() {
+            "photos" | "images" => MediaTypeFilter::Photos,
+            "videos" | "video" => MediaTypeFilter::Videos,
+            "audio" => MediaTypeFilter::Audio,
+            _ => MediaTypeFilter::All,
+        };
+        self.filter.sort = parse_workspace_sort(&column.sort_order);
+        self.filter.selected_tag_ids = column.included_tag_ids.clone();
+        self.filter.excluded_tag_ids = column.excluded_tag_ids.clone();
+        self.filter.extensions = column.included_extensions;
+        self.filter.excluded_extensions = column.excluded_extensions;
+        self.filter.date_from = column
+            .date_from
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten();
+        self.filter.date_to = column
+            .date_to
+            .as_deref()
+            .and_then(parse_date_input)
+            .flatten();
+        self.pending_workspace_dates = Some((self.filter.date_from, self.filter.date_to));
+        self.filter.rating_min = i32::from(column.rating_min.min(5));
+        self.filter.rating_max = i32::from(column.rating_max.clamp(column.rating_min.min(5), 5));
+        if let Ok(mut selected_path) = self.selected_path.0.lock() {
+            *selected_path = self.filter.path_prefix.clone();
+        }
+        if let Ok(mut selected_folder) = self.selected_folder.0.lock() {
+            *selected_folder = self.filter.folder_id;
+        }
+        if let Ok(mut selected_tag) = self.selected_tag.0.lock() {
+            selected_tag.included = self.filter.selected_tag_ids.clone();
+            selected_tag.excluded = self.filter.excluded_tag_ids.clone();
+        }
+        self.service.set_show_descendants(column.show_subfolders);
+        self.service
+            .set_thumbnails_enabled(column.thumbnails_enabled);
+        self.list_layout = column.list_layout;
+        self.thumb_size = if column.thumbnail_size.is_finite() {
+            column
+                .thumbnail_size
+                .clamp(theme::THUMB_SIZE_MIN, theme::THUMB_SIZE_MAX)
+        } else {
+            theme::THUMB_SIZE_DEFAULT
+        };
+        if let Some(grouping) = photag_plugin_grouping::GroupingMode::parse(&column.grouping) {
+            self.grouping_mode = grouping;
+        }
+    }
+
+    pub(super) fn apply_pending_workspace_inputs(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(search) = self.pending_workspace_search.take() {
+            self.search
+                .update(cx, |input, cx| input.set_value(&search, window, cx));
+        }
+        if let Some(address) = self.pending_workspace_address.take() {
+            self.address
+                .update(cx, |input, cx| input.set_value(&address, window, cx));
+        }
+        if let Some((date_from, date_to)) = self.pending_workspace_dates.take() {
+            self.date_from.update(cx, |picker, cx| {
+                picker.set_date(
+                    gpui_kit::component::calendar::Date::Single(date_from),
+                    window,
+                    cx,
+                )
+            });
+            self.date_to.update(cx, |picker, cx| {
+                picker.set_date(
+                    gpui_kit::component::calendar::Date::Single(date_to),
+                    window,
+                    cx,
+                )
+            });
+        }
     }
 
     #[tracing::instrument(skip_all)]
@@ -526,6 +722,12 @@ impl GalleryView {
     }
 
     pub(super) fn persist_filter_session(&self) {
+        self.publish_workspace_snapshot();
+        // The legacy SessionService is a single-view record. Column-specific
+        // state is persisted by ProgramWorkspace, never by competing writers.
+        if self.column_index != 0 {
+            return;
+        }
         let Ok(mut saved) = self.session.snapshot() else {
             return;
         };
@@ -578,5 +780,95 @@ impl GalleryView {
         saved.gallery_list_layout = self.list_layout;
         saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);
+    }
+
+    fn publish_workspace_snapshot(&self) {
+        let Ok(workspaces) = self
+            .cordis
+            .try_service::<photag_plugin_workspaces::WorkspaceService>()
+        else {
+            return;
+        };
+        let Ok(mut workspace) = workspaces.active() else {
+            return;
+        };
+        if let Some(previous) = self
+            .surfaces
+            .value(photag_plugin_workspaces::CURRENT_SNAPSHOT_SURFACE_KEY)
+            .and_then(|json| {
+                serde_json::from_str::<photag_plugin_workspaces::ProgramWorkspace>(&json).ok()
+            })
+            .filter(|previous| previous.id == workspace.id)
+        {
+            workspace = previous;
+        }
+        let runtime_layout = self
+            .cordis
+            .try_service::<photag_plugin_columns::ColumnLayoutService>()
+            .ok()
+            .and_then(|service| service.snapshot().ok())
+            .map(|state| state.layout)
+            .unwrap_or(workspace.layout);
+        workspace.layout = runtime_layout;
+        workspace
+            .columns
+            .resize(runtime_layout.column_count(), Default::default());
+        if self.column_index >= runtime_layout.column_count() {
+            return;
+        }
+        let column = &mut workspace.columns[self.column_index];
+        column.address = self.filter.path_prefix.clone();
+        column.folder_id = self.filter.folder_id;
+        column.address_history = self.address_history.clone();
+        column.address_history_index = self.address_history_index;
+        column.search = self.filter.search.clone();
+        column.search_in_name = self.filter.search_scopes.filenames;
+        column.search_in_path = self.filter.search_scopes.paths;
+        column.search_in_tags = self.filter.search_scopes.tags;
+        column.search_in_time = self.filter.search_scopes.time;
+        column.media_type = match self.filter.media_type {
+            MediaTypeFilter::All => "all",
+            MediaTypeFilter::Photos => "photos",
+            MediaTypeFilter::Videos => "videos",
+            MediaTypeFilter::Audio => "audio",
+        }
+        .into();
+        column.included_tag_ids = self.filter.selected_tag_ids.clone();
+        column.excluded_tag_ids = self.filter.excluded_tag_ids.clone();
+        column.included_extensions = self.filter.extensions.clone();
+        column.excluded_extensions = self.filter.excluded_extensions.clone();
+        column.date_from = self
+            .filter
+            .date_from
+            .map(|date| date.format("%Y-%m-%d").to_string());
+        column.date_to = self
+            .filter
+            .date_to
+            .map(|date| date.format("%Y-%m-%d").to_string());
+        column.rating_min = self.filter.rating_min.clamp(0, 5) as u8;
+        column.rating_max = self.filter.rating_max.clamp(0, 5) as u8;
+        column.sort_order = format!("{:?}", self.filter.sort).to_ascii_lowercase();
+        column.grouping = self.grouping_mode.key().into();
+        column.list_layout = self.list_layout;
+        column.show_subfolders = self.service.show_descendants();
+        column.thumbnails_enabled = self.service.thumbnails_enabled();
+        column.thumbnail_size = self.thumb_size;
+        column.selected_file_paths = self
+            .service
+            .media_paths_by_ids(&self.selection.selected_media_ids)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect();
+        column.scroll_offset = self
+            .pending_scroll_restore
+            .unwrap_or_else(|| self.scroll_offset())
+            .max(0.0);
+        if let Ok(json) = serde_json::to_string(&workspace) {
+            let _ = self.surfaces.set_value(
+                photag_plugin_workspaces::CURRENT_SNAPSHOT_SURFACE_KEY,
+                &json,
+            );
+        }
     }
 }

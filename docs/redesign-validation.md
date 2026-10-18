@@ -847,3 +847,9 @@ layering仍有既存launcher/clipboard→settings层级错误，无新增依赖�
 2026-10-19 初版（历史记录，现由下条三档实现取代）：MCP 插件设置中曾使用二态 `mcp_allow_mutations` 开关；该字段、截图和验证场景仅对应当时版本。详见[历史二态验证记录](validation-ui/2026-10-19-mcp-settings-toggle/README.md)。
 
 2026-10-19 更新：按用户要求将二态开关改为三个分段阶段：关闭、常规控制、完全控制。常规控制含 UI 控制和普通增删改；完全控制额外开放插件 MCP 元数据标记为高影响的操作，高影响调用仍需每次 `confirm=true`。字段迁移为 `mcp_access_level`，旧 `mcp_allow_mutations` 布尔值保留兼容（false→关闭、true→完全控制）。设置页同进程 MCP 指针切换、普通写入、高影响拒绝/确认、缺失字段默认关闭和旧字段 true 迁移均验证通过。主题、刷新、架构与 feature-ledger 守卫通过；具体命令和截图见 [MCP 分阶段权限验证](validation-ui/2026-10-19-mcp-access-stages/README.md)。
+
+## 2026-10-19 多栏/程序工作区
+
+新增独立 Cordis 分栏与程序工作区插件。顶部筛选/排序/分组/视图操作作用于激活栏，搜索/功能按钮独立成组，每栏保留独立地址导航和完整文件视图；支持单栏、双栏、四栏。程序工作区保存启动布局及每栏地址、历史和浏览/视图状态，不存媒体数据。Everything 设置仍由设置界面管理。
+
+Rust1.97.1 MSVC fmt、locked offline shell check/build 与 theme/refresh/architecture/feature-ledger/layering 守卫通过。同进程 PhoTag MCP 使用隔离 dev-test profile 验证双栏与四栏显示、独立地址历史、保存当前双栏、重启恢复以及默认工作区重新应用；工作区管理器截图确认中文翻译。极窄窗口滚动、长列表选择/滚动位置恢复、所有管理器 CRUD 点击及全部主题交互状态未在本轮覆盖。完整命令、截图与边界见[多栏/程序工作区证据](validation-ui/2026-10-19-columns-foundation/README.md)。

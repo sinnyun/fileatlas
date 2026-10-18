@@ -11,6 +11,8 @@ pub(super) struct UiRequest {
     /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
     /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
     /// region_separation: value border|shadow, saved through the Settings service.
+    /// columns_layout: value single|dual|quad; activate_column: zero-based index;
+    /// workspace_select: existing workspace id; workspace_manager: open|close.
     /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
     /// pointer_scroll: value "x,y,delta_y", negative delta scrolls down; bounded logical pixels.
     /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
@@ -210,6 +212,24 @@ impl PhoTagMcpServer {
             "error": self.surfaces.value("settings.shortcut-error").unwrap_or_default(),
         });
         state["gallery_search_provider_detail"] = json!(self.gallery.search_provider_detail());
+        state["program_workspace"] = match (&self.columns, &self.workspaces) {
+            (Some(columns), Some(workspaces)) => {
+                let column_state = columns.snapshot().ok();
+                let document = workspaces.snapshot().ok();
+                let active = workspaces.active().ok();
+                json!({
+                    "layout": column_state.map(|s| s.layout),
+                    "active_column": column_state.map(|s| s.active_index),
+                    "revision": column_state.map(|s| s.revision),
+                    "active_workspace_id": active.as_ref().map(|w| w.id.clone()),
+                    "active_workspace": active,
+                    "default_workspace_id": document.as_ref().map(|d| d.default_workspace_id.clone()),
+                    "workspaces": document.map(|d| d.workspaces),
+                    "manager_open": self.surfaces.is_open("workspace-manager"),
+                })
+            }
+            _ => json!(null),
+        };
         state.to_string()
     }
 
@@ -222,6 +242,60 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "columns_layout" => {
+                let Some(columns) = &self.columns else {
+                    return error_json("column layout plugin unavailable");
+                };
+                let layout = match request.value.as_deref() {
+                    Some("single") => photag_plugin_workspaces::ColumnLayout::Single,
+                    Some("dual") => photag_plugin_workspaces::ColumnLayout::Dual,
+                    Some("quad") => photag_plugin_workspaces::ColumnLayout::Quad,
+                    _ => return error_json("columns_layout value must be single, dual, or quad"),
+                };
+                columns
+                    .set_layout(layout)
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            }
+            "activate_column" => {
+                let Some(columns) = &self.columns else {
+                    return error_json("column layout plugin unavailable");
+                };
+                let Some(index) = request
+                    .value
+                    .as_deref()
+                    .and_then(|v| v.parse::<usize>().ok())
+                else {
+                    return error_json("activate_column requires a zero-based numeric value");
+                };
+                columns
+                    .activate(index)
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            }
+            "workspace_select" => {
+                let Some(workspaces) = &self.workspaces else {
+                    return error_json("program workspace plugin unavailable");
+                };
+                let Some(id) = request.value.as_deref() else {
+                    return error_json("workspace_select requires a workspace id");
+                };
+                let workspace = match workspaces.activate(id) {
+                    Ok(workspace) => workspace,
+                    Err(error) => return error_json(&error.to_string()),
+                };
+                if let Some(columns) = &self.columns {
+                    if let Err(error) = columns.set_layout(workspace.layout) {
+                        return error_json(&error.to_string());
+                    }
+                }
+                Ok(())
+            }
+            "workspace_manager" => match request.value.as_deref() {
+                Some("open") => self.surfaces.set_open("workspace-manager", true),
+                Some("close") => self.surfaces.set_open("workspace-manager", false),
+                _ => return error_json("workspace_manager value must be open or close"),
+            },
             "input_text" => {
                 let text = request.value.unwrap_or_default();
                 if text.chars().count() > 1000 || text.chars().any(char::is_control) {

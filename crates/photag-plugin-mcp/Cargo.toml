@@ -13,6 +13,8 @@ cordis.workspace = true
 photag-contracts = { path = "../photag-contracts" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
+photag-plugin-columns = { path = "../photag-plugin-columns" }
+photag-plugin-workspaces = { path = "../photag-plugin-workspaces" }
 photag-plugin-history = { path = "../photag-plugin-history" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 photag-plugin-screenshot = { path = "../photag-plugin-screenshot" }
