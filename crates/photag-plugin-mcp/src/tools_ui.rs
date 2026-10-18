@@ -431,6 +431,8 @@ impl PhoTagMcpServer {
             "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         });
         state["theme"] = theme_state;
+        state["screenshot_tool"] =
+            json!(self.screenshot.as_ref().map(|service| service.mcp_state()));
         state["gallery_search_provider"] = json!(self.gallery.search_provider());
         state["settings_shortcuts"] = json!({
             "capturing_key": self.surfaces.is_capturing_key("settings"),

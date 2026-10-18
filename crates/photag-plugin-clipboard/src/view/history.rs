@@ -17,6 +17,28 @@ impl ClipboardPanel {
             .chars()
             .take(230)
             .collect::<String>();
+        let preview = item.image_path.as_ref().map_or_else(
+            || div().child(value).into_any_element(),
+            |path| {
+                div()
+                    .h_flex()
+                    .items_center()
+                    .gap(px(12.))
+                    .child(
+                        img(std::path::PathBuf::from(path))
+                            .w(px(132.))
+                            .h(px(76.))
+                            .object_fit(ObjectFit::Contain)
+                            .rounded(px(theme::ROUND_SM)),
+                    )
+                    .child(format!(
+                        "剪贴板图片 · {} × {} 像素",
+                        item.image_width.unwrap_or_default(),
+                        item.image_height.unwrap_or_default()
+                    ))
+                    .into_any_element()
+            },
+        );
         let favorite = item.pinned;
         let groups = self.categories.clone();
         let weak = cx.entity().downgrade();
@@ -45,16 +67,7 @@ impl ClipboardPanel {
                             .text_color(rgb(if selected { theme::TEXT_PRIMARY } else { MUTED }))
                             .child(icon(kind_icon(kind), 21.)),
                     )
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .max_h(px(66.))
-                            .overflow_hidden()
-                            .text_size(px(14.))
-                            .line_height(px(22.))
-                            .child(value),
-                    )
+                    .child(preview)
                     .child(
                         small_icon(format!("clipboard-favorite-{id}"), IconName::Star)
                             .text_color(rgb(if item.pinned { theme::STAR } else { MUTED }))
@@ -129,11 +142,16 @@ impl ClipboardPanel {
                     .text_size(px(12.))
                     .text_color(rgb(MUTED))
                     .child(date(item.last_used_at, "%H:%M"))
-                    .child(format!(
-                        "{} 字 · {}",
-                        item.content.chars().count(),
-                        kind.label()
-                    ))
+                    .child(if item.image_path.is_some() {
+                        format!(
+                            "{} × {} 像素 · {}",
+                            item.image_width.unwrap_or_default(),
+                            item.image_height.unwrap_or_default(),
+                            kind.label()
+                        )
+                    } else {
+                        format!("{} 字 · {}", item.content.chars().count(), kind.label())
+                    })
                     .child(div().flex_1())
                     .child(
                         div()

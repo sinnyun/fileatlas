@@ -795,6 +795,8 @@
   "This page only reads installation records and checks common paths. It does not install or start listed software.": "msg-settings-software-readonly",
   "Used by PhoTag to view original files.": "msg-settings-software-quicklook-purpose",
   "Requires Everything 1.5. PhoTag prepares its background client when searching filenames and paths.": "msg-settings-software-everything-purpose",
+  "PhoTag uses Shotoshot for screenshot capture and annotation.": "msg-settings-software-shotoshot-purpose",
+  "Install Shotoshot, then select shotoshot.exe in PhoTag's Screenshot Tool settings.": "msg-settings-software-shotoshot-install-note",
   "Installed": "msg-settings-software-installed",
   "Not detected": "msg-settings-software-missing",
   "Detection unavailable": "msg-settings-software-unsupported",

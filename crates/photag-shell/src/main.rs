@@ -30,6 +30,7 @@ fn dev_plugin_config() -> String {
         "drag-drop",
         "mcp",
         "dev-test",
+        "screenshot",
     ];
     for plugin in config
         .split(',')
@@ -150,17 +151,23 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "clipboard");
+    let enable_screenshot = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "screenshot");
     let enable_launcher = plugin_config == "core"
         || enable_all
         || enable_mcp
         || enable_gallery
         || dev_plugin_enabled(&plugin_config, "launcher")
         || dev_plugin_enabled(&plugin_config, "shortcuts")
-        || enable_clipboard;
+        || enable_clipboard
+        || enable_screenshot;
     let enable_shortcuts = enable_launcher
         || enable_all
         || dev_plugin_enabled(&plugin_config, "shortcuts")
-        || enable_clipboard;
+        || enable_clipboard
+        || enable_screenshot;
     let enable_versions = enable_gallery || dev_plugin_enabled(&plugin_config, "versions");
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
@@ -170,7 +177,8 @@ fn main() {
         || enable_dev_test
         || enable_launcher
         || dev_plugin_enabled(&plugin_config, "navigation")
-        || enable_clipboard;
+        || enable_clipboard
+        || enable_screenshot;
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -471,6 +479,18 @@ fn main() {
     let settings_fiber = runtime
         .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
         .expect("start settings plugin");
+    let _screenshot_fiber = if enable_screenshot {
+        let plugin = photag_plugin_screenshot::ScreenshotPlugin;
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ()))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start screenshot launcher plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
     // Publish the optional local Everything IPC adapter before Gallery starts.
     // The adapter never launches the external Everything application.
     let everything_fiber = if enable_gallery {

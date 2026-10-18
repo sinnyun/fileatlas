@@ -116,6 +116,12 @@ written.
 - Reuse the pinned PhoTag implementation and data semantics for backend
   behavior. Never replace working behavior with placeholder behavior, and never
   report partial coverage as complete.
+- This is a personal-use workbench. There is no project-wide allowlist or
+  restriction on open-source licenses for feature dependencies; choose the
+  library that best provides the requested behavior. Keep upstream attribution
+  and license files, record the license and pinned revision, and note any
+  distribution obligations. The user accepts GPL-3.0 dependencies for personal
+  use; do not silently change the workspace's declared license.
 
 ## Implementation rules
 

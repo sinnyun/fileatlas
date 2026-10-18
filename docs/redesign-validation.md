@@ -752,3 +752,62 @@ Rust1.97.1 locked Shell build、fmt、33项相关单测及全部治理检查通�
 后续开发必须读 [统一主题规范](ui-theme.md)、[活动参考](reference-ui/README.md)，
 执行 `node scripts/check-ui-theme.cjs` 和真实截图对照；AGENTS.md 已添加同样要求。
 本次用户指令覆盖历史 v5 的石墨灰样式，各页功能布局及控件关系继续按活动参考。
+# 2026-10-18：Shotoshot 截图启动管理器
+
+按用户纠正后的范围集成 Shotoshot 完整程序：PhoTag 只提供启动器、程序路径和截图目录管理，
+选区、编辑标注、复制与保存由上游界面负责。用同进程 MCP `command_run` 打开面板，随后
+`get_ui_state` 和 `screenshot_window` 检查程序路径、独立输出目录与快捷键；界面截图保存于
+`target/mcp-screenshot-check/screenshots/screenshot-manager.png`。MCP `PHOTAG_DEV_TEST_DIR`
+隔离 profile 下真实桌面截图启动被阻止，输出目录和 Shotoshot 设置限定在 profile。
+
+命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、
+`cargo +1.97.1 build --locked -p photag-shell -j 2`、`pwsh -File scripts/build-shotoshot.ps1`、
+`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-screenshot-check --plugins core --plan target/mcp-screenshot-plan.json`，
+以及 theme/refresh/architecture/layering/feature-ledger 守卫和 `git diff --check`，均通过。
+Shotoshot 外部捕获/标注流程未在桌面上启动或验证；需由用户在实际使用中验收该上游窗口。
+
+# 2026-10-18：截图集成启动修复与回归
+
+用户反馈无法正确启动截图。定位到 Shotoshot 单实例行为：已有 resident 时，第二次 `--capture` 原先弹“已运行”并退出，PhoTag 快捷启动因此只在 Shotoshot 未启动时有效。修改固定版本的 Shotoshot 启动入口，将重复启动请求发送到正在运行窗口的 `CAPTURE_MESSAGE`；新增 Windows 消息路由回归测试。
+
+验证：`cargo +1.97.1 test --locked --manifest-path vendor/shotoshot/Cargo.toml -p shotoshot-app --lib second_capture_process_forwards_to_the_existing_window -j 2` 1 项通过；`... --test capture --test output -j 2` 9 项通过。真实 PhoTag MCP（未启用 dev-test 隔离，因隔离模式会拒绝启动真实截图）检查 `command_list` 中 `Ctrl+Shift+S` 已注册，并调用 `command_run(screenshot-tool/capture)`；运行中的 Shotoshot resident 收到转发后，其预启动 editor 窗口获得可见主窗口。`get_ui_state` 显示输出目录为 `%LOCALAPPDATA%\PhoTag\Screenshots`，目录存在且已同步进 Shotoshot `settings.txt`。验证时没有自动操作外部窗口；目前等待用户手动选区、加标注并保存，以确认实际文件落盘。
+
+PhoTag `cargo +1.97.1 check --locked -p photag-shell -j 2` 与 `build --locked` 通过。Shotoshot 原 target exe 当时被正在运行的两个进程锁定，故为 patched exe 使用独立 `target/shotoshot-integration` 编译目录；未终止用户进程。临时 PhoTag MCP 进程与调试脚本均位于 `target/`。
+
+## 2026-10-18：截图启动边界修订
+
+用户指出应把它作为 Shotoshot 的中转插件：PhoTag 启动时检测一次并缓存 Shotoshot 路径，
+截图时再将请求转给 Shotoshot；未安装时由用户自行安装。检测结果加入“设置 → 软件”及截图管理器，
+缺失状态提供上游官网入口。安装位置扫描不在每次渲染或每次快捷键触发时重复执行。Shotoshot
+最终 PNG 仍保存到 PhoTag 专用 `%LOCALAPPDATA%\\PhoTag\\Screenshots` 文件夹。
+
+附图中的提示持续出现，之前的根因是测试只升级了独立 Shotoshot EXE，而截图中 PhoTag 仍指向
+`target/shotoshot/debug/shotoshot.exe` 旧版本。现由 PhoTag 插件直接向 Shotoshot resident 窗口发送
+`WM_APP+2` 捕获消息；Shotoshot handler 收到后请求 editor 开始捕获，因此已有 Shotoshot 无需重装。
+
+验证命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、
+`cargo +1.97.1 build --locked -p photag-shell -j 2 --target-dir target/screenshot-integration-build`、
+`node scripts/check-ui-theme.cjs`、refresh/architecture/feature-ledger/layering 守卫及 `git diff --check` 均通过。
+独立目标目录构建成功（现有默认 PhoTag 进程占用了 `target/debug/photag-shell.exe`）。隔离同进程 PhoTag MCP
+打开管理面板和“设置 → 软件”页、截取了 `target/mcp-screenshot-final/screenshots/screenshot-manager.png`、
+`target/mcp-screenshot-software/screenshots/settings-software.png`；MCP 状态显示已检测到 Shotoshot、快捷键注册和
+截图目录存在。缺失场景在 `target/mcp-shotoshot-missing` 验证，状态为 `executable_available=false`，
+且界面将禁用启动并显示官网安装入口。
+
+非隔离同进程 PhoTag MCP 曾使用原有 `target/shotoshot/debug/shotoshot.exe` 触发一次
+`screenshot-tool/capture`。当时仅用 `PostMessageW` 返回成功作为证据；用户反馈没有编辑器出现，说明此前
+验证结论过度。现在改为同步 `SendMessageTimeoutW`（3 秒超时），在管理器保留请求状态，并记录请求、交付和
+错误到 Debug drawer 及 `get_ui_state.screenshot_tool`。这项最新桥接改动已通过格式检查和 shell 编译，尚未通过
+非隔离 MCP 重新验证真实 Shotoshot 编辑器响应、选区、标注及 PNG 落盘。测试使用的截图程序路径此前已恢复为
+用户原有的 `target/shotoshot-integration/debug/shotoshot.exe`；截图目录仍为 `%LOCALAPPDATA%\\PhoTag\\Screenshots`。
+旧 PhoTag 进程不能热更新，须关闭后启动新构建才能使用本次修复。
+
+## 2026-10-18：剪贴板图片历史显示
+
+在隔离 MCP profile 下用合成 PNG 记录验证图片历史，不读取或改写 Windows 当前剪贴板。通过同进程 MCP `get_clipboard_state` 确认记录类型、可用状态和 320×180 尺寸；等待 GPUI 图片资源加载后检查历史缩略图，选中记录后检查详情预览、分组、收藏和“复制图片到系统剪贴板”入口。截图：`target/mcp-clipboard-images/screenshots/clipboard-image-loaded.png`、`target/mcp-clipboard-images/screenshots/clipboard-image-selected.png`。新增捕获实现只调用 `get_text` / `get_image` 读取格式；不会清空或写入系统剪贴板。只有用户显式点击复制图片/文本时才调用 arboard 写入。
+
+`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-shell -j 2`、独立目标目录 `cargo +1.97.1 build --locked -p photag-shell -j 2 --target-dir target/clipboard-image-build` 及 theme/refresh/architecture/feature-ledger/layering 守卫通过。既有 `validate-clipboard-workbench.cjs` 在分组输入坐标断言失败（`category_name_length 0 !== 2`），因此不把该分类交互记为通过；图片卡片和详情由 MCP 隔离合成数据单独验证。Windows 原生剪贴板的真实图像采集、文件列表及应用专有格式仍未验证/支持；完整数据格式覆盖目前限于 arboard 可读的文本和解码图像。实现只写 PhoTag 专用 `ClipboardImages` PNG 缓存，不会清理 Windows 系统剪贴板缓存。
+
+## 2026-10-18：移除 Shotoshot 源码副本
+
+用户确认 PhoTag 应调用用户自行安装的 Shotoshot，而不把其应用源码纳入 PhoTag 仓库。已从当前分支删除 `vendor/shotoshot/`（196 个上游文件）和 `scripts/build-shotoshot.ps1`，移除 `shotoshot-app` / `shotoshot-core` 本地依赖并清理锁文件。上文对临时 vendored 版本的构建和测试仅保留为历史记录，不代表当前仓库仍包含或构建 Shotoshot。当前插件只检测/启动外部 EXE、向运行实例发送请求，并在锁保护下更新 Shotoshot 设置文件中的输出目录字段。验证：`cargo +1.97.1 fmt --all`、`cargo +1.97.1 check --offline -p photag-shell -j 2` 通过。

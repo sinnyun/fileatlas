@@ -10,8 +10,9 @@
 | [EcoPaste 项目](https://github.com/EcoPasteHub/EcoPaste)、[官方暗色截图](https://www.ecopaste.cn/home/ecopaste-hero-dark.png) | 内容类型和用户分组独立；卡片突出类型、时间、置顶与快速操作 | 自动类型入口、真实类型图标、时间/字数、分组徽标、卡片置顶/菜单 |
 | [CopyQ 功能与截图](https://hluk.github.io/CopyQ/)、[分组文档](https://copyq.readthedocs.io/en/latest/tabs-and-items.html) | 自定义标签页组织内容，支持移动与编辑；树状分组是可选能力 | 明确的用户分组、未分类、即时移动、分组管理，与正文保存分离 |
 | [Ditto 官方项目](https://github.com/sabrogden/Ditto) | 以快捷唤醒、搜索、回用历史为核心；支持直接粘贴到先前窗口 | 搜索和复制入口易达；当前保留已实现的复制到系统剪贴板行为 |
+| [ZClipboardManager](https://github.com/TheHolyOneZ/ZClipboardManager) | GPL-3.0 的完整 Tauri/Rust 剪贴板管理器；分别读取文本与图片并按内容分类 | 借鉴内容类型分类与图像独立预览的行为；该仓库不是可嵌入库，不复用其 Tauri/React 界面或代码 |
 
-本轮参考交互与视觉模式，没有复制这些项目的代码。没有把它们的图片/文件捕获、
+本轮参考交互与视觉模式，没有复制这些项目的代码。没有把它们的文件捕获、
 来源程序识别、直接跨程序粘贴等功能描述成本项目已实现。
 
 ## 实现目标

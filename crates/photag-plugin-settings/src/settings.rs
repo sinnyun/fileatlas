@@ -237,6 +237,17 @@ pub struct Settings {
     /// Navigation plugin; persisted here so the JSON stays the single store.
     #[serde(default)]
     pub sidebar_folders: photag_contracts::SidebarFoldersConfig,
+    /// Screenshot tool paths owned by the screenshot launcher feature.
+    #[serde(default)]
+    pub screenshot_tool: ScreenshotToolSettings,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ScreenshotToolSettings {
+    #[serde(default)]
+    pub executable: Option<PathBuf>,
+    #[serde(default)]
+    pub save_directory: Option<PathBuf>,
 }
 
 /// Floating preview-toolbar placement & interaction lock. Offsets are
@@ -304,6 +315,7 @@ impl Default for Settings {
             ai: AiSettings::default(),
             auto_check_updates: default_auto_check_updates(),
             sidebar_folders: photag_contracts::SidebarFoldersConfig::default(),
+            screenshot_tool: ScreenshotToolSettings::default(),
         }
     }
 }

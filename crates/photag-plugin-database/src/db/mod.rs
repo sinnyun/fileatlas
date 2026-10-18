@@ -162,6 +162,22 @@ pub(crate) fn initialize(conn: &Connection) -> rusqlite::Result<()> {
 
 /// Run schema migrations for new columns added after initial release.
 pub(crate) fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    for (column, declaration) in [
+        ("content_type", "TEXT NOT NULL DEFAULT 'text'"),
+        ("image_path", "TEXT"),
+        ("image_width", "INTEGER"),
+        ("image_height", "INTEGER"),
+    ] {
+        if conn
+            .prepare(&format!("SELECT {column} FROM clipboard_history LIMIT 0"))
+            .is_err()
+        {
+            conn.execute_batch(&format!(
+                "ALTER TABLE clipboard_history ADD COLUMN {column} {declaration}"
+            ))?;
+        }
+    }
+
     let has_launcher_pin_scope = conn
         .prepare("SELECT pin_scope FROM app_launcher_metadata LIMIT 0")
         .is_ok();

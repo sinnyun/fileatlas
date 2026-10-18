@@ -17,8 +17,9 @@ impl super::PhoTagMcpServer {
                 "ui": self.surfaces.value("clipboard.ui").and_then(|value|serde_json::from_str::<serde_json::Value>(&value).ok()),
                 "favorite_count":items.iter().filter(|item|item.pinned).count(),"pinned_count":items.iter().filter(|item|item.pinned).count(),"capture_paused":clipboard.is_paused(),
                 "categories":categories.iter().map(|category|json!({"id":category.id,"name":category.name})).collect::<Vec<_>>(),
-                "items":items.iter().map(|item|json!({"id":item.id,"length":item.content.chars().count(),"category_id":item.category_id,
-                    "kind":photag_plugin_clipboard::content::classify(&item.content).key(),
+                "items":items.iter().map(|item|json!({"id":item.id,"length":if item.image_path.is_some(){0}else{item.content.chars().count()},"category_id":item.category_id,
+                    "kind":if item.image_path.is_some(){"image"}else{photag_plugin_clipboard::content::classify(&item.content).key()},
+                    "image_available":item.image_path.as_deref().is_some_and(|path|std::path::Path::new(path).is_file()),"image_width":item.image_width,"image_height":item.image_height,
                     "favorite":item.pinned,"pinned":item.pinned,"created_at":item.created_at,"last_used_at":item.last_used_at})).collect::<Vec<_>>()
             })).unwrap_or_else(|error|error_json(&error.to_string())),
             (Err(error),_)|(_,Err(error))=>error_json(&error),

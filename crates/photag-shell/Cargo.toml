@@ -39,6 +39,7 @@ photag-plugin-versions = { path = "../photag-plugin-versions" }
 photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-mcp = { path = "../photag-plugin-mcp" }
 photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }
+photag-plugin-screenshot = { path = "../photag-plugin-screenshot" }
 gpui-kit.workspace = true
 raw-window-handle = "0.6.2"
 

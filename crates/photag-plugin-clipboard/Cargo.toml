@@ -12,12 +12,15 @@ gpui = { package = "gpui-pre", version = "=0.3.8" }
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 clipboard-master = "4.0"
-arboard = { version = "3.7", default-features = false }
+arboard = { version = "3.7", default-features = false, features = ["image-data"] }
+dirs = "5"
 thiserror.workspace = true
 tracing.workspace = true
 serde_json.workspace = true
 chrono = "0.4"
 url = "2"
+image = { version = "0.25", default-features = false, features = ["png"] }
+sha2 = "0.10"
 
 [lints]
 workspace = true

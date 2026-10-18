@@ -30,9 +30,14 @@ impl SettingsView {
             self.software_revision = self.software_revision.wrapping_add(1);
         }
         let revision = self.software_revision;
+        let shotoshot_path = self
+            .service
+            .snapshot()
+            .ok()
+            .and_then(|settings| settings.screenshot_tool.executable);
         let changed = self
             .software_check
-            .update(revision, || Ok(check_software()));
+            .update(revision, || Ok(check_software(shotoshot_path)));
         if changed {
             let value = match self.software_check.value() {
                 Some(Ok(software)) => {
@@ -248,8 +253,8 @@ fn link_button(
         }))
 }
 
-fn check_software() -> Vec<SoftwareStatus> {
-    vec![
+fn check_software(shotoshot_path: Option<PathBuf>) -> Vec<SoftwareStatus> {
+    let mut software = vec![
         software_status(
             "QuickLook",
             "Used by PhoTag to view original files.",
@@ -272,7 +277,26 @@ fn check_software() -> Vec<SoftwareStatus> {
                 "GitHub links to the official ES command-line tool, not the Everything application.",
             ),
         ),
-    ]
+    ];
+    let shotoshot_installed = shotoshot_path.as_ref().is_some_and(|path| path.is_file());
+    software.push(SoftwareStatus {
+        name: "Shotoshot",
+        purpose: "PhoTag uses Shotoshot for screenshot capture and annotation.",
+        state: if shotoshot_installed {
+            "installed"
+        } else {
+            "missing"
+        },
+        version: None,
+        path: shotoshot_path.map(|path| path.display().to_string()),
+        project_url: "https://github.com/Chmyke/shotoshot",
+        download_url: "https://shotoshot.com/",
+        github_url: Some("https://github.com/Chmyke/shotoshot"),
+        github_note: Some(
+            "Install Shotoshot, then select shotoshot.exe in PhoTag's Screenshot Tool settings.",
+        ),
+    });
+    software
 }
 
 fn software_status(

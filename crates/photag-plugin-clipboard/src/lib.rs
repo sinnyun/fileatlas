@@ -9,7 +9,9 @@ use photag_ui_bridge::{
     register_views_for_plugin,
 };
 use std::{
+    borrow::Cow,
     io,
+    path::PathBuf,
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -77,13 +79,58 @@ impl ClipboardService {
             return Ok(());
         }
         let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-        let text = clipboard.get_text().map_err(|e| e.to_string())?;
-        if text.trim().is_empty() || text.len() > 1_000_000 {
-            return Ok(());
+        if let Ok(text) = clipboard.get_text()
+            && !text.trim().is_empty()
+            && text.len() <= 1_000_000
+        {
+            self.db
+                .clipboard_capture(&text, now(), 500)
+                .map_err(|e| e.to_string())?;
         }
-        self.db
-            .clipboard_capture(&text, now(), 500)
-            .map_err(|e| e.to_string())?;
+        if let Ok(image) = clipboard.get_image() {
+            const MAX_IMAGE_BYTES: usize = 128 * 1024 * 1024;
+            let Some(pixel_count) = image.width.checked_mul(image.height) else {
+                return Err("剪贴板图片尺寸无效".into());
+            };
+            if image.bytes.len() <= MAX_IMAGE_BYTES && pixel_count > 0 {
+                let image_dir = image_store_directory()?;
+                std::fs::create_dir_all(&image_dir).map_err(|e| e.to_string())?;
+                let mut digest = sha2::Sha256::new();
+                use sha2::Digest as _;
+                digest.update((image.width as u64).to_le_bytes());
+                digest.update((image.height as u64).to_le_bytes());
+                digest.update(image.bytes.as_ref());
+                let hash = digest
+                    .finalize()
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>();
+                let path = image_dir.join(format!("{hash}.png"));
+                if !path.is_file() {
+                    image::save_buffer_with_format(
+                        &path,
+                        image.bytes.as_ref(),
+                        image.width as u32,
+                        image.height as u32,
+                        image::ColorType::Rgba8,
+                        image::ImageFormat::Png,
+                    )
+                    .map_err(|e| format!("保存剪贴板图片失败：{e}"))?;
+                }
+                self.db
+                    .clipboard_capture_image(
+                        &hash,
+                        &path.to_string_lossy(),
+                        image.width as u32,
+                        image.height as u32,
+                        now(),
+                        500,
+                    )
+                    .map_err(|e| e.to_string())?;
+            } else {
+                tracing::warn!("skipped clipboard image exceeding capture limits");
+            }
+        }
         self.reload()?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
@@ -111,7 +158,36 @@ impl ClipboardService {
             .items
             .lock()
             .map_err(|_| "clipboard cache unavailable")? = items;
+        self.cleanup_image_cache();
         Ok(())
+    }
+    fn cleanup_image_cache(&self) {
+        let Ok(items) = self.snapshot() else {
+            return;
+        };
+        let retained = items
+            .into_iter()
+            .filter_map(|item| item.image_path.map(PathBuf::from))
+            .collect::<std::collections::HashSet<_>>();
+        let Ok(directory) = image_store_directory() else {
+            return;
+        };
+        let Ok(entries) = std::fs::read_dir(directory) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let generated_png = path.extension().is_some_and(|ext| ext == "png")
+                && path
+                    .file_stem()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| {
+                        name.len() == 64 && name.bytes().all(|b| b.is_ascii_hexdigit())
+                    });
+            if generated_png && !retained.contains(&path) {
+                let _ = std::fs::remove_file(path);
+            }
+        }
     }
     pub fn revision(&self) -> u64 {
         self.revision.load(Ordering::Acquire)
@@ -128,12 +204,32 @@ impl ClipboardService {
         self.wake.trigger();
     }
     pub fn use_item(&self, id: i64) -> Result<(), String> {
-        let text = self
+        let content = self
             .db
             .clipboard_mark_used(id, now())
             .map_err(|e| e.to_string())?;
         let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
-        clipboard.set_text(text).map_err(|e| e.to_string())?;
+        let selected = self
+            .snapshot()?
+            .into_iter()
+            .find(|item| item.id == id)
+            .ok_or_else(|| "剪贴板记录已不存在".to_owned())?;
+        if selected.content_type == "image" {
+            let path = selected
+                .image_path
+                .ok_or_else(|| "历史图片文件缺失，无法复制".to_owned())?;
+            let decoded = image::open(&path).map_err(|e| format!("读取历史图片失败：{e}"))?;
+            let rgba = decoded.to_rgba8();
+            clipboard
+                .set_image(arboard::ImageData {
+                    width: rgba.width() as usize,
+                    height: rgba.height() as usize,
+                    bytes: Cow::Owned(rgba.into_raw()),
+                })
+                .map_err(|e| e.to_string())?;
+        } else {
+            clipboard.set_text(content).map_err(|e| e.to_string())?;
+        }
         self.reload()?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
@@ -251,7 +347,7 @@ impl ClipboardService {
                     fn on_clipboard_change(&mut self) -> CallbackResult {
                         if let Some(s) = self.0.upgrade() {
                             if let Err(e) = s.capture() {
-                                tracing::debug!(%e,"clipboard text capture skipped");
+                                tracing::debug!(%e,"clipboard content capture skipped");
                             }
                         }
                         CallbackResult::Next
@@ -280,6 +376,15 @@ impl ClipboardService {
             tracing::error!(%e,"clipboard listener thread failed");
         }
     }
+}
+
+fn image_store_directory() -> Result<PathBuf, String> {
+    if let Some(profile) = std::env::var_os("PHOTAG_DEV_TEST_DIR") {
+        return Ok(PathBuf::from(profile).join("clipboard-images"));
+    }
+    dirs::data_local_dir()
+        .map(|path| path.join("PhoTag").join("ClipboardImages"))
+        .ok_or_else(|| "无法确定剪贴板图片缓存目录".into())
 }
 #[derive(Clone, Copy)]
 pub struct ClipboardPlugin;

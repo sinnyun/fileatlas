@@ -142,7 +142,13 @@ impl ClipboardPanel {
                     .font_semibold()
                     .child("内容类型 · 自动识别"),
             );
-        for kind in [ContentKind::Text, ContentKind::Link, ContentKind::Code] {
+        for kind in [
+            ContentKind::Text,
+            ContentKind::Link,
+            ContentKind::Code,
+            ContentKind::Html,
+            ContentKind::Image,
+        ] {
             let count = self.kinds.values().filter(|value| **value == kind).count();
             navigation = navigation.child(self.nav(
                 &format!("clipboard-filter-{}", kind.key()),

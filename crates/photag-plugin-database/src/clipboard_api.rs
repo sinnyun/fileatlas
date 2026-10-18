@@ -115,6 +115,10 @@ mod tests {
 pub struct ClipboardHistoryRecord {
     pub id: i64,
     pub content: String,
+    pub content_type: String,
+    pub image_path: Option<String>,
+    pub image_width: Option<u32>,
+    pub image_height: Option<u32>,
     pub category_id: Option<i64>,
     /// Durable favorite flag; stored in the legacy `pinned` column for compatibility.
     pub pinned: bool,
@@ -139,8 +143,8 @@ impl DatabaseService {
         self.with_reader(|c| {
             let categories = c.prepare("SELECT id,name FROM clipboard_categories ORDER BY position,name")?
                 .query_map([], |r| Ok(ClipboardCategoryRecord { id:r.get(0)?, name:r.get(1)? }))?.collect::<rusqlite::Result<Vec<_>>>()?;
-            let items = c.prepare("SELECT id,content,category_id,pinned,created_at,last_used_at FROM clipboard_history ORDER BY pinned DESC,last_used_at DESC")?
-                .query_map([], |r| Ok(ClipboardHistoryRecord { id:r.get(0)?,content:r.get(1)?,category_id:r.get(2)?,pinned:r.get::<_,i64>(3)?!=0,created_at:r.get(4)?,last_used_at:r.get(5)? }))?.collect::<rusqlite::Result<Vec<_>>>()?;
+            let items = c.prepare("SELECT id,content,content_type,image_path,image_width,image_height,category_id,pinned,created_at,last_used_at FROM clipboard_history ORDER BY pinned DESC,last_used_at DESC")?
+                .query_map([], |r| Ok(ClipboardHistoryRecord { id:r.get(0)?,content:r.get(1)?,content_type:r.get(2)?,image_path:r.get(3)?,image_width:r.get(4)?,image_height:r.get(5)?,category_id:r.get(6)?,pinned:r.get::<_,i64>(7)?!=0,created_at:r.get(8)?,last_used_at:r.get(9)? }))?.collect::<rusqlite::Result<Vec<_>>>()?;
             Ok((categories,items))
         })
     }
@@ -153,6 +157,29 @@ impl DatabaseService {
         self.with_writer(|c| {
             c.execute("INSERT INTO clipboard_history(content,created_at,last_used_at) VALUES(?1,?2,?2) ON CONFLICT(content) DO UPDATE SET last_used_at=excluded.last_used_at", params![content,now])?;
             c.execute("DELETE FROM clipboard_history WHERE pinned=0 AND id NOT IN (SELECT id FROM clipboard_history WHERE pinned=0 ORDER BY last_used_at DESC LIMIT ?1)", [limit])?;
+            Ok(())
+        })
+    }
+
+    pub fn clipboard_capture_image(
+        &self,
+        hash: &str,
+        image_path: &str,
+        width: u32,
+        height: u32,
+        now: i64,
+        limit: i64,
+    ) -> Result<(), DatabaseAccessError> {
+        let content = format!("image:{hash}");
+        self.with_writer(|c| {
+            c.execute(
+                "INSERT INTO clipboard_history(content,content_type,image_path,image_width,image_height,created_at,last_used_at) VALUES(?1,'image',?2,?3,?4,?5,?5) ON CONFLICT(content) DO UPDATE SET content_type='image',image_path=excluded.image_path,image_width=excluded.image_width,image_height=excluded.image_height,last_used_at=excluded.last_used_at",
+                params![content, image_path, width, height, now],
+            )?;
+            c.execute(
+                "DELETE FROM clipboard_history WHERE pinned=0 AND id NOT IN (SELECT id FROM clipboard_history WHERE pinned=0 ORDER BY last_used_at DESC LIMIT ?1)",
+                [limit],
+            )?;
             Ok(())
         })
     }

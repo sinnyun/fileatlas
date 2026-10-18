@@ -17,6 +17,7 @@
   existing DatabaseService profile/path rules.
 - Browser-store persistence now includes `clipboard_categories` before `clipboard_history`, plus child/parent deletion reconciliation. Earlier browser builds created the tables in memory but omitted them from the durable-store whitelist. The browser-mode regression covers recapture deduplication, assignment, rename, restart, deletion-to-unclassified, and deleted-history restart behavior.
 - Category deletion explicitly clears `category_id` in the same transaction before removing the category; text survives. This feature is new workbench behavior with no counterpart in the pinned photo-only source, and uses the existing shared persistence boundary.
+- Clipboard history now has additive `content_type`, `image_path`, `image_width`, and `image_height` columns. Existing rows migrate as text without rewriting their content; image bytes remain in the clipboard plugin's PhoTag-owned PNG cache, not in the shared SQLite record.
 
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 

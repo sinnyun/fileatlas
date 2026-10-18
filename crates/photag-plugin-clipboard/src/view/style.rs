@@ -13,6 +13,8 @@ pub(super) fn kind_icon(kind: ContentKind) -> IconName {
         ContentKind::Text => IconName::FileText,
         ContentKind::Link => IconName::Link,
         ContentKind::Code => IconName::Code,
+        ContentKind::Html => IconName::Code,
+        ContentKind::Image => IconName::FileImage,
     }
 }
 pub(super) fn section() -> Div {

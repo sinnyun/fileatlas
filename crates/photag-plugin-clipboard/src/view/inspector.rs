@@ -10,6 +10,8 @@ impl ClipboardPanel {
             .map(|item| item.category_id)
             .unwrap_or(self.new_group);
         let value = self.editor.read(cx).value();
+        let selected_image = selected.and_then(|item| item.image_path.as_deref());
+        let content_length = format!("{} 字", value.chars().count());
         let dirty = selected.is_none_or(|item| value.as_ref() != item.content);
         let mut heading = div().h_flex().items_center().justify_between().child(
             div()
@@ -70,24 +72,62 @@ impl ClipboardPanel {
             .gap(px(14.))
             .p(px(16.))
             .child(heading)
-            .child(
-                div().v_flex().flex_1().min_h(px(100.)).gap(px(8.)).child(
-                    photag_ui_bridge::components::textarea(&self.editor)
-                        .h_full()
-                        .w_full()
-                        .text_size(px(theme::FONT_SIZE_BODY))
-                        .line_height(px(23.))
-                        .text_color(rgb(TEXT)),
-                ),
-            )
+            .child(if let Some(path) = selected_image {
+                div()
+                    .id("clipboard-selected-image-preview")
+                    .v_flex()
+                    .flex_1()
+                    .min_h(px(100.))
+                    .min_w_0()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(10.))
+                    .child(
+                        img(std::path::PathBuf::from(path))
+                            .w_full()
+                            .h(px(300.))
+                            .object_fit(ObjectFit::Contain),
+                    )
+                    .child(format!(
+                        "图片 · {} × {} 像素",
+                        selected
+                            .and_then(|item| item.image_width)
+                            .unwrap_or_default(),
+                        selected
+                            .and_then(|item| item.image_height)
+                            .unwrap_or_default()
+                    ))
+                    .into_any_element()
+            } else {
+                div()
+                    .v_flex()
+                    .flex_1()
+                    .min_h(px(100.))
+                    .gap(px(8.))
+                    .child(
+                        photag_ui_bridge::components::textarea(&self.editor)
+                            .h_full()
+                            .w_full()
+                            .text_size(px(theme::FONT_SIZE_BODY))
+                            .line_height(px(23.))
+                            .text_color(rgb(TEXT)),
+                    )
+                    .into_any_element()
+            })
             .child(
                 div()
                     .h_flex()
                     .justify_between()
                     .text_size(px(12.))
                     .text_color(rgb(MUTED))
-                    .child(format!("{} 字", value.chars().count()))
-                    .child(if dirty {
+                    .child(if selected_image.is_some() {
+                        "图片内容".to_owned()
+                    } else {
+                        content_length
+                    })
+                    .child(if selected_image.is_some() {
+                        "原图已保存在 PhoTag 本地"
+                    } else if dirty {
                         "内容未保存"
                     } else {
                         "内容已保存"
@@ -208,48 +248,61 @@ impl ClipboardPanel {
                     ),
             );
         }
-        pane = pane.child(
-            action(
-                "clipboard-save-edit",
-                if id.is_some() {
-                    "保存内容"
-                } else {
-                    "添加到历史"
-                },
-                true,
-            )
-            .icon(icon(IconName::Save, 18.))
-            .on_click(cx.listener(|this, _, _, cx| {
-                let content = this.editor.read(cx).value().to_owned();
-                if let Some(item) = this
-                    .selected
-                    .and_then(|id| this.items.iter().find(|item| item.id == id))
-                {
-                    let result =
-                        this.service
-                            .save_item(item.id, &content, item.category_id, item.pinned);
-                    this.finish(result, "内容已保存，类型已重新识别", cx);
-                } else {
-                    match this.service.add_text(&content, this.new_group, false) {
-                        Ok(id) => {
-                            this.selected = Some(id);
-                            this.sync();
-                            this.message = Some("已添加到历史".into());
+        if selected_image.is_none() {
+            pane = pane.child(
+                action(
+                    "clipboard-save-edit",
+                    if id.is_some() {
+                        "保存内容"
+                    } else {
+                        "添加到历史"
+                    },
+                    true,
+                )
+                .icon(icon(IconName::Save, 18.))
+                .on_click(cx.listener(|this, _, _, cx| {
+                    let content = this.editor.read(cx).value().to_owned();
+                    if let Some(item) = this
+                        .selected
+                        .and_then(|id| this.items.iter().find(|item| item.id == id))
+                    {
+                        let result = this.service.save_item(
+                            item.id,
+                            &content,
+                            item.category_id,
+                            item.pinned,
+                        );
+                        this.finish(result, "内容已保存，类型已重新识别", cx);
+                    } else {
+                        match this.service.add_text(&content, this.new_group, false) {
+                            Ok(id) => {
+                                this.selected = Some(id);
+                                this.sync();
+                                this.message = Some("已添加到历史".into());
+                            }
+                            Err(error) => this.message = Some(error),
                         }
-                        Err(error) => this.message = Some(error),
+                        cx.notify();
                     }
-                    cx.notify();
-                }
-            })),
-        );
+                })),
+            );
+        }
         if let Some(id) = id {
             pane = pane.child(
-                action("clipboard-use-selected", "复制到剪贴板", false)
-                    .icon(icon(IconName::Copy, 18.))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        let result = this.service.use_item(id);
-                        this.finish(result, "已复制到系统剪贴板", cx);
-                    })),
+                action(
+                    "clipboard-use-selected",
+                    if selected_image.is_some() {
+                        "复制图片到系统剪贴板"
+                    } else {
+                        "复制到剪贴板"
+                    },
+                    false,
+                )
+                .icon(icon(IconName::Copy, 18.))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    let result = this.service.use_item(id);
+                    this.finish(result, "已复制到系统剪贴板", cx);
+                })),
             );
         }
         pane.into_any_element()

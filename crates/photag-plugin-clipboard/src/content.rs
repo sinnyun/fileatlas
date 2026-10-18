@@ -4,6 +4,8 @@ pub enum ContentKind {
     Text,
     Link,
     Code,
+    Html,
+    Image,
 }
 
 impl ContentKind {
@@ -12,6 +14,8 @@ impl ContentKind {
             Self::Text => "text",
             Self::Link => "link",
             Self::Code => "code",
+            Self::Html => "html",
+            Self::Image => "image",
         }
     }
     pub fn label(self) -> &'static str {
@@ -19,6 +23,8 @@ impl ContentKind {
             Self::Text => "文本",
             Self::Link => "链接",
             Self::Code => "代码",
+            Self::Html => "HTML",
+            Self::Image => "图片",
         }
     }
 }
@@ -31,6 +37,11 @@ pub fn classify(content: &str) -> ContentKind {
         })
     {
         return ContentKind::Link;
+    }
+    if value.contains('<')
+        && (value.contains("</") || value.contains("/>") || value.contains("<!DOCTYPE"))
+    {
+        return ContentKind::Html;
     }
     let json = (value.starts_with('{') || value.starts_with('['))
         && serde_json::from_str::<serde_json::Value>(value).is_ok();

@@ -33,7 +33,7 @@ const layers = [
     'photag-plugin-shortcuts',
     'photag-plugin-clipboard',
   ],
-  ['photag-plugin-settings'],
+  ['photag-plugin-settings', 'photag-plugin-screenshot'],
   ['photag-plugin-versions'],
   ['photag-plugin-ai'],
   ['photag-plugin-gallery'],
@@ -56,6 +56,8 @@ const sameLayerEdges = new Set([
   'photag-plugin-launcher -> photag-ui-bridge',
   'photag-plugin-shortcuts -> photag-ui-bridge',
   'photag-plugin-clipboard -> photag-ui-bridge',
+  'photag-plugin-screenshot -> photag-plugin-settings',
+  'photag-plugin-mcp -> photag-plugin-screenshot',
   'photag-plugin-ai -> photag-plugin-settings',
   'photag-shell -> photag-plugin-mcp',
 ]);

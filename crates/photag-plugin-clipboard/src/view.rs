@@ -88,6 +88,7 @@ pub(super) fn panel(
     let selected = items.first().map(|item| item.id);
     let initial = items
         .first()
+        .filter(|item| item.image_path.is_none())
         .map(|item| item.content.clone())
         .unwrap_or_default();
     let search = app.new(|cx| InputState::new(window, cx).placeholder("搜索内容"));
@@ -130,7 +131,7 @@ pub(super) fn panel(
         });
         let kinds = items
             .iter()
-            .map(|item| (item.id, classify(&item.content)))
+            .map(|item| (item.id, item_kind(item)))
             .collect();
         ClipboardPanel {
             revision: service.revision(),
@@ -195,7 +196,7 @@ impl ClipboardPanel {
         self.kinds = self
             .items
             .iter()
-            .map(|item| (item.id, classify(&item.content)))
+            .map(|item| (item.id, item_kind(item)))
             .collect();
         self.capture_paused = self.service.is_paused();
         self.revision = self.service.revision();
@@ -216,7 +217,13 @@ impl ClipboardPanel {
             Filter::Group(id) => item.category_id == Some(id),
             Filter::Kind(kind) => self.kinds.get(&item.id) == Some(&kind),
         };
-        filter_matches && (query.is_empty() || item.content.to_lowercase().contains(query))
+        filter_matches
+            && (query.is_empty()
+                || item.content.to_lowercase().contains(query)
+                || item
+                    .image_path
+                    .as_deref()
+                    .is_some_and(|path| path.to_lowercase().contains(query)))
     }
     fn select(
         &mut self,
@@ -226,8 +233,17 @@ impl ClipboardPanel {
     ) {
         self.confirm_favorite_delete = None;
         self.selected = Some(item.id);
-        self.editor
-            .update(cx, |state, cx| state.set_value(&item.content, window, cx));
+        self.editor.update(cx, |state, cx| {
+            state.set_value(
+                if item.image_path.is_some() {
+                    ""
+                } else {
+                    &item.content
+                },
+                window,
+                cx,
+            )
+        });
         self.message = None;
         cx.notify();
     }
@@ -300,6 +316,13 @@ impl ClipboardPanel {
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("clipboard.ui", &state);
         }
+    }
+}
+fn item_kind(item: &ClipboardHistoryRecord) -> ContentKind {
+    if item.image_path.is_some() || item.content_type == "image" {
+        ContentKind::Image
+    } else {
+        classify(&item.content)
     }
 }
 impl Drop for ClipboardPanel {

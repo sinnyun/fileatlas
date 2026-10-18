@@ -25,6 +25,7 @@ use photag_plugin_launcher::LauncherService;
 use photag_plugin_metadata_export::MetadataExportService;
 use photag_plugin_navigation::NavigationService;
 use photag_plugin_quicklook::QuickLookService;
+use photag_plugin_screenshot::ScreenshotService;
 use photag_plugin_tagging::TaggingService;
 use photag_plugin_versions::VersionsService;
 use rmcp::{
@@ -151,6 +152,7 @@ impl Plugin for McpPlugin {
         let dev_test = context.try_service::<DevTestService>().ok();
         let launcher = context.try_service::<LauncherService>().ok();
         let clipboard = context.try_service::<ClipboardService>().ok();
+        let screenshot = context.try_service::<ScreenshotService>().ok();
         let i18n = context
             .try_service::<photag_plugin_i18n::I18nService>()
             .ok();
@@ -177,6 +179,7 @@ impl Plugin for McpPlugin {
             dev_test,
             launcher,
             clipboard,
+            screenshot,
             i18n,
             surfaces,
             command_catalog,
@@ -243,6 +246,7 @@ struct PhoTagMcpServer {
     dev_test: Option<Arc<DevTestService>>,
     launcher: Option<Arc<LauncherService>>,
     clipboard: Option<Arc<ClipboardService>>,
+    screenshot: Option<Arc<ScreenshotService>>,
     i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     mutations_enabled: bool,
@@ -260,6 +264,7 @@ impl PhoTagMcpServer {
         dev_test: Option<Arc<DevTestService>>,
         launcher: Option<Arc<LauncherService>>,
         clipboard: Option<Arc<ClipboardService>>,
+        screenshot: Option<Arc<ScreenshotService>>,
         i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
         command_catalog: Arc<photag_ui_bridge::UiCatalog>,
@@ -292,6 +297,7 @@ impl PhoTagMcpServer {
             dev_test,
             launcher,
             clipboard,
+            screenshot,
             mutations_enabled: std::env::var("PHOTAG_MCP_ALLOW_MUTATIONS")
                 .is_ok_and(|value| value == "1"),
         }
