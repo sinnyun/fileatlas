@@ -2,14 +2,20 @@
 
 ## Status
 
-### Development baseline and current phase (2026-10-14)
+### Development baseline and current phase (PhoTag 0.2, 2026-10-19)
 
-The user accepted the current interface as development baseline
-`dev-baseline-2026-10-14`. The current phase is **functional operation
+The current project definition is PhoTag 0.2, baseline
+`dev-baseline-0.2-2026-10-19`. This is a project-development baseline, not the
+Cargo/application release version (still `0.1.0`). Read
+`docs/development-baseline-0.2-2026-10-19.md` and
+`docs/development-baseline-2026-10-14.md` (historical layout baseline) together
+with `docs/functional-development-plan.md` before continuing. The current phase is **functional operation
 optimization and feature development**, not continued wholesale UI redesign.
-Read `docs/development-baseline-2026-10-14.md` and
-`docs/functional-development-plan.md` before continuing. Preserve the accepted
-layout unless the user requests a change or a feature needs a targeted update.
+Preserve the PhoTag 0.2 layout and plugin architecture unless the user requests
+a change or a feature needs a targeted update. The accepted multi-column and
+program-workspace behavior is recorded in the 0.2 baseline and its validation
+evidence; the October 14 document is historical context, not the current
+complete layout specification.
 The product direction is a personal all-purpose workbench for the user's own
 use: preserve the photo library as a completed core capability while adding
 distinct, optional capabilities as compile-time Cordis feature plugins. Future
@@ -35,10 +41,14 @@ PhoTag MCP with isolated test profiles. The client is
 `scripts/photag-mcp-debug.cjs`.
 
 Automatic startup update offers remain suppressed; explicit manual checks and
-installation remain available. Main-window panel design is
-`docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png` plus its
-companion notes. Other screens follow `docs/reference-ui/final-v5/` and
-concepts notes. Mockups are visual direction, not pixel measurements.
+installation remain available. The current complete main-window definition is
+PhoTag 0.2 in `docs/development-baseline-0.2-2026-10-19.md`; its active
+multi-column visual reference is
+`docs/reference-ui/concepts/multi-column-workspaces-2026-10-19.png` plus its
+companion notes. The October 14 sidebar/preview image remains the reference for
+the global sidebar and inspector structure. Other screens follow the active
+entries in `docs/reference-ui/README.md`, including final-v5 where selected.
+Mockups are visual direction, not pixel measurements.
 
 `vendor/photag-source/` remains the reference for backend behavior, data
 semantics and queries. The migration-phase documents
@@ -89,16 +99,29 @@ written.
   native event delivery and filesystem race behavior still need Windows tests.
 - `photag-plugin-gallery` ports the source skeleton/window data model, paints
   cached image thumbnails, pages records in 200-row batches, and supports
-  selection, ratings, keyboard navigation, filters, date grouping,
-  rubber-band selection, named tag filters, hierarchical tag assignment,
-  settings/session persistence, file actions, statistics, bulk operations,
-  preview routing, and Cordis event reloads. Windows behavior remains
-  unverified.
+  selection, ratings, keyboard navigation, filters, grouping, rubber-band
+  selection, named tag filters, hierarchical tag assignment, settings/session
+  persistence, file actions, statistics, bulk operations and Cordis event
+  reloads. It supplies up to four independent browser views for the columns
+  feature, each with local address, query, selection and scroll state. Ordinary
+  file viewing is handed to the user's running QuickLook. Record platform and
+  interaction coverage from the linked MCP evidence; do not describe all
+  Windows paths as either verified or unverified as a group.
+- `photag-plugin-columns` owns the active single/dual/quad layout state and
+  toolbar contribution. Shell composes the views; Gallery owns each pane's
+  browsing behavior. Shared filter/view controls target the active pane.
+- `photag-plugin-workspaces` owns the versioned JSON program-workspace list,
+  default selection and manager UI. It saves startup layout and each pane's
+  browsing/view configuration, not media rows. Its normal path is
+  `%LOCALAPPDATA%\\PhoTag\\workspaces\\workspaces.json`; dev-test can supply
+  an isolated profile path.
 - `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, coordinates folder add/rescan/remove, scanner
   cancellation and watcher registration, emits Cordis selection events, and
   provides native folder picking, tag editing menus, drag placement, and
-  persisted expansion. Windows interaction remains unverified.
+  persisted expansion. Main-window folder/tag selection is routed to the
+  currently active Gallery pane. Check per-flow validation notes for native
+  picker, watcher and platform-specific coverage.
 - `photag-plugin-tagging` owns media/tag assignments and association/merge/
   reparent commands through source database queries. It reuses PhoTag's XMP/
   IPTC writer, schedules metadata rewrites after mutations, and exposes
@@ -114,9 +137,14 @@ written.
   error feedback are integrated; Windows interaction remains unverified.
 - `photag-plugin-file-operations` preserves source single/bulk file and
   database operation order and emits `MediaIndexChanged` after row mutations.
-  Gallery and Preview integrate destination/confirmation dialogs, bulk actions,
-  selection repair, and filmstrip follow-through; native Windows behavior
-  remains unverified.
+  Gallery integrates destination/confirmation dialogs, bulk actions and
+  selection repair; QuickLook is the external file-view handoff. Native Windows
+  behavior remains subject to the specific validation evidence.
+- `photag-plugin-quicklook` sends a request to an already-running user-owned
+  QuickLook instance. PhoTag does not start, install, update or terminate it.
+- `photag-plugin-versions` and `photag-plugin-version-info` provide Lore-backed
+  per-file version history and persisted version metadata through the shared
+  database service. This is distinct from global undo/redo.
 - `photag-plugin-dev-test` is opt-in development tooling, not product behavior.
   It scans `test-data/photag-library` through the production Indexing service
   and seeds up to 100,000 virtual rows in an isolated DB. Its profile must keep
@@ -157,11 +185,13 @@ written.
 - Trace source behavior and callers in `vendor/photag-source/` before changing
   backend/data behavior; update the mapping table in the same change.
 - Interface work follows the user's current design. Before implementing a
-  screen, read the corresponding `docs/reference-ui/final-v5/` mockup and its
-  concepts notes, then reproduce its structure, controls, and states in GPUI
-  Kit. The user's design decisions and in-session direction override any older
-  source-layout document. Record which mockup a change implements, and note
-  designed controls or states that are still missing from the app.
+  screen, resolve its active reference in `docs/reference-ui/README.md`, read
+  the linked mockup and concept notes, then implement its structure, controls
+  and states in GPUI Kit. Use final-v5 only for screens where the active
+  reference still selects it. The user's design decisions and in-session
+  direction override older source-layout documents. Record which reference a
+  change implements, and note designed controls or states that are still
+  missing from the app.
 - For a substantial visual/style change to a project interface, first use the
   built-in image generation capability to create a concept image, then
   implement against that visual reference. Describe the visual hierarchy,
@@ -219,11 +249,12 @@ workspace tests. Use bounded parallel build jobs and keep incremental
 compilation enabled when practical. Do not describe a compile or headless test
 as proof that an interface works.
 
-For interface work, launch the Windows application and exercise the redesigned
-flows, comparing the rendered window against the corresponding
-`docs/reference-ui/final-v5/` mockup: layout, visible controls, states, and
-copy. Record the mockup checked, exact commands, environment, outcomes, and the
-designed controls or states still missing in `docs/redesign-validation.md`.
+For interface work, launch the Windows application through the project's
+same-process MCP and exercise the changed flows, comparing the rendered window
+against its active reference from `docs/reference-ui/README.md`: layout, visible
+controls, states and copy. Record the reference checked, exact commands,
+environment, outcomes and remaining designed controls/states in
+`docs/redesign-validation.md` and a focused `docs/validation-ui/` record.
 Windows UI, shell, drag/drop, file operations, codecs, and system integration
 remain unverified until actually exercised.
 
@@ -240,8 +271,8 @@ OS mouse/keyboard injection, or a separately launched application for plugin
 MCP debugging. Cargo fmt/check/build/test remain required static/build and
 automated regression checks; they do not replace live MCP verification.
 
-Configure the MCP client to launch
-`photag-shell --mcp`, then use its tools to read the running window, library,
+For live validation configure the MCP client to launch
+`photag-shell --mcp` as an isolated stdio child, then use its tools to read the running window, library,
 media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
 The MCP server and GPUI window share that child process; it cannot attach to a
 separately launched PhoTag process. Use an isolated `dev-test` profile for
