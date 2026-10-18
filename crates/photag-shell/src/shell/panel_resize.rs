@@ -161,7 +161,16 @@ impl PhoTagShell {
     pub(super) fn dispatch_mcp_pointer(&self, window: &Window, cx: &mut Context<Self>) {
         if let Some(key) = self.capture.take_key() {
             window.defer(cx, move |window, cx| {
-                if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
+                if let Some(text) = key.strip_prefix("text:") {
+                    window.dispatch_keystroke(
+                        gpui_kit::Keystroke {
+                            key: "text".into(),
+                            key_char: Some(text.into()),
+                            ..Default::default()
+                        },
+                        cx,
+                    );
+                } else if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
                     window.dispatch_event(
                         PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
                             keystroke,

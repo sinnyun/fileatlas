@@ -606,3 +606,11 @@ GPUI 指针实际点击切回 2 项；静置 revision 不变；清空恢复原�
 MCP 重启读取均通过。已查看完整窗口截图，顶部新按钮无裁切，主窗结构保持。
 边界：全机只包含 Everything 已索引位置；当前未选择目录时，本地沿用收藏集合登记目录。
 截图与摘要：validation-ui/2026-10-17-everything-search/location-report.json 及同目录 README。
+
+## 2026-10-17 程序启动台桌面图标交互
+
+用户指定的大图标+名称布局按 `reference-ui/concepts/program-launcher-2026-10-17-v3.png` 与对应md实现，覆盖早期宽卡片/v2设计。左侧分类、中部图标网格、右侧编辑区复用共享浮动面板和GPUI Kit菜单；单击选中、双击启动、右键管理；安装日期/系统登记大小/名称支持双向排序。修正通用面板字符输入转发，补充同进程MCP文本输入和手动添加公开入口。
+
+环境Windows 150% DPI，Rust1.97.1 MSVC。`cargo +1.97.1 fmt --all -- --check`、locked/offline shell check/build、Database10和i18n4项测试以及layering/architecture/feature-ledger/ui-refresh脚本通过。构建仍有已有LNK4098提示。旧库升级、重启和自定义字段兼容性通过新增数据库回归。
+
+MCP命令：`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-launcher-icons-validated --plugins dev-test,launcher --scenario scripts/validate-program-launcher.cjs --allow-mutations`。398真实项+1隔离无窗口EXE；396原生图标，3回退（含样例）；45日期/100大小。实际控件验证中文名称/分类/隐藏保存、单击不启动、双击样例写标记、右键菜单、三字段六方向排序、扫描变化、247→247静止绘制及重新打开图标缓存。缩至950×660后图标三列，保留分类与编辑滚动区。截图、完整命令、差异和边界见[运行记录](validation-ui/2026-10-17-program-launcher/README.md)。原生文件选取、真实应用启动及卸载/提权路径仍未验；用户常规数据未打开。

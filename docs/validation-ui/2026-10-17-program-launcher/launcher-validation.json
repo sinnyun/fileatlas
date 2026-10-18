@@ -1,0 +1,19 @@
+{
+  "reopened_icon_cache": true,
+  "programs": 399,
+  "icons_loaded": 396,
+  "icons_failed": 3,
+  "install_dates": 45,
+  "sizes": 100,
+  "single_click": "selected without launch",
+  "double_click": "fixture executable wrote marker",
+  "inspector": "Chinese name, category and hidden state saved through real controls",
+  "sorting": "all 3 fields, both directions; unknown last",
+  "pinning": "two global and one category pin; priority survives all six sorts and panel reopen",
+  "quiet": {
+    "before": 246,
+    "after": 246
+  },
+  "native_picker": "opened from GPUI; same-process MCP remained responsive",
+  "fixtureId": 399
+}

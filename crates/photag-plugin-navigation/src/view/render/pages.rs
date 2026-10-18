@@ -47,7 +47,7 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
                 .child(photag_ui_bridge::i18n::tr(label)),
         );
     }
-    rail
+    rail.children(view.launcher_shortcuts.iter().cloned())
 }
 
 pub(super) fn render_extensions(view: &SidebarView) -> Div {

@@ -177,6 +177,9 @@ pub(super) fn persist(conn: &Connection) -> rusqlite::Result<()> {
             "versions",
             "version_graph",
             "version_metadata_imports",
+            "app_launcher_categories",
+            "app_launcher_entries",
+            "app_launcher_metadata",
         ] {
             let columns = conn
                 .prepare(&format!("PRAGMA main.table_info({table})"))?
@@ -226,7 +229,9 @@ pub(super) fn persist(conn: &Connection) -> rusqlite::Result<()> {
             DELETE FROM saved.tags WHERE id NOT IN(SELECT id FROM main.tags);
             DELETE FROM saved.favorite_meta WHERE id NOT IN(SELECT id FROM main.folders);
             DELETE FROM saved.folders WHERE id NOT IN(SELECT id FROM main.folders) AND id NOT IN(SELECT folder_id FROM saved.media);
-            DELETE FROM saved.media WHERE id IN(SELECT id FROM main.media WHERE COALESCE(rating,0)=0 AND NOT EXISTS(SELECT 1 FROM main.media_tags t WHERE t.media_id=media.id));")?;
+            DELETE FROM saved.media WHERE id IN(SELECT id FROM main.media WHERE COALESCE(rating,0)=0 AND NOT EXISTS(SELECT 1 FROM main.media_tags t WHERE t.media_id=media.id));
+            DELETE FROM saved.app_launcher_entries WHERE id NOT IN(SELECT id FROM main.app_launcher_entries);
+            DELETE FROM saved.app_launcher_categories WHERE id NOT IN(SELECT id FROM main.app_launcher_categories);")?;
         Ok(())
     })();
     if result.is_ok() {

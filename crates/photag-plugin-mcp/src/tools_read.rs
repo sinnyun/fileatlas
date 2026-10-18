@@ -2,6 +2,21 @@ use super::*;
 
 #[tool_router(router = read_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
+    #[tool(description = "读取程序启动台的分类、程序、隐藏状态和扫描状态。")]
+    fn get_launcher_state(&self) -> String {
+        let Some(launcher) = &self.launcher else {
+            return error_json("程序启动台插件未启用。");
+        };
+        let snapshot = launcher.snapshot();
+        serde_json::to_string(&json!({
+            "ui": self.surfaces.value("launcher.ui").and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok()),
+            "scanning": snapshot.scanning,
+            "revision": snapshot.revision,
+            "categories": snapshot.categories.iter().map(|item| json!({"id":item.id,"name":item.name,"position":item.position})).collect::<Vec<_>>(),
+            "entries": snapshot.entries.iter().map(|item| json!({"id":item.id,"display_name":item.display_name,"launch_path":item.launch_path,"category_id":item.category_id,"hidden":item.hidden,"pin_scope":match item.pin_scope { photag_plugin_launcher::PinScope::None => "none", photag_plugin_launcher::PinScope::Category => "category", photag_plugin_launcher::PinScope::AllPrograms => "all" },"source":item.source,"available":item.available,"has_uninstaller":item.uninstall_command.is_some(),"installed_on":item.installed_on,"size_bytes":item.size_bytes})).collect::<Vec<_>>()
+        })).unwrap_or_else(|error| error_json(&error.to_string()))
+    }
+
     #[tool(
         description = "Capture this PhoTag process's currently open native folder picker. No external window attachment."
     )]

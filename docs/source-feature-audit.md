@@ -474,3 +474,9 @@ global mode supplies no roots and follows its configured index. It does not
 reconfigure indexed drives or exclusion rules. Real same-process 2→3→2 hits,
 button click, quiet state and settings restart evidence are recorded in
 validation-ui/2026-10-17-everything-search/README.md.
+
+### Program launcher mapping — 2026-10-17
+
+| Source / requirement | Current mapping | Compatibility |
+|---|---|---|
+| User-requested independent launcher, desktop-icon reference and installation sorting; no launcher equivalent in vendor/photag-source | LauncherService discovery reads Windows Start Menu/uninstall registry; IShellItemImageFactory supplies native icons; DatabaseService owns typed launcher entries/nullable installation metadata; shared GPUI panels/menus/ReadModel/Wake supply UI infrastructure | Additive app_launcher_metadata table, no changes to source media/tag schema. Previous launcher database upgrade and restart regression preserves custom names/categories/hidden state. Unknown installation date/size remain unknown. |

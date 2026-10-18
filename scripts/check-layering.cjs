@@ -29,6 +29,7 @@ const layers = [
     'photag-plugin-dev-test',
     'photag-plugin-metadata-export',
     'photag-plugin-i18n',
+    'photag-plugin-launcher',
   ],
   ['photag-plugin-settings'],
   ['photag-plugin-versions'],
@@ -50,6 +51,7 @@ const sameLayerEdges = new Set([
   'photag-plugin-dev-test -> photag-ui-bridge',
   'photag-plugin-metadata-export -> photag-ui-bridge',
   'photag-plugin-i18n -> photag-ui-bridge',
+  'photag-plugin-launcher -> photag-ui-bridge',
   'photag-plugin-ai -> photag-plugin-settings',
   'photag-shell -> photag-plugin-mcp',
 ]);

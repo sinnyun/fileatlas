@@ -1108,3 +1108,7 @@ i18n4通过；实际00.png同进程MCP验证监听更新、版本创建/回退/�
 参考实现：`vendor/photag-source/src/xmp.rs`（差异：源程序会自动写文件元数据，
 当前 PhoTag 根据用户决定只在明确调用集成 API 时写回）。实现记录和验证边界：
 `validation-ui/2026-10-17-tagging-inspector/README.md`。
+
+## 2026-10-17 程序启动台安装信息兼容
+
+此为用户新增能力，vendor/photag-source没有程序启动台对应项；映射记于source-feature-audit.md末尾。现有DatabaseService创建新增app_launcher_metadata表并同步浏览模式持久库；无既有媒体/标签列变更。`launcher_metadata_upgrades_old_database_and_preserves_user_edits_across_restart`通过：无metadata表的前版启动台库兼容打开，自动发现保留自定义名称/分类/隐藏，metadata和信息编辑跨重启保留，删除关联清理。Database10项回归通过；UI/native图标/排序与同进程样例启动证据见validation-ui/2026-10-17-program-launcher/README.md。安装时间/大小是Windows注册值，缺失不伪造。

@@ -1,5 +1,29 @@
 # MCP plugin ports / MCP 对接
 
+## Program launcher diagnostics — 2026-10-17
+
+When `photag.launcher` is enabled, `get_launcher_state` reads its in-memory
+snapshot from `LauncherService` in the same PhoTag process. It returns scan
+status, categories and app entries (display name, launch path, category,
+hidden/available flags, discovery source, pin scope, install date/size, and
+whether an uninstall command is registered). Mutation-guarded tools cover
+adding and refreshing discovery; category create/rename/delete; program
+display-name/category/hidden edits; pinning; launch; list-only removal; and
+uninstall. Launch, removal, category deletion, and uninstall require
+`confirm=true`; uninstall runs the registered command without another native
+prompt after explicit MCP confirmation. List-only removal never deletes files.
+All mutations still require the isolated MCP process to set
+`PHOTAG_MCP_ALLOW_MUTATIONS=1`. An absent launcher service returns an explicit
+error. Use `control_ui` pointer actions and `screenshot_window` for live panel
+interaction.
+
+`scripts/validate-program-launcher.cjs` exercises category CRUD, partial
+program edits, discovery refresh, confirmation gates, launcher-only removal
+and re-addition, plus live panel/icon/sort/pin flows. It does not invoke a real
+uninstaller; `confirm=false` is verified to leave state unchanged. Uninstall
+execution against installed software remains a manual system integration
+check.
+
 ## Everything search diagnostics — 2026-10-17
 
 `get_ui_state.gallery.search_provider` reports `everything` only after a successful
@@ -449,3 +473,11 @@ Search location (2026-10-17): mutation-guarded `control_gallery` action
 Gallery action as the top-bar toggle. `get_ui_state.gallery.search_entire_computer`
 reports the rendered selection. Scope semantics are verified against real SDK
 results and a same-process GPUI click; no OS input injection is used.
+
+### Launcher interaction diagnostics (2026-10-17)
+
+`get_launcher_state` adds nullable `installed_on` (YYYY-MM-DD) and `size_bytes` to entries, plus a nullable `ui` projection while its panel exists: selected_entry, draft_name/category/hidden, sort (name/installed/size), descending, visible_ids/count, icons_loaded/failed/pending and render_count. Disposing the view clears this projection.
+
+Mutation-guarded `add_launcher_program {path}` calls the launcher's public manual-add service; it never starts the target. Mutation-guarded `control_ui input_text` accepts at most 1000 printable characters and sends text to the currently focused GPUI input handler in the same process. `key_press` additionally allows ctrl-a and backspace. This uses the existing window input queue, without OS injection or clipboard changes. Same-process launcher validation compiles a no-window executable into the isolated profile; double-clicking its tile writes only a marker beside that executable. See `scripts/validate-program-launcher.cjs`.
+
+Mutation-guarded `set_launcher_pin {id, scope}` sets `scope` to `none`, `category`, or `all` through `LauncherService`. `get_launcher_state.entries[].pin_scope` returns the same scope string, and `ui.visible_ids` reports the view's current pinned ordering. `scripts/validate-program-launcher.cjs` verifies multiple pinned entries across name/date/size sort directions and panel reopen.

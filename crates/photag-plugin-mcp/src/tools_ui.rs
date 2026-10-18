@@ -21,8 +21,266 @@ pub(super) struct UiRequest {
     request: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherAddRequest {
+    path: String,
+}
+
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherPinRequest {
+    id: i64,
+    /// none, category, or all
+    scope: String,
+}
+
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherCategoryRequest {
+    name: String,
+}
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherCategoryIdRequest {
+    id: i64,
+    confirm: bool,
+}
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherCategoryRenameRequest {
+    id: i64,
+    name: String,
+}
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherProgramUpdateRequest {
+    id: i64,
+    name: Option<String>,
+    category_id: Option<i64>,
+    hidden: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct LauncherConfirmRequest {
+    id: i64,
+    confirm: bool,
+}
+
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
+    #[tool(
+        description = "Add one executable/shortcut to the enabled program launcher through its public service. Requires mutation permission; does not launch it."
+    )]
+    fn add_launcher_program(&self, Parameters(request): Parameters<LauncherAddRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.add_manual(std::path::Path::new(&request.path)) {
+            Ok(()) => json!({"added":true}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Set a launcher's program pin scope (none/category/all) through its public service. Requires mutation permission."
+    )]
+    fn set_launcher_pin(&self, Parameters(request): Parameters<LauncherPinRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        let scope = match request.scope.as_str() {
+            "none" => photag_plugin_launcher::PinScope::None,
+            "category" => photag_plugin_launcher::PinScope::Category,
+            "all" => photag_plugin_launcher::PinScope::AllPrograms,
+            _ => return error_json("Scope must be none, category, or all"),
+        };
+        match launcher.set_pin_scope(request.id, scope) {
+            Ok(()) => json!({"updated":true,"id":request.id,"scope":request.scope}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(description = "Create a program launcher category. Requires MCP mutation permission.")]
+    fn create_launcher_category(
+        &self,
+        Parameters(request): Parameters<LauncherCategoryRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.add_category(&request.name) {
+            Ok(()) => {
+                let category = launcher
+                    .snapshot()
+                    .categories
+                    .into_iter()
+                    .find(|item| item.name == request.name.trim());
+                json!({"created":true,"category":category.map(|item| json!({"id":item.id,"name":item.name}))}).to_string()
+            }
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(description = "Rename a program launcher category. Requires MCP mutation permission.")]
+    fn rename_launcher_category(
+        &self,
+        Parameters(request): Parameters<LauncherCategoryRenameRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.rename_category(request.id, &request.name) {
+            Ok(()) => {
+                json!({"updated":true,"id":request.id,"name":request.name.trim()}).to_string()
+            }
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Delete a launcher category and move its programs according to the database policy. Requires mutation permission and confirm=true."
+    )]
+    fn delete_launcher_category(
+        &self,
+        Parameters(request): Parameters<LauncherCategoryIdRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("Set confirm=true to delete the category.");
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.delete_category(request.id) {
+            Ok(()) => json!({"deleted":true,"id":request.id}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Edit a launcher's display name, category and/or hidden state. Omitted values remain unchanged. Requires MCP mutation permission."
+    )]
+    fn update_launcher_program(
+        &self,
+        Parameters(request): Parameters<LauncherProgramUpdateRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if request.name.is_none() && request.category_id.is_none() && request.hidden.is_none() {
+            return error_json("Provide name, category_id, or hidden.");
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        let Some(entry) = launcher
+            .snapshot()
+            .entries
+            .into_iter()
+            .find(|item| item.id == request.id)
+        else {
+            return error_json("Program not found");
+        };
+        let name = request.name.as_deref().unwrap_or(&entry.display_name);
+        let category_id = request.category_id.unwrap_or(entry.category_id);
+        let hidden = request.hidden.unwrap_or(entry.hidden);
+        match launcher.update_entry(request.id, name, category_id, hidden) {
+            Ok(()) => json!({"updated":true,"id":request.id,"display_name":name,"category_id":category_id,"hidden":hidden}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Refresh launcher discovery from installed programs. Requires MCP mutation permission; does not launch or uninstall programs."
+    )]
+    fn refresh_launcher(&self) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.refresh_discovery() {
+            Ok(()) => json!({"started":true}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Launch a registered program. Requires MCP mutation permission and confirm=true because this starts an executable."
+    )]
+    fn launch_launcher_program(
+        &self,
+        Parameters(request): Parameters<LauncherConfirmRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("Set confirm=true to launch this program.");
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.launch(request.id) {
+            Ok(()) => json!({"launched":true,"id":request.id}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Remove a program from the launcher list; this does not uninstall its files. Requires MCP mutation permission and confirm=true."
+    )]
+    fn remove_launcher_program(
+        &self,
+        Parameters(request): Parameters<LauncherConfirmRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("Set confirm=true to remove this program from the launcher.");
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.remove_entry(request.id) {
+            Ok(()) => json!({"removed":true,"id":request.id}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
+    #[tool(
+        description = "Run the registered uninstaller command for a program. This can remove software. Requires MCP mutation permission and confirm=true."
+    )]
+    fn uninstall_launcher_program(
+        &self,
+        Parameters(request): Parameters<LauncherConfirmRequest>,
+    ) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        if !request.confirm {
+            return error_json("Set confirm=true to run this program's uninstaller.");
+        }
+        let Some(launcher) = &self.launcher else {
+            return error_json("Launcher plugin is disabled");
+        };
+        match launcher.uninstall_confirmed(request.id) {
+            Ok(()) => json!({"uninstall_started":true,"id":request.id}).to_string(),
+            Err(error) => error_json(&error.to_string()),
+        }
+    }
+
     #[tool(
         description = "Read Settings, language, region separation mode, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
     )]
@@ -147,11 +405,29 @@ impl PhoTagMcpServer {
             return error_json(&error);
         }
         let result = match request.action.as_str() {
+            "input_text" => {
+                let text = request.value.unwrap_or_default();
+                if text.chars().count() > 1000 || text.chars().any(char::is_control) {
+                    return error_json("input_text requires at most 1000 printable characters");
+                }
+                return match self.capture.queue_key(format!("text:{text}")) {
+                    Ok(()) => json!({"queued":true}).to_string(),
+                    Err(error) => error_json(&error),
+                };
+            }
             "key_press" => {
                 let key = request.value.unwrap_or_default();
                 if !matches!(
                     key.as_str(),
-                    "space" | "enter" | "escape" | "ctrl-l" | "alt-left" | "alt-right" | "alt-up"
+                    "space"
+                        | "enter"
+                        | "escape"
+                        | "ctrl-l"
+                        | "alt-left"
+                        | "alt-right"
+                        | "alt-up"
+                        | "ctrl-a"
+                        | "backspace"
                 ) {
                     return error_json("unsupported navigation key");
                 }

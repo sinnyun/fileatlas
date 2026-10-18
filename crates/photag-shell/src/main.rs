@@ -16,6 +16,7 @@ fn dev_plugin_config() -> String {
         "gallery",
         "navigation",
         "metadata-export",
+        "launcher",
         "file-operations",
         "thumbnails",
         "indexing",
@@ -143,6 +144,11 @@ fn main() {
         || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "gallery")
         || dev_plugin_enabled(&plugin_config, "versions");
+    let enable_launcher = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || enable_gallery
+        || dev_plugin_enabled(&plugin_config, "launcher");
     let enable_versions = enable_gallery || dev_plugin_enabled(&plugin_config, "versions");
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
@@ -150,6 +156,7 @@ fn main() {
         || enable_gallery
         || enable_mcp
         || enable_dev_test
+        || enable_launcher
         || dev_plugin_enabled(&plugin_config, "navigation");
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
@@ -388,6 +395,22 @@ fn main() {
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start navigation plugin"),
         )
+    } else {
+        None
+    };
+    let _launcher_fiber = if enable_launcher {
+        let plugin = photag_plugin_launcher::LauncherPlugin;
+        let input = match plugin.prepare(photag_plugin_launcher::LauncherConfig) {
+            Ok(input) => input,
+            Err(never) => match never {},
+        };
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start program launcher plugin");
+                None
+            }
+        }
     } else {
         None
     };

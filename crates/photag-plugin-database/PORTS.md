@@ -84,8 +84,26 @@ callbacks. Browser-mode persistence includes these tables so version history
 survives process restarts. Legacy `version-info.sqlite3` is imported
 idempotently and preserved as a rollback copy.
 
+## Program launcher tables (2026-10-17)
+
+The shared PhoTag database schema includes `app_launcher_categories` and
+`app_launcher_entries`; they live in the same database service and connection
+pool as the rest of the application. Browser-mode `photag-tags.db` persistence
+copies these tables into its durable store and synchronizes removals, so launcher
+categories and edits survive restarts without creating a plugin-owned DB file.
+The typed methods `launcher_snapshot`, `launcher_merge_discovered`,
+`launcher_add_category`, `launcher_rename_category`, `launcher_delete_category`,
+`launcher_rename_entry`, `launcher_move_entry`, `launcher_set_hidden`,
+`launcher_remove_entry`, and `launcher_add_manual` provide the feature boundary.
+Schema setup is idempotent in `db::initialize` and adds tables only; it does not
+alter existing photo rows or columns.
+
 Search-location contract (2026-10-17): `MediaQuery.search_entire_computer: bool`
 is a Gallery orchestration flag (default false), not a SQLite schema field.
 Gallery normalizes active search directory constraints before invoking the DB;
 SQL continues to apply `directory_tree`, tag/date/rating and candidate predicates.
 No migration or persistent inventory changes are introduced by this flag.
+
+### Launcher installation metadata (2026-10-17)
+
+The existing database owns additive `app_launcher_metadata(entry_id INTEGER PRIMARY KEY REFERENCES app_launcher_entries(id) ON DELETE CASCADE, installed_on TEXT, size_bytes INTEGER, pin_scope INTEGER NOT NULL DEFAULT 0)`. `pin_scope` uses 0=none, 1=category top, 2=all-programs top. Startup migrates an earlier metadata table by adding the defaulted column. `launcher_set_pin_scope` validates and writes through the typed service; rescans preserve the value while updating installation metadata. Browser-mode persistence synchronizes the new column with its table. The regression checks prior-schema migration, restart persistence, scope validation and cascade deletion.

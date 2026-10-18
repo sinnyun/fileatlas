@@ -9,6 +9,9 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - Cordis plugin name: `photag.navigation`; published service: `photag/navigation` (`NavigationService`).
 - Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
+- Sidebar rail extension slot: `navigation.launcher-shortcuts`; the program
+  launcher contributes the Apps button here, and Navigation mounts it beside
+  Folders/Tags/Add-ons.
 - UI emits `FolderSelectionChanged(Option<i64>)`, `TagFilterSelectionChanged(TagFilterSelection)`, and `DirectoryPathSelected(Option<String>)`; `TagSelectionChanged(Option<i64>)` remains as a legacy single-tag contract. It emits `MediaIndexChanged(())` after operations that alter indexed membership.
 - On sidebar startup, restores `sidebar_tab`, `selected_folder_id`, `selected_path`, `expanded_subdirs`, and `expanded_tag_ids` from `SessionService`. Folder IDs must still exist; selected paths must still resolve inside a registered folder; expanded paths are rebuilt through the live subdirectory listing. Tag expansion IDs missing from the current tag tree are pruned on startup. Startup emits folder and path selection events in order so Gallery receives the restored scope. Selecting a folder or All Media saves `selected_folder_id` and clears `selected_path`; selecting a path clears `selected_folder_id` and saves `selected_path`. Tab, directory-expansion and tag-expansion updates preserve fields owned by other consumers.
 - Tag filtering restores and saves `SessionState.tag_click_mode` (Select/Exclude). The mode buttons control plain tag clicks and the source configured modifier inverts the mode. The All action applies the current mode to the full tag tree; emitted included/excluded IDs flow through `TagFilterSelectionChanged` to Gallery.

@@ -7,6 +7,9 @@ mod browser_store;
 mod browser_tests;
 mod database_api;
 mod db;
+mod launcher_api;
+#[cfg(test)]
+mod launcher_tests;
 mod search_cache;
 mod version_metadata;
 pub(crate) use db::get_open_count;
@@ -14,6 +17,7 @@ pub use db::queries::{
     Folder, LibraryStats, MediaExport, MediaGroupingFields, MediaItem, MediaQuery, MediaSkeleton,
     SortOrder, Tag, TagDropPos,
 };
+pub use launcher_api::{LauncherCategoryRecord, LauncherDiscoveredProgram, LauncherEntryRecord};
 pub use version_metadata::{
     PendingVersionMerge, VersionBranch, VersionBranchPoint, VersionGraph, VersionRecord,
 };

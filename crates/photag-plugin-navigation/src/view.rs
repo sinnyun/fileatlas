@@ -114,6 +114,14 @@ pub(super) fn sidebar(
             .filter(|entry| entry.contribution.slot == "navigation.extensions")
             .map(|entry| (entry.contribution.factory)(window, app))
             .collect::<Vec<_>>();
+        let launcher_shortcuts = bridge
+            .as_ref()
+            .and_then(|bridge| bridge.views.snapshot().ok())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|entry| entry.contribution.slot == "navigation.launcher-shortcuts")
+            .map(|entry| (entry.contribution.factory)(window, app))
+            .collect::<Vec<_>>();
         let active_page = bridge
             .as_ref()
             .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
@@ -259,6 +267,7 @@ pub(super) fn sidebar(
                 tagging,
                 view_session,
                 extension_views,
+                launcher_shortcuts,
                 view_selected_folder_id,
                 view_selected_path,
                 view_expanded_subdirs,
@@ -338,6 +347,7 @@ struct SidebarView {
     tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
     session: Arc<SessionService>,
     extension_views: Vec<AnyView>,
+    launcher_shortcuts: Vec<AnyView>,
     active_page: NavigationPage,
     folder_path: Entity<InputState>,
     folder_search: Entity<InputState>,

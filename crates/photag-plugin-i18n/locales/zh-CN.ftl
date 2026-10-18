@@ -977,3 +977,102 @@ msg-search-current-folder = 当前文件夹
 msg-search-entire-computer-tooltip = 搜索 Everything 已配置索引的全部位置
 msg-search-current-folder-tooltip = 搜索当前文件夹及所有子文件夹
 msg-search-no-folder-tooltip = 未选择文件夹时，搜索已登记文件夹及其子文件夹
+
+msg-launcher-apps = 程序
+msg-launcher-search = 搜索程序名称或路径
+msg-launcher-all = 全部程序
+msg-launcher-hidden = 隐藏工具
+msg-launcher-other = 其他
+msg-launcher-launch = 启动
+msg-launcher-hide = 隐藏
+msg-launcher-show = 显示
+msg-launcher-uninstall = 卸载
+msg-launcher-empty = 尚未发现程序。可以手动添加或重新扫描。
+msg-launcher-add-program = 添加程序
+msg-launcher-scanning = 正在扫描…
+msg-launcher-scan = 扫描程序
+msg-launcher-title = 程序启动台
+msg-launcher-scan-status = 正在扫描开始菜单快捷方式和已注册程序…
+msg-launcher-add-category = 添加分类
+msg-launcher-save-category = 保存分类
+msg-launcher-delete-category-message = 此分类中的程序将移至“其他”。
+msg-launcher-delete-category = 删除分类
+msg-launcher-uninstall-title = 卸载程序
+
+msg-launcher-heading = 启动台
+
+msg-launcher-subtitle = 个人程序工作台
+
+msg-launcher-categories = 分类
+
+msg-launcher-favorites = 常用
+
+msg-launcher-move-category = 移动分类
+
+msg-launcher-manage = 管理程序 · { $path }
+
+msg-launcher-count = 显示 { $count } 个程序
+
+msg-launcher-discovering = 正在发现系统程序…
+
+msg-launcher-no-match = 没有符合条件的程序
+
+msg-launcher-empty-hint = 试试其他分类、搜索关键词，或手动添加程序
+
+msg-launcher-totals = { $programs } 个程序 · { $categories } 个分类
+
+msg-launcher-scan-active = ◌ 正在扫描
+
+msg-launcher-scan-complete = ● 扫描完成
+
+msg-launcher-delete-category-new = 分类中的程序将移至常用。
+
+msg-launcher-installed-date = 安装时间
+
+msg-launcher-ascending = 升序
+
+msg-launcher-descending = 降序
+
+msg-launcher-select = 选择程序
+
+msg-launcher-select-hint = 单击图标即可查看和编辑程序信息。
+
+msg-launcher-display-name = 显示名称
+
+msg-launcher-hidden-on = ☑ 已隐藏程序
+
+msg-launcher-hidden-off = ☐ 隐藏此程序
+
+msg-launcher-install-info = 安装信息
+
+msg-launcher-registered-size = 系统登记大小
+
+msg-launcher-installed-source = 已安装程序
+
+msg-launcher-manual-source = 手动添加
+
+msg-launcher-shortcut-source = 开始菜单快捷方式
+
+msg-launcher-metadata-hint = 安装信息由 Windows 提供，缺失值显示为未知。
+
+msg-launcher-interaction-hint = 单击选择 · 双击启动 · 右键管理
+
+msg-launcher-save-changes = 保存修改
+
+msg-launcher-unknown = 未知
+
+msg-launcher-loading-icons = 正在加载图标…
+
+msg-launcher-pin-top = 置顶
+
+msg-launcher-pin-category = 置顶到分类顶部
+
+msg-launcher-pin-global = 置顶到全部顶部
+
+msg-launcher-unpin = 取消置顶
+
+msg-launcher-pin-none = 未置顶
+
+msg-launcher-pin-category-status = 分类顶部
+
+msg-launcher-pin-global-status = 全部顶部

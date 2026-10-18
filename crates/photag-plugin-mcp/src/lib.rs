@@ -20,6 +20,7 @@ use photag_plugin_database::SortOrder;
 use photag_plugin_dev_test::DevTestService;
 use photag_plugin_file_operations::FileOperationsService;
 use photag_plugin_gallery::GalleryService;
+use photag_plugin_launcher::LauncherService;
 use photag_plugin_metadata_export::MetadataExportService;
 use photag_plugin_navigation::NavigationService;
 use photag_plugin_quicklook::QuickLookService;
@@ -145,6 +146,7 @@ impl Plugin for McpPlugin {
             .try_service::<CaptureWindowHandle>()
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
         let dev_test = context.try_service::<DevTestService>().ok();
+        let launcher = context.try_service::<LauncherService>().ok();
         let i18n = context
             .try_service::<photag_plugin_i18n::I18nService>()
             .ok();
@@ -169,6 +171,7 @@ impl Plugin for McpPlugin {
             file_operations,
             capture,
             dev_test,
+            launcher,
             i18n,
             surfaces,
             command_catalog,
@@ -233,6 +236,7 @@ struct PhoTagMcpServer {
     file_operations: Arc<FileOperationsService>,
     capture: Arc<CaptureWindowHandle>,
     dev_test: Option<Arc<DevTestService>>,
+    launcher: Option<Arc<LauncherService>>,
     i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     mutations_enabled: bool,
@@ -248,6 +252,7 @@ impl PhoTagMcpServer {
         file_operations: Arc<FileOperationsService>,
         capture: Arc<CaptureWindowHandle>,
         dev_test: Option<Arc<DevTestService>>,
+        launcher: Option<Arc<LauncherService>>,
         i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
         command_catalog: Arc<photag_ui_bridge::UiCatalog>,
@@ -278,6 +283,7 @@ impl PhoTagMcpServer {
             file_operations,
             capture,
             dev_test,
+            launcher,
             mutations_enabled: std::env::var("PHOTAG_MCP_ALLOW_MUTATIONS")
                 .is_ok_and(|value| value == "1"),
         }

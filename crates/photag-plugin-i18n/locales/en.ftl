@@ -985,3 +985,102 @@ msg-search-current-folder = Current folder
 msg-search-entire-computer-tooltip = Search all locations indexed by Everything
 msg-search-current-folder-tooltip = Search the current folder and all subfolders
 msg-search-no-folder-tooltip = No folder selected: search registered folders and their subfolders
+
+msg-launcher-apps = Apps
+msg-launcher-search = Search programs
+msg-launcher-all = All programs
+msg-launcher-hidden = Hidden tools
+msg-launcher-other = Other
+msg-launcher-launch = Launch
+msg-launcher-hide = Hide
+msg-launcher-show = Show
+msg-launcher-uninstall = Uninstall
+msg-launcher-empty = No programs discovered yet. Add a program or scan again.
+msg-launcher-add-program = Add program
+msg-launcher-scanning = Scanning…
+msg-launcher-scan = Scan programs
+msg-launcher-title = Program Launchpad
+msg-launcher-scan-status = Scanning Start menu shortcuts and registered applications…
+msg-launcher-add-category = Add category
+msg-launcher-save-category = Save category
+msg-launcher-delete-category-message = Programs in this category will be moved to Other.
+msg-launcher-delete-category = Delete category
+msg-launcher-uninstall-title = Uninstall application
+
+msg-launcher-heading = Launchpad
+
+msg-launcher-subtitle = Personal program workbench
+
+msg-launcher-categories = Categories
+
+msg-launcher-favorites = Favorite programs
+
+msg-launcher-move-category = Move to category
+
+msg-launcher-manage = Manage program · { $path }
+
+msg-launcher-count = Showing { $count } programs
+
+msg-launcher-discovering = Discovering system programs…
+
+msg-launcher-no-match = No matching programs
+
+msg-launcher-empty-hint = Try another category, search term, or add a program.
+
+msg-launcher-totals = { $programs } programs · { $categories } categories
+
+msg-launcher-scan-active = ◌ Scanning
+
+msg-launcher-scan-complete = ● Scan complete
+
+msg-launcher-delete-category-new = Programs in this category will be moved to Favorites.
+
+msg-launcher-installed-date = Installation date
+
+msg-launcher-ascending = Ascending
+
+msg-launcher-descending = Descending
+
+msg-launcher-select = Select a program
+
+msg-launcher-select-hint = Select an icon to view and edit its information.
+
+msg-launcher-display-name = Display name
+
+msg-launcher-hidden-on = ☑ Hidden program
+
+msg-launcher-hidden-off = ☐ Hide this program
+
+msg-launcher-install-info = Installation information
+
+msg-launcher-registered-size = Registered size
+
+msg-launcher-installed-source = Installed program
+
+msg-launcher-manual-source = Manually added
+
+msg-launcher-shortcut-source = Start menu shortcut
+
+msg-launcher-metadata-hint = Installation information comes from Windows. Missing values are unknown.
+
+msg-launcher-interaction-hint = Click to select · Double-click to launch · Right-click to manage
+
+msg-launcher-save-changes = Save changes
+
+msg-launcher-unknown = Unknown
+
+msg-launcher-loading-icons = Loading icons…
+
+msg-launcher-pin-top = Pin to top
+
+msg-launcher-pin-category = Pin to category top
+
+msg-launcher-pin-global = Pin to all programs top
+
+msg-launcher-unpin = Unpin
+
+msg-launcher-pin-none = Not pinned
+
+msg-launcher-pin-category-status = Category top
+
+msg-launcher-pin-global-status = All programs top

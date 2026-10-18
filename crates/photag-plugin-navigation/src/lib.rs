@@ -593,6 +593,13 @@ impl Plugin for NavigationPlugin {
                         order: 0,
                     },
                 ),
+                UiContribution::new(
+                    "navigation/launcher-shortcuts-slot",
+                    ContributionKind::Slot {
+                        label: "navigation.launcher-shortcuts".into(),
+                        order: 5,
+                    },
+                ),
             ],
         )
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;

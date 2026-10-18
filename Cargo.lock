@@ -6506,6 +6506,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "photag-plugin-launcher"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "photag-plugin-database",
+ "photag-ui-bridge",
+ "rfd",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows 0.61.3",
+ "winreg",
+]
+
+[[package]]
 name = "photag-plugin-mcp"
 version = "0.1.0"
 dependencies = [
@@ -6520,6 +6539,7 @@ dependencies = [
  "photag-plugin-gallery",
  "photag-plugin-history",
  "photag-plugin-i18n",
+ "photag-plugin-launcher",
  "photag-plugin-metadata-export",
  "photag-plugin-navigation",
  "photag-plugin-quicklook",
@@ -6730,6 +6750,7 @@ dependencies = [
  "photag-plugin-history",
  "photag-plugin-i18n",
  "photag-plugin-indexing",
+ "photag-plugin-launcher",
  "photag-plugin-mcp",
  "photag-plugin-metadata-export",
  "photag-plugin-navigation",

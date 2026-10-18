@@ -84,3 +84,7 @@ retain their 100/200ms fallback samplers. See navigation-latency validation.
 `refresh::poll<V>(Context<V>, Duration, FnMut(&mut V, &mut Context<V>) -> PollResult)` owns weak-entity timers and one notify per changed sample. `PollResult::until(changed, active)` delivers a terminal change before stopping. `ChangeGate<T>::new/changed/current` centralizes passive signature equality.
 
 `ReadModel::request` declares a demand without receiving a result from render; `poll` delivers it, `update` combines both for model pollers. `key/is_pending/value` expose state. One running worker plus one latest queued closure per model; stale results cannot overwrite current keys, A→B→A reuses A, worker disconnects cache an error. Neither utility emits logs. Callers own semantic invalidation keys; no schema/service/plugin lifecycle change. See docs/ui-refresh-contract.md and scripts/check-ui-refresh.cjs.
+
+### Floating-panel text input (2026-10-17)
+
+The panel root contains shortcut/navigation key events and permits character events to continue to the focused input handler. This keeps the same-process GPUI text-input path usable inside hosted feature panels. Escape still closes the current panel. The launcher validation uses real focused search/name inputs through `control_ui input_text`, with no clipboard or OS input injection.

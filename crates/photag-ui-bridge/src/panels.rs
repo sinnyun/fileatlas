@@ -368,7 +368,11 @@ impl Render for FloatingPanel {
                     (panel.close)();
                     cx.notify();
                 }
-                cx.stop_propagation();
+                // Character input must reach the focused input handler. Keep
+                // navigation/shortcut events contained in the floating panel.
+                if event.keystroke.key_char.is_none() {
+                    cx.stop_propagation();
+                }
             }))
             .child(frame);
         if self.drag.is_some() {

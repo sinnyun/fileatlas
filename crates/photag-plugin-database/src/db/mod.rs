@@ -119,12 +119,44 @@ pub(crate) fn initialize(conn: &Connection) -> rusqlite::Result<()> {
             legacy_path TEXT PRIMARY KEY,
             imported_at INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS app_launcher_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            position INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS app_launcher_entries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            discovery_key TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL,
+            launch_path TEXT NOT NULL,
+            uninstall_command TEXT,
+            category_id INTEGER NOT NULL,
+            hidden INTEGER NOT NULL DEFAULT 0,
+            custom_name INTEGER NOT NULL DEFAULT 0,
+            custom_category INTEGER NOT NULL DEFAULT 0,
+            source TEXT NOT NULL DEFAULT 'manual'
+        );
+        CREATE TABLE IF NOT EXISTS app_launcher_metadata (
+            entry_id INTEGER PRIMARY KEY REFERENCES app_launcher_entries(id) ON DELETE CASCADE,
+            installed_on TEXT,
+            size_bytes INTEGER,
+            pin_scope INTEGER NOT NULL DEFAULT 0 CHECK(pin_scope BETWEEN 0 AND 2)
+        );
     ",
     )
 }
 
 /// Run schema migrations for new columns added after initial release.
 pub(crate) fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    let has_launcher_pin_scope = conn
+        .prepare("SELECT pin_scope FROM app_launcher_metadata LIMIT 0")
+        .is_ok();
+    if !has_launcher_pin_scope {
+        conn.execute_batch(
+            "ALTER TABLE app_launcher_metadata ADD COLUMN pin_scope INTEGER NOT NULL DEFAULT 0 CHECK(pin_scope BETWEEN 0 AND 2)",
+        )?;
+    }
+
     // Optimization #2: micro_thumb BLOB — tiny 8x8 placeholder thumbnail
     let has_micro = conn
         .prepare("SELECT micro_thumb FROM media LIMIT 0")
