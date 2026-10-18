@@ -1,37 +1,25 @@
 use super::*;
+use photag_ui_bridge::components::WorkbenchStyle as _;
 
 impl LauncherPanel {
     fn category_row(
         &self,
         id: Option<i64>,
         name: String,
-        icon: &'static str,
+        icon: IconName,
         count: usize,
         selected: bool,
         cx: &mut Context<Self>,
     ) -> AnyElement {
         div()
             .id(format!("launcher-category-{}", id.unwrap_or(0)))
-            .h_flex()
-            .items_center()
-            .h(px(36.))
-            .px(px(10.))
-            .gap(px(9.))
-            .rounded(px(6.))
-            .cursor_pointer()
-            .bg(if selected { rgba(0x47bfff24) } else { rgba(0) })
-            .text_color(rgb(if selected {
-                theme::accent()
-            } else {
-                theme::TEXT_SECONDARY
-            }))
-            .hover(|style| style.bg(rgba(0xffffff0c)))
+            .workbench_nav(selected)
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.selected_category = id;
                 this.show_hidden = false;
                 cx.notify();
             }))
-            .child(div().w(px(20.)).text_size(px(17.)).child(icon))
+            .child(div().w(px(20.)).text_size(px(17.)).child(theme::icon(icon)))
             .child(
                 div()
                     .flex_1()
@@ -75,7 +63,7 @@ impl LauncherPanel {
                 row = row.child(
                     Button::new(format!("launcher-category-menu-{id}"))
                         .ghost()
-                        .label("⋯")
+                        .icon(theme::icon(IconName::Ellipsis))
                         .dropdown_menu(move |menu, _, _| {
                             let rename = weak.clone();
                             let delete = weak.clone();
@@ -139,15 +127,17 @@ impl LauncherPanel {
                 },
             ));
         {
-            editor = editor.child(Input::new(&self.name_input).w_full()).child(
-                Button::new("launcher-save-category")
-                    .label(tr(if self.editing_category.is_some() {
-                        "Save category"
-                    } else {
-                        "Add category"
-                    }))
-                    .on_click(cx.listener(|this, _, window, cx| this.save_name(window, cx))),
-            );
+            editor = editor
+                .child(photag_ui_bridge::components::text_input(&self.name_input).w_full())
+                .child(
+                    Button::new("launcher-save-category")
+                        .label(tr(if self.editing_category.is_some() {
+                            "Save category"
+                        } else {
+                            "Add category"
+                        }))
+                        .on_click(cx.listener(|this, _, window, cx| this.save_name(window, cx))),
+                );
         }
         if self.editing_category.is_some() {
             editor = editor.child(
@@ -182,7 +172,7 @@ impl LauncherPanel {
                         div()
                             .text_size(px(27.))
                             .text_color(rgb(theme::accent()))
-                            .child("▦"),
+                            .child(theme::large_icon(IconName::LayoutGrid)),
                     )
                     .child(
                         div()
@@ -205,7 +195,7 @@ impl LauncherPanel {
             .child(self.category_row(
                 None,
                 tr("All programs"),
-                "▦",
+                IconName::LayoutGrid,
                 visible_count,
                 !self.show_hidden && self.selected_category.is_none(),
                 cx,
@@ -213,30 +203,13 @@ impl LauncherPanel {
             .child(
                 div()
                     .id("launcher-category-hidden")
-                    .h_flex()
-                    .items_center()
-                    .h(px(36.))
-                    .px(px(10.))
-                    .gap(px(9.))
-                    .rounded(px(6.))
-                    .cursor_pointer()
-                    .bg(if self.show_hidden {
-                        rgba(0x47bfff24)
-                    } else {
-                        rgba(0)
-                    })
-                    .text_color(rgb(if self.show_hidden {
-                        theme::accent()
-                    } else {
-                        theme::TEXT_SECONDARY
-                    }))
-                    .hover(|s| s.bg(rgba(0xffffff0c)))
+                    .workbench_nav(self.show_hidden)
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.show_hidden = true;
                         this.selected_category = None;
                         cx.notify();
                     }))
-                    .child(div().w(px(20.)).child("◉"))
+                    .child(div().w(px(20.)).child(theme::icon(IconName::EyeOff)))
                     .child(div().flex_1().text_sm().child(tr("Hidden tools")))
                     .child(div().text_xs().child(hidden_count.to_string())),
             )

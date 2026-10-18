@@ -110,7 +110,11 @@ impl GalleryView {
         let mut body = div().v_flex().w_full().min_w_0().gap(px(9.)).p(px(16.));
         if create_open {
             body = body
-                .child(Input::new(&self.history_title).w_full().min_w_0())
+                .child(
+                    photag_ui_bridge::components::text_input(&self.history_title)
+                        .w_full()
+                        .min_w_0(),
+                )
                 .child(
                     div()
                         .h_flex()
@@ -258,7 +262,7 @@ impl GalleryView {
                 && state.status != photag_plugin_versions::FileVersionStatus::Unversioned
             {
                 let color = if state.status == photag_plugin_versions::FileVersionStatus::Modified {
-                    0xffb340
+                    theme::WARNING
                 } else {
                     theme::TEXT_SECONDARY
                 };

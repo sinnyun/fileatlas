@@ -48,7 +48,11 @@ impl SidebarView {
             .px(px(5.));
         if self.address.editing {
             address = address
-                .child(Input::new(&self.address.input).flex_1().min_w_0())
+                .child(
+                    photag_ui_bridge::components::text_input(&self.address.input)
+                        .flex_1()
+                        .min_w_0(),
+                )
                 .child(action_button(
                     "navigation-address-submit",
                     IconName::ArrowRight,

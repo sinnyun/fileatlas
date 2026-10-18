@@ -22,6 +22,8 @@ photag-plugin-watcher = { path = "../photag-plugin-watcher" }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-everything-search = { path = "../photag-plugin-everything-search" }
 photag-plugin-launcher = { path = "../photag-plugin-launcher" }
+photag-plugin-shortcuts = { path = "../photag-plugin-shortcuts" }
+photag-plugin-clipboard = { path = "../photag-plugin-clipboard" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }

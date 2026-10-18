@@ -1,0 +1,517 @@
+{
+  "passed": true,
+  "checks": [
+    "shared tokens",
+    "main",
+    "history",
+    "statistics",
+    "bulk",
+    "export",
+    "clipboard search/empty/focus",
+    "launcher",
+    "all settings tabs",
+    "quiet revisions",
+    "compact settings/clipboard",
+    "real swatch accent switch across settings/clipboard/launcher",
+    "selected and normal card hover",
+    "clipboard menu"
+  ],
+  "limitations": [
+    "native OS dialogs not invoked"
+  ],
+  "scale": 1.5,
+  "processId": 15136,
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell.exe",
+  "exe_sha256": "fa72c194ca548f20584757c790fbe4337af333c1f29e36bf31d7850e153f5c8c",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-unified-theme-verified",
+  "started_utc": "2026-10-18T05:35:45.535Z",
+  "steps": 137,
+  "themes": [
+    {
+      "id": "workbench-navy",
+      "accent": 2590719,
+      "selection": 1456995,
+      "base": 923683,
+      "panel": 1385008,
+      "card": 1780283,
+      "border": 3162967,
+      "body_size": 14
+    },
+    {
+      "id": "workbench-navy",
+      "accent": 5933704,
+      "selection": 2505798,
+      "base": 923683,
+      "panel": 1385008,
+      "card": 1780283,
+      "border": 3162967,
+      "body_size": 14
+    }
+  ],
+  "settled_launcher_render_samples": [
+    5,
+    34,
+    34,
+    34
+  ],
+  "screenshots": [
+    {
+      "file": "bulk-actions.png",
+      "sha256": "a2e0ea6a09981667fc32eeb4507f1bd992f2a7a24b2ad32268ffaf960a18c5f1"
+    },
+    {
+      "file": "clipboard-empty-focus.png",
+      "sha256": "4ee66bdd6aff1e87ba143ddcea0bbb72c93913d03309ad4e4f048b277aa50fd4"
+    },
+    {
+      "file": "clipboard-hover.png",
+      "sha256": "b0ceceb7a00228679d44e45294ee719a7e0dabd79f09fdadc0bade81dabedc2c"
+    },
+    {
+      "file": "clipboard-menu.png",
+      "sha256": "3ce2befd53cbd5edc716add16a06271cc056ed40c6f70a8f6a2cf3c1ca8d521b"
+    },
+    {
+      "file": "clipboard-selected-hover.png",
+      "sha256": "6b56f91b40f147ce8eb9c5f56ab468495361662e73b5aa1dc39371870b870b1b"
+    },
+    {
+      "file": "clipboard-teal.png",
+      "sha256": "13f4e35c17b9b2a3a1eb9a629a40effcc41f50ad49d3442c8471a3005097ad3f"
+    },
+    {
+      "file": "clipboard.png",
+      "sha256": "33fe061cba4475a0bda3d153c32155423a5ca7bef0ff6b4e9412cf54c6a119c8"
+    },
+    {
+      "file": "compact-clipboard-scrolled.png",
+      "sha256": "de0d5c64f75dc46b09eaaa96a86fb759b22bb5b22b98c643c0a5b496bf1ee922"
+    },
+    {
+      "file": "compact-clipboard.png",
+      "sha256": "43097aaa96ea2c5f888247bdf09dbc9ed10ca085ba1c88dd53a9d0f1be9f5ae2"
+    },
+    {
+      "file": "compact-settings.png",
+      "sha256": "e69a0e2042c50d79805bb4c103919e16f99a1e15f9428800b83f56670eed3011"
+    },
+    {
+      "file": "export.png",
+      "sha256": "185449eff3c371d10692a92c921af2170828ff4e689e02d1abe874bac3fc36b7"
+    },
+    {
+      "file": "history.png",
+      "sha256": "4eb042019d97d94ad9032365142dcadff4c34d559b6bc825a0218d6ca50161b5"
+    },
+    {
+      "file": "launcher-selected-focus.png",
+      "sha256": "eec95d4a9ae009152b0092814ea4aa915cc6d1b62ff114ebe1d7128935ccb15c"
+    },
+    {
+      "file": "launcher-teal.png",
+      "sha256": "37920357b8d3fe82de1e7bddf424f3465d877970cd7df3f53df5323d52c083d0"
+    },
+    {
+      "file": "launcher.png",
+      "sha256": "1641a1371951ce4b30d8a4f9d917319d901a706074803498635380bdf03e37f0"
+    },
+    {
+      "file": "main.png",
+      "sha256": "9a1b3a96f10d6218aa9765e2cef3e66dc4a01a5a2e23668dda8e7ff435642e21"
+    },
+    {
+      "file": "settings-ai.png",
+      "sha256": "d6fcc4a42f0b80629206cdd6e2e378d2037cefff207a57374a97f74ab9f35cf5"
+    },
+    {
+      "file": "settings-appearance.png",
+      "sha256": "60a1a8b412756888800706c88bc498af1b852471adcf253eb19a85a9f1144d2d"
+    },
+    {
+      "file": "settings-shortcuts.png",
+      "sha256": "d2dc5e8a04972d356fe4e781a04654446a97aa4aba3318be52923768124fe368"
+    },
+    {
+      "file": "settings-software.png",
+      "sha256": "b9f9237f4eacfccd47f7fb2b33588d045ec7454e2e579db6b828ca335cf641db"
+    },
+    {
+      "file": "settings-tags.png",
+      "sha256": "f28236e2da01df625d31664c52a51b033db4aa81461d6f87c487ad18ae677b91"
+    },
+    {
+      "file": "settings-teal.png",
+      "sha256": "f223c8fe4fe036fadfa8064c173e63ff017f841d2736a6dc2578840618571abf"
+    },
+    {
+      "file": "settings-updates.png",
+      "sha256": "e7938238f4879238cc396cd2b05cf7998c2cbd5220dac4f76f089bf0933bfcc2"
+    },
+    {
+      "file": "statistics.png",
+      "sha256": "dd504ff2e7a56c1b60d1ea44902276647f04245f72d3e896f8ae73092246b38c"
+    }
+  ],
+  "geometries": [
+    {
+      "file": "main.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "history.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "statistics.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "bulk-actions.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "export.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard-empty-focus.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard-selected-hover.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard-hover.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard-menu.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "launcher.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "launcher-selected-focus.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-appearance.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-teal.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "clipboard-teal.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "launcher-teal.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-shortcuts.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-tags.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-ai.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-updates.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "settings-software.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 2176,
+          "height": 1183.3333740234375
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "compact-settings.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 992,
+          "height": 629.3333129882812
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "compact-clipboard.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 992,
+          "height": 629.3333129882812
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    },
+    {
+      "file": "compact-clipboard-scrolled.png",
+      "geometry": {
+        "scale_factor": 1.5,
+        "client_size": {
+          "width": 992,
+          "height": 629.3333129882812
+        },
+        "screenshot_to_pointer": {
+          "offset_x": 11,
+          "offset_y": 45,
+          "divide_by": 1.5
+        }
+      }
+    }
+  ]
+}

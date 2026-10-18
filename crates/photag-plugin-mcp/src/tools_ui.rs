@@ -12,6 +12,7 @@ pub(super) struct UiRequest {
     /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
     /// region_separation: value border|shadow, saved through the Settings service.
     /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
+    /// pointer_scroll: value "x,y,delta_y", negative delta scrolls down; bounded logical pixels.
     /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
     /// {"kind":"remove_quick_access","path":"F:\\library"}.
     action: String,
@@ -61,8 +62,36 @@ pub(super) struct LauncherConfirmRequest {
     confirm: bool,
 }
 
+#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
+pub(super) struct ClipboardTextRequest {
+    content: String,
+    category_id: Option<i64>,
+    #[serde(default)]
+    #[serde(alias = "pinned")]
+    favorite: bool,
+}
+
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
+    #[tool(
+        description = "Add a text entry directly to the isolated clipboard workbench database for controlled UI/debug setup. Does not read or write the OS clipboard. Requires mutation permission."
+    )]
+    fn add_clipboard_text(&self, Parameters(request): Parameters<ClipboardTextRequest>) -> String {
+        if let Err(error) = self.mutation_guard() {
+            return error_json(&error);
+        }
+        let Some(service) = &self.clipboard else {
+            return error_json("剪贴板工作台插件未启用。");
+        };
+        if request.content.len() > 1_000_000 {
+            return error_json("Clipboard entry must be at most 1 MB.");
+        }
+        match service.add_text(&request.content, request.category_id, request.favorite) {
+            Ok(id) => json!({"added":true,"id":id}).to_string(),
+            Err(error) => error_json(&error),
+        }
+    }
+
     #[tool(
         description = "Add one executable/shortcut to the enabled program launcher through its public service. Requires mutation permission; does not launch it."
     )]
@@ -333,6 +362,16 @@ impl PhoTagMcpServer {
                 .as_ref()
                 .and_then(|state| state["inspector_context"].as_str())
                 == Some("file");
+        let theme_state = json!({
+            "id":"workbench-navy",
+            "accent":photag_ui_bridge::theme::accent(),
+            "selection":photag_ui_bridge::theme::selection_color(),
+            "base":photag_ui_bridge::theme::SURFACE_BASE,
+            "panel":photag_ui_bridge::theme::SURFACE_PANEL,
+            "card":photag_ui_bridge::theme::SURFACE_CARD,
+            "border":photag_ui_bridge::theme::SEPARATOR,
+            "body_size":photag_ui_bridge::theme::FONT_SIZE_BODY,
+        });
         let mut state = json!({
             "browser": {"filesystem":self.gallery.browser_enabled(), "show_descendants":self.gallery.show_descendants(),"worker_active":self.gallery.directory_worker_active(),"status":self.gallery.directory_status()},
             "input_activity": self.capture.input_snapshot(),
@@ -391,7 +430,13 @@ impl PhoTagMcpServer {
             }),
             "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         });
+        state["theme"] = theme_state;
         state["gallery_search_provider"] = json!(self.gallery.search_provider());
+        state["settings_shortcuts"] = json!({
+            "capturing_key": self.surfaces.is_capturing_key("settings"),
+            "binding_id": self.surfaces.value("settings.shortcut-capture").unwrap_or_default(),
+            "error": self.surfaces.value("settings.shortcut-error").unwrap_or_default(),
+        });
         state["gallery_search_provider_detail"] = json!(self.gallery.search_provider_detail());
         state.to_string()
     }
@@ -417,7 +462,7 @@ impl PhoTagMcpServer {
             }
             "key_press" => {
                 let key = request.value.unwrap_or_default();
-                if !matches!(
+                let supported = matches!(
                     key.as_str(),
                     "space"
                         | "enter"
@@ -428,7 +473,21 @@ impl PhoTagMcpServer {
                         | "alt-up"
                         | "ctrl-a"
                         | "backspace"
-                ) {
+                ) || {
+                    let components = key.split('-').collect::<Vec<_>>();
+                    components.len() >= 2
+                        && components.len() <= 6
+                        && components[..components.len() - 1].iter().all(|component| {
+                            ["ctrl", "alt", "shift", "win", "super", "cmd", "fn"]
+                                .contains(component)
+                        })
+                        && components.last().is_some_and(|key| {
+                            !key.is_empty()
+                                && key.len() <= 16
+                                && key.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                        })
+                };
+                if !supported {
                     return error_json("unsupported navigation key");
                 }
                 return match self.capture.queue_key(key) {
@@ -482,6 +541,7 @@ impl PhoTagMcpServer {
             "pointer_down"
             | "pointer_drag"
             | "pointer_move"
+            | "pointer_scroll"
             | "pointer_right_down"
             | "pointer_right_up"
             | "pointer_up"
@@ -497,12 +557,16 @@ impl PhoTagMcpServer {
                 let Ok(coordinates) = coordinates else {
                     return error_json("pointer requires x,y logical client coordinates");
                 };
-                if coordinates.len() != 2
-                    || coordinates
+                let scroll = request.action == "pointer_scroll";
+                if coordinates.len() != if scroll { 3 } else { 2 }
+                    || coordinates[..2]
                         .iter()
                         .any(|value| !value.is_finite() || !(0. ..=4096.).contains(value))
+                    || (scroll && (!coordinates[2].is_finite() || coordinates[2].abs() > 4096.))
                 {
-                    return error_json("pointer coordinates must be finite and bounded 0–4096");
+                    return error_json(
+                        "pointer requires bounded x,y (0–4096), and scroll delta (-4096–4096) for pointer_scroll",
+                    );
                 }
                 self.capture.queue_pointer(crate::McpPointerInput {
                     kind: match request.action.as_str() {
@@ -511,12 +575,14 @@ impl PhoTagMcpServer {
                         "pointer_double_up" => "double_up",
                         "pointer_drag" => "drag",
                         "pointer_move" => "move",
+                        "pointer_scroll" => "scroll",
                         "pointer_right_down" => "right_down",
                         "pointer_right_up" => "right_up",
                         _ => "up",
                     },
                     x: coordinates[0],
                     y: coordinates[1],
+                    scroll_y: if scroll { coordinates[2] } else { 0. },
                 })
             }
             "address_bar" => {

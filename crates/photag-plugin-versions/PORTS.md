@@ -33,6 +33,13 @@
 
 ## Limits and diagnostics
 
+- Normal Gallery browsing may call `file_state` for visible unsaved-change badges
+  without opening History. Lore store initialization emits DEBUG
+  `MeterProvider.ExistingMeterReturned`; it is meter reuse, not a restore/commit.
+  A finite initial burst is possible. Gallery caches passive reads by file/snapshot/
+  history identity; unrelated shared-database writes must not trigger them. See
+  `docs/validation-ui/2026-10-18-version-idle/README.md` for the regression evidence.
+
 - Identity currently hashes the canonical absolute path. A file rename/move starts a separate history; external edits must be saved as a version before switching. Symlinks/special files are rejected.
 - Content snapshots are deduplicated by Lore's shared store. Historical previews are separate JPEG copies; clear them only together with their Lore entity.
 - Errors are surfaced as `VersionsError` and displayed in Inspector. Inspect `versions/worktrees/<entity>/.lore`, the corresponding shared store, version-info SQLite metadata and `photag.debug` spans. Do not delete a worktree/store to repair display metadata.

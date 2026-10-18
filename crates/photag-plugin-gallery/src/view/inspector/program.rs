@@ -54,13 +54,13 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                             "Current results",
                             snapshot.map_or(0, |s| s.media_count).to_string(),
                             IconName::Image,
-                            0x4099f0,
+                            theme::accent(),
                         ))
                         .child(metric(
                             "Visible folders",
                             folders.to_string(),
                             IconName::Folder,
-                            0xe3bd68,
+                            theme::WARNING,
                         )),
                 )
                 .child(
@@ -68,12 +68,17 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                         .h_flex()
                         .w_full()
                         .gap(px(10.))
-                        .child(metric("Tags", tags.to_string(), IconName::Tag, 0xb379e8))
+                        .child(metric(
+                            "Tags",
+                            tags.to_string(),
+                            IconName::Tag,
+                            theme::CATEGORY,
+                        ))
                         .child(metric(
                             "Version",
                             env!("CARGO_PKG_VERSION").into(),
                             IconName::Info,
-                            0x38b9ce,
+                            theme::DATA,
                         )),
                 ),
         )
@@ -83,13 +88,13 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
             "Application database",
             database_path.as_deref().unwrap_or("Unavailable"),
             IconName::Info,
-            0x4099f0,
+            theme::accent(),
         ))
         .child(storage_row(
             "Lore version storage",
             &lore_path,
             IconName::Folder,
-            0xb379e8,
+            theme::CATEGORY,
         ))
         .child(inspector_divider())
         .child(section_title("Program status"))

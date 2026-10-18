@@ -56,20 +56,17 @@ pub(super) fn program_menu(
                 let moving = moving.clone();
                 let category_id = category.id;
                 submenu = submenu.item(
-                    PopupMenuItem::new(format!(
-                        "{} {}",
-                        category_icon(&category.name),
-                        cards::category_name(&category.name)
-                    ))
-                    .on_click(move |_, _, cx| {
-                        let _ = moving.update(cx, |this, cx| {
-                            let result = this.service.move_entry(id, category_id);
-                            if result.is_ok() && this.selected_entry == Some(id) {
-                                this.draft_category = category_id;
-                            }
-                            this.report(result, cx);
-                        });
-                    }),
+                    PopupMenuItem::new(cards::category_name(&category.name))
+                        .icon(theme::icon(category_icon(&category.name)))
+                        .on_click(move |_, _, cx| {
+                            let _ = moving.update(cx, |this, cx| {
+                                let result = this.service.move_entry(id, category_id);
+                                if result.is_ok() && this.selected_entry == Some(id) {
+                                    this.draft_category = category_id;
+                                }
+                                this.report(result, cx);
+                            });
+                        }),
                 );
             }
             submenu

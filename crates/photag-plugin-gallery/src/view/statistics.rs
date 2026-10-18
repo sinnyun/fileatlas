@@ -1,5 +1,6 @@
 use super::*;
 use gpui_kit::assets::IconName;
+use photag_ui_bridge::components::WorkbenchStyle as _;
 
 pub(super) fn render(
     view: &GalleryView,
@@ -167,8 +168,8 @@ fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
         .min_w(px(140.))
         .gap_1()
         .p_3()
-        .rounded_md()
-        .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+        .workbench_section()
+        .bg(rgb(theme::SURFACE_CARD))
         .child(
             div()
                 .h_flex()
@@ -197,8 +198,8 @@ fn stat_section(title: &'static str) -> Div {
         .min_w(px(280.))
         .gap_2()
         .p_3()
-        .rounded_md()
-        .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+        .workbench_section()
+        .bg(rgb(theme::SURFACE_CARD))
         .child(
             div()
                 .text_sm()

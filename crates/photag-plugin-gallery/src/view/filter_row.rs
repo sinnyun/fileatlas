@@ -24,7 +24,7 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> A
     let weak = cx.entity().downgrade();
     let mut row = div()
         .id("gallery-filter-row")
-        .h(px(theme::FILTER_CHIP_HEIGHT))
+        .flex_1()
         .min_w_0()
         .h_flex()
         .w_full()
@@ -38,7 +38,15 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> A
     row = row.child(rating_chip(view, weak.clone(), cx));
     row = row.child(sort_chip(view, weak.clone(), cx));
     row = row.child(grouping_chip(view, cx));
-    row.into_any_element()
+    div()
+        .h_flex()
+        .w_full()
+        .min_w_0()
+        .items_center()
+        .gap(px(10.))
+        .child(row)
+        .child(view_controls::render(view, cx))
+        .into_any_element()
 }
 
 /// Scoped-search control in the top bar, using the managed popover layer so
@@ -57,11 +65,12 @@ pub(super) fn search_scope_popover(view: &GalleryView, cx: &mut Context<GalleryV
             });
         })
         .trigger(
-            Button::new("gallery-search-scopes")
-                .ghost()
-                .compact()
-                .label(photag_ui_bridge::i18n::tr("Scope"))
-                .toggled(view.search_scopes_open),
+            view_controls::button(
+                "gallery-search-scopes",
+                IconName::SlidersHorizontal,
+                "Scope",
+            )
+            .toggled(view.search_scopes_open),
         )
         .content(move |_, _, _| search_scope_popover_panel(scopes, weak.clone()))
 }

@@ -142,6 +142,20 @@ pub(crate) fn initialize(conn: &Connection) -> rusqlite::Result<()> {
             size_bytes INTEGER,
             pin_scope INTEGER NOT NULL DEFAULT 0 CHECK(pin_scope BETWEEN 0 AND 2)
         );
+        CREATE TABLE IF NOT EXISTS clipboard_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            position INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE IF NOT EXISTS clipboard_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL UNIQUE,
+            category_id INTEGER REFERENCES clipboard_categories(id) ON DELETE SET NULL,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            created_at INTEGER NOT NULL,
+            last_used_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_clipboard_history_recent ON clipboard_history(pinned DESC, last_used_at DESC);
     ",
     )
 }

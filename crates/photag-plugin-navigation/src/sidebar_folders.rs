@@ -6,6 +6,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use photag_contracts::SidebarFoldersConfig;
 
+#[cfg(test)]
+#[path = "sidebar_folders_tests.rs"]
+mod tests;
+
 #[derive(Default)]
 pub struct SidebarFoldersService {
     config: RwLock<SidebarFoldersConfig>,
@@ -49,6 +53,60 @@ impl SidebarFoldersService {
         };
         self.revision.fetch_add(1, Ordering::AcqRel);
         Some(updated)
+    }
+
+    /// Import each registered library bookmark once, preserving existing aliases,
+    /// group order, library rows and user removals. No filesystem/database IO.
+    pub fn import_library_folders(
+        &self,
+        roots: &[(i64, String, String)],
+        name: &str,
+    ) -> Option<SidebarFoldersConfig> {
+        self.update(|config| {
+            for (id, path, alias) in roots {
+                let key = sidebar_path_key(path);
+                if config.imported_library_paths.contains(&key) {
+                    continue;
+                }
+                config.imported_library_paths.push(key);
+                let sequence = config.imported_library_paths.len();
+                if config.favorite_groups.iter().any(|group| {
+                    group
+                        .folders
+                        .iter()
+                        .any(|folder| same_sidebar_path(&folder.path, path))
+                }) {
+                    continue;
+                }
+                let group_id = config
+                    .favorite_groups
+                    .iter()
+                    .find(|group| group.id == "unified-library-favorites" || group.name == name)
+                    .map(|group| group.id.clone())
+                    .unwrap_or_else(|| "unified-library-favorites".into());
+                if !config
+                    .favorite_groups
+                    .iter()
+                    .any(|group| group.id == group_id)
+                {
+                    config.favorite_groups.insert(
+                        0,
+                        photag_contracts::FavoriteGroup {
+                            id: group_id.clone(),
+                            name: name.into(),
+                            folders: Vec::new(),
+                        },
+                    );
+                }
+                if let Some(group) = config.favorite_groups.iter_mut().find(|g| g.id == group_id) {
+                    group.folders.push(photag_contracts::FavoriteFolder {
+                        id: format!("library-{id}-{sequence}"),
+                        path: path.clone(),
+                        display_name: Some(alias.clone()),
+                    });
+                }
+            }
+        })
     }
 
     /// Install the persisted document at startup without announcing a change.

@@ -4,7 +4,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants as _;
 use photag_plugin_versions::{FileVersionState, FileVersionStatus};
 
-pub(super) type StateKey = (u64, u64, u64, Vec<(i64, String)>);
+pub(super) type StateKey = (u64, u64, Vec<(i64, String)>);
 
 impl GalleryView {
     pub(super) fn version_state_snapshot(&self) -> Vec<crate::GalleryVersionState> {
@@ -28,10 +28,12 @@ impl GalleryView {
                     .collect::<Vec<_>>()
             })
             .unwrap_or_default();
+        // Filesystem/index changes reload the snapshot; version actions advance
+        // history_generation. The database-wide write revision also includes
+        // unrelated clipboard/launcher/cache writes and must not reopen Lore.
         let key = (
             self.snapshot_generation,
             self.history_generation,
-            self.service.data_revision(),
             paths.clone(),
         );
         let versions = self.versions.clone();
@@ -118,13 +120,13 @@ pub(super) fn badge(id: i64, state: &FileVersionState, cx: &mut Context<GalleryV
         .w(px(24.))
         .h(px(24.))
         .rounded_full()
-        .bg(rgba(0x111820ed))
+        .bg(rgba(theme::TOOLTIP_SURFACE))
         .icon(
             theme::icon(IconName::Circle)
                 .size(px(13.))
                 .rounded_full()
-                .bg(rgb(0xffb340))
-                .text_color(rgb(0xffb340)),
+                .bg(rgb(theme::WARNING))
+                .text_color(rgb(theme::WARNING)),
         )
         .tooltip(message(state))
         .on_click(cx.listener(move |view, _, window, cx| view.open_unsaved_history(id, window, cx)))

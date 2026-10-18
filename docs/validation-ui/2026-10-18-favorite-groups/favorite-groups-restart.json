@@ -1,0 +1,46 @@
+{
+  "passed": true,
+  "groups": [
+    {
+      "id": "unified-library-favorites",
+      "name": "常用",
+      "expanded": true,
+      "folders": []
+    },
+    {
+      "id": "group-18df8a9f6b6cac40-0",
+      "name": "AI",
+      "expanded": false,
+      "folders": [
+        {
+          "id": "fav-18df8a9fc8a08940-2",
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-favorite-groups-v2\\favorites-fixture\\one",
+          "display_name": "模型目录"
+        },
+        {
+          "id": "fav-18df8aa02a1ec95c-3",
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-favorite-groups-v2\\favorites-fixture\\two",
+          "display_name": null
+        }
+      ]
+    },
+    {
+      "id": "group-18df8a9f8c476c98-1",
+      "name": "工作",
+      "expanded": true,
+      "folders": [
+        {
+          "id": "fav-18df8aa05719fa6c-4",
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-favorite-groups-v2\\favorites-fixture\\one\\child",
+          "display_name": null
+        },
+        {
+          "id": "fav-18df8aa1c3ca1d58-5",
+          "path": "F:\\AI\\geren\\pho_cordis\\target\\mcp-favorite-groups-v2\\favorites-fixture\\two\\这是一段很长的收藏目录名称用于验证省略显示和分组边界\\nested-folder-with-a-long-name",
+          "display_name": null
+        }
+      ]
+    }
+  ],
+  "process": "fresh same-process MCP child, mutations disabled"
+}

@@ -81,7 +81,10 @@ impl GalleryView {
                     div()
                         .h_flex()
                         .gap_2()
-                        .child(Input::new(&self.rename_input).w(px(240.)))
+                        .child(
+                            photag_ui_bridge::components::text_input(&self.rename_input)
+                                .w(px(240.)),
+                        )
                         .child(
                             Button::new("gallery-rename-selected")
                                 .label(photag_ui_bridge::i18n::tr("Rename"))

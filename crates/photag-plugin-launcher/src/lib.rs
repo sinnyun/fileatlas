@@ -489,6 +489,14 @@ impl Plugin for LauncherPlugin {
                     },
                 ),
                 UiContribution::new(
+                    "program-launcher/shortcut-open",
+                    ContributionKind::Keybinding {
+                        key: "Ctrl+F".into(),
+                        command_id: OPEN_COMMAND.into(),
+                        scope: photag_ui_bridge::ShortcutScope::System,
+                    },
+                ),
+                UiContribution::new(
                     "program-launcher/sidebar-button",
                     ContributionKind::Widget {
                         label: "Program Launchpad".into(),

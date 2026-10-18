@@ -93,7 +93,7 @@ pub(super) fn render_media_card(
                 .top(px(6.))
                 .h(px(18.))
                 .rounded_full()
-                .bg(rgba(0x00000096))
+                .bg(rgba(theme::MEDIA_SCRIM))
                 .px_2()
                 .flex()
                 .items_center()
@@ -111,7 +111,7 @@ pub(super) fn render_media_card(
                 .bottom(px(6.))
                 .h(px(18.))
                 .rounded_full()
-                .bg(rgba(0x00000096))
+                .bg(rgba(theme::MEDIA_SCRIM))
                 .px_2()
                 .flex()
                 .items_center()
@@ -164,7 +164,7 @@ pub(super) fn render_media_card(
                         .h(px(18.))
                         .px(px(4.))
                         .rounded_full()
-                        .bg(rgba(0x000000d8))
+                        .bg(rgba(theme::MEDIA_SCRIM_STRONG))
                         .text_size(px(theme::FONT_SIZE_TINY))
                         .text_color(rgb(theme::TEXT_PRIMARY))
                         .child(format!("+{overflow}")),
@@ -178,7 +178,7 @@ pub(super) fn render_media_card(
             div()
                 .absolute()
                 .inset_0()
-                .bg(rgba(0xffffff00 | (18. * hover) as u32)),
+                .bg(rgba(theme::FILL_TRANSPARENT_WHITE | (18. * hover) as u32)),
         );
     }
     frame = frame.child(super::file_format::badge(&media.filename, thumb_size));

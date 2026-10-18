@@ -1,51 +1,49 @@
 //! PhoTag's shared GPUI design tokens.
 //!
-//! The v5 interface design (`docs/reference-ui/final-v5/`) defines a neutral
-//! graphite palette with slate-blue accents, thin separators and modest
-//! 4–6 px corners. Colors are packed `0xRRGGBB` values for direct use with
+//! The workbench theme follows the clipboard v2 navy palette.
+//! See `docs/ui-theme.md` for component, layout and contribution rules. Colors are packed `0xRRGGBB` values for direct use with
 //! `gpui_kit::rgb`; overlay fills are packed `0xRRGGBBAA` for `gpui_kit::rgba`.
 
 use gpui_kit::Styled as _;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 /// Window root: title band, sidebar backdrop and status bar.
-pub const SURFACE_BASE: u32 = 0x22252a;
+pub const SURFACE_BASE: u32 = 0x0e1823;
 /// Content surfaces: gallery body and sidebar panel.
-pub const SURFACE_PANEL: u32 = 0x272a2f;
+pub const SURFACE_PANEL: u32 = 0x152230;
 /// Cards, inspector panel and raised wells.
-pub const SURFACE_CARD: u32 = 0x2b2f34;
+pub const SURFACE_CARD: u32 = 0x1b2a3b;
 /// Hover fills and elevated controls.
-pub const SURFACE_ELEVATED: u32 = 0x32363c;
+pub const SURFACE_ELEVATED: u32 = 0x24374b;
 /// Menus, popovers and dialogs.
-pub const SURFACE_MODAL: u32 = 0x2d3238;
+pub const SURFACE_MODAL: u32 = 0x152230;
 /// Inset wells: search input, calendar, thumb placeholders.
-pub const SURFACE_FAINT: u32 = 0x1e2126;
+pub const SURFACE_FAINT: u32 = 0x101b27;
 /// Audio/video stage background, darker than `SURFACE_FAINT`.
-pub const SURFACE_AUDIO: u32 = 0x1a1d21;
+pub const SURFACE_AUDIO: u32 = 0x101b27;
 /// Lowest contrast surface.
-pub const SURFACE_EXTREME: u32 = 0x151719;
+pub const SURFACE_EXTREME: u32 = 0x0a121b;
 /// Leftmost navigation rail: darker than the window base so the rail, the
 /// sidebar and the content column read as three separate regions.
-pub const SURFACE_RAIL: u32 = 0x171a1d;
+pub const SURFACE_RAIL: u32 = 0x0b141e;
 /// Sidebar panel between the rail and the content column.
-pub const SURFACE_SIDEBAR: u32 = 0x1f2328;
+pub const SURFACE_SIDEBAR: u32 = 0x152230;
 /// Inset well behind a bounded sidebar region (drives, favorites, …).
-pub const SURFACE_REGION: u32 = 0x1a1d21;
-/// Region rule in border mode, as 0xRRGGBBAA. `SEPARATOR` is darker than every
-/// surface, so region edges need a light hairline to read on the dark theme.
-pub const REGION_EDGE: u32 = 0xffffff2e;
+pub const SURFACE_REGION: u32 = 0x101b27;
+/// Region rule in border mode, as 0xRRGGBBAA.
+pub const REGION_EDGE: u32 = 0x304357ff;
 /// Raised band behind a browser group title.
-pub const SURFACE_GROUP_HEADER: u32 = 0x343e49;
+pub const SURFACE_GROUP_HEADER: u32 = 0x1b2a3b;
 /// Hover fill for a browser group title.
-pub const SURFACE_GROUP_HEADER_HOVER: u32 = 0x404d5c;
-pub const TEXT_PRIMARY: u32 = 0xe9ebee;
-pub const TEXT_SECONDARY: u32 = 0xa9aeb5;
-pub const TEXT_MUTED: u32 = 0x7b8189;
+pub const SURFACE_GROUP_HEADER_HOVER: u32 = 0x24374b;
+pub const TEXT_PRIMARY: u32 = 0xe7eef7;
+pub const TEXT_SECONDARY: u32 = 0x9eafc5;
+pub const TEXT_MUTED: u32 = 0x8195ad;
 pub const DANGER: u32 = 0xe5484d;
 pub const DANGER_HOVER: u32 = 0xf06065;
-pub const WARNING: u32 = 0xd8a250;
-pub const SUCCESS: u32 = 0x3fb56a;
-pub const STAR: u32 = 0xf2c14e;
+pub const WARNING: u32 = 0xe4ac55;
+pub const SUCCESS: u32 = 0x32cd8b;
+pub const STAR: u32 = 0xf6c654;
 
 /// Resting fill for chips, rows and ghost controls (`rgba`).
 pub const FILL_SUBTLE: u32 = 0xffffff0a;
@@ -55,15 +53,49 @@ pub const FILL_HOVER: u32 = 0xffffff12;
 pub const FILL_ACTIVE: u32 = 0xffffff1c;
 /// Accent-tinted selection fill used for tree rows and segments (`rgba`).
 pub const SELECTION_FILL_ALPHA: u32 = 0x3d;
-/// Dark hairline between graphite surfaces (`rgb`).
-pub const SEPARATOR: u32 = 0x1d2025;
+/// Navy hairline between surfaces (`rgb`).
+pub const SEPARATOR: u32 = 0x304357;
 /// Light hairline inside dark wells and menus (`rgba`).
-pub const SEPARATOR_LIGHT: u32 = 0xffffff12;
+pub const SEPARATOR_LIGHT: u32 = 0x304357ff;
 /// Modal scrim over the application (`rgba`).
-pub const SCRIM: u32 = 0x0d0f12b8;
+pub const SCRIM: u32 = 0x060d17b8;
 
-// Geometry and typography. Values follow the v5 design direction
-// (docs/reference-ui/final-v5/); the source egui constants are superseded.
+/// Semantic colors and overlays for custom-painted controls and media badges.
+pub const TEXT_ON_ACCENT: u32 = 0xffffff;
+pub const BRANCH_ALTERNATE: u32 = 0xb574ec;
+pub const INFO: u32 = 0x2787ff;
+pub const CATEGORY: u32 = 0xb379e8;
+pub const DATA: u32 = 0x38b9ce;
+pub const MEDIA_SCRIM: u32 = 0x00000096;
+pub const MEDIA_SCRIM_STRONG: u32 = 0x000000d8;
+pub const TOOLTIP_SURFACE: u32 = 0x101b27ed;
+pub const SHADOW_OVERLAY: u32 = 0x00000060;
+pub const TRACK_SHADOW: u32 = 0x0000006e;
+pub const TRACK_HIGHLIGHT: u32 = 0xffffff16;
+pub const TRACK_ACTIVE: u32 = 0xffffff28;
+pub const FILL_TRANSPARENT_WHITE: u32 = 0xffffff00;
+pub const BORDER_STRONG: u32 = 0x43566dff;
+pub const SPACE_1: f32 = 4.;
+pub const SPACE_2: f32 = 8.;
+pub const SPACE_3: f32 = 12.;
+pub const SPACE_4: f32 = 16.;
+pub const PANEL_GAP: f32 = 10.;
+pub const NAV_ROW_HEIGHT: f32 = 40.;
+pub const ACTION_HEIGHT: f32 = 38.;
+pub const ICON_BUTTON_SIZE: f32 = 30.;
+
+/// Opaque selection paint is shared across cards/navigation and preserves user accents.
+pub fn selection_color() -> u32 {
+    if accent() == 0x2787ff {
+        return 0x163b63;
+    }
+    let [r, g, b] = channels(accent());
+    let [br, bg, bb] = channels(SURFACE_PANEL);
+    let mix = |base: u8, color: u8| ((u32::from(base) * 3 + u32::from(color)) / 4) as u8;
+    pack(mix(br, r), mix(bg, g), mix(bb, b))
+}
+
+// Shared workbench geometry; feature-specific layouts keep their own constraints.
 /// Lower bound for the startup window; the actual size grows with the display.
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 800.0;
@@ -105,36 +137,10 @@ pub const SOURCE_MENU_MARGIN_X: f32 = 10.0;
 pub const SOURCE_MENU_MARGIN_Y: f32 = 8.0;
 pub const SOURCE_WINDOW_MARGIN: f32 = 14.0;
 pub const SOURCE_SCROLLBAR_WIDTH: f32 = 7.0;
-/// Source colors are premultiplied because they are composited over the
-/// active surface. Keep alpha explicit when adapting them to GPUI paints.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PremultipliedColor {
-    pub red: u8,
-    pub green: u8,
-    pub blue: u8,
-    pub alpha: u8,
-}
+mod color;
+pub use color::PremultipliedColor;
 
-impl PremultipliedColor {
-    /// Pack this source color as the straight-alpha `0xRRGGBBAA` value that
-    /// GPUI's `rgba` helper expects. Source egui tokens are already premultiplied.
-    pub const fn to_rgba(self) -> u32 {
-        if self.alpha == 0 {
-            return 0;
-        }
-        ((unpremultiply(self.red, self.alpha) as u32) << 24)
-            | ((unpremultiply(self.green, self.alpha) as u32) << 16)
-            | ((unpremultiply(self.blue, self.alpha) as u32) << 8)
-            | self.alpha as u32
-    }
-}
-
-const fn unpremultiply(channel: u8, alpha: u8) -> u8 {
-    let value = (channel as u32 * 255 + alpha as u32 / 2) / alpha as u32;
-    if value > 255 { 255 } else { value as u8 }
-}
-
-// Control fills are light overlays on the v5 graphite surfaces. The legacy
+// Control fills are light overlays on workbench surfaces. The legacy
 // premultiplied representation is kept so existing call sites compile; the
 // packed values resolve to the same `FILL_*` overlays as the rgba tokens.
 pub const CONTROL_HOVER: PremultipliedColor = PremultipliedColor {
@@ -167,13 +173,13 @@ pub const CONTROL_GHOST_PRESSED: PremultipliedColor = PremultipliedColor {
     blue: 28,
     alpha: 28,
 };
-pub const CONTROL_BOX: u32 = 0x3a4047;
-pub const CONTROL_BOX_HOVER: u32 = 0x464d55;
-pub const CONTROL_BOX_PRESSED: u32 = 0x545c66;
+pub const CONTROL_BOX: u32 = 0x304357;
+pub const CONTROL_BOX_HOVER: u32 = 0x3d536c;
+pub const CONTROL_BOX_PRESSED: u32 = 0x4b6380;
 pub const HAIRLINE: PremultipliedColor = PremultipliedColor {
-    red: 29,
-    green: 32,
-    blue: 37,
+    red: 48,
+    green: 67,
+    blue: 87,
     alpha: 255,
 };
 pub const BORDER: PremultipliedColor = PremultipliedColor {
@@ -197,8 +203,8 @@ pub const ROUND_PILL: f32 = 999.0;
 pub const THUMB_ROUND: f32 = 6.0;
 pub const FONT_SIZE_TINY: f32 = 11.0;
 pub const FONT_SIZE_SMALL: f32 = 12.0;
-pub const FONT_SIZE_BODY: f32 = 13.0;
-pub const FONT_SIZE_BUTTON: f32 = 13.0;
+pub const FONT_SIZE_BODY: f32 = 14.0;
+pub const FONT_SIZE_BUTTON: f32 = 14.0;
 pub const FONT_SIZE_HEADING: f32 = 15.0;
 pub const FONT_SIZE_TITLE: f32 = 18.0;
 pub const UI_FONT_FAMILY: &str = "Segoe UI";
@@ -252,132 +258,8 @@ pub fn tag_icon(name: Option<&str>) -> gpui_kit::assets::IconName {
     }
 }
 
-/// Apply the v5 theme to GPUI Kit's native controls as well as our paints.
-/// Keeps buttons ghost-on-graphite, inputs as faint wells and slate-blue
-/// accents for primary actions, selection and focus rings.
-pub fn apply_components(cx: &mut gpui_kit::App) {
-    use gpui_kit::component::{Theme, ThemeMode};
-    use gpui_kit::{px, rgb, rgba};
-    Theme::change(ThemeMode::Dark, None, cx);
-    Theme::update(cx, |theme| {
-        theme.font_family = UI_FONT_FAMILY.into();
-        theme.font_size = px(FONT_SIZE_BODY);
-        theme.radius = px(ROUND_MD);
-        theme.radius_lg = px(ROUND_LG);
-        theme.colors.background = rgb(SURFACE_BASE).into();
-        theme.colors.foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.button = rgba(FILL_SUBTLE).into();
-        theme.colors.button_hover = rgba(FILL_HOVER).into();
-        theme.colors.button_active = rgba(FILL_ACTIVE).into();
-        theme.colors.button_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.button_secondary = rgba(FILL_SUBTLE).into();
-        theme.colors.button_secondary_hover = rgba(FILL_HOVER).into();
-        theme.colors.button_secondary_active = rgba(FILL_ACTIVE).into();
-        theme.colors.button_secondary_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.border = rgba(SEPARATOR_LIGHT).into();
-        theme.colors.input = rgb(SURFACE_FAINT).into();
-        theme.colors.secondary = rgb(SURFACE_ELEVATED).into();
-        theme.colors.secondary_hover = rgba(FILL_HOVER).into();
-        theme.colors.secondary_active = rgba(FILL_ACTIVE).into();
-        theme.colors.secondary_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.muted = rgb(SURFACE_PANEL).into();
-        theme.colors.muted_foreground = rgb(TEXT_MUTED).into();
-        theme.colors.popover = rgb(SURFACE_MODAL).into();
-        theme.colors.popover_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.list = rgb(SURFACE_MODAL).into();
-        theme.colors.list_hover = rgba(FILL_HOVER).into();
-        theme.colors.list_active = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.list_active_border = rgb(accent()).into();
-        theme.colors.accent = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.accent_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.selection = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.primary = rgb(accent()).into();
-        theme.colors.primary_hover = rgb(accent_hover()).into();
-        theme.colors.primary_active = rgb(accent_hover()).into();
-        theme.colors.primary_foreground = rgb(0xffffff).into();
-        theme.colors.button_primary = rgb(accent()).into();
-        theme.colors.button_primary_hover = rgb(accent_hover()).into();
-        theme.colors.button_primary_active = rgb(accent_hover()).into();
-        theme.colors.button_primary_foreground = rgb(0xffffff).into();
-        theme.colors.danger = rgb(DANGER).into();
-        theme.colors.danger_hover = rgb(DANGER_HOVER).into();
-        theme.colors.danger_active = rgb(DANGER_HOVER).into();
-        theme.colors.danger_foreground = rgb(0xffffff).into();
-        theme.colors.button_danger = rgb(DANGER).into();
-        theme.colors.button_danger_hover = rgb(DANGER_HOVER).into();
-        theme.colors.button_danger_active = rgb(DANGER_HOVER).into();
-        theme.colors.button_danger_foreground = rgb(0xffffff).into();
-        theme.colors.success = rgb(SUCCESS).into();
-        theme.colors.success_foreground = rgb(0xffffff).into();
-        theme.colors.warning = rgb(WARNING).into();
-        theme.colors.warning_foreground = rgb(0xffffff).into();
-        theme.colors.caret = rgb(TEXT_PRIMARY).into();
-        theme.colors.ring = rgba((accent() << 8) | 0x80).into();
-        theme.colors.progress_bar = rgb(accent()).into();
-        theme.colors.slider_bar = rgba(FILL_ACTIVE).into();
-        theme.colors.slider_thumb = rgb(accent()).into();
-        theme.colors.scrollbar = rgba(0).into();
-        theme.colors.scrollbar_thumb = rgba(0xffffff2e).into();
-        theme.colors.scrollbar_thumb_hover = rgba(0xffffff45).into();
-        theme.colors.skeleton = rgb(SURFACE_FAINT).into();
-        theme.colors.title_bar = rgb(SURFACE_BASE).into();
-        theme.colors.title_bar_border = rgba(SEPARATOR_LIGHT).into();
-        theme.colors.status_bar = rgb(SURFACE_BASE).into();
-        theme.colors.status_bar_border = rgba(0).into();
-        theme.colors.overlay = rgba(SCRIM).into();
-        theme.colors.window_border = rgb(SEPARATOR).into();
-        theme.colors.group_box = rgb(SURFACE_PANEL).into();
-        theme.colors.group_box_foreground = rgb(TEXT_SECONDARY).into();
-        theme.colors.description_list_label_foreground = rgb(TEXT_MUTED).into();
-        theme.colors.link = rgb(accent()).into();
-        theme.colors.link_hover = rgb(accent_hover()).into();
-        theme.colors.link_active = rgb(accent_hover()).into();
-        theme.colors.sidebar = rgb(SURFACE_PANEL).into();
-        theme.colors.sidebar_accent = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.sidebar_accent_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.sidebar_border = rgba(SEPARATOR_LIGHT).into();
-        theme.colors.sidebar_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.sidebar_primary = rgb(accent()).into();
-        theme.colors.sidebar_primary_foreground = rgb(0xffffff).into();
-        theme.colors.tab = rgba(SEPARATOR_LIGHT).into();
-        theme.colors.tab_active = rgba(FILL_ACTIVE).into();
-        theme.colors.tab_active_foreground = rgb(TEXT_PRIMARY).into();
-        theme.colors.tab_bar = rgb(SURFACE_BASE).into();
-        theme.colors.tab_foreground = rgb(TEXT_SECONDARY).into();
-        theme.colors.switch = rgba(FILL_ACTIVE).into();
-        theme.colors.switch_thumb = rgb(TEXT_PRIMARY).into();
-        theme.colors.drag_border = rgb(accent()).into();
-        theme.colors.drop_target = rgba((accent() << 8) | 0x40).into();
-        theme.colors.chart_1 = rgb(accent()).into();
-        theme.colors.chart_2 = rgb(0x6a9a78).into();
-        theme.colors.chart_3 = rgb(0xa0654a).into();
-        theme.colors.chart_4 = rgb(0x8a7098).into();
-        theme.colors.chart_5 = rgb(0x5a8a88).into();
-        theme.colors.chart_grid = rgba(SEPARATOR_LIGHT).into();
-    });
-}
-
-/// Keep native controls synchronized with the runtime source accent token.
-pub fn apply_accent_components(cx: &mut gpui_kit::App) {
-    use gpui_kit::{component::Theme, rgb, rgba};
-    Theme::update(cx, |theme| {
-        theme.colors.primary = rgb(accent()).into();
-        theme.colors.primary_hover = rgb(accent_hover()).into();
-        theme.colors.button_primary = rgb(accent()).into();
-        theme.colors.button_primary_hover = rgb(accent_hover()).into();
-        theme.colors.accent = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.selection = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.list_active = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.list_active_border = rgb(accent()).into();
-        theme.colors.ring = rgba((accent() << 8) | 0x80).into();
-        theme.colors.progress_bar = rgb(accent()).into();
-        theme.colors.slider_thumb = rgb(accent()).into();
-        theme.colors.link = rgb(accent()).into();
-        theme.colors.link_hover = rgb(accent_hover()).into();
-        theme.colors.sidebar_accent = rgba((accent() << 8) | SELECTION_FILL_ALPHA).into();
-        theme.colors.chart_1 = rgb(accent()).into();
-    });
-}
+mod components;
+pub use components::{apply_accent_components, apply_components};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AccentPreset {
@@ -386,6 +268,10 @@ pub struct AccentPreset {
 }
 
 pub const ACCENT_PRESETS: &[AccentPreset] = &[
+    AccentPreset {
+        name: "Workbench Blue",
+        color: 0x2787ff,
+    },
     AccentPreset {
         name: "Slate Blue",
         color: 0x5a7fa0,
@@ -417,9 +303,9 @@ pub const ACCENT_PRESETS: &[AccentPreset] = &[
 ];
 
 pub const SYSTEM_ACCENT_NAME: &str = "System";
-pub const DEFAULT_ACCENT_NAME: &str = SYSTEM_ACCENT_NAME;
-pub const FALLBACK_ACCENT_NAME: &str = "Slate Blue";
-static ACCENT: AtomicU32 = AtomicU32::new(0x5a7fa0);
+pub const DEFAULT_ACCENT_NAME: &str = "Workbench Blue";
+pub const FALLBACK_ACCENT_NAME: &str = DEFAULT_ACCENT_NAME;
+static ACCENT: AtomicU32 = AtomicU32::new(0x2787ff);
 static BACKDROP_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 pub fn preset_by_name(name: &str) -> &'static AccentPreset {

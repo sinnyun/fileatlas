@@ -18,3 +18,11 @@ Each event currently returns `()`. Keep payloads independent of GPUI types so pl
 ## Review corrections — 2026-10-16
 
 `SidebarFoldersChanged::Args = SidebarFoldersUpdate { revision:u64, config:SidebarFoldersConfig }`. Navigation produces versioned sidebar edits; Settings serializes them and rejects stale delivery. SidebarFoldersConfig retains quick_access, favorite_groups, show_network_drives (default true). This is compile-time service/event coordination, not a second plugin manager.
+# Unified sidebar bookmark import markers (2026-10-18)
+
+`SidebarFoldersConfig.imported_library_paths: Vec<String>` is serde-default and
+omitted when empty. Navigation imports existing registered-library bookmarks into
+favorite groups once per normalized Windows path; Settings persists the resulting
+model through the existing `SidebarFoldersUpdate` event. Markers retain user
+removals across restarts and avoid SQLite ID-reuse ambiguity. Group/entry IDs and
+aliases remain in the existing `FavoriteGroup`/`FavoriteFolder` payloads.

@@ -5,6 +5,7 @@
 mod browser_store;
 #[cfg(test)]
 mod browser_tests;
+mod clipboard_api;
 mod database_api;
 mod db;
 mod launcher_api;
@@ -12,6 +13,7 @@ mod launcher_api;
 mod launcher_tests;
 mod search_cache;
 mod version_metadata;
+pub use clipboard_api::{ClipboardCategoryRecord, ClipboardHistoryRecord};
 pub(crate) use db::get_open_count;
 pub use db::queries::{
     Folder, LibraryStats, MediaExport, MediaGroupingFields, MediaItem, MediaQuery, MediaSkeleton,

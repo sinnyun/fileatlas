@@ -46,6 +46,11 @@ jobs:
       - name: Enforce shared UI polling
         run: node scripts/check-ui-refresh.cjs
 
+      - name: Enforce shared workbench theme
+        run: |
+          node scripts/check-ui-theme.cjs --self-test
+          node scripts/check-ui-theme.cjs
+
       - name: Enforce architecture and debt ratchets
         run: node scripts/check-architecture.cjs
 

@@ -1,5 +1,23 @@
 # Database plugin ports / 数据对接
 
+## Clipboard history (2026-10-18)
+
+- Additive `clipboard_categories` and `clipboard_history` tables are created by
+  the existing database initializer; existing media/library tables and columns
+  are untouched.
+- `DatabaseService::clipboard_snapshot`, `clipboard_capture`,
+  `clipboard_add_manual`, `clipboard_mark_used`, `clipboard_update`,
+  `clipboard_add_favorite`, `clipboard_remove_favorite`, `clipboard_assign_category`, category CRUD, `clipboard_delete`, and
+  `clipboard_clear_unpinned` are the only production entry points. SQL and
+  connection locking remain inside this crate.
+- History content is unique for deduplication. Favorites (legacy pinned rows) are excluded from
+  automatic retention pruning; temporary rows are capped by the service at 500.
+- New clipboard tables are local application data in the same PhoTag database
+  selected by the database service. Browser profile separation follows the
+  existing DatabaseService profile/path rules.
+- Browser-store persistence now includes `clipboard_categories` before `clipboard_history`, plus child/parent deletion reconciliation. Earlier browser builds created the tables in memory but omitted them from the durable-store whitelist. The browser-mode regression covers recapture deduplication, assignment, rename, restart, deletion-to-unclassified, and deleted-history restart behavior.
+- Category deletion explicitly clears `category_id` in the same transaction before removing the category; text survives. This feature is new workbench behavior with no counterpart in the pinned photo-only source, and uses the existing shared persistence boundary.
+
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
 Status: implemented source-compatible SQLite service; broad query-by-query regression coverage remains pending. Source of truth: `src/lib.rs` and `src/db/`.
@@ -107,3 +125,7 @@ No migration or persistent inventory changes are introduced by this flag.
 ### Launcher installation metadata (2026-10-17)
 
 The existing database owns additive `app_launcher_metadata(entry_id INTEGER PRIMARY KEY REFERENCES app_launcher_entries(id) ON DELETE CASCADE, installed_on TEXT, size_bytes INTEGER, pin_scope INTEGER NOT NULL DEFAULT 0)`. `pin_scope` uses 0=none, 1=category top, 2=all-programs top. Startup migrates an earlier metadata table by adding the defaulted column. `launcher_set_pin_scope` validates and writes through the typed service; rescans preserve the value while updating installation metadata. Browser-mode persistence synchronizes the new column with its table. The regression checks prior-schema migration, restart persistence, scope validation and cascade deletion.
+
+### Favorite deletion protection (2026-10-18)
+
+The legacy `pinned` field means local favorite. Existing rows stay compatible. `clipboard_delete(id)` deletes only temporary rows and errors for favorites; `clipboard_remove_favorite(id)` is the exclusive favorite deletion method and errors for nonfavorites. Retention and clear exclude favorites. Manual upsert and content update use MAX(existing, requested favorite) so stale editors/duplicate capture cannot revoke protection. Browser durable-store reconciliation persists both edits and explicit removal. Regression: `favorites_are_durable_and_only_explicit_removal_can_delete_them` uses production browser-mode reopen, legacy rows, retention, clear, ordinary delete, duplicate/manual edit and dedicated removal.

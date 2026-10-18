@@ -1,6 +1,7 @@
 use super::*;
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::prelude::FluentBuilder as _;
+use photag_ui_bridge::components::WorkbenchStyle as _;
 
 pub(super) fn category_name(name: &str) -> String {
     if name == "General" {
@@ -37,10 +38,10 @@ impl LauncherPanel {
             .items_center()
             .justify_center()
             .rounded(px(12.))
-            .bg(rgba(0x47bfff18))
+            .bg(rgba((theme::accent() << 8) | 0x18))
             .text_color(rgb(theme::accent()))
             .text_size(px(size * 0.6))
-            .child(category_icon(category))
+            .child(theme::icon(category_icon(category)).size(px(size * 0.5)))
             .into_any_element()
     }
 
@@ -61,20 +62,12 @@ impl LauncherPanel {
             .pt(px(10.))
             .px(px(5.))
             .gap(px(10.))
-            .rounded(px(7.))
-            .border_1()
-            .border_color(if selected {
-                rgb(theme::accent())
-            } else {
-                rgba(0)
-            })
-            .bg(if selected { rgba(0x47bfff20) } else { rgba(0) })
+            .workbench_card(selected)
             .text_color(rgb(if entry.available {
                 theme::TEXT_PRIMARY
             } else {
                 theme::TEXT_MUTED
             }))
-            .hover(|style| style.bg(rgba(0xffffff0c)))
             .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 this.select_entry(id, window, cx);
                 if event.click_count() == 2 {

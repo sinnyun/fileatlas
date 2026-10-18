@@ -1,4 +1,14 @@
+## 2026-10-18 本地收藏取代置顶
+
+已实现持久收藏、普通删除/清理/淘汰保护、编辑去重保留收藏、旧 pinned 数据兼容，以及独立确认删除收藏。12 项数据库测试、shell check、独立 exe 编译、三次独立进程 MCP 收藏/重启/取消/删除验证及原面板 91 步回归通过。标准 exe 正在运行被锁定，未替换用户窗口；使用 `target/debug/photag-clipboard-favorites.exe` 完成验证。截图、准确命令、进程证据和限制见 [收藏验证](validation-ui/2026-10-18-clipboard-favorites/README.md)。
+
 # Validation report
+
+## 2026-10-18 Clipboard groups and browser-store persistence
+
+The clipboard workbench is user-requested new functionality with no history/group counterpart in the pinned photo-only source. Its backend remains behind DatabaseService. Inspection traced the production path `ClipboardService -> DatabaseService::with_writer -> browser_store::persist`: the old persistence whitelist omitted clipboard categories/history, despite creating them in memory. Added the two existing tables to the durable-store sync and deletion reconciliation; group deletion clears references transactionally and keeps text. No existing media/tag schema or source query semantics changed.
+
+A browser-mode regression first failed with zero groups after reopen, then passed after the fix. All 11 database tests pass, including recapture/group identity, rename, reopen, deletion-to-unclassified and deleted-row restart checks; the text-kind regression also passes. Three independent MCP child processes verify creation, real-process restoration and durable removal through the same production browser service. See [v2 UI/runtime evidence](validation-ui/2026-10-18-clipboard-workbench-v2/README.md) for the 91-step GPUI flow, explicit isolation correction, commands, screenshots and unverified OS clipboard/hotkey paths.
 
 ## 2026-10-17 Everything search adapter
 
@@ -1112,3 +1122,28 @@ i18n4通过；实际00.png同进程MCP验证监听更新、版本创建/回退/�
 ## 2026-10-17 程序启动台安装信息兼容
 
 此为用户新增能力，vendor/photag-source没有程序启动台对应项；映射记于source-feature-audit.md末尾。现有DatabaseService创建新增app_launcher_metadata表并同步浏览模式持久库；无既有媒体/标签列变更。`launcher_metadata_upgrades_old_database_and_preserves_user_edits_across_restart`通过：无metadata表的前版启动台库兼容打开，自动发现保留自定义名称/分类/隐藏，metadata和信息编辑跨重启保留，删除关联清理。Database10项回归通过；UI/native图标/排序与同进程样例启动证据见validation-ui/2026-10-17-program-launcher/README.md。安装时间/大小是Windows注册值，缺失不伪造。
+# 2026-10-18 收藏分组兼容性
+
+## 2026-10-18 普通浏览版本检查的无关写入失效
+
+用户静置刷Lore统计日志后，追踪发现可见卡片的未保存提示会被动查询版本；缓存键又误用
+全库写入修订。修复前，无History操作的剪贴板写入+重绘令日志95→127；移除无关修订
+后3次同类写入均95不变，真实文件监听仍触发Modified和127，创建版本后Saved并再次静止。
+未屏蔽统计日志。单文件/82文件静置本身没有复现无限增长，不宣称已排除用户现场所有
+背景触发。Rust1.97.1 locked build、fmt、Gallery24/Versions5、治理守卫、diff检查通过。
+完整同进程MCP命令/范围见[运行记录](validation-ui/2026-10-18-version-idle/README.md)。
+
+源 folders 表及 add/list/remove_folder 查询已追踪，本轮不修改媒体或登记库表。
+旧登记根作为快捷方式导入 Settings 的收藏分组；删除收藏不调用会删除媒体索引的
+remove_folder。新增 imported_library_paths 为 serde-default/空值跳过字段，以规范化路径
+避免 SQLite ID 重用误判。旧 JSON、重复与别名、移除后恢复、新路径复用旧 DB ID 的回归
+通过，同进程 MCP 验证移除快捷方式前后库登记相同及重启不复活。完整命令/证据/边界见
+[收藏分组记录](validation-ui/2026-10-18-favorite-groups/README.md)。
+
+# 2026-10-18 统一主题：迁移语义边界
+
+强调色名仍沿用源 `settings.rs` 的字符串序列化和默认函数模式；用户要求的新默认值由
+UI Bridge 提供工作台蓝，已保存 System/旧预设保留。UI-only 变更不改数据库 schema、
+服务 payload、事件顺序、标签颜色或媒体文件。映射见 `docs/source-feature-audit.md`。
+当前界面验收见 `docs/validation-ui/2026-10-18-unified-theme/README.md`，不以旧 egui
+视觉为验收标准，不把静态主题守卫当作全部运行状态的证明。

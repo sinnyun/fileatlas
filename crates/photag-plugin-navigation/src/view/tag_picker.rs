@@ -60,7 +60,7 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
                     div().child(photag_ui_bridge::i18n::tr("Root tag"))
                 }),
         )
-        .child(Input::new(&view.tag_parent))
+        .child(photag_ui_bridge::components::text_input(&view.tag_parent))
         .child(
             Button::new("navigation-parent-root")
                 .ghost()
@@ -146,7 +146,9 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
                     div().child(photag_ui_bridge::i18n::tr("Choose a target tag"))
                 }),
         )
-        .child(Input::new(&view.tag_move_target))
+        .child(photag_ui_bridge::components::text_input(
+            &view.tag_move_target,
+        ))
         .child(
             div()
                 .v_flex()

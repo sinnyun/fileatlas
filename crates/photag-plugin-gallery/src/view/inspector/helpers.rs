@@ -127,30 +127,21 @@ pub(super) fn inspector_divider() -> Div {
 }
 
 pub(super) fn section_title(title: &str) -> Div {
-    div()
+    photag_ui_bridge::components::section_heading(photag_ui_bridge::i18n::tr(title))
         .h_flex()
         .w_full()
         .items_center()
         .justify_between()
-        .pt(px(8.))
-        .pb(px(8.))
-        .font_family(theme::SEMIBOLD_FONT_FAMILY)
-        .text_size(px(15.))
-        .text_color(rgb(theme::TEXT_PRIMARY))
-        .child(photag_ui_bridge::i18n::tr(title))
+        .py(px(theme::SPACE_2))
 }
 
 pub(super) fn well() -> Div {
-    div()
+    photag_ui_bridge::components::section()
         .v_flex()
         .w_full()
         .min_w_0()
-        .p(px(12.))
-        .gap(px(8.))
-        .rounded(px(10.))
-        .border_1()
-        .border_color(rgba(theme::SEPARATOR_LIGHT))
-        .bg(rgb(theme::SURFACE_FAINT))
+        .p(px(theme::SPACE_3))
+        .gap(px(theme::SPACE_2))
 }
 
 pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {

@@ -4,6 +4,7 @@
 //! Schema and serde defaults originate in `vendor/photag-source/src/settings.rs`.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 fn default_true() -> bool {
@@ -62,7 +63,7 @@ fn default_open_key() -> String {
 }
 
 fn default_accent_name() -> String {
-    "System".to_string()
+    photag_ui_bridge::theme::DEFAULT_ACCENT_NAME.to_string()
 }
 /// Mirrors `theme::REGION_DEPTH_BORDER`; kept literal so this model stays UI-free.
 fn default_region_separation() -> String {
@@ -212,6 +213,10 @@ pub struct Settings {
     /// Tag hotkeys: maps key name (e.g. "F1") to tag_id.
     #[serde(default)]
     pub tag_hotkeys: Vec<TagHotkey>,
+    /// User overrides keyed by lifecycle-owned UI keybinding contribution ID.
+    /// An empty value disables that binding; a missing value uses the plugin default.
+    #[serde(default)]
+    pub keybindings: BTreeMap<String, String>,
     /// Whether the preview-mode filmstrip is currently shown. Toggled
     /// by the toolbar button (when visible) and persisted across
     /// launches.
@@ -293,6 +298,7 @@ impl Default for Settings {
             tag_search_persist: default_tag_search_persist(),
             tag_merge_children: default_tag_merge_children(),
             tag_hotkeys: Vec::new(),
+            keybindings: BTreeMap::new(),
             show_filmstrip: false,
             toolbar_pos: ToolbarPosition::default(),
             ai: AiSettings::default(),

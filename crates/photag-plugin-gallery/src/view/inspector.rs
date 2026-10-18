@@ -373,7 +373,11 @@ impl GalleryView {
                             ),
                     );
                 }
-                input = input.child(Input::new(&search_input).flex_1().min_w(px(70.)));
+                input = input.child(
+                    photag_ui_bridge::components::text_input(&search_input)
+                        .flex_1()
+                        .min_w(px(70.)),
+                );
                 let selected_rows = inspector_tag_choice_rows(
                     media_id,
                     &selected_tags,

@@ -1,4 +1,19 @@
+## 2026-10-18 本地收藏取代置顶
+
+已实现持久收藏、普通删除/清理/淘汰保护、编辑去重保留收藏、旧 pinned 数据兼容，以及独立确认删除收藏。12 项数据库测试、shell check、独立 exe 编译、三次独立进程 MCP 收藏/重启/取消/删除验证及原面板 91 步回归通过。标准 exe 正在运行被锁定，未替换用户窗口；使用 `target/debug/photag-clipboard-favorites.exe` 完成验证。截图、准确命令、进程证据和限制见 [收藏验证](validation-ui/2026-10-18-clipboard-favorites/README.md)。
+
 # 界面重构验证记录
+
+## 2026-10-18：剪贴板参考还原与分类修复 v2
+
+用户指出上一版视觉未还原参考且分类不正确；结合EcoPaste、CopyQ、Ditto一手文档/截图重做。
+按 `reference-ui/concepts/clipboard-workbench-layout-2026-10-18-v2.png` 实现深蓝三栏、Lucide图标、
+卡片元信息/分组徽标、多行编辑和即时分组。修复浏览模式持久化清单遗漏剪贴板表的实际根因。
+Windows150%DPI、Rust1.97.1：fmt、locked shell check/build、类型1项/Database11项测试以及四项治理检查通过。
+91步同进程GPUI验证覆盖中文输入、分组创建/即时归属/筛选/重命名/删除、搜索及检查器跟随、自动类型、面板重开、
+暂停/恢复与静止revision；另用三个独立子进程确认历史/分组恢复及删除不复活。
+调试客户端已强制dev-test和显式profile数据库，修复早期core运行的隔离缺口；误入默认库的本轮fixture已逐条核对清理。
+概念、实测截图、精确命令、隔离更正和OS行为未验范围见[v2记录](validation-ui/2026-10-18-clipboard-workbench-v2/README.md)。
 
 ## 2026-10-16：原始文件查看改为 QuickLook
 
@@ -589,6 +604,52 @@ scenario `scripts/validate-everything-status.cjs`；环境
 截图、精简报告和更正前期服务/版本误诊见
 [Everything 验证记录](validation-ui/2026-10-17-everything-search/README.md)。
 
+## 2026-10-18 快捷键参考图纠偏（本轮）
+
+用户复核后按 `reference-ui/concepts/shortcuts-settings-2026-10-18.png` 重做横向插件行，
+落实范围徽标、对齐的按键/操作列、蓝色录入框、行内真实冲突、完整宽度的 F1–F9 选择器，
+调整默认浮窗至 1120×840 逻辑像素。实际同进程截图已打开逐项核对；默认正常/冲突页
+均可看到 F9，小窗口通过新 MCP 滚轮输入到达 F9 并实际点开菜单，页脚保持可见。
+
+fmt、locked shell check、四项治理及差异检查通过。shell 链接成功，主 EXE 因旧窗口占用
+导致 Cargo 最终复制失败（os error 5），使用新链接产物另存的
+`target/debug/photag-shell-shortcut-layout.exe` 做 MCP 验证，不将本次 Cargo build 记为完整通过。
+同进程场景的录入/冲突拒绝/无修饰键拒绝/合法保存/禁用/恢复/取消/切页关闭清理、
+静置和滚轮边界拒绝均通过。真实 OS 全局派发、超长第三方名称及多插件规模状态未覆盖。
+完整命令、前后截图、逐项对照和剩余适配差异见
+[复核记录](validation-ui/2026-10-18-shortcuts-reference/README.md)。
+
+新增 [活动参考入口](reference-ui/README.md)、[按图实现流程](ui-reference-workflow.md)
+及该画面的配套清单，并在 AGENTS.md 中设为界面任务必读；明确编译/JSON 断言不能代替
+视觉验收，“不逐像素复制”不能用于更改列布局或省略设计状态。以下旧结论明确撤回。
+
+## 2026-10-18 快捷键设置页布局与样式（上轮记录，视觉结论已撤回）
+
+更正（同日，用户复核后）：本节上轮“完成”结论撤回。上轮实际截图的操作按钮被代码
+固定放在下一行，并非按窗口宽度自然换行；默认浮窗中 F1–F9 大部分不可见，选择器固定
+窄宽，录入/冲突状态也没有落实参考图。编译和保存场景通过只能证明相应功能，不能证明
+视觉验收通过。后续按图修正及逐项证据见 [快捷键参考图复核](validation-ui/2026-10-18-shortcuts-reference/README.md)。
+
+以下保留上轮实现和检查记录，不能当作当前布局规范。
+概念参考：`reference-ui/concepts/shortcuts-settings-2026-10-18.png`。沿用已接受的
+设置浮窗与石墨灰/蓝色强调色，将插件命令整理为细分隔行：命令名称与插件/范围在左，
+按键胶囊在右，修改/恢复/禁用操作置于下一行；使用中文标签，并为启动台注册项提供中文名。
+插件快捷键与 PhoTag 原有快捷键分区之间增加清晰的层级标题。录入态提示按键及 Esc 取消，
+禁用态以明确文字显示。保留原设置导航、媒体键、排除修饰键、评分和 F1–F9 标签控制。
+
+验证环境：Windows，150% DPI，Rust 1.97.1 MSVC。`cargo +1.97.1 fmt --all -- --check`、
+相关 crate locked check、`cargo +1.97.1 build --locked -p photag-shell -j 2`，
+`check-ui-refresh.cjs`、`check-architecture.cjs`、`check-feature-ledger.cjs`、
+`check-layering.cjs` 和 `git diff --check` 通过。保留既有 LNK4098 链接警告；
+architecture guard 报告的 media-playback/preview orphan 目录为既存债务。
+
+同进程 MCP 使用隔离 profile `target/mcp-shortcut-final`、`core,dev-test` 与
+`scripts/validate-shortcuts.cjs` 重开设置页并检查已保存按键。截图：
+`target/mcp-shortcut-final/screenshots/settings-shortcuts-updated.png`。该轮截图仅证明插件条目
+和按键可显示；按钮另起一行及默认高度不足与参考图不符，不能作为视觉通过证据。
+MCP 合成录入态和设置持久化已有前节验证；
+真实系统级按键分发仍未由 MCP 覆盖。
+
 ### 搜索位置切换追加（2026-10-17）
 
 按用户方向对已接受顶栏作局部更新，不新建整体视觉概念。
@@ -607,6 +668,36 @@ MCP 重启读取均通过。已查看完整窗口截图，顶部新按钮无裁�
 边界：全机只包含 Everything 已索引位置；当前未选择目录时，本地沿用收藏集合登记目录。
 截图与摘要：validation-ui/2026-10-17-everything-search/location-report.json 及同目录 README。
 
+## 2026-10-18 插件快捷键设置与系统注册
+
+设置页 Shortcuts 页保留打开媒体键、排除修饰键、评分说明和 F1–F9 标签键，
+并从 UI Bridge 自动列出各 Cordis 插件登记的命令快捷键。每行显示插件、范围、
+当前组合键，支持录入、恢复默认和禁用。组合键覆盖按稳定贡献 ID 写入设置；
+同范围冲突会拒绝，系统快捷键需包含修饰键。Shell 将应用级绑定触发为
+`UiCommandInvoked`；`photag-plugin-shortcuts` 按设置覆盖动态注销/重注册全部
+系统级贡献，并在捕获键盘时暂时停用全局注册。启动器 Ctrl+F 和剪贴板
+Ctrl+Shift+V 用于验证多插件自动注册。
+
+运行环境：Windows、150% DPI、Rust 1.97.1 MSVC。验证 profile 为
+`target/mcp-shortcut-final`，启用 `core,dev-test`；用户 `%LOCALAPPDATA%/PhoTag`
+设置和数据库未用作 fixture。
+命令：`cargo +1.97.1 fmt --all -- --check`、
+`cargo +1.97.1 check --locked -p photag-plugin-settings -p photag-plugin-shortcuts -p photag-shell -p photag-plugin-mcp -j 2`、
+`cargo +1.97.1 build --locked -p photag-shell -j 2`，以及
+`node scripts/check-ui-refresh.cjs`、`node scripts/check-architecture.cjs`、
+`node scripts/check-feature-ledger.cjs`、`node scripts/check-layering.cjs`、
+`git diff --check`。构建通过，保留已有 Windows LNK4098 链接警告。
+
+同进程 MCP 场景运行两次：
+`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-shortcut-final --plugins core,dev-test --scenario scripts/validate-shortcuts.cjs --allow-mutations`。
+第一次打开 Shortcuts 页，将启动台键改为 Ctrl+Alt+Q；命令目录即时显示有效绑定，
+设置写入隔离 JSON，截图确认行状态。第二次用同一 profile 重启，命令目录确认
+覆盖值已恢复，设置页仍显示保存后的按键。运行记录与截图位于
+`target/mcp-shortcut-final/report.json` 和 `target/mcp-shortcut-final/screenshots/`。
+
+MCP 只能通过同进程合成 GPUI 按键，不能把真实系统级按键发往另一个前台应用；
+因此 OS 前台切换、真实全局键分发和与其他软件的抢占冲突仍需 Windows 实机验证。
+
 ## 2026-10-17 程序启动台桌面图标交互
 
 用户指定的大图标+名称布局按 `reference-ui/concepts/program-launcher-2026-10-17-v3.png` 与对应md实现，覆盖早期宽卡片/v2设计。左侧分类、中部图标网格、右侧编辑区复用共享浮动面板和GPUI Kit菜单；单击选中、双击启动、右键管理；安装日期/系统登记大小/名称支持双向排序。修正通用面板字符输入转发，补充同进程MCP文本输入和手动添加公开入口。
@@ -614,3 +705,50 @@ MCP 重启读取均通过。已查看完整窗口截图，顶部新按钮无裁�
 环境Windows 150% DPI，Rust1.97.1 MSVC。`cargo +1.97.1 fmt --all -- --check`、locked/offline shell check/build、Database10和i18n4项测试以及layering/architecture/feature-ledger/ui-refresh脚本通过。构建仍有已有LNK4098提示。旧库升级、重启和自定义字段兼容性通过新增数据库回归。
 
 MCP命令：`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-launcher-icons-validated --plugins dev-test,launcher --scenario scripts/validate-program-launcher.cjs --allow-mutations`。398真实项+1隔离无窗口EXE；396原生图标，3回退（含样例）；45日期/100大小。实际控件验证中文名称/分类/隐藏保存、单击不启动、双击样例写标记、右键菜单、三字段六方向排序、扫描变化、247→247静止绘制及重新打开图标缓存。缩至950×660后图标三列，保留分类与编辑滚动区。截图、完整命令、差异和边界见[运行记录](validation-ui/2026-10-17-program-launcher/README.md)。原生文件选取、真实应用启动及卸载/提权路径仍未验；用户常规数据未打开。
+# 2026-10-18：顶部图标化及筛选栏右侧视图控件
+
+后续用户反馈静置Lore统计日志：已修复可见文件版本提示对无关全库写入修订的缓存失效，
+无需打开History也会进行初次被动检查。真实文件变更提示保留；无关写入不再重读。
+同进程MCP静置/真实变化及29项回归证据见
+[2026-10-18-version-idle](validation-ui/2026-10-18-version-idle/README.md)。界面布局无改动。
+
+按用户本轮标注图做局部调整：顶部操作文本改图标并保留本地化提示，网格/列表/
+子文件夹/缩放移至中部筛选栏右端，移除状态栏标签/更多。统一图标组件，原有服务与
+持久化处理器保持。用户图与清单位于 reference-ui/concepts/main-toolbar-icons-2026-10-18.md。
+Rust1.97.1 locked Shell build、fmt、Gallery24项测试及治理检查通过。Windows150% DPI
+同进程MCP隔离实点验证布局切换、子文件夹1→2→1、缩放保存、搜索位置、范围弹窗、
+工具入口与静置；查看默认/选中/tooltip/1510×1000小窗截图。
+完整命令、截图和未验项见[本轮验收](validation-ui/2026-10-18-toolbar-icons/README.md)。
+
+# 2026-10-18：独立收藏分组与当前目录快捷添加
+
+按本轮用户两图，将原文件夹收藏/库文件夹/收藏集合复合区替换为多个平级独立分组。
+与驱动器、快速访问共用 UI Bridge sidebar_section/sidebar_header；每组＋直接添加主窗
+已提交目录，无目录时禁用，重复不覆盖别名，失效目录显示错误。登记库路径一次性迁入
+常用组，保留既有自定义组，删除收藏不影响登记/扫描，重启不复活。小窗整列滚动已修复。
+
+用户参考、ImageGen 概念及编码前清单位于 reference-ui/concepts/sidebar-favorite-groups-2026-10-18.md。
+Rust1.97.1 locked Shell build、fmt、33项相关单测及全部治理检查通过；Windows 150% DPI
+同进程 MCP 隔离 profile 验证真实指针＋/菜单/折叠、当前子目录、重复、空态/错误、长路径、
+小窗滚动、静置和新进程持久化。完整命令、截图、差异及未验项见
+[验收记录](validation-ui/2026-10-18-favorite-groups/README.md)。主窗工具栏的小窗横向裁切为
+既有问题，本次未宣称解决；原生登记管理及网络权限未实测。
+
+# 2026-10-18：剪贴板 v2 基准的全局统一主题
+
+用户要求以当前剪贴板面板统一全软件及各插件，并建立未来开发约束。已将深蓝主题、
+字体/间距/圆角、组件状态集中到 UI Bridge，抽取共享卡片/导航/操作/标题/输入组件；
+移除功能 UI 的颜色硬编码，剪贴板和启动台共用组件，所有 Input/Textarea 经公共构造器。
+相同控件的输入凹槽、边框与焦点环一并修正；业务布局与既有服务/配置路径保持。
+
+`cargo +1.97.1` fmt、locked Shell check/build 通过，UI Bridge/Settings/i18n 共20项
+测试通过；theme 正反探针、refresh/architecture/layering/feature-ledger 守卫通过，
+主题守卫接入 CI。内置 ImageGen 概念已检查并保存；实际同进程 MCP/150% DPI 验证
+主窗、历史空态、统计、批量操作、导出、剪贴板、启动台、设置全部分页、蓝→灰青→蓝
+真实切换、hover/选中/焦点、静置及小窗滚动。24张最终截图和精简运行证据见
+[完整记录](validation-ui/2026-10-18-unified-theme/README.md)。统计为零索引、历史为空态，
+不能扩展为所有分支/错误/原生系统对话框/Debug状态均已验收；具体差异见该记录。
+
+后续开发必须读 [统一主题规范](ui-theme.md)、[活动参考](reference-ui/README.md)，
+执行 `node scripts/check-ui-theme.cjs` 和真实截图对照；AGENTS.md 已添加同样要求。
+本次用户指令覆盖历史 v5 的石墨灰样式，各页功能布局及控件关系继续按活动参考。

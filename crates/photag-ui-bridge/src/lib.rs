@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 
 use cordis::{Event, Service};
 
+pub mod components;
 pub mod i18n;
 pub mod panel_catalog;
 pub mod panels;
@@ -237,7 +238,20 @@ pub enum ContributionKind {
         order: i32,
     },
     /// Key chord referring to a command identifier.
-    Keybinding { key: String, command_id: String },
+    Keybinding {
+        key: String,
+        command_id: String,
+        scope: ShortcutScope,
+    },
+}
+
+/// Where a plugin-owned shortcut is handled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShortcutScope {
+    /// Handled by the PhoTag GPUI window while the application is active.
+    Application,
+    /// Registered with the operating system and available while another app is active.
+    System,
 }
 
 /// Preconditions used by the shared command catalog and MCP dispatcher.
@@ -270,6 +284,7 @@ pub struct CommandMenuItem {
 pub struct CommandKeybinding {
     pub id: String,
     pub key: String,
+    pub scope: ShortcutScope,
 }
 
 /// Stable command metadata projected from lifecycle-owned UI contributions.
@@ -491,11 +506,16 @@ impl UiCatalog {
                         });
                     }
                 }
-                ContributionKind::Keybinding { key, command_id } => {
+                ContributionKind::Keybinding {
+                    key,
+                    command_id,
+                    scope,
+                } => {
                     if let Some(command) = commands.get_mut(command_id) {
                         command.keybindings.push(CommandKeybinding {
                             id: owned.contribution.id.clone(),
                             key: key.clone(),
+                            scope: *scope,
                         });
                     }
                 }
@@ -600,6 +620,7 @@ mod tests {
                         ContributionKind::Keybinding {
                             key: "Ctrl+Z".into(),
                             command_id: "history/undo".into(),
+                            scope: ShortcutScope::Application,
                         },
                     ),
                 ],

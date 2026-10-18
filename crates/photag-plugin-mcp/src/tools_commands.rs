@@ -1,5 +1,5 @@
 use super::*;
-use photag_ui_bridge::{CommandNeeds, RegisteredCommand, UiCommandInvoked};
+use photag_ui_bridge::{CommandNeeds, RegisteredCommand, ShortcutScope, UiCommandInvoked};
 use rmcp::schemars;
 use serde::Deserialize;
 
@@ -21,6 +21,13 @@ impl super::PhoTagMcpServer {
             Ok(commands) => commands,
             Err(error) => return error_json(&error.to_string()),
         };
+        let overrides = self
+            .context
+            .try_service::<photag_plugin_settings::SettingsService>()
+            .ok()
+            .and_then(|service| service.snapshot().ok())
+            .map(|settings| settings.keybindings)
+            .unwrap_or_default();
         serde_json::to_string(&json!({
             "commands": commands.iter().map(|command| {
                 let (enabled, reason) = self.command_availability(command.needs);
@@ -36,6 +43,12 @@ impl super::PhoTagMcpServer {
                     })).collect::<Vec<_>>(),
                     "keybindings": command.keybindings.iter().map(|key| json!({
                         "id": key.id, "key": key.key,
+                        "effective_key": overrides.get(&key.id).unwrap_or(&key.key),
+                        "enabled": !overrides.get(&key.id).is_some_and(String::is_empty),
+                        "scope": match key.scope {
+                            ShortcutScope::Application => "application",
+                            ShortcutScope::System => "system",
+                        },
                     })).collect::<Vec<_>>(),
                 })
             }).collect::<Vec<_>>()

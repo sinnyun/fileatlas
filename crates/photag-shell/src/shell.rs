@@ -17,6 +17,7 @@ pub(super) struct PhoTagShell {
     pub(super) inspector_width: f32,
     pub(super) viewport_width: f32,
     pub(super) capture: Arc<photag_plugin_mcp::CaptureWindowHandle>,
+    pub(super) native_window_handle: isize,
     pub(super) drag_origin_x: f32,
     pub(super) drag_origin_width: f32,
     pub(super) resizing_panel: Option<PanelSide>,
@@ -264,8 +265,10 @@ impl Render for PhoTagShell {
                     Button::new("shell-tools")
                         .ghost()
                         .compact()
-                        .label(photag_ui_bridge::i18n::tr("Tools"))
-                        .dropdown_caret(true)
+                        .icon(theme::icon(IconName::Wrench))
+                        .tooltip(photag_ui_bridge::i18n::tr("Tools"))
+                        .accessibility_label(photag_ui_bridge::i18n::tr("Tools"))
+                        .toggled(self.tools_open)
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.tools_open = !this.tools_open;
                             let _ = this.surfaces.set_open("tools", this.tools_open);
@@ -369,6 +372,64 @@ impl Render for PhoTagShell {
             .text_color(rgb(theme::TEXT_PRIMARY))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                 if !event.keystroke.key.eq_ignore_ascii_case("escape") {
+                    if !this.surfaces.is_capturing_key("settings") {
+                        let modifiers = event.keystroke.modifiers;
+                        let mut parts = Vec::new();
+                        if modifiers.control {
+                            parts.push("Ctrl".to_owned());
+                        }
+                        if modifiers.alt {
+                            parts.push("Alt".to_owned());
+                        }
+                        if modifiers.shift {
+                            parts.push("Shift".to_owned());
+                        }
+                        if modifiers.platform {
+                            parts.push("Win".to_owned());
+                        }
+                        parts.push(if event.keystroke.key.len() == 1 {
+                            event.keystroke.key.to_ascii_uppercase()
+                        } else {
+                            event.keystroke.key.clone()
+                        });
+                        let chord = parts.join("+");
+                        let overrides = this
+                            .cordis
+                            .try_service::<photag_plugin_settings::SettingsService>()
+                            .ok()
+                            .and_then(|service| service.snapshot().ok())
+                            .map(|settings| settings.keybindings)
+                            .unwrap_or_default();
+                        let command_id = this
+                            .catalog
+                            .commands()
+                            .ok()
+                            .into_iter()
+                            .flatten()
+                            .flat_map(|command| {
+                                let overrides = &overrides;
+                                let chord = &chord;
+                                let command_id = command.id.clone();
+                                command.keybindings.into_iter().filter_map(move |binding| {
+                                    let current =
+                                        overrides.get(&binding.id).unwrap_or(&binding.key);
+                                    (binding.scope == photag_ui_bridge::ShortcutScope::Application
+                                        && !current.is_empty()
+                                        && current.eq_ignore_ascii_case(&chord))
+                                    .then_some(command_id.clone())
+                                })
+                            })
+                            .next();
+                        if let Some(command_id) = command_id {
+                            let cordis = this.cordis.clone();
+                            this.executor.spawn(async move {
+                                let _ = cordis
+                                    .emit::<UiCommandInvoked>(Routing::Unscoped, command_id)
+                                    .await;
+                            });
+                            cx.notify();
+                        }
+                    }
                     return;
                 }
                 if this.surfaces.take_suppressed_escape("settings") {
@@ -478,7 +539,7 @@ impl Render for PhoTagShell {
                     div()
                         .absolute()
                         .inset_0()
-                        .bg(rgba(0x00000060))
+                        .bg(rgba(theme::SHADOW_OVERLAY))
                         .occlude()
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation()),

@@ -480,3 +480,35 @@ validation-ui/2026-10-17-everything-search/README.md.
 | Source / requirement | Current mapping | Compatibility |
 |---|---|---|
 | User-requested independent launcher, desktop-icon reference and installation sorting; no launcher equivalent in vendor/photag-source | LauncherService discovery reads Windows Start Menu/uninstall registry; IShellItemImageFactory supplies native icons; DatabaseService owns typed launcher entries/nullable installation metadata; shared GPUI panels/menus/ReadModel/Wake supply UI infrastructure | Additive app_launcher_metadata table, no changes to source media/tag schema. Previous launcher database upgrade and restart regression preserves custom names/categories/hidden state. Unknown installation date/size remain unknown. |
+
+### Clipboard workbench mapping — 2026-10-18
+
+| Source / requirement | Current mapping | Compatibility / evidence |
+|---|---|---|
+| User-requested clipboard history, organization and reference-style floating panel; no clipboard history/group capability in vendor/photag-source | ClipboardService uses clipboard-master/arboard; public content type classifier derives text/link/code. DatabaseService owns clipboard tables, assignment and category CRUD. UI Bridge owns the single floating panel/sidebar/command/shortcut contribution. | Additive clipboard tables; existing browser-store whitelist now persists them and reconciles deletions. Photo schema and source queries unchanged. Database11/type1 tests plus 91-step same-process UI and three-process restart evidence; OS capture/write/hotkey delivery remain unverified. |
+
+### 2026-10-18 剪贴板收藏语义映射
+
+已追踪 ClipboardService → DatabaseService::clipboard_* → browser_store::persist，以及 history/inspector/sidebar 的删除调用。vendor/photag-source 为照片软件，没有对应剪贴板收藏功能。复用现有共享 SQLite 保存收藏，兼容旧 pinned 列；普通删除、自动淘汰和清理不能删除收藏，只有 clipboard_remove_favorite 显式删除本地内容。
+# 2026-10-18 独立收藏分组映射
+
+## 2026-10-18 被动版本状态缓存
+
+vendor/photag-source无此版本功能；沿用本项目固定Lore不可变版本比较。已追踪Gallery
+flush_visible_window→request_version_states→VersionsService::file_state，以及共享Database
+write_revision（也包含剪贴板写入）和Lore StoreInstruments→SDK meter复用调试日志。
+仅去除版本状态缓存键的无关全库写入修订，文件监听/快照和显式历史修订保持；无数据迁移。
+复现及真实变化证据见validation-ui/2026-10-18-version-idle/README.md。
+
+| 源行为/模型 | 当前公共入口 | 本轮处理 |
+|---|---|---|
+| `vendor/photag-source/src/db/queries.rs` add_folder/list_folders/remove_folder；`db/mod.rs` folders.id 为 INTEGER PRIMARY KEY，可能重用 | Navigation snapshot 的登记根；DatabaseService 原有登记/删除方法与扫描/监听链路 | 不改 SQLite，不把收藏删除映射为源 remove_folder（它还会删除媒体索引）；登记操作保留为明确菜单动作 |
+| 用户要求多个独立收藏组、＋收藏当前目录；源 sidebar.rs 没有对应分组模型 | SidebarFoldersService::import_library_folders、SidebarFoldersConfig、SidebarFoldersChanged→Settings；Session 已提交位置 | 将旧登记路径一次性复制为快捷收藏，规范化路径标记而非数据库 ID，保留别名/顺序，删除后不复活；新增 serde-default 字段兼容旧 JSON。无需修改源查询或媒体数据 |
+
+# 2026-10-18 全局工作台主题映射补充
+
+| 源行为/模型 | 当前公共入口 | 本轮处理 |
+|---|---|---|
+| `vendor/photag-source/src/settings.rs:52,141–142,225` 的强调色名默认/序列化 | Settings `accent_name` → UI Bridge `DEFAULT_ACCENT_NAME` / `set_accent_name` | 按用户新设计默认工作台蓝；保存的 System/旧预设继续解析，不改 JSON 字段、路径及用户文件 |
+| 源图像/标签/程序数据与当前公共服务 | 原有 Database、Tagging、Launcher、Navigation、Gallery 服务 | 本轮只改渲染和共享组件，不替换数据查询、文件操作、媒体像素或用户标签色 |
+| 旧 v5 / 剪贴板私有 palette | UI Bridge `theme`、`components`、`panels` | 深蓝公共主题覆盖历史配色，功能布局仍按活动参考；详见 `docs/ui-theme.md` |

@@ -262,3 +262,48 @@ Public NavigationUiRequest::AddressBar(AddressBarRequest) accepts serde kind bac
 Session changes from Gallery tag filters also synchronize history without filesystem IO; selecting a folder clears tag scope. Home and tag views have context labels, not fictitious filesystem paths. Back/Forward restores directory/home/tag scope, truncates forward history on a new branch and deduplicates equivalent Windows paths. History resets at the restored location for a new window.
 
 get_ui_state.sidebar_folders.address_bar is change-gated: path, editing, text, error, can_back/can_forward/can_up, breadcrumbs[{label,path}]. Input uses InputState and actual PressEnter; Escape cancels, Ctrl+L edits, Alt+Left/Right navigates when the bar is focused. Gallery forwards Ctrl+L and Alt+Left/Right from its own focus; existing Alt+Up is retained. Long breadcrumbs scroll horizontally; edit exposes the complete path. No render-time metadata/canonicalize probes are added. See docs/validation-ui/2026-10-16-address/README.md.
+
+## Unified theme (2026-10-18)
+
+View paints use UI Bridge semantic theme tokens instead of local color literals.
+Gallery inspector/statistics cards and headings consume shared components; compact
+navigation preserves its layout with common selection/hover paints. Status, branch
+and media-overlay colors remain semantically distinct in the central theme.
+No product service/data/event contract changes. See `docs/ui-theme.md`.
+# Unified favorite group sidebar (2026-10-18)
+
+Each favorite group is a sibling region, using the same UI Bridge
+`components::sidebar_section/sidebar_header` as Drives/Quick Access. No outer
+Folder favorites / Library folders / Favorites collection container remains.
+The whole sidebar column scrolls within the host viewport. Group plus calls
+`add_current_favorite`: resolves the committed Session directory (including nested
+paths), checks that the group and directory still exist, adds a shortcut through
+the existing revisioned Settings event, expands the target group, and never opens
+a picker or starts indexing. Home/tag sets disable plus. Per-group path matching
+uses normalized Windows identity, preserving aliases and revisions on duplicates.
+
+`SidebarFoldersService::import_library_folders(&[(i64, String, String)], &str)`
+returns `Option<SidebarFoldersConfig>` for an actual import. Existing library
+roots are represented once in the default Favorites group (or an existing group
+with that name); existing groups/aliases/order survive. The additive serde-default
+`SidebarFoldersConfig.imported_library_paths: Vec<String>` stores normalized
+paths, rather than SQLite IDs which can be reused. Removing a shortcut/group
+does not remove database registrations or make it reappear on restart. Import
+runs on the existing snapshot-change/startup poll, not per render; persistence
+and retry still use `SidebarFoldersChanged` / SettingsService. There is no SQL
+schema migration or parallel persistence facility.
+
+Public `SidebarUiRequest::AddCurrentFavorite { group_id }` maps to the actual plus
+handler. Existing `AddFavoriteFolder` remains the explicit-path variant. Legacy
+`ToggleSection favorites/folders` now toggles all sibling groups; individual group
+collapse uses `ToggleGroup`. Registered bookmark context menus retain rescan,
+subfolder creation and explicit Remove from library; plain Remove from favorites
+only removes the shortcut. Old library-root display reorder/rename UI is superseded
+by group placement/alias editing; public backend compatibility methods remain.
+
+`sidebar_state()`/MCP `get_ui_state.sidebar_folders` adds `favorite_current_path`,
+`favorite_action_error`, `favorite_imported_paths`, and per-group `header_bounds`
+([x,y,width,height] in logical GPUI client coordinates). Bounds come from the same
+view's paint canvas, are change-gated for diagnostics and trigger no repaint/IO.
+Inspect `save_error` for persistence failures. Reference: `docs/ui-theme.md` and
+`docs/reference-ui/concepts/sidebar-favorite-groups-2026-10-18.md`.

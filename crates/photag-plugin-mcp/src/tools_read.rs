@@ -2,6 +2,29 @@ use super::*;
 
 #[tool_router(router = read_tool_router, vis = "pub(super)")]
 impl super::PhoTagMcpServer {
+    #[tool(
+        description = "Read clipboard workbench counts and categories. Clipboard text is deliberately omitted from MCP output."
+    )]
+    fn get_clipboard_state(&self) -> String {
+        let Some(clipboard) = &self.clipboard else {
+            return error_json("剪贴板工作台插件未启用。");
+        };
+        let categories = clipboard.categories();
+        let items = clipboard.snapshot();
+        match (categories,items){
+            (Ok(categories),Ok(items))=>serde_json::to_string(&json!({
+                "count":items.len(),"revision":clipboard.revision(),
+                "ui": self.surfaces.value("clipboard.ui").and_then(|value|serde_json::from_str::<serde_json::Value>(&value).ok()),
+                "favorite_count":items.iter().filter(|item|item.pinned).count(),"pinned_count":items.iter().filter(|item|item.pinned).count(),"capture_paused":clipboard.is_paused(),
+                "categories":categories.iter().map(|category|json!({"id":category.id,"name":category.name})).collect::<Vec<_>>(),
+                "items":items.iter().map(|item|json!({"id":item.id,"length":item.content.chars().count(),"category_id":item.category_id,
+                    "kind":photag_plugin_clipboard::content::classify(&item.content).key(),
+                    "favorite":item.pinned,"pinned":item.pinned,"created_at":item.created_at,"last_used_at":item.last_used_at})).collect::<Vec<_>>()
+            })).unwrap_or_else(|error|error_json(&error.to_string())),
+            (Err(error),_)|(_,Err(error))=>error_json(&error),
+        }
+    }
+
     #[tool(description = "读取程序启动台的分类、程序、隐藏状态和扫描状态。")]
     fn get_launcher_state(&self) -> String {
         let Some(launcher) = &self.launcher else {

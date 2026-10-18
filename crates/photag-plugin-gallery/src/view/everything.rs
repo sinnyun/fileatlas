@@ -38,16 +38,19 @@ impl GalleryView {
                 },
             )
         };
-        Button::new("gallery-search-location")
-            .ghost()
-            .compact()
-            .toggled(entire)
-            .label(photag_ui_bridge::i18n::tr(label))
-            .tooltip(photag_ui_bridge::i18n::tr(tooltip))
-            .on_click(
-                cx.listener(move |view, _, _, cx| view.set_search_entire_computer(!entire, cx)),
-            )
-            .into_any_element()
+        view_controls::button(
+            "gallery-search-location",
+            if entire {
+                gpui_kit::assets::IconName::Globe
+            } else {
+                gpui_kit::assets::IconName::FolderSearch
+            },
+            label,
+        )
+        .toggled(entire)
+        .tooltip(photag_ui_bridge::i18n::tr(tooltip))
+        .on_click(cx.listener(move |view, _, _, cx| view.set_search_entire_computer(!entire, cx)))
+        .into_any_element()
     }
 
     pub(super) fn recheck_everything(&mut self, cx: &mut Context<Self>) {
@@ -100,11 +103,12 @@ impl GalleryView {
             "Requires Everything 1.5 or later. Detected: {version}",
             &[("version", version.to_owned())],
         );
-        let mut status = Button::new("gallery-everything-status")
-            .ghost()
-            .compact()
-            .label(photag_ui_bridge::i18n::tr(label))
-            .tooltip(tooltip);
+        let mut status = view_controls::button(
+            "gallery-everything-status",
+            gpui_kit::assets::IconName::Search,
+            label,
+        )
+        .tooltip(format!("{} · {tooltip}", photag_ui_bridge::i18n::tr(label)));
         if install {
             status = status
                 .text_color(rgb(theme::WARNING))

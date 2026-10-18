@@ -2,7 +2,15 @@ use super::*;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 impl SettingsView {
-    pub(super) fn render_tab(&self, s: &Settings, cx: &mut Context<Self>) -> impl IntoElement {
+    pub(super) fn render_tab(
+        &self,
+        s: &Settings,
+        width: f32,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        if self.tab == Tab::Shortcuts {
+            return self.render_shortcuts(s, width, cx).into_any_element();
+        }
         if self.tab == Tab::Updates {
             return self.render_updates_page(s, cx).into_any_element();
         }
@@ -50,16 +58,11 @@ impl SettingsView {
             Tab::Appearance => {
                 b = b.children(self.language_views.clone());
                 b = b.child(self.section("Accent source"));
-                for name in [
-                    "Slate Blue",
-                    "Dusty Teal",
-                    "Muted Copper",
-                    "Dusty Rose",
-                    "Sage Green",
-                    "Dusty Mauve",
-                    "Warm Taupe",
-                    "System",
-                ] {
+                for name in theme::ACCENT_PRESETS
+                    .iter()
+                    .map(|preset| preset.name)
+                    .chain(std::iter::once(theme::SYSTEM_ACCENT_NAME))
+                {
                     let selected = s.accent_name == name;
                     let value = name.to_owned();
                     let mut swatch = Button::new(format!("settings-accent-{name}"))
@@ -216,177 +219,7 @@ impl SettingsView {
                         ),
                 );
             }
-            Tab::Shortcuts => {
-                b = b.child(self.section("Tag sidebar modifier"));
-                let modifier = s.exclude_modifier;
-                let weak = cx.entity().downgrade();
-                b = b.child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .justify_between()
-                        .gap_3()
-                        .child(
-                            div()
-                                .v_flex()
-                                .gap_1()
-                                .child(
-                                    div()
-                                        .text_sm()
-                                        .child(photag_ui_bridge::i18n::tr("Exclude shortcut")),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(rgb(theme::TEXT_SECONDARY))
-                                        .child(photag_ui_bridge::i18n::tr(
-                                            "Hold this key while clicking a tag to exclude it.",
-                                        )),
-                                ),
-                        )
-                        .child(
-                            Button::new("settings-exclude-modifier")
-                                .w(px(100.))
-                                .label(photag_ui_bridge::i18n::tr(modifier.label()))
-                                .dropdown_caret(true)
-                                .dropdown_menu(move |mut menu, _, _| {
-                                    for option in [
-                                        ExcludeModifier::None,
-                                        ExcludeModifier::Ctrl,
-                                        ExcludeModifier::Shift,
-                                        ExcludeModifier::Alt,
-                                    ] {
-                                        let weak = weak.clone();
-                                        menu = menu.item(
-                                            PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                option.label(),
-                                            ))
-                                            .checked(option == modifier)
-                                            .on_click(move |_, _, cx| {
-                                                let _ = weak.update(cx, |view, cx| {
-                                                    view.edit(
-                                                        |settings| {
-                                                            settings.exclude_modifier = option
-                                                        },
-                                                        cx,
-                                                    )
-                                                });
-                                            }),
-                                        );
-                                    }
-                                    menu
-                                }),
-                        ),
-                );
-                b = b.child(self.section("Open media file"));
-                b = b.child(div().h_flex().items_center().justify_between().gap_3()
-                    .child(div().v_flex().gap_1()
-                        .child(div().text_sm().child(photag_ui_bridge::i18n::tr("Open selected media")))
-                        .child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(photag_ui_bridge::i18n::tr("Open the selected file in QuickLook. Space and Enter are always available."))))
-                    .child(div().h_flex().items_center().gap_2()
-                        .child(div().px_3().py_1().rounded_sm().border_1()
-                            .border_color(rgba(theme::HAIRLINE.to_rgba())).bg(rgb(theme::SURFACE_BASE))
-                            .child(s.open_key.clone()))
-                        .child(self.open_key_capture_button(cx))));
-                b = b.child(self.section("Rating shortcuts"));
-                b = b.child(div().text_sm().child(photag_ui_bridge::i18n::tr(
-                    "Use number keys 0–5 to set a rating; 0 clears the rating.",
-                )));
-                b = b.child(self.section("Tag target shortcuts (F1–F9)"));
-                b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr(
-                    "Choose a tag for each key. Press that key in the gallery to toggle the tag.",
-                )));
-                match self.tag_choices.value() {
-                    Some(Ok(choices)) => {
-                        let flat_tags = choices.clone();
-                        let mut rows = div().v_flex().gap(px(3.));
-                        for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
-                            let selected = s
-                                .tag_hotkeys
-                                .iter()
-                                .find(|hotkey| hotkey.key == key)
-                                .map(|hotkey| hotkey.tag_id);
-                            rows = rows.child(
-                                div()
-                                    .h_flex()
-                                    .w_full()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .w(px(42.))
-                                            .h(px(24.))
-                                            .flex_shrink_0()
-                                            .h_flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .rounded_sm()
-                                            .border_1()
-                                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                                            .bg(rgb(theme::SURFACE_BASE))
-                                            .text_sm()
-                                            .font_semibold()
-                                            .child(key),
-                                    )
-                                    .child(tag_hotkeys::button(
-                                        key,
-                                        selected,
-                                        flat_tags.clone(),
-                                        cx.entity().downgrade(),
-                                    )),
-                            );
-                        }
-                        b = b.child(rows);
-                    }
-                    Some(Err(error)) => {
-                        b = b.child(div().child(format!("Could not load tags: {error}")));
-                    }
-                    None => {
-                        b = b.child(div().child(photag_ui_bridge::i18n::tr("Loading file info…")));
-                        let mut rows = div().v_flex().gap(px(3.));
-                        for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
-                            let selected = s
-                                .tag_hotkeys
-                                .iter()
-                                .find(|hotkey| hotkey.key == key)
-                                .map(|hotkey| hotkey.tag_id);
-                            let assigned = selected
-                                .map(|id| format!("tag #{id}"))
-                                .unwrap_or_else(|| "None".into());
-                            rows = rows.child(
-                                div()
-                                    .h_flex()
-                                    .w_full()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .items_center()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .w(px(42.))
-                                            .h(px(24.))
-                                            .flex_shrink_0()
-                                            .h_flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .rounded_sm()
-                                            .border_1()
-                                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                                            .bg(rgb(theme::SURFACE_BASE))
-                                            .text_sm()
-                                            .font_semibold()
-                                            .child(key),
-                                    )
-                                    .child(div().flex_1().child(assigned)),
-                            );
-                        }
-                        b = b.child(rows);
-                    }
-                }
-            }
+            Tab::Shortcuts => {}
             Tab::Tags => {
                 b = b.child(self.section("Search match"));
                 b = b.child(div().text_xs().text_color(rgb(theme::TEXT_SECONDARY)).child(

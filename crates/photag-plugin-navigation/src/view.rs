@@ -10,7 +10,7 @@ use cordis::{Context as CordisContext, Routing};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
-use gpui_kit::component::input::{Input, InputState};
+use gpui_kit::component::input::InputState;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::gpui::InteractiveElement as _;
 use gpui_kit::gpui::StatefulInteractiveElement as _;
@@ -30,6 +30,7 @@ use crate::{NavigationService, NavigationSnapshot, SubdirectoryNode};
 mod address_bar;
 mod construction;
 mod directories;
+mod favorite_groups;
 mod favorite_menu;
 mod location_actions;
 use favorite_menu::favorite_menu;
@@ -56,25 +57,7 @@ use support::{
 /// Bounded container for one sidebar region: drives, quick access or favorites.
 /// The theme decides whether regions are separated by a hairline or a shadow.
 fn sidebar_region(body: Div) -> Div {
-    theme::separate_region(
-        body.v_flex()
-            .w_full()
-            .gap(px(2.))
-            .p(px(6.))
-            .rounded(px(theme::ROUND_MD))
-            .bg(rgb(theme::SURFACE_REGION)),
-        theme::RegionEdge::All,
-    )
-}
-
-/// Caption naming a sub-block inside a sidebar region.
-fn region_caption(label: &'static str) -> Div {
-    div()
-        .pt(px(4.))
-        .text_size(px(11.))
-        .font_semibold()
-        .text_color(rgb(theme::TEXT_MUTED))
-        .child(photag_ui_bridge::i18n::tr(label))
+    photag_ui_bridge::components::sidebar_section(body)
 }
 
 pub(super) fn sidebar(
@@ -242,8 +225,10 @@ pub(super) fn sidebar(
                         view.refresh();
                         view.refresh_selected_directory();
                     }
+                    let favorites_imported = view.import_library_favorites(cx);
                     let address_changed = view.sync_address_location();
-                    let changed = address_changed
+                    let changed = favorites_imported
+                        || address_changed
                         || requested
                         || ui_requested
                         || changed
@@ -381,7 +366,6 @@ struct SidebarView {
     preferences: Arc<RwLock<TagInteractionPreferences>>,
     included_tags: Vec<i64>,
     excluded_tags: Vec<i64>,
-    show_folder_path_entry: bool,
     show_tag_search_controls: bool,
     new_folder_parent: Option<String>,
     exclude_mode: bool,
@@ -396,9 +380,11 @@ struct SidebarView {
     confirm_delete: Option<(i64, String, usize)>,
     delete_clean_parents: bool,
     tag_create_open: bool,
-    rename_favorite: Option<i64>,
     folders: Arc<crate::SidebarFoldersService>,
     sidebar_config_revision: u64,
+    favorite_import_pending: bool,
+    favorite_action_error: Option<String>,
+    favorite_header_bounds: Arc<RwLock<std::collections::BTreeMap<String, [f32; 4]>>>,
     sidebar_io_revision: u64,
     sidebar_save_error: Option<String>,
     directory_revision: u64,
@@ -447,6 +433,7 @@ enum ScanRetryTarget {
 impl SidebarView {
     fn refresh(&mut self) {
         self.snapshot = self.service.snapshot().map_err(|error| error.to_string());
+        self.favorite_import_pending = true;
     }
 
     fn set_navigation_page(&mut self, page: NavigationPage) {
@@ -468,7 +455,6 @@ impl SidebarView {
     }
 
     fn close_tag_modal(&mut self) {
-        self.rename_favorite = None;
         self.tag_create_open = false;
         self.associated_edit_tag = None;
         self.confirm_delete = None;
@@ -527,11 +513,6 @@ impl SidebarView {
                 self.snapshot = Err(message);
             }
         }
-    }
-
-    fn add_folder(&mut self, cx: &mut Context<Self>) {
-        let path = self.folder_path.read(cx).value().trim().to_owned();
-        self.add_folder_path(path, cx);
     }
 
     fn monitor_scan(&mut self, cx: &mut Context<Self>) {

@@ -29,6 +29,7 @@ mod sliders;
 mod statistics;
 mod tagging_picker;
 mod version_badges;
+mod view_controls;
 mod view_state;
 mod writeback_failure;
 
@@ -48,7 +49,7 @@ use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::calendar::CalendarState;
 use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTime};
-use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_plugin_database::SortOrder;

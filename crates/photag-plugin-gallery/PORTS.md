@@ -410,3 +410,35 @@ Without a selected folder the local mode retains registered collection roots;
 its tooltip explains this fallback. Clearing text restores ordinary browsing
 and the selected navigation location. Gallery changes do not replace Navigation
 selection or history. Same-process evidence: Everything search validation README.
+
+## Unified theme (2026-10-18)
+
+View paints use UI Bridge semantic theme tokens instead of local color literals.
+Gallery inspector/statistics cards and headings consume shared components; compact
+navigation preserves its layout with common selection/hover paints. Status, branch
+and media-overlay colors remain semantically distinct in the central theme.
+No product service/data/event contract changes. See `docs/ui-theme.md`.
+
+## Main toolbar placement (2026-10-18)
+
+`command.size` retains folder-open/refresh only; `command.filters` contains
+scrollable filter chips on the left and grid/list/descendants/thumbnail size on
+the right. `view_controls` uses shared UI Bridge icon buttons with localized
+tooltips/accessibility labels and the existing layout/descendants/session handlers.
+Search location, scope and Everything dependency feedback are icon-only; feedback
+text remains available in tooltips, including installation/version state.
+`workspace.status` retains counts/progress/cancellation/errors; selection Tags/More
+buttons are removed per user direction. Context menus and existing public commands
+retain their functionality. No new settings, service or persistence contract.
+
+## Passive version-state invalidation (2026-10-18)
+
+Visible cards automatically read saved-content state even with History closed, to
+show unsaved-change badges. `version_badges::StateKey` contains the Gallery snapshot
+generation, explicit history generation and visible media identities/paths. It must
+not include `DatabaseService::write_revision`: unrelated clipboard/launcher/cache
+writes previously invalidated this read and reopened Lore on the next normal paint.
+Filesystem/index changes still advance snapshots and version actions still advance
+history generation. Success/errors remain cached by the shared ReadModel. The idle
+regression is `scripts/validate-version-idle.cjs`; it reads raw debug events rather
+than hiding OpenTelemetry logs, and verifies both unrelated writes and real changes.

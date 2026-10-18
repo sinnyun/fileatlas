@@ -142,6 +142,10 @@ pub struct SidebarFoldersConfig {
     pub quick_access: Vec<QuickAccessEntry>,
     #[serde(default)]
     pub favorite_groups: Vec<FavoriteGroup>,
+    /// Normalized database bookmark paths already represented in unified groups. Removing a
+    /// shortcut/group must not make legacy bookmarks reappear at next startup.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub imported_library_paths: Vec<String>,
     #[serde(default = "default_true")]
     pub show_network_drives: bool,
 }
@@ -151,6 +155,7 @@ impl Default for SidebarFoldersConfig {
         Self {
             quick_access: Vec::new(),
             favorite_groups: Vec::new(),
+            imported_library_paths: Vec::new(),
             show_network_drives: true,
         }
     }

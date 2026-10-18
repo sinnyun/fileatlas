@@ -1,4 +1,8 @@
 {
+  "Default favorite group": "msg-sidebar-default-favorite-group",
+  "Add current folder to group": "msg-sidebar-add-current-favorite",
+  "Favorite group no longer exists": "msg-sidebar-favorite-group-gone",
+  "Index folder": "msg-sidebar-index-folder",
   "Language": "msg-a4fe65264ef7",
   "Tools": "msg-ea93d6a262ec",
   "Settings": "msg-74a883a037bc",
@@ -170,6 +174,7 @@
   "Hide EXIF": "msg-d4b0f884ebb4",
   "Accent color": "msg-baeefbad50a3",
   "System": "msg-6725e7bbcd28",
+  "Workbench Blue": "msg-workbench-blue",
   "Slate Blue": "msg-b958535c342c",
   "Dusty Teal": "msg-f2f284a0bc5f",
   "Muted Copper": "msg-a267d54c8158",

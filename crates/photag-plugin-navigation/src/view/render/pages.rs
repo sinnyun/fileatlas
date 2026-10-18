@@ -37,8 +37,14 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
                 } else {
                     theme::TEXT_SECONDARY
                 }))
-                .when(selected, |item| item.bg(rgba((theme::accent() << 8) | 55)))
-                .hover(|style| style.bg(rgba(0xffffff10)))
+                .when(selected, |item| item.bg(rgb(theme::selection_color())))
+                .hover(move |style| {
+                    style.bg(if selected {
+                        rgb(theme::selection_color())
+                    } else {
+                        rgb(theme::SURFACE_ELEVATED)
+                    })
+                })
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.set_navigation_page(page);
                     cx.notify();

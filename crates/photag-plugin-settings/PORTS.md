@@ -23,6 +23,16 @@ Status: the source-compatible settings model and JSON persistence are active. Th
 
 The panel has Appearance, Shortcuts, Tags, AI, Updates and Software sections. Direct controls cover accent selection, date dividers, sidebar exclusion modifier, search scopes, tag search match and persistence, tag merge child behavior, AI automatic analysis, mandatory group editing, updater auto-check and open-key/tag shortcuts. Preference controls persist through the same serde model; Software is a read-only detector and does not persist.
 
+The Shortcuts page also discovers lifecycle-owned command keybindings from
+`UiCatalog.commands()`. Each plugin registers a stable keybinding contribution
+that points to its command and declares `Application` or `System` scope. The
+page shows owner and scope, captures a replacement chord, resets to the plugin
+default, or stores an empty override to disable the binding. Overrides are
+persisted in `Settings.keybindings` by contribution ID; missing entries use
+the plugin default. The host dispatches application-scope overrides through
+`UiCommandInvoked`. The shortcut service applies system-scope overrides on its
+GPUI polling thread and suspends global registrations during key capture.
+
 ## External software check — 2026-10-17
 
 The Software tab detects QuickLook and Everything from registered uninstall and
@@ -176,3 +186,32 @@ Search location (2026-10-17): `Settings.search_entire_computer: bool` defaults t
 false when absent. Gallery saves it through `SettingsService::update` only on
 explicit location changes and restores it at view construction. This changes no
 Everything settings and does not replace the persisted navigation path.
+
+## Shortcut layout and capture states (2026-10-18)
+
+The active visual reference and layout/state checklist are
+`docs/reference-ui/concepts/shortcuts-settings-2026-10-18.{png,md}`. The
+`view/shortcuts.rs` page projects all UI Bridge command keybindings into aligned
+horizontal rows; tag selectors fill the remaining row width. Capture replaces
+the row controls with a blue recording field. Validation errors stay inline and
+keep capture active for retry; no invalid/conflicting value is persisted.
+Escape, inline Cancel, switching tabs, closing the panel, and successful capture
+release the shared capture state (allowing global shortcuts to resume).
+`settings.shortcut-capture` and `settings.shortcut-error` publish the current
+binding ID/error only on capture transitions; MCP reads these without UI IO.
+The same-process UI scenario is `scripts/validate-shortcuts-layout.cjs`.
+# Workbench theme (2026-10-18)
+
+Missing `accent_name` now defaults to UI Bridge `DEFAULT_ACCENT_NAME` (Workbench
+Blue). Explicit stored System/legacy values remain supported; no configuration
+rewrite or schema migration. Appearance enumerates `ACCENT_PRESETS` plus System
+rather than duplicating the preset list. Settings applies all native component
+states and refreshes consuming windows after an edit. Shared headings use
+`components::section_heading`; theme rules are in `docs/ui-theme.md`.
+# Sidebar group compatibility (2026-10-18)
+
+The shared sidebar JSON model now has serde-default `imported_library_paths`;
+Settings persists this field through the existing revisioned sidebar update
+handler. Old JSON remains readable; custom groups/aliases are retained. No new
+file/path/store is introduced. Navigation owns the import policy and live plus
+action, Settings still owns durable writes and failure handling.

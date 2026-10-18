@@ -1,0 +1,29 @@
+{
+  "processId": 27940,
+  "state": {
+    "count": 1,
+    "revision": 0,
+    "ui": null,
+    "favorite_count": 1,
+    "pinned_count": 1,
+    "capture_paused": false,
+    "categories": [
+      {
+        "id": 1,
+        "name": "重启验证"
+      }
+    ],
+    "items": [
+      {
+        "id": 1,
+        "length": 42,
+        "category_id": 1,
+        "kind": "text",
+        "favorite": true,
+        "pinned": true,
+        "created_at": 1792296601,
+        "last_used_at": 1792296601
+      }
+    ]
+  }
+}

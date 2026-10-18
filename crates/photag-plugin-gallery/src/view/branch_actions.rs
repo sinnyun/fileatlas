@@ -21,7 +21,11 @@ pub(super) fn render_history_branches(view: &GalleryView, cx: &mut Context<Galle
         div()
             .h_flex()
             .gap(px(6.))
-            .child(Input::new(&view.history_branch_name).flex_1().min_w_0())
+            .child(
+                photag_ui_bridge::components::text_input(&view.history_branch_name)
+                    .flex_1()
+                    .min_w_0(),
+            )
             .child(
                 Button::new("inspector-history-branch-create")
                     .outline()
@@ -129,7 +133,7 @@ pub(super) fn render_history_branches(view: &GalleryView, cx: &mut Context<Galle
                         .gap(px(6.))
                         .p(px(8.))
                         .rounded(px(7.))
-                        .bg(rgba(0xd9770620))
+                        .bg(rgba((theme::WARNING << 8) | 0x20))
                         .child(branch_section_title("Merge conflicts"))
                         .child(format!(
                             "{} into {}: {}",

@@ -119,6 +119,27 @@ written.
 
 ## Implementation rules
 
+- Global styling follows the clipboard-v2-derived workbench theme. Before UI work,
+  read `docs/ui-theme.md` and its active concept/checklist. `photag-ui-bridge::theme`
+  owns colors, typography, spacing, component states and GPUI Kit Theme;
+  `components` owns shared cards/navigation/actions/headings, and `panels` owns
+  floating chrome. Reuse these public facilities; do not add plugin-local palettes,
+  hardcoded paint colors or independent Theme updates. Preserve feature-specific
+  layout and existing Settings/Session geometry persistence. Run
+  `node scripts/check-ui-theme.cjs` alongside the other governance checks, and
+  verify default/changed accent, selected/hover/focus/disabled and small-window
+  states through same-process PhoTag MCP. Full developer rules: `docs/ui-theme.md`.
+
+- Before any interface change, read `docs/ui-reference-workflow.md` and resolve
+  the active screen reference in `docs/reference-ui/README.md`. Open the actual
+  image, not only its filename or generation prompt. Convert its visible
+  structure, alignment, sizing hierarchy and states into an implementation
+  checklist before editing. Compare a same-process MCP screenshot with that
+  checklist after editing. “Visual direction, not pixel measurements” permits
+  adaptive sizing; it does not permit replacing horizontal rows with stacked
+  controls, omitting designed states, or declaring clipped content complete.
+  Document every remaining discrepancy and its reason. Do not mark visual
+  acceptance passed merely because compilation or a state assertion passed.
 - Trace source behavior and callers in `vendor/photag-source/` before changing
   backend/data behavior; update the mapping table in the same change.
 - Interface work follows the user's current design. Before implementing a

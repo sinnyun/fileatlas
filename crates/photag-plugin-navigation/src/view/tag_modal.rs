@@ -5,32 +5,6 @@ use gpui_kit::component::scroll::ScrollableElement;
 
 impl SidebarView {
     pub(super) fn render_tag_modal(&mut self, cx: &mut Context<Self>) -> Div {
-        if let Some(id) = self.rename_favorite {
-            return modal_shell(
-                photag_ui_bridge::i18n::tr("Rename favorite"),
-                div()
-                    .v_flex()
-                    .gap_3()
-                    .child(Input::new(&self.tag_name))
-                    .child(
-                        Button::new("favorite-rename-save")
-                            .primary()
-                            .label(photag_ui_bridge::i18n::tr("Save"))
-                            .on_click(cx.listener(move |view, _, _, cx| {
-                                let name = view.tag_name.read(cx).value().to_string();
-                                if let Err(error) = view.service.rename_favorite(id, &name) {
-                                    view.snapshot = Err(error.to_string());
-                                } else {
-                                    view.rename_favorite = None;
-                                    view.refresh();
-                                }
-                                cx.notify();
-                            })),
-                    ),
-                modal_close_button(cx),
-                430.,
-            );
-        }
         if self.tag_create_open {
             let create = Button::new("navigation-create-tag-submit")
                 .primary()
@@ -42,7 +16,7 @@ impl SidebarView {
                     .v_flex()
                     .gap_3()
                     .child(field_label("Tag name"))
-                    .child(Input::new(&self.tag_name))
+                    .child(photag_ui_bridge::components::text_input(&self.tag_name))
                     .child(field_label("Parent tag"))
                     .child(tag_picker::parent_picker(self, cx))
                     .child(
@@ -76,7 +50,9 @@ impl SidebarView {
                         .v_flex()
                         .gap_3()
                         .child(field_label("Tag name"))
-                        .child(Input::new(&self.tag_edit_name))
+                        .child(photag_ui_bridge::components::text_input(
+                            &self.tag_edit_name,
+                        ))
                         .child(
                             div()
                                 .h_flex()
@@ -171,7 +147,7 @@ impl SidebarView {
                             .when(selected, |button| {
                                 button.icon(theme::small_icon(IconName::Check))
                             })
-                            .text_color(rgb(0xffffff))
+                            .text_color(rgb(theme::TEXT_ON_ACCENT))
                             .w(px(22.))
                             .h(px(22.))
                             .rounded(px(12.))
@@ -231,11 +207,11 @@ impl SidebarView {
                             } else {
                                 theme::TEXT_PRIMARY
                             }))
-                            .bg(rgba(if selected {
-                                theme::accent_alpha(theme::accent(), 70. / 255.)
+                            .bg(if selected {
+                                rgb(theme::selection_color())
                             } else {
-                                theme::FILL_SUBTLE
-                            }))
+                                rgba(theme::FILL_SUBTLE)
+                            })
                             .border_1()
                             .border_color(rgb(if selected {
                                 theme::accent()
@@ -268,10 +244,14 @@ impl SidebarView {
                                     .min_w_0()
                                     .gap_2()
                                     .child(field_label("Tag name"))
-                                    .child(Input::new(&self.tag_edit_name))
+                                    .child(photag_ui_bridge::components::text_input(
+                                        &self.tag_edit_name,
+                                    ))
                                     .child(field_label("Tag color"))
                                     .child(div().v_flex().gap(px(4.)).children(swatches))
-                                    .child(Input::new(&self.tag_color))
+                                    .child(photag_ui_bridge::components::text_input(
+                                        &self.tag_color,
+                                    ))
                                     .child(field_label("Tag icon"))
                                     .child(div().v_flex().gap(px(5.)).children(icons))
                                     .child(
@@ -549,7 +529,7 @@ impl SidebarView {
                                     .min_w_0()
                                     .gap_2()
                                     .child(field_label("Choose a merge target"))
-                                    .child(Input::new(&self.merge_search))
+                                    .child(photag_ui_bridge::components::text_input(&self.merge_search))
                                     .child(
                                         div()
                                             .v_flex()

@@ -158,7 +158,7 @@ pub(super) fn tile(
                 } else {
                     (thumb * 0.46).clamp(40., 96.)
                 }))
-                .text_color(rgb(0xe3bd68)),
+                .text_color(rgb(theme::WARNING)),
         );
     let caption = div()
         .min_w_0()
@@ -245,7 +245,7 @@ pub(super) fn empty(
         .child(
             theme::icon(IconName::FolderOpen)
                 .size(px(48.))
-                .text_color(rgb(0xe3bd68)),
+                .text_color(rgb(theme::WARNING)),
         )
         .child(
             div().text_color(rgb(theme::TEXT_SECONDARY)).child(

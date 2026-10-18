@@ -1076,3 +1076,9 @@ msg-launcher-pin-none = 未置顶
 msg-launcher-pin-category-status = 分类顶部
 
 msg-launcher-pin-global-status = 全部顶部
+
+msg-workbench-blue = 工作台蓝
+msg-sidebar-default-favorite-group = 常用
+msg-sidebar-add-current-favorite = 收藏当前文件夹到此分组
+msg-sidebar-favorite-group-gone = 收藏分组已不存在
+msg-sidebar-index-folder = 登记并索引文件夹

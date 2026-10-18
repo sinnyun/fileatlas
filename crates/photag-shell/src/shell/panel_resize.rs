@@ -162,14 +162,21 @@ impl PhoTagShell {
         if let Some(key) = self.capture.take_key() {
             window.defer(cx, move |window, cx| {
                 if let Some(text) = key.strip_prefix("text:") {
-                    window.dispatch_keystroke(
-                        gpui_kit::Keystroke {
-                            key: "text".into(),
-                            key_char: Some(text.into()),
-                            ..Default::default()
-                        },
-                        cx,
-                    );
+                    for character in text.chars() {
+                        let value = character.to_string();
+                        window.dispatch_keystroke(
+                            gpui_kit::Keystroke {
+                                key: if character == ' ' {
+                                    "space".into()
+                                } else {
+                                    value.clone()
+                                },
+                                key_char: Some(value),
+                                ..Default::default()
+                            },
+                            cx,
+                        );
+                    }
                 } else if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
                     window.dispatch_event(
                         PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
@@ -186,6 +193,11 @@ impl PhoTagShell {
             window.defer(cx, move |window, cx| {
                 let position = point(px(input.x), px(input.y));
                 let event = match input.kind {
+                    "scroll" => PlatformInput::ScrollWheel(ScrollWheelEvent {
+                        position,
+                        delta: ScrollDelta::Pixels(point(px(0.), px(input.scroll_y))),
+                        ..Default::default()
+                    }),
                     "down" | "right_down" | "double_down" => {
                         PlatformInput::MouseDown(MouseDownEvent {
                             button: if input.kind == "right_down" {

@@ -228,9 +228,7 @@ pub(in crate::view) fn render_tag(
         .text_color(rgb(theme::TEXT_MUTED))
         .child(photag_ui_bridge::i18n::tr("Drop above to place before"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style
-                .opacity(1.)
-                .bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+            style.opacity(1.).bg(rgb(theme::selection_color()))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -259,7 +257,7 @@ pub(in crate::view) fn render_tag(
                 .border_1()
                 .border_color(rgba(theme::HAIRLINE.to_rgba()))
                 .when(selected, |row| {
-                    row.bg(rgb(theme::accent_alpha(theme::accent(), 0.18)))
+                    row.bg(rgb(theme::selection_color()))
                         .border_color(rgb(theme::accent()))
                         .child(
                             div()
@@ -341,9 +339,7 @@ pub(in crate::view) fn render_tag(
         .text_color(rgb(theme::TEXT_MUTED))
         .child(photag_ui_bridge::i18n::tr("Drop below to place after"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style
-                .opacity(1.)
-                .bg(rgb(theme::accent_alpha(theme::accent(), 0.22)))
+            style.opacity(1.).bg(rgb(theme::selection_color()))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -478,9 +474,15 @@ pub(in crate::view) fn render_subdirectory(
             .gap(px(3.))
             .rounded(px(4.))
             .px(px(3.))
-            .hover(|style| style.bg(rgba(0xffffff10)))
-            .when(selected, |row| row.bg(rgba((theme::accent() << 8) | 70)))
-            .child(div().w(px(8.)).h(px(1.)).bg(rgba(0xffffff38)))
+            .hover(move |style| {
+                style.bg(if selected {
+                    rgb(theme::selection_color())
+                } else {
+                    rgb(theme::SURFACE_ELEVATED)
+                })
+            })
+            .when(selected, |row| row.bg(rgb(theme::selection_color())))
+            .child(div().w(px(8.)).h(px(1.)).bg(rgba(theme::BORDER_STRONG)))
             .child(expand)
             .child(
                 div()
@@ -524,7 +526,7 @@ pub(in crate::view) fn render_subdirectory(
                 .ml(px(9.))
                 .pl(px(9.))
                 .border_l_1()
-                .border_color(rgba(0xffffff38))
+                .border_color(rgba(theme::BORDER_STRONG))
                 .children(children),
         );
     }

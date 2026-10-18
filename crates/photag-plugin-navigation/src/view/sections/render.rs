@@ -67,40 +67,27 @@ fn section_header(
         .h(px(22.))
         .icon(theme::small_icon(IconName::Ellipsis))
         .dropdown_menu(move |popup_menu, _, _| menu(popup_menu));
-    div()
-        .h_flex()
-        .items_center()
-        .gap(px(2.))
-        .pt(px(6.))
-        .pb(px(2.))
-        .child(
-            Button::new(format!("navigation-section-chevron-{key}"))
-                .ghost()
-                .compact()
-                .p_0()
-                .w(px(theme::SIDEBAR_ARROW_SLOT))
-                .icon(theme::small_icon(if collapsed {
-                    IconName::ChevronRight
-                } else {
-                    IconName::ChevronDown
-                }))
-                .on_click(move |_, _, cx| {
-                    let _ = toggle.update(cx, |this, cx| {
-                        this.toggle_section(key);
-                        cx.notify();
-                    });
-                }),
-        )
-        .child(
-            div()
-                .text_size(px(11.5))
-                .font_semibold()
-                .text_color(rgb(theme::TEXT_MUTED))
-                .child(photag_ui_bridge::i18n::tr(label)),
-        )
-        .child(div().flex_1())
-        .child(menu_button)
-        .children(trailing)
+    photag_ui_bridge::components::sidebar_header(
+        photag_ui_bridge::i18n::tr(label),
+        Button::new(format!("navigation-section-chevron-{key}"))
+            .ghost()
+            .compact()
+            .p_0()
+            .w(px(theme::SIDEBAR_ARROW_SLOT))
+            .icon(theme::small_icon(if collapsed {
+                IconName::ChevronRight
+            } else {
+                IconName::ChevronDown
+            }))
+            .on_click(move |_, _, cx| {
+                let _ = toggle.update(cx, |this, cx| {
+                    this.toggle_section(key);
+                    cx.notify();
+                });
+            }),
+        menu_button,
+        trailing,
+    )
 }
 
 fn icon_button(
@@ -183,10 +170,8 @@ fn path_row(
                 .h(px(24.))
                 .rounded(px(4.))
                 .px(px(4.))
-                .hover(|style| style.bg(rgba(0xffffff10)))
-                .when(selected, |style| {
-                    style.bg(rgba((theme::accent() << 8) | 70))
-                })
+                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+                .when(selected, |style| style.bg(rgb(theme::selection_color())))
                 .on_click(move |_, _, cx| {
                     let _ = activate_view.update(cx, |this, cx| {
                         if browse {
@@ -259,7 +244,7 @@ fn children_column(
             .ml(px(22.))
             .pl(px(8.))
             .border_l_1()
-            .border_color(rgba(0xffffff38))
+            .border_color(rgba(theme::BORDER_STRONG))
             .children(rows),
     )
 }
@@ -417,10 +402,8 @@ impl SidebarView {
                                     .rounded(px(4.))
                                     .px(px(4.))
                                     .py(px(2.))
-                                    .hover(|style| style.bg(rgba(0xffffff10)))
-                                    .when(selected, |style| {
-                                        style.bg(rgba((theme::accent() << 8) | 70))
-                                    })
+                                    .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+                                    .when(selected, |style| style.bg(rgb(theme::selection_color())))
                                     .on_click(move |_, _, cx| {
                                         let _ = activate_view.update(cx, |this, cx| {
                                             if browse {

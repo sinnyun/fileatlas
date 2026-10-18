@@ -143,6 +143,9 @@ UI/文件系统环境行为仍不由这些自动化结果证明。
 
 ## 本地命令
 
+- `node scripts/check-ui-theme.cjs --self-test`：主题守卫正反探针。
+- `node scripts/check-ui-theme.cjs`：UI 颜色和 Kit Theme 的公共所有权；规则与词法检查边界见 [统一主题规范](ui-theme.md)。已接入 CI，不替代 MCP 截图检查。
+
 - `node scripts/check-architecture.cjs`
 - `node scripts/check-layering.cjs`
 - `node scripts/check-feature-ledger.cjs`

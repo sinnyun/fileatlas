@@ -162,30 +162,7 @@ impl SidebarView {
                 );
             }
             SidebarEditor::AddFavorite { group_id } => {
-                if value.is_empty() || !Path::new(&value).is_dir() {
-                    self.sidebar_editor_error =
-                        Some(photag_ui_bridge::i18n::tr("Folder does not exist"));
-                    cx.notify();
-                    return;
-                }
-                let display_name = Path::new(&value)
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned());
-                self.mutate_sidebar_config(
-                    |config| {
-                        if let Some(group) =
-                            config.favorite_groups.iter_mut().find(|g| g.id == group_id)
-                            && !group.folders.iter().any(|f| f.path == value)
-                        {
-                            group.folders.push(photag_contracts::FavoriteFolder {
-                                id: next_editor_id("fav"),
-                                path: value,
-                                display_name,
-                            });
-                        }
-                    },
-                    cx,
-                );
+                self.add_favorite_folder_path(group_id, value, cx);
             }
             SidebarEditor::RenameFavorite {
                 group_id,
@@ -233,16 +210,34 @@ impl SidebarView {
         path: String,
         cx: &mut Context<Self>,
     ) {
-        let display_name = Path::new(&path)
-            .file_name()
-            .map(|name| name.to_string_lossy().into_owned());
+        if !Path::new(&path).is_dir() {
+            self.favorite_action_error = Some(photag_ui_bridge::i18n::tr("Folder does not exist"));
+            cx.notify();
+            return;
+        }
+        if !self
+            .sidebar_config()
+            .favorite_groups
+            .iter()
+            .any(|g| g.id == group_id)
+        {
+            self.favorite_action_error = Some(photag_ui_bridge::i18n::tr(
+                "Favorite group no longer exists",
+            ));
+            cx.notify();
+            return;
+        }
+        self.favorite_action_error = None;
+        let display_name = None;
         self.mutate_sidebar_config(
             |config| {
                 if let Some(group) = config
                     .favorite_groups
                     .iter_mut()
                     .find(|group| group.id == group_id)
-                    && !group.folders.iter().any(|folder| folder.path == path)
+                    && !group.folders.iter().any(|folder| {
+                        crate::sidebar_folders::same_sidebar_path(&folder.path, &path)
+                    })
                 {
                     group.folders.push(photag_contracts::FavoriteFolder {
                         id: next_editor_id("fav"),
@@ -258,6 +253,17 @@ impl SidebarView {
     pub(super) fn toggle_section(&mut self, key: &'static str) {
         if !self.collapsed_sections.remove(key) {
             self.collapsed_sections.insert(key);
+        }
+        // Legacy semantic section toggles now collapse/expand the sibling groups.
+        if matches!(key, "favorites" | "folders") {
+            let collapse = self.collapsed_sections.contains(key);
+            for group in self.sidebar_config().favorite_groups {
+                if collapse {
+                    self.collapsed_groups.insert(group.id);
+                } else {
+                    self.collapsed_groups.remove(&group.id);
+                }
+            }
         }
         self.persist_sidebar_expansion();
     }
@@ -351,6 +357,7 @@ impl SidebarView {
             Request::AddToLibrary { path } => self.add_folder_path(path, cx),
             Request::AddQuickAccess { path } => self.add_quick_access_path(path, cx),
             Request::RemoveQuickAccess { path } => self.remove_quick_access(path, cx),
+            Request::AddCurrentFavorite { group_id } => self.add_current_favorite(group_id, cx),
             Request::AddFavoriteFolder { group_id, path } => {
                 self.add_favorite_folder_path(group_id, path, cx);
             }

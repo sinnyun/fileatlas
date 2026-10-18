@@ -3,7 +3,6 @@
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
-use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_history::UndoEntry;
@@ -50,7 +49,7 @@ pub(super) fn render(
         .min_w_0()
         .min_h_0()
         .p_3()
-        .child(Input::new(&view.tag_picker_search).w_full());
+        .child(photag_ui_bridge::components::text_input(&view.tag_picker_search).w_full());
     let mut picker = picker;
     if list_empty(&tags, &query) {
         picker = picker.child(

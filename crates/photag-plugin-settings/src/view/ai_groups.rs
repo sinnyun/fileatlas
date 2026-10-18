@@ -2,7 +2,6 @@ use super::SettingsView;
 use crate::{AiTagGroup, Settings};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::input::Input;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
 use photag_ui_bridge::theme;
@@ -48,7 +47,10 @@ impl SettingsView {
                     div()
                         .h_flex()
                         .gap_1()
-                        .child(Input::new(&self.group_name_input).flex_1())
+                        .child(
+                            photag_ui_bridge::components::text_input(&self.group_name_input)
+                                .flex_1(),
+                        )
                         .child(
                             Button::new(format!("settings-group-name-save-{index}"))
                                 .label(photag_ui_bridge::i18n::tr(&("Save name").to_string()))

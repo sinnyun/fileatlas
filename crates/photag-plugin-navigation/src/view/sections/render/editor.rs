@@ -17,7 +17,7 @@ impl SidebarView {
             .gap_1()
             .items_center()
             .py(px(2.))
-            .child(Input::new(&self.sidebar_editor_input).flex_1())
+            .child(photag_ui_bridge::components::text_input(&self.sidebar_editor_input).flex_1())
             .child(
                 Button::new("navigation-sidebar-editor-confirm")
                     .primary()

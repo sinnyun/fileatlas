@@ -35,7 +35,7 @@ pub(super) fn render(tag: &Tag, view: &mut GalleryView, cx: &mut Context<Gallery
                 .border_1()
                 .border_color(rgba(theme::REGION_EDGE))
                 .bg(rgb(theme::SURFACE_PANEL))
-                .child(Input::new(&view.inspector_tag_name).w_full()),
+                .child(photag_ui_bridge::components::text_input(&view.inspector_tag_name).w_full()),
         )
         .child(label("Color"))
         .child(swatches(&draft, cx))
@@ -130,7 +130,7 @@ fn icons(draft: &TagDraft, cx: &mut Context<GalleryView>) -> Div {
                     rgba(theme::REGION_EDGE)
                 })
                 .bg(if active {
-                    rgba(theme::accent_alpha(theme::accent(), 0.18))
+                    rgb(theme::selection_color())
                 } else {
                     rgba(theme::FILL_SUBTLE)
                 })
@@ -186,7 +186,7 @@ fn visibility_toggle(draft: &TagDraft, cx: &mut Context<GalleryView>) -> gpui_ki
                         .left(px(if visible { 16. } else { 2. }))
                         .size(px(16.))
                         .rounded_full()
-                        .bg(rgb(0xffffff)),
+                        .bg(rgb(theme::TEXT_ON_ACCENT)),
                 ),
         )
         .on_change(move |_, _, _, cx| {

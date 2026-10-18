@@ -1,5 +1,29 @@
 # UI bridge ports / UI 托槽数据对接
 
+## Unified workbench theme (2026-10-18)
+
+`theme` owns clipboard-v2-derived navy semantic paints, fonts, geometry and the
+runtime accent; `theme::apply_components(&mut App)` and
+`apply_accent_components(&mut App)` synchronize every Kit state, including active
+buttons/links/sidebar on accent changes. Default is `Workbench Blue`; saved
+`System`/legacy presets remain valid. No schema/path migration is involved.
+`components::WorkbenchStyle` applies sections, selectable cards and navigation to
+any `Styled + InteractiveElement`, preserving IDs/actions. `section()`,
+`action(id, label, primary)`, `icon_button(id, IconName)` and `section_heading(label)`
+are stateless builders. They register no services/events and perform no IO.
+`text_input(&Entity<InputState>) -> Input`, `search_input(&Entity<InputState>) -> Input`
+and `textarea(&Entity<TextareaState>) -> Textarea` preserve native editing/focus,
+with common inset backgrounds. Kit `Theme.colors.input` is the border token;
+all plugin inputs now use these builders. Theme mapping also covers table/list
+headers and alternate rows, accordion, semantic status buttons and chart colors.
+Clipboard, Launcher, Gallery inspector/statistics/bulk headings and Settings consume
+these builders; other Kit controls inherit the single theme. `panels` retains
+floating lifecycle/geometry ownership. Reference/development contract:
+[`docs/ui-theme.md`](../../docs/ui-theme.md). Diagnose theme drift with
+`node scripts/check-ui-theme.cjs` and same-process MCP screenshots; token ownership
+does not prove every runtime state visually verified. The source-palette notes
+below describe historical compatibility APIs; the current palette is workbench navy.
+
 Status: lifecycle-owned metadata and GPUI view-factory catalogs exist; the shell mounts sidebar, content, auxiliary, and floating modal slots. This bridge provides view placement and surface visibility state; exact native windowing and visual parity remain host concerns.
 
 The bridge also exposes shared PhoTag design tokens and accent state from `theme`, plus Windows appearance primitives from `winfx`. These are contracts for consumers; they do not automatically restyle mounted GPUI views. The shell applies `winfx::apply_backdrop` to its native HWND and passes `Backdrop::is_translucent()` to `theme::set_backdrop_active`; Shell, Navigation, Playback and Gallery consume backdrop-aware base/card fills, while Settings, Gallery dialogs and Preview consume modal fills.
@@ -88,3 +112,11 @@ retain their 100/200ms fallback samplers. See navigation-latency validation.
 ### Floating-panel text input (2026-10-17)
 
 The panel root contains shortcut/navigation key events and permits character events to continue to the focused input handler. This keeps the same-process GPUI text-input path usable inside hosted feature panels. Escape still closes the current panel. The launcher validation uses real focused search/name inputs through `control_ui input_text`, with no clipboard or OS input injection.
+# Shared sidebar regions (2026-10-18)
+
+`components::sidebar_section(Div) -> Div` applies backdrop surface, theme region
+separation, compact padding/corners and nonshrinking frame geometry.
+`sidebar_header(label, toggle: Button, menu: impl IntoElement, trailing: Vec<Button>)`
+returns a shared chevron/title/menu/action row; dropdown wrappers retain their own
+native behavior. Navigation uses these builders for drives, quick access and
+every favorite group. The builders do not register resources or own product data.

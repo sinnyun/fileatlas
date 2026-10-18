@@ -48,7 +48,7 @@ pub(super) fn render(
     cx: &mut Context<GalleryView>,
 ) -> Div {
     let line_color = if filter == 2 {
-        0xb574ec
+        theme::BRANCH_ALTERNATE
     } else {
         theme::accent()
     };
@@ -90,7 +90,7 @@ pub(super) fn render(
             continue;
         }
         let color = if version.branch {
-            0xb574ec
+            theme::BRANCH_ALTERNATE
         } else {
             theme::accent()
         };

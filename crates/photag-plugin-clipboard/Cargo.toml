@@ -1,0 +1,23 @@
+[package]
+name = "photag-plugin-clipboard"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+gpui-kit.workspace = true
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-ui-bridge = { path = "../photag-ui-bridge" }
+clipboard-master = "4.0"
+arboard = { version = "3.7", default-features = false }
+thiserror.workspace = true
+tracing.workspace = true
+serde_json.workspace = true
+chrono = "0.4"
+url = "2"
+
+[lints]
+workspace = true

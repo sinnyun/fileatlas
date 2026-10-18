@@ -1,10 +1,9 @@
 //! Projections of the single Gallery entity into the source window bands.
 //! Source: main.rs:1007-1277 and ui/filterbar.rs:15-821.
 use super::*;
-use gpui_kit::base::Disableable;
 use gpui_kit::component::button::ButtonVariants;
-use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::component::scroll::ScrollableElement as _;
+use photag_ui_bridge::components::WorkbenchStyle as _;
 
 #[derive(Clone, Copy)]
 enum Region {
@@ -40,33 +39,6 @@ impl Render for GalleryRegion {
                         .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
                 )
                 .child(directory_browser::refresh_button(cx))
-                .child(
-                    Button::new("gallery-descendants")
-                        .ghost()
-                        .compact()
-                        .label(photag_ui_bridge::i18n::tr("Show subfolders"))
-                        .toggled(view.service.show_descendants())
-                        .on_click(cx.listener(|view, _, _, cx| {
-                            view.set_descendants(!view.service.show_descendants(), cx)
-                        })),
-                )
-                .child(
-                    Button::new("gallery-layout-grid")
-                        .ghost()
-                        .compact()
-                        .label(photag_ui_bridge::i18n::tr("Grid"))
-                        .toggled(!view.list_layout)
-                        .on_click(cx.listener(|view, _, _, cx| view.set_layout(false, cx))),
-                )
-                .child(
-                    Button::new("gallery-layout-list")
-                        .ghost()
-                        .compact()
-                        .label(photag_ui_bridge::i18n::tr("List"))
-                        .toggled(view.list_layout)
-                        .on_click(cx.listener(|view, _, _, cx| view.set_layout(true, cx))),
-                )
-                .child(sliders::thumbnail(view, cx))
                 .into_any_element(),
             Region::Filters => view.render_filters(cx),
             Region::Status => view.render_status(cx),
@@ -157,18 +129,7 @@ impl GalleryView {
             .min_w(px(220.))
             .max_w(px(280.))
             .h(px(32.))
-            .rounded(px(theme::ROUND_MD))
-            .bg(rgb(theme::SURFACE_FAINT))
-            .child(
-                Input::new(&self.search)
-                    .appearance(false)
-                    .bordered(false)
-                    .cleanable(true)
-                    .prefix(div().child(theme::small_icon(gpui_kit::assets::IconName::Search)))
-                    .h(px(32.))
-                    .w_full()
-                    .text_size(px(13.5)),
-            );
+            .child(photag_ui_bridge::components::search_input(&self.search));
         let search_bar = div()
             .h_flex()
             .items_center()
@@ -213,70 +174,6 @@ impl GalleryView {
             })
             .unwrap_or_else(|| {
                 photag_ui_bridge::i18n::tr_args("{count} items", &[("count", count.to_string())])
-            });
-        let weak = cx.entity().downgrade();
-        let more = Button::new("gallery-selection-more")
-            .ghost()
-            .compact()
-            .label(photag_ui_bridge::i18n::tr("More"))
-            .icon(theme::icon(gpui_kit::assets::IconName::Ellipsis))
-            .disabled(n == 0)
-            .dropdown_menu(move |menu, _, _| {
-                let preview = weak.clone();
-                let copy = weak.clone();
-                let move_view = weak.clone();
-                let delete = weak.clone();
-                let details = weak.clone();
-                let clear = weak.clone();
-                menu.item(PopupMenuItem::new("QuickLook").on_click(move |_, _, cx| {
-                    let _ = preview.update(cx, |this, cx| this.preview_selected(cx));
-                }))
-                .item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                        "Details, rename, copy, move and ratings",
-                    ))
-                    .on_click(move |_, _, cx| {
-                        let _ = details.update(cx, |this, cx| {
-                            this.show_selection_details = true;
-                            cx.notify();
-                        });
-                    }),
-                )
-                .item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Copy to…")).on_click(
-                        move |_, _, cx| {
-                            let _ = copy.update(cx, |this, cx| this.copy_selected_with_dialog(cx));
-                        },
-                    ),
-                )
-                .item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Move to…")).on_click(
-                        move |_, _, cx| {
-                            let _ =
-                                move_view.update(cx, |this, cx| this.move_selected_with_dialog(cx));
-                        },
-                    ),
-                )
-                .item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Delete…")).on_click(
-                        move |_, window, cx| {
-                            let _ = delete.update(cx, |this, cx| {
-                                this.request_delete_confirmation(window, cx)
-                            });
-                        },
-                    ),
-                )
-                .item(
-                    PopupMenuItem::new(photag_ui_bridge::i18n::tr("Deselect")).on_click(
-                        move |_, _, cx| {
-                            let _ = clear.update(cx, |this, cx| {
-                                this.selection = GallerySelection::default();
-                                this.persist_filter_session();
-                                cx.notify();
-                            });
-                        },
-                    ),
-                )
             });
         let mut row = div()
             .h_flex()
@@ -349,21 +246,7 @@ impl GalleryView {
                         .w(px(180.)),
                 );
         }
-        row.child(div().flex_1())
-            .child(
-                Button::new("gallery-selection-tags")
-                    .ghost()
-                    .compact()
-                    .icon(theme::icon(gpui_kit::assets::IconName::Tag))
-                    .label(photag_ui_bridge::i18n::tr("Tags"))
-                    .disabled(n == 0)
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.show_tag_picker = !this.show_tag_picker;
-                        cx.notify();
-                    })),
-            )
-            .child(more)
-            .into_any_element()
+        row.into_any_element()
     }
 
     fn render_tools(&mut self, cx: &mut Context<Self>) -> AnyElement {
@@ -488,7 +371,7 @@ impl GalleryView {
                 .max_h(px(height))
                 .min_h_0()
                 .overflow_hidden()
-                .rounded(px(6.))
+                .workbench_section()
                 .bg(rgb(theme::SURFACE_MODAL))
                 .child(
                     div()
@@ -568,7 +451,7 @@ impl GalleryView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(rgba(0x00000060))
+                    .bg(rgba(theme::SHADOW_OVERLAY))
                     .child(card),
             );
         }

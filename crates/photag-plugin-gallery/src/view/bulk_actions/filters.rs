@@ -2,16 +2,12 @@ use super::{GalleryView, date_row};
 use crate::filter::MediaTypeFilter;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::Button;
-use gpui_kit::component::input::Input;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use photag_plugin_database::MediaItem;
 use photag_ui_bridge::theme;
 pub(super) fn section_title(label: &'static str) -> Div {
-    div()
-        .text_sm()
-        .font_semibold()
-        .child(photag_ui_bridge::i18n::tr(label))
+    photag_ui_bridge::components::section_heading(photag_ui_bridge::i18n::tr(label))
 }
 
 pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>) -> Div {
@@ -61,7 +57,11 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("File name")),
                 )
-                .child(Input::new(&view.bulk_inputs[4]).flex_1().min_w_0()),
+                .child(
+                    photag_ui_bridge::components::text_input(&view.bulk_inputs[4])
+                        .flex_1()
+                        .min_w_0(),
+                ),
         )
         .child(
             div()
@@ -88,7 +88,11 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                             cx.notify();
                         })),
                 )
-                .child(Input::new(&view.bulk_inputs[5]).flex_1().min_w_0()),
+                .child(
+                    photag_ui_bridge::components::text_input(&view.bulk_inputs[5])
+                        .flex_1()
+                        .min_w_0(),
+                ),
         )
         .child(date_row(view, true, cx))
         .child(date_row(view, false, cx))
@@ -108,13 +112,13 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("Minimum rating")),
                 )
-                .child(Input::new(&view.bulk_inputs[2]).w(px(55.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[2]).w(px(80.)))
                 .child(
                     div()
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("Maximum rating")),
                 )
-                .child(Input::new(&view.bulk_inputs[3]).w(px(55.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[3]).w(px(80.)))
                 .child(
                     div()
                         .text_xs()
@@ -148,8 +152,8 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("Older / newer days")),
                 )
-                .child(Input::new(&view.bulk_inputs[0]).w(px(90.)))
-                .child(Input::new(&view.bulk_inputs[1]).w(px(90.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[0]).w(px(120.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[1]).w(px(120.)))
                 .child(
                     div()
                         .text_xs()
@@ -168,8 +172,8 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                         .text_xs()
                         .child(photag_ui_bridge::i18n::tr("Size in MB")),
                 )
-                .child(Input::new(&view.bulk_inputs[6]).w(px(90.)))
-                .child(Input::new(&view.bulk_inputs[7]).w(px(90.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[6]).w(px(120.)))
+                .child(photag_ui_bridge::components::text_input(&view.bulk_inputs[7]).w(px(120.)))
                 .child(
                     div()
                         .text_xs()

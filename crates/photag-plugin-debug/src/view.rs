@@ -7,7 +7,7 @@ use gpui_kit::{
     base::{Disableable, StyledExt},
     component::{
         button::{Button, ButtonVariants},
-        input::{Input, InputEvent, InputState},
+        input::{InputEvent, InputState},
         menu::{DropdownMenu, PopupMenuItem},
         scroll::ScrollableElement,
     },
@@ -225,7 +225,7 @@ impl Render for DebugView {
                 div()
                     .w(px(210.))
                     .flex_shrink_0()
-                    .child(Input::new(&self.search)),
+                    .child(photag_ui_bridge::components::text_input(&self.search)),
             )
             .child(
                 Button::new("debug-pause")
@@ -272,7 +272,7 @@ impl Render for DebugView {
             let id = r.id;
             let color = match r.level.as_str() {
                 "ERROR" => theme::DANGER,
-                "WARN" => 0xe6b85c,
+                "WARN" => theme::WARNING,
                 _ => theme::TEXT_SECONDARY,
             };
             rows = rows.child(
@@ -354,7 +354,7 @@ impl Render for DebugView {
             .flex_shrink_0()
             .min_h_0()
             .border_t_1()
-            .border_color(rgba(0x799bc488))
+            .border_color(rgba(theme::BORDER_STRONG))
             .bg(rgb(theme::SURFACE_PANEL))
             .text_size(px(11.))
             .px_2()

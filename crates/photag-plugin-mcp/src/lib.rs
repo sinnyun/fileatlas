@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 use cordis::{Context, Plugin, Service};
 use params::*;
+use photag_plugin_clipboard::ClipboardService;
 use photag_plugin_database::SortOrder;
 use photag_plugin_dev_test::DevTestService;
 use photag_plugin_file_operations::FileOperationsService;
@@ -50,6 +51,8 @@ pub struct McpPointerInput {
     pub kind: &'static str,
     pub x: f32,
     pub y: f32,
+    /// Vertical logical-pixel wheel delta; used only by `scroll`.
+    pub scroll_y: f32,
 }
 
 impl Service for CaptureWindowHandle {
@@ -147,6 +150,7 @@ impl Plugin for McpPlugin {
             .map_err(|error| McpPluginError::Dependency(error.to_string()))?;
         let dev_test = context.try_service::<DevTestService>().ok();
         let launcher = context.try_service::<LauncherService>().ok();
+        let clipboard = context.try_service::<ClipboardService>().ok();
         let i18n = context
             .try_service::<photag_plugin_i18n::I18nService>()
             .ok();
@@ -172,6 +176,7 @@ impl Plugin for McpPlugin {
             capture,
             dev_test,
             launcher,
+            clipboard,
             i18n,
             surfaces,
             command_catalog,
@@ -237,6 +242,7 @@ struct PhoTagMcpServer {
     capture: Arc<CaptureWindowHandle>,
     dev_test: Option<Arc<DevTestService>>,
     launcher: Option<Arc<LauncherService>>,
+    clipboard: Option<Arc<ClipboardService>>,
     i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
     surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
     mutations_enabled: bool,
@@ -253,6 +259,7 @@ impl PhoTagMcpServer {
         capture: Arc<CaptureWindowHandle>,
         dev_test: Option<Arc<DevTestService>>,
         launcher: Option<Arc<LauncherService>>,
+        clipboard: Option<Arc<ClipboardService>>,
         i18n: Option<Arc<photag_plugin_i18n::I18nService>>,
         surfaces: Arc<photag_ui_bridge::UiSurfaceState>,
         command_catalog: Arc<photag_ui_bridge::UiCatalog>,
@@ -284,6 +291,7 @@ impl PhoTagMcpServer {
             capture,
             dev_test,
             launcher,
+            clipboard,
             mutations_enabled: std::env::var("PHOTAG_MCP_ALLOW_MUTATIONS")
                 .is_ok_and(|value| value == "1"),
         }

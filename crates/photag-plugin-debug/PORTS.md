@@ -39,3 +39,11 @@ cache status, phase timings and failures. The existing message/detail drawer
 shows these fields when selecting a row; duration_ms still populates the duration
 column. No new render-time queries, display filters or persisted state. Routine
 GPUI repaint hiding does not hide these application DEBUG/ERROR records.
+
+## Unified theme (2026-10-18)
+
+View paints use UI Bridge semantic theme tokens instead of local color literals.
+Gallery inspector/statistics cards and headings consume shared components; compact
+navigation preserves its layout with common selection/hover paints. Status, branch
+and media-overlay colors remain semantically distinct in the central theme.
+No product service/data/event contract changes. See `docs/ui-theme.md`.

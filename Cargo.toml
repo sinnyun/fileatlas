@@ -11,6 +11,8 @@ members = [
     "crates/photag-plugin-gallery",
     "crates/photag-plugin-everything-search",
     "crates/photag-plugin-launcher",
+    "crates/photag-plugin-shortcuts",
+    "crates/photag-plugin-clipboard",
     "crates/photag-plugin-grouping",
     "crates/photag-plugin-debug",
     "crates/photag-plugin-navigation",

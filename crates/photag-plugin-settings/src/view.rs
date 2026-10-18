@@ -17,6 +17,8 @@ use std::sync::{Arc, Weak, atomic::AtomicU64, mpsc};
 mod ai_groups;
 #[path = "view/checkbox.rs"]
 mod checkbox;
+#[path = "view/shortcuts.rs"]
+mod shortcuts;
 #[path = "view/software.rs"]
 mod software;
 #[path = "view/tabs.rs"]
@@ -94,6 +96,8 @@ pub(super) fn settings(
                         tab: Tab::Appearance,
                         error: None,
                         capturing_open_key: false,
+                        capturing_shortcut: None,
+                        shortcut_error: None,
                         focus_handle: cx.focus_handle(),
                         surface_visible: view_surfaces.is_open("settings"),
                         tag_choices: Default::default(),
@@ -114,6 +118,14 @@ pub(super) fn settings(
                             let changed =
                                 surface_gate.changed((visible, surface_poll.value("settings.tab")));
                             view.surface_visible = visible;
+                            if (!visible
+                                || surface_poll.value("settings.tab").as_deref()
+                                    != Some("shortcuts"))
+                                && (view.capturing_shortcut.is_some() || view.capturing_open_key)
+                            {
+                                view.capturing_open_key = false;
+                                view.cancel_shortcut_capture();
+                            }
                             let mut changed =
                                 view.poll_tag_choices() | view.poll_software_check() | changed;
                             if surface_poll.is_open("settings.check-updates") {
@@ -143,9 +155,9 @@ pub(super) fn settings(
             let mut options = photag_ui_bridge::panels::PanelOptions::new(
                 "settings",
                 "PhoTag · Settings",
-                (900., 680.),
+                (1120., 840.),
             );
-            options.min_size = (680., 360.);
+            options.min_size = (920., 580.);
             photag_ui_bridge::panels::mount(
                 content,
                 options,
@@ -186,6 +198,8 @@ pub(super) struct SettingsView {
     tab: Tab,
     error: Option<String>,
     capturing_open_key: bool,
+    capturing_shortcut: Option<String>,
+    shortcut_error: Option<String>,
     focus_handle: FocusHandle,
     surface_visible: bool,
     tag_choices: photag_ui_bridge::read_model::ReadModel<(bool, u64), Vec<tag_choices::TagChoice>>,
@@ -196,6 +210,7 @@ pub(super) struct SettingsView {
 impl SettingsView {
     fn close_surface(&mut self, cx: &mut Context<Self>) {
         self.capturing_open_key = false;
+        self.cancel_shortcut_capture();
         let _ = self.surfaces.set_capturing_key("settings", false);
         self.surface_visible = false;
         if let Err(error) = self.surfaces.set_open("settings", false) {
@@ -205,7 +220,12 @@ impl SettingsView {
     }
 
     fn handle_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        if self.capturing_open_key {
+        if self.capturing_shortcut.is_some() {
+            if event.keystroke.key.eq_ignore_ascii_case("escape") {
+                let _ = self.surfaces.suppress_next_escape("settings");
+            }
+            self.capture_shortcut(event, cx);
+        } else if self.capturing_open_key {
             if event.keystroke.key.eq_ignore_ascii_case("escape") {
                 let _ = self.surfaces.suppress_next_escape("settings");
             }
@@ -213,6 +233,137 @@ impl SettingsView {
         } else if event.keystroke.key.eq_ignore_ascii_case("escape") {
             self.close_surface(cx);
         }
+    }
+
+    fn capture_shortcut(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        let Some(id) = self.capturing_shortcut.clone() else {
+            return;
+        };
+        if event.keystroke.key.eq_ignore_ascii_case("escape") {
+            self.cancel_shortcut_capture();
+            cx.notify();
+            return;
+        }
+        let mut parts = Vec::new();
+        if event.keystroke.modifiers.control {
+            parts.push("Ctrl".to_owned());
+        }
+        if event.keystroke.modifiers.alt {
+            parts.push("Alt".to_owned());
+        }
+        if event.keystroke.modifiers.shift {
+            parts.push("Shift".to_owned());
+        }
+        if event.keystroke.modifiers.platform {
+            parts.push("Win".to_owned());
+        }
+        let key = if event.keystroke.key == " " {
+            "Space"
+        } else {
+            event.keystroke.key.trim()
+        };
+        if key.is_empty()
+            || ["control", "ctrl", "alt", "shift", "platform"]
+                .contains(&key.to_ascii_lowercase().as_str())
+        {
+            return;
+        }
+        parts.push(if key.len() == 1 {
+            key.to_ascii_uppercase()
+        } else {
+            key.to_owned()
+        });
+        let chord = parts.join("+");
+        let registered = self
+            .cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .ok()
+            .and_then(|bridge| bridge.catalog.commands().ok())
+            .unwrap_or_default();
+        let binding = registered
+            .iter()
+            .flat_map(|command| command.keybindings.iter())
+            .find(|binding| binding.id == id);
+        if let Some(binding) = binding {
+            if binding.scope == photag_ui_bridge::ShortcutScope::System && parts.len() < 2 {
+                self.shortcut_error =
+                    Some("系统级快捷键必须包含 Ctrl、Alt、Shift 或 Win 修饰键。".into());
+                self.publish_shortcut_capture();
+                cx.notify();
+                return;
+            }
+            if binding.scope == photag_ui_bridge::ShortcutScope::System {
+                let normalized_key = key.to_ascii_lowercase();
+                let supported = (normalized_key.len() == 1
+                    && normalized_key.as_bytes()[0].is_ascii_alphanumeric())
+                    || matches!(
+                        normalized_key.as_str(),
+                        "space"
+                            | "enter"
+                            | "tab"
+                            | "escape"
+                            | "esc"
+                            | "backspace"
+                            | "delete"
+                            | "home"
+                            | "end"
+                            | "pageup"
+                            | "pagedown"
+                            | "left"
+                            | "right"
+                            | "up"
+                            | "down"
+                            | "arrowleft"
+                            | "arrowright"
+                            | "arrowup"
+                            | "arrowdown"
+                    )
+                    || normalized_key
+                        .strip_prefix('f')
+                        .and_then(|number| number.parse::<u8>().ok())
+                        .is_some_and(|number| (1..=12).contains(&number));
+                if !supported {
+                    self.shortcut_error =
+                        Some("系统级快捷键支持字母、数字、F1–F12 和导航键。".into());
+                    self.publish_shortcut_capture();
+                    cx.notify();
+                    return;
+                }
+            }
+            let overrides = self
+                .service
+                .snapshot()
+                .ok()
+                .map(|settings| settings.keybindings)
+                .unwrap_or_default();
+            let duplicate = registered.iter().find(|command| {
+                command.keybindings.iter().any(|other| {
+                    other.id != id
+                        && other.scope == binding.scope
+                        && overrides
+                            .get(&other.id)
+                            .unwrap_or(&other.key)
+                            .eq_ignore_ascii_case(&chord)
+                })
+            });
+            if let Some(command) = duplicate {
+                self.shortcut_error = Some(format!(
+                    "{chord} 已被“{}”使用，请按其他组合键或取消。",
+                    shortcuts::command_label(command)
+                ));
+                self.publish_shortcut_capture();
+                cx.notify();
+                return;
+            }
+        }
+        self.edit(
+            move |settings| {
+                settings.keybindings.insert(id.clone(), chord.clone());
+            },
+            cx,
+        );
+        self.cancel_shortcut_capture();
+        cx.notify();
     }
 
     fn capture_open_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
@@ -273,6 +424,7 @@ impl SettingsView {
                 .to_string(),
             ))
             .on_click(cx.listener(|this, _, window, cx| {
+                this.cancel_shortcut_capture();
                 this.capturing_open_key = !this.capturing_open_key;
                 if let Err(error) = this
                     .surfaces
@@ -344,10 +496,7 @@ impl SettingsView {
         );
     }
     fn section(&self, label: &'static str) -> Div {
-        div()
-            .pt_2()
-            .font_semibold()
-            .child(photag_ui_bridge::i18n::tr(label))
+        photag_ui_bridge::components::section_heading(photag_ui_bridge::i18n::tr(label)).pt_2()
     }
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let mut rail = div().v_flex().w(px(166.)).gap(px(6.)).p_2().flex_shrink_0();
@@ -368,7 +517,7 @@ impl SettingsView {
                     .h(px(38.))
                     .px(px(10.))
                     .justify_start()
-                    .rounded(px(4.))
+                    .rounded(px(theme::ROUND_MD))
                     .border_l(px(3.))
                     .border_color(if active {
                         rgb(theme::accent())
@@ -376,7 +525,7 @@ impl SettingsView {
                         rgba(0)
                     })
                     .bg(if active {
-                        rgba((theme::accent() << 8) | 0x48)
+                        rgb(theme::selection_color())
                     } else {
                         rgba(0)
                     })
@@ -399,6 +548,8 @@ impl SettingsView {
                             ),
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
+                        this.cancel_shortcut_capture();
+                        this.capturing_open_key = false;
                         this.tab = tab;
                         let name = match tab {
                             Tab::Appearance => "appearance",
@@ -442,7 +593,7 @@ impl Render for SettingsView {
         let bounds = photag_ui_bridge::panels::content_bounds(&self.surfaces, "settings", window);
         let card_width = bounds.width;
         let card_height = bounds.height;
-        let body_height = (card_height - 44.).max(8.);
+        let body_height = (card_height - 48.).max(8.);
         let content_width = (card_width - 167.).max(1.);
         let mut card = div()
             .absolute()
@@ -486,18 +637,24 @@ impl Render for SettingsView {
                             .h(px(body_height))
                             .flex_shrink_0()
                             .bg(rgb(theme::SURFACE_MODAL))
-                            .child(div().size_full().overflow_y_scrollbar().p_4().child(
-                                match self.service.snapshot() {
-                                    Ok(s) => self.render_tab(&s, cx).into_any_element(),
-                                    Err(error) => div().child(error.to_string()).into_any_element(),
-                                },
-                            )),
+                            .child(
+                                div().size_full().overflow_y_scrollbar().p(px(20.)).child(
+                                    match self.service.snapshot() {
+                                        Ok(s) => self
+                                            .render_tab(&s, content_width - 40., cx)
+                                            .into_any_element(),
+                                        Err(error) => {
+                                            div().child(error.to_string()).into_any_element()
+                                        }
+                                    },
+                                ),
+                            ),
                     ),
             );
         card = card.child(
             div()
                 .h_flex()
-                .h(px(44.))
+                .h(px(48.))
                 .flex_shrink_0()
                 .items_center()
                 .justify_between()
@@ -508,14 +665,20 @@ impl Render for SettingsView {
                 .py_2()
                 .child(
                     div()
-                        .text_xs()
+                        .h_flex()
+                        .items_center()
+                        .gap_2()
+                        .text_size(px(14.))
                         .text_color(rgb(theme::TEXT_SECONDARY))
+                        .child(theme::small_icon(gpui_kit::assets::IconName::Info))
                         .child(photag_ui_bridge::i18n::tr(
                             "Settings changes are saved automatically.",
                         )),
                 )
                 .child(
                     Button::new("settings-close-footer")
+                        .w(px(100.))
+                        .h(px(32.))
                         .label(photag_ui_bridge::i18n::tr("Close"))
                         .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
                 ),

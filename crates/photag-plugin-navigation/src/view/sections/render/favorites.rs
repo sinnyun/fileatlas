@@ -1,13 +1,12 @@
 use super::*;
+use gpui_kit::component::Disableable as _;
 impl SidebarView {
-    /// Append the custom favorite groups to the sidebar favorites region.
-    /// Each group is a tinted block so adjacent groups stay visually distinct.
+    /// Independent sibling frames, sharing header geometry with drives/quick access.
     pub(in crate::view) fn render_favorite_groups(
         &mut self,
         mut region: Div,
         cx: &mut Context<Self>,
     ) -> Div {
-        let collapsed = self.collapsed_sections.contains("favorites");
         let weak = cx.entity().downgrade();
         let config = self.sidebar_config();
         let browse = self.service.browser_enabled();
@@ -15,172 +14,165 @@ impl SidebarView {
             .session
             .snapshot()
             .ok()
-            .and_then(|saved| saved.selected_path)
-            .clone();
-        let group_menu_view = weak.clone();
-        region = region.child(section_header(
-            &weak,
-            "favorites",
-            "Favorite groups",
-            collapsed,
-            move |menu| {
-                let new_view = group_menu_view.clone();
-                menu.item(menu_item("New group", &new_view, |this, window, cx| {
-                    this.open_sidebar_editor(SidebarEditor::CreateGroup, "", window, cx);
-                }))
-            },
-            vec![],
-        ));
-        if collapsed {
-            return region;
+            .and_then(|saved| saved.selected_path);
+        if let Ok(mut headers) = self.favorite_header_bounds.write() {
+            headers.retain(|id, _| config.favorite_groups.iter().any(|group| &group.id == id));
         }
-        let groups = config.favorite_groups.clone();
-        for (index, group) in groups.into_iter().enumerate() {
-            let tint = theme::group_tint(index);
+        for group in config.favorite_groups {
             let group_collapsed = self.collapsed_groups.contains(&group.id);
             let group_view = weak.clone();
-            let group_rename_id = group.id.clone();
-            let group_delete_id = group.id.clone();
-            let add_view = weak.clone();
-            let add_group_id = group.id.clone();
-            let block = div()
-                .v_flex()
-                .w_full()
-                .when(index > 0, |block| {
-                    block
-                        .mt(px(8.))
-                        .pt(px(8.))
-                        .border_t_1()
-                        .border_color(rgb(theme::SEPARATOR))
-                })
-                .child(
-                    div()
-                        .h_flex()
-                        .w_full()
-                        .items_center()
-                        .child(expand_chevron(
-                            &group_view,
-                            format!("navigation-group-chevron-{}", group.id),
-                            !group_collapsed,
-                            {
-                                let toggle_id = group.id.clone();
-                                move |this, _| {
-                                    this.toggle_favorite_group(&toggle_id);
-                                }
-                            },
-                        ))
-                        .child(
-                            div()
-                                .id(format!("navigation-group-{}", group.id))
-                                .flex_1()
-                                .h_flex()
-                                .items_center()
-                                .gap(px(6.))
-                                .h(px(24.))
-                                .px(px(4.))
-                                .rounded(px(4.))
-                                .bg(rgba((tint << 8) | 0x26))
-                                .hover(|style| style.bg(rgba((tint << 8) | 0x3d)))
-                                .child(
-                                    theme::small_icon(if group_collapsed {
-                                        IconName::Star
-                                    } else {
-                                        IconName::StarFill
-                                    })
-                                    .text_color(rgb(tint)),
-                                )
-                                .child(
-                                    div()
-                                        .flex_1()
-                                        .min_w_0()
-                                        .font_semibold()
-                                        .text_size(px(12.5))
-                                        .text_ellipsis()
-                                        .child(group.name.clone()),
-                                )
-                                .child(
-                                    div()
-                                        .text_size(px(10.5))
-                                        .text_color(rgb(theme::TEXT_MUTED))
-                                        .child(group.folders.len().to_string()),
-                                ),
-                        )
-                        .child(
-                            Button::new(format!("navigation-group-menu-{}", group.id))
-                                .ghost()
-                                .compact()
-                                .w(px(22.))
-                                .h(px(22.))
-                                .icon(theme::small_icon(IconName::Ellipsis))
-                                .dropdown_menu(move |menu, _, _| {
-                                    let add_view = add_view.clone();
-                                    let add_group_id = add_group_id.clone();
-                                    let rename_view = group_view.clone();
-                                    let rename_id = group_rename_id.clone();
-                                    let delete_view = group_view.clone();
-                                    let delete_id = group_delete_id.clone();
-                                    menu.item(menu_item(
-                                        "Add folder",
-                                        &add_view,
-                                        move |this, window, cx| {
-                                            this.open_sidebar_editor(
-                                                SidebarEditor::AddFavorite {
-                                                    group_id: add_group_id.clone(),
-                                                },
-                                                "",
-                                                window,
-                                                cx,
-                                            );
-                                        },
-                                    ))
-                                    .item(menu_item(
-                                        "Rename",
-                                        &rename_view,
-                                        move |this, window, cx| {
-                                            let initial = this
-                                                .sidebar_config()
-                                                .favorite_groups
-                                                .iter()
-                                                .find(|g| g.id == rename_id)
-                                                .map(|g| g.name.clone())
-                                                .unwrap_or_default();
-                                            this.open_sidebar_editor(
-                                                SidebarEditor::RenameGroup {
-                                                    group_id: rename_id.clone(),
-                                                },
-                                                &initial,
-                                                window,
-                                                cx,
-                                            );
-                                        },
-                                    ))
-                                    .item(menu_item(
-                                        "Delete group",
-                                        &delete_view,
-                                        move |this, _, cx| {
-                                            this.remove_favorite_group(delete_id.clone(), cx);
-                                        },
-                                    ))
-                                }),
-                        ),
-                );
+            let group_id = group.id.clone();
+            let menu_view = weak.clone();
+            let menu_group = group.id.clone();
+            let menu = Button::new(format!("navigation-group-menu-{}", group.id))
+                .ghost()
+                .compact()
+                .w(px(22.))
+                .h(px(22.))
+                .icon(theme::small_icon(IconName::Ellipsis))
+                .dropdown_menu(move |menu, _, _| {
+                    let current_view = menu_view.clone();
+                    let current_id = menu_group.clone();
+                    let rename_view = menu_view.clone();
+                    let rename_id = menu_group.clone();
+                    let delete_view = menu_view.clone();
+                    let delete_id = menu_group.clone();
+                    let add_view = menu_view.clone();
+                    let add_id = menu_group.clone();
+                    menu.item(menu_item(
+                        "Add current folder to group",
+                        &current_view,
+                        move |this, _, cx| {
+                            this.add_current_favorite(current_id.clone(), cx);
+                        },
+                    ))
+                    .item(menu_item(
+                        "Add folder by path…",
+                        &add_view,
+                        move |this, window, cx| {
+                            this.open_sidebar_editor(
+                                SidebarEditor::AddFavorite {
+                                    group_id: add_id.clone(),
+                                },
+                                "",
+                                window,
+                                cx,
+                            );
+                        },
+                    ))
+                    .item(menu_item(
+                        "Rename",
+                        &rename_view,
+                        move |this, window, cx| {
+                            let initial = this
+                                .sidebar_config()
+                                .favorite_groups
+                                .iter()
+                                .find(|g| g.id == rename_id)
+                                .map(|g| g.name.clone())
+                                .unwrap_or_default();
+                            this.open_sidebar_editor(
+                                SidebarEditor::RenameGroup {
+                                    group_id: rename_id.clone(),
+                                },
+                                &initial,
+                                window,
+                                cx,
+                            );
+                        },
+                    ))
+                    .item(menu_item(
+                        "Delete group",
+                        &delete_view,
+                        move |this, _, cx| {
+                            this.remove_favorite_group(delete_id.clone(), cx);
+                        },
+                    ))
+                });
+            let toggle = expand_chevron(
+                &group_view,
+                format!("navigation-group-chevron-{}", group.id),
+                !group_collapsed,
+                move |this, _| this.toggle_favorite_group(&group_id),
+            );
+            let add_id = group.id.clone();
+            let add = icon_button(
+                format!("navigation-group-add-{}", group.id),
+                IconName::Plus,
+                move |this, cx| this.add_current_favorite(add_id.clone(), cx),
+                cx,
+            )
+            .disabled(self.current_favorite_path().is_none())
+            .accessibility_label(photag_ui_bridge::i18n::tr("Add current folder to group"));
+            let measured = Arc::clone(&self.favorite_header_bounds);
+            let measured_id = group.id.clone();
+            let header = photag_ui_bridge::components::sidebar_header(
+                group.name.clone(),
+                toggle,
+                menu,
+                vec![add],
+            )
+            .relative()
+            .child(
+                canvas(
+                    move |bounds, _, _| {
+                        if let Ok(mut headers) = measured.write() {
+                            headers.insert(
+                                measured_id.clone(),
+                                [
+                                    f32::from(bounds.origin.x),
+                                    f32::from(bounds.origin.y),
+                                    f32::from(bounds.size.width),
+                                    f32::from(bounds.size.height),
+                                ],
+                            );
+                        }
+                    },
+                    |_, _, _, _| {},
+                )
+                .absolute()
+                .size_full(),
+            );
+            let mut block = div().v_flex().w_full().child(header);
+            if matches!(&self.sidebar_editor,
+                Some(SidebarEditor::RenameGroup {group_id} | SidebarEditor::AddFavorite {group_id}
+                  | SidebarEditor::RenameFavorite {group_id,..}) if group_id == &group.id)
+                && let Some(editor) = self.render_sidebar_editor_row(cx)
+            {
+                block = block.child(editor);
+            }
             if group_collapsed {
-                region = region.child(block);
+                region = region.child(sidebar_region(block));
                 continue;
             }
-            let mut rows = div().v_flex().w_full().pl(px(6.));
+            let mut rows = div().v_flex().w_full();
             for folder in group.folders.clone() {
-                let display = folder.display_name.clone().unwrap_or_else(|| {
-                    Path::new(&folder.path)
-                        .file_name()
-                        .map(|name| name.to_string_lossy().into_owned())
-                        .unwrap_or_else(|| folder.path.clone())
-                });
+                let basename = Path::new(&folder.path)
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned());
+                let display = folder
+                    .display_name
+                    .clone()
+                    .filter(|name| Some(name) != basename.as_ref())
+                    .unwrap_or_else(|| crate::location::display_path(&folder.path));
                 let expanded = self.expanded_directories.contains_key(&folder.path);
                 let selected = selected_path.as_deref().is_some_and(|selected| {
                     crate::sidebar_folders::same_sidebar_path(selected, &folder.path)
                 });
                 let row_view = weak.clone();
+                let registered_id = self
+                    .snapshot
+                    .as_ref()
+                    .ok()
+                    .and_then(|snapshot| {
+                        snapshot.folders.iter().find(|node| {
+                            crate::sidebar_folders::same_sidebar_path(
+                                &node.folder.path,
+                                &folder.path,
+                            )
+                        })
+                    })
+                    .map(|node| node.folder.id);
                 let menu_view = row_view.clone();
                 let row_path = folder.path.clone();
                 let rename_view = weak.clone();
@@ -199,6 +191,11 @@ impl SidebarView {
                     selected,
                     browse,
                     move |menu| {
+                        let menu = if let Some(id) = registered_id {
+                            favorite_menu(menu, id, row_path.clone(), menu_view.clone())
+                        } else {
+                            menu
+                        };
                         let open_view = menu_view.clone();
                         let open_path = row_path.clone();
                         let add_view = menu_view.clone();
@@ -209,13 +206,9 @@ impl SidebarView {
                         let remove_view = remove_view.clone();
                         let remove_group_id = remove_group_id.clone();
                         let remove_folder_id = remove_folder_id.clone();
-                        menu.item(menu_item(
-                            "Add to folder bookmarks",
-                            &add_view,
-                            move |this, _, cx| {
-                                this.add_folder_path(add_path.clone(), cx);
-                            },
-                        ))
+                        menu.item(menu_item("Index folder", &add_view, move |this, _, cx| {
+                            this.add_folder_path(add_path.clone(), cx);
+                        }))
                         .item(menu_item(
                             "Open in file manager",
                             &open_view,
@@ -267,19 +260,37 @@ impl SidebarView {
                     }
                 }
             }
-            region = region.child(block.child(rows));
+            region = region.child(sidebar_region(block.child(rows)));
         }
-        region.child(
+        if let Some(error) = &self.favorite_action_error {
+            region = region.child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::DANGER))
+                    .child(error.clone()),
+            );
+        }
+        if let Some(form) = self.render_favorite_folder_creation(cx) {
+            region = region.child(form);
+        }
+        region = region.child(
             Button::new("navigation-favorites-add-group")
-                .ghost()
-                .compact()
+                .outline()
                 .w_full()
+                .flex_shrink_0()
+                .h(px(30.))
                 .mt(px(6.))
-                .justify_start()
+                .icon(theme::small_icon(IconName::Plus))
                 .label(photag_ui_bridge::i18n::tr("New group"))
                 .on_click(cx.listener(|this, _, window, cx| {
-                    this.open_sidebar_editor(SidebarEditor::CreateGroup, "", window, cx);
+                    this.open_sidebar_editor(SidebarEditor::CreateGroup, "", window, cx)
                 })),
-        )
+        );
+        if matches!(self.sidebar_editor, Some(SidebarEditor::CreateGroup))
+            && let Some(editor) = self.render_sidebar_editor_row(cx)
+        {
+            region = region.child(editor);
+        }
+        region
     }
 }

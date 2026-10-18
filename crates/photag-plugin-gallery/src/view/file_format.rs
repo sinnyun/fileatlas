@@ -34,7 +34,7 @@ pub(super) fn badge(filename: &str, width: f32) -> Div {
         .py(px(2.))
         .rounded(px(3.))
         .bg(color)
-        .text_color(rgb(0xffffff))
+        .text_color(rgb(theme::TEXT_ON_ACCENT))
         .text_size(px(9.))
         .font_semibold()
         .overflow_hidden()

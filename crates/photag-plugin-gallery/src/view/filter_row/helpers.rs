@@ -219,7 +219,7 @@ pub(super) fn rating_slider(
                 .w(px(track))
                 .h(px(3.))
                 .rounded_full()
-                .bg(rgba(0xffffff16)),
+                .bg(rgba(theme::TRACK_HIGHLIGHT)),
         )
         .child(
             div()
@@ -270,13 +270,13 @@ fn slider_thumb(x: f32) -> Div {
         .top(px(3.))
         .size(px(16.))
         .rounded_full()
-        .bg(rgba(0x0000006e))
+        .bg(rgba(theme::TRACK_SHADOW))
         .child(
             div()
                 .absolute()
                 .inset(px(1.5))
                 .rounded_full()
-                .bg(rgb(0x484848)),
+                .bg(rgb(theme::SURFACE_ELEVATED)),
         )
         .child(
             div()

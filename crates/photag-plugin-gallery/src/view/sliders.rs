@@ -15,13 +15,13 @@ fn thumb(x: f32) -> Div {
         .top(px(3.))
         .size(px(16.))
         .rounded_full()
-        .bg(rgba(0x0000006e))
+        .bg(rgba(theme::TRACK_SHADOW))
         .child(
             div()
                 .absolute()
                 .inset(px(1.5))
                 .rounded_full()
-                .bg(rgb(0x484848)),
+                .bg(rgb(theme::SURFACE_ELEVATED)),
         )
         .child(
             div()
@@ -81,14 +81,14 @@ fn slider(view: &GalleryView, rating: bool, cx: &mut Context<GalleryView>) -> im
             .absolute()
             .size_full(),
         )
-        .child(rail(pad, width - pad, rgba(0xffffff16).into()))
+        .child(rail(pad, width - pad, rgba(theme::TRACK_HIGHLIGHT).into()))
         .child(rail(
             low,
             high,
             if active {
                 rgb(theme::accent()).into()
             } else {
-                rgba(0xffffff28).into()
+                rgba(theme::TRACK_ACTIVE).into()
             },
         ))
         .child(thumb(high))

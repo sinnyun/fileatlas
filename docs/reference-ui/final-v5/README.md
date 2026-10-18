@@ -2,6 +2,9 @@
 
 2026-10-13。最终选用 9 张图片：1 张主界面和 8 张配套设计稿。设置与文件操作使用复核后的版本。此目录作为后续界面实现的设计参考，概念稿、初稿和历史方案保留在 ../concepts/。
 
+后续选用的局部稿见 [当前参考入口](../README.md)，按 [实现与验收流程](../../ui-reference-workflow.md) 执行。
+其中快捷键页以 [2026-10-18 稿及实现清单](../concepts/shortcuts-settings-2026-10-18.md) 为准，覆盖 sheet 02 的快捷键部分。
+
 | 文件 | 内容 |
 |---|---|
 | [00-main-library.png](/F:/AI/geren/pho_cordis/docs/reference-ui/final-v5/00-main-library.png) | 主界面 |

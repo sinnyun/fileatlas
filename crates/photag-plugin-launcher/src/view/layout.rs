@@ -95,24 +95,17 @@ impl Render for LauncherPanel {
                             .flex_1()
                             .min_w_0()
                             .h(px(36.))
-                            .px(px(8.))
-                            .rounded(px(8.))
-                            .border_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
-                            .bg(rgb(theme::SURFACE_FAINT))
-                            .child(
-                                Input::new(&self.search_input)
-                                    .w_full()
-                                    .h(px(34.))
-                                    .appearance(false)
-                                    .bordered(false)
-                                    .cleanable(true),
-                            ),
+                            .h_flex()
+                            .items_center()
+                            .child(photag_ui_bridge::components::search_input(
+                                &self.search_input,
+                            )),
                     )
                     .child(
                         Button::new("launcher-add-program")
                             .h(px(34.))
-                            .label(format!("＋ {}", tr("Add program")))
+                            .label(tr("Add program"))
+                            .icon(theme::icon(IconName::Plus))
                             .disabled(self.add_program_task.is_some())
                             .on_click(
                                 cx.listener(|this, _, window, cx| this.add_program(window, cx)),
@@ -214,7 +207,7 @@ impl Render for LauncherPanel {
                 .h(px(200.))
                 .gap(px(12.))
                 .text_color(rgb(theme::TEXT_MUTED))
-                .child(div().text_size(px(32.)).child("▦"))
+                .child(theme::empty_state_icon(IconName::LayoutGrid))
                 .child(tr(if self.snapshot.scanning {
                     "Discovering system programs…"
                 } else {
@@ -243,7 +236,7 @@ impl Render for LauncherPanel {
             .v_flex()
             .size_full()
             .min_h_0()
-            .text_size(px(13.))
+            .text_size(px(theme::FONT_SIZE_BODY))
             .bg(rgb(theme::SURFACE_BASE))
             .child(
                 div()

@@ -77,6 +77,10 @@ pub enum SidebarUiRequest {
     RemoveQuickAccess {
         path: String,
     },
+    /// Same handler as a group plus; resolves the committed current location at action time.
+    AddCurrentFavorite {
+        group_id: String,
+    },
     /// Menu action "Add folder" inside a favorite group.
     AddFavoriteFolder {
         group_id: String,
@@ -226,7 +230,8 @@ pub(crate) fn validate_sidebar_request(
                 invalid("unknown favorite folder")
             }
         }
-        SidebarUiRequest::RemoveFavoriteGroup { group_id }
+        SidebarUiRequest::AddCurrentFavorite { group_id }
+        | SidebarUiRequest::RemoveFavoriteGroup { group_id }
         | SidebarUiRequest::ToggleGroup { group_id } => {
             if group(group_id).is_some() {
                 Ok(())

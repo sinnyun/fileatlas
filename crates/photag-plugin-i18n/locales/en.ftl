@@ -1084,3 +1084,9 @@ msg-launcher-pin-none = Not pinned
 msg-launcher-pin-category-status = Category top
 
 msg-launcher-pin-global-status = All programs top
+
+msg-workbench-blue = Workbench Blue
+msg-sidebar-default-favorite-group = Favorites
+msg-sidebar-add-current-favorite = Add current folder to group
+msg-sidebar-favorite-group-gone = Favorite group no longer exists
+msg-sidebar-index-folder = Index folder

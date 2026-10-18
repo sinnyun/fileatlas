@@ -17,6 +17,8 @@ fn dev_plugin_config() -> String {
         "navigation",
         "metadata-export",
         "launcher",
+        "shortcuts",
+        "clipboard",
         "file-operations",
         "thumbnails",
         "indexing",
@@ -144,11 +146,21 @@ fn main() {
         || enable_dev_test
         || dev_plugin_enabled(&plugin_config, "gallery")
         || dev_plugin_enabled(&plugin_config, "versions");
+    let enable_clipboard = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "clipboard");
     let enable_launcher = plugin_config == "core"
         || enable_all
         || enable_mcp
         || enable_gallery
-        || dev_plugin_enabled(&plugin_config, "launcher");
+        || dev_plugin_enabled(&plugin_config, "launcher")
+        || dev_plugin_enabled(&plugin_config, "shortcuts")
+        || enable_clipboard;
+    let enable_shortcuts = enable_launcher
+        || enable_all
+        || dev_plugin_enabled(&plugin_config, "shortcuts")
+        || enable_clipboard;
     let enable_versions = enable_gallery || dev_plugin_enabled(&plugin_config, "versions");
     let enable_ai =
         enable_all || enable_mcp || enable_gallery || dev_plugin_enabled(&plugin_config, "ai");
@@ -157,7 +169,8 @@ fn main() {
         || enable_mcp
         || enable_dev_test
         || enable_launcher
-        || dev_plugin_enabled(&plugin_config, "navigation");
+        || dev_plugin_enabled(&plugin_config, "navigation")
+        || enable_clipboard;
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -414,6 +427,38 @@ fn main() {
     } else {
         None
     };
+    let _shortcuts_fiber = if enable_shortcuts {
+        let plugin = photag_plugin_shortcuts::ShortcutsPlugin;
+        let input = match plugin.prepare(()) {
+            Ok(input) => input,
+            Err(never) => match never {},
+        };
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start shortcuts plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let _clipboard_fiber = if enable_clipboard {
+        let plugin = photag_plugin_clipboard::ClipboardPlugin;
+        let input = match plugin.prepare(()) {
+            Ok(input) => input,
+            Err(never) => match never {},
+        };
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error,"could not start clipboard plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
     // Settings can read the live tag tree from NavigationService when the
     // navigation plugin is enabled, so start it after Navigation.
     let settings_plugin = photag_plugin_settings::SettingsPlugin;
@@ -542,6 +587,18 @@ fn main() {
     let application = gpui_kit::application().with_assets(gpui_kit::assets::AllAssets);
     application.run(move |cx| {
         gpui_kit::init(cx);
+        if let Ok(shortcuts) = app_cordis.try_service::<photag_plugin_shortcuts::ShortcutService>()
+        {
+            let overrides = app_cordis
+                .try_service::<photag_plugin_settings::SettingsService>()
+                .ok()
+                .and_then(|service| service.snapshot().ok())
+                .map(|settings| settings.keybindings)
+                .unwrap_or_default();
+            if let Err(error) = shortcuts.start(&overrides) {
+                tracing::error!(%error, "could not register global shortcuts");
+            }
+        }
         if let Ok(i18n) = app_cordis.try_service::<photag_plugin_i18n::I18nService>() {
             gpui_kit::component::set_locale(i18n.language().code());
         }
@@ -589,6 +646,20 @@ fn main() {
         };
         gpui_kit::open_window(window_options, cx, move |window, cx| {
             window.set_window_title("PhoTag");
+            #[cfg(target_os = "windows")]
+            let native_window_handle = {
+                use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+                window
+                    .window_handle()
+                    .ok()
+                    .and_then(|handle| match handle.as_raw() {
+                        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get() as isize),
+                        _ => None,
+                    })
+                    .unwrap_or_default()
+            };
+            #[cfg(not(target_os = "windows"))]
+            let native_window_handle = 0;
             #[cfg(target_os = "windows")]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -648,6 +719,26 @@ fn main() {
                             cx.refresh_windows();
                         }
                         shell.poll_panel_requests(cx);
+                        if let Ok(shortcuts) = shell
+                            .cordis
+                            .try_service::<photag_plugin_shortcuts::ShortcutService>()
+                        {
+                            let overrides = shell
+                                .cordis
+                                .try_service::<photag_plugin_settings::SettingsService>()
+                                .ok()
+                                .and_then(|service| service.snapshot().ok())
+                                .map(|settings| settings.keybindings)
+                                .unwrap_or_default();
+                            if shortcuts.poll(
+                                shell.native_window_handle,
+                                &overrides,
+                                shell.surfaces.is_capturing_key("settings"),
+                            ) {
+                                cx.refresh_windows();
+                                changed = true;
+                            }
+                        }
                         let registered = shell
                             .view_catalog
                             .snapshot()
@@ -705,6 +796,7 @@ fn main() {
                     inspector_width,
                     viewport_width: window_width,
                     capture: Arc::clone(&capture_handle),
+                    native_window_handle,
                     drag_origin_x: 0.,
                     drag_origin_width: 0.,
                     resizing_panel: None,

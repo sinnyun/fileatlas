@@ -41,14 +41,14 @@ impl InspectorContext {
                 IconName::Image,
                 "PhoTag",
                 &photag_ui_bridge::i18n::tr("Local photo browser and organizer"),
-                Some(0x3185ed),
+                Some(theme::accent()),
             ),
             Self::Tag(tag) => tag_hero(tag),
             Self::Folder(folder) => hero(
                 IconName::Folder,
                 &folder.name,
                 &display_path(&folder.path),
-                Some(0xe3bd68),
+                Some(theme::WARNING),
             ),
             Self::File => div().into_any_element(),
         }
@@ -219,7 +219,7 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
                         .items_center()
                         .justify_center()
                         .child(theme::icon(icon).size(px(30.)).text_color(rgb(if solid {
-                            0xffffff
+                            theme::TEXT_ON_ACCENT
                         } else {
                             color
                         }))),

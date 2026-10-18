@@ -1,15 +1,13 @@
 use super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::ButtonVariants;
+use gpui_kit::component::scroll::ScrollableElement as _;
 
-mod folder_row;
 mod pages;
 mod scan_feedback;
 pub(in crate::view) mod tag_render;
-use folder_row::folder_row;
 pub(super) use tag_render::merge_target_buttons;
-use tag_render::{directory_children_match, render_subdirectory, render_tag};
+use tag_render::render_tag;
 
 impl SidebarView {
     pub(super) fn consume_ui_request(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -188,6 +186,7 @@ impl Render for SidebarView {
         }
         let mut panel = div()
             .v_flex()
+            .min_h_0()
             .size_full()
             .flex_1()
             .min_w_0()
@@ -196,7 +195,6 @@ impl Render for SidebarView {
             .pr(px(6.))
             .pt(px(2.))
             .pb(px(8.));
-        let mut favorites_region: Option<Div> = None;
         if self.active_page == NavigationPage::Folders {
             panel = panel
                 .child(sidebar_region(self.render_drives_section(cx)))
@@ -210,324 +208,8 @@ impl Render for SidebarView {
             }
             panel = scan_feedback::append(panel, self, cx);
         }
-        let folder_view = cx.entity().downgrade();
         let panel = match &self.snapshot {
             Ok(snapshot) => {
-                if self.active_page == NavigationPage::Folders {
-                    let query = self.folder_search.read(cx).value().trim().to_owned();
-                    let lowered_query = query.to_lowercase();
-                    let mut favorites = div().v_flex().gap(px(2.));
-                    favorites = favorites.child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .justify_between()
-                            .pt(px(2.))
-                            .pb(px(5.))
-                            .child(
-                                div()
-                                    .font_semibold()
-                                    .text_size(px(15.))
-                                    .child(photag_ui_bridge::i18n::tr("Folder favorites")),
-                            )
-                            .child(
-                                div()
-                                    .h_flex()
-                                    .gap_1()
-                                    .child(
-                                        Button::new("navigation-add-folder")
-                                            .disabled(self.service.folder_picker_pending())
-                                            .ghost()
-                                            .compact()
-                                            .w(px(22.))
-                                            .h(px(22.))
-                                            .icon(theme::small_icon(IconName::Plus))
-                                            .accessibility_label(photag_ui_bridge::i18n::tr(
-                                                "Add folder",
-                                            ))
-                                            .on_click(
-                                                cx.listener(|this, _, _, cx| this.pick_folder(cx)),
-                                            ),
-                                    )
-                                    .child(
-                                        Button::new("navigation-folder-options")
-                                            .ghost()
-                                            .compact()
-                                            .w(px(22.))
-                                            .h(px(22.))
-                                            .icon(theme::small_icon(IconName::Ellipsis))
-                                            .dropdown_menu(move |mut menu, _, _| {
-                                                let path_view = folder_view.clone();
-                                                menu = menu.item(
-                                                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                        "Add folder by path…",
-                                                    ))
-                                                    .on_click(move |_, _, cx| {
-                                                        let _ = path_view.update(cx, |this, cx| {
-                                                            this.show_folder_path_entry = true;
-                                                            cx.notify();
-                                                        });
-                                                    }),
-                                                );
-                                                let refresh_view = folder_view.clone();
-                                                menu.item(
-                                                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(
-                                                        "Refresh folders",
-                                                    ))
-                                                    .on_click(move |_, _, cx| {
-                                                        let _ =
-                                                            refresh_view.update(cx, |this, cx| {
-                                                                this.refresh();
-                                                                cx.notify();
-                                                            });
-                                                    }),
-                                                )
-                                            }),
-                                    ),
-                            ),
-                    );
-                    favorites = favorites.child(Input::new(&self.folder_search).w_full());
-                    favorites = favorites.child(region_caption("Library folders"));
-                    favorites = favorites.child(
-                        folder_row(
-                            "navigation-all-media".into(),
-                            photag_ui_bridge::i18n::tr("Favorites"),
-                            snapshot.folders.iter().map(|node| node.media_count).sum(),
-                            self.session
-                                .snapshot()
-                                .map(|s| {
-                                    s.selected_folder_id.is_none() && s.selected_path.is_none()
-                                })
-                                .unwrap_or(true)
-                                && self.included_tags.is_empty()
-                                && self.excluded_tags.is_empty(),
-                            gpui_kit::assets::IconName::Files,
-                        )
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.select_folder(None, cx);
-                            this.select_tag(None, cx);
-                            cx.notify();
-                        })),
-                    );
-                    if self.show_folder_path_entry {
-                        favorites = favorites.child(
-                            div()
-                                .h_flex()
-                                .gap_1()
-                                .child(Input::new(&self.folder_path).flex_1())
-                                .child(
-                                    Button::new("navigation-open-path")
-                                        .label(photag_ui_bridge::i18n::tr("Open folder"))
-                                        .on_click(cx.listener(|view, _, _, cx| {
-                                            let path =
-                                                view.folder_path.read(cx).value().trim().to_owned();
-                                            if let Err(error) = view.service.request_ui(
-                                                crate::NavigationUiRequest::SelectPath(path),
-                                            ) {
-                                                view.snapshot = Err(error.to_string());
-                                            }
-                                            cx.notify();
-                                        })),
-                                )
-                                .child(
-                                    Button::new("navigation-browse-folder")
-                                        .disabled(self.service.folder_picker_pending())
-                                        .label(photag_ui_bridge::i18n::tr("Browse…"))
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| this.pick_folder(cx)),
-                                        ),
-                                )
-                                .child(
-                                    Button::new("navigation-add-folder-path")
-                                        .label(photag_ui_bridge::i18n::tr("Add"))
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| this.add_folder(cx)),
-                                        ),
-                                ),
-                        );
-                    }
-                    if let Some(parent) = &self.new_folder_parent {
-                        favorites = favorites.child(
-                            div()
-                                .v_flex()
-                                .gap_1()
-                                .child(div().text_xs().child(format!("New folder in {}", parent)))
-                                .child(Input::new(&self.new_folder_name))
-                                .child(
-                                    div()
-                                        .h_flex()
-                                        .gap_1()
-                                        .child(
-                                            Button::new("navigation-create-subfolder")
-                                                .label(photag_ui_bridge::i18n::tr("Create"))
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.create_subfolder(cx)
-                                                })),
-                                        )
-                                        .child(
-                                            Button::new("navigation-cancel-subfolder")
-                                                .label(photag_ui_bridge::i18n::tr("Cancel"))
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.new_folder_parent = None;
-                                                    cx.notify();
-                                                })),
-                                        ),
-                                ),
-                        );
-                    }
-                    let visible_folders = snapshot
-                        .folders
-                        .iter()
-                        .filter(|node| {
-                            lowered_query.is_empty()
-                                || node.folder.name.to_lowercase().contains(&lowered_query)
-                                || node.folder.path.to_lowercase().contains(&lowered_query)
-                                || directory_children_match(
-                                    &node.folder.path,
-                                    &self.expanded_directories,
-                                    &lowered_query,
-                                )
-                        })
-                        .collect::<Vec<_>>();
-                    if !lowered_query.is_empty() && visible_folders.is_empty() {
-                        favorites = favorites.child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_MUTED))
-                                .child(photag_ui_bridge::i18n::tr("No matching folders")),
-                        );
-                    }
-                    for node in visible_folders {
-                        let expanded = self.expanded_directories.get(&node.folder.path);
-                        let row_group = format!("navigation-folder-row-{}", node.folder.id);
-                        favorites = favorites.child(
-                            div()
-                                .group(row_group.clone())
-                                .relative()
-                                .h_flex()
-                                .w_full()
-                                .items_center()
-                                .gap_0()
-                                .hover(|style| style.bg(rgba(0xffffff10)))
-                                .child(
-                                    Button::new(format!(
-                                        "navigation-expand-root-{}",
-                                        node.folder.id
-                                    ))
-                                    .ghost()
-                                    .compact()
-                                    .p_0()
-                                    .icon(theme::small_icon(if expanded.is_some() {
-                                        IconName::ChevronDown
-                                    } else {
-                                        IconName::ChevronRight
-                                    }))
-                                    // Source: sidebar::arrow_slot (16×16) inside a 26 px row.
-                                    .w(px(theme::SIDEBAR_ARROW_SLOT))
-                                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                                    .on_click(cx.listener({
-                                        let path = node.folder.path.clone();
-                                        move |this, _, _, cx| {
-                                            this.toggle_directory(&path);
-                                            cx.notify();
-                                        }
-                                    })),
-                                )
-                                .child(
-                                    folder_row(
-                                        format!("navigation-select-{}", node.folder.id),
-                                        node.folder.name.clone(),
-                                        node.media_count,
-                                        self.session
-                                            .snapshot()
-                                            .map(|s| {
-                                                (s.selected_folder_id == Some(node.folder.id)
-                                                    && s.selected_path.is_none())
-                                                    || s.selected_path.as_deref()
-                                                        == Some(node.folder.path.as_str())
-                                            })
-                                            .unwrap_or(false),
-                                        if expanded.is_some() {
-                                            gpui_kit::assets::IconName::FolderOpen
-                                        } else {
-                                            gpui_kit::assets::IconName::Folder
-                                        },
-                                    )
-                                    // Source: sidebar::SIDEBAR_ROW_H and theme::FONT_SIZE_BUTTON.
-                                    .flex_1()
-                                    .min_w_0()
-                                    .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                                    .text_size(px(theme::SOURCE_FONT_SIZE_BUTTON))
-                                    .on_click(cx.listener({
-                                        let folder_id = node.folder.id;
-                                        move |this, _, _, cx| {
-                                            this.select_folder(Some(folder_id), cx);
-                                            cx.notify();
-                                        }
-                                    })),
-                                )
-                                .child({
-                                    let folder_id = node.folder.id;
-                                    let folder_path = node.folder.path.clone();
-                                    let folder_view = cx.entity().downgrade();
-                                    Button::new(format!("navigation-folder-menu-{folder_id}"))
-                                        .absolute()
-                                        .right(px(2.))
-                                        .top(px(2.))
-                                        .ghost()
-                                        .compact()
-                                        .opacity(0.)
-                                        .group_hover(row_group, |style| style.opacity(1.))
-                                        .icon(theme::small_icon(IconName::Ellipsis))
-                                        .accessibility_label(photag_ui_bridge::i18n::tr(
-                                            "Folder actions",
-                                        ))
-                                        .w(px(20.))
-                                        .h(px(22.))
-                                        .bg(rgb(theme::SURFACE_REGION))
-                                        .dropdown_menu(move |menu, _, _| {
-                                            favorite_menu(
-                                                menu,
-                                                folder_id,
-                                                folder_path.clone(),
-                                                folder_view.clone(),
-                                            )
-                                        })
-                                }),
-                        );
-                        if let Some(children) = expanded {
-                            let child_rows = children
-                                .iter()
-                                .filter_map(|child| {
-                                    render_subdirectory(
-                                        child,
-                                        &self.expanded_directories,
-                                        &query,
-                                        self.session
-                                            .snapshot()
-                                            .ok()
-                                            .and_then(|saved| saved.selected_path)
-                                            .as_deref(),
-                                        !self.service.browser_enabled(),
-                                        cx,
-                                    )
-                                })
-                                .collect::<Vec<_>>();
-                            if !child_rows.is_empty() {
-                                favorites = favorites.child(
-                                    div()
-                                        .v_flex()
-                                        .ml(px(22.))
-                                        .pl(px(8.))
-                                        .border_l_1()
-                                        .border_color(rgba(0xffffff38))
-                                        .children(child_rows),
-                                );
-                            }
-                        }
-                    }
-                    favorites_region = Some(sidebar_region(favorites));
-                }
                 if self.active_page == NavigationPage::Tags {
                     let tag_view = cx.entity().downgrade();
                     panel = panel.child(
@@ -589,7 +271,7 @@ impl Render for SidebarView {
                             div()
                                 .v_flex()
                                 .gap_1()
-                                .child(Input::new(&self.tag_search))
+                                .child(photag_ui_bridge::components::text_input(&self.tag_search))
                                 .child(
                                     div()
                                         .h_flex()
@@ -718,22 +400,16 @@ impl Render for SidebarView {
                     .child(format!("Could not load library: {error}")),
             ),
         };
-        let panel = if let Some(region) = favorites_region {
-            let region = if self.sidebar_editor.is_some()
-                && !matches!(
-                    self.sidebar_editor,
-                    Some(SidebarEditor::AddQuickAccess | SidebarEditor::RenameQuickAccess { .. })
-                )
-                && let Some(editor_row) = self.render_sidebar_editor_row(cx)
-            {
-                region.child(editor_row)
-            } else {
-                region
-            };
-            panel.child(self.render_favorite_groups(region, cx))
+        let panel = if self.active_page == NavigationPage::Folders {
+            self.render_favorite_groups(panel, cx)
         } else {
             panel
         };
-        div().h_flex().size_full().child(rail).child(panel)
+        div()
+            .h_flex()
+            .size_full()
+            .overflow_hidden()
+            .child(rail)
+            .child(panel.overflow_y_scrollbar())
     }
 }

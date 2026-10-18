@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "real relocated grid/list",
+    "real relocated descendants with 1→2→1 files",
+    "real relocated slider persistence",
+    "icon tooltip",
+    "search location icon toggle",
+    "scope popover icon",
+    "tools icon",
+    "quiet snapshot",
+    "compact screenshot"
+  ],
+  "thumb_size": {
+    "before": 150,
+    "after": 269.2
+  },
+  "quiet_revision": 9,
+  "scale": 1.5
+}

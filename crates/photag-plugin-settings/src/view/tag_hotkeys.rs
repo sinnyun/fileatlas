@@ -8,6 +8,7 @@ pub(super) fn button(
     key: &'static str,
     selected: Option<i64>,
     choices: Vec<TagChoice>,
+    width: f32,
     view: WeakEntity<SettingsView>,
 ) -> impl IntoElement {
     let selected_tag = selected.and_then(|id| choices.iter().find(|tag| tag.id == id).cloned());
@@ -23,15 +24,18 @@ pub(super) fn button(
         });
     let mut button = Button::new(format!("settings-tag-hotkey-{key}"))
         .compact()
-        .w(px(360.))
-        .h(px(28.));
+        // DropdownMenu wraps its trigger; flex on Button does not size that wrapper.
+        .w(px(width))
+        .min_w_0()
+        .justify_start()
+        .h(px(26.));
     if let Some(tag) = selected_tag {
         button = button.child(
             photag_ui_bridge::tag_capsule::TagCapsule::new(tag.name)
                 .color(tag.color.as_deref())
                 .icon(tag.icon.as_deref())
                 .render()
-                .max_w(px(320.)),
+                .max_w(px((width - 48.).max(1.))),
         );
     } else {
         button = button.label(label);

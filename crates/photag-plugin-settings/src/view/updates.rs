@@ -495,7 +495,7 @@ impl SettingsView {
             .h_flex()
             .items_center()
             .justify_center()
-            .child(div().absolute().inset_0().bg(rgba(0x0000_00b0)))
+            .child(div().absolute().inset_0().bg(rgba(theme::SCRIM)))
             .child(dialog)
     }
 

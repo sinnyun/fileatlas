@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
+use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
-use gpui_kit::component::input::{Input, InputEvent, InputState};
+use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 mod cards;
@@ -25,19 +26,18 @@ fn tr(source: &str) -> String {
     photag_ui_bridge::i18n::tr(source)
 }
 
-fn category_icon(name: &str) -> &'static str {
+fn category_icon(name: &str) -> IconName {
     match name {
-        "常用" | "General" => "★",
-        "开发工具" => "⌘",
-        "设计创作" => "◇",
-        "办公软件" => "▤",
-        "通讯社交" => "◉",
-        "网络浏览" => "◎",
-        "影音播放" => "♫",
-        "游戏" => "♟",
-        "系统工具" => "⚙",
-        "其他" => "▣",
-        _ => "▦",
+        "常用" | "General" => IconName::Star,
+        "开发工具" => IconName::Code,
+        "设计创作" => IconName::Image,
+        "办公软件" => IconName::FileText,
+        "通讯社交" => IconName::Link,
+        "网络浏览" => IconName::Globe,
+        "影音播放" => IconName::Music,
+        "游戏" => IconName::Puzzle,
+        "系统工具" => IconName::Settings,
+        _ => IconName::LayoutGrid,
     }
 }
 
@@ -70,13 +70,13 @@ impl Render for LauncherShortcut {
             .rounded(px(6.))
             .text_xs()
             .text_color(rgb(theme::TEXT_SECONDARY))
-            .hover(|style| style.bg(rgba(0xffffff10)))
+            .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
             .on_click(cx.listener(|this, _, _, _| {
                 if let Err(error) = this.panels.open(PANEL_ID) {
                     tracing::error!(%error, "could not open program launchpad");
                 }
             }))
-            .child("▦")
+            .child(theme::icon(IconName::LayoutGrid))
             .child(tr("Apps"))
     }
 }

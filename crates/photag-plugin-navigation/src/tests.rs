@@ -1,5 +1,4 @@
 use super::*;
-use photag_plugin_database::queries;
 use photag_plugin_thumbnails::ThumbnailService;
 
 fn temp_root() -> std::path::PathBuf {
@@ -29,10 +28,9 @@ fn snapshot_and_tag_commands_preserve_tree_and_counts() {
     std::fs::create_dir_all(&nested_path).unwrap();
     std::fs::create_dir_all(std::path::Path::new(&folder_path).join(".hidden")).unwrap();
     database
-        .with_writer(|connection| {
-            let folder = queries::add_folder(connection, &folder_path)?;
-            queries::insert_media(
-                connection,
+        .add_folder(&folder_path)
+        .and_then(|folder| {
+            database.insert_media(
                 folder.id,
                 "sample.jpg",
                 &nested_path.join("sample.jpg").to_string_lossy(),
@@ -42,8 +40,7 @@ fn snapshot_and_tag_commands_preserve_tree_and_counts() {
                 None,
                 None,
                 None,
-            )?;
-            Ok(())
+            )
         })
         .unwrap();
     let thumbnails = Arc::new(ThumbnailService::open_at(root.join("thumbs")).unwrap());
@@ -183,7 +180,19 @@ async fn navigation_plugin_registers_and_cleans_sidebar_contributions() {
         .await
         .unwrap();
     navigation_fiber.ready().await.unwrap();
-    assert_eq!(catalog.snapshot().unwrap().len(), 3);
+    let entries = catalog.snapshot().unwrap();
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| entry.contribution.id.as_str())
+            .collect::<std::collections::BTreeSet<_>>(),
+        std::collections::BTreeSet::from([
+            "navigation/sidebar-slot",
+            "navigation/sidebar",
+            "navigation/folders-tab",
+            "navigation/launcher-shortcuts-slot"
+        ])
+    );
     navigation_fiber.dispose().await.unwrap();
     assert!(catalog.snapshot().unwrap().is_empty());
     watcher_fiber.dispose().await.unwrap();
@@ -204,6 +213,7 @@ fn sidebar_folders_service_tracks_restore_and_update_revisions() {
             display_name: Some("Library".into()),
         }],
         favorite_groups: Vec::new(),
+        imported_library_paths: Vec::new(),
         show_network_drives: false,
     };
     service.restore(seeded.clone());
@@ -260,6 +270,7 @@ fn sidebar_requests_parse_from_json_and_validate_known_targets() {
                 display_name: None,
             }],
         }],
+        imported_library_paths: Vec::new(),
         show_network_drives: true,
     });
     let parse = |payload: &str| -> SidebarUiRequest {

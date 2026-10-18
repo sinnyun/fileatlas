@@ -24,6 +24,9 @@ if (relativeProfile.startsWith('..') || path.isAbsolute(relativeProfile)) {
 }
 if (!fs.existsSync(exe)) throw Error(`Build the selected executable first: ${exe}`);
 const output = path.join(profile, 'screenshots');
+// Windows Known Folders can ignore LOCALAPPDATA overrides. Enabling dev-test
+// selects the explicit per-profile paths in the shell for every debug session.
+const plugins = [...new Set([...option('--plugins', 'dev-test').split(',').filter(Boolean), 'dev-test'])].join(',');
 fs.mkdirSync(output, { recursive: true });
 fs.mkdirSync(path.join(profile, 'local', 'PhoTag'), { recursive: true });
 for (const [name, value] of [
@@ -37,8 +40,9 @@ const child = spawn(exe, ['--mcp'], {
   cwd: root,
   env: {
     ...process.env,
-    PHOTAG_DEV_PLUGINS: option('--plugins', 'dev-test'),
+    PHOTAG_DEV_PLUGINS: plugins,
     PHOTAG_DEV_TEST_DIR: profile,
+    PHOTAG_DEV_TEST_DB: path.join(profile, 'photag.db'),
     LOCALAPPDATA: path.join(profile, 'local'),
     PHOTAG_MCP_ALLOW_MUTATIONS: argv.includes('--allow-mutations') ? '1' : '0',
   },
@@ -93,7 +97,7 @@ async function call(tool, args = {}) {
 function field(value, dottedPath) {
   return dottedPath.split('.').reduce((current, key) => current?.[key], value);
 }
-const report = { executable: exe, profile, started: new Date().toISOString(), steps: [] };
+const report = { executable: exe, profile, plugins, processId: child.pid, isolated: true, started: new Date().toISOString(), steps: [] };
 async function step(command) {
   if (command.method) return request(command.method, command.params ?? {});
   let result, expectedError;

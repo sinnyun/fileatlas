@@ -55,7 +55,7 @@ impl LauncherPanel {
                     .child(
                         Button::new("launcher-inspector-close")
                             .ghost()
-                            .label("×")
+                            .icon(theme::icon(IconName::X))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.selected_entry = None;
                                 cx.notify();
@@ -72,7 +72,7 @@ impl LauncherPanel {
                         .justify_center()
                         .gap(px(14.))
                         .text_color(rgb(theme::TEXT_MUTED))
-                        .child(div().text_size(px(32.)).child("▦"))
+                        .child(theme::empty_state_icon(IconName::LayoutGrid))
                         .child(div().text_sm().child(tr("Select a program")))
                         .child(
                             div()
@@ -118,7 +118,7 @@ impl LauncherPanel {
                             .text_color(rgb(theme::TEXT_MUTED))
                             .child(tr("Display name")),
                     )
-                    .child(Input::new(&self.entry_name).w_full()),
+                    .child(photag_ui_bridge::components::text_input(&self.entry_name).w_full()),
             )
             .child(
                 div()

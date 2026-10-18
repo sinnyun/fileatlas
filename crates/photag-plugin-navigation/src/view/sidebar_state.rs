@@ -56,6 +56,10 @@ impl SidebarView {
                 .map(|n| (&n.folder.id, &n.folder.path, &n.folder.name))
                 .collect::<Vec<_>>()),
             self.directory_revision
+        ) + &format!(
+            "{:?}:{:?}",
+            self.favorite_action_error,
+            self.favorite_header_bounds.read().ok().as_deref()
         ) + &self.address_snapshot(cx).to_string()
     }
 
@@ -135,6 +139,7 @@ impl SidebarView {
                 json!({
                     "id": group.id,
                     "name": group.name,
+                    "header_bounds": self.favorite_header_bounds.read().ok().and_then(|headers| headers.get(&group.id).copied()),
                     "expanded": !self.collapsed_groups.contains(&group.id),
                     "folders": group.folders.iter().map(|folder| row(
                         &folder.path,
@@ -173,6 +178,9 @@ impl SidebarView {
             "save_error":self.sidebar_save_error,
             "directory_revision":self.directory_revision,
             "drives_pending": self.drives_read.is_pending(),"roots_revision":self.sidebar_io_revision,
+            "favorite_current_path": self.current_favorite_path(),
+            "favorite_action_error": self.favorite_action_error,
+            "favorite_imported_paths": config.imported_library_paths,
             "drives": drives,
             "system_quick_access": system_quick_access,
             "quick_access": quick_access,

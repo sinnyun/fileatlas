@@ -1,5 +1,28 @@
 # MCP plugin ports / MCP 对接
 
+## Clipboard workbench — 2026-10-18
+
+- `get_clipboard_state` is read-only and reports count, category names, item IDs,
+  length, category assignment, content `kind` (text/link/code), revision, favorite state (legacy pinned alias) and timestamps. `ui` reports current filter, visible IDs, selection and editor/group-name lengths through `UiSurfaceState`. It deliberately omits
+  clipboard text.
+- `add_clipboard_text {content, category_id?, favorite?}` is mutation guarded and
+  adds a text row directly through `ClipboardService`; it never reads or writes
+  the OS clipboard. Use only an isolated profile for UI fixture data.
+- OS clipboard capture and system-wide keypress are not exposed as MCP actions;
+  those Windows paths still require dedicated runtime evidence.
+- `scripts/photag-mcp-debug.cjs` always enables `dev-test` and supplies an explicit profile-local `PHOTAG_DEV_TEST_DB`, even when the requested plugin list is `core`. Windows Known Folder resolution can ignore a `LOCALAPPDATA` override; the old client therefore did not establish isolation for `core` alone. Reports now include effective plugins, child PID and isolation status. Explicit profile paths are visible in the running UI.
+- `control_ui input_text` dispatches printable Unicode characters with their actual keystroke/character values, avoiding the earlier synthetic `text` key that did not reliably reach focused inputs. It remains same-process GPUI input, with the existing mutation guard and 1000-character cap. `scripts/validate-clipboard-workbench.cjs` exercises Chinese group typing, immediate assignment, filters, search, rename/delete and capture pause; `scripts/validate-clipboard-restart.cjs` checks independent child-process restarts without OS clipboard access.
+
+## Shortcut Settings validation — 2026-10-18
+
+`command_list` includes each registered shortcut's `id`, default `key`,
+`effective_key`, enabled state, and `scope` (`application` or `system`). The settings panel discovers these rows
+from the same catalog and applies persisted overrides by contribution ID.
+`control_ui {action:"key_press", value:"ctrl-alt-q"}` supports GPUI's
+hyphen-separated modifier chord syntax for same-process capture tests. The MCP
+key press is a synthetic in-window event and does not simulate an OS-wide key
+press while another application is foregrounded.
+
 ## Program launcher diagnostics — 2026-10-17
 
 When `photag.launcher` is enabled, `get_launcher_state` reads its in-memory
@@ -198,6 +221,21 @@ select_media (value is an indexed media ID string), and deselect. Settings uses 
 UiSurfaceState; language uses I18nService; Gallery uses GalleryUiRequest.
 Settings and Gallery consume requests asynchronously. Wait for rendering before
 screenshot_window. No OS mouse/keyboard injection is used.
+
+Shortcut recording diagnostics (2026-10-18): `get_ui_state.settings_shortcuts`
+contains `capturing_key: bool`, `binding_id: String`, and `error: String`.
+`binding_id`/`error` are empty when idle; invalid/conflicting chords keep the
+binding in capture mode and expose the visible inline error without persisting
+it. Values come from Settings' capture transitions; reading does not mutate the
+UI. The `capturing_key` flag also covers the existing open-media key capture.
+Use real `control_ui` pointer clicks/keypresses in
+`scripts/validate-shortcuts-layout.cjs` to enter these states.
+
+`control_ui {action:"pointer_scroll", value:"x,y,delta_y"}` queues one GPUI
+`ScrollWheelEvent` through the existing bounded same-process input queue.
+Position is logical client pixels in 0–4096; delta is finite logical pixels in
+-4096–4096 (negative scrolls down). Requires mutations enabled, does not send
+OS input, and returns the same pending-queue error as other pointer actions.
 
 Run `node scripts/validate-ui-mcp.cjs` after a locked Shell build to scan the
 isolated fixture profile, capture 23 UI states, and sample the real Preview
@@ -481,3 +519,23 @@ results and a same-process GPUI click; no OS input injection is used.
 Mutation-guarded `add_launcher_program {path}` calls the launcher's public manual-add service; it never starts the target. Mutation-guarded `control_ui input_text` accepts at most 1000 printable characters and sends text to the currently focused GPUI input handler in the same process. `key_press` additionally allows ctrl-a and backspace. This uses the existing window input queue, without OS injection or clipboard changes. Same-process launcher validation compiles a no-window executable into the isolated profile; double-clicking its tile writes only a marker beside that executable. See `scripts/validate-program-launcher.cjs`.
 
 Mutation-guarded `set_launcher_pin {id, scope}` sets `scope` to `none`, `category`, or `all` through `LauncherService`. `get_launcher_state.entries[].pin_scope` returns the same scope string, and `ui.visible_ids` reports the view's current pinned ordering. `scripts/validate-program-launcher.cjs` verifies multiple pinned entries across name/date/size sort directions and panel reopen.
+
+Clipboard favorites: `get_clipboard_state` exposes `favorite_count` and each item’s `favorite` flag; `pinned_count`/`pinned` remain compatibility aliases. `add_clipboard_text.favorite` accepts legacy `pinned`. UI metadata includes `confirm_favorite_delete` without exposing content.
+# Theme diagnostics (2026-10-18)
+
+Read-only `get_ui_state.theme` exposes `id` (`workbench-navy`), current `accent`,
+`selection`, `base`, `panel`, `card`, `border` (packed RGB integers) and `body_size`
+(logical px). These values read the public UI Bridge contract without extra IO or
+notification; they prove selected tokens, while `screenshot_window` from the same
+process proves their actual visible application. No new mutation tool is added;
+accent changes are exercised through real Settings controls.
+# Unified favorite groups (2026-10-18)
+
+`control_ui {action:"sidebar_request", request:{kind:"add_current_favorite",group_id}}`
+uses Navigation's real group-plus handler with action-time committed-directory
+validation. Mutation guard remains required. Read-only `sidebar_folders` adds
+`favorite_current_path`, `favorite_action_error`, `favorite_imported_paths`; each
+`favorite_groups[]` has measured `header_bounds` in logical client coordinates,
+so real GPUI pointer clicks can target the visible plus/menu/chevron after layout.
+Bounds are diagnostics, never instructions to control another process. Scenes:
+`scripts/validate-favorite-groups.cjs` and `validate-favorite-groups-restart.cjs`.

@@ -61,3 +61,9 @@ User reference: desktop shortcuts with icon/name only. Current concept is `docs/
 Current validation: `scripts/validate-program-launcher.cjs` verifies the Chinese input fields, single-click selection without launch, a no-window fixture executable launched on double click, right-click menus, name/category/hidden saves, six sort directions, scan real-change and settled quiet state. The plugin caches native icons across panel reopen using its feature-owned in-memory result cache; all extraction stays behind shared ReadModel. Evidence and exact counts: `docs/validation-ui/2026-10-17-program-launcher/README.md`.
 
 2026-10-18 icon revalidation: the manually added fixture resolves its Shell icon after Windows path normalization. Native resource extraction is used when `IShellItemImageFactory` cannot render an executable. A cold same-process run extracted and persisted icons for all 399 programs; after restart, the saved rows appeared before discovery refresh and all 399 PNGs loaded from disk in 1.8s with zero Shell re-extractions or failures. Details and screenshot are recorded in the validation README.
+# Shared theme (2026-10-18)
+
+Launcher cards and category/hidden navigation reuse UI Bridge `components`.
+Selection/hover/fallback icons consume `theme` and follow the persisted accent;
+native program icons remain unmodified content. Geometry, actions and lifecycle
+stay feature-owned within the existing generic panel. See `docs/ui-theme.md`.
