@@ -13,6 +13,7 @@ use photag_plugin_database::DatabaseService;
 use photag_plugin_database::queries;
 use photag_plugin_database::{Folder, MediaItem};
 
+mod mcp;
 mod model;
 mod plugin;
 

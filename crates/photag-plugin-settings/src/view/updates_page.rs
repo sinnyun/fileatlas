@@ -1,7 +1,7 @@
 use super::SettingsView;
 use crate::Settings;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
+use gpui_kit::component::button::{Button, ButtonVariants};
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use photag_ui_bridge::theme;
@@ -9,25 +9,8 @@ use std::sync::atomic::Ordering;
 
 impl SettingsView {
     pub(super) fn render_updates_page(&self, settings: &Settings, cx: &mut Context<Self>) -> Div {
-        let mut page = div().v_flex().gap_3().line_height(relative(1.)).child(
-            div()
-                .v_flex()
-                .gap_1()
-                .child(
-                    div()
-                        .text_lg()
-                        .font_semibold()
-                        .child(photag_ui_bridge::i18n::tr("Updates")),
-                )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(photag_ui_bridge::i18n::tr(
-                            "Check for new versions and choose when to install them.",
-                        )),
-                ),
-        );
+        let mut page = div().v_flex().gap(px(theme::SPACE_4));
+        page = page.child(self.section("Current version"));
         page = page.child(
             div()
                 .h_flex()
@@ -35,8 +18,8 @@ impl SettingsView {
                 .justify_between()
                 .gap_2()
                 .p_3()
-                .rounded_md()
-                .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                .border_b_1()
+                .border_color(rgb(theme::SEPARATOR))
                 .child(
                     div()
                         .v_flex()
@@ -66,11 +49,7 @@ impl SettingsView {
             )));
         }
 
-        page = page.child(
-            div()
-                .font_semibold()
-                .child(photag_ui_bridge::i18n::tr("Check for updates")),
-        );
+        page = page.child(self.section("Check for updates"));
         let checking = self.update_check.is_some();
         let mut check_row = div().h_flex().items_center().gap_2().child(
             Button::new("settings-update-check")
@@ -98,7 +77,6 @@ impl SettingsView {
                     }),
             );
         }
-        page = page.child(check_row);
 
         let (status, status_color) = if checking {
             (
@@ -117,53 +95,40 @@ impl SettingsView {
         };
         page = page.child(
             div()
-                .font_semibold()
-                .child(photag_ui_bridge::i18n::tr("Update status")),
-        );
-        page = page.child(
-            div()
                 .h_flex()
                 .items_center()
-                .gap_2()
-                .p_3()
-                .rounded_md()
-                .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                .justify_between()
+                .gap_3()
                 .child(
                     div()
-                        .w(px(8.))
-                        .h(px(8.))
-                        .rounded_full()
-                        .bg(rgb(status_color)),
+                        .flex_1()
+                        .min_w_0()
+                        .text_size(px(theme::FONT_SIZE_SMALL))
+                        .text_color(rgb(status_color))
+                        .child(status),
                 )
-                .child(div().text_sm().text_color(rgb(status_color)).child(status)),
+                .child(check_row),
         );
 
         if let Some(info) = &self.update_info {
-            let mut release = div()
-                .v_flex()
-                .gap_2()
-                .p_3()
-                .rounded_md()
-                .border_1()
-                .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
-                .child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .justify_between()
-                        .child(
-                            div()
-                                .font_semibold()
-                                .child(format!("PhoTag {}", info.version)),
-                        )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child(format!("{:.1} MB", info.size_mb())),
-                        ),
-                );
+            page = page.child(self.section("Release"));
+            let mut release = div().v_flex().gap_2().py(px(theme::SPACE_2)).child(
+                div()
+                    .h_flex()
+                    .items_center()
+                    .justify_between()
+                    .child(
+                        div()
+                            .font_semibold()
+                            .child(format!("PhoTag {}", info.version)),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(format!("{:.1} MB", info.size_mb())),
+                    ),
+            );
 
             let notes = info.notes_plain();
             if !notes.is_empty() {
@@ -201,14 +166,18 @@ impl SettingsView {
                 )));
             } else if self.update_staged.is_none() {
                 release = release.child(
-                    Button::new("settings-update-download")
-                        .label(photag_ui_bridge::i18n::tr("Download and verify update"))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            if this.update_download.is_none() {
-                                this.begin_update_download();
-                                this.monitor_updates(cx);
-                            }
-                        })),
+                    div().h_flex().justify_end().child(
+                        Button::new("settings-update-download")
+                            .primary()
+                            .h(px(theme::ACTION_HEIGHT))
+                            .label(photag_ui_bridge::i18n::tr("Download and verify update"))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                if this.update_download.is_none() {
+                                    this.begin_update_download();
+                                    this.monitor_updates(cx);
+                                }
+                            })),
+                    ),
                 );
             }
             if self.update_staged.is_some() {

@@ -1,6 +1,7 @@
 //! Lore-backed, per-file immutable version history.
 mod branches;
 mod commits;
+mod mcp;
 mod state;
 pub use state::{FileVersionState, FileVersionStatus};
 use std::{
@@ -565,21 +566,30 @@ impl Plugin for VersionsPlugin {
         })
     }
     async fn apply(&self, ctx: Context, input: &Self::Input) -> Result<(), Self::ApplyError> {
+        let database = ctx
+            .try_service::<photag_plugin_database::DatabaseService>()
+            .map_err(|error| VersionsError::Dependency(error.to_string()))?;
+        let indexing = ctx
+            .try_service::<photag_plugin_indexing::IndexingService>()
+            .map_err(|error| VersionsError::Dependency(error.to_string()))?;
         let info = ctx
             .try_service::<VersionInfoService>()
             .map_err(|e| VersionsError::Dependency(e.to_string()))?;
         let thumbs = ctx
             .try_service::<ThumbnailService>()
             .map_err(|e| VersionsError::Dependency(e.to_string()))?;
+        let service = Arc::new(VersionsService {
+            root: input.config.root.clone(),
+            info,
+            thumbs,
+            locks: Arc::new(Mutex::new(HashMap::new())),
+        });
         let publication = ctx
-            .provide(Arc::new(VersionsService {
-                root: input.config.root.clone(),
-                info,
-                thumbs,
-                locks: Arc::new(Mutex::new(HashMap::new())),
-            }))
+            .provide(Arc::clone(&service))
             .map_err(|e| VersionsError::Publish(e.to_string()))?;
         *input.publication.lock().map_err(|_| VersionsError::Lock)? = Some(publication);
+        mcp::register(&ctx, &service, &database, &indexing)
+            .map_err(|error| VersionsError::Dependency(error))?;
         Ok(())
     }
 }

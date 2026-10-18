@@ -60,54 +60,14 @@ impl SettingsView {
         screenshot_plugin: bool,
     ) -> impl IntoElement {
         let mut content = div().v_flex().gap_3().line_height(relative(1.));
-        content = content.child(
-            div()
-                .v_flex()
-                .gap_1()
-                .child(
-                    div()
-                        .text_lg()
-                        .font_semibold()
-                        .child(photag_ui_bridge::i18n::tr("Software check")),
-                )
-                .child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(photag_ui_bridge::i18n::tr(
-                            "Check external software used by PhoTag and find its official project page.",
-                        )),
-                ),
-        );
-        content = content.child(
-            div()
-                .h_flex()
-                .items_center()
-                .justify_between()
-                .gap_3()
-                .px_3()
-                .py_2()
-                .rounded_md()
-                .bg(rgb(theme::SURFACE_BASE))
-                .child(
-                    div()
-                        .flex_1()
-                        .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(photag_ui_bridge::i18n::tr(
-                            "This page only reads installation records and checks common paths. It does not install or start listed software.",
-                        )),
-                )
-                .child(
-                    Button::new("settings-software-refresh")
-                        .compact()
-                        .label(photag_ui_bridge::i18n::tr("Refresh"))
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.software_revision = this.software_revision.wrapping_add(1);
-                            cx.notify();
-                        })),
-                ),
-        );
+        if !screenshot_plugin {
+            content = content.child(
+                div()
+                    .h_flex()
+                    .justify_end()
+                    .child(self.software_refresh_button(cx)),
+            );
+        }
 
         match self.software_check.value() {
             Some(Ok(items)) => {
@@ -124,7 +84,7 @@ impl SettingsView {
                         _ => "Not detected",
                     };
                     let state_color = if item.state == "installed" {
-                        theme::accent()
+                        theme::SUCCESS
                     } else {
                         theme::TEXT_SECONDARY
                     };
@@ -137,6 +97,7 @@ impl SettingsView {
                             .gap_3()
                             .child(
                                 div()
+                                    .text_size(px(theme::FONT_SIZE_HEADING))
                                     .font_semibold()
                                     .child(photag_ui_bridge::i18n::tr(item.name)),
                             )
@@ -196,24 +157,9 @@ impl SettingsView {
                         ));
                     }
                     details = details.child(links);
-                    if let Some(url) = github_url {
-                        details = details.child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
-                                .child(format!("GitHub: {url}")),
-                        );
-                    }
-                    details = details.child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child(format!(
-                                "{}: {download_url}",
-                                photag_ui_bridge::i18n::tr("Official download")
-                            )),
-                    );
-                    if let Some(note) = item.github_note {
+                    if let Some(note) = item.github_note
+                        && (item.name != "Shotoshot" || item.state != "installed")
+                    {
                         details = details.child(
                             div()
                                 .text_xs()
@@ -224,11 +170,9 @@ impl SettingsView {
                     content = content.child(
                         div()
                             .w_full()
-                            .p_3()
-                            .rounded_md()
-                            .border_1()
-                            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                            .bg(rgb(theme::SURFACE_MODAL))
+                            .py(px(theme::SPACE_4))
+                            .border_b_1()
+                            .border_color(rgb(theme::SEPARATOR))
                             .child(details),
                     );
                 }
@@ -245,7 +189,22 @@ impl SettingsView {
                 );
             }
         }
+        if !screenshot_plugin {
+            content=content.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::TEXT_SECONDARY))
+                .child(photag_ui_bridge::i18n::tr("This page only reads installation records and checks common paths. It does not install or start listed software.")));
+        }
         content
+    }
+    pub(super) fn software_refresh_button(&self, cx: &mut Context<Self>) -> Button {
+        Button::new("settings-software-refresh")
+            .outline()
+            .h(px(32.))
+            .icon(theme::small_icon(gpui_kit::assets::IconName::RefreshCw))
+            .label(photag_ui_bridge::i18n::tr("Refresh"))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.software_revision = this.software_revision.wrapping_add(1);
+                cx.notify();
+            }))
     }
 }
 
@@ -256,8 +215,8 @@ fn link_button(
     cx: &mut Context<SettingsView>,
 ) -> Button {
     Button::new(id)
-        .compact()
-        .ghost()
+        .outline()
+        .h(px(32.))
         .label(photag_ui_bridge::i18n::tr(label))
         .on_click(cx.listener(move |_, _, _, _| {
             let _ = open::that(url);

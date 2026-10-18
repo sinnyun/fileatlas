@@ -31,6 +31,22 @@ cargo +1.97.1 test --locked -p photag-ui-bridge --lib -j 2
 
 不要先重复执行裸 `cargo check` / `cargo test`，再把旧默认版本导致的 MSRV 拦截报告为“没有 Rust”“项目无法编译”或“GPUI Kit 不兼容”。也不要为了绕过拦截降低 Cargo.toml 的 rust-version、使用忽略版本检查选项，或擅自更改用户的全局默认工具链。
 
+## EXE 被运行进程占用时（用户明确要求，2026-10-18）
+
+如果构建因 PhoTag 正在运行而无法覆盖 EXE，直接关闭占用该目标的 PhoTag 进程，
+然后重新构建正常的 `target/debug/photag-shell.exe`。用户已授权这一操作，无需再次确认。
+先核对进程的可执行文件绝对路径确实属于本工作区，优先正常关闭；无法退出时，
+只结束已核实的对应进程，不按模糊名称批量结束其他程序。
+
+继续复用当前 `target` 目录、依赖缓存和增量编译产物：
+
+```powershell
+cargo +1.97.1 build --locked -p photag-shell -j 2
+```
+
+不得为了绕开文件占用另取 EXE 名称、设置新的 target 目录、执行 `cargo clean`
+或进行全量重编译。此前独立命名 EXE 的处理不作为后续工作范例。
+
 ## MCP 子进程
 
 MCP 客户端通过 Cargo 启动 Shell 时，也必须在 args 中传入工具链选择：

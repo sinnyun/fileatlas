@@ -13,6 +13,7 @@ pub type PluginStarter = Arc<
 >;
 
 struct RuntimeEntry {
+    order: usize,
     title: String,
     description: String,
     launch_modes: Vec<crate::PluginLaunchMode>,
@@ -54,9 +55,11 @@ impl PluginRuntimeRegistry {
         if entries.contains_key(&id) {
             return Err(format!("plugin {id} already registered"));
         }
+        let order = entries.len();
         entries.insert(
             id,
             RuntimeEntry {
+                order,
                 title: title.into(),
                 description: description.into(),
                 launch_modes,
@@ -69,10 +72,22 @@ impl PluginRuntimeRegistry {
     }
 
     pub async fn snapshot(&self) -> Vec<PluginRuntimeStatus> {
+        {
+            let entries = self.entries.lock().await;
+            Self::statuses(&entries)
+        }
+    }
+    pub fn snapshot_now(&self) -> Vec<PluginRuntimeStatus> {
         self.entries
-            .lock()
-            .await
-            .iter()
+            .try_lock()
+            .map(|entries| Self::statuses(&entries))
+            .unwrap_or_default()
+    }
+    fn statuses(entries: &BTreeMap<String, RuntimeEntry>) -> Vec<PluginRuntimeStatus> {
+        let mut ordered = entries.iter().collect::<Vec<_>>();
+        ordered.sort_by_key(|(_, entry)| entry.order);
+        ordered
+            .into_iter()
             .map(|(id, entry)| PluginRuntimeStatus {
                 id: id.clone(),
                 title: entry.title.clone(),
@@ -82,25 +97,6 @@ impl PluginRuntimeRegistry {
                 busy: entry.busy,
             })
             .collect()
-    }
-
-    pub fn snapshot_now(&self) -> Vec<PluginRuntimeStatus> {
-        self.entries
-            .try_lock()
-            .map(|entries| {
-                entries
-                    .iter()
-                    .map(|(id, entry)| PluginRuntimeStatus {
-                        id: id.clone(),
-                        title: entry.title.clone(),
-                        description: entry.description.clone(),
-                        launch_modes: entry.launch_modes.clone(),
-                        enabled: entry.fiber.is_some(),
-                        busy: entry.busy,
-                    })
-                    .collect()
-            })
-            .unwrap_or_default()
     }
 
     pub async fn set_enabled(&self, id: &str, enabled: bool) -> Result<(), String> {

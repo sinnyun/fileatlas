@@ -159,87 +159,95 @@ impl PhoTagShell {
     }
 
     pub(super) fn dispatch_mcp_pointer(&self, window: &Window, cx: &mut Context<Self>) {
-        if let Some(key) = self.capture.take_key() {
-            window.defer(cx, move |window, cx| {
-                if let Some(text) = key.strip_prefix("text:") {
-                    for character in text.chars() {
-                        let value = character.to_string();
-                        window.dispatch_keystroke(
-                            gpui_kit::Keystroke {
-                                key: if character == ' ' {
-                                    "space".into()
-                                } else {
-                                    value.clone()
-                                },
-                                key_char: Some(value),
-                                ..Default::default()
+        if self.capture.get() == self.native_window_handle {
+            dispatch_mcp_input(&self.capture, window, cx);
+        }
+    }
+}
+
+pub(super) fn dispatch_mcp_input(
+    capture: &photag_plugin_mcp::CaptureWindowHandle,
+    window: &Window,
+    cx: &mut App,
+) {
+    if let Some(key) = capture.take_key() {
+        window.defer(cx, move |window, cx| {
+            if let Some(text) = key.strip_prefix("text:") {
+                for character in text.chars() {
+                    let value = character.to_string();
+                    window.dispatch_keystroke(
+                        gpui_kit::Keystroke {
+                            key: if character == ' ' {
+                                "space".into()
+                            } else {
+                                value.clone()
                             },
-                            cx,
-                        );
-                    }
-                } else if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
-                    window.dispatch_event(
-                        PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
-                            keystroke,
-                            is_held: false,
-                            prefer_character_input: false,
-                        }),
+                            key_char: Some(value),
+                            ..Default::default()
+                        },
                         cx,
                     );
                 }
-            });
-        }
-        if let Some(input) = self.capture.take_pointer() {
-            window.defer(cx, move |window, cx| {
-                let position = point(px(input.x), px(input.y));
-                let event = match input.kind {
-                    "scroll" => PlatformInput::ScrollWheel(ScrollWheelEvent {
-                        position,
-                        delta: ScrollDelta::Pixels(point(px(0.), px(input.scroll_y))),
-                        ..Default::default()
+            } else if let Ok(keystroke) = gpui_kit::Keystroke::parse(&key) {
+                window.dispatch_event(
+                    PlatformInput::KeyDown(gpui_kit::KeyDownEvent {
+                        keystroke,
+                        is_held: false,
+                        prefer_character_input: false,
                     }),
-                    "down" | "right_down" | "double_down" => {
-                        PlatformInput::MouseDown(MouseDownEvent {
-                            button: if input.kind == "right_down" {
-                                MouseButton::Right
-                            } else {
-                                MouseButton::Left
-                            },
-                            position,
-                            click_count: if input.kind.starts_with("double_") {
-                                2
-                            } else {
-                                1
-                            },
-                            ..Default::default()
-                        })
-                    }
-                    "drag" | "move" => PlatformInput::MouseMove(MouseMoveEvent {
-                        position,
-                        pressed_button: if input.kind == "drag" {
-                            Some(MouseButton::Left)
-                        } else {
-                            None
-                        },
-                        ..Default::default()
-                    }),
-                    _ => PlatformInput::MouseUp(MouseUpEvent {
-                        button: if input.kind == "right_up" {
-                            MouseButton::Right
-                        } else {
-                            MouseButton::Left
-                        },
-                        position,
-                        click_count: if input.kind.starts_with("double_") {
-                            2
-                        } else {
-                            1
-                        },
-                        ..Default::default()
-                    }),
-                };
-                window.dispatch_event(event, cx);
-            });
-        }
+                    cx,
+                );
+            }
+        });
+    }
+    if let Some(input) = capture.take_pointer() {
+        window.defer(cx, move |window, cx| {
+            let position = point(px(input.x), px(input.y));
+            let event = match input.kind {
+                "scroll" => PlatformInput::ScrollWheel(ScrollWheelEvent {
+                    position,
+                    delta: ScrollDelta::Pixels(point(px(0.), px(input.scroll_y))),
+                    ..Default::default()
+                }),
+                "down" | "right_down" | "double_down" => PlatformInput::MouseDown(MouseDownEvent {
+                    button: if input.kind == "right_down" {
+                        MouseButton::Right
+                    } else {
+                        MouseButton::Left
+                    },
+                    position,
+                    click_count: if input.kind.starts_with("double_") {
+                        2
+                    } else {
+                        1
+                    },
+                    ..Default::default()
+                }),
+                "drag" | "move" => PlatformInput::MouseMove(MouseMoveEvent {
+                    position,
+                    pressed_button: if input.kind == "drag" {
+                        Some(MouseButton::Left)
+                    } else {
+                        None
+                    },
+                    ..Default::default()
+                }),
+                _ => PlatformInput::MouseUp(MouseUpEvent {
+                    button: if input.kind == "right_up" {
+                        MouseButton::Right
+                    } else {
+                        MouseButton::Left
+                    },
+                    position,
+                    click_count: if input.kind.starts_with("double_") {
+                        2
+                    } else {
+                        1
+                    },
+                    ..Default::default()
+                }),
+            };
+            window.dispatch_event(event, cx);
+        });
     }
 }

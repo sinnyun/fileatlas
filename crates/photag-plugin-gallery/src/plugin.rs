@@ -1,6 +1,18 @@
 //! Cordis lifecycle for the gallery, including local browser providers.
 use super::*;
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct McpGallerySearchRequest {
+    search: Option<String>,
+    folder_id: Option<i64>,
+    tag_ids: Option<Vec<i64>>,
+    media_type: Option<String>,
+    offset: Option<usize>,
+    limit: Option<usize>,
+    sort: Option<String>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct GalleryConfig;
 
@@ -194,9 +206,17 @@ impl Plugin for GalleryPlugin {
                 Ok::<_, std::convert::Infallible>(())
             }))
             .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
+        let version_gallery = Arc::clone(&service);
+        let _version_history_listener = context
+            .on::<MediaVersionHistoryChanged, _>(observer_sync(move |_, media_id| {
+                version_gallery.request_ui(GalleryUiRequest::HistoryChanged(media_id));
+                Ok::<_, std::convert::Infallible>(())
+            }))
+            .map_err(|error| GalleryPluginError::EventRegistration(error.to_string()))?;
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+        register_gallery_mcp_tools(&context, &service)?;
         register_for_plugin(
             &context,
             "photag.gallery",
@@ -274,6 +294,160 @@ impl Plugin for GalleryPlugin {
         .map_err(|error| GalleryPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
+}
+
+fn register_gallery_mcp_tools(
+    context: &Context,
+    gallery: &Arc<GalleryService>,
+) -> Result<(), GalleryPluginError> {
+    let Ok(registry) = context.try_service::<photag_contracts::mcp::McpToolRegistry>() else {
+        return Ok(());
+    };
+    let search_gallery = Arc::clone(gallery);
+    let search = photag_contracts::mcp::McpToolDefinition {
+        name: "gallery.search_media".into(),
+        title: "Search gallery media".into(),
+        description: "Search indexed gallery media with folder, tag, media type, paging, and sort filters.".into(),
+        input_schema: serde_json::json!({
+            "type":"object",
+            "properties":{
+                "search":{"type":"string"},
+                "folder_id":{"type":"integer"},
+                "tag_ids":{"type":"array","items":{"type":"integer"},"maxItems":50},
+                "media_type":{"type":"string","enum":["image","video","audio","file"]},
+                "offset":{"type":"integer","minimum":0,"maximum":1000000},
+                "limit":{"type":"integer","minimum":1,"maximum":100},
+                "sort":{"type":"string","enum":["newest","oldest","largest","smallest","name_asc","name_desc","rated","unrated_first"]}
+            },"additionalProperties":false
+        }).as_object().cloned().unwrap_or_default(),
+        mutating: false,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let gallery = Arc::clone(&search_gallery);
+            Box::pin(async move {
+                let request: McpGallerySearchRequest = serde_json::from_value(arguments)
+                    .map_err(|error| format!("invalid parameters: {error}"))?;
+                let offset = request.offset.unwrap_or(0);
+                let limit = request.limit.unwrap_or(50);
+                if offset > 1_000_000 || !(1..=100).contains(&limit) {
+                    return Err("offset must be 0..=1000000 and limit must be 1..=100".into());
+                }
+                if request.tag_ids.as_ref().is_some_and(|ids| ids.len() > 50) {
+                    return Err("at most 50 tag IDs are allowed".into());
+                }
+                let media_type = request.media_type;
+                if media_type.as_ref().is_some_and(|value| !["image", "video", "audio", "file"].contains(&value.as_str())) {
+                    return Err("media_type must be image, video, audio, or file".into());
+                }
+                let sort = match request.sort.as_deref().unwrap_or("newest") {
+                    "newest" => Some(photag_plugin_database::SortOrder::NewestFirst),
+                    "oldest" => Some(photag_plugin_database::SortOrder::OldestFirst),
+                    "largest" => Some(photag_plugin_database::SortOrder::BiggestFirst),
+                    "smallest" => Some(photag_plugin_database::SortOrder::SmallestFirst),
+                    "name_asc" => Some(photag_plugin_database::SortOrder::NameAsc),
+                    "name_desc" => Some(photag_plugin_database::SortOrder::NameDesc),
+                    "rated" => Some(photag_plugin_database::SortOrder::HighestRated),
+                    "unrated_first" => Some(photag_plugin_database::SortOrder::LowestRated),
+                    _ => return Err("unsupported sort order".into()),
+                };
+                let search_term = request.search;
+                let query = photag_plugin_database::MediaQuery {
+                    folder_id: request.folder_id,
+                    tag_ids: request.tag_ids,
+                    search_in_filenames: search_term.is_some(),
+                    search_in_paths: search_term.is_some(),
+                    search_in_tags: search_term.is_some(),
+                    search: search_term,
+                    media_type,
+                    sort,
+                    ..Default::default()
+                };
+                let snapshot = gallery.load(query.clone()).map_err(|error| error.to_string())?;
+                let provider = snapshot.search_provider;
+                let items = if offset == 0 {
+                    snapshot.media.into_iter().take(limit).collect::<Vec<_>>()
+                } else {
+                    gallery.load_page(query, offset).map_err(|error| error.to_string())?
+                        .media.into_iter().take(limit).collect::<Vec<_>>()
+                };
+                Ok(serde_json::json!({"total":snapshot.media_count,"offset":offset,"items":items,"search_provider":provider}))
+            })
+        }),
+    };
+    let get_gallery = Arc::clone(gallery);
+    let get_media = photag_contracts::mcp::McpToolDefinition {
+        name: "gallery.get_media".into(),
+        title: "Read media details".into(),
+        description: "Read one indexed media record and the PhoTag tags assigned to it.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"media_id":{"type":"integer","minimum":1}},"required":["media_id"],"additionalProperties":false})
+            .as_object().cloned().unwrap_or_default(),
+        mutating: false,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let gallery = Arc::clone(&get_gallery);
+            Box::pin(async move {
+                let id = arguments.get("media_id").and_then(serde_json::Value::as_i64)
+                    .filter(|id| *id > 0).ok_or_else(|| "media_id must be a positive integer".to_owned())?;
+                let media = gallery.media_by_id(id).map_err(|error| error.to_string())?
+                    .ok_or_else(|| "media record was not found".to_owned())?;
+                let tags = gallery.tags_for_media(&[id]).map_err(|error| error.to_string())?
+                    .remove(&id).unwrap_or_default();
+                Ok(serde_json::json!({"media":media,"tags":tags}))
+            })
+        }),
+    };
+    let rating_gallery = Arc::clone(gallery);
+    let set_rating = photag_contracts::mcp::McpToolDefinition {
+        name: "gallery.set_rating".into(),
+        title: "Set media rating".into(),
+        description: "Set a 0–5 star rating on 1 to 100 indexed media records.".into(),
+        input_schema: serde_json::json!({
+            "type":"object","properties":{
+                "media_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":100},
+                "rating":{"type":"integer","minimum":0,"maximum":5}
+            },"required":["media_ids","rating"],"additionalProperties":false
+        }).as_object().cloned().unwrap_or_default(),
+        mutating: true,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let gallery = Arc::clone(&rating_gallery);
+            Box::pin(async move {
+                #[derive(serde::Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Request { media_ids: Vec<i64>, rating: u8 }
+                let request: Request = serde_json::from_value(arguments)
+                    .map_err(|error| format!("invalid parameters: {error}"))?;
+                if !(1..=100).contains(&request.media_ids.len())
+                    || request.media_ids.iter().any(|id| *id <= 0)
+                {
+                    return Err("media_ids must contain 1 to 100 positive IDs".into());
+                }
+                if request.rating > 5 {
+                    return Err("rating must be between 0 and 5".into());
+                }
+                gallery.apply_rating(&request.media_ids, request.rating)
+                    .map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"ok":true,"count":request.media_ids.len(),"rating":request.rating}))
+            })
+        }),
+    };
+    let registration = registry
+        .register("photag.gallery", [search, get_media, set_rating])
+        .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+    let _mcp_registration = context
+        .provide(Arc::new(GalleryMcpRegistration {
+            _registration: registration,
+        }))
+        .map_err(|error| GalleryPluginError::Publish(error.to_string()))?;
+    Ok(())
+}
+
+struct GalleryMcpRegistration {
+    _registration: Arc<photag_contracts::mcp::McpToolRegistration>,
+}
+
+impl cordis::Service for GalleryMcpRegistration {
+    const NAME: &'static str = "photag/gallery-mcp-registration";
 }
 
 #[derive(Debug, thiserror::Error)]

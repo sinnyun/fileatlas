@@ -7,6 +7,8 @@
 
 use cordis::Event;
 
+pub mod mcp;
+
 /// Change the active library folder in the gallery; `None` selects all media.
 pub struct FolderSelectionChanged;
 
@@ -96,6 +98,16 @@ pub struct MediaIndexChanged;
 impl Event for MediaIndexChanged {
     const NAME: &'static str = "photag/indexing/media-index-changed";
     type Args = ();
+    type Output = ();
+}
+
+/// Notify Gallery's per-file History panel after a saved revision or branch
+/// graph changes.
+pub struct MediaVersionHistoryChanged;
+
+impl Event for MediaVersionHistoryChanged {
+    const NAME: &'static str = "photag/versions/history-changed";
+    type Args = i64;
     type Output = ();
 }
 

@@ -12,7 +12,7 @@
 - Events observed: UiCommandInvoked, FolderSelectionChanged, DirectoryPathSelected, TagSelectionChanged, TagFilterSelectionChanged and MediaIndexChanged. No product mutation is emitted by the debug plugin.
 - Producers: all application startup apply spans and previous stderr diagnostic paths, DB serialized read/write spans with caller location and SQL errors, Gallery load/page/reload/filter/group/selection/preview/actions, Navigation requests/selections, file and tag operations, indexing stream phase/error/finish and worker elapsed, thumbnail generation, media playback commands, history and metadata export. File/data behavior and original error returns are preserved.
 - Limits: this is application logging, not instruction-level tracing or a native crash dump. Non-emitting third-party native components/OS actions are not invented. Process abort/termination may prevent UI inspection, and cancelled/dropped spans report their lifetime rather than certifying business success. No persistent log export, SQL statement/body capture, CPU profiler or durable per-file audit history. Worker spans do not automatically propagate parent context through every spawn_blocking/thread boundary; thread IDs and explicit scan IDs help correlate.
-- Failures: compilation/test logs under target/debug-plugin-*.log; isolated same-process MCP logs/screenshots and validation evidence are documented in docs/validation-ui/2026-10-14-debug-panel/README.md. MCP get_debug_info reads the buffer without logging itself; control_debug uses the normal mutation guard.
+- Failures: compilation/test logs under target/debug-plugin-*.log; isolated same-process MCP logs/screenshots and validation evidence are documented in docs/validation-ui/2026-10-14-debug-panel/README.md. `debug.query` reads the buffer without logging itself; `debug.control` uses the normal mutation guard.
 
 ## Shared refresh ownership (2026-10-15)
 
@@ -47,3 +47,20 @@ Gallery inspector/statistics cards and headings consume shared components; compa
 navigation preserves its layout with common selection/hover paints. Status, branch
 and media-overlay colors remain semantically distinct in the central theme.
 No product service/data/event contract changes. See `docs/ui-theme.md`.
+
+## Plugin-owned MCP tools
+
+The plugin registers `debug.query`, `debug.control`, and
+`debug.selected_logs` through the shared MCP registry. Query parameters and
+responses come directly from `DebugService::query`, `ui_state`, and
+`view_revision`; drawer mutations call `DebugService::control`. The mutating
+tool follows the host MCP mutation policy. Stopping Debug removes these tools
+with the plugin's Cordis registration guard.
+
+- `debug.query` accepts optional `category`, `level`, `search`, zero-based
+  `page`, `page_size` (1–200), and `hide_ui_refresh`.
+- `debug.control` accepts `action` plus optional `value`; actions are the
+  service's open/close/toggle, filter, page, pause/follow, selection,
+  copy/export, and clear operations. It is mutation-gated.
+- `debug.selected_logs` accepts no arguments and returns selected log text and
+  IDs.

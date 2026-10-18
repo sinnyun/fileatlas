@@ -28,7 +28,7 @@ The panel has Appearance, Shortcuts, Tags, AI, Updates, Software and Plugins sec
 
 The Settings rail is grouped into Program settings and Plugin settings. Plugin overview cards are lifecycle-aware for `photag.launcher`, `photag.clipboard`, and `photag.screenshot`; their independent pages expose launch presentation settings. `Settings.plugin_enabled` persists enabled state and defaults missing entries to enabled. `PluginRuntimeRegistry` holds Cordis `FiberHandle`s and shell-provided spawn recipes; disabling awaits `FiberHandle::dispose`, and enabling spawns a fresh prepared plugin through the host `CordisContext`. This registry is limited to those three standalone workbench tools. They depend on core Database/Settings services that are not user-toggleable here; no general dependency-cascade manager is introduced.
 
-`Settings.plugin_launch_modes` is keyed by Cordis owner ID and defaults to `WorkspaceAndPanel`. Launcher/Clipboard support `PanelOnly`; Screenshot also supports `Direct`, which invokes Shotoshot capture without opening the PhoTag panel. `UiSurfaceState.panel.presentation=panel-only` makes Shell omit the main workspace while the generic panel is open; closing its final panel clears that value. The setting changes apply on the next plugin open. Live Windows MCP interaction and screenshot comparison are pending.
+`Settings.plugin_launch_modes` is keyed by Cordis owner ID and defaults to `WorkspaceAndPanel`. Launcher/Clipboard support `PanelOnly`; Screenshot also supports `Direct`, which invokes Shotoshot capture without opening the PhoTag panel. `PanelCatalog::open_presented(id, true)` now creates an independent native window through the host, with no main-window restore or workspace suppression. The old global `panel.presentation` rendering path is removed. The setting changes apply on the next plugin open. Runtime evidence for the corrected native presentation is recorded in docs/validation-ui/2026-10-18-native-panels/.
 
 The Shortcuts page also discovers lifecycle-owned command keybindings from
 `UiCatalog.commands()`. Each plugin registers a stable keybinding contribution
@@ -222,3 +222,40 @@ Settings persists this field through the existing revisioned sidebar update
 handler. Old JSON remains readable; custom groups/aliases are retained. No new
 file/path/store is introduced. Navigation owns the import policy and live plus
 action, Settings still owns durable writes and failure handling.
+# Minimal settings center and schema integration — 2026-10-18
+
+The active references are the ten `settings-*-2026-10-18.png` concepts and
+`docs/reference-ui/concepts/settings-complete-2026-10-18.md`. This supersedes old
+boxed settings layouts. Shared floating geometry remains 1120x840/min 920x580;
+navigation is 224 logical pixels, footer fixed, content scrolls independently.
+
+Appearance, tag match/scopes/merge, standard toggles and built-in plugin launch
+presentation use UI Bridge's declarative `settings_page` renderer. Shortcut
+capture, AI groups, software detection and update state machines retain their
+existing actions inside common sections. IDs and SettingsService persistence
+remain source-compatible; no new data files or migration.
+
+Lifecycle-owned `UiViewContribution.settings_page` providers are discovered from
+the existing view catalog, generate plugin navigation automatically and are
+reconciled by owner/ID/generation. Optional built-in runtime pages append provider
+content; provider-only pages work without a runtime toggle registration. Stopping
+an owner removes its settings contribution. ChangeGates observe catalog/runtime
+changes without notifying on quiet polls. Shortcut capture stays active on plugin
+pages and is canceled by tab/owner/visibility changes.
+
+
+## MCP access setting — 2026-10-19
+
+`photag.mcp` owns the MCP settings-page contribution (`mcp/settings`) and edits
+`Settings.mcp_access_level` through the existing `SettingsService`; Settings
+does not duplicate MCP policy or storage. The segmented levels are `off`,
+`standard` (UI control and ordinary additions/edits/deletions), and `full` (also
+high-impact operations). MCP reads the current settings snapshot for every
+mutating host/contributed call, so changes persist immediately and apply without
+restarting the endpoint. Plugin tool metadata identifies mutation and
+confirmation requirements; high-impact calls still require per-call
+`confirm=true`. Missing levels default to Off. The legacy JSON boolean
+`mcp_allow_mutations` remains accepted (`false` → Off, `true` → Full). Current
+same-process Windows evidence is at
+`docs/validation-ui/2026-10-19-mcp-access-stages/`; the earlier two-state record
+at `docs/validation-ui/2026-10-19-mcp-settings-toggle/` is historical.

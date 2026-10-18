@@ -146,8 +146,11 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-handoff.exe --
 ```
 
 没有 plan/interactive 时输出完整工具 schema。首次先读 schema，不猜参数。
-默认 mutations 关闭；只有 `--allow-mutations` 才设置环境变量为 1。
-扫描隔离样例、修改 UI 状态和测试标签时按需开启。不要对真实图库测试删除/移动。
+当前 MCP 权限由设置中的 Off/Standard/Full 三档控制，不使用环境变量授权。
+隔离验证优先通过 `--access-level off|standard|full` 给 profile 设置所需的最低等级；
+`--allow-mutations` 仅作为旧脚本兼容别名，对应 `full`。高影响工具每次仍需
+`confirm=true`。只读验证保持 Off，扫描隔离样例或修改 UI 状态按需使用 Standard；
+只有验证高影响路径时才使用 Full。不要对真实图库测试删除/移动。
 隔离目录必须位于工作区 target 下；脚本不覆盖已存在的 settings/language 文件。
 设置文件在 `<profile>/settings.json`，不是 `<profile>/local/PhoTag/settings.json`。
 后者曾导致启动检查配置没有生效，已经定位清楚。

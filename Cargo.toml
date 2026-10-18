@@ -44,8 +44,8 @@ license = "MIT"
 [workspace.dependencies]
 tracing = "0.1"
 cordis = { package = "cordis-rs", version = "0.11.1" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-rmcp = { version = "3.5.1", default-features = false, features = ["base64", "macros", "server", "transport-io"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
+rmcp = { version = "3.5.1", default-features = false, features = ["base64", "macros", "server", "transport-io", "transport-streamable-http-server"] }
 dirs = "5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -118,3 +118,4 @@ unsafe_op_in_unsafe_fn = "deny"
 [workspace.lints.clippy]
 todo = "deny"
 dbg_macro = "deny"
+

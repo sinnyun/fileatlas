@@ -12,6 +12,10 @@ tracing.workspace = true
 cordis.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
+photag-contracts = { path = "../photag-contracts" }
+serde_json.workspace = true
+serde.workspace = true
+tokio.workspace = true
 thiserror = "2"
 
 [dev-dependencies]

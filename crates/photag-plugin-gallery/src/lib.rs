@@ -28,8 +28,8 @@ pub mod selection;
 use cordis::event::observer_sync;
 use cordis::{Context, Plugin, Service};
 use photag_contracts::{
-    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, TagFilterSelection,
-    TagFilterSelectionChanged, TagSelectionChanged,
+    DirectoryPathSelected, FolderSelectionChanged, MediaIndexChanged, MediaVersionHistoryChanged,
+    TagFilterSelection, TagFilterSelectionChanged, TagSelectionChanged,
 };
 use photag_plugin_database::DatabaseService;
 use photag_plugin_database::{self, MediaItem, MediaQuery, MediaSkeleton, SortOrder, Tag};

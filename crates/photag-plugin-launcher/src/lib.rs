@@ -3,6 +3,7 @@
 
 mod discovery;
 mod icons;
+mod mcp;
 mod view;
 
 use std::path::{Path, PathBuf};
@@ -751,6 +752,53 @@ impl Plugin for LauncherPlugin {
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| LauncherPluginError::Publish(error.to_string()))?;
+        if let Ok(registry) = context.try_service::<photag_contracts::mcp::McpToolRegistry>() {
+            let snapshot_service = Arc::clone(&service);
+            let snapshot = photag_contracts::mcp::McpToolDefinition {
+                name: "launcher.snapshot".into(),
+                title: "Read program launcher".into(),
+                description: "Read the launcher's current categories, programs, and scan state.".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{},"additionalProperties":false})
+                    .as_object().cloned().unwrap_or_default(),
+                mutating: false,
+                confirmation_required: false,
+                handler: Arc::new(move |_| {
+                    let service = Arc::clone(&snapshot_service);
+                    Box::pin(async move {
+                        serde_json::to_value(service.snapshot()).map_err(|error| error.to_string())
+                    })
+                }),
+            };
+            let launch_service = Arc::clone(&service);
+            let launch = photag_contracts::mcp::McpToolDefinition {
+                name: "launcher.launch".into(),
+                title: "Launch a registered program".into(),
+                description: "Launch one program entry by its launcher entry ID.".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false})
+                    .as_object().cloned().unwrap_or_default(),
+                mutating: true,
+                confirmation_required: true,
+                handler: Arc::new(move |arguments| {
+                    let service = Arc::clone(&launch_service);
+                    Box::pin(async move {
+                        let id = arguments.get("id").and_then(serde_json::Value::as_i64)
+                            .ok_or_else(|| "id must be a positive integer".to_owned())?;
+                        service.launch(id).map_err(|error| error.to_string())?;
+                        Ok(serde_json::json!({"ok":true,"id":id}))
+                    })
+                }),
+            };
+            let mut tools = mcp::tools(&service);
+            tools.extend([snapshot, launch]);
+            let registration = registry
+                .register(OWNER, tools)
+                .map_err(|error| LauncherPluginError::Ui(error.to_string()))?;
+            let _mcp_registration = context
+                .provide(Arc::new(LauncherMcpRegistration {
+                    _registration: registration,
+                }))
+                .map_err(|error| LauncherPluginError::Publish(error.to_string()))?;
+        }
         let bridge = context
             .try_service::<UiBridgeService>()
             .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
@@ -759,7 +807,6 @@ impl Plugin for LauncherPlugin {
             .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
         let panels = Arc::clone(&bridge.panels);
         let command_panels = Arc::clone(&panels);
-        let command_surfaces = Arc::clone(&bridge.surfaces);
         let _listener = context
             .on::<UiCommandInvoked, _>(cordis::event::observer_sync(move |_, command_id| {
                 if command_id == OPEN_COMMAND {
@@ -767,15 +814,8 @@ impl Plugin for LauncherPlugin {
                         .snapshot()
                         .map(|settings| settings.plugin_launch_mode(OWNER))
                         .unwrap_or_default();
-                    let _ = command_surfaces.set_value(
-                        "panel.presentation",
-                        if mode == PluginLaunchMode::PanelOnly {
-                            "panel-only"
-                        } else {
-                            "workspace"
-                        },
-                    );
-                    let _ = command_panels.open(PANEL_ID);
+                    let _ = command_panels
+                        .open_presented(PANEL_ID, mode == PluginLaunchMode::PanelOnly);
                 }
                 Ok::<_, std::convert::Infallible>(())
             }))
@@ -856,6 +896,14 @@ impl Plugin for LauncherPlugin {
             .map_err(|error| LauncherPluginError::Start(error.to_string()))?;
         Ok(())
     }
+}
+
+struct LauncherMcpRegistration {
+    _registration: Arc<photag_contracts::mcp::McpToolRegistration>,
+}
+
+impl Service for LauncherMcpRegistration {
+    const NAME: &'static str = "photag/launcher-mcp-registration";
 }
 
 #[derive(Debug, thiserror::Error)]

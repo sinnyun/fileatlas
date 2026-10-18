@@ -6,7 +6,8 @@ use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::*;
 use open;
 use photag_ui_bridge::{
-    UiSurfaceState, UiViewContribution, components, components::WorkbenchStyle as _, theme,
+    UiViewContribution, components, components::WorkbenchStyle as _, panel_catalog::PanelCatalog,
+    theme,
 };
 use std::sync::Arc;
 
@@ -55,13 +56,13 @@ impl Render for ScreenshotButton {
 
 pub(super) fn panel(
     service: Arc<ScreenshotService>,
-    surfaces: Arc<UiSurfaceState>,
+    panels: Arc<PanelCatalog>,
     _window: &mut Window,
     app: &mut App,
 ) -> AnyView {
     app.new(|_| ScreenshotManagerPanel {
         service,
-        surfaces,
+        panels,
         error: None,
     })
     .into()
@@ -69,7 +70,7 @@ pub(super) fn panel(
 
 struct ScreenshotManagerPanel {
     service: Arc<ScreenshotService>,
-    surfaces: Arc<UiSurfaceState>,
+    panels: Arc<PanelCatalog>,
     error: Option<String>,
 }
 
@@ -270,7 +271,7 @@ impl Render for ScreenshotManagerPanel {
                     Button::new("screenshot-tool-close")
                         .label("关闭")
                         .on_click(cx.listener(|this, _, _, cx| {
-                            let _ = this.surfaces.set_open(PANEL, false);
+                            let _ = this.panels.close_definition(PANEL);
                             cx.notify();
                         })),
                 )

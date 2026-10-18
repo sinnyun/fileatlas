@@ -10,9 +10,12 @@ tracing.workspace = true
 cordis.workspace = true
 gpui-kit.workspace = true
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-contracts = { path = "../photag-contracts" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 rfd = { version = "0.15", default-features = false }
 serde_json.workspace = true
+serde.workspace = true
+tokio.workspace = true
 thiserror.workspace = true
 
 [lints]

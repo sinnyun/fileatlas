@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 
 [dependencies]
-photag-plugin-debug = { path = "../photag-plugin-debug" }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 tracing.workspace = true
 base64 = "0.22"
 cordis.workspace = true
@@ -14,14 +14,9 @@ photag-contracts = { path = "../photag-contracts" }
 image = { version = "0.25", default-features = false, features = ["png"] }
 photag-plugin-gallery = { path = "../photag-plugin-gallery" }
 photag-plugin-history = { path = "../photag-plugin-history" }
-photag-plugin-versions = { path = "../photag-plugin-versions" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
-photag-plugin-launcher = { path = "../photag-plugin-launcher" }
 photag-plugin-screenshot = { path = "../photag-plugin-screenshot" }
-photag-plugin-clipboard = { path = "../photag-plugin-clipboard" }
 photag-plugin-database = { path = "../photag-plugin-database" }
-photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }
-photag-plugin-file-operations = { path = "../photag-plugin-file-operations" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-quicklook = { path = "../photag-plugin-quicklook" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }

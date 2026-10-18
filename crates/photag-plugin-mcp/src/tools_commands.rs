@@ -30,7 +30,7 @@ impl super::PhoTagMcpServer {
             .unwrap_or_default();
         serde_json::to_string(&json!({
             "commands": commands.iter().map(|command| {
-                let (enabled, reason) = self.command_availability(command.needs);
+                    let (enabled, reason) = self.command_availability(command.needs);
                 json!({
                     "id": command.id,
                     "owner": command.owner,
@@ -57,7 +57,7 @@ impl super::PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Invoke a registered PhoTag UI command through the same Cordis event used by its UI contribution. Mutating commands require PHOTAG_MCP_ALLOW_MUTATIONS=1; commands requiring explicit confirmation also require confirm=true."
+        description = "Invoke a registered PhoTag UI command through the same Cordis event used by its UI contribution. Mutating commands require Settings → MCP → AI control to be enabled; commands requiring explicit confirmation also require confirm=true."
     )]
     async fn command_run(&self, Parameters(request): Parameters<CommandRunRequest>) -> String {
         let commands = match self.command_catalog.commands() {
@@ -88,26 +88,17 @@ impl PhoTagMcpServer {
     fn command_availability(&self, needs: CommandNeeds) -> (bool, Option<String>) {
         match needs {
             CommandNeeds::None => (true, None),
-            CommandNeeds::MutationOptIn if !self.mutations_enabled => (
+            CommandNeeds::MutationOptIn if !self.mutations_enabled() => (
                 false,
-                Some(
-                    "MCP mutations are disabled; set PHOTAG_MCP_ALLOW_MUTATIONS=1 to enable them"
-                        .into(),
-                ),
+                Some("启用常规控制或完全控制后才能执行此命令。".into()),
             ),
-            CommandNeeds::UndoAvailable if !self.mutations_enabled => (
+            CommandNeeds::UndoAvailable if !self.mutations_enabled() => (
                 false,
-                Some(
-                    "MCP mutations are disabled; set PHOTAG_MCP_ALLOW_MUTATIONS=1 to enable them"
-                        .into(),
-                ),
+                Some("启用常规控制或完全控制后才能执行此命令。".into()),
             ),
-            CommandNeeds::RedoAvailable if !self.mutations_enabled => (
+            CommandNeeds::RedoAvailable if !self.mutations_enabled() => (
                 false,
-                Some(
-                    "MCP mutations are disabled; set PHOTAG_MCP_ALLOW_MUTATIONS=1 to enable them"
-                        .into(),
-                ),
+                Some("启用常规控制或完全控制后才能执行此命令。".into()),
             ),
             CommandNeeds::UndoAvailable if self.history.undo_description().is_none() => {
                 (false, Some("there is no action to undo".into()))
@@ -115,13 +106,9 @@ impl PhoTagMcpServer {
             CommandNeeds::RedoAvailable if self.history.redo_description().is_none() => {
                 (false, Some("there is no action to redo".into()))
             }
-            CommandNeeds::ConfirmedMutation if !self.mutations_enabled => (
-                false,
-                Some(
-                    "MCP mutations are disabled; set PHOTAG_MCP_ALLOW_MUTATIONS=1 to enable them"
-                        .into(),
-                ),
-            ),
+            CommandNeeds::ConfirmedMutation if self.full_control_guard().is_err() => {
+                (false, Some("此高影响命令需要设置为完全控制。".into()))
+            }
             _ => (true, None),
         }
     }
@@ -138,8 +125,8 @@ impl PhoTagMcpServer {
         match command.needs {
             CommandNeeds::MutationOptIn
             | CommandNeeds::UndoAvailable
-            | CommandNeeds::RedoAvailable
-            | CommandNeeds::ConfirmedMutation => self.mutation_guard().err(),
+            | CommandNeeds::RedoAvailable => self.mutation_guard().err(),
+            CommandNeeds::ConfirmedMutation => self.full_control_guard().err(),
             CommandNeeds::None => None,
         }
         .or_else(|| {

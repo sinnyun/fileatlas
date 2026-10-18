@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "same_process": true,
+  "processId": 10620,
+  "executable": "F:\\AI\\geren\\pho_cordis\\target\\debug\\photag-shell-native-panels.exe",
+  "profile": "F:\\AI\\geren\\pho_cordis\\target\\mcp-native-panels",
+  "checked": [
+    "main-minimized-preserved",
+    "native-reuse-and-restore",
+    "two-independent-tools",
+    "real-pointer-pause-resume",
+    "compact-window",
+    "idle-root-render-count",
+    "escape-close",
+    "screenshot-body-close",
+    "native-WM_CLOSE",
+    "cordis-disable-cleanup",
+    "reenable",
+    "workspace-mode-restore",
+    "main-content-retained"
+  ],
+  "steps": 64,
+  "started": "2026-10-18T15:35:51.595Z",
+  "static": {
+    "fmt": "passed",
+    "shell_check": "passed",
+    "shell_build_named_executable": "passed",
+    "ui_bridge_tests": 19,
+    "shortcuts_tests": 0,
+    "theme": "passed including self-test",
+    "refresh": "passed",
+    "architecture": "passed",
+    "feature_ledger": "passed",
+    "layering": "pre-existing launcher/clipboard -> settings layer violations"
+  }
+}

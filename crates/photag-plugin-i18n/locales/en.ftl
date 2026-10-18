@@ -1115,3 +1115,41 @@ msg-plugin-settings-open-panel = Open plugin panel
 msg-plugin-settings-shortcuts = Keyboard shortcuts
 msg-plugin-settings-no-shortcuts = No active keyboard shortcuts are registered by this plugin.
 msg-plugin-settings-external-software = External software
+
+msg-settings-common-0 = Tags and search
+
+msg-settings-common-2 = Software updates
+
+msg-settings-common-4 = Plugin management
+
+msg-settings-common-5 = Automatic analysis
+
+msg-settings-common-6 = Display language
+
+msg-settings-common-7 = Launch presentation
+
+msg-settings-complete-0 = Search match
+
+msg-settings-complete-1 = Release
+
+msg-settings-complete-2 = Check the external software used by PhoTag.
+
+msg-settings-fidelity-0 = Interface language
+
+msg-settings-fidelity-2 = Changes take effect immediately.
+
+msg-settings-fidelity-4 = Application accent
+
+msg-settings-fidelity-5 = Follow the Windows accent color
+
+msg-settings-fidelity-6 = Interface layers
+
+msg-settings-fidelity-7 = Choose how the sidebar and content regions are separated.
+
+msg-settings-fidelity-8 = Check for updates
+
+msg-settings-status-0 = Enabled
+
+msg-settings-status-1 = Disabled
+
+msg-settings-status-2 = Tool entry

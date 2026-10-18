@@ -327,3 +327,20 @@ pub fn set_test_window_active(handle: isize, active: bool) -> Result<(), String>
 pub fn set_test_window_active(_: isize, _: bool) -> Result<(), String> {
     Err("Window activation validation is Windows-only".into())
 }
+
+/// Exercise WM_CLOSE on a selected native plugin window owned by this child.
+#[cfg(target_os = "windows")]
+pub fn close_test_window(handle: isize) -> Result<(), String> {
+    if window_status(handle)["owned"] != true {
+        return Err("PhoTag native window is unavailable or belongs to another process".into());
+    }
+    use windows_sys::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE};
+    if unsafe { PostMessageW(handle as _, WM_CLOSE, 0, 0) } == 0 {
+        return Err(std::io::Error::last_os_error().to_string());
+    }
+    Ok(())
+}
+#[cfg(not(target_os = "windows"))]
+pub fn close_test_window(_: isize) -> Result<(), String> {
+    Err("Native window close validation is Windows-only".into())
+}

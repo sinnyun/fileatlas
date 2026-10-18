@@ -68,7 +68,7 @@ MCP 客户端需要将 PhoTag 作为 stdio 子进程启动，Shell 会同时打�
 }
 ```
 
-也可以将 `command` 指向已构建的 `photag-shell.exe`，并设置 `args` 为 `["--mcp"]`。设置 `PHOTAG_DEV_PLUGINS=dev-test` 时，客户端启动的这个 PhoTag 子进程会启用开发测试面板及 MCP 开发测试工具；AI 可通过 MCP 请求扫描样例目录、注入/清理虚拟数据、轮询任务状态、查询图库结果并截取同一窗口。开发测试数据自动放入隔离目录。MCP 服务默认只开放读取、截图、预览、播放控制和隔离的开发测试操作。若需要修改日常图库的评分、标签、文件或索引，请在 MCP 子进程环境显式设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1`，并配置 MCP 客户端对修改工具逐次询问用户；破坏性工具还要求 `confirm: true`。不要将此 stdio 服务交给不可信客户端。
+也可以将 `command` 指向已构建的 `photag-shell.exe`，并设置 `args` 为 `["--mcp"]`。设置 `PHOTAG_DEV_PLUGINS=dev-test` 时，客户端启动的这个 PhoTag 子进程会启用开发测试面板及 MCP 开发测试工具；AI 可通过 MCP 请求扫描样例目录、注入/清理虚拟数据、轮询任务状态、查询图库结果并截取同一窗口。开发测试数据自动放入隔离目录。MCP 权限由 PhoTag 设置 → 插件设置 → MCP → AI 控制统一管理：关闭档只读，常规控制档允许界面控制和普通增删改，完全控制档额外开放插件标记的高影响操作；高影响操作每次仍需 `confirm: true`。新配置默认关闭，旧 `mcp_allow_mutations` 设置会兼容映射。stdio 客户端连接的是其启动的 PhoTag 子进程；正常 HTTP MCP 则连接当前已运行的主进程。不要将此服务交给不可信客户端。详细说明见 [MCP 接入与实现状态](docs/mcp-integration-plan.md) 和 [分阶段权限验证](docs/validation-ui/2026-10-19-mcp-access-stages/README.md)。
 
 可用工具和当前限制见 [MCP 对接说明](crates/photag-plugin-mcp/PORTS.md)。
 

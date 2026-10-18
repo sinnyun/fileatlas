@@ -4,6 +4,7 @@ mod drives;
 mod favorites;
 mod folder_picker;
 mod location;
+mod mcp;
 mod sidebar_folders;
 mod ui_requests;
 mod view;
@@ -575,6 +576,42 @@ impl Plugin for NavigationPlugin {
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
+        if let Ok(registry) = context.try_service::<photag_contracts::mcp::McpToolRegistry>() {
+            let navigation = Arc::clone(&service);
+            let tool = photag_contracts::mcp::McpToolDefinition {
+                name: "navigation.list_library".into(),
+                title: "List folders and tags".into(),
+                description: "Read PhoTag registered folders, media counts, and hierarchical tags.".into(),
+                input_schema: serde_json::json!({"type":"object","properties":{},"additionalProperties":false})
+                    .as_object().cloned().unwrap_or_default(),
+                mutating: false,
+                confirmation_required: false,
+                handler: Arc::new(move |_| {
+                    let navigation = Arc::clone(&navigation);
+                    Box::pin(async move {
+                        let snapshot = navigation.snapshot().map_err(|error| error.to_string())?;
+                        let folders = snapshot.folders.into_iter().map(|node| serde_json::json!({
+                            "id":node.folder.id,
+                            "path":node.folder.path,
+                            "name":node.folder.name,
+                            "last_scan":node.folder.last_scan,
+                            "media_count":node.media_count,
+                        })).collect::<Vec<_>>();
+                        Ok(serde_json::json!({"folders":folders,"tags":snapshot.tags}))
+                    })
+                }),
+            };
+            let mut tools = mcp::tools(&service, &context);
+            tools.push(tool);
+            let registration = registry
+                .register("photag.navigation", tools)
+                .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
+            let _mcp_registration = context
+                .provide(Arc::new(NavigationMcpRegistration {
+                    _registration: registration,
+                }))
+                .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
+        }
         register_for_plugin(
             &context,
             "photag.navigation",
@@ -632,6 +669,14 @@ impl Plugin for NavigationPlugin {
         .map_err(|error| NavigationPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
+}
+
+struct NavigationMcpRegistration {
+    _registration: Arc<photag_contracts::mcp::McpToolRegistration>,
+}
+
+impl Service for NavigationMcpRegistration {
+    const NAME: &'static str = "photag/navigation-mcp-registration";
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -22,6 +22,8 @@ pub(super) struct GalleryControl {
     /// bulk_field only: input index 0..7 (older/newer days, min/max rating, name,
     /// extensions, min/max MB); text is carried in value.
     field_index: Option<usize>,
+    /// Explicitly acknowledge the high-impact delete-missing-records action.
+    confirm: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -40,7 +42,7 @@ pub(super) struct NavigationControl {
 #[tool_router(router = gallery_ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
     #[tool(
-        description = "Control live Navigation dialogs and selection through public requests: all, create, edit, delete, merge, move, close, select_path, expand_path, expand_folder. tag_appearance directly sets both color and icon on an existing tag through NavigationService; omitted values clear the field. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1."
+        description = "Control live Navigation dialogs and selection through public requests: all, create, edit, delete, merge, move, close, select_path, expand_path, expand_folder. tag_appearance directly sets both color and icon on an existing tag through NavigationService; omitted values clear the field. Requires Settings → MCP → AI control to be enabled."
     )]
     fn control_navigation(&self, Parameters(request): Parameters<NavigationControl>) -> String {
         tracing::info!(?request, "MCP control request");
@@ -140,12 +142,20 @@ impl PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Control live Gallery filters, popovers, bulk configuration, preview opening and the Gallery-owned media action surface through feature requests. Use preview with media_id to exercise the Gallery double-click preview path. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1; wait for the GPUI poller and read get_ui_state/screenshot_window."
+        description = "Control live Gallery filters, popovers, bulk configuration, preview opening and the Gallery-owned media action surface through feature requests. Use preview with media_id to exercise the Gallery double-click preview path. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Actions open_media_menu/close_media_menu control the visible action surface; pass media_id to open. Requires Settings → MCP → AI control to be enabled; wait for the GPUI poller and read get_ui_state/screenshot_window."
     )]
     fn control_gallery(&self, Parameters(request): Parameters<GalleryControl>) -> String {
         tracing::info!(?request, "MCP control request");
         if let Err(error) = self.mutation_guard() {
             return error_json(&error);
+        }
+        if request.action == "delete_missing_records" {
+            if let Err(error) = self.full_control_guard() {
+                return error_json(&error);
+            }
+            if request.confirm != Some(true) {
+                return error_json("This high-impact action requires confirm=true.");
+            }
         }
         use photag_plugin_gallery::{
             BulkActionKind as A, BulkActionSource as S, GalleryUiRequest as R, MediaTypeFilter as M,

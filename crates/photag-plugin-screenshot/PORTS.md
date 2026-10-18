@@ -32,3 +32,7 @@
 - The default save directory is `%LOCALAPPDATA%\\PhoTag\\Screenshots`; PhoTag synchronizes it to Shotoshot's native save setting so the user's final PNG is stored under PhoTag's screenshot directory and can be managed there. This integration does not yet import screenshot rows into the photo-library database.
 - Earlier same-process PhoTag MCP verified only that `PostMessageW` accepted a `WM_APP+2` queue submission; the user reported no editor appeared, so that was insufficient evidence of a working capture. The bridge now uses synchronous `SendMessageTimeoutW` (3-second timeout), reports delivery failures, and records request/result/error diagnostics. Rebuilt-host live capture and user-driven selection/annotation/save still require verification.
 - GPL-3.0 is accepted for this personal-use workspace. The workspace's declared MIT package licenses are not changed here; distribution of a combined executable would require following GPL-3.0 and dependency notices.
+
+PanelOnly presentation opens the manager in an independent native window via PanelCatalog. WorkspaceAndPanel stays embedded; Direct still invokes Shotoshot without restoring the main window.
+
+The manager body Close button calls PanelCatalog::close_definition(PANEL), correcting the old unrelated surface flag so it closes both embedded/native instances.

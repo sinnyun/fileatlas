@@ -24,6 +24,7 @@ const OWNER: &str = "photag.clipboard";
 const PANEL: &str = "clipboard-workbench/panel";
 const OPEN: &str = "clipboard-workbench/open";
 pub mod content;
+mod mcp;
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 struct ClipboardFile {
     version: u32,
@@ -675,6 +676,7 @@ impl Plugin for ClipboardPlugin {
             let _publication = context
                 .provide(Arc::clone(&service))
                 .map_err(|e| e.to_string())?;
+            mcp::register(&context, &service)?;
             let cleanup = Arc::clone(&service);
             context
                 .effect_sync(move || {
@@ -694,7 +696,6 @@ impl Plugin for ClipboardPlugin {
                 .map_err(|e| e.to_string())?;
             let panels = Arc::clone(&bridge.panels);
             let command_panels = Arc::clone(&panels);
-            let command_surfaces = Arc::clone(&bridge.surfaces);
             let _listener = context
                 .on::<photag_ui_bridge::UiCommandInvoked, _>(cordis::event::observer_sync(
                     move |_, id| {
@@ -703,15 +704,8 @@ impl Plugin for ClipboardPlugin {
                                 .snapshot()
                                 .map(|settings| settings.plugin_launch_mode(OWNER))
                                 .unwrap_or_default();
-                            let _ = command_surfaces.set_value(
-                                "panel.presentation",
-                                if mode == PluginLaunchMode::PanelOnly {
-                                    "panel-only"
-                                } else {
-                                    "workspace"
-                                },
-                            );
-                            let _ = command_panels.open(PANEL);
+                            let _ = command_panels
+                                .open_presented(PANEL, mode == PluginLaunchMode::PanelOnly);
                         }
                         Ok::<_, std::convert::Infallible>(())
                     },

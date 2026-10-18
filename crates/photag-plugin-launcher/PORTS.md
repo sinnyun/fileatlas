@@ -74,3 +74,18 @@ Launcher cards and category/hidden navigation reuse UI Bridge `components`.
 Selection/hover/fallback icons consume `theme` and follow the persisted accent;
 native program icons remain unmodified content. Geometry, actions and lifecycle
 stay feature-owned within the existing generic panel. See `docs/ui-theme.md`.
+
+PanelOnly presentation uses `PanelCatalog::open_presented(PANEL_ID,true)` for an independent native tool window; WorkspaceAndPanel keeps the embedded public panel. Data/services are unchanged.
+# MCP contributions
+
+The launcher contributes namespaced tools through the host-published
+`photag_contracts::mcp::McpToolRegistry`: `launcher.snapshot`, `launcher.add_program`,
+`launcher.set_pin`, `launcher.create_category`, `launcher.rename_category`,
+`launcher.delete_category`, `launcher.update_program`, `launcher.refresh`,
+`launcher.launch`, `launcher.remove_program`, and `launcher.uninstall_program`.
+The plugin owns their schemas and handlers and routes them through
+`LauncherService`. Program launch, category deletion, list removal, and software
+uninstall require explicit `confirm:true`; other writes are mutation-gated.
+Cordis removes the contributions when `photag.launcher` stops. Former
+unnamespaced MCP tool names are retired; clients should use these namespaced
+routes.

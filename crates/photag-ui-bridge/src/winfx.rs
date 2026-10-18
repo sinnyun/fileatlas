@@ -295,3 +295,29 @@ pub fn font_availability() -> FontAvailability {
         mdl2_icons: false,
     }
 }
+
+/// Show/restore and foreground only the requested PhoTag window after an explicit open.
+pub fn restore_and_activate(hwnd: isize) {
+    #[cfg(target_os = "windows")]
+    if hwnd != 0 {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn IsIconic(hwnd: isize) -> i32;
+            fn ShowWindow(hwnd: isize, command: i32) -> i32;
+            fn SetForegroundWindow(hwnd: isize) -> i32;
+        }
+        unsafe {
+            // SW_SHOW keeps an existing maximized window maximized; only an
+            // iconic window needs SW_RESTORE. Never make it permanently topmost.
+            let _ = ShowWindow(hwnd, if IsIconic(hwnd) != 0 { 9 } else { 5 });
+            if SetForegroundWindow(hwnd) == 0 {
+                tracing::warn!(
+                    hwnd,
+                    "Windows denied foreground activation for requested PhoTag window"
+                );
+            }
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    let _ = hwnd;
+}

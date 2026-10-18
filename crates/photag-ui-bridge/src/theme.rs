@@ -208,6 +208,14 @@ pub const FONT_SIZE_BUTTON: f32 = 14.0;
 pub const FONT_SIZE_HEADING: f32 = 15.0;
 pub const FONT_SIZE_TITLE: f32 = 18.0;
 pub const UI_FONT_FAMILY: &str = "Segoe UI";
+/// Settings concepts use a sans-serif CJK face rather than Windows' serif fallback.
+pub const SETTINGS_FONT_FAMILY: &str = "Microsoft YaHei UI";
+/// Shared settings geometry, calibrated against the complete minimal concepts.
+pub const SETTINGS_NAV_WIDTH: f32 = 224.;
+pub const SETTINGS_CONTENT_PADDING: f32 = 40.;
+pub const SETTINGS_TITLE_SIZE: f32 = 24.;
+pub const SETTINGS_SECTION_SIZE: f32 = 16.;
+pub const SETTINGS_CONTROL_HEIGHT: f32 = 36.;
 pub const SEMIBOLD_FONT_FAMILY: &str = "Segoe UI Semibold";
 /// Shared icon dimensions in logical pixels. Keep UI icon sizing here so
 /// controls remain visually consistent across feature crates.

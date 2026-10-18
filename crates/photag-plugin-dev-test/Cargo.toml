@@ -12,6 +12,8 @@ photag-contracts = { path = "../photag-contracts" }
 photag-plugin-database = { path = "../photag-plugin-database" }
 photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
+serde.workspace = true
+serde_json.workspace = true
 gpui-kit.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

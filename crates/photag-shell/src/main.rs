@@ -134,10 +134,9 @@ fn main() {
     photag_plugin_debug::attach(&diagnostics).expect("install runtime diagnostics");
     let plugin_config = dev_plugin_config();
     let mcp_arg = std::env::args().skip(1).any(|arg| arg == "--mcp");
-    let enable_mcp = mcp_arg
-        || plugin_config
-            .split(',')
-            .any(|plugin| plugin.trim() == "mcp");
+    // PhoTag exposes its MCP endpoint from this GUI process on normal startup.
+    // `--mcp` is retained only for isolated stdio-based development clients.
+    let enable_mcp = true;
     let enable_all = dev_plugin_enabled(&plugin_config, "all");
     let enable_dev_test = dev_plugin_enabled(&plugin_config, "dev-test");
     let enable_history = enable_all || dev_plugin_enabled(&plugin_config, "history");
@@ -222,6 +221,15 @@ fn main() {
     let _capture_publication = cordis
         .provide(Arc::clone(&capture_handle))
         .expect("publish MCP window capture handle");
+    let mcp_tool_registry = Arc::new(photag_contracts::mcp::McpToolRegistry::default());
+    let _mcp_tool_registry_publication = match cordis.provide(Arc::clone(&mcp_tool_registry)) {
+        Ok(publication) => publication,
+        Err(error) => {
+            tracing::error!("could not publish MCP tool contribution registry: {error}");
+            eprintln!("Could not publish MCP tool contribution registry: {error}");
+            std::process::exit(1);
+        }
+    };
     let catalog = Arc::new(UiCatalog::default());
     let bridge = Arc::new(UiBridgeService::new(Arc::clone(&catalog)));
     let _bridge_publication = cordis
@@ -359,6 +367,19 @@ fn main() {
     } else {
         None
     };
+    let indexing_fiber = if enable_indexing {
+        let plugin = photag_plugin_indexing::IndexingPlugin;
+        let input = plugin
+            .prepare(photag_plugin_indexing::IndexingConfig)
+            .expect("prepare indexing plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start indexing plugin"),
+        )
+    } else {
+        None
+    };
     let versions_fiber = if enable_versions {
         let database = cordis
             .try_service::<photag_plugin_database::DatabaseService>()
@@ -376,19 +397,6 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start Lore versions plugin"),
-        )
-    } else {
-        None
-    };
-    let indexing_fiber = if enable_indexing {
-        let plugin = photag_plugin_indexing::IndexingPlugin;
-        let input = plugin
-            .prepare(photag_plugin_indexing::IndexingConfig)
-            .expect("prepare indexing plugin");
-        Some(
-            runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start indexing plugin"),
         )
     } else {
         None
@@ -693,13 +701,20 @@ fn main() {
         None
     };
     let mcp_fiber = if enable_mcp {
-        let plugin = photag_plugin_mcp::McpPlugin;
+        let plugin = if mcp_arg {
+            photag_plugin_mcp::McpPlugin::stdio()
+        } else {
+            photag_plugin_mcp::McpPlugin::in_process()
+        };
         let input = plugin.prepare(()).expect("prepare MCP plugin");
-        Some(
-            runtime
-                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
-                .expect("start MCP plugin"),
-        )
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!("MCP endpoint failed to start; continuing without MCP: {error}");
+                eprintln!("MCP endpoint failed to start; continuing without MCP: {error}");
+                None
+            }
+        }
     } else {
         None
     };
@@ -782,6 +797,9 @@ fn main() {
             };
             #[cfg(not(target_os = "windows"))]
             let native_window_handle = 0;
+            let _ = bridge
+                .surfaces
+                .set_value("mcp.window.main", &native_window_handle.to_string());
             #[cfg(target_os = "windows")]
             {
                 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
@@ -845,6 +863,7 @@ fn main() {
                             cx.refresh_windows();
                         }
                         shell.poll_panel_requests(cx);
+                        shell.sync_native_panels(cx);
                         if let Ok(shortcuts) = shell
                             .cordis
                             .try_service::<photag_plugin_shortcuts::ShortcutService>()
@@ -930,6 +949,7 @@ fn main() {
                     tools_open: false,
                     sidebar_open: true,
                     inspector_open: true,
+                    native_panels: Default::default(),
                     panel_signature: (false, None),
                 }
             })

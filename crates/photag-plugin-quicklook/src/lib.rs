@@ -1,4 +1,5 @@
 //! Send the user's QuickLook a request; never start, stop or own that program.
+mod mcp;
 #[cfg(windows)]
 mod windows;
 use cordis::{Context, Plugin, Service};
@@ -186,9 +187,14 @@ impl Plugin for QuickLookPlugin {
         Ok(())
     }
     async fn apply(&self, context: Context, _: &()) -> Result<(), Self::ApplyError> {
+        let file_operations = context
+            .try_service::<photag_plugin_file_operations::FileOperationsService>()
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        let service = Arc::new(QuickLookService::default());
         let _publication = context
-            .provide(Arc::new(QuickLookService::default()))
+            .provide(Arc::clone(&service))
             .map_err(|e| std::io::Error::other(e.to_string()))?;
+        mcp::register(&context, &service, &file_operations).map_err(std::io::Error::other)?;
         Ok(())
     }
 }

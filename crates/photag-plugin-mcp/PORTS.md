@@ -1,5 +1,19 @@
 # MCP plugin ports / MCP 对接
 
+## Access levels — 2026-10-19
+
+The MCP plugin contributes the `photag.mcp` settings page. `Settings.mcp_access_level`
+has Off, Standard and Full stages. Standard permits UI control and ordinary
+mutations; Full additionally permits tools whose plugin-owned MCP metadata marks
+`confirmation_required`, and those calls still require `confirm=true`. Calls
+read the current SettingsService snapshot, so stage changes apply immediately.
+The previous `mcp_allow_mutations` boolean is accepted as a legacy JSON alias
+(`false` → Off, `true` → Full). See
+`docs/validation-ui/2026-10-19-mcp-access-stages/` for runtime evidence.
+Older validation entries below preserve the environment-variable values used
+by those historical builds; current authorization is always controlled by the
+SettingsService access level described here.
+
 ## Clipboard workbench — 2026-10-18
 
 - `get_clipboard_state` is read-only and reports count, category names, item IDs,
@@ -35,8 +49,8 @@ display-name/category/hidden edits; pinning; launch; list-only removal; and
 uninstall. Launch, removal, category deletion, and uninstall require
 `confirm=true`; uninstall runs the registered command without another native
 prompt after explicit MCP confirmation. List-only removal never deletes files.
-All mutations still require the isolated MCP process to set
-`PHOTAG_MCP_ALLOW_MUTATIONS=1`. An absent launcher service returns an explicit
+Mutations require Standard or Full in Settings → MCP → AI control. High-impact
+launcher actions additionally require Full and per-call `confirm=true`. An absent launcher service returns an explicit
 error. Use `control_ui` pointer actions and `screenshot_window` for live panel
 interaction.
 
@@ -124,7 +138,7 @@ the active revision. `create_file_version {media_id,title,confirm:true}` saves
 the current file bytes as a titled revision. `activate_file_version
 {media_id,version_id,confirm:true}` restores a revision and refreshes that
 media row's derived file metadata and thumbnail. Create/activate require
-`PHOTAG_MCP_ALLOW_MUTATIONS=1` and explicit `confirm:true`. The same-process
+Full access in Settings → MCP → AI control and explicit `confirm:true`. The same-process
 Gallery History tab invokes the same Versions service. Plugin lifecycle
 dependencies are `photag/versions` → `photag/version-info` and
 `photag/thumbnails`; durable version and branch metadata uses typed
@@ -153,21 +167,66 @@ profiles. Evidence:
 
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
-Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP client launches `photag-shell --mcp` as a child process; that process owns both the GPUI window and MCP stdio server, so MCP controls and reads the exact PhoTag instance it launched. It does not attach to a separately running PhoTag process. Windows `PrintWindow` capture and live MCP round trips have been exercised with the isolated dev-test profile; see `docs/validation-report.md` for the checked interactions and remaining limits.
+Status (updated 2026-10-19): normal PhoTag startup hosts Streamable HTTP MCP in the GUI process at `http://127.0.0.1:38473/mcp` (`PHOTAG_MCP_HTTP_PORT` overrides the port). The legacy `--mcp` stdio mode remains for isolated debugging. Bind is loopback-only; rmcp validates Host against its loopback allowlist. Modification access is controlled live by Settings → Plugin settings → MCP → AI control and persists as `Settings.mcp_access_level` in the existing Settings JSON. Off allows reads only; Standard allows UI control and ordinary mutations; Full additionally allows tools whose plugin metadata marks them high-impact. Missing values default to Off. Every host and contributed mutating call reads the current setting at call time; there is no restart or environment variable override. High-impact operations still require their per-tool `confirm:true` checks. The legacy JSON key `mcp_allow_mutations` maps false to Off and true to Full.
+
+MCP feature tools are contributed through `photag_contracts::mcp::McpToolRegistry`. The host publishes the registry before feature startup; each Cordis feature plugin contributes its own namespaced tool definitions, JSON input schema, handler and mutation/confirmation metadata, then retains the returned registration guard in a plugin-specific Cordis lifecycle service. These wrapper services have distinct Cordis identities, so multiple plugins can publish guards in one realm. MCP resolves contributions at `tools/list`, `tools/call`, and `get_tool`, so stopping a plugin removes its tools from the live server. The MCP crate does not own contributed feature parameter definitions. Launcher, Gallery, Navigation, Tagging, Clipboard, File Operations, Metadata Export, QuickLook, Versions, Debug, and opt-in DevTest contribute their tools; each plugin's `PORTS.md` documents its names, schemas, and behavior. The old unnamespaced aliases are no longer advertised by `tools/list`; window capture/resize, cross-plugin UI inspection/control, and the global command catalog remain host tools because they depend on the running window or shared UI Bridge registries.
+
+Runtime functional validation on 2026-10-19 used `start-dev.bat all` and its
+same-process HTTP endpoint at `127.0.0.1:38473/mcp`. The profile stored its
+database/settings/session/thumbnails under `target/dev-test`. The run created
+`test-data/mcp-live-2026-10-19` with a copied JPEG and text fixture. `tools/list`
+returned 62 tools including 52 namespaced plugin contributions; no retired
+unnamespaced aliases were listed. `gallery.get_media`, `gallery.search_media`,
+`navigation.list_library`, `tagging.list_tags`, `clipboard.snapshot`,
+`launcher.snapshot`, `quicklook.snapshot`, `quicklook.inspect`, `debug.query`,
+`get_ui_state`, `command_list`, and `screenshot_window` completed; the screenshot
+returned a real MCP image block.
+
+With `PHOTAG_MCP_ALLOW_MUTATIONS=1` only in the isolated test process, the run
+registered and rescanned the fixture directory, indexing its JPEG/text/README;
+set and restored the image rating; created, assigned, read, removed and deleted
+a temporary tag; copied the test JPEG, renamed and moved that copy, then deleted
+only that test copy to the Recycle Bin; exported 10 metadata records to the test
+directory; and created/listed/activated a Lore version of the text fixture. Its
+SHA-256 remained unchanged after activation. Launcher category create/rename/
+delete succeeded. DevTest scanned all 12 checked-in fixture files, found the
+nested JPEG through Gallery search, injected 1,000 virtual rows and cleared them.
+During injection the DevTest status reported 1,000 rows, while
+`gallery.search_media` still returned 12 results even when queried with the
+fixture folder ID; this is recorded as an observed Gallery/benchmark visibility
+gap, not a successful Gallery scale display. The temporary tag/category and
+test-folder registration were removed. The fixture scan remains in the isolated
+DevTest profile; generated `metadata-export.json` and physical test fixtures
+remain in the test directory. The app was restarted without the mutation
+environment variable, and a final `gallery.set_rating` attempt was correctly
+rejected with `PHOTAG_MCP_ALLOW_MUTATIONS=0`.
+
+Current API names and full parameter schemas live beside their providers:
+`clipboard.*`, `file-operations.*`, `gallery.*`, `launcher.*`,
+`metadata-export.*`, `navigation.*`, `quicklook.*`, `tagging.*`,
+`versions.*`, `debug.*`, and (when enabled) `dev-test.*`. The remaining host
+tools are window screenshots/resizing, cross-plugin `control_ui`,
+`control_navigation`/`control_gallery` UI-driver operations, and the global
+`command_list`/`command_run` bridge.
 
 ## Cordis lifecycle and dependencies
 
 - Cordis plugin: `photag.mcp`; lifecycle guard service:
   `photag/mcp-task-guard`; host window-handle service:
   `photag/mcp-window-handle` (`CaptureWindowHandle`).
-- Requires `GalleryService`, `NavigationService`, `TaggingService`, `PreviewService`, `MediaPlaybackService`, `MetadataExportService`, `FileOperationsService`, and `CaptureWindowHandle`.
+- Requires `GalleryService`, `NavigationService`, `TaggingService`, `QuickLookService`, `MetadataExportService`, `CaptureWindowHandle`, the UI Bridge catalogs/surfaces, HistoryService, and the shared `McpToolRegistry`. Feature data operations are dispatched through each feature's registry contribution; the host does not acquire Clipboard, Launcher, File Operations, Versions, Debug, or DevTest services for MCP handlers.
 - The Shell publishes `CaptureWindowHandle` before providers start, fills it with the actual PhoTag HWND when GPUI creates the window, and stops the MCP plugin before stopping its providers.
-- MCP uses the official Rust `rmcp` server SDK and stdio transport. Protocol messages use stdin/stdout; diagnostics use stderr.
+- MCP uses the official Rust `rmcp` SDK. Normal startup serves Streamable HTTP from the GUI process at `http://127.0.0.1:38473/mcp`; `PHOTAG_MCP_HTTP_PORT` changes the port. `--mcp` retains stdio for diagnostics.
 - Cordis disposal aborts the MCP task. If Cordis cannot publish the lifecycle
   guard during startup, the transport task is aborted before the plugin returns
   an error. No localhost/network listener is started.
 
 ## Tool contracts
+
+The exact current feature API is listed in the owning plugin's `PORTS.md`.
+The `tools_read.rs`/`tools_write.rs` names in historical validation notes below
+refer to retired unnamespaced entry points; the host rejects those calls and
+clients should use the namespaced plugin tools shown by `tools/list`.
 
 - `command_list` reads the live UI Bridge command registry and reports command
   IDs, owner, label, menu/keybinding placement, `CommandNeeds`, and current
@@ -194,19 +253,19 @@ Status: local stdio MCP server and typed PhoTag tools are implemented. The MCP c
   is false, then use `search_media` / `list_library` and `screenshot_window` to
   inspect the same running application. The isolated `target/dev-test` data
   directory is selected by the Shell profile, not by MCP tool arguments.
-- `set_rating`, `assign_tags`, `remove_tags`, `create_tag`, `rename_tag`, `delete_tag`, `add_folder`, `remove_folder`, `rescan_folder`, `rename_media`, `copy_media`, `move_media`, `delete_media`, and `export_metadata` are mutating tools. They require `PHOTAG_MCP_ALLOW_MUTATIONS=1`; file/export, folder, tag-delete, and rescan tools also require `confirm: true`. Batch limits are 100 media IDs and 50 tag IDs. Tag assignment/removal update SQLite only and do not write IPTC or create XMP sidecars.
+- `set_rating`, `assign_tags`, `remove_tags`, `create_tag`, `rename_tag`, `delete_tag`, `add_folder`, `remove_folder`, `rescan_folder`, `rename_media`, `copy_media`, `move_media`, `delete_media`, and `export_metadata` are mutating tools. Ordinary mutations require Standard or Full; plugin metadata marks the high-impact file/export, folder, tag-delete, and rescan operations, which require Full plus `confirm: true`. Batch limits are 100 media IDs and 50 tag IDs. Tag assignment/removal update SQLite only and do not write IPTC or create XMP sidecars.
 - `delete_tag` removes the requested tag and its direct associations; it passes `clean_parents: false` because the MCP request only confirms deleting that tag and does not separately request ancestor-assignment cleanup. The Navigation service's affected media IDs are intentionally omitted from the existing `{ "ok": true }` response.
 
-Mutations are disabled by default. `confirm: true` is an explicit call-site acknowledgement, not proof of a human interaction; configure the MCP host to ask the user before invoking mutating tools. Copy/move destinations and media paths use the existing FileOperations service. Do not run this MCP server for an untrusted client.
+MCP access defaults to Off. Standard permits UI control and ordinary mutations; Full additionally permits plugin-declared high-impact mutations. `confirm: true` is an explicit call-site acknowledgement, not proof of a human interaction; configure the MCP host to ask the user before invoking mutating tools. Copy/move destinations and media paths use the existing FileOperations service. Do not run this MCP server for an untrusted client.
 
 ## Current limits and debugging
 
 - `get_view_state.preview.image_load` exposes Preview's actual first/full paint timing, quality, dimensions, errors, render count and polling wake reasons. `get_debug_info.view_revision` exposes the drawer's independent UI/content clocks. These read-only diagnostics do not generate logs or invalidate views.
-- `control_ui { action: "accessibility_activate" }` requires the existing mutation opt-in and asks only the Shell-published HWND belonging to this process for its native Windows UI Automation provider (`WM_GETOBJECT`, UIA root ID). This activates real GPUI accessibility updates for feedback-loop regression testing; no external window attachment or OS pointer/keyboard injection is used. Timeout is bounded to 2 seconds; non-Windows returns an unsupported error.
+- `control_ui { action: "accessibility_activate", confirm: true }` requires Full access and per-call confirmation, and asks only the Shell-published HWND belonging to this process for its native Windows UI Automation provider (`WM_GETOBJECT`, UIA root ID). This activates real GPUI accessibility updates for feedback-loop regression testing; no external window attachment or OS pointer/keyboard injection is used. Timeout is bounded to 2 seconds; non-Windows returns an unsupported error.
 
-- The MCP server is a child-process stdio endpoint: the client must launch `photag-shell --mcp`; the child process itself is the GUI application instance MCP controls. It does not attach to an already-open PhoTag process.
+- Normal HTTP MCP calls target the already-running GUI process. The `--mcp` stdio endpoint remains a legacy isolated-debug path.
 - MCP tool availability does not complete native UI behavior listed in `docs/source-feature-audit.md`; tools call the same Cordis services and their existing limits apply.
-- Check `PHOTAG_MCP_ALLOW_MUTATIONS`, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
+- Check Settings → MCP → AI control access level, whether `--mcp` was passed, Shell plugin dependency order, and stderr when tools are missing or startup fails.
 - If a screenshot fails, check HWND publication and window state first. If it returns a blank or stale image, inspect PrintWindow/GPUI Windows rendering behavior; do not treat protocol compilation as screenshot parity.
 - Batch scan receivers are drained by background workers so the indexing worker can finish; scan progress is exposed through `get_ui_state.scan_progress` when a scan is active.
 
@@ -215,7 +274,7 @@ Mutations are disabled by default. `confirm: true` is an explicit call-site ackn
 `get_ui_state` reads settings_open/settings_tab, language, translation_revision
 and preview_chrome_alpha. These supplement get_view_state; they do not describe
 OS pointer position or all GPUI widget state. `control_ui { action, value? }`
-requires PHOTAG_MCP_ALLOW_MUTATIONS=1 and supports settings_open/settings_close,
+requires Standard or Full access and supports settings_open/settings_close,
 settings_tab, language (en/zh-CN), statistics, bulk_actions, gallery_dialogs_close
 select_media (value is an indexed media ID string), and deselect. Settings uses public
 UiSurfaceState; language uses I18nService; Gallery uses GalleryUiRequest.
@@ -314,7 +373,7 @@ control_gallery actions select_many (1–1000 unique existing media_ids) and scr
 
 ## v2 panel and GPUI input validation (2026-10-14)
 
-control_ui adds navigation_tab(folders/tags/extensions), inspector_tab(information/history/extensions; info alias), sidebar_width/inspector_width(value:logical pixels100–1000 then hostclamp), pointer_down/pointer_drag/pointer_up(value:x,y logicalclient coordinates0–4096). All are guarded by PHOTAG_MCP_ALLOW_MUTATIONS. CaptureWindowHandle now holds the nativehandle and bounded single pending McpPointerInput{kind,x,y}; queue_pointer rejects busy/poisoned and shell take_pointer drains/deferred GPUI event dispatch. No OS pointer/keyboard injection and no external-process attach. get_ui_state exposes active pages and applied widths. control_navigation adds expand_folder(folder_id), expand_path(value:directory), select_path(value:directory), folder_search(value:query); requests validate registeredroot containment and perform canonical path selection/lazy loading. Live event drags/clicks and read-only rejection verified; see docs/redesign-validation.md.
+control_ui adds navigation_tab(folders/tags/extensions), inspector_tab(information/history/extensions; info alias), sidebar_width/inspector_width(value:logical pixels100–1000 then hostclamp), pointer_down/pointer_drag/pointer_up(value:x,y logicalclient coordinates0–4096). These UI-control actions require Standard or Full access. CaptureWindowHandle now holds the nativehandle and bounded single pending McpPointerInput{kind,x,y}; queue_pointer rejects busy/poisoned and shell take_pointer drains/deferred GPUI event dispatch. No OS pointer/keyboard injection and no external-process attach. get_ui_state exposes active pages and applied widths. control_navigation adds expand_folder(folder_id), expand_path(value:directory), select_path(value:directory), folder_search(value:query); requests validate registeredroot containment and perform canonical path selection/lazy loading. Live event drags/clicks and read-only rejection verified; see docs/redesign-validation.md.
 
 ## Floating panels and list validation (2026-10-14)
 
@@ -336,15 +395,15 @@ get_ui_state.folder_picker returns pending and native_open(the Navigation provid
 
 ## Grouping controls (2026-10-14)
 
-`control_gallery` accepts action `grouping`, value `none|month|file_type|modified|created|folder|subfolder`; `toggle_group` uses an exact get_ui_state group label; `popover` accepts `grouping`. The existing `month_grouping` boolean remains an alias for Month/None. All require PHOTAG_MCP_ALLOW_MUTATIONS=1 and queue the real Gallery actions. get_ui_state.gallery exposes grouping_mode, ordered groups as [label,count], collapsed_groups, window_offset and loaded_count. search_media remains a database query in query sort order; it does not pretend to return grouped UI order. Runtime commands/restart/screenshots are recorded under docs/validation-ui/2026-10-14-grouping.
+`control_gallery` accepts action `grouping`, value `none|month|file_type|modified|created|folder|subfolder`; `toggle_group` uses an exact get_ui_state group label; `popover` accepts `grouping`. The existing `month_grouping` boolean remains an alias for Month/None. These actions require Standard or Full access and queue the real Gallery actions. get_ui_state.gallery exposes grouping_mode, ordered groups as [label,count], collapsed_groups, window_offset and loaded_count. search_media remains a database query in query sort order; it does not pretend to return grouped UI order. Runtime commands/restart/screenshots are recorded under docs/validation-ui/2026-10-14-grouping.
 
 ## Directory-browser controls (2026-10-14)
 
-control_gallery adds open_directory(value=an entry in the current directory-card list), directory_up and refresh. It rejects invisible paths and no-parent views; these queue Gallery's real actions and keep PHOTAG_MCP_ALLOW_MUTATIONS gating. get_ui_state.gallery publishes browsing, directories[{name,path}], current_directory, parent_directory, directory_error and selected_directory; matched_count remains the displayed indexed-file count. Directory cards have no synthetic media IDs. control_ui adds pointer_double_down/pointer_double_up (same x,y logical client coordinates), dispatched by Shell as same-process GPUI MouseDown/MouseUp with click_count2. Single/drag/right-click behavior is unchanged. See docs/validation-ui/2026-10-14-folder-browser for84-step evidence including mouse hit tests and read-only restarts.
+control_gallery adds open_directory(value=an entry in the current directory-card list), directory_up and refresh. It rejects invisible paths and no-parent views; these queue Gallery's real actions and require Standard or Full access. get_ui_state.gallery publishes browsing, directories[{name,path}], current_directory, parent_directory, directory_error and selected_directory; matched_count remains the displayed indexed-file count. Directory cards have no synthetic media IDs. control_ui adds pointer_double_down/pointer_double_up (same x,y logical client coordinates), dispatched by Shell as same-process GPUI MouseDown/MouseUp with click_count2. Single/drag/right-click behavior is unchanged. See docs/validation-ui/2026-10-14-folder-browser for84-step evidence including mouse hit tests and read-only restarts.
 
 ## Runtime diagnostics (2026-10-14)
 
-Runtime diagnostics tools: get_debug_info(category?,level?,search?,page?,page_size?) returns actual drawer ui and logs Page from optional photag/debug service. Read-only and deliberately does not log its own query. control_debug(action,value?) shares DebugService::control with native controls and requires PHOTAG_MCP_ALLOW_MUTATIONS=1. Unknown service/action/invalid values return normal error JSON. MCP rejected requests are logged as ERROR; stdout remains reserved for protocol traffic.
+Runtime diagnostics tools: get_debug_info(category?,level?,search?,page?,page_size?) returns actual drawer ui and logs Page from optional photag/debug service. Read-only and deliberately does not log its own query. control_debug(action,value?) shares DebugService::control with native controls and requires Standard or Full access. Unknown service/action/invalid values return normal error JSON. MCP rejected requests are logged as ERROR; stdout remains reserved for protocol traffic.
 
 ## Idle regression matrix (2026-10-15)
 
@@ -431,8 +490,7 @@ adds no mutation and no new tool.
   while a request is pending) before asserting. Navigation validates targets and
   paths; unknown groups/folders/sections or missing directories return an error
   and never reach the view.
-- Like every other control action this is gated by
-  `PHOTAG_MCP_ALLOW_MUTATIONS=1`. It injects no OS pointer/keyboard events and
+- Like every other control action this is gated by Standard or Full access. It injects no OS pointer/keyboard events and
   does not open popup menus: `control_ui` `pointer_move`/`pointer_down`/
   `pointer_up` do, and their result is checked on a screenshot.
 - `window_status.bounds` (added with the startup window sizing work) reports the
@@ -463,7 +521,7 @@ the 1462×956 physical window rect. Read-only: adds no mutation and no new tool.
 
 ## Review corrections — 2026-10-16
 
-`control_ui.sidebar_request` additionally accepts refresh_roots, retry_save, toggle_group (group_id). `get_ui_state.sidebar_folders` includes roots_revision, system_folders_pending, save_error, directory child_count, drive usage_error and editor.error. All mutations still require PHOTAG_MCP_ALLOW_MUTATIONS=1. Test scenarios are checked into scripts/validate-sidebar-review*.cjs and validate-browser-selfwatch.cjs; pointer coordinates use get_ui_state.window_status.geometry.
+`control_ui.sidebar_request` additionally accepts refresh_roots, retry_save, toggle_group (group_id). `get_ui_state.sidebar_folders` includes roots_revision, system_folders_pending, save_error, directory child_count, drive usage_error and editor.error. These ordinary controls require Standard or Full access. Test scenarios are checked into scripts/validate-sidebar-review*.cjs and validate-browser-selfwatch.cjs; pointer coordinates use get_ui_state.window_status.geometry.
 
 
 ## Native activation regression tools — 2026-10-16
@@ -475,7 +533,7 @@ Mutation-guarded control_ui actions window_minimize and window_activate target o
 
 Mutation-guarded control_ui action address_bar accepts request:{kind:back/forward/up/edit/cancel/submit/set_text/crumb}, with text/path payloads as defined by Navigation::AddressBarRequest. It queues the same mounted-view handlers as controls. Read-only diagnostics are get_ui_state.sidebar_folders.address_bar (path/editing/text/error/breadcrumbs and can_*).
 
-control_ui key_press accepts only enter, escape, ctrl-l, alt-left, alt-right, alt-up in value. CaptureWindowHandle::{queue_key,key_pending,take_key} carries a single pending String to Shell; the existing MCP input poll/dispatch lease delivers PlatformInput::KeyDown through the same GPUI window, not OS injection. The field prefer_character_input is false. Input text in scenarios uses the real InputState via set_text; actual keyboard/paste/IME entry is not claimed by that setup. tools require PHOTAG_MCP_ALLOW_MUTATIONS=1.
+control_ui key_press accepts only enter, escape, ctrl-l, alt-left, alt-right, alt-up in value. CaptureWindowHandle::{queue_key,key_pending,take_key} carries a single pending String to Shell; the existing MCP input poll/dispatch lease delivers PlatformInput::KeyDown through the same GPUI window, not OS injection. The field prefer_character_input is false. Input text in scenarios uses the real InputState via set_text; actual keyboard/paste/IME entry is not claimed by that setup. These UI-control tools require Standard or Full access.
 
 Checked-in scripts: validate-address-bar.cjs (semantic routes + actual Enter/Escape), validate-address-pointer.cjs (real pointer controls), validate-address-restart.cjs and prepare-address-tag-restart.cjs (scope stability). See docs/validation-ui/2026-10-16-address/README.md.
 
@@ -539,3 +597,33 @@ validation. Mutation guard remains required. Read-only `sidebar_folders` adds
 so real GPUI pointer clicks can target the visible plus/menu/chevron after layout.
 Bounds are diagnostics, never instructions to control another process. Scenes:
 `scripts/validate-favorite-groups.cjs` and `validate-favorite-groups-restart.cjs`.
+# Declarative settings providers — 2026-10-18
+
+`control_ui {action:"settings_plugin_page",value:<owner>}` accepts owners with a
+live `UiViewContribution.settings_page` as well as the existing runtime-managed
+tools. Disabled runtime tool pages remain accessible for saved settings. Unknown
+or removed provider-only owners are rejected. The settings validation scenario
+is `scripts/validate-settings-minimal.cjs`; it uses same-process pointer/key events.
+
+
+## Native window testing — 2026-10-18
+
+`get_ui_state` includes `selected_window`, `main_window_status`, and `native_panels`
+(ID/HWND/owned-window status/render_count). `control_ui` action `window_select` accepts
+`main` or a live native instance ID and selects the target for screenshots, resize and
+same-process pointer/key dispatch. Mutation permission is required. Selection rejects
+unregistered or non-owned HWNDs; closing the selected native instance falls back to main.
+`window_minimize`/`window_activate` operate on that selected window. No external app input.
+
+`control_ui.window_close` posts WM_CLOSE only for a selected, registered native plugin HWND; main is rejected. It exercises the same OS close callback used by system chrome.
+
+## Live MCP mutation access — staged permissions
+
+MCP publishes the `mcp/settings` settings-page view through `photag.mcp`; it uses
+the existing SettingsService and owns no duplicate persistence. The segmented
+setting is Off, Standard or Full and is checked for every host and contributed
+mutating route. Standard covers UI control and ordinary mutations; Full also
+permits plugin-declared high-impact tools, which retain per-call `confirm=true`.
+Changes apply immediately without restarting MCP. The old boolean-key validation
+below is historical; current same-process Windows evidence is documented at
+`docs/validation-ui/2026-10-19-mcp-access-stages/`.

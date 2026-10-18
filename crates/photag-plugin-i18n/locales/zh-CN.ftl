@@ -168,7 +168,7 @@ msg-8ac767353080 = 只读
 msg-2d29f5da82bb = 拍摄日期
 msg-87aa1f7c2e61 = 显示 EXIF
 msg-d4b0f884ebb4 = 隐藏 EXIF
-msg-baeefbad50a3 = 主题色
+msg-baeefbad50a3 = 强调色
 msg-6725e7bbcd28 = 系统
 msg-b958535c342c = 石板蓝
 msg-f2f284a0bc5f = 灰青色
@@ -430,7 +430,7 @@ msg-69bd4ef9fbd0 = 查看
 msg-4e9fb306c65c = 标签已移除。
 msg-3fe965c58579 = 标签更新失败：{ $error }
 msg-f3e284be22ea = 设置更改会自动保存。
-msg-20ac6ed7d2f2 = 选择 PhoTag 全局使用的强调色。
+msg-20ac6ed7d2f2 = 调整工作台的显示与外观。
 msg-89757dd41e50 = 选择预览工具栏显示的操作与位置控件。
 msg-d37352424eaf = 设置打开媒体的按键，并为 F1–F9 分配标签。
 msg-5dbdbd8acec9 = 配置标签搜索方式及合并后的子标签处理方式。
@@ -1094,10 +1094,10 @@ msg-plugin-settings-launcher-description = 搜索并启动已安装的程序和�
 msg-plugin-settings-clipboard-description = 浏览和管理已捕获的剪贴板历史。
 msg-plugin-settings-screenshot-description = 启动 Shotoshot 截图并管理输出目录。
 msg-plugin-settings-overview-description = 管理功能插件。启停操作会立即作用于正在运行的 Cordis 插件。
-msg-plugin-settings-presentation = 快捷键启动方式
-msg-plugin-settings-workspace-panel = 显示主界面和悬浮面板
-msg-plugin-settings-panel-only = 仅显示悬浮面板
-msg-plugin-settings-capture-direct = 直接启动截图
+msg-plugin-settings-presentation = 启动呈现
+msg-plugin-settings-workspace-panel = 主工作区与浮窗
+msg-plugin-settings-panel-only = 仅浮窗
+msg-plugin-settings-capture-direct = 直接发起截图
 msg-plugin-settings-working = 正在处理…
 msg-plugin-settings-disable = 停用
 msg-plugin-settings-enable = 启用
@@ -1107,3 +1107,41 @@ msg-plugin-settings-open-panel = 打开插件面板
 msg-plugin-settings-shortcuts = 快捷键
 msg-plugin-settings-no-shortcuts = 此插件当前没有注册可用的快捷键。
 msg-plugin-settings-external-software = 外部软件
+
+msg-settings-common-0 = 标签与搜索
+
+msg-settings-common-2 = 软件更新
+
+msg-settings-common-4 = 插件管理
+
+msg-settings-common-5 = 自动分析
+
+msg-settings-common-6 = 显示语言
+
+msg-settings-common-7 = 启动呈现
+
+msg-settings-complete-0 = 标签匹配
+
+msg-settings-complete-1 = 发行版本
+
+msg-settings-complete-2 = 查看工作台依赖的软件及官方链接。
+
+msg-settings-fidelity-0 = 界面语言
+
+msg-settings-fidelity-2 = 更改后立即生效。
+
+msg-settings-fidelity-4 = 应用强调色
+
+msg-settings-fidelity-5 = 跟随 Windows 系统强调色
+
+msg-settings-fidelity-6 = 界面层次
+
+msg-settings-fidelity-7 = 选择侧栏与内容区域的分隔方式。
+
+msg-settings-fidelity-8 = 检查更新
+
+msg-settings-status-0 = 已启用
+
+msg-settings-status-1 = 已停用
+
+msg-settings-status-2 = 工具入口

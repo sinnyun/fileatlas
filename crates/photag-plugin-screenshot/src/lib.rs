@@ -329,7 +329,6 @@ impl Plugin for ScreenshotPlugin {
             .map_err(|error| ScreenshotPluginError::Dependency(error.to_string()))?;
         let panels = Arc::clone(&bridge.panels);
         let command_panels = Arc::clone(&panels);
-        let command_surfaces = Arc::clone(&bridge.surfaces);
         let capture_service = Arc::clone(&service);
         let launch_settings = Arc::clone(&service.settings);
         let _listener = context
@@ -345,29 +344,15 @@ impl Plugin for ScreenshotPlugin {
                                 tracing::error!(%error, "screenshot capture could not start");
                             }
                         } else {
-                            let _ = command_surfaces.set_value(
-                                "panel.presentation",
-                                if mode == PluginLaunchMode::PanelOnly {
-                                    "panel-only"
-                                } else {
-                                    "workspace"
-                                },
-                            );
-                            let _ = command_panels.open(PANEL);
+                            let _ = command_panels
+                                .open_presented(PANEL, mode == PluginLaunchMode::PanelOnly);
                         }
                     }
                     OPEN_MANAGER => {
-                        let _ = command_surfaces.set_value(
-                            "panel.presentation",
-                            if launch_settings.snapshot().ok().is_some_and(|settings| {
-                                settings.plugin_launch_mode(OWNER) == PluginLaunchMode::PanelOnly
-                            }) {
-                                "panel-only"
-                            } else {
-                                "workspace"
-                            },
-                        );
-                        let _ = command_panels.open(PANEL);
+                        let native = launch_settings.snapshot().ok().is_some_and(|settings| {
+                            settings.plugin_launch_mode(OWNER) == PluginLaunchMode::PanelOnly
+                        });
+                        let _ = command_panels.open_presented(PANEL, native);
                     }
                     CAPTURE => {
                         if let Err(error) = capture_service.launch_capture() {
@@ -441,7 +426,7 @@ impl Plugin for ScreenshotPlugin {
         .map_err(|error| ScreenshotPluginError::UiRegistration(error.to_string()))?;
 
         let panel_service = Arc::clone(&service);
-        let surfaces = Arc::clone(&bridge.surfaces);
+        let panel_catalog = Arc::clone(&panels);
         photag_ui_bridge::panel_catalog::register_panel_for_plugin(
             &context,
             OWNER,
@@ -456,7 +441,7 @@ impl Plugin for ScreenshotPlugin {
                 factory: Arc::new(move |window, app| {
                     view::panel(
                         Arc::clone(&panel_service),
-                        Arc::clone(&surfaces),
+                        Arc::clone(&panel_catalog),
                         window,
                         app,
                     )

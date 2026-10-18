@@ -1,5 +1,13 @@
 # Gallery plugin ports / 图库数据对接
 
+## MCP contributions (2026-10-19)
+
+Gallery contributes `gallery.search_media` and `gallery.get_media` through the
+host-published `McpToolRegistry`. The plugin owns their JSON Schemas and parses
+requests with `deny_unknown_fields`, applies page/tag/type/sort bounds, and calls
+its own `GalleryService` methods. `get_media` returns the Gallery media row and
+its assigned PhoTag tags. Cordis removes both tools when `photag.gallery` stops.
+
 ## Everything filename/path search (2026-10-17)
 
 Gallery optionally reads `EverythingSearchService` (`photag/everything-search`)
@@ -442,3 +450,7 @@ Filesystem/index changes still advance snapshots and version actions still advan
 history generation. Success/errors remain cached by the shared ReadModel. The idle
 regression is `scripts/validate-version-idle.cjs`; it reads raw debug events rather
 than hiding OpenTelemetry logs, and verifies both unrelated writes and real changes.
+
+## MCP feature contributions
+
+Gallery owns `gallery.search_media`, `gallery.get_media`, and `gallery.set_rating` through `McpToolRegistry`. Search/get schemas and handlers use `GalleryService`; rating accepts 1–100 positive media IDs and a 0–5 value and calls `apply_rating`. These writes are mutation-gated. The old unnamespaced aliases are retired; `tools/list` exposes the plugin-owned names.

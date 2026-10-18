@@ -1137,6 +1137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "chacha20"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65c35e4b699c7e15ccbe7ee35c005e4fc0a278d22238a2857e6ce2dadeda1b06"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.3.1",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2730,6 +2741,7 @@ dependencies = [
  "js-sys",
  "libc",
  "r-efi 6.0.0",
+ "rand_core 0.10.1",
  "wasm-bindgen",
 ]
 
@@ -6390,6 +6402,8 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "serde",
+ "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -6419,6 +6433,7 @@ dependencies = [
  "gpui-kit",
  "gpui-pre",
  "image",
+ "photag-contracts",
  "photag-plugin-database",
  "photag-plugin-settings",
  "photag-ui-bridge",
@@ -6475,6 +6490,8 @@ dependencies = [
  "photag-plugin-thumbnails",
  "photag-ui-bridge",
  "rusqlite",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -6506,6 +6523,8 @@ dependencies = [
  "open",
  "photag-contracts",
  "photag-plugin-database",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -6543,6 +6562,8 @@ dependencies = [
  "photag-ui-bridge",
  "rfd",
  "rusqlite",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
@@ -6616,6 +6637,7 @@ dependencies = [
  "gpui-kit",
  "gpui-pre",
  "image",
+ "photag-contracts",
  "photag-plugin-database",
  "photag-plugin-settings",
  "photag-ui-bridge",
@@ -6632,26 +6654,21 @@ dependencies = [
 name = "photag-plugin-mcp"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "base64 0.22.1",
  "cordis-rs",
  "image",
  "photag-contracts",
- "photag-plugin-clipboard",
  "photag-plugin-database",
- "photag-plugin-debug",
- "photag-plugin-dev-test",
- "photag-plugin-file-operations",
  "photag-plugin-gallery",
  "photag-plugin-history",
  "photag-plugin-i18n",
- "photag-plugin-launcher",
  "photag-plugin-metadata-export",
  "photag-plugin-navigation",
  "photag-plugin-quicklook",
  "photag-plugin-screenshot",
  "photag-plugin-settings",
  "photag-plugin-tagging",
- "photag-plugin-versions",
  "photag-ui-bridge",
  "rmcp",
  "serde",
@@ -6668,11 +6685,14 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "gpui-kit",
+ "photag-contracts",
  "photag-plugin-database",
  "photag-ui-bridge",
  "rfd",
+ "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
 ]
 
@@ -6705,9 +6725,12 @@ name = "photag-plugin-quicklook"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "photag-contracts",
+ "photag-plugin-file-operations",
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
  "windows-sys 0.61.2",
 ]
@@ -6781,12 +6804,16 @@ name = "photag-plugin-tagging"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
+ "photag-contracts",
  "photag-plugin-database",
  "photag-plugin-indexing",
  "photag-plugin-thumbnails",
  "photag-ui-bridge",
  "rusqlite",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
 ]
 
@@ -6840,6 +6867,9 @@ dependencies = [
  "cordis-rs",
  "lore-vm",
  "mime_guess",
+ "photag-contracts",
+ "photag-plugin-database",
+ "photag-plugin-indexing",
  "photag-plugin-thumbnails",
  "photag-plugin-version-info",
  "rusqlite",
@@ -7424,6 +7454,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2e8e8bcc7961af1fdac401278c6a831614941f6164ee3bf4ce61b7edb162207"
+dependencies = [
+ "chacha20",
+ "getrandom 0.4.3",
+ "rand_core 0.10.1",
+]
+
+[[package]]
 name = "rand_chacha"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7460,6 +7501,12 @@ checksum = "76afc826de14238e6e8c374ddcc1fa19e374fd8dd986b0d2af0d02377261d83c"
 dependencies = [
  "getrandom 0.3.4",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 
 [[package]]
 name = "rand_distr"
@@ -7797,19 +7844,28 @@ version = "3.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5023804cbe0304cbe06197ac16e645a0a0d0ffa2953bf735c15c2fa0213350"
 dependencies = [
+ "async-trait",
  "base64 0.23.1",
+ "bytes",
  "chrono",
  "futures",
+ "http",
+ "http-body",
+ "http-body-util",
  "indexmap",
  "pastey 0.2.3",
  "pin-project-lite",
+ "rand 0.10.1",
  "rmcp-macros",
  "schemars",
  "serde",
  "serde_json",
+ "sse-stream",
  "thiserror 2.0.21",
  "tokio",
+ "tokio-stream",
  "tokio-util",
+ "tower-service",
  "tracing",
  "uuid",
 ]
@@ -8657,6 +8713,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9571ea910ebd84c86af4b3ed27f9dbdc6ad06f17c5f96146b2b671e2976744f"
 dependencies = [
  "bitflags 2.13.2",
+]
+
+[[package]]
+name = "sse-stream"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c25ac7aff0abd1dbc474536e40416e1102c7dd9bfba0b9861c6d357f835dcfb4"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http-body",
+ "http-body-util",
+ "pin-project-lite",
 ]
 
 [[package]]

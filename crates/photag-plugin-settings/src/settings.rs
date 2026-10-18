@@ -102,6 +102,55 @@ fn default_tag_merge_children() -> TagMergeChildren {
     TagMergeChildren::Reparent
 }
 
+/// MCP permissions for this PhoTag instance. High-impact tools still require
+/// their own explicit confirmation parameter when Full is selected.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum McpAccessLevel {
+    #[default]
+    Off,
+    Standard,
+    Full,
+}
+
+impl McpAccessLevel {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Standard => "standard",
+            Self::Full => "full",
+        }
+    }
+
+    pub fn allows_standard(self) -> bool {
+        matches!(self, Self::Standard | Self::Full)
+    }
+
+    pub fn allows_full(self) -> bool {
+        self == Self::Full
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum McpAccessLevelValue {
+    Level(McpAccessLevel),
+    LegacyBool(bool),
+}
+
+fn deserialize_mcp_access_level<'de, D>(deserializer: D) -> Result<McpAccessLevel, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(match McpAccessLevelValue::deserialize(deserializer)? {
+        McpAccessLevelValue::Level(level) => level,
+        // The previous boolean opted into every mutating tool, so preserve
+        // that effective permission when upgrading an existing settings file.
+        McpAccessLevelValue::LegacyBool(true) => McpAccessLevel::Full,
+        McpAccessLevelValue::LegacyBool(false) => McpAccessLevel::Off,
+    })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TagHotkey {
     pub key: String, // e.g. "F1", "F2"
@@ -258,6 +307,13 @@ pub struct Settings {
     /// User enabled state for runtime-controllable feature plugins.
     #[serde(default)]
     pub plugin_enabled: BTreeMap<String, bool>,
+    /// Live MCP permissions; legacy `mcp_allow_mutations` booleans are migrated on read.
+    #[serde(
+        default,
+        alias = "mcp_allow_mutations",
+        deserialize_with = "deserialize_mcp_access_level"
+    )]
+    pub mcp_access_level: McpAccessLevel,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -336,6 +392,7 @@ impl Default for Settings {
             screenshot_tool: ScreenshotToolSettings::default(),
             plugin_launch_modes: BTreeMap::new(),
             plugin_enabled: BTreeMap::new(),
+            mcp_access_level: McpAccessLevel::Off,
         }
     }
 }

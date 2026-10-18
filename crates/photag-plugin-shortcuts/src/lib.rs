@@ -42,7 +42,7 @@ impl ShortcutService {
     /// Apply registrations on the UI thread and dispatch pressed command IDs.
     pub fn poll(
         &self,
-        hwnd: isize,
+        _hwnd: isize,
         overrides: &BTreeMap<String, String>,
         capture_active: bool,
     ) -> bool {
@@ -74,17 +74,6 @@ impl ShortcutService {
             });
         }
         for command_id in &invoked {
-            #[cfg(target_os = "windows")]
-            if hwnd != 0 {
-                use windows::Win32::UI::WindowsAndMessaging::{
-                    SW_RESTORE, SetForegroundWindow, ShowWindow,
-                };
-                let handle = windows::Win32::Foundation::HWND(hwnd as *mut _);
-                unsafe {
-                    let _ = ShowWindow(handle, SW_RESTORE);
-                    let _ = SetForegroundWindow(handle);
-                }
-            }
             if self.command_sender.send(Some(command_id.clone())).is_err() {
                 tracing::error!(command = %command_id, "global shortcut command dispatcher is closed");
             }

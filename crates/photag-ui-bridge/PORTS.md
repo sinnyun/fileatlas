@@ -121,3 +121,38 @@ separation, compact padding/corners and nonshrinking frame geometry.
 returns a shared chevron/title/menu/action row; dropdown wrappers retain their own
 native behavior. Navigation uses these builders for drives, quick access and
 every favorite group. The builders do not register resources or own product data.
+# Declarative settings pages — 2026-10-18
+
+`settings_page` owns `SettingsPage`, `SettingsSection`, `SettingRow`, typed
+`SettingControl`/`SettingValue`, and common header/section/row rendering.
+`settings_page::contribution(id,title,description,snapshot,apply)` builds simple
+forms without plugin-local layout. Snapshots are memory-only; handlers own fresh
+validation and persistence. Text controls use owner-managed InputState; path and
+action controls invoke owner actions. Complex async editors use Custom/local Entity
+and the same renderer, not a second theme.
+
+`UiViewContribution::with_settings_page` supplies `SettingsPageMetadata` and the
+`settings.pages` slot. Registration/removal uses the existing UiViewCatalog and
+Cordis effect cleanup; no parallel registry/service is introduced. Settings
+reconciles owner/ID/generation and drops stale views. Schema errors and provider
+read/write errors remain visible. No new persistence files; full contract and
+example: `docs/settings-page-contract.md`.
+
+
+## Independent native panels — 2026-10-18
+
+`winfx::restore_and_activate(hwnd)` uses SW_RESTORE only for minimized windows;
+SW_SHOW otherwise preserves maximized geometry. It attempts SetForegroundWindow
+once and logs rejection. Shell additionally uses GPUI platform activation.
+
+`PanelCatalog::open_presented(definition_id, native: bool) -> Result<String,String>`
+keeps lifecycle ownership and Single/Multiple semantics. `open` delegates to embedded mode.
+`native_panels() -> Result<Vec<NativePanel>,String>` exposes instance ID, PanelDefinition
+(factory/options) and monotonic activation generation to the GPUI host. Native instances
+are not registered as workspace.modal views. Reopening a single native instance increments
+its activation; switching mode closes the prior instance. `close`/`unregister_owner` remove
+both native records and surfaces. No new storage or plugin manager. `workspace.activate`
+is a host activation request only for embedded opens. Native window geometry is transient,
+using feature default/minimum sizes; existing workspace panel/session geometry is unchanged.
+
+`close_definition(definition_id) -> Result<(),String>` closes that tool’s registered instances without using global active selection; Screenshot manager’s internal Close uses this in both modes.

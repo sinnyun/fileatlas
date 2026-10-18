@@ -75,3 +75,19 @@ Shell lifecycle/surface/locale polling uses UI Bridge refresh::poll; locale chan
 ## Address interaction verification — 2026-10-16
 
 The title bar continues to host Navigation's command.breadcrumb contribution; address/history behavior remains in the Navigation feature. Shell's same-process MCP dispatcher additionally consumes CaptureWindowHandle::take_key and dispatches parsed GPUI Keystroke as PlatformInput::KeyDown after the render lease. poll_panel_requests only wakes for an actually pending key/pointer. No keyboard input is injected into the OS or other applications.
+
+## Native tool-window composition — 2026-10-18
+
+Foreground correction: new and reused native panels now share `activate_panel`,
+deferred until their native window and Root exist. It shows/restores only that
+HWND and invokes GPUI platform activation for foreground/focus handling. No
+permanent topmost style or polling that steals focus. Main stays minimized.
+Evidence: docs/validation-ui/2026-10-18-native-foreground/README.md.
+
+`shell/native_panels.rs` hosts UI Bridge native panel factories in independent GPUI Kit
+Root windows, using each definition title/default/minimum size and the shared theme.
+System chrome owns moving/resizing/closing. Closing/Escape delegates to PanelCatalog;
+Cordis owner cleanup removes the native record and the host closes its window on the next
+shared poll. Main workspace rendering is never suppressed. Only an embedded panel launch
+requests restoring the main HWND. Native reopen activates/restores only its own HWND.
+MCP capture/input can select `main` or a live native panel ID; both stay in this child process.

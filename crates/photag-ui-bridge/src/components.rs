@@ -100,6 +100,22 @@ pub fn icon_button(id: impl Into<SharedString>, name: gpui_kit::assets::IconName
         .h(px(theme::ICON_BUTTON_SIZE))
 }
 
+/// Native keyboard/focus behavior with the shared workbench navigation paint.
+pub fn nav_button(id: impl Into<SharedString>, selected: bool) -> Button {
+    Button::new(ElementId::Name(id.into()))
+        .ghost()
+        .w_full()
+        .h(px(theme::NAV_ROW_HEIGHT))
+        .justify_start()
+        .rounded(px(theme::ROUND_MD))
+        .text_size(px(theme::FONT_SIZE_BODY))
+        .bg(rgba(if selected {
+            (theme::selection_color() << 8) | 0xff
+        } else {
+            0
+        }))
+}
+
 pub fn section_heading(label: impl Into<SharedString>) -> Div {
     div()
         .text_size(px(theme::FONT_SIZE_HEADING))

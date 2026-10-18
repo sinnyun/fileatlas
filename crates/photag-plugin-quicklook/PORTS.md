@@ -63,9 +63,13 @@
 - Gallery shows a GPUI alert on failure, translated: `NotRunning` tells the user to
   start QuickLook themselves (and to install it if it is missing). The app neither
   opens an installer, starts the viewer, nor falls back to another player.
-- MCP `open_media {media_id}` requires mutation opt-in and calls the same service;
+- MCP contributes `quicklook.open_media {media_id}`, `quicklook.snapshot`, and
+  `quicklook.inspect` from this feature crate through `McpToolRegistry`; open
+  requires mutation permission and calls the same service. The MCP host retains
+  its image-content `screenshot_quicklook` diagnostic because the feature tool
+  contract currently returns structured JSON values.
   `control_gallery {action:"preview",media_id}` exercises the Gallery alert flow.
-- Inspect `get_view_state.quicklook`, `get_ui_state.quicklook` and
+- Inspect `quicklook.snapshot`, `get_ui_state.quicklook` and
   `get_ui_state.quicklook_notice`, plus `photag_plugin_quicklook` tracing spans.
   Popup rendering and UI quiet-state checks use same-process PhoTag MCP.
 

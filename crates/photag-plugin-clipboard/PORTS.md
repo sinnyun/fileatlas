@@ -30,7 +30,7 @@
 - The supported capture representations are arboard text and decoded bitmap/image data. Windows file-drop lists and arbitrary app-specific clipboard formats are not yet stored. The panel can pause capture in-memory for the current plugin session; private-app exclusions and a persisted privacy mode still need design.
 - OS clipboard access can fail while another process owns/locks the clipboard; inspect `photag-clipboard-listener` logs. Global hotkey registration can fail on conflict; inspect `photag.shortcuts` logs.
 - The listener uses a dedicated OS thread and is shut down by Cordis cleanup. Actual OS capture/write and cross-application paste remain unverified; UI evidence does not establish these paths.
-- MCP `get_clipboard_state` omits content and exposes kind, revision, group IDs, and `clipboard.ui` metadata (selection/filter/visible IDs/input lengths). Metadata uses `UiSurfaceState` behind `ChangeGate`; `refresh::listen` delivers service changes without polling IO. Mutation-guarded `add_clipboard_text` writes fixture text to the isolated profile's JSON file and does not touch the OS clipboard.
+- MCP contributes `clipboard.snapshot` and `clipboard.add_text` through `McpToolRegistry`; schemas and handlers live in this crate and its uniquely named Cordis lifecycle wrapper retains the route guard. Snapshot accepts no arguments, omits content and returns kind, revision, categories and item metadata; `add_text` accepts `content`, optional `category_id`, and optional `favorite`, and writes directly through `ClipboardService` without touching the OS clipboard. The old unnamespaced tool names are retired. `clipboard.ui` selection/filter details remain available through generic `get_ui_state`. Metadata uses `UiSurfaceState` behind `ChangeGate`; `refresh::listen` delivers service changes without polling IO.
 
 ## Local favorites (2026-10-18)
 
@@ -45,3 +45,5 @@ come from UI Bridge `theme`; sections, cards, navigation and action/icon buttons
 reuse `components`. Content-kind icons and date formatting remain feature-owned.
 Capture, persistence, categories and favorites behavior is unchanged by this
 styling change. See `docs/ui-theme.md` for future UI contributions.
+
+PanelOnly presentation uses `PanelCatalog::open_presented(PANEL,true)` for an independent native tool window; WorkspaceAndPanel keeps the embedded public panel. Capture/history storage is unchanged.

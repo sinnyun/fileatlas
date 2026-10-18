@@ -7,6 +7,9 @@ license.workspace = true
 
 [dependencies]
 cordis.workspace = true
+photag-contracts = { path = "../photag-contracts" }
+photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-indexing = { path = "../photag-plugin-indexing" }
 lore-vm.workspace = true
 photag-plugin-version-info = { path = "../photag-plugin-version-info" }
 photag-plugin-thumbnails = { path = "../photag-plugin-thumbnails" }

@@ -212,9 +212,11 @@ impl Plugin for TaggingPlugin {
         service.thumbnails = context
             .try_service::<photag_plugin_thumbnails::ThumbnailService>()
             .ok();
+        let service = Arc::new(service);
         let _publication = context
-            .provide(Arc::new(service))
+            .provide(Arc::clone(&service))
             .map_err(|error| TaggingPluginError::Publish(error.to_string()))?;
+        register_tagging_mcp_tools(&context, &service)?;
         register_for_plugin(
             &context,
             "photag.tagging",
@@ -230,6 +232,192 @@ impl Plugin for TaggingPlugin {
         .map_err(|error| TaggingPluginError::UiRegistration(error.to_string()))?;
         Ok(())
     }
+}
+
+fn register_tagging_mcp_tools(
+    context: &Context,
+    tagging: &Arc<TaggingService>,
+) -> Result<(), TaggingPluginError> {
+    let Ok(registry) = context.try_service::<photag_contracts::mcp::McpToolRegistry>() else {
+        return Ok(());
+    };
+    let tree_service = Arc::clone(tagging);
+    let tag_tree = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.list_tags".into(),
+        title: "List hierarchical tags".into(),
+        description: "Read PhoTag's hierarchical tag tree.".into(),
+        input_schema:
+            serde_json::json!({"type":"object","properties":{},"additionalProperties":false})
+                .as_object()
+                .cloned()
+                .unwrap_or_default(),
+        mutating: false,
+        confirmation_required: false,
+        handler: Arc::new(move |_| {
+            let tagging = Arc::clone(&tree_service);
+            Box::pin(async move {
+                let tags = tagging.tag_tree().map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"tags":tags}))
+            })
+        }),
+    };
+    let assign_service = Arc::clone(tagging);
+    let assign = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.assign".into(),
+        title: "Assign tags".into(),
+        description: "Assign tags to indexed media. Accepts 1 to 100 media IDs and 1 to 50 tag IDs.".into(),
+        input_schema: serde_json::json!({
+            "type":"object","properties":{
+                "media_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":100},
+                "tag_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":50}
+            },"required":["media_ids","tag_ids"],"additionalProperties":false
+        }).as_object().cloned().unwrap_or_default(),
+        mutating: true,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let tagging = Arc::clone(&assign_service);
+            Box::pin(async move {
+                let request: TaggingMcpMutation = serde_json::from_value(arguments)
+                    .map_err(|error| format!("invalid parameters: {error}"))?;
+                validate_tagging_mcp_ids(&request)?;
+                tagging.assign(&request.media_ids, &request.tag_ids).map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"ok":true,"media_count":request.media_ids.len(),"tag_count":request.tag_ids.len()}))
+            })
+        }),
+    };
+    let remove_service = Arc::clone(tagging);
+    let remove = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.remove".into(),
+        title: "Remove tags".into(),
+        description: "Remove selected tags from indexed media. Accepts 1 to 100 media IDs and 1 to 50 tag IDs.".into(),
+        input_schema: serde_json::json!({
+            "type":"object","properties":{
+                "media_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":100},
+                "tag_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":50}
+            },"required":["media_ids","tag_ids"],"additionalProperties":false
+        }).as_object().cloned().unwrap_or_default(),
+        mutating: true,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let tagging = Arc::clone(&remove_service);
+            Box::pin(async move {
+                let request: TaggingMcpMutation = serde_json::from_value(arguments)
+                    .map_err(|error| format!("invalid parameters: {error}"))?;
+                validate_tagging_mcp_ids(&request)?;
+                tagging.remove(&request.media_ids, &request.tag_ids).map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"ok":true,"media_count":request.media_ids.len(),"tag_count":request.tag_ids.len()}))
+            })
+        }),
+    };
+    let missing_service = Arc::clone(tagging);
+    let missing = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.list_missing_records".into(),
+        title: "List missing tagged records".into(),
+        description: "List indexed records with tags whose original files are missing; file contents are not read or removed.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{},"additionalProperties":false})
+            .as_object().cloned().unwrap_or_default(),
+        mutating: false,
+        confirmation_required: false,
+        handler: Arc::new(move |_| {
+            let tagging = Arc::clone(&missing_service);
+            Box::pin(async move {
+                let records = tokio::task::spawn_blocking(move || tagging.missing_records())
+                    .await.map_err(|error| error.to_string())??;
+                Ok(serde_json::json!({"records":records}))
+            })
+        }),
+    };
+    let relink_service = Arc::clone(tagging);
+    let relink_context = context.clone();
+    let relink = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.relink_missing_record".into(),
+        title: "Relink missing tagged record".into(),
+        description: "Associate one missing tagged record with an explicitly selected existing file; the target must be a regular file without conflicting tags or rating.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"record_id":{"type":"integer","minimum":1},"path":{"type":"string","minLength":1}},"required":["record_id","path"],"additionalProperties":false})
+            .as_object().cloned().unwrap_or_default(),
+        mutating: true,
+        confirmation_required: false,
+        handler: Arc::new(move |arguments| {
+            let tagging = Arc::clone(&relink_service);
+            let context = relink_context.clone();
+            Box::pin(async move {
+                let record_id = arguments.get("record_id").and_then(serde_json::Value::as_i64)
+                    .filter(|id| *id > 0).ok_or_else(|| "record_id must be positive".to_owned())?;
+                let path = arguments.get("path").and_then(serde_json::Value::as_str)
+                    .filter(|path| !path.trim().is_empty()).ok_or_else(|| "path must be non-empty".to_owned())?.to_owned();
+                tokio::task::spawn_blocking(move || tagging.relink_record(record_id, &path))
+                    .await.map_err(|error| error.to_string())??;
+                context.emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+                    .await.map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"relinked":record_id}))
+            })
+        }),
+    };
+    let delete_service = Arc::clone(tagging);
+    let delete_context = context.clone();
+    let delete_missing = photag_contracts::mcp::McpToolDefinition {
+        name: "tagging.delete_missing_records".into(),
+        title: "Delete missing record rows".into(),
+        description: "Forget 1–500 indexed records only after verifying their local files are still missing. Never deletes a file from disk; requires explicit confirmation.".into(),
+        input_schema: serde_json::json!({"type":"object","properties":{"record_ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"maxItems":500}},"required":["record_ids"],"additionalProperties":false})
+            .as_object().cloned().unwrap_or_default(),
+        mutating: true,
+        confirmation_required: true,
+        handler: Arc::new(move |arguments| {
+            let tagging = Arc::clone(&delete_service);
+            let context = delete_context.clone();
+            Box::pin(async move {
+                let record_ids = arguments.get("record_ids").and_then(serde_json::Value::as_array)
+                    .ok_or_else(|| "record_ids must be an array".to_owned())?.iter()
+                    .map(|id| id.as_i64().filter(|id| *id > 0).ok_or_else(|| "record_ids must contain positive integers".to_owned()))
+                    .collect::<Result<Vec<_>,_>>()?;
+                if !(1..=500).contains(&record_ids.len()) { return Err("record_ids must contain 1 to 500 IDs".into()); }
+                let count = tokio::task::spawn_blocking(move || tagging.delete_missing_records(&record_ids))
+                    .await.map_err(|error| error.to_string())??;
+                context.emit::<photag_contracts::MediaIndexChanged>(cordis::Routing::Unscoped, ())
+                    .await.map_err(|error| error.to_string())?;
+                Ok(serde_json::json!({"deleted":count}))
+            })
+        }),
+    };
+    let registration = registry
+        .register(
+            "photag.tagging",
+            [tag_tree, assign, remove, missing, relink, delete_missing],
+        )
+        .map_err(|error| TaggingPluginError::Publish(error.to_string()))?;
+    let _mcp_registration = context
+        .provide(Arc::new(TaggingMcpRegistration {
+            _registration: registration,
+        }))
+        .map_err(|error| TaggingPluginError::Publish(error.to_string()))?;
+    Ok(())
+}
+
+struct TaggingMcpRegistration {
+    _registration: Arc<photag_contracts::mcp::McpToolRegistration>,
+}
+
+impl Service for TaggingMcpRegistration {
+    const NAME: &'static str = "photag/tagging-mcp-registration";
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TaggingMcpMutation {
+    media_ids: Vec<i64>,
+    tag_ids: Vec<i64>,
+}
+
+fn validate_tagging_mcp_ids(request: &TaggingMcpMutation) -> Result<(), String> {
+    if !(1..=100).contains(&request.media_ids.len()) || request.media_ids.iter().any(|id| *id <= 0)
+    {
+        return Err("media_ids must contain 1 to 100 positive IDs".into());
+    }
+    if !(1..=50).contains(&request.tag_ids.len()) || request.tag_ids.iter().any(|id| *id <= 0) {
+        return Err("tag_ids must contain 1 to 50 positive IDs".into());
+    }
+    Ok(())
 }
 
 #[derive(Debug, thiserror::Error)]

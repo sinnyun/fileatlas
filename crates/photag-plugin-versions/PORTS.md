@@ -3,7 +3,11 @@
 ## Lifecycle and dependencies
 
 - Cordis plugin: `photag.versions`; service: `photag/versions` (`VersionsService`).
-- Requires `VersionInfoService` and PhoTag `ThumbnailService`; Shell starts both local plugins for Gallery/MCP.
+- Requires `VersionInfoService`, PhoTag `ThumbnailService`, `DatabaseService`
+  (used by MCP media-ID routes to resolve the indexed file path), and
+  `IndexingService` (refreshes filesystem metadata and thumbnails after an
+  MCP restore or content-changing branch action). Shell starts Indexing before
+  Versions.
 - Lore GUI `lore-vm` is pinned to commit `35eaf6ed1273397a5b18a283dda560949bb94ca4`, matching `F:\AI\geren\newworkspace`.
 - Data lives below the active database directory: `versions/worktrees/<entity>/`, `versions/stores/<entity>/shared-store/`, and immutable preview copies in `versions/previews/<entity>/`.
 - `VersionsService::storage_path() -> &Path` exposes the active Lore storage root for status and diagnostics; revision metadata itself is stored in the shared PhoTag database service.
@@ -28,8 +32,31 @@
 ## Consumers and event flow
 
 - Gallery reads through a keyed `ReadModel`; explicit create/switch actions run asynchronously outside render.
-- After activation, Gallery reindexes filesystem-derived size/time/type and image thumbnail while preserving rating/tags/capture date, then reloads the current query. MCP emits `MediaIndexChanged` after the same refresh.
-- MCP `list_file_versions` is read-only. `create_file_version` and `activate_file_version` require `PHOTAG_MCP_ALLOW_MUTATIONS=1` and `confirm=true`.
+- After activation or a content-changing branch action, `IndexingService`
+  refreshes filesystem-derived size/time/type and image thumbnail while
+  preserving rating/tags/capture date. MCP emits `MediaIndexChanged` and
+  `MediaVersionHistoryChanged(media_id)`; Gallery reloads the current query
+  and invalidates the selected file's History panel.
+- MCP `list_file_versions` is read-only. `create_file_version` and `activate_file_version` are high-impact: they require Full in Settings → MCP → AI control and per-call `confirm=true`.
+
+## Plugin-owned MCP tools
+
+`VersionsPlugin` contributes namespaced tools through the host's
+`McpToolRegistry`; the plugin retains the Cordis registration guard so stopping
+Versions removes the tools from `tools/list` and `tools/call`.
+
+- `versions.list {media_id}` and `versions.file_state {media_id}` read the
+  indexed media row first, then call `VersionsService` using its canonical
+  path. `versions.list_branches {media_id, include_archived?}` reads the
+  Lore/VersionInfo branch graph.
+- `versions.create {media_id, title}` and `versions.activate
+  {media_id, version_id}` are mutating tools requiring `confirm=true`.
+- `versions.manage_branch {media_id, action, ...}` supports `create`,
+  `switch`, `archive`, `merge`, `resolve`, and `abort`; it requires
+  `confirm=true`. Successful actions that change file contents emit
+  `MediaIndexChanged` so Gallery and database-derived state refresh.
+- The old unnamespaced MCP aliases are retired; the feature-owned namespaced
+  routes are the current client API.
 
 ## Limits and diagnostics
 

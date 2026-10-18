@@ -824,3 +824,26 @@ PhoTag `cargo +1.97.1 check --locked -p photag-shell -j 2` 与 `build --locked` 
 用户发现拆分插件设置后，程序设置中的 QuickLook 与 Everything 检查不可见。检测器仍保留两项，但呈现页只筛选 Shotoshot，且程序设置侧栏丢失 Software 项。现恢复程序设置 Software 页并显示 QuickLook/Everything 两张检测卡；截图插件详情仍只显示 Shotoshot。`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-settings -p photag-plugin-mcp -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2` 通过。默认 EXE 当时未发现对应运行进程，使用标准目标目录构建成功；同进程隔离 MCP 场景 `scripts/validate-software-check.cjs` 通过，实际环境识别 QuickLook 4.5.0 与 Everything 1.5.0.1423，检查页面展示版本、路径和项目/下载链接，没有启动或查询这两项软件。截图：`target/mcp-software-restored-20261018/screenshots/settings-software-check.png`。
 
 随后完成 UI 托槽缓存审计：Shell 主挂载已按 ID/generation 复用有效视图并释放注销/换代视图；PanelCatalog 停用 owner 时移除面板定义、实例和对应挂载；插件元数据贡献在 Shell 渲染时读取实时 catalog；`settings.language` 原先由设置面板初始化时单次快照创建，现改为按 ID/generation 实时同步，并将此槽纳入 Shell 注册变化信号。Navigation 的内嵌槽也按 ID/generation 同步。`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-settings -p photag-plugin-navigation -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2` 通过；主题、刷新、架构和 feature-ledger 守卫通过。新版通过同进程隔离 MCP 插件设置场景。现有 MCP 插件停启控制只覆盖启动台、剪贴板、截图工具，不能停用 i18n，因此语言托槽换代/注销未做运行时停启演练；此路径已静态检查并纳入统一同步逻辑。
+
+
+## 2026-10-18 “仅浮窗”独立原生窗口修复
+
+用户纠正：独立打开插件窗口，不拉起主界面。旧实现仅隐藏主窗内容，留下空白大窗，本轮移除该逻辑。
+使用现有 PanelCatalog/Cordis 实例和生命周期，Shell组合独立GPUI Kit Root；快捷键不再无条件恢复主窗。
+截图管理器正文关闭也改走公共close_definition。
+
+最终64步同进程PhoTag MCP通过，隔离target/mcp-native-panels，Windows/150%DPI；
+主窗最小化保持、重复恢复同一独立窗、两工具并存、真实指针暂停/恢复、较小窗、
+截图正文关闭/WM_CLOSE、Escape、停用清理/重启和模式切换通过。最终截图已打开核对。
+fmt/locked Shell check/独立命名构建通过，UI Bridge19测试通过；theme/refresh/architecture/ledger通过。
+layering仍有既存launcher/clipboard→settings层级错误，无新增依赖边。原用户EXE仍运行未覆盖，
+新构建为target/debug/photag-shell-native-panels.exe。OS真实系统快捷键派发、改色/菜单/全部长内容未复验；
+较小窗沿用Clipboard隐藏分组创建区的既有响应逻辑，具体差异和尺寸见[完整证据](validation-ui/2026-10-18-native-panels/README.md)。
+
+## 2026-10-18 独立浮窗前台激活更正
+
+旧独立浮窗验收没有检查真正的前台窗口。已复现新建visible=true而active=false；现在首次创建和重复唤起都在Root就绪后走统一GPUI平台激活。三个工具36步前台断言及原64步回归通过，主窗保持最小化，quiet-state通过。默认EXE增量构建、fmt、locked check、theme/refresh/architecture/ledger通过。真实OS全局按键派发仍未验；详见[前台激活证据](validation-ui/2026-10-18-native-foreground/README.md)。
+
+2026-10-19 初版（历史记录，现由下条三档实现取代）：MCP 插件设置中曾使用二态 `mcp_allow_mutations` 开关；该字段、截图和验证场景仅对应当时版本。详见[历史二态验证记录](validation-ui/2026-10-19-mcp-settings-toggle/README.md)。
+
+2026-10-19 更新：按用户要求将二态开关改为三个分段阶段：关闭、常规控制、完全控制。常规控制含 UI 控制和普通增删改；完全控制额外开放插件 MCP 元数据标记为高影响的操作，高影响调用仍需每次 `confirm=true`。字段迁移为 `mcp_access_level`，旧 `mcp_allow_mutations` 布尔值保留兼容（false→关闭、true→完全控制）。设置页同进程 MCP 指针切换、普通写入、高影响拒绝/确认、缺失字段默认关闭和旧字段 true 迁移均验证通过。主题、刷新、架构与 feature-ledger 守卫通过；具体命令和截图见 [MCP 分阶段权限验证](validation-ui/2026-10-19-mcp-access-stages/README.md)。

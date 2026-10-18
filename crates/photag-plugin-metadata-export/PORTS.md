@@ -115,3 +115,7 @@ Export panel reports status/visibility changes to UI Bridge refresh::poll, prese
 ## Browser runtime update — 2026-10-15
 
 Runtime exports tagged/rated file records via `queries::export_metadata_scoped(conn,true)`; ephemeral directory cache rows are excluded. Legacy `export_metadata` remains for source-compatible tests. Favorites and tags retain their existing export representation.
+
+## MCP feature contribution
+
+This plugin owns `metadata-export.export {path, confirm:true}`. It uses the same `MetadataExportService` state machine and waits for a success/failure result; confirmation is enforced by the MCP host before the handler writes the destination file. The previous unnamespaced `export_metadata` tool remains during migration.

@@ -1,6 +1,7 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
 //! PhoTag's complete metadata backup export exposed as a Cordis service.
 
+mod mcp;
 mod view;
 
 use std::path::Path;
@@ -201,6 +202,8 @@ impl Plugin for MetadataExportPlugin {
         let service = Arc::new(MetadataExportService::new(database));
         let _publication = context
             .provide(Arc::clone(&service))
+            .map_err(|error| MetadataExportPluginError::Publish(error.to_string()))?;
+        mcp::register(&context, &service)
             .map_err(|error| MetadataExportPluginError::Publish(error.to_string()))?;
         let surfaces = context
             .try_service::<photag_ui_bridge::UiBridgeService>()

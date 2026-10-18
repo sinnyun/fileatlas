@@ -13,20 +13,12 @@ pub(super) fn command_label(command: &RegisteredCommand) -> String {
 }
 
 fn heading(label: &'static str) -> Div {
-    div()
-        .h(px(28.))
-        .h_flex()
-        .items_center()
-        .font_semibold()
-        .text_size(px(16.))
-        .border_b_1()
-        .border_color(rgba(theme::HAIRLINE.to_rgba()))
-        .child(label)
+    super::design::heading(label)
 }
 
 fn keycap(label: String) -> Div {
     div()
-        .w(px(130.))
+        .w(px(114.))
         .h(px(32.))
         .flex_shrink_0()
         .h_flex()
@@ -43,7 +35,7 @@ fn setting_row() -> Div {
     div()
         .h_flex()
         .w_full()
-        .min_h(px(56.))
+        .min_h(px(48.))
         .items_center()
         .gap_3()
         .border_b_1()
@@ -54,12 +46,15 @@ fn description(title: &'static str, note: &'static str) -> Div {
     div()
         .flex_1()
         .min_w_0()
-        .v_flex()
-        .gap(px(2.))
-        .child(div().font_medium().child(title))
+        .h_flex()
+        .items_center()
+        .gap_3()
+        .child(div().w(px(130.)).flex_shrink_0().font_medium().child(title))
         .child(
             div()
-                .text_size(px(12.))
+                .flex_1()
+                .min_w_0()
+                .text_size(px(theme::FONT_SIZE_SMALL))
                 .text_color(rgb(theme::TEXT_SECONDARY))
                 .child(note),
         )
@@ -101,12 +96,12 @@ impl SettingsView {
         let label = command_label(command);
         let mut row = div()
             .h_flex()
-            .min_h(px(44.))
+            .min_h(px(48.))
             .items_center()
             .gap(px(12.))
             .child(
                 div()
-                    .w(px(190.))
+                    .w(px(130.))
                     .flex_shrink_0()
                     .min_w_0()
                     .h_flex()
@@ -126,7 +121,7 @@ impl SettingsView {
             )
             .child(
                 div()
-                    .w(px(66.))
+                    .w(px(60.))
                     .flex_shrink_0()
                     .rounded(px(4.))
                     .py_1()
@@ -178,7 +173,7 @@ impl SettingsView {
                 .child(div().flex_1())
                 .child(
                     Button::new(format!("shortcut-change-{id}"))
-                        .w(px(92.))
+                        .w(px(64.))
                         .h(px(32.))
                         .label("更改")
                         .on_click(cx.listener(move |this, _, window, cx| {
@@ -195,7 +190,7 @@ impl SettingsView {
                 .child(
                     Button::new(format!("shortcut-reset-{id}"))
                         .ghost()
-                        .w(px(56.))
+                        .w(px(48.))
                         .h(px(32.))
                         .label("恢复")
                         .tooltip("恢复插件提供的默认按键")
@@ -212,7 +207,7 @@ impl SettingsView {
                 .child(
                     Button::new(format!("shortcut-disable-{id}"))
                         .ghost()
-                        .w(px(56.))
+                        .w(px(48.))
                         .h(px(32.))
                         .label("禁用")
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -235,7 +230,7 @@ impl SettingsView {
             .child(row);
         if capture && let Some(error) = &self.shortcut_error {
             container = container.child(
-                div().h_flex().pl(px(280.)).child(
+                div().h_flex().pl(px(214.)).child(
                     div()
                         .flex_1()
                         .pb_1()
@@ -266,25 +261,7 @@ impl SettingsView {
             .min_w_0()
             .text_size(px(14.))
             .line_height(px(20.))
-            .child(
-                div()
-                    .v_flex()
-                    .gap(px(6.))
-                    .pb(px(12.))
-                    .child(
-                        div()
-                            .text_size(px(22.))
-                            .line_height(px(28.))
-                            .font_semibold()
-                            .child("快捷键"),
-                    )
-                    .child(
-                        div()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
-                            .child("管理插件命令和媒体操作按键。系统级快捷键可在其他程序中使用。"),
-                    ),
-            )
-            .child(heading("插件快捷键"));
+            .child(heading("程序快捷键"));
         let mut count = 0;
         for command in &registered {
             if matches!(
@@ -303,10 +280,10 @@ impl SettingsView {
                 div()
                     .py_3()
                     .text_color(rgb(theme::TEXT_SECONDARY))
-                    .child("当前没有插件注册快捷键。启用相关插件后会自动显示。"),
+                    .child("暂无其他程序快捷键。工具快捷键可在各插件设置中调整。"),
             );
         }
-        page = page.child(div().mt_3().child(heading("其他快捷键设置")));
+        page = page.child(div().mt_3().child(heading("媒体操作")));
         let modifier = settings.exclude_modifier;
         let weak = cx.entity().downgrade();
         page = page.child(
@@ -345,23 +322,26 @@ impl SettingsView {
         );
         page = page.child(
             setting_row()
-                .child(description(
-                    "打开媒体文件",
-                    "在图库中使用 QuickLook 打开所选文件；空格和 Enter 始终可用。",
-                ))
+                .child(description("打开媒体文件", "空格和 Enter 始终可用。"))
                 .child(
                     div()
                         .h_flex()
                         .items_center()
                         .gap_2()
                         .child(keycap(settings.open_key.clone()))
-                        .child(self.open_key_capture_button(cx).w(px(150.)).h(px(32.))),
+                        .child(self.open_key_capture_button(cx).w(px(100.)).h(px(32.))),
                 ),
         );
-        page = page.child(setting_row().child(description(
-            "评分快捷键",
-            "使用数字键 0–5 设置评分，0 表示取消评分。",
-        )));
+        page = page.child(
+            setting_row()
+                .child(description("评分", "数字键 0–5，0 表示取消评分。"))
+                .child(
+                    div()
+                        .h_flex()
+                        .gap_2()
+                        .children((0..=5).map(|key| keycap(key.to_string()).w(px(32.)))),
+                ),
+        );
         page = page.child(
             div()
                 .h(px(30.))
@@ -371,14 +351,7 @@ impl SettingsView {
                 .text_size(px(16.))
                 .child("标签目标快捷键（F1–F9）"),
         );
-        let mut tags = div()
-            .v_flex()
-            .gap(px(2.))
-            .p(px(4.))
-            .border_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-            .rounded(px(5.))
-            .bg(rgb(theme::SURFACE_PANEL));
+        let mut tags = div().v_flex().gap(px(2.)).py(px(theme::SPACE_2));
         for key in ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"] {
             let selected = settings
                 .tag_hotkeys
@@ -387,7 +360,7 @@ impl SettingsView {
                 .map(|binding| binding.tag_id);
             let mut row = div()
                 .h_flex()
-                .h(px(26.))
+                .h(px(30.))
                 .flex_shrink_0()
                 .items_center()
                 .gap_3()
@@ -451,7 +424,7 @@ impl SettingsView {
             .v_flex()
             .w_full()
             .min_w_0()
-            .gap(px(theme::PANEL_GAP))
+            .gap(px(theme::SPACE_2))
             .child(heading("Keyboard shortcuts"));
         let mut count = 0;
         for command in commands.iter().filter(|command| command.owner == owner) {

@@ -11,6 +11,8 @@ cordis.workspace = true
 open = "5"
 photag-contracts = { path = "../photag-contracts" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 trash = "5"

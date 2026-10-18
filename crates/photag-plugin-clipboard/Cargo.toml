@@ -10,6 +10,7 @@ cordis.workspace = true
 gpui-kit.workspace = true
 gpui = { package = "gpui-pre", version = "=0.3.8" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-contracts = { path = "../photag-contracts" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 clipboard-master = "4.0"

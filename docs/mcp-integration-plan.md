@@ -6,10 +6,10 @@
 
 ## 当前实施状态（2026-10-13）
 
-- 已增加 `photag-plugin-mcp` crate，使用官方 `rmcp` 3.5.1，通过 Cordis 管理生命周期，并由 Shell 以 `--mcp` 或开发配置中的 `mcp` 显式启动本机 stdio 服务。
+- `photag-plugin-mcp` 使用官方 `rmcp` 3.5.1，由 Cordis 管理生命周期。正常启动时在 GUI 主进程提供 localhost Streamable HTTP；`--mcp` 保留 stdio 调试模式。
 - 已实现 `screenshot_window`、媒体库/搜索/详情读取、视图状态、预览/播放控制、扫描取消、评分/标签、文件夹管理、媒体文件操作和元数据导出工具。逐项服务映射和限制见 [`crates/photag-plugin-mcp/PORTS.md`](../crates/photag-plugin-mcp/PORTS.md)。
 - Windows 截图通过 Shell 提供的本进程 GPUI HWND 调用 `PrintWindow(PW_RENDERFULLCONTENT)`，编码成 MCP PNG 图片内容。代码已实现；MCP 客户端实连、截图画面保真度和不同窗口状态仍需 Windows 实机验证。
-- 修改工具默认关闭；设置 `PHOTAG_MCP_ALLOW_MUTATIONS=1` 后才开放。文件操作、导出、文件夹删除/重扫、标签删除还需请求参数中的 `confirm: true`。MCP 客户端仍应逐次向用户确认高影响操作。
+- 以上为 2026-10-13 的历史记录。当前 HTTP 与 stdio 模式共用设置页里的三档权限，不再通过 `PHOTAG_MCP_ALLOW_MUTATIONS` 环境变量授权修改。关闭档只读；常规控制档允许 UI 控制及普通增删改；完全控制档开放插件 MCP 元数据标记的高影响工具，但仍要求每次调用 `confirm: true`。新配置默认关闭，旧 `mcp_allow_mutations` 布尔字段兼容映射为 false→关闭、true→完全控制。详见 `docs/validation-ui/2026-10-19-mcp-access-stages/README.md`。
 - 该状态快照最初记录 shell 检查被 Gallery `.track_scroll` API 编译错误阻塞；此问题已在后续整合中修复。2026-10-13 的最终整合记录中，格式检查及 `cargo check -p photag-shell --locked -j 2` 均通过。MCP 实际客户端往返、窗口截图保真度及 Windows 行为仍待实机验证；以 [`docs/validation-report.md`](validation-report.md) 最新迁移记录为准。
 
 ## 架构
@@ -22,7 +22,16 @@
 
 ### 传输方式
 
-采用本机 MCP stdio 启动模式：MCP 客户端以 `--mcp` 启动 PhoTag 可执行程序，由同一进程承载可见应用和 MCP 会话。协议日志不得写入 stdout。该接口不连接已运行的 PhoTag，也不开放网络监听。
+正常启动采用同进程 Streamable HTTP MCP：Shell 启动 MCP Cordis 插件，在 GUI 进程内监听 `127.0.0.1:38473/mcp`，可通过 `PHOTAG_MCP_HTTP_PORT` 修改端口。MCP 客户端连接已运行实例，不负责启动 PhoTag 子进程。`--mcp` 暂保留为 stdio 调试兼容入口。监听仅绑定回环地址。HTTP 与 stdio 共用设置页的 Off/Standard/Full 三档访问权限；权限变化立即生效，无需重启，也没有环境变量授权覆盖。高影响操作按插件 MCP 元数据分级，并保留逐次 `confirm=true`。若监听端口占用或启动失败，PhoTag 会记录错误并继续启动 GUI。
+
+Codex 客户端可在 `config.toml` 中配置：
+
+```toml
+[mcp_servers.photag]
+url = "http://127.0.0.1:38473/mcp"
+```
+
+产品功能工具按插件贡献，不在本文维护全局参数清单。宿主提前发布 `photag_contracts::mcp::McpToolRegistry`；每个功能插件在自身源码中声明 namespace、工具名、输入 JSON Schema、handler 和修改/确认属性，并把注册 guard 交给 Cordis 管理。MCP 插件读取存活贡献并构造 rmcp 工具路由。停止插件会撤销其贡献。新增功能的参数与行为说明维护在对应插件的 `PORTS.md`。
 
 ## 截图工具
 

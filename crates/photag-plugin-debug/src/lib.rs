@@ -1,5 +1,6 @@
 //! Runtime diagnostics owned by a compile-time Cordis plugin.
 mod capture;
+mod mcp;
 mod store;
 mod view;
 pub use capture::attach;
@@ -36,6 +37,7 @@ impl Plugin for DebugPlugin {
         let _publication = context
             .provide(service.clone())
             .map_err(|e| error(e.to_string()))?;
+        mcp::register(&context, service).map_err(error)?;
         register_for_plugin(
             &context,
             "photag.debug",

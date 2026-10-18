@@ -194,6 +194,13 @@ they select the old default and fail before checking the project.
 - Use the installed `1.97.1-x86_64-pc-windows-msvc` explicitly here:
   `cargo +1.97.1 ...`, including fmt, check, build, test, run, clippy and tree.
 - Keep `--locked`, bounded jobs (`-j 2` for builds/tests) and incremental settings.
+- If a running PhoTag process prevents overwriting the target EXE, the user
+  explicitly authorizes closing that process and rebuilding the normal EXE.
+  Verify its executable path belongs to this workspace, close it normally first,
+  and terminate only that verified process if it does not exit. Do not ask again.
+  Reuse the existing target directory and incremental artifacts. Do not work
+  around an EXE lock with a separately named EXE, a new target directory,
+  `cargo clean`, or a full rebuild. See `docs/rust-toolchain.md`.
 - If installed toolchains change, choose an already-installed Windows MSVC
   toolchain meeting the current workspace `rust-version`; verify with
   `rustc +<toolchain> --version`. Only install a toolchain if none is suitable.
@@ -239,10 +246,13 @@ media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
 The MCP server and GPUI window share that child process; it cannot attach to a
 separately launched PhoTag process. Use an isolated `dev-test` profile for
 fixture scans and virtual rows. Consult `crates/photag-plugin-mcp/PORTS.md` for
-the tool list and startup diagnostics. MCP mutations remain disabled unless
-`PHOTAG_MCP_ALLOW_MUTATIONS=1` is explicitly set; keep them disabled for
-read-only validation and only enable them when the validation requires a
-mutation.
+the tool list and startup diagnostics. MCP access is controlled by Settings →
+Plugin settings → MCP → AI control: Off is read-only, Standard permits UI
+control and ordinary mutations, and Full permits plugin-declared high-impact
+tools. High-impact calls still require per-call `confirm=true`. New profiles
+default to Off; isolated validation may set a profile's `mcp_access_level` to
+the minimum stage needed. Do not use the retired `PHOTAG_MCP_ALLOW_MUTATIONS`
+environment variable as an authorization mechanism.
 
 If a required interaction or state is not exposed by the plugin, inspect and
 extend the PhoTag MCP public tools and their PORTS.md as part of the debugging

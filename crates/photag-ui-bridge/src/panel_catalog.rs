@@ -18,11 +18,21 @@ pub struct PanelDefinition {
     pub factory: UiViewFactory,
 }
 
+/// A plugin panel hosted in its own native window, never mounted in the workspace.
+#[derive(Clone)]
+pub struct NativePanel {
+    pub id: String,
+    pub definition: PanelDefinition,
+    pub activation: u64,
+}
+
 #[derive(Default)]
 struct State {
     definitions: BTreeMap<String, (String, PanelDefinition)>,
     instances: BTreeMap<String, (String, String)>,
     next: u64,
+    activation: u64,
+    native: BTreeMap<String, NativePanel>,
 }
 
 /// Public panel contract available as `UiBridgeService.panels`.
@@ -70,8 +80,48 @@ impl PanelCatalog {
         Ok(())
     }
 
+    /// Snapshot native instances for host window creation, activation and cleanup.
+    pub fn native_panels(&self) -> Result<Vec<NativePanel>, String> {
+        Ok(self
+            .state
+            .lock()
+            .map_err(|_| "Panel catalog lock poisoned")?
+            .native
+            .values()
+            .cloned()
+            .collect())
+    }
+
     /// Single returns/focuses the existing instance; Multiple creates a fresh content view.
     pub fn open(self: &Arc<Self>, definition_id: &str) -> Result<String, String> {
+        self.open_presented(definition_id, false)
+    }
+
+    /// Preserve single-instance semantics across workspace/native mode switches.
+    pub fn open_presented(
+        self: &Arc<Self>,
+        definition_id: &str,
+        native: bool,
+    ) -> Result<String, String> {
+        let replacement = {
+            let state = self
+                .state
+                .lock()
+                .map_err(|_| "Panel catalog lock poisoned")?;
+            let single = state
+                .definitions
+                .get(definition_id)
+                .is_some_and(|(_, d)| d.multiplicity == PanelMultiplicity::Single);
+            state
+                .instances
+                .iter()
+                .find(|(_, (_, def))| single && def == definition_id)
+                .filter(|(id, _)| state.native.contains_key(*id) != native)
+                .map(|(id, _)| id.clone())
+        };
+        if let Some(id) = replacement {
+            self.close(&id)?;
+        }
         let mut state = self
             .state
             .lock()
@@ -87,12 +137,45 @@ impl PanelCatalog {
                 .iter()
                 .find(|(_, (_, def))| def == definition_id)
             {
-                self.surfaces.set_value("panel.active", id)?;
-                return Ok(id.clone());
+                let id = id.clone();
+                state.activation += 1;
+                let activation = state.activation;
+                if let Some(panel) = state.native.get_mut(&id) {
+                    panel.activation = activation;
+                } else {
+                    self.surfaces
+                        .set_value("workspace.activate", &activation.to_string())?;
+                }
+                self.surfaces.set_value("panel.active", &id)?;
+                return Ok(id);
             }
         }
         state.next += 1;
         let id = format!("{}@{}", definition_id, state.next);
+        state.activation += 1;
+        if native {
+            let mut definition = definition;
+            definition.options.id = id.clone();
+            let activation = state.activation;
+            state.native.insert(
+                id.clone(),
+                NativePanel {
+                    id: id.clone(),
+                    definition,
+                    activation,
+                },
+            );
+            self.surfaces.set_open(format!("panel.{id}"), true)?;
+            self.surfaces.set_value("panel.active", &id)?;
+            self.surfaces
+                .set_value(&format!("panel.{id}.native"), "true")?;
+            state
+                .instances
+                .insert(id.clone(), (owner, definition_id.into()));
+            return Ok(id);
+        }
+        self.surfaces
+            .set_value("workspace.activate", &state.activation.to_string())?;
         let mut options = definition.options;
         options.id = id.clone();
         let visible = self.surfaces.clone();
@@ -138,6 +221,23 @@ impl PanelCatalog {
         Ok(id)
     }
 
+    /// Close this tool definition without relying on the globally active panel.
+    pub fn close_definition(&self, definition_id: &str) -> Result<(), String> {
+        let ids = self
+            .state
+            .lock()
+            .map_err(|_| "Panel catalog lock poisoned")?
+            .instances
+            .iter()
+            .filter(|(_, (_, def))| def == definition_id)
+            .map(|(id, _)| id.clone())
+            .collect::<Vec<_>>();
+        for id in ids {
+            self.close(&id)?;
+        }
+        Ok(())
+    }
+
     pub fn close(&self, id: &str) -> Result<(), String> {
         let mut state = self
             .state
@@ -146,6 +246,7 @@ impl PanelCatalog {
         if state.instances.remove(id).is_none() {
             return Err(format!("Unknown panel instance {id}"));
         }
+        state.native.remove(id);
         self.views
             .unregister_id(&format!("panel/{id}"))
             .map_err(|e| e.to_string())?;
@@ -168,6 +269,7 @@ impl PanelCatalog {
             .collect::<Vec<_>>();
         for id in ids {
             state.instances.remove(&id);
+            state.native.remove(&id);
             self.views
                 .unregister_id(&format!("panel/{id}"))
                 .map_err(|e| e.to_string())?;
@@ -210,6 +312,44 @@ mod tests {
             factory: Arc::new(|_, _| panic!("Factory is only executed on GPUI thread")),
         }
     }
+    #[test]
+    fn native_single_reactivates_switches_and_cleans_up() -> Result<(), String> {
+        let c = catalog();
+        c.register("tool", definition("tool", PanelMultiplicity::Single))?;
+        let native = c.open_presented("tool", true)?;
+        assert!(c.views.snapshot().map_err(|e| e.to_string())?.is_empty());
+        let activation = c.native_panels()?[0].activation;
+        assert_eq!(c.open_presented("tool", true)?, native);
+        assert!(c.native_panels()?[0].activation > activation);
+        let embedded = c.open("tool")?;
+        assert_ne!(embedded, native);
+        assert!(c.native_panels()?.is_empty());
+        assert!(!c.surfaces.is_open(&format!("panel.{native}")));
+        let again = c.open_presented("tool", true)?;
+        assert_ne!(again, embedded);
+        assert!(c.views.snapshot().map_err(|e| e.to_string())?.is_empty());
+        c.unregister_owner("tool")?;
+        assert!(c.native_panels()?.is_empty());
+        assert!(!c.surfaces.any_panel_open());
+        Ok(())
+    }
+
+    #[test]
+    fn native_and_workspace_instances_do_not_override_each_other() -> Result<(), String> {
+        let c = catalog();
+        c.register("tool", definition("native", PanelMultiplicity::Single))?;
+        c.register("other", definition("embedded", PanelMultiplicity::Single))?;
+        let native = c.open_presented("native", true)?;
+        let embedded = c.open("embedded")?;
+        assert_eq!(c.native_panels()?.len(), 1);
+        c.close(&embedded)?;
+        assert_eq!(c.native_panels()?[0].id, native);
+        c.close_definition("native")?;
+        assert!(!c.surfaces.is_open(&format!("panel.{native}")));
+        assert!(c.native_panels()?.is_empty());
+        Ok(())
+    }
+
     #[test]
     fn single_reuses_multiple_is_independent_and_owner_cleanup_is_scoped() {
         let c = catalog();

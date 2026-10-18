@@ -13,7 +13,7 @@ function option(name, fallback) {
   return index < 0 ? fallback : argv[index + 1];
 }
 if (!option('--exe')) {
-  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile target/mcp-handoff] [--plugins dev-test] [--plan <json>] [--interactive] [--allow-mutations]');
+  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile target/mcp-handoff] [--plugins dev-test] [--plan <json>] [--interactive] [--access-level off|standard|full]');
   process.exit(2);
 }
 const exe = path.resolve(root, option('--exe'));
@@ -29,12 +29,26 @@ const output = path.join(profile, 'screenshots');
 const plugins = [...new Set([...option('--plugins', 'dev-test').split(',').filter(Boolean), 'dev-test'])].join(',');
 fs.mkdirSync(output, { recursive: true });
 fs.mkdirSync(path.join(profile, 'local', 'PhoTag'), { recursive: true });
+const accessLevel = option('--access-level', argv.includes('--allow-mutations') ? 'full' : undefined);
+if (accessLevel !== undefined && !['off', 'standard', 'full'].includes(accessLevel)) throw Error('--access-level must be off, standard or full');
+const legacyMutationValue = option('--legacy-mutations');
+if (legacyMutationValue !== undefined && !['true', 'false'].includes(legacyMutationValue)) throw Error('--legacy-mutations must be true or false');
 for (const [name, value] of [
   ['language.json', { language: 'zh-CN' }],
-  ['settings.json', { auto_check_updates: true }],
+  ['settings.json', { auto_check_updates: true, ...(accessLevel === undefined ? {} : { mcp_access_level: accessLevel }) }],
 ]) {
   const file = path.join(profile, name);
   if (!fs.existsSync(file)) fs.writeFileSync(file, JSON.stringify(value, null, 2));
+  if (name === 'settings.json') {
+    const settings = JSON.parse(fs.readFileSync(file, 'utf8'));
+    delete settings.mcp_allow_mutations;
+    if (legacyMutationValue !== undefined) {
+      delete settings.mcp_access_level;
+      settings.mcp_allow_mutations = legacyMutationValue === 'true';
+    } else if (accessLevel === undefined) delete settings.mcp_access_level;
+    else settings.mcp_access_level = accessLevel;
+    fs.writeFileSync(file, JSON.stringify(settings, null, 2));
+  }
 }
 const child = spawn(exe, ['--mcp'], {
   cwd: root,
@@ -44,7 +58,6 @@ const child = spawn(exe, ['--mcp'], {
     PHOTAG_DEV_TEST_DIR: profile,
     PHOTAG_DEV_TEST_DB: path.join(profile, 'photag.db'),
     LOCALAPPDATA: path.join(profile, 'local'),
-    PHOTAG_MCP_ALLOW_MUTATIONS: argv.includes('--allow-mutations') ? '1' : '0',
   },
   stdio: ['pipe', 'pipe', 'pipe'],
 });

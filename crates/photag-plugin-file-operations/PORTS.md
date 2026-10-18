@@ -89,3 +89,13 @@ Runtime diagnostics: plugin startup and existing error/diagnostic output now emi
 ## Browser runtime update — 2026-10-15
 
 Runtime file actions validate local metadata at action time. Known program-initiated move/rename updates the annotation path even outside favorites. Browser rows use owner 0 rather than bookmark ownership. Successful recycling removes live membership and retains annotated records for missing/relink maintenance; recycle failure does not erase records. External moves are not automatically matched. Legacy tests retain source semantics via open_at. Real recycle-bin/native-dialog paths remain explicitly unverified in browser mode.
+
+## MCP feature contributions
+
+`FileOperationsService` contributes `file-operations.rename_media`,
+`file-operations.move_media`, `file-operations.copy_media`, and
+`file-operations.delete_media` through `McpToolRegistry`. Definitions and
+schemas live in this crate's `src/mcp.rs`; all four operations require explicit
+confirmation, and batch operations validate 1–100 positive media IDs. Results
+preserve per-item success/error outcomes. Former unnamespaced MCP names remain
+as compatibility aliases during the migration.

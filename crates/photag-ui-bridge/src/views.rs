@@ -19,6 +19,14 @@ pub struct UiViewContribution {
     pub order: i32,
     pub factory: UiViewFactory,
     pub panel_id: Option<String>,
+    /// Optional settings navigation metadata; uses this same owned view catalog.
+    pub settings_page: Option<SettingsPageMetadata>,
+}
+
+#[derive(Clone, Debug)]
+pub struct SettingsPageMetadata {
+    pub title: String,
+    pub description: String,
 }
 
 impl UiViewContribution {
@@ -34,10 +42,25 @@ impl UiViewContribution {
             order,
             factory: Arc::new(factory),
             panel_id: None,
+            settings_page: None,
         }
     }
     pub fn with_panel_id(mut self, id: impl Into<String>) -> Self {
         self.panel_id = Some(id.into());
+        self
+    }
+    /// A settings provider renders `settings_page::SettingsPage` using its own
+    /// in-memory snapshot and existing service actions. Cordis owns removal.
+    pub fn with_settings_page(
+        mut self,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
+        self.slot = "settings.pages".into();
+        self.settings_page = Some(SettingsPageMetadata {
+            title: title.into(),
+            description: description.into(),
+        });
         self
     }
 }

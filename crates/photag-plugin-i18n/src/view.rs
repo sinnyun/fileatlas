@@ -1,9 +1,12 @@
 use crate::{I18nService, Language};
-use gpui_kit::assets::IconName;
-use gpui_kit::{base::StyledExt, component::button::Button, *};
-use photag_ui_bridge::{UiViewContribution, i18n::tr, theme};
+use gpui_kit::*;
+use photag_ui_bridge::{
+    UiViewContribution,
+    settings_page::{
+        Choice, SettingControl, SettingRow, SettingValue, SettingsPage, SettingsSection,
+    },
+};
 use std::sync::Weak;
-
 pub(super) fn language(service: Weak<I18nService>) -> UiViewContribution {
     UiViewContribution::new(
         "i18n/language-selector",
@@ -18,7 +21,6 @@ pub(super) fn language(service: Weak<I18nService>) -> UiViewContribution {
         },
     )
 }
-
 struct LanguageView {
     service: Weak<I18nService>,
     error: Option<String>,
@@ -28,40 +30,43 @@ impl Render for LanguageView {
         let Some(service) = self.service.upgrade() else {
             return div();
         };
-        let selected = service.language();
-        let mut row = div()
-            .v_flex()
-            .gap(px(6.))
-            .child(div().font_semibold().child(tr("Language")))
-            .child(
-                div().h_flex().gap(px(8.)).children(
-                    [
-                        (Language::English, "English"),
-                        (Language::Chinese, "简体中文"),
-                    ]
-                    .map(|(language, label)| {
-                        Button::new(format!("i18n-{}", language.code()))
-                            .icon(theme::small_icon(if selected == language {
-                                IconName::CircleDot
-                            } else {
-                                IconName::Circle
-                            }))
-                            .label(label)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.error = this.service.upgrade().and_then(|service| {
-                                    service
-                                        .set_language(language)
-                                        .err()
-                                        .map(|error| error.to_string())
-                                });
-                                cx.refresh_windows();
-                            }))
-                    }),
-                ),
-            );
-        if let Some(error) = &self.error {
-            row = row.child(div().text_color(rgb(theme::DANGER)).child(error.clone()));
-        }
-        row
+        let weak = cx.entity().downgrade();
+        SettingsPage::new(
+            "",
+            "",
+            vec![SettingsSection::new(
+                "",
+                vec![
+                    SettingRow::new(
+                        "i18n-language",
+                        "Display language",
+                        SettingControl::Select {
+                            value: service.language().code().into(),
+                            options: vec![
+                                Choice::new("en", "English"),
+                                Choice::new("zh-CN", "简体中文"),
+                            ],
+                        },
+                    )
+                    .description("Changes take effect immediately.")
+                    .error(self.error.clone()),
+                ],
+            )],
+        )
+        .render_body(std::rc::Rc::new(move |_, value, _, cx| {
+            if let SettingValue::Choice(value) = value {
+                let _ = weak.update(cx, |view, cx| {
+                    view.error = Language::parse(&value)
+                        .and_then(|language| {
+                            view.service
+                                .upgrade()
+                                .map_or(Ok(()), |service| service.set_language(language))
+                        })
+                        .err()
+                        .map(|error| error.to_string());
+                    cx.refresh_windows();
+                });
+            }
+        }))
     }
 }

@@ -2,6 +2,7 @@ use super::*;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 
+mod native_panels;
 mod panel_resize;
 use panel_resize::PanelSide;
 
@@ -25,6 +26,7 @@ pub(super) struct PhoTagShell {
     pub(super) tools_open: bool,
     pub(super) sidebar_open: bool,
     pub(super) inspector_open: bool,
+    pub(super) native_panels: native_panels::NativePanels,
     pub(super) panel_signature: (bool, Option<String>),
 }
 
@@ -70,7 +72,6 @@ impl Render for PhoTagShell {
         let mut auxiliary_views = Vec::new();
         let mut modal_views = Vec::new();
         let mut active_panel = None;
-        let panel_only = self.surfaces.value("panel.presentation").as_deref() == Some("panel-only");
         let active = self.surfaces.value("panel.active");
         for (_, _, slot, panel_id, view) in &self.views {
             match slot.as_str() {
@@ -95,9 +96,6 @@ impl Render for PhoTagShell {
                 }
                 _ => auxiliary_views.push(view.clone()),
             }
-        }
-        if panel_only {
-            modal_views.clear();
         }
         modal_views.extend(active_panel);
         let mut tool_commands = Vec::new();
@@ -459,7 +457,7 @@ impl Render for PhoTagShell {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.finish_panel_drag(cx)),
             )
-            .when(!panel_only, |shell| {
+            .map(|shell| {
                 shell
                     .child(title_band)
                     .child(
@@ -542,7 +540,12 @@ impl Render for PhoTagShell {
             );
         }
         if !modal_views.is_empty() {
-            if self.surfaces.any_panel_open() {
+            if self.surfaces.open_panel_ids().iter().any(|id| {
+                self.surfaces
+                    .value(&format!("panel.{id}.native"))
+                    .as_deref()
+                    != Some("true")
+            }) {
                 shell = shell.child(
                     div()
                         .absolute()

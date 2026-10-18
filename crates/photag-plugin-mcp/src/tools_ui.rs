@@ -20,296 +20,12 @@ pub(super) struct UiRequest {
     value: Option<String>,
     /// Structured SidebarUiRequest payload for the sidebar_request action.
     request: Option<serde_json::Value>,
-}
-
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherAddRequest {
-    path: String,
-}
-
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherPinRequest {
-    id: i64,
-    /// none, category, or all
-    scope: String,
-}
-
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherCategoryRequest {
-    name: String,
-}
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherCategoryIdRequest {
-    id: i64,
-    confirm: bool,
-}
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherCategoryRenameRequest {
-    id: i64,
-    name: String,
-}
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherProgramUpdateRequest {
-    id: i64,
-    name: Option<String>,
-    category_id: Option<i64>,
-    hidden: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct LauncherConfirmRequest {
-    id: i64,
-    confirm: bool,
-}
-
-#[derive(Debug, Deserialize, rmcp::schemars::JsonSchema)]
-pub(super) struct ClipboardTextRequest {
-    content: String,
-    category_id: Option<i64>,
-    #[serde(default)]
-    #[serde(alias = "pinned")]
-    favorite: bool,
+    /// Required acknowledgement for high-impact retry/accessibility actions.
+    confirm: Option<bool>,
 }
 
 #[tool_router(router = ui_tool_router, vis = "pub(super)")]
 impl PhoTagMcpServer {
-    #[tool(
-        description = "Add a text entry directly to the isolated clipboard workbench database for controlled UI/debug setup. Does not read or write the OS clipboard. Requires mutation permission."
-    )]
-    fn add_clipboard_text(&self, Parameters(request): Parameters<ClipboardTextRequest>) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(service) = &self.clipboard else {
-            return error_json("剪贴板工作台插件未启用。");
-        };
-        if request.content.len() > 1_000_000 {
-            return error_json("Clipboard entry must be at most 1 MB.");
-        }
-        match service.add_text(&request.content, request.category_id, request.favorite) {
-            Ok(id) => json!({"added":true,"id":id}).to_string(),
-            Err(error) => error_json(&error),
-        }
-    }
-
-    #[tool(
-        description = "Add one executable/shortcut to the enabled program launcher through its public service. Requires mutation permission; does not launch it."
-    )]
-    fn add_launcher_program(&self, Parameters(request): Parameters<LauncherAddRequest>) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.add_manual(std::path::Path::new(&request.path)) {
-            Ok(()) => json!({"added":true}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Set a launcher's program pin scope (none/category/all) through its public service. Requires mutation permission."
-    )]
-    fn set_launcher_pin(&self, Parameters(request): Parameters<LauncherPinRequest>) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        let scope = match request.scope.as_str() {
-            "none" => photag_plugin_launcher::PinScope::None,
-            "category" => photag_plugin_launcher::PinScope::Category,
-            "all" => photag_plugin_launcher::PinScope::AllPrograms,
-            _ => return error_json("Scope must be none, category, or all"),
-        };
-        match launcher.set_pin_scope(request.id, scope) {
-            Ok(()) => json!({"updated":true,"id":request.id,"scope":request.scope}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(description = "Create a program launcher category. Requires MCP mutation permission.")]
-    fn create_launcher_category(
-        &self,
-        Parameters(request): Parameters<LauncherCategoryRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.add_category(&request.name) {
-            Ok(()) => {
-                let category = launcher
-                    .snapshot()
-                    .categories
-                    .into_iter()
-                    .find(|item| item.name == request.name.trim());
-                json!({"created":true,"category":category.map(|item| json!({"id":item.id,"name":item.name}))}).to_string()
-            }
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(description = "Rename a program launcher category. Requires MCP mutation permission.")]
-    fn rename_launcher_category(
-        &self,
-        Parameters(request): Parameters<LauncherCategoryRenameRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.rename_category(request.id, &request.name) {
-            Ok(()) => {
-                json!({"updated":true,"id":request.id,"name":request.name.trim()}).to_string()
-            }
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Delete a launcher category and move its programs according to the database policy. Requires mutation permission and confirm=true."
-    )]
-    fn delete_launcher_category(
-        &self,
-        Parameters(request): Parameters<LauncherCategoryIdRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        if !request.confirm {
-            return error_json("Set confirm=true to delete the category.");
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.delete_category(request.id) {
-            Ok(()) => json!({"deleted":true,"id":request.id}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Edit a launcher's display name, category and/or hidden state. Omitted values remain unchanged. Requires MCP mutation permission."
-    )]
-    fn update_launcher_program(
-        &self,
-        Parameters(request): Parameters<LauncherProgramUpdateRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        if request.name.is_none() && request.category_id.is_none() && request.hidden.is_none() {
-            return error_json("Provide name, category_id, or hidden.");
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        let Some(entry) = launcher
-            .snapshot()
-            .entries
-            .into_iter()
-            .find(|item| item.id == request.id)
-        else {
-            return error_json("Program not found");
-        };
-        let name = request.name.as_deref().unwrap_or(&entry.display_name);
-        let category_id = request.category_id.unwrap_or(entry.category_id);
-        let hidden = request.hidden.unwrap_or(entry.hidden);
-        match launcher.update_entry(request.id, name, category_id, hidden) {
-            Ok(()) => json!({"updated":true,"id":request.id,"display_name":name,"category_id":category_id,"hidden":hidden}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Refresh launcher discovery from installed programs. Requires MCP mutation permission; does not launch or uninstall programs."
-    )]
-    fn refresh_launcher(&self) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.refresh_discovery() {
-            Ok(()) => json!({"started":true}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Launch a registered program. Requires MCP mutation permission and confirm=true because this starts an executable."
-    )]
-    fn launch_launcher_program(
-        &self,
-        Parameters(request): Parameters<LauncherConfirmRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        if !request.confirm {
-            return error_json("Set confirm=true to launch this program.");
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.launch(request.id) {
-            Ok(()) => json!({"launched":true,"id":request.id}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Remove a program from the launcher list; this does not uninstall its files. Requires MCP mutation permission and confirm=true."
-    )]
-    fn remove_launcher_program(
-        &self,
-        Parameters(request): Parameters<LauncherConfirmRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        if !request.confirm {
-            return error_json("Set confirm=true to remove this program from the launcher.");
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.remove_entry(request.id) {
-            Ok(()) => json!({"removed":true,"id":request.id}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
-    #[tool(
-        description = "Run the registered uninstaller command for a program. This can remove software. Requires MCP mutation permission and confirm=true."
-    )]
-    fn uninstall_launcher_program(
-        &self,
-        Parameters(request): Parameters<LauncherConfirmRequest>,
-    ) -> String {
-        if let Err(error) = self.mutation_guard() {
-            return error_json(&error);
-        }
-        if !request.confirm {
-            return error_json("Set confirm=true to run this program's uninstaller.");
-        }
-        let Some(launcher) = &self.launcher else {
-            return error_json("Launcher plugin is disabled");
-        };
-        match launcher.uninstall_confirmed(request.id) {
-            Ok(()) => json!({"uninstall_started":true,"id":request.id}).to_string(),
-            Err(error) => error_json(&error.to_string()),
-        }
-    }
-
     #[tool(
         description = "Read Settings, language, region separation mode, Preview opacity, production scan progress and bounded Gallery animation frame diagnostics without changing state."
     )]
@@ -353,7 +69,7 @@ impl PhoTagMcpServer {
             snapshot["everything"] = json!({"state":state.everything_state,"version":state.everything_version,
                 "path":state.everything_path,"index_loading":state.everything_loading});
             snapshot["version_states_loading"] = json!(state.version_states_loading);
-            snapshot["version_states"] = json!(state.version_states.iter().map(|item| json!({"media_id":item.media_id,"path":item.path,"state":item.state,"error":item.error,"badge_visible":item.state.as_ref().is_some_and(|state| state.status == photag_plugin_versions::FileVersionStatus::Modified)})).collect::<Vec<_>>());
+            snapshot["version_states"] = json!(state.version_states.iter().map(|item| json!({"media_id":item.media_id,"path":item.path,"state":item.state,"error":item.error,"badge_visible":item.state.as_ref().is_some_and(|state| serde_json::to_value(state.status).ok().and_then(|value| value.as_str().map(str::to_owned)).as_deref() == Some("modified"))})).collect::<Vec<_>>());
             snapshot
         });
         let history_visible = self.surfaces.is_open("inspector")
@@ -389,6 +105,7 @@ impl PhoTagMcpServer {
                     })).collect::<Vec<_>>(),
                     "launch_modes": preferences.as_ref().map(|value| &value.plugin_launch_modes),
                     "enabled": preferences.as_ref().map(|value| &value.plugin_enabled),
+                    "mcp_access_level": preferences.map(|value| value.mcp_access_level.key()),
                 })
             });
         let mut state = json!({
@@ -405,6 +122,7 @@ impl PhoTagMcpServer {
             "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| json!({"id":id,"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>(),
             "active_panel": self.surfaces.value("panel.active"),
             "settings_open": self.surfaces.is_open("settings"),
+
             "export_open": self.surfaces.is_open("metadata-export"),
             "sidebar_open": self.surfaces.value("sidebar.visible").as_deref() != Some("false"),
             "inspector_open": self.surfaces.is_open("inspector"),
@@ -449,6 +167,11 @@ impl PhoTagMcpServer {
             }),
             "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         });
+        state["settings_render_count"] = json!(
+            self.surfaces
+                .value("settings.render-count")
+                .and_then(|count| count.parse::<u64>().ok())
+        );
         state["settings_plugin_id"] = json!(self.surfaces.value("settings.plugin_id"));
         state["sidebar_plugin_buttons"] = json!(
             self.context
@@ -462,7 +185,21 @@ impl PhoTagMcpServer {
                 .collect::<Vec<_>>()
         );
         state["settings_plugins"] = json!(plugin_settings);
-        state["panel_presentation"] = json!(self.surfaces.value("panel.presentation"));
+        state["selected_window"] = json!(
+            self.surfaces
+                .value("mcp.window.selected")
+                .unwrap_or_else(|| "main".into())
+        );
+        let main = self
+            .surfaces
+            .value("mcp.window.main")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or_default();
+        state["main_window_status"] = crate::screenshot::window_status(main);
+        state["native_panels"] = json!(self.surfaces.open_panel_ids().into_iter().filter_map(|id| {
+            let hwnd = self.surfaces.value(&format!("panel.{id}.hwnd"))?.parse::<isize>().ok()?;
+            Some(json!({"id":id,"hwnd":hwnd,"status":crate::screenshot::window_status(hwnd),"render_count":self.surfaces.value(&format!("panel.{id}.render_count"))}))
+        }).collect::<Vec<_>>());
         state["theme"] = theme_state;
         state["screenshot_tool"] =
             json!(self.screenshot.as_ref().map(|service| service.mcp_state()));
@@ -477,7 +214,7 @@ impl PhoTagMcpServer {
     }
 
     #[tool(
-        description = "Control Settings, language and Gallery service states; hover_media injects a Gallery hover target, not an OS pointer. Requires PHOTAG_MCP_ALLOW_MUTATIONS=1."
+        description = "Control Settings, language and Gallery service states; hover_media injects a Gallery hover target, not an OS pointer. Requires Settings → MCP → AI control to be enabled."
     )]
     fn control_ui(&self, Parameters(request): Parameters<UiRequest>) -> String {
         tracing::info!(?request, "MCP control request");
@@ -530,6 +267,52 @@ impl PhoTagMcpServer {
                     Err(e) => error_json(&e),
                 };
             }
+            "window_select" => {
+                let id = request.value.unwrap_or_else(|| "main".into());
+                let key = if id == "main" {
+                    "mcp.window.main".to_owned()
+                } else {
+                    format!("panel.{id}.hwnd")
+                };
+                let Some(hwnd) = self
+                    .surfaces
+                    .value(&key)
+                    .and_then(|v| v.parse::<isize>().ok())
+                else {
+                    return error_json(
+                        "Unknown live PhoTag window; use main or a native_panels id",
+                    );
+                };
+                if crate::screenshot::window_status(hwnd)["owned"] != true {
+                    return error_json("Window is no longer owned by this process");
+                }
+                let _ = self.surfaces.set_value("mcp.window.selected", &id);
+                self.capture.set(hwnd);
+                return json!({"selected":id}).to_string();
+            }
+            "window_close" => {
+                if self
+                    .surfaces
+                    .value("mcp.window.selected")
+                    .as_deref()
+                    .unwrap_or("main")
+                    == "main"
+                {
+                    return error_json("Select a native plugin window before window_close");
+                }
+                let Some(hwnd) = self
+                    .surfaces
+                    .value("mcp.window.selected")
+                    .and_then(|id| self.surfaces.value(&format!("panel.{id}.hwnd")))
+                    .and_then(|value| value.parse::<isize>().ok())
+                else {
+                    return error_json("Selected native plugin window is no longer registered");
+                };
+                return match crate::screenshot::close_test_window(hwnd) {
+                    Ok(()) => json!({"queued":true}).to_string(),
+                    Err(error) => error_json(&error),
+                };
+            }
             "window_minimize" | "window_activate" => {
                 return match crate::screenshot::set_test_window_active(
                     self.capture.get(),
@@ -546,6 +329,12 @@ impl PhoTagMcpServer {
                 };
             }
             "accessibility_activate" => {
+                if let Err(error) = self.full_control_guard() {
+                    return error_json(&error);
+                }
+                if request.confirm != Some(true) {
+                    return error_json("This high-impact action requires confirm=true.");
+                }
                 return match crate::screenshot::activate_accessibility(self.capture.get()) {
                     Ok(provider) => {
                         json!({"requested":true,"provider_response":provider}).to_string()
@@ -672,6 +461,12 @@ impl PhoTagMcpServer {
                     return error_json("writeback failure not found");
                 }
                 if request.action == "writeback_retry" {
+                    if let Err(error) = self.full_control_guard() {
+                        return error_json(&error);
+                    }
+                    if request.confirm != Some(true) {
+                        return error_json("This high-impact action requires confirm=true.");
+                    }
                     if let Err(error) = self.tagging.retry_writeback_failure(path) {
                         return error_json(&error.to_string());
                     }
@@ -805,6 +600,16 @@ impl PhoTagMcpServer {
                     .snapshot_now()
                     .iter()
                     .any(|plugin| plugin.id == id)
+                    && !self
+                        .context
+                        .try_service::<photag_ui_bridge::UiBridgeService>()
+                        .ok()
+                        .and_then(|bridge| bridge.views.snapshot().ok())
+                        .unwrap_or_default()
+                        .iter()
+                        .any(|entry| {
+                            entry.owner == id && entry.contribution.settings_page.is_some()
+                        })
                 {
                     return error_json("unknown plugin settings page");
                 }

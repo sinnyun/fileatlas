@@ -10,14 +10,23 @@ use photag_contracts::TagInteractionPreferencesChanged;
 use photag_plugin_navigation::NavigationService;
 use photag_plugin_session::SessionService;
 use photag_plugin_updater::{UpdateInfo, UpdaterService};
-use photag_ui_bridge::components::WorkbenchStyle as _;
 use photag_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
 use std::sync::{Arc, Weak, atomic::AtomicU64, mpsc};
 
 #[path = "view/ai_groups.rs"]
 mod ai_groups;
+#[path = "view/appearance.rs"]
+mod appearance;
+#[path = "view/capture.rs"]
+mod capture;
 #[path = "view/checkbox.rs"]
 mod checkbox;
+#[path = "view/design.rs"]
+mod design;
+#[path = "view/layout.rs"]
+mod layout;
+#[path = "view/plugins.rs"]
+mod plugins;
 #[path = "view/shortcuts.rs"]
 mod shortcuts;
 #[path = "view/software.rs"]
@@ -66,7 +75,9 @@ pub(super) fn settings(
                 .new(|cx| {
                     let mut view = SettingsView {
                         locale_revision: u64::MAX,
+                        render_count: 0,
                         language_views: Vec::new(),
+                        plugin_settings_views: Vec::new(),
                         service: Arc::clone(&service),
                         surfaces: Arc::clone(&view_surfaces),
                         cordis: view_cordis,
@@ -106,6 +117,12 @@ pub(super) fn settings(
                         surface_poll.value("settings.tab"),
                         surface_poll.value("settings.plugin_id"),
                     ));
+                    let mut provider_gate =
+                        photag_ui_bridge::refresh::ChangeGate::new(Vec::<(String, u64)>::new());
+                    let mut runtime_gate = photag_ui_bridge::refresh::ChangeGate::new(Vec::<
+                        crate::PluginRuntimeStatus,
+                    >::new(
+                    ));
                     photag_ui_bridge::refresh::poll(
                         cx,
                         std::time::Duration::from_millis(100),
@@ -117,16 +134,31 @@ pub(super) fn settings(
                                 surface_poll.value("settings.plugin_id"),
                             ));
                             view.surface_visible = visible;
-                            if (!visible
-                                || surface_poll.value("settings.tab").as_deref()
-                                    != Some("shortcuts"))
+                            if (!visible || changed)
                                 && (view.capturing_shortcut.is_some() || view.capturing_open_key)
                             {
                                 view.capturing_open_key = false;
                                 view.cancel_shortcut_capture();
                             }
-                            let mut changed =
-                                view.poll_tag_choices() | view.poll_software_check() | changed;
+                            let providers = view
+                                .cordis
+                                .try_service::<photag_ui_bridge::UiBridgeService>()
+                                .ok()
+                                .and_then(|bridge| bridge.views.snapshot().ok())
+                                .unwrap_or_default()
+                                .into_iter()
+                                .filter(|entry| {
+                                    entry.contribution.settings_page.is_some()
+                                        || entry.contribution.slot == "settings.language"
+                                })
+                                .map(|entry| (entry.contribution.id, entry.generation))
+                                .collect::<Vec<_>>();
+                            let mut changed = view.poll_tag_choices()
+                                | view.poll_software_check()
+                                | changed
+                                | provider_gate.changed(providers)
+                                | runtime_gate
+                                    .changed(view.service.plugin_runtime().snapshot_now());
                             if surface_poll.is_open("settings.check-updates") {
                                 let _ = surface_poll.set_open("settings.check-updates", false);
                                 if view.update_check.is_none() {
@@ -173,7 +205,9 @@ pub(super) fn settings(
 }
 pub(super) struct SettingsView {
     locale_revision: u64,
+    render_count: u64,
     language_views: Vec<(String, u64, AnyView)>,
+    plugin_settings_views: Vec<(String, String, String, String, u64, AnyView)>,
     service: Arc<SettingsService>,
     surfaces: Arc<UiSurfaceState>,
     cordis: CordisContext,
@@ -235,209 +269,6 @@ impl SettingsView {
         }
     }
 
-    fn capture_shortcut(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        let Some(id) = self.capturing_shortcut.clone() else {
-            return;
-        };
-        if event.keystroke.key.eq_ignore_ascii_case("escape") {
-            self.cancel_shortcut_capture();
-            cx.notify();
-            return;
-        }
-        let mut parts = Vec::new();
-        if event.keystroke.modifiers.control {
-            parts.push("Ctrl".to_owned());
-        }
-        if event.keystroke.modifiers.alt {
-            parts.push("Alt".to_owned());
-        }
-        if event.keystroke.modifiers.shift {
-            parts.push("Shift".to_owned());
-        }
-        if event.keystroke.modifiers.platform {
-            parts.push("Win".to_owned());
-        }
-        let key = if event.keystroke.key == " " {
-            "Space"
-        } else {
-            event.keystroke.key.trim()
-        };
-        if key.is_empty()
-            || ["control", "ctrl", "alt", "shift", "platform"]
-                .contains(&key.to_ascii_lowercase().as_str())
-        {
-            return;
-        }
-        parts.push(if key.len() == 1 {
-            key.to_ascii_uppercase()
-        } else {
-            key.to_owned()
-        });
-        let chord = parts.join("+");
-        let registered = self
-            .cordis
-            .try_service::<photag_ui_bridge::UiBridgeService>()
-            .ok()
-            .and_then(|bridge| bridge.catalog.commands().ok())
-            .unwrap_or_default();
-        let binding = registered
-            .iter()
-            .flat_map(|command| command.keybindings.iter())
-            .find(|binding| binding.id == id);
-        if let Some(binding) = binding {
-            if binding.scope == photag_ui_bridge::ShortcutScope::System && parts.len() < 2 {
-                self.shortcut_error =
-                    Some("系统级快捷键必须包含 Ctrl、Alt、Shift 或 Win 修饰键。".into());
-                self.publish_shortcut_capture();
-                cx.notify();
-                return;
-            }
-            if binding.scope == photag_ui_bridge::ShortcutScope::System {
-                let normalized_key = key.to_ascii_lowercase();
-                let supported = (normalized_key.len() == 1
-                    && normalized_key.as_bytes()[0].is_ascii_alphanumeric())
-                    || matches!(
-                        normalized_key.as_str(),
-                        "space"
-                            | "enter"
-                            | "tab"
-                            | "escape"
-                            | "esc"
-                            | "backspace"
-                            | "delete"
-                            | "home"
-                            | "end"
-                            | "pageup"
-                            | "pagedown"
-                            | "left"
-                            | "right"
-                            | "up"
-                            | "down"
-                            | "arrowleft"
-                            | "arrowright"
-                            | "arrowup"
-                            | "arrowdown"
-                    )
-                    || normalized_key
-                        .strip_prefix('f')
-                        .and_then(|number| number.parse::<u8>().ok())
-                        .is_some_and(|number| (1..=12).contains(&number));
-                if !supported {
-                    self.shortcut_error =
-                        Some("系统级快捷键支持字母、数字、F1–F12 和导航键。".into());
-                    self.publish_shortcut_capture();
-                    cx.notify();
-                    return;
-                }
-            }
-            let overrides = self
-                .service
-                .snapshot()
-                .ok()
-                .map(|settings| settings.keybindings)
-                .unwrap_or_default();
-            let duplicate = registered.iter().find(|command| {
-                command.keybindings.iter().any(|other| {
-                    other.id != id
-                        && other.scope == binding.scope
-                        && overrides
-                            .get(&other.id)
-                            .unwrap_or(&other.key)
-                            .eq_ignore_ascii_case(&chord)
-                })
-            });
-            if let Some(command) = duplicate {
-                self.shortcut_error = Some(format!(
-                    "{chord} 已被“{}”使用，请按其他组合键或取消。",
-                    shortcuts::command_label(command)
-                ));
-                self.publish_shortcut_capture();
-                cx.notify();
-                return;
-            }
-        }
-        self.edit(
-            move |settings| {
-                settings.keybindings.insert(id.clone(), chord.clone());
-            },
-            cx,
-        );
-        self.cancel_shortcut_capture();
-        cx.notify();
-    }
-
-    fn capture_open_key(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
-        if !self.capturing_open_key {
-            return;
-        }
-
-        let key = match event.keystroke.key.to_ascii_lowercase().as_str() {
-            "escape" => {
-                self.capturing_open_key = false;
-                let _ = self.surfaces.set_capturing_key("settings", false);
-                cx.notify();
-                return;
-            }
-            "space" | " " => "Space".to_owned(),
-            "enter" => "Enter".to_owned(),
-            "tab" => "Tab".to_owned(),
-            "backspace" => "Backspace".to_owned(),
-            "delete" => "Delete".to_owned(),
-            "insert" => "Insert".to_owned(),
-            "home" => "Home".to_owned(),
-            "end" => "End".to_owned(),
-            "pageup" => "PageUp".to_owned(),
-            "pagedown" => "PageDown".to_owned(),
-            "left" => "ArrowLeft".to_owned(),
-            "right" => "ArrowRight".to_owned(),
-            "up" => "ArrowUp".to_owned(),
-            "down" => "ArrowDown".to_owned(),
-            key if key.len() == 1 && key.as_bytes()[0].is_ascii_alphanumeric() => {
-                key.to_ascii_uppercase()
-            }
-            key if key.len() >= 2 && key.starts_with('f') && key[1..].parse::<u8>().is_ok() => {
-                key.to_ascii_uppercase()
-            }
-            _ => {
-                self.error = Some("That key cannot be saved as a PhoTag shortcut.".into());
-                self.capturing_open_key = false;
-                let _ = self.surfaces.set_capturing_key("settings", false);
-                cx.notify();
-                return;
-            }
-        };
-
-        self.edit(|settings| settings.open_key = key.clone(), cx);
-        self.capturing_open_key = false;
-        let _ = self.surfaces.set_capturing_key("settings", false);
-        cx.notify();
-    }
-
-    fn open_key_capture_button(&self, cx: &mut Context<Self>) -> Button {
-        Button::new("settings-open-key-capture")
-            .label(photag_ui_bridge::i18n::tr(
-                &(if self.capturing_open_key {
-                    "Press a key… (Escape cancels)".to_owned()
-                } else {
-                    "Change key".to_owned()
-                })
-                .to_string(),
-            ))
-            .on_click(cx.listener(|this, _, window, cx| {
-                this.cancel_shortcut_capture();
-                this.capturing_open_key = !this.capturing_open_key;
-                if let Err(error) = this
-                    .surfaces
-                    .set_capturing_key("settings", this.capturing_open_key)
-                {
-                    this.error = Some(format!("Could not update shortcut capture state: {error}"));
-                }
-                this.error = None;
-                window.focus(&this.focus_handle, cx);
-                cx.notify();
-            }))
-    }
-
     fn edit(&mut self, f: impl Fn(&mut Settings), cx: &mut Context<Self>) {
         let old_preferences = self.service.snapshot().ok().map(|settings| {
             (
@@ -496,280 +327,7 @@ impl SettingsView {
         );
     }
     fn section(&self, label: &'static str) -> Div {
-        photag_ui_bridge::components::section_heading(photag_ui_bridge::i18n::tr(label)).pt_2()
-    }
-    fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut rail = div().v_flex().w(px(166.)).gap(px(6.)).p_2().flex_shrink_0();
-        use gpui_kit::assets::IconName;
-        let add_group = |rail: Div, title: &'static str| {
-            rail.child(
-                div()
-                    .text_xs()
-                    .font_semibold()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
-                    .px_2()
-                    .pt_2()
-                    .pb_1()
-                    .child(photag_ui_bridge::i18n::tr(title)),
-            )
-        };
-        let add_tab = |rail: Div, tab: Tab, name: &'static str, icon: IconName| {
-            let active = self.tab == tab;
-            rail.child(
-                Button::new(format!("settings-tab-{name}"))
-                    .ghost()
-                    .w_full()
-                    .h(px(theme::NAV_ROW_HEIGHT))
-                    .px(px(10.))
-                    .justify_start()
-                    .rounded(px(theme::ROUND_MD))
-                    .border_l(px(3.))
-                    .border_color(if active {
-                        rgb(theme::accent())
-                    } else {
-                        rgba(0)
-                    })
-                    .bg(if active {
-                        rgb(theme::selection_color())
-                    } else {
-                        rgba(0)
-                    })
-                    .text_color(rgb(theme::TEXT_PRIMARY))
-                    .text_size(px(theme::FONT_SIZE_BODY))
-                    .child(
-                        div()
-                            .h_flex()
-                            .w_full()
-                            .items_center()
-                            .justify_start()
-                            .gap_2()
-                            .child(theme::icon(icon))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .text_size(px(theme::FONT_SIZE_BODY))
-                                    .text_color(rgb(theme::TEXT_PRIMARY))
-                                    .child(photag_ui_bridge::i18n::tr(name)),
-                            ),
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.cancel_shortcut_capture();
-                        this.capturing_open_key = false;
-                        this.tab = tab;
-                        let name = match tab {
-                            Tab::Appearance => "appearance",
-                            Tab::Shortcuts => "shortcuts",
-                            Tab::Tags => "tags",
-                            Tab::Ai => "ai",
-                            Tab::Updates => "updates",
-                            Tab::Software => "software",
-                            Tab::Plugins => "plugins",
-                            Tab::PluginSettings => "plugin",
-                        };
-                        let _ = this.surfaces.set_value("settings.tab", name);
-                        cx.notify()
-                    })),
-            )
-        };
-        rail = add_group(rail, "Program settings");
-        for (tab, name, icon) in [
-            (Tab::Appearance, "Appearance", IconName::Monitor),
-            (Tab::Shortcuts, "Shortcuts", IconName::Keyboard),
-            (Tab::Tags, "Tags", IconName::Tag),
-            (Tab::Ai, "AI", IconName::Sparkles),
-            (Tab::Updates, "Updates", IconName::RefreshCw),
-            (Tab::Software, "Software", IconName::Wrench),
-            (Tab::Plugins, "Plugins", IconName::Puzzle),
-        ] {
-            rail = add_tab(rail, tab, name, icon);
-        }
-        rail = rail.child(
-            div()
-                .w_full()
-                .h(px(1.))
-                .my_2()
-                .bg(rgba(theme::HAIRLINE.to_rgba())),
-        );
-        rail = add_group(rail, "Plugin settings");
-        for plugin in self.service.plugin_runtime().snapshot_now() {
-            let active = self.tab == Tab::PluginSettings
-                && self.selected_plugin_id.as_deref() == Some(&plugin.id);
-            rail = rail.child(
-                Button::new(format!("settings-plugin-page-{}", plugin.id))
-                    .ghost()
-                    .w_full()
-                    .h(px(theme::NAV_ROW_HEIGHT))
-                    .px(px(10.))
-                    .justify_start()
-                    .rounded(px(theme::ROUND_MD))
-                    .border_l(px(3.))
-                    .border_color(if active {
-                        rgb(theme::accent())
-                    } else {
-                        rgba(0)
-                    })
-                    .bg(if active {
-                        rgb(theme::selection_color())
-                    } else {
-                        rgba(0)
-                    })
-                    .text_color(rgb(theme::TEXT_PRIMARY))
-                    .text_size(px(theme::FONT_SIZE_BODY))
-                    .label(photag_ui_bridge::i18n::tr(&plugin.title))
-                    .tooltip(photag_ui_bridge::i18n::tr(&plugin.title))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.cancel_shortcut_capture();
-                        this.capturing_open_key = false;
-                        this.tab = Tab::PluginSettings;
-                        this.selected_plugin_id = Some(plugin.id.clone());
-                        let _ = this.surfaces.set_value("settings.tab", "plugin");
-                        let _ = this.surfaces.set_value("settings.plugin_id", &plugin.id);
-                        cx.notify();
-                    })),
-            );
-        }
-        rail.h_full().overflow_y_scrollbar()
-    }
-}
-impl Render for SettingsView {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.sync_language_views(window, cx);
-        let locale_revision = photag_ui_bridge::i18n::revision();
-        if self.locale_revision != locale_revision {
-            self.locale_revision = locale_revision;
-            self.group_name_input.update(cx, |input, cx| {
-                input.set_placeholder(photag_ui_bridge::i18n::tr("Group name"), window, cx)
-            });
-        }
-
-        if !self.surface_visible {
-            return self.render_update_offer(window, cx).into_any_element();
-        }
-        if let Some(tab) = self.surfaces.value("settings.tab") {
-            self.tab = match tab.as_str() {
-                "shortcuts" => Tab::Shortcuts,
-                "tags" => Tab::Tags,
-                "ai" => Tab::Ai,
-                "updates" => Tab::Updates,
-                "software" => Tab::Software,
-                "plugins" => Tab::Plugins,
-                "plugin" => Tab::PluginSettings,
-                _ => Tab::Appearance,
-            };
-            if self.tab == Tab::PluginSettings {
-                self.selected_plugin_id = self.surfaces.value("settings.plugin_id");
-            }
-        }
-        let bounds = photag_ui_bridge::panels::content_bounds(&self.surfaces, "settings", window);
-        let card_width = bounds.width;
-        let card_height = bounds.height;
-        let body_height = (card_height - 48.).max(8.);
-        let content_width = (card_width - 167.).max(1.);
-        let mut card = div()
-            .absolute()
-            .inset_0()
-            .v_flex()
-            .w(px(card_width))
-            .h(px(card_height))
-            .max_h(px(card_height))
-            .rounded_md()
-            .bg(rgb(theme::SURFACE_MODAL))
-            .text_color(rgb(theme::TEXT_PRIMARY))
-            .border_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-            .track_focus(&self.focus_handle)
-            .child(
-                div()
-                    .h_flex()
-                    .w_full()
-                    .h(px(body_height))
-                    .flex_shrink_0()
-                    .child(
-                        div()
-                            .v_flex()
-                            .w(px(166.))
-                            .h(px(body_height))
-                            .flex_shrink_0()
-                            .bg(rgb(theme::SURFACE_BASE))
-                            .child(self.tabs(cx)),
-                    )
-                    .child(
-                        div()
-                            .h(px(body_height))
-                            .w(px(1.))
-                            .flex_shrink_0()
-                            .bg(rgba(theme::HAIRLINE.to_rgba())),
-                    )
-                    .child(
-                        div()
-                            .v_flex()
-                            .w(px(content_width))
-                            .h(px(body_height))
-                            .flex_shrink_0()
-                            .bg(rgb(theme::SURFACE_MODAL))
-                            .child(
-                                div().size_full().overflow_y_scrollbar().p(px(20.)).child(
-                                    match self.service.snapshot() {
-                                        Ok(s) => self
-                                            .render_tab(&s, content_width - 40., cx)
-                                            .into_any_element(),
-                                        Err(error) => {
-                                            div().child(error.to_string()).into_any_element()
-                                        }
-                                    },
-                                ),
-                            ),
-                    ),
-            );
-        card = card.child(
-            div()
-                .h_flex()
-                .h(px(48.))
-                .flex_shrink_0()
-                .items_center()
-                .justify_between()
-                .border_t_1()
-                .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                .bg(rgb(theme::SURFACE_MODAL))
-                .px_3()
-                .py_2()
-                .child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_2()
-                        .text_size(px(14.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
-                        .child(theme::small_icon(gpui_kit::assets::IconName::Info))
-                        .child(photag_ui_bridge::i18n::tr(
-                            "Settings changes are saved automatically.",
-                        )),
-                )
-                .child(
-                    Button::new("settings-close-footer")
-                        .w(px(100.))
-                        .h(px(32.))
-                        .label(photag_ui_bridge::i18n::tr("Close"))
-                        .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
-                ),
-        );
-        if let Some(e) = &self.error {
-            card = card.child(
-                div()
-                    .text_color(rgb(theme::DANGER))
-                    .child(format!("Could not save: {e}")),
-            );
-        }
-        let mut root = div()
-            .absolute()
-            .inset_0()
-            .track_focus(&self.focus_handle)
-            .on_key_down(cx.listener(|this, event, _, cx| this.handle_key_down(event, cx)))
-            .child(card);
-        if self.update_offer_open {
-            root = root.child(self.render_update_offer(window, cx));
-        }
-        root.into_any_element()
+        design::heading(label)
     }
 }
 
@@ -782,11 +340,44 @@ impl SettingsView {
             .and_then(|bridge| bridge.views.snapshot().ok())
             .unwrap_or_default()
             .into_iter()
-            .filter(|entry| entry.contribution.slot == "settings.language")
+            .filter(|entry| {
+                entry.contribution.slot == "settings.language"
+                    || entry.contribution.settings_page.is_some()
+            })
             .collect::<Vec<_>>();
+        let plugin_entries = entries
+            .iter()
+            .filter(|entry| entry.contribution.settings_page.is_some())
+            .cloned()
+            .collect::<Vec<_>>();
+        let mut previous_plugins = std::mem::take(&mut self.plugin_settings_views);
+        self.plugin_settings_views = plugin_entries
+            .into_iter()
+            .filter_map(|entry| {
+                let meta = entry.contribution.settings_page.as_ref()?;
+                let id = entry.contribution.id.clone();
+                let generation = entry.generation;
+                let view = previous_plugins
+                    .iter()
+                    .position(|(_, _, _, old_id, old_generation, _)| {
+                        old_id == &id && *old_generation == generation
+                    })
+                    .map(|index| previous_plugins.remove(index).5)
+                    .unwrap_or_else(|| (entry.contribution.factory)(window, cx));
+                Some((
+                    entry.owner,
+                    meta.title.clone(),
+                    meta.description.clone(),
+                    id,
+                    generation,
+                    view,
+                ))
+            })
+            .collect();
         let mut previous = std::mem::take(&mut self.language_views);
         self.language_views = entries
             .into_iter()
+            .filter(|entry| entry.contribution.slot == "settings.language")
             .map(|entry| {
                 let id = entry.contribution.id;
                 let generation = entry.generation;

@@ -1,5 +1,23 @@
 # Navigation plugin ports / 导航插件数据对接
 
+## MCP contribution (2026-10-19)
+
+Navigation contributes `navigation.list_library` through the host-published
+`McpToolRegistry`. Its handler reads the plugin's own `NavigationService`
+snapshot and returns registered folder identity/path/scan/count data and the
+hierarchical tag tree. Cordis removes the tool when `photag.navigation` stops.
+
+Navigation also contributes `navigation.add_folder`, `remove_folder`,
+`rescan_folder`, `cancel_scan`, tag create/rename/delete and favorite
+management. Add/rescan retain and consume the Indexing progress receiver to
+completion; completion emits `MediaIndexChanged` so Gallery reloads after the
+background scan. Folder add/removal and tag deletion require `confirm=true`.
+Schemas take `path` for add; `folder_id` for remove/rescan/cancel; `name` and
+optional `parent_id` for tag creation; `tag_id` and `name` for rename;
+`tag_id` for delete; and `action`, `folder_id`, plus optional `name`/`delta`
+for favorite management. `navigation.list_library` takes no arguments. The old
+unnamespaced routes are retired.
+
 Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
 
 Status: the Cordis navigation service, folder tree actions and GPUI sidebar are present. The sidebar uses `rfd::AsyncFileDialog` for native directory selection and sends the selected path through the existing folder-registration, watcher and indexing flow. `library_refresh()` forwards the Watcher startup reconciliation state when that provider is available. Folder and subdirectory menus expose new-subfolder and file-manager actions. The tag UI exposes create, rename, delete, color/icon, display, one-way associated-tag assignment, reparent, merge, and confirmed deletion with optional ancestor-assignment cleanup. Appearance can be applied recursively while skipping descendants that already have an explicit color or icon. Typed GPUI drag/drop moves a dragged tag before/after/into an explicit row target. PhoTag has no folder-tree drag/drop behavior.
@@ -313,3 +331,14 @@ by group placement/alias editing; public backend compatibility methods remain.
 view's paint canvas, are change-gated for diagnostics and trigger no repaint/IO.
 Inspect `save_error` for persistence failures. Reference: `docs/ui-theme.md` and
 `docs/reference-ui/concepts/sidebar-favorite-groups-2026-10-18.md`.
+
+## MCP feature contributions
+
+Navigation contributes `navigation.list_library`, `navigation.add_folder`,
+`navigation.remove_folder`, `navigation.rescan_folder`,
+`navigation.cancel_scan`, and tag-tree CRUD tools `navigation.create_tag`,
+`navigation.rename_tag`, and `navigation.delete_tag`. Schemas and handlers are
+owned here and call `NavigationService`; folder add/remove/rescan and tag delete
+require explicit confirmation. `navigation.manage_favorite` renames or reorders
+folder favorite aliases without changing local paths. Folder removal only removes the PhoTag library
+registration and indexed rows. Legacy MCP names remain during migration.

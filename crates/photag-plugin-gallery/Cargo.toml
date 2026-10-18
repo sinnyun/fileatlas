@@ -28,6 +28,8 @@ photag-plugin-session = { path = "../photag-plugin-session" }
 photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }
 photag-contracts = { path = "../photag-contracts" }
+serde.workspace = true
+serde_json.workspace = true
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 thiserror = "2"
 chrono = "0.4"

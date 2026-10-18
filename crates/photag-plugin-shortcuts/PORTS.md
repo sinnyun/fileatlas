@@ -38,3 +38,11 @@
 - Live global-key delivery and foreground restoration require Windows runtime
   verification. Same-process PhoTag MCP currently has no API for pressing a
   system-wide key while another application is foregrounded.
+
+## Corrected foreground routing — 2026-10-18
+
+ShortcutService::poll retains its HWND argument for compatibility but no longer restores
+that HWND unconditionally. It dispatches the registered command. The tool command chooses
+`PanelCatalog::open_presented`; the host activates the resulting native window or restores
+the main window for embedded mode. Direct screenshot capture does not restore PhoTag.
+Actual OS global-key delivery remains unverified; MCP invokes the same command handlers.

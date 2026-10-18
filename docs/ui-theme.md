@@ -114,3 +114,11 @@ CI 已接入主题守卫。守卫扫描所有插件及嵌套 view、Shell、公�
 检查 quiet-state 和真实变化，禁止引入额外 IO/轮询通知。截图片必须打开对照，
 将命令、环境、功能结果、视觉差异及未验状态记入 `docs/redesign-validation.md`。
 编译成功不代表视觉或全部 Windows 行为通过。
+
+## 声明式设置页（2026-10-18）
+
+用户要求后续插件使用通用配置自动生成设置页。常规设置必须使用 UI Bridge
+`settings_page` 的 Page/Section/Row/Control 声明及现有 view catalog 注册，不再各自
+设计设置外框、分区、字号和布局。复杂业务交互可保留局部 Entity/Custom，仍复用公共
+标题、分区、行和原生控件。详见[公共契约](settings-page-contract.md)及
+[十页概念](reference-ui/concepts/settings-complete-2026-10-18.md)。

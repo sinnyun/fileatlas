@@ -2,6 +2,7 @@
 //! Gallery data sets without creating large media files on disk.
 
 mod benchmark;
+mod mcp;
 mod view;
 
 use std::path::PathBuf;
@@ -254,6 +255,7 @@ impl Plugin for DevTestPlugin {
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| DevTestPluginError::Publish(error.to_string()))?;
+        mcp::register(&context, &service).map_err(DevTestPluginError::McpRegistration)?;
         for (id, multiplicity, size) in [
             (
                 "dev-test/status",
@@ -306,6 +308,8 @@ pub enum DevTestPluginError {
     Publish(String),
     #[error("dev-test panel registration failed: {0}")]
     UiRegistration(String),
+    #[error("dev-test MCP registration failed: {0}")]
+    McpRegistration(String),
 }
 
 #[cfg(test)]

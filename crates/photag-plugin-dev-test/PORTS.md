@@ -2,7 +2,9 @@
 
 Status: an opt-in GPUI panel scans generated on-disk media fixtures and injects
 or removes 1,000, 10,000, or 100,000 virtual media rows for Gallery/SQLite
-scale checks. It is development tooling and is not enabled by `core` or `all`.
+scale checks. It is development tooling, excluded from the `core` profile.
+`start-dev.bat` defaults to `all`, which includes this plugin and redirects its
+database, settings, session and thumbnail cache to `target/dev-test`.
 
 ## Lifecycle and dependencies
 
@@ -11,10 +13,14 @@ scale checks. It is development tooling and is not enabled by `core` or `all`.
 - Requires `DatabaseService`, `IndexingService`, and the shell's `UiBridgeService`.
 - Owns a GPUI panel in `workspace.dev-test`; Cordis removes its service and view
   contribution when the plugin stops.
-- When the same process also enables the MCP plugin, the service is exposed as
-  `dev_test_status`, `dev_test_scan_fixture`, `dev_test_inject_virtual`, and
-  `dev_test_clear_virtual`. MCP task starts are asynchronous; poll status until
+- The plugin contributes `dev-test.status`, `dev-test.scan_fixture`,
+  `dev-test.inject_virtual`, and `dev-test.clear_virtual` to the shared MCP
+  registry only when this opt-in plugin is running. Mutations follow the host
+  MCP mutation policy. Task starts are asynchronous; poll status until
   `running=false`, then inspect Gallery with normal read/screenshot tools.
+- MCP schemas: `dev-test.status`, `dev-test.scan_fixture`, and
+  `dev-test.clear_virtual` take no arguments; `dev-test.inject_virtual`
+  accepts `count` of 1000, 10000, or 100000. Task tools are mutation-gated.
 - The shell enables Gallery, Navigation, Thumbnails, Indexing, Preview, and
   their required providers for this profile.
 
