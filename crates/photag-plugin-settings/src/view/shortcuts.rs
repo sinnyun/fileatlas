@@ -287,6 +287,12 @@ impl SettingsView {
             .child(heading("插件快捷键"));
         let mut count = 0;
         for command in &registered {
+            if matches!(
+                command.owner.as_str(),
+                "photag.launcher" | "photag.clipboard" | "photag.screenshot"
+            ) {
+                continue;
+            }
             for binding in &command.keybindings {
                 page = page.child(self.shortcut_row(command, binding, settings, cx));
                 count += 1;
@@ -425,6 +431,41 @@ impl SettingsView {
                     .text_color(rgb(theme::DANGER))
                     .child(format!("无法加载标签：{error}")),
             );
+        }
+        page
+    }
+
+    pub(super) fn render_plugin_shortcuts(
+        &self,
+        owner: &str,
+        settings: &Settings,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        let commands = self
+            .cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .ok()
+            .and_then(|bridge| bridge.catalog.commands().ok())
+            .unwrap_or_default();
+        let mut page = div()
+            .v_flex()
+            .w_full()
+            .min_w_0()
+            .gap(px(theme::PANEL_GAP))
+            .child(heading("Keyboard shortcuts"));
+        let mut count = 0;
+        for command in commands.iter().filter(|command| command.owner == owner) {
+            for binding in &command.keybindings {
+                page = page.child(self.shortcut_row(command, binding, settings, cx));
+                count += 1;
+            }
+        }
+        if count == 0 {
+            page = page.child(div().py_3().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                photag_ui_bridge::i18n::tr(
+                    "No active keyboard shortcuts are registered by this plugin.",
+                ),
+            ));
         }
         page
     }

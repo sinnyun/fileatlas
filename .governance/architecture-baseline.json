@@ -3,6 +3,7 @@
   "pluginEdges": [
     "photag-plugin-ai -> photag-plugin-settings",
     "photag-plugin-clipboard -> photag-plugin-database",
+    "photag-plugin-clipboard -> photag-plugin-settings",
     "photag-plugin-debug -> photag-plugin-database",
     "photag-plugin-dev-test -> photag-plugin-database",
     "photag-plugin-dev-test -> photag-plugin-indexing",
@@ -32,6 +33,7 @@
     "photag-plugin-indexing -> photag-plugin-database",
     "photag-plugin-indexing -> photag-plugin-thumbnails",
     "photag-plugin-launcher -> photag-plugin-database",
+    "photag-plugin-launcher -> photag-plugin-settings",
     "photag-plugin-mcp -> photag-plugin-clipboard",
     "photag-plugin-mcp -> photag-plugin-database",
     "photag-plugin-mcp -> photag-plugin-debug",

@@ -27,7 +27,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   const state = await waitForInventory();
   const software = state.settings_software_check.software;
   assert.equal(state.settings_tab, 'software');
-  assert.equal(software.length, 2);
+  assert.equal(software.length, 3);
   const quicklook = software.find(item => item.name === 'QuickLook');
   const everything = software.find(item => item.name === 'Everything');
   assert.equal(quicklook?.state, 'installed');

@@ -53,6 +53,9 @@ impl UiSurfaceState {
             .map_err(|_| "UI value lock is poisoned")?;
         let prefix = format!("panel.{id}.");
         values.retain(|key, _| !key.starts_with(&prefix));
+        if !self.any_panel_open() {
+            values.remove("panel.presentation");
+        }
         if values
             .get("panel.active")
             .is_some_and(|active| active == id)

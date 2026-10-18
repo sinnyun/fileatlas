@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::base::Disableable;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 impl SettingsView {
@@ -8,6 +9,12 @@ impl SettingsView {
         width: f32,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
+        if matches!(self.tab, Tab::Plugins) {
+            return self.render_plugin_cards(s, cx).into_any_element();
+        }
+        if self.tab == Tab::PluginSettings {
+            return self.render_plugin_settings(s, cx).into_any_element();
+        }
         if self.tab == Tab::Shortcuts {
             return self.render_shortcuts(s, width, cx).into_any_element();
         }
@@ -15,7 +22,7 @@ impl SettingsView {
             return self.render_updates_page(s, cx).into_any_element();
         }
         if self.tab == Tab::Software {
-            return self.render_software_page(cx).into_any_element();
+            return self.render_software_page(cx, false).into_any_element();
         }
         let (title, description) = match self.tab {
             Tab::Appearance => ("Appearance", "Choose the accent color used across PhoTag."),
@@ -35,7 +42,9 @@ impl SettingsView {
                 "Updates",
                 "Check for releases and choose when to install them.",
             ),
-            Tab::Software => ("Software", "Check optional software used by PhoTag."),
+            Tab::Software => ("Software", "Check the external software used by PhoTag."),
+            Tab::Plugins => ("Plugins", "Manage optional feature plugins."),
+            Tab::PluginSettings => ("Plugin settings", "Configure this feature plugin."),
         };
         let mut b = div().v_flex().gap_3().line_height(relative(1.)).child(
             div()
@@ -56,7 +65,7 @@ impl SettingsView {
         );
         match self.tab {
             Tab::Appearance => {
-                b = b.children(self.language_views.clone());
+                b = b.children(self.language_views.iter().map(|(_, _, view)| view.clone()));
                 b = b.child(self.section("Accent source"));
                 for name in theme::ACCENT_PRESETS
                     .iter()
@@ -310,8 +319,232 @@ impl SettingsView {
                 b = b.child(self.ai_groups(s, cx));
             }
             Tab::Updates => {}
-            Tab::Software => {}
+            Tab::Software | Tab::Plugins | Tab::PluginSettings => {}
         }
         b.into_any_element()
+    }
+
+    fn render_plugin_cards(&self, _s: &Settings, cx: &mut Context<Self>) -> Div {
+        let runtime = self.service.plugin_runtime();
+        let statuses = runtime.snapshot_now();
+        let mut body = div().v_flex().gap(px(theme::PANEL_GAP)).child(
+            div().v_flex().gap_1()
+                .child(div().text_lg().font_semibold().child(photag_ui_bridge::i18n::tr("Plugins")))
+                .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(photag_ui_bridge::i18n::tr("Configure feature plugins. Plugin lifecycle controls apply to the running Cordis plugin."))),
+        );
+        for plugin in statuses {
+            let id = plugin.id.clone();
+            let name = plugin.title.clone();
+            let description = plugin.description.clone();
+            let icon = match id.as_str() {
+                "photag.launcher" => gpui_kit::assets::IconName::LayoutGrid,
+                "photag.clipboard" => gpui_kit::assets::IconName::Clipboard,
+                "photag.screenshot" => gpui_kit::assets::IconName::Aperture,
+                _ => gpui_kit::assets::IconName::Puzzle,
+            };
+            let enabled = plugin.enabled;
+            let busy = plugin.busy;
+            let plugin_id = id.clone();
+            let settings_id = id.clone();
+            body = body.child(
+                div()
+                    .v_flex()
+                    .gap_2()
+                    .workbench_card(false)
+                    .p(px(theme::SPACE_3))
+                    .child(
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .justify_between()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .size(px(44.))
+                                    .rounded(px(theme::ROUND_MD))
+                                    .bg(rgb(theme::SURFACE_PANEL))
+                                    .items_center()
+                                    .justify_center()
+                                    .child(theme::icon(icon)),
+                            )
+                            .child(
+                                div()
+                                    .v_flex()
+                                    .gap_1()
+                                    .flex_1()
+                                    .child(
+                                        div()
+                                            .text_size(px(theme::FONT_SIZE_HEADING))
+                                            .font_semibold()
+                                            .child(photag_ui_bridge::i18n::tr(&name)),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_sm()
+                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                            .child(photag_ui_bridge::i18n::tr(&description)),
+                                    ),
+                            )
+                            .child(
+                                Button::new(format!("settings-open-plugin-{id}"))
+                                    .label(photag_ui_bridge::i18n::tr("Settings"))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.tab = Tab::PluginSettings;
+                                        this.selected_plugin_id = Some(settings_id.clone());
+                                        let _ = this.surfaces.set_value("settings.tab", "plugin");
+                                        let _ = this
+                                            .surfaces
+                                            .set_value("settings.plugin_id", &settings_id);
+                                        cx.notify();
+                                    })),
+                            )
+                            .child(
+                                Button::new(format!("settings-toggle-plugin-{id}"))
+                                    .label(photag_ui_bridge::i18n::tr(if busy {
+                                        "Working…"
+                                    } else if enabled {
+                                        "Disable"
+                                    } else {
+                                        "Enable"
+                                    }))
+                                    .disabled(busy)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        let runtime = this.service.plugin_runtime();
+                                        let plugin_id = plugin_id.clone();
+                                        let next = !enabled;
+                                        cx.spawn(async move |this, cx| {
+                                            let result =
+                                                runtime.set_enabled(&plugin_id, next).await;
+                                            let persisted_id = plugin_id.clone();
+                                            let _ = this.update(cx, |view, cx| {
+                                                match result {
+                                                    Ok(()) => view.edit(
+                                                        |settings| {
+                                                            settings
+                                                                .plugin_enabled
+                                                                .insert(persisted_id.clone(), next);
+                                                        },
+                                                        cx,
+                                                    ),
+                                                    Err(error) => {
+                                                        view.error = Some(format!(
+                                                            "Could not change plugin state: {error}"
+                                                        ))
+                                                    }
+                                                }
+                                                cx.notify();
+                                            });
+                                        })
+                                        .detach();
+                                    })),
+                            ),
+                    ),
+            );
+        }
+        body
+    }
+
+    fn render_plugin_settings(&self, s: &Settings, cx: &mut Context<Self>) -> Div {
+        let Some(id) = self.selected_plugin_id.as_deref() else {
+            return div().child(photag_ui_bridge::i18n::tr(
+                "Select a plugin from the navigation.",
+            ));
+        };
+        let Some(plugin) = self
+            .service
+            .plugin_runtime()
+            .snapshot_now()
+            .into_iter()
+            .find(|plugin| plugin.id == id)
+        else {
+            return div().child(photag_ui_bridge::i18n::tr(
+                "This plugin is no longer available.",
+            ));
+        };
+        let mode = s.plugin_launch_mode(id);
+        let mut body = div()
+            .v_flex()
+            .gap(px(theme::PANEL_GAP))
+            .child(
+                div()
+                    .v_flex()
+                    .gap_1()
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_semibold()
+                            .child(photag_ui_bridge::i18n::tr(&plugin.title)),
+                    )
+                    .child(
+                        div()
+                            .text_sm()
+                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .child(photag_ui_bridge::i18n::tr(&plugin.description)),
+                    ),
+            )
+            .child(self.section("Shortcut presentation"));
+        for value in plugin.launch_modes {
+            let chosen = value == mode;
+            let plugin_id = id.to_owned();
+            let label = match value {
+                crate::PluginLaunchMode::WorkspaceAndPanel => "Workspace and floating panel",
+                crate::PluginLaunchMode::PanelOnly => "Floating panel only",
+                crate::PluginLaunchMode::Direct => "Launch capture directly",
+            };
+            body = body.child(
+                Button::new(format!("settings-plugin-mode-{id}-{label}"))
+                    .icon(theme::small_icon(if chosen {
+                        gpui_kit::assets::IconName::CircleDot
+                    } else {
+                        gpui_kit::assets::IconName::Circle
+                    }))
+                    .label(photag_ui_bridge::i18n::tr(label))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.edit(
+                            |settings| {
+                                settings
+                                    .plugin_launch_modes
+                                    .insert(plugin_id.clone(), value);
+                            },
+                            cx,
+                        );
+                    })),
+            );
+        }
+        body = body.child(self.render_plugin_shortcuts(id, s, cx));
+        if id == "photag.screenshot" {
+            body = body
+                .child(self.section("External software"))
+                .child(self.render_software_page(cx, true));
+        }
+        let command_id = match id {
+            "photag.launcher" => "program-launcher/open",
+            "photag.clipboard" => "clipboard-workbench/open",
+            "photag.screenshot" => "screenshot-tool/open-manager",
+            _ => "",
+        };
+        let cordis = self.cordis.clone();
+        let command_id = command_id.to_owned();
+        body = body.child(
+            Button::new(format!("settings-open-plugin-panel-{id}"))
+                .label(photag_ui_bridge::i18n::tr("Open plugin panel"))
+                .disabled(!plugin.enabled || plugin.busy || command_id.is_empty())
+                .on_click(move |_, _, _| {
+                    let cordis = cordis.clone();
+                    let command_id = command_id.clone();
+                    tokio::spawn(async move {
+                        if let Err(error) = cordis
+                            .emit::<photag_ui_bridge::UiCommandInvoked>(
+                                cordis::Routing::Unscoped,
+                                command_id,
+                            )
+                            .await
+                        {
+                            tracing::error!(%error, "could not open plugin panel from Settings");
+                        }
+                    });
+                }),
+        );
+        body
     }
 }

@@ -53,7 +53,11 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
                 .child(photag_ui_bridge::i18n::tr(label)),
         );
     }
-    rail.children(view.launcher_shortcuts.iter().cloned())
+    rail.children(
+        view.launcher_shortcuts
+            .iter()
+            .map(|(_, _, button)| button.clone()),
+    )
 }
 
 pub(super) fn render_extensions(view: &SidebarView) -> Div {
@@ -71,7 +75,12 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
                 .text_size(px(15.))
                 .child(photag_ui_bridge::i18n::tr("Add-ons")),
         );
-    if view.extension_views.is_empty() {
+    let extension_views = view
+        .extension_views
+        .iter()
+        .map(|(_, _, extension)| extension.clone())
+        .collect::<Vec<_>>();
+    if extension_views.is_empty() {
         return page.child(
             div()
                 .v_flex()
@@ -83,5 +92,5 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
                 .child(photag_ui_bridge::i18n::tr("No available add-ons.")),
         );
     }
-    page.children(view.extension_views.iter().cloned())
+    page.children(extension_views)
 }

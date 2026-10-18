@@ -811,3 +811,16 @@ PhoTag `cargo +1.97.1 check --locked -p photag-shell -j 2` 与 `build --locked` 
 ## 2026-10-18：移除 Shotoshot 源码副本
 
 用户确认 PhoTag 应调用用户自行安装的 Shotoshot，而不把其应用源码纳入 PhoTag 仓库。已从当前分支删除 `vendor/shotoshot/`（196 个上游文件）和 `scripts/build-shotoshot.ps1`，移除 `shotoshot-app` / `shotoshot-core` 本地依赖并清理锁文件。上文对临时 vendored 版本的构建和测试仅保留为历史记录，不代表当前仓库仍包含或构建 Shotoshot。当前插件只检测/启动外部 EXE、向运行实例发送请求，并在锁保护下更新 Shotoshot 设置文件中的输出目录字段。验证：`cargo +1.97.1 fmt --all`、`cargo +1.97.1 check --offline -p photag-shell -j 2` 通过。
+
+
+## 2026-10-18：插件设置中心
+
+新增程序设置/插件设置分组，运行时插件总览及启动台、剪贴板、截图工具独立页；同进程隔离 MCP 验证 Fiber 停启与快捷面板呈现。详情、命令、截图和当前未覆盖项见 [插件设置验证记录](validation-ui/2026-10-18-plugin-settings/README.md)。
+
+修复停用插件后侧栏按钮仍残留：Navigation 原先只在侧栏首次创建时实例化插件托槽，并长期缓存 GPUI 视图。现按 UiBridge 注册 ID 与 generation 同步两个导航槽，Cordis 注销会释放旧视图，再注册会创建新视图；Shell 的注册变化通知唤醒侧栏刷新。`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-navigation -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2` 均通过（链接器有既存 LIBCMT/LIBC 冲突警告）。同进程隔离 MCP 场景 `scripts/validate-plugin-settings.cjs` 完整通过：剪贴板注销时命令和侧栏托槽均消失、重新启用后恢复；最终停用截图为 `target/mcp-plugin-settings-final/screenshots/clipboard-disabled-sidebar-final.png`。
+
+## 2026-10-18：恢复 QuickLook 与 Everything 软件检查页
+
+用户发现拆分插件设置后，程序设置中的 QuickLook 与 Everything 检查不可见。检测器仍保留两项，但呈现页只筛选 Shotoshot，且程序设置侧栏丢失 Software 项。现恢复程序设置 Software 页并显示 QuickLook/Everything 两张检测卡；截图插件详情仍只显示 Shotoshot。`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-settings -p photag-plugin-mcp -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2` 通过。默认 EXE 当时未发现对应运行进程，使用标准目标目录构建成功；同进程隔离 MCP 场景 `scripts/validate-software-check.cjs` 通过，实际环境识别 QuickLook 4.5.0 与 Everything 1.5.0.1423，检查页面展示版本、路径和项目/下载链接，没有启动或查询这两项软件。截图：`target/mcp-software-restored-20261018/screenshots/settings-software-check.png`。
+
+随后完成 UI 托槽缓存审计：Shell 主挂载已按 ID/generation 复用有效视图并释放注销/换代视图；PanelCatalog 停用 owner 时移除面板定义、实例和对应挂载；插件元数据贡献在 Shell 渲染时读取实时 catalog；`settings.language` 原先由设置面板初始化时单次快照创建，现改为按 ID/generation 实时同步，并将此槽纳入 Shell 注册变化信号。Navigation 的内嵌槽也按 ID/generation 同步。`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 check --locked -p photag-plugin-settings -p photag-plugin-navigation -p photag-shell -j 2`、`cargo +1.97.1 build --locked -p photag-shell -j 2` 通过；主题、刷新、架构和 feature-ledger 守卫通过。新版通过同进程隔离 MCP 插件设置场景。现有 MCP 插件停启控制只覆盖启动台、剪贴板、截图工具，不能停用 i18n，因此语言托槽换代/注销未做运行时停启演练；此路径已静态检查并纳入统一同步逻辑。

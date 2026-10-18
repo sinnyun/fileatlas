@@ -419,7 +419,36 @@ fn main() {
     } else {
         None
     };
-    let _launcher_fiber = if enable_launcher {
+    // Settings starts after Navigation and before optional workbench plugins so
+    // each plugin can read its persisted launch configuration during startup.
+    let settings_plugin = photag_plugin_settings::SettingsPlugin;
+    let settings_config = photag_plugin_settings::SettingsConfig {
+        path: dev_test_dir.as_ref().map(|path| path.join("settings.json")),
+    };
+    let settings_input = settings_plugin
+        .prepare(settings_config)
+        .expect("prepare settings plugin");
+    let settings_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
+        .expect("start settings plugin");
+    let settings_service = cordis
+        .try_service::<photag_plugin_settings::SettingsService>()
+        .ok();
+    let plugin_runtime = settings_service
+        .as_ref()
+        .map(|service| service.plugin_runtime())
+        .unwrap_or_default();
+    let plugin_preferences = settings_service
+        .as_ref()
+        .and_then(|service| service.snapshot().ok())
+        .unwrap_or_default();
+    let enable_launcher =
+        enable_launcher && plugin_preferences.plugin_is_enabled("photag.launcher");
+    let enable_clipboard =
+        enable_clipboard && plugin_preferences.plugin_is_enabled("photag.clipboard");
+    let enable_screenshot =
+        enable_screenshot && plugin_preferences.plugin_is_enabled("photag.screenshot");
+    let launcher_fiber = if enable_launcher {
         let plugin = photag_plugin_launcher::LauncherPlugin;
         let input = match plugin.prepare(photag_plugin_launcher::LauncherConfig) {
             Ok(input) => input,
@@ -435,6 +464,34 @@ fn main() {
     } else {
         None
     };
+    let launcher_context = cordis.clone();
+    let launcher_starter: photag_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = launcher_context.clone();
+        Box::pin(async move {
+            let plugin = photag_plugin_launcher::LauncherPlugin;
+            let input = match plugin.prepare(photag_plugin_launcher::LauncherConfig) {
+                Ok(input) => input,
+                Err(never) => match never {},
+            };
+            context
+                .spawn(PreparedPlugin::from_input(plugin, input))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "photag.launcher",
+        "Program Launchpad",
+        "Search and launch installed programs and shortcuts.",
+        vec![
+            photag_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            photag_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        launcher_fiber,
+        launcher_starter,
+    )) {
+        tracing::error!(%error, "could not register Program Launchpad runtime control");
+    }
     let _shortcuts_fiber = if enable_shortcuts {
         let plugin = photag_plugin_shortcuts::ShortcutsPlugin;
         let input = match plugin.prepare(()) {
@@ -451,7 +508,7 @@ fn main() {
     } else {
         None
     };
-    let _clipboard_fiber = if enable_clipboard {
+    let clipboard_fiber = if enable_clipboard {
         let plugin = photag_plugin_clipboard::ClipboardPlugin;
         let input = match plugin.prepare(()) {
             Ok(input) => input,
@@ -467,19 +524,35 @@ fn main() {
     } else {
         None
     };
-    // Settings can read the live tag tree from NavigationService when the
-    // navigation plugin is enabled, so start it after Navigation.
-    let settings_plugin = photag_plugin_settings::SettingsPlugin;
-    let settings_config = photag_plugin_settings::SettingsConfig {
-        path: dev_test_dir.as_ref().map(|path| path.join("settings.json")),
-    };
-    let settings_input = settings_plugin
-        .prepare(settings_config)
-        .expect("prepare settings plugin");
-    let settings_fiber = runtime
-        .block_on(cordis.spawn(PreparedPlugin::from_input(settings_plugin, settings_input)))
-        .expect("start settings plugin");
-    let _screenshot_fiber = if enable_screenshot {
+    let clipboard_context = cordis.clone();
+    let clipboard_starter: photag_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = clipboard_context.clone();
+        Box::pin(async move {
+            let plugin = photag_plugin_clipboard::ClipboardPlugin;
+            let input = match plugin.prepare(()) {
+                Ok(input) => input,
+                Err(never) => match never {},
+            };
+            context
+                .spawn(PreparedPlugin::from_input(plugin, input))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "photag.clipboard",
+        "Clipboard Workbench",
+        "Browse and manage captured clipboard history.",
+        vec![
+            photag_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            photag_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        clipboard_fiber,
+        clipboard_starter,
+    )) {
+        tracing::error!(%error, "could not register Clipboard Workbench runtime control");
+    }
+    let screenshot_fiber = if enable_screenshot {
         let plugin = photag_plugin_screenshot::ScreenshotPlugin;
         match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ()))) {
             Ok(fiber) => Some(fiber),
@@ -491,6 +564,35 @@ fn main() {
     } else {
         None
     };
+    let screenshot_context = cordis.clone();
+    let screenshot_starter: photag_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = screenshot_context.clone();
+        Box::pin(async move {
+            let plugin = photag_plugin_screenshot::ScreenshotPlugin;
+            let input = match plugin.prepare(()) {
+                Ok(input) => input,
+                Err(never) => match never {},
+            };
+            context
+                .spawn(PreparedPlugin::from_input(plugin, input))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "photag.screenshot",
+        "Screenshot Tool",
+        "Launch Shotoshot capture and manage its output folder.",
+        vec![
+            photag_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            photag_plugin_settings::PluginLaunchMode::PanelOnly,
+            photag_plugin_settings::PluginLaunchMode::Direct,
+        ],
+        screenshot_fiber,
+        screenshot_starter,
+    )) {
+        tracing::error!(%error, "could not register Screenshot Tool runtime control");
+    }
     // Publish the optional local Everything IPC adapter before Gallery starts.
     // The adapter never launches the external Everything application.
     let everything_fiber = if enable_gallery {
@@ -701,9 +803,13 @@ fn main() {
                 capture_handle.set(1);
                 photag_ui_bridge::theme::set_backdrop_active(false);
             }
-            let mounted_views = views
-                .snapshot()
-                .unwrap_or_default()
+            let view_snapshot = views.snapshot().unwrap_or_default();
+            let view_catalog_signature = view_snapshot
+                .iter()
+                .map(|entry| (entry.contribution.id.clone(), entry.generation))
+                .collect::<Vec<_>>();
+            let mounted_views = view_snapshot
+                .into_iter()
                 .into_iter()
                 .filter(|entry| entry.contribution.slot != "settings.language")
                 .map(|entry| {
@@ -764,16 +870,16 @@ fn main() {
                             .snapshot()
                             .unwrap_or_default()
                             .into_iter()
-                            .filter(|entry| entry.contribution.slot != "settings.language")
                             .map(|entry| (entry.contribution.id, entry.generation))
                             .collect::<Vec<_>>();
-                        if registered
-                            != shell
-                                .views
-                                .iter()
-                                .map(|(id, generation, _, _, _)| (id.clone(), *generation))
-                                .collect::<Vec<_>>()
-                        {
+                        if registered != shell.view_catalog_signature {
+                            shell.view_catalog_signature = registered;
+                            if let Ok(navigation) = shell
+                                .cordis
+                                .try_service::<photag_plugin_navigation::NavigationService>(
+                            ) {
+                                navigation.notify_plugin_views_changed();
+                            }
                             changed = true;
                         }
 
@@ -807,6 +913,7 @@ fn main() {
                 PhoTagShell {
                     catalog,
                     views: mounted_views,
+                    view_catalog_signature,
                     view_catalog: views.clone(),
                     cordis,
                     executor,

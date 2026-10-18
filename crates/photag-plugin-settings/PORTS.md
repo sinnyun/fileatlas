@@ -17,11 +17,18 @@ Status: the source-compatible settings model and JSON persistence are active. Th
 - Plugin: `photag.settings`; service: `photag/settings` (`SettingsService`).
 - Requires the host `photag/ui-bridge` service. It publishes the settings service, contributes the `workspace.modal` Settings view and `settings/toggle` command/Window menu entry, and registers them under the same plugin owner.
 - Cordis effect cleanup removes the UI contribution metadata, command listener, and view factory when the plugin stops. The service and `UiSurfaceState` are held by their host lifetime.
+- The `settings.language` extension slot is reconciled from the live UiBridge catalog by contribution ID and generation while Settings renders; unregister drops the old `AnyView`, and re-register constructs a fresh one.
 - The Shell mounts `workspace.modal` above application content. The Settings surface starts closed and centers on first open, with a 680–980 px width based on the viewport. Its title bar can be dragged; Close and Escape dismiss it. While open-key capture is active, Escape cancels capture without closing Settings. The shared bridge state lets the host command open the window and the panel close itself.
 
 ## Migrated settings controls
 
-The panel has Appearance, Shortcuts, Tags, AI, Updates and Software sections. Direct controls cover accent selection, date dividers, sidebar exclusion modifier, search scopes, tag search match and persistence, tag merge child behavior, AI automatic analysis, mandatory group editing, updater auto-check and open-key/tag shortcuts. Preference controls persist through the same serde model; Software is a read-only detector and does not persist.
+The panel has Appearance, Shortcuts, Tags, AI, Updates, Software and Plugins sections. Direct controls cover accent selection, date dividers, sidebar exclusion modifier, search scopes, tag search match and persistence, tag merge child behavior, AI automatic analysis, mandatory group editing, updater auto-check and open-key/tag shortcuts. Program Settings → Software is a read-only detector for QuickLook and Everything; the Screenshot Tool plugin page reports Shotoshot separately.
+
+## Plugin settings and runtime controls — 2026-10-18
+
+The Settings rail is grouped into Program settings and Plugin settings. Plugin overview cards are lifecycle-aware for `photag.launcher`, `photag.clipboard`, and `photag.screenshot`; their independent pages expose launch presentation settings. `Settings.plugin_enabled` persists enabled state and defaults missing entries to enabled. `PluginRuntimeRegistry` holds Cordis `FiberHandle`s and shell-provided spawn recipes; disabling awaits `FiberHandle::dispose`, and enabling spawns a fresh prepared plugin through the host `CordisContext`. This registry is limited to those three standalone workbench tools. They depend on core Database/Settings services that are not user-toggleable here; no general dependency-cascade manager is introduced.
+
+`Settings.plugin_launch_modes` is keyed by Cordis owner ID and defaults to `WorkspaceAndPanel`. Launcher/Clipboard support `PanelOnly`; Screenshot also supports `Direct`, which invokes Shotoshot capture without opening the PhoTag panel. `UiSurfaceState.panel.presentation=panel-only` makes Shell omit the main workspace while the generic panel is open; closing its final panel clears that value. The setting changes apply on the next plugin open. Live Windows MCP interaction and screenshot comparison are pending.
 
 The Shortcuts page also discovers lifecycle-owned command keybindings from
 `UiCatalog.commands()`. Each plugin registers a stable keybinding contribution
@@ -35,7 +42,7 @@ GPUI polling thread and suspends global registrations during key capture.
 
 ## External software check — 2026-10-17
 
-The Software tab detects QuickLook and Everything from registered uninstall and
+The Program Settings → Software tab detects QuickLook and Everything from registered uninstall and
 App Paths entries plus common executable locations. It reads registry values
 and checks file existence only; it never launches either application or invokes
 an installer. Refresh requests a new background `ReadModel` snapshot. Results
@@ -66,9 +73,9 @@ The floating Settings panel uses the shared backdrop-aware base and modal surfac
 
 ## Code map
 
-- `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and the six-page host.
+- `src/view.rs` owns Settings view state, preference edits, key capture, modal lifecycle, and grouped Program/Plugin navigation.
 - `src/view/tabs.rs` renders Appearance, Shortcuts, Tags and AI; `src/view/software.rs` owns the external-software snapshot and Software page; `src/view/ai_groups.rs` owns mandatory-group editing and `tag_hotkeys.rs` owns F1–F9 assignment menus. `src/view/updates_page.rs` renders release/check/download/install states; `updates.rs` owns update lifecycle and the floating offer.
-- `src/settings.rs` owns the source-compatible preference schema/defaults and JSON service persistence.
+- `src/settings.rs` owns the source-compatible preference schema/defaults, plugin presentation/enabled maps and JSON service persistence; `src/runtime.rs` coordinates optional tool plugin Fiber stop/spawn through Cordis APIs.
 
 ## Localization and live Settings validation (2026-10-13)
 

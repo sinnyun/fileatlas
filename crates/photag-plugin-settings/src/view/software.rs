@@ -16,11 +16,12 @@ pub(super) struct SoftwareStatus {
 
 impl SettingsView {
     pub(super) fn poll_software_check(&mut self) -> bool {
+        let tab = self.surfaces.value("settings.tab");
         let active = self.surfaces.is_open("settings")
-            && self
-                .surfaces
-                .value("settings.tab")
-                .is_some_and(|tab| tab == "software");
+            && (tab.as_deref() == Some("software")
+                || (tab.as_deref() == Some("plugin")
+                    && self.surfaces.value("settings.plugin_id").as_deref()
+                        == Some("photag.screenshot")));
         if !active {
             self.software_tab_active = false;
             return false;
@@ -53,7 +54,11 @@ impl SettingsView {
         changed
     }
 
-    pub(super) fn render_software_page(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    pub(super) fn render_software_page(
+        &self,
+        cx: &mut Context<Self>,
+        screenshot_plugin: bool,
+    ) -> impl IntoElement {
         let mut content = div().v_flex().gap_3().line_height(relative(1.));
         content = content.child(
             div()
@@ -106,7 +111,13 @@ impl SettingsView {
 
         match self.software_check.value() {
             Some(Ok(items)) => {
-                for item in items {
+                for item in items.iter().filter(|item| {
+                    if screenshot_plugin {
+                        item.name == "Shotoshot"
+                    } else {
+                        matches!(item.name, "QuickLook" | "Everything")
+                    }
+                }) {
                     let state_label = match item.state {
                         "installed" => "Installed",
                         "unsupported" => "Detection unavailable",

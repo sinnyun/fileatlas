@@ -10,6 +10,7 @@ use photag_contracts::TagInteractionPreferencesChanged;
 use photag_plugin_navigation::NavigationService;
 use photag_plugin_session::SessionService;
 use photag_plugin_updater::{UpdateInfo, UpdaterService};
+use photag_ui_bridge::components::WorkbenchStyle as _;
 use photag_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
 use std::sync::{Arc, Weak, atomic::AtomicU64, mpsc};
 
@@ -40,6 +41,8 @@ enum Tab {
     Ai,
     Updates,
     Software,
+    Plugins,
+    PluginSettings,
 }
 pub(super) fn settings(
     service: Arc<SettingsService>,
@@ -59,20 +62,11 @@ pub(super) fn settings(
             let group_name_input = app.new(|cx| {
                 InputState::new(window, cx).placeholder(photag_ui_bridge::i18n::tr("Group name"))
             });
-            let language_views = view_cordis
-                .try_service::<photag_ui_bridge::UiBridgeService>()
-                .ok()
-                .and_then(|bridge| bridge.views.snapshot().ok())
-                .unwrap_or_default()
-                .into_iter()
-                .filter(|entry| entry.contribution.slot == "settings.language")
-                .map(|entry| (entry.contribution.factory)(window, app))
-                .collect::<Vec<_>>();
             let content = app
                 .new(|cx| {
                     let mut view = SettingsView {
                         locale_revision: u64::MAX,
-                        language_views,
+                        language_views: Vec::new(),
                         service: Arc::clone(&service),
                         surfaces: Arc::clone(&view_surfaces),
                         cordis: view_cordis,
@@ -94,6 +88,7 @@ pub(super) fn settings(
                         group_name_input: group_name_input.clone(),
                         editing_group: None,
                         tab: Tab::Appearance,
+                        selected_plugin_id: None,
                         error: None,
                         capturing_open_key: false,
                         capturing_shortcut: None,
@@ -109,14 +104,18 @@ pub(super) fn settings(
                     let mut surface_gate = photag_ui_bridge::refresh::ChangeGate::new((
                         surface_poll.is_open("settings"),
                         surface_poll.value("settings.tab"),
+                        surface_poll.value("settings.plugin_id"),
                     ));
                     photag_ui_bridge::refresh::poll(
                         cx,
                         std::time::Duration::from_millis(100),
                         move |view: &mut SettingsView, cx| {
                             let visible = surface_poll.is_open("settings");
-                            let changed =
-                                surface_gate.changed((visible, surface_poll.value("settings.tab")));
+                            let changed = surface_gate.changed((
+                                visible,
+                                surface_poll.value("settings.tab"),
+                                surface_poll.value("settings.plugin_id"),
+                            ));
                             view.surface_visible = visible;
                             if (!visible
                                 || surface_poll.value("settings.tab").as_deref()
@@ -174,7 +173,7 @@ pub(super) fn settings(
 }
 pub(super) struct SettingsView {
     locale_revision: u64,
-    language_views: Vec<AnyView>,
+    language_views: Vec<(String, u64, AnyView)>,
     service: Arc<SettingsService>,
     surfaces: Arc<UiSurfaceState>,
     cordis: CordisContext,
@@ -196,6 +195,7 @@ pub(super) struct SettingsView {
     group_name_input: Entity<InputState>,
     editing_group: Option<usize>,
     tab: Tab,
+    selected_plugin_id: Option<String>,
     error: Option<String>,
     capturing_open_key: bool,
     capturing_shortcut: Option<String>,
@@ -501,20 +501,25 @@ impl SettingsView {
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let mut rail = div().v_flex().w(px(166.)).gap(px(6.)).p_2().flex_shrink_0();
         use gpui_kit::assets::IconName;
-        for (tab, name, icon) in [
-            (Tab::Appearance, "Appearance", IconName::Monitor),
-            (Tab::Shortcuts, "Shortcuts", IconName::Keyboard),
-            (Tab::Tags, "Tags", IconName::Tag),
-            (Tab::Ai, "AI", IconName::Sparkles),
-            (Tab::Updates, "Updates", IconName::RefreshCw),
-            (Tab::Software, "Software", IconName::Info),
-        ] {
+        let add_group = |rail: Div, title: &'static str| {
+            rail.child(
+                div()
+                    .text_xs()
+                    .font_semibold()
+                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .px_2()
+                    .pt_2()
+                    .pb_1()
+                    .child(photag_ui_bridge::i18n::tr(title)),
+            )
+        };
+        let add_tab = |rail: Div, tab: Tab, name: &'static str, icon: IconName| {
             let active = self.tab == tab;
-            rail = rail.child(
+            rail.child(
                 Button::new(format!("settings-tab-{name}"))
                     .ghost()
                     .w_full()
-                    .h(px(38.))
+                    .h(px(theme::NAV_ROW_HEIGHT))
                     .px(px(10.))
                     .justify_start()
                     .rounded(px(theme::ROUND_MD))
@@ -530,7 +535,7 @@ impl SettingsView {
                         rgba(0)
                     })
                     .text_color(rgb(theme::TEXT_PRIMARY))
-                    .text_size(px(14.))
+                    .text_size(px(theme::FONT_SIZE_BODY))
                     .child(
                         div()
                             .h_flex()
@@ -542,7 +547,7 @@ impl SettingsView {
                             .child(
                                 div()
                                     .flex_1()
-                                    .text_size(px(14.))
+                                    .text_size(px(theme::FONT_SIZE_BODY))
                                     .text_color(rgb(theme::TEXT_PRIMARY))
                                     .child(photag_ui_bridge::i18n::tr(name)),
                             ),
@@ -558,17 +563,77 @@ impl SettingsView {
                             Tab::Ai => "ai",
                             Tab::Updates => "updates",
                             Tab::Software => "software",
+                            Tab::Plugins => "plugins",
+                            Tab::PluginSettings => "plugin",
                         };
                         let _ = this.surfaces.set_value("settings.tab", name);
                         cx.notify()
                     })),
+            )
+        };
+        rail = add_group(rail, "Program settings");
+        for (tab, name, icon) in [
+            (Tab::Appearance, "Appearance", IconName::Monitor),
+            (Tab::Shortcuts, "Shortcuts", IconName::Keyboard),
+            (Tab::Tags, "Tags", IconName::Tag),
+            (Tab::Ai, "AI", IconName::Sparkles),
+            (Tab::Updates, "Updates", IconName::RefreshCw),
+            (Tab::Software, "Software", IconName::Wrench),
+            (Tab::Plugins, "Plugins", IconName::Puzzle),
+        ] {
+            rail = add_tab(rail, tab, name, icon);
+        }
+        rail = rail.child(
+            div()
+                .w_full()
+                .h(px(1.))
+                .my_2()
+                .bg(rgba(theme::HAIRLINE.to_rgba())),
+        );
+        rail = add_group(rail, "Plugin settings");
+        for plugin in self.service.plugin_runtime().snapshot_now() {
+            let active = self.tab == Tab::PluginSettings
+                && self.selected_plugin_id.as_deref() == Some(&plugin.id);
+            rail = rail.child(
+                Button::new(format!("settings-plugin-page-{}", plugin.id))
+                    .ghost()
+                    .w_full()
+                    .h(px(theme::NAV_ROW_HEIGHT))
+                    .px(px(10.))
+                    .justify_start()
+                    .rounded(px(theme::ROUND_MD))
+                    .border_l(px(3.))
+                    .border_color(if active {
+                        rgb(theme::accent())
+                    } else {
+                        rgba(0)
+                    })
+                    .bg(if active {
+                        rgb(theme::selection_color())
+                    } else {
+                        rgba(0)
+                    })
+                    .text_color(rgb(theme::TEXT_PRIMARY))
+                    .text_size(px(theme::FONT_SIZE_BODY))
+                    .label(photag_ui_bridge::i18n::tr(&plugin.title))
+                    .tooltip(photag_ui_bridge::i18n::tr(&plugin.title))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.cancel_shortcut_capture();
+                        this.capturing_open_key = false;
+                        this.tab = Tab::PluginSettings;
+                        this.selected_plugin_id = Some(plugin.id.clone());
+                        let _ = this.surfaces.set_value("settings.tab", "plugin");
+                        let _ = this.surfaces.set_value("settings.plugin_id", &plugin.id);
+                        cx.notify();
+                    })),
             );
         }
-        rail
+        rail.h_full().overflow_y_scrollbar()
     }
 }
 impl Render for SettingsView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_language_views(window, cx);
         let locale_revision = photag_ui_bridge::i18n::revision();
         if self.locale_revision != locale_revision {
             self.locale_revision = locale_revision;
@@ -587,8 +652,13 @@ impl Render for SettingsView {
                 "ai" => Tab::Ai,
                 "updates" => Tab::Updates,
                 "software" => Tab::Software,
+                "plugins" => Tab::Plugins,
+                "plugin" => Tab::PluginSettings,
                 _ => Tab::Appearance,
             };
+            if self.tab == Tab::PluginSettings {
+                self.selected_plugin_id = self.surfaces.value("settings.plugin_id");
+            }
         }
         let bounds = photag_ui_bridge::panels::content_bounds(&self.surfaces, "settings", window);
         let card_width = bounds.width;
@@ -700,5 +770,35 @@ impl Render for SettingsView {
             root = root.child(self.render_update_offer(window, cx));
         }
         root.into_any_element()
+    }
+}
+
+impl SettingsView {
+    fn sync_language_views(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let entries = self
+            .cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .ok()
+            .and_then(|bridge| bridge.views.snapshot().ok())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|entry| entry.contribution.slot == "settings.language")
+            .collect::<Vec<_>>();
+        let mut previous = std::mem::take(&mut self.language_views);
+        self.language_views = entries
+            .into_iter()
+            .map(|entry| {
+                let id = entry.contribution.id;
+                let generation = entry.generation;
+                let view = previous
+                    .iter()
+                    .position(|(old_id, old_generation, _)| {
+                        old_id == &id && *old_generation == generation
+                    })
+                    .map(|index| previous.remove(index).2)
+                    .unwrap_or_else(|| (entry.contribution.factory)(window, cx));
+                (id, generation, view)
+            })
+            .collect();
     }
 }

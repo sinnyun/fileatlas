@@ -10,6 +10,7 @@ cordis.workspace = true
 gpui-kit.workspace = true
 gpui = { package = "gpui-pre", version = "=0.3.8" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-settings = { path = "../photag-plugin-settings" }
 photag-ui-bridge = { path = "../photag-ui-bridge" }
 clipboard-master = "4.0"
 arboard = { version = "3.7", default-features = false, features = ["image-data"] }
@@ -17,6 +18,7 @@ dirs = "5"
 thiserror.workspace = true
 tracing.workspace = true
 serde_json.workspace = true
+serde = { version = "1", features = ["derive"] }
 chrono = "0.4"
 url = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }

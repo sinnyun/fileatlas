@@ -1,5 +1,5 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
-//! Personal program launcher backed by PhoTag's shared application database.
+//! Personal program launcher backed by its feature-owned JSON data file.
 
 mod discovery;
 mod icons;
@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::{DatabaseAccessError, DatabaseService, LauncherDiscoveredProgram};
+use photag_plugin_settings::{PluginLaunchMode, SettingsService};
 use photag_ui_bridge::{
     ContributionKind, UiBridgeService, UiCommandInvoked, UiContribution, register_for_plugin,
     register_views_for_plugin,
@@ -20,14 +21,46 @@ const OWNER: &str = "photag.launcher";
 const PANEL_ID: &str = "program-launcher/panel";
 const OPEN_COMMAND: &str = "program-launcher/open";
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+fn discovery_key(path: &Path) -> String {
+    format!(
+        "path:{}",
+        path.to_string_lossy().replace('/', "\\").to_lowercase()
+    )
+}
+
+fn persist_launcher(path: &Path, snapshot: &LauncherSnapshot) -> Result<(), LauncherError> {
+    let bytes = serde_json::to_vec_pretty(snapshot)?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| LauncherError::Io(std::io::Error::other("invalid launcher data path")))?;
+    std::fs::create_dir_all(parent)?;
+    let temp = path.with_extension("json.tmp");
+    std::fs::write(&temp, bytes)?;
+    if let Err(error) = std::fs::rename(&temp, path) {
+        if path.exists() {
+            let backup = path.with_extension("json.bak");
+            let _ = std::fs::remove_file(&backup);
+            std::fs::rename(path, &backup)?;
+            if let Err(replace_error) = std::fs::rename(&temp, path) {
+                let _ = std::fs::rename(&backup, path);
+                return Err(LauncherError::Io(replace_error));
+            }
+            let _ = std::fs::remove_file(backup);
+        } else {
+            return Err(LauncherError::Io(error));
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LauncherCategory {
     pub id: i64,
     pub name: String,
     pub position: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LauncherEntry {
     pub id: i64,
     pub display_name: String,
@@ -40,9 +73,15 @@ pub struct LauncherEntry {
     pub installed_on: Option<String>,
     pub size_bytes: Option<i64>,
     pub pin_scope: PinScope,
+    #[serde(default)]
+    discovery_key: String,
+    #[serde(default)]
+    custom_name: bool,
+    #[serde(default)]
+    custom_category: bool,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PinScope {
     #[default]
     None,
@@ -58,26 +97,24 @@ impl PinScope {
             _ => Self::None,
         }
     }
-
-    fn to_db(self) -> i64 {
-        match self {
-            Self::None => 0,
-            Self::Category => 1,
-            Self::AllPrograms => 2,
-        }
-    }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LauncherSnapshot {
+    #[serde(default = "launcher_data_version")]
+    pub version: u32,
     pub categories: Vec<LauncherCategory>,
     pub entries: Vec<LauncherEntry>,
     pub scanning: bool,
     pub revision: u64,
 }
 
+fn launcher_data_version() -> u32 {
+    1
+}
+
 pub struct LauncherService {
-    database: Arc<DatabaseService>,
+    data_path: PathBuf,
     icon_cache_dir: PathBuf,
     state: Mutex<LauncherSnapshot>,
     scanning: AtomicBool,
@@ -91,21 +128,88 @@ impl Service for LauncherService {
 
 impl LauncherService {
     fn open(database: Arc<DatabaseService>) -> Result<Arc<Self>, LauncherError> {
-        database.launcher_ensure_default_category()?;
-        let icon_cache_dir = database
-            .path()
-            .parent()
-            .unwrap_or_else(|| Path::new("."))
-            .join("program-icons");
+        let root = if let Some(profile) = std::env::var_os("PHOTAG_DEV_TEST_DIR") {
+            PathBuf::from(profile)
+        } else {
+            database
+                .path()
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .to_path_buf()
+        };
+        let feature_dir = root.join("launcher");
+        std::fs::create_dir_all(&feature_dir)?;
+        let data_path = feature_dir.join("launcher.json");
+        let icon_cache_dir = feature_dir.join("icons");
+        let legacy_icon_dir = root.join("program-icons");
+        if legacy_icon_dir.is_dir() {
+            std::fs::create_dir_all(&icon_cache_dir)?;
+            for item in std::fs::read_dir(&legacy_icon_dir)?.flatten() {
+                let source = item.path();
+                let destination = icon_cache_dir.join(item.file_name());
+                if source.is_file() && !destination.exists() {
+                    std::fs::copy(source, destination)?;
+                }
+            }
+        }
+        let snapshot = if data_path.is_file() {
+            let mut loaded =
+                serde_json::from_slice::<LauncherSnapshot>(&std::fs::read(&data_path)?)?;
+            if loaded.version != 1 {
+                return Err(LauncherError::UnsupportedDataVersion(loaded.version));
+            }
+            for entry in &mut loaded.entries {
+                if entry.discovery_key.is_empty() {
+                    entry.discovery_key = discovery_key(&entry.launch_path);
+                }
+            }
+            loaded
+        } else {
+            database.launcher_ensure_default_category()?;
+            let (categories, entries) = database.launcher_snapshot()?;
+            let snapshot = LauncherSnapshot {
+                version: 1,
+                categories: categories
+                    .into_iter()
+                    .map(|c| LauncherCategory {
+                        id: c.id,
+                        name: c.name,
+                        position: c.position,
+                    })
+                    .collect(),
+                entries: entries
+                    .into_iter()
+                    .map(|e| LauncherEntry {
+                        available: Path::new(&e.launch_path).exists(),
+                        id: e.id,
+                        display_name: e.display_name,
+                        launch_path: PathBuf::from(e.launch_path),
+                        uninstall_command: e.uninstall_command,
+                        category_id: e.category_id,
+                        hidden: e.hidden,
+                        source: e.source,
+                        installed_on: e.installed_on,
+                        size_bytes: e.size_bytes,
+                        pin_scope: PinScope::from_db(e.pin_scope),
+                        discovery_key: e.discovery_key,
+                        custom_name: e.custom_name,
+                        custom_category: e.custom_category,
+                    })
+                    .collect(),
+                scanning: false,
+                revision: 0,
+            };
+            persist_launcher(&data_path, &snapshot)?;
+            snapshot
+        };
         let service = Arc::new(Self {
-            database,
+            data_path,
             icon_cache_dir,
-            state: Mutex::new(LauncherSnapshot::default()),
+            state: Mutex::new(snapshot),
             scanning: AtomicBool::new(false),
             changed: Default::default(),
             icon_cache: Default::default(),
         });
-        service.reload()?;
         Ok(service)
     }
 
@@ -135,40 +239,33 @@ impl LauncherService {
     }
 
     fn reload(&self) -> Result<(), LauncherError> {
-        let (categories, entries) = self.database.launcher_snapshot()?;
         let mut state = self
             .state
             .lock()
             .map_err(|_| LauncherError::StatePoisoned)?;
-        state.categories = categories
-            .into_iter()
-            .map(|category| LauncherCategory {
-                id: category.id,
-                name: category.name,
-                position: category.position,
-            })
-            .collect();
-        state.entries = entries
-            .into_iter()
-            .map(|entry| LauncherEntry {
-                available: Path::new(&entry.launch_path).exists(),
-                id: entry.id,
-                display_name: entry.display_name,
-                launch_path: PathBuf::from(entry.launch_path),
-                uninstall_command: entry.uninstall_command,
-                category_id: entry.category_id,
-                hidden: entry.hidden,
-                source: entry.source,
-                installed_on: entry.installed_on,
-                size_bytes: entry.size_bytes,
-                pin_scope: PinScope::from_db(entry.pin_scope),
-            })
-            .collect();
+        for entry in &mut state.entries {
+            entry.available = entry.launch_path.exists();
+        }
         state.scanning = self.scanning.load(Ordering::Acquire);
         state.revision = state.revision.wrapping_add(1);
+        persist_launcher(&self.data_path, &state)?;
         drop(state);
         self.changed.trigger();
         Ok(())
+    }
+
+    fn edit(
+        &self,
+        f: impl FnOnce(&mut LauncherSnapshot) -> Result<(), LauncherError>,
+    ) -> Result<(), LauncherError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| LauncherError::StatePoisoned)?;
+        f(&mut state)?;
+        persist_launcher(&self.data_path, &state)?;
+        drop(state);
+        self.reload()
     }
 
     pub fn refresh_discovery(self: &Arc<Self>) -> Result<(), LauncherError> {
@@ -217,7 +314,72 @@ impl LauncherService {
                 size_bytes: program.size_bytes,
             })
             .collect::<Vec<_>>();
-        Ok(self.database.launcher_merge_discovered(&records)?)
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| LauncherError::StatePoisoned)?;
+        for record in records {
+            let category_id = if let Some(category) = state
+                .categories
+                .iter()
+                .find(|c| c.name == record.category_name)
+            {
+                category.id
+            } else {
+                let id = state.categories.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+                let position = state
+                    .categories
+                    .iter()
+                    .map(|c| c.position)
+                    .max()
+                    .unwrap_or(-1)
+                    + 1;
+                state.categories.push(LauncherCategory {
+                    id,
+                    name: record.category_name.clone(),
+                    position,
+                });
+                id
+            };
+            if let Some(entry) = state
+                .entries
+                .iter_mut()
+                .find(|e| e.discovery_key == record.discovery_key)
+            {
+                if !entry.custom_name {
+                    entry.display_name = record.display_name;
+                }
+                entry.launch_path = PathBuf::from(record.launch_path);
+                entry.uninstall_command =
+                    record.uninstall_command.or(entry.uninstall_command.take());
+                if !entry.custom_category {
+                    entry.category_id = category_id;
+                }
+                entry.source = record.source;
+                entry.installed_on = record.installed_on;
+                entry.size_bytes = record.size_bytes;
+            } else {
+                let id = state.entries.iter().map(|e| e.id).max().unwrap_or(0) + 1;
+                state.entries.push(LauncherEntry {
+                    available: Path::new(&record.launch_path).exists(),
+                    id,
+                    display_name: record.display_name,
+                    launch_path: PathBuf::from(record.launch_path),
+                    uninstall_command: record.uninstall_command,
+                    category_id,
+                    hidden: false,
+                    source: record.source,
+                    installed_on: record.installed_on,
+                    size_bytes: record.size_bytes,
+                    pin_scope: PinScope::None,
+                    discovery_key: record.discovery_key,
+                    custom_name: false,
+                    custom_category: false,
+                });
+            }
+        }
+        persist_launcher(&self.data_path, &state)?;
+        Ok(())
     }
 
     pub fn add_category(&self, name: &str) -> Result<(), LauncherError> {
@@ -225,8 +387,29 @@ impl LauncherService {
         if name.is_empty() {
             return Err(LauncherError::EmptyName);
         }
-        self.database.launcher_add_category(name)?;
-        self.reload()
+        self.edit(|state| {
+            if state
+                .categories
+                .iter()
+                .any(|c| c.name.eq_ignore_ascii_case(name))
+            {
+                return Err(LauncherError::EmptyName);
+            }
+            let id = state.categories.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+            let position = state
+                .categories
+                .iter()
+                .map(|c| c.position)
+                .max()
+                .unwrap_or(-1)
+                + 1;
+            state.categories.push(LauncherCategory {
+                id,
+                name: name.into(),
+                position,
+            });
+            Ok(())
+        })
     }
 
     pub fn rename_category(&self, id: i64, name: &str) -> Result<(), LauncherError> {
@@ -234,13 +417,42 @@ impl LauncherService {
         if name.is_empty() {
             return Err(LauncherError::EmptyName);
         }
-        self.database.launcher_rename_category(id, name)?;
-        self.reload()
+        self.edit(|state| {
+            let category = state
+                .categories
+                .iter_mut()
+                .find(|c| c.id == id)
+                .ok_or(LauncherError::EntryMissing)?;
+            category.name = name.into();
+            Ok(())
+        })
     }
 
     pub fn delete_category(&self, id: i64) -> Result<(), LauncherError> {
-        self.database.launcher_delete_category(id)?;
-        self.reload()
+        self.edit(|state| {
+            if state
+                .categories
+                .iter()
+                .find(|c| c.id == id)
+                .is_some_and(|c| c.name == "General")
+            {
+                return Err(LauncherError::EntryMissing);
+            }
+            let general = state
+                .categories
+                .iter()
+                .find(|c| c.name == "General")
+                .map(|c| c.id)
+                .ok_or(LauncherError::EntryMissing)?;
+            state.categories.retain(|c| c.id != id);
+            for e in &mut state.entries {
+                if e.category_id == id {
+                    e.category_id = general;
+                    e.custom_category = true;
+                }
+            }
+            Ok(())
+        })
     }
 
     pub fn update_entry(
@@ -254,9 +466,26 @@ impl LauncherService {
         if name.is_empty() {
             return Err(LauncherError::EmptyName);
         }
-        self.database
-            .launcher_update_entry(id, name, category_id, hidden)?;
-        self.reload()
+        self.edit(|state| {
+            if !state.categories.iter().any(|c| c.id == category_id) {
+                return Err(LauncherError::EntryMissing);
+            }
+            let e = state
+                .entries
+                .iter_mut()
+                .find(|e| e.id == id)
+                .ok_or(LauncherError::EntryMissing)?;
+            if e.display_name != name {
+                e.custom_name = true;
+            }
+            if e.category_id != category_id {
+                e.custom_category = true;
+            }
+            e.display_name = name.into();
+            e.category_id = category_id;
+            e.hidden = hidden;
+            Ok(())
+        })
     }
 
     pub fn rename_entry(&self, id: i64, name: &str) -> Result<(), LauncherError> {
@@ -264,29 +493,67 @@ impl LauncherService {
         if name.is_empty() {
             return Err(LauncherError::EmptyName);
         }
-        self.database.launcher_rename_entry(id, name)?;
-        self.reload()
+        self.edit(|state| {
+            let e = state
+                .entries
+                .iter_mut()
+                .find(|e| e.id == id)
+                .ok_or(LauncherError::EntryMissing)?;
+            e.display_name = name.into();
+            e.custom_name = true;
+            Ok(())
+        })
     }
 
     pub fn move_entry(&self, id: i64, category_id: i64) -> Result<(), LauncherError> {
-        self.database.launcher_move_entry(id, category_id)?;
-        self.reload()
+        self.edit(|state| {
+            if !state.categories.iter().any(|c| c.id == category_id) {
+                return Err(LauncherError::EntryMissing);
+            }
+            let e = state
+                .entries
+                .iter_mut()
+                .find(|e| e.id == id)
+                .ok_or(LauncherError::EntryMissing)?;
+            e.category_id = category_id;
+            e.custom_category = true;
+            Ok(())
+        })
     }
 
     pub fn set_hidden(&self, id: i64, hidden: bool) -> Result<(), LauncherError> {
-        self.database.launcher_set_hidden(id, hidden)?;
-        self.reload()
+        self.edit(|state| {
+            state
+                .entries
+                .iter_mut()
+                .find(|e| e.id == id)
+                .ok_or(LauncherError::EntryMissing)?
+                .hidden = hidden;
+            Ok(())
+        })
     }
 
     pub fn set_pin_scope(&self, id: i64, pin_scope: PinScope) -> Result<(), LauncherError> {
-        self.database
-            .launcher_set_pin_scope(id, pin_scope.to_db())?;
-        self.reload()
+        self.edit(|state| {
+            state
+                .entries
+                .iter_mut()
+                .find(|e| e.id == id)
+                .ok_or(LauncherError::EntryMissing)?
+                .pin_scope = pin_scope;
+            Ok(())
+        })
     }
 
     pub fn remove_entry(&self, id: i64) -> Result<(), LauncherError> {
-        self.database.launcher_remove_entry(id)?;
-        self.reload()
+        self.edit(|state| {
+            let before = state.entries.len();
+            state.entries.retain(|e| e.id != id);
+            if before == state.entries.len() {
+                return Err(LauncherError::EntryMissing);
+            }
+            Ok(())
+        })
     }
 
     pub fn add_manual(&self, path: &Path) -> Result<(), LauncherError> {
@@ -309,8 +576,39 @@ impl LauncherService {
             "path:{}",
             path.to_string_lossy().replace('/', "\\").to_lowercase()
         );
-        self.database.launcher_add_manual(&path, &key, name)?;
-        self.reload()
+        self.edit(|state| {
+            if state
+                .entries
+                .iter()
+                .any(|e| discovery_key(&e.launch_path) == key)
+            {
+                return Ok(());
+            }
+            let id = state.entries.iter().map(|e| e.id).max().unwrap_or(0) + 1;
+            let category = state
+                .categories
+                .iter()
+                .find(|c| c.name == "General")
+                .map(|c| c.id)
+                .ok_or(LauncherError::EntryMissing)?;
+            state.entries.push(LauncherEntry {
+                available: true,
+                id,
+                display_name: name.into(),
+                launch_path: path.clone(),
+                uninstall_command: None,
+                category_id: category,
+                hidden: false,
+                source: "manual".into(),
+                installed_on: None,
+                size_bytes: None,
+                pin_scope: PinScope::None,
+                discovery_key: key,
+                custom_name: false,
+                custom_category: false,
+            });
+            Ok(())
+        })
     }
 
     pub fn launch(&self, id: i64) -> Result<(), LauncherError> {
@@ -407,6 +705,8 @@ pub enum LauncherError {
     Database(#[from] DatabaseAccessError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
     #[error("name cannot be empty")]
     EmptyName,
     #[error("program entry no longer exists")]
@@ -421,6 +721,8 @@ pub enum LauncherError {
     StatePoisoned,
     #[error("program discovery failed: {0}")]
     Discovery(String),
+    #[error("unsupported launcher JSON version: {0}")]
+    UnsupportedDataVersion(u32),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -452,11 +754,27 @@ impl Plugin for LauncherPlugin {
         let bridge = context
             .try_service::<UiBridgeService>()
             .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
+        let settings = context
+            .try_service::<SettingsService>()
+            .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
         let panels = Arc::clone(&bridge.panels);
         let command_panels = Arc::clone(&panels);
+        let command_surfaces = Arc::clone(&bridge.surfaces);
         let _listener = context
             .on::<UiCommandInvoked, _>(cordis::event::observer_sync(move |_, command_id| {
                 if command_id == OPEN_COMMAND {
+                    let mode = settings
+                        .snapshot()
+                        .map(|settings| settings.plugin_launch_mode(OWNER))
+                        .unwrap_or_default();
+                    let _ = command_surfaces.set_value(
+                        "panel.presentation",
+                        if mode == PluginLaunchMode::PanelOnly {
+                            "panel-only"
+                        } else {
+                            "workspace"
+                        },
+                    );
                     let _ = command_panels.open(PANEL_ID);
                 }
                 Ok::<_, std::convert::Infallible>(())

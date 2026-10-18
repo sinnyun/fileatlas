@@ -372,6 +372,25 @@ impl PhoTagMcpServer {
             "border":photag_ui_bridge::theme::SEPARATOR,
             "body_size":photag_ui_bridge::theme::FONT_SIZE_BODY,
         });
+        let plugin_settings = self
+            .context
+            .try_service::<photag_plugin_settings::SettingsService>()
+            .ok()
+            .map(|settings| {
+                let preferences = settings.snapshot().ok();
+                json!({
+                    "runtime": settings.plugin_runtime().snapshot_now().into_iter().map(|plugin| json!({
+                        "id": plugin.id,
+                        "title": plugin.title,
+                        "description": plugin.description,
+                        "launch_modes": plugin.launch_modes,
+                        "enabled": plugin.enabled,
+                        "busy": plugin.busy,
+                    })).collect::<Vec<_>>(),
+                    "launch_modes": preferences.as_ref().map(|value| &value.plugin_launch_modes),
+                    "enabled": preferences.as_ref().map(|value| &value.plugin_enabled),
+                })
+            });
         let mut state = json!({
             "browser": {"filesystem":self.gallery.browser_enabled(), "show_descendants":self.gallery.show_descendants(),"worker_active":self.gallery.directory_worker_active(),"status":self.gallery.directory_status()},
             "input_activity": self.capture.input_snapshot(),
@@ -430,6 +449,20 @@ impl PhoTagMcpServer {
             }),
             "writeback_failures": self.tagging.writeback_failures().iter().map(|failure| json!({"path":failure.path,"error":failure.error})).collect::<Vec<_>>(),
         });
+        state["settings_plugin_id"] = json!(self.surfaces.value("settings.plugin_id"));
+        state["sidebar_plugin_buttons"] = json!(
+            self.context
+                .try_service::<photag_ui_bridge::UiBridgeService>()
+                .ok()
+                .and_then(|bridge| bridge.views.snapshot().ok())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|entry| entry.contribution.slot == "navigation.launcher-shortcuts")
+                .map(|entry| json!({"id":entry.contribution.id,"owner":entry.owner}))
+                .collect::<Vec<_>>()
+        );
+        state["settings_plugins"] = json!(plugin_settings);
+        state["panel_presentation"] = json!(self.surfaces.value("panel.presentation"));
         state["theme"] = theme_state;
         state["screenshot_tool"] =
             json!(self.screenshot.as_ref().map(|service| service.mcp_state()));
@@ -750,12 +783,103 @@ impl PhoTagMcpServer {
                     "ai",
                     "updates",
                     "software",
+                    "plugins",
+                    "plugin",
                 ]
                 .contains(&value)
                 {
                     return error_json("unsupported Settings tab");
                 }
                 self.surfaces.set_value("settings.tab", value)
+            }
+            "settings_plugin_page" => {
+                let id = request.value.as_deref().unwrap_or("");
+                let Ok(settings) = self
+                    .context
+                    .try_service::<photag_plugin_settings::SettingsService>()
+                else {
+                    return error_json("settings plugin unavailable");
+                };
+                if !settings
+                    .plugin_runtime()
+                    .snapshot_now()
+                    .iter()
+                    .any(|plugin| plugin.id == id)
+                {
+                    return error_json("unknown plugin settings page");
+                }
+                self.surfaces
+                    .set_value("settings.plugin_id", id)
+                    .and_then(|_| self.surfaces.set_value("settings.tab", "plugin"))
+            }
+            "plugin_launch_mode" => {
+                let Some((id, mode)) = request.value.as_deref().unwrap_or("").split_once(':')
+                else {
+                    return error_json(
+                        "plugin_launch_mode requires plugin_id:workspace|panel|direct",
+                    );
+                };
+                let Ok(settings) = self
+                    .context
+                    .try_service::<photag_plugin_settings::SettingsService>()
+                else {
+                    return error_json("settings plugin unavailable");
+                };
+                let status = settings
+                    .plugin_runtime()
+                    .snapshot_now()
+                    .into_iter()
+                    .find(|plugin| plugin.id == id);
+                let value = match mode {
+                    "workspace" => photag_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+                    "panel" => photag_plugin_settings::PluginLaunchMode::PanelOnly,
+                    "direct" => photag_plugin_settings::PluginLaunchMode::Direct,
+                    _ => return error_json("mode must be workspace, panel, or direct"),
+                };
+                if !status.is_some_and(|plugin| plugin.launch_modes.contains(&value)) {
+                    return error_json("launch mode is not supported by this plugin");
+                }
+                settings
+                    .update(|state| {
+                        state.plugin_launch_modes.insert(id.to_owned(), value);
+                    })
+                    .map(|_| ())
+                    .map_err(|error| error.to_string())
+            }
+            "plugin_enabled" => {
+                let Some((id, value)) = request.value.as_deref().unwrap_or("").split_once(':')
+                else {
+                    return error_json("plugin_enabled requires plugin_id:on|off");
+                };
+                let enabled = match value {
+                    "on" => true,
+                    "off" => false,
+                    _ => return error_json("plugin state must be on or off"),
+                };
+                let Ok(settings) = self
+                    .context
+                    .try_service::<photag_plugin_settings::SettingsService>()
+                else {
+                    return error_json("settings plugin unavailable");
+                };
+                let registry = settings.plugin_runtime();
+                let id = id.to_owned();
+                let response_id = id.clone();
+                let settings = Arc::clone(&settings);
+                tokio::spawn(async move {
+                    let result = registry.set_enabled(&id, enabled).await;
+                    if let Err(error) = result {
+                        tracing::error!(%error, plugin=%id, "MCP plugin lifecycle request failed");
+                        return;
+                    }
+                    if let Err(error) = settings.update(|state| {
+                        state.plugin_enabled.insert(id.clone(), enabled);
+                    }) {
+                        tracing::error!(%error, plugin=%id, "could not persist MCP plugin lifecycle state");
+                    }
+                });
+                return json!({"queued":true,"plugin_id":response_id,"enabled":enabled})
+                    .to_string();
             }
             "language" => {
                 let Some(service) = &self.i18n else {

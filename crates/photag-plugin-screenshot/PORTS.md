@@ -4,6 +4,7 @@
 
 - Plugin: `photag.screenshot`; service: `photag/screenshot` (`ScreenshotService`).
 - Requires `photag/settings`, `photag/ui-bridge`, and the existing shortcuts dispatcher.
+- Runtime-controllable as standalone tool `photag.screenshot`; Settings can dispose/re-spawn its Cordis Fiber to stop/restore its panel, commands, and system shortcut.
 - Shell enables it in `core`, `all`, MCP, or `PHOTAG_DEV_PLUGINS=screenshot` profiles.
 - It registers one single-instance generic floating manager panel, a sidebar entry, an open-panel command, a capture command, and the system shortcut `Ctrl+Shift+S`. UI Bridge and Cordis remove all contributions/listeners with plugin stop.
 
@@ -19,6 +20,7 @@
 ## Settings and output
 
 - PhoTag persists `screenshot_tool.executable` and `screenshot_tool.save_directory` additively through the existing `SettingsService` JSON model.
+- `Settings.plugin_launch_modes["photag.screenshot"]` defaults to its manager panel. `PanelOnly` hides the PhoTag workspace behind the shared panel; `Direct` routes the manager shortcut to Shotoshot capture. The dedicated `Ctrl+Shift+S` capture command always calls Shotoshot directly.
 - MCP `get_ui_state.screenshot_tool` reports the cached executable, availability, output directory, `last_capture_action`, and `last_capture_error`. The debug drawer receives explicit request/result/error tracing events.
 - Default output: `%LOCALAPPDATA%\PhoTag\Screenshots`.
 - The plugin creates the directory and updates only the output-folder field in Shotoshot's versioned settings file while holding the same named Windows mutex and using an atomic write-through replacement. Other Shotoshot fields are preserved. If the settings file does not exist yet, start Shotoshot once so it creates its defaults, then retry.

@@ -113,6 +113,7 @@ impl SidebarView {
 
 impl Render for SidebarView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.sync_plugin_slot_views(window, cx);
         self.consume_ui_request(window, cx);
         let locale_revision = photag_ui_bridge::i18n::revision();
         if self.locale_revision != locale_revision {
@@ -411,5 +412,74 @@ impl Render for SidebarView {
             .overflow_hidden()
             .child(rail)
             .child(panel.overflow_y_scrollbar())
+    }
+}
+
+impl SidebarView {
+    fn sync_plugin_slot_views(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let entries = self
+            .cordis
+            .try_service::<photag_ui_bridge::UiBridgeService>()
+            .ok()
+            .and_then(|bridge| bridge.views.snapshot().ok())
+            .unwrap_or_default();
+        let live_ids = entries
+            .iter()
+            .filter(|entry| {
+                matches!(
+                    entry.contribution.slot.as_str(),
+                    "navigation.extensions" | "navigation.launcher-shortcuts"
+                )
+            })
+            .map(|entry| entry.contribution.id.clone())
+            .collect::<HashSet<_>>();
+        self.extension_views.retain(|(id, generation, _)| {
+            entries.iter().any(|entry| {
+                entry.contribution.slot == "navigation.extensions"
+                    && entry.contribution.id == *id
+                    && entry.generation == *generation
+            })
+        });
+        self.launcher_shortcuts.retain(|(id, generation, _)| {
+            entries.iter().any(|entry| {
+                entry.contribution.slot == "navigation.launcher-shortcuts"
+                    && entry.contribution.id == *id
+                    && entry.generation == *generation
+            })
+        });
+        for entry in entries {
+            let id = entry.contribution.id.clone();
+            let generation = entry.generation;
+            match entry.contribution.slot.as_str() {
+                "navigation.extensions"
+                    if !self.extension_views.iter().any(
+                        |(current_id, current_generation, _)| {
+                            current_id == &id && *current_generation == generation
+                        },
+                    ) =>
+                {
+                    self.extension_views.push((
+                        id,
+                        generation,
+                        (entry.contribution.factory)(window, cx),
+                    ));
+                }
+                "navigation.launcher-shortcuts"
+                    if !self.launcher_shortcuts.iter().any(
+                        |(current_id, current_generation, _)| {
+                            current_id == &id && *current_generation == generation
+                        },
+                    ) =>
+                {
+                    self.launcher_shortcuts.push((
+                        id,
+                        generation,
+                        (entry.contribution.factory)(window, cx),
+                    ));
+                }
+                _ => {}
+            }
+        }
+        self.registered_sidebar_view_ids = live_ids;
     }
 }

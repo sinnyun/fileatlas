@@ -74,6 +74,7 @@ impl Render for ClipboardButton {
             }))
             .child(icon(IconName::Clipboard, 18.))
             .child("剪贴板")
+            .into_any_element()
     }
 }
 

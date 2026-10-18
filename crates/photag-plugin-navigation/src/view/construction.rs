@@ -6,8 +6,8 @@ impl SidebarView {
         cordis: CordisContext,
         tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
         session: Arc<SessionService>,
-        extension_views: Vec<AnyView>,
-        launcher_shortcuts: Vec<AnyView>,
+        extension_views: Vec<(String, u64, AnyView)>,
+        launcher_shortcuts: Vec<(String, u64, AnyView)>,
         restored_folder_id: Option<i64>,
         restored_path: Option<String>,
         expanded_subdirs: HashSet<String>,
@@ -63,6 +63,12 @@ impl SidebarView {
             }
         };
         let saved_sidebar = session.snapshot().unwrap_or_default();
+        let plugin_views_revision = service.plugin_views_revision();
+        let registered_sidebar_view_ids = extension_views
+            .iter()
+            .chain(launcher_shortcuts.iter())
+            .map(|(id, _, _)| id.clone())
+            .collect();
         let initial_location =
             address_bar::location_from_session(&saved_sidebar, snapshot.as_ref().ok());
         Self {
@@ -81,6 +87,8 @@ impl SidebarView {
             session,
             extension_views,
             launcher_shortcuts,
+            registered_sidebar_view_ids,
+            plugin_views_revision,
             active_page,
             folder_path,
             folder_search,

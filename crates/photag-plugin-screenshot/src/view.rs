@@ -49,6 +49,7 @@ impl Render for ScreenshotButton {
             }))
             .child(theme::icon(IconName::Camera))
             .child("截图")
+            .into_any_element()
     }
 }
 

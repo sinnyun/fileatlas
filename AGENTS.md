@@ -65,6 +65,14 @@ written.
   facilities apply. Do not create duplicate infrastructure or assume each
   plugin needs its own data subsystem. Cordis owns plugin lifecycle and cleanup.
   This does not imply dynamic DLL loading or an external plugin store.
+- For every new feature, plan its persistence format from that feature's data shape:
+  use a versioned JSON file for modest, whole-document settings/manifests/history;
+  use the shared `photag-plugin-database` SQLite service for growing/query-heavy,
+  relational, concurrent or transactional data. Keep large binary assets in separate
+  feature-owned files and reference them from structured records. Record the choice,
+  data paths, migration and recovery behavior in the feature PORTS.md, following
+  `docs/functional-development-plan.md`'s storage decision rules. Do not assume a
+  plugin always needs SQLite or that each plugin should build a new storage framework.
 - Feature UI contributions (layout/dock/panel/slot/widget/command/menu/keymap)
   must have lifecycle ownership and be removed on plugin stop.
 - `photag-ui-bridge` is the shared UI registration contract, metadata catalog,

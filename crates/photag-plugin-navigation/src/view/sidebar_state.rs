@@ -168,6 +168,11 @@ impl SidebarView {
         self.service.publish_sidebar_state(json!({
             "address_bar":self.address_snapshot(cx),
             "page": self.active_page.key(),
+            "plugin_buttons": self
+                .registered_sidebar_view_ids
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>(),
             "browse_mode": self.service.browser_enabled(),
             "drives_collapsed": self.collapsed_sections.contains("drives"),
             "quick_access_collapsed": self.collapsed_sections.contains("quick_access"),

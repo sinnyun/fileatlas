@@ -95,7 +95,13 @@ pub(super) fn sidebar(
             .unwrap_or_default()
             .into_iter()
             .filter(|entry| entry.contribution.slot == "navigation.extensions")
-            .map(|entry| (entry.contribution.factory)(window, app))
+            .map(|entry| {
+                (
+                    entry.contribution.id.clone(),
+                    entry.generation,
+                    (entry.contribution.factory)(window, app),
+                )
+            })
             .collect::<Vec<_>>();
         let launcher_shortcuts = bridge
             .as_ref()
@@ -103,7 +109,13 @@ pub(super) fn sidebar(
             .unwrap_or_default()
             .into_iter()
             .filter(|entry| entry.contribution.slot == "navigation.launcher-shortcuts")
-            .map(|entry| (entry.contribution.factory)(window, app))
+            .map(|entry| {
+                (
+                    entry.contribution.id.clone(),
+                    entry.generation,
+                    (entry.contribution.factory)(window, app),
+                )
+            })
             .collect::<Vec<_>>();
         let active_page = bridge
             .as_ref()
@@ -184,11 +196,34 @@ pub(super) fn sidebar(
                         .cordis
                         .try_service::<photag_ui_bridge::UiBridgeService>()
                         .ok();
+                    let registered_sidebar_views = bridge
+                        .as_ref()
+                        .and_then(|bridge| bridge.views.snapshot().ok())
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter(|entry| {
+                            matches!(
+                                entry.contribution.slot.as_str(),
+                                "navigation.extensions" | "navigation.launcher-shortcuts"
+                            )
+                        })
+                        .map(|entry| entry.contribution.id)
+                        .collect::<HashSet<_>>();
+                    let plugin_buttons_changed =
+                        registered_sidebar_views != view.registered_sidebar_view_ids;
+                    if plugin_buttons_changed {
+                        view.registered_sidebar_view_ids = registered_sidebar_views;
+                    }
                     let surface_page = bridge
                         .as_ref()
                         .and_then(|bridge| bridge.surfaces.value("navigation.tab"))
                         .and_then(|value| NavigationPage::from_key(&value));
                     let directory_changed = view.poll_directories();
+                    let plugin_revision = view.service.plugin_views_revision();
+                    let plugin_revision_changed = plugin_revision != view.plugin_views_revision;
+                    if plugin_revision_changed {
+                        view.plugin_views_revision = plugin_revision;
+                    }
                     let drives_changed = view.drives_read.poll() | view.system_folders_read.poll();
                     let config_changed =
                         poll_folders_service.revision() != view.sidebar_config_revision;
@@ -236,6 +271,8 @@ pub(super) fn sidebar(
                         || drives_changed
                         || config_changed
                         || page_changed
+                        || plugin_buttons_changed
+                        || plugin_revision_changed
                         || search_changed;
                     if changed {
                         if requested {
@@ -284,6 +321,7 @@ pub(super) fn sidebar(
             let wake = view.service.ui_wake.clone();
             view._ui_ready_task = Some(photag_ui_bridge::refresh::listen(cx, wake, |view, _| {
                 view.service.has_ui_request()
+                    || view.service.plugin_views_revision() != view.plugin_views_revision
             }));
         });
         view.update(app, |view, cx| {
@@ -331,8 +369,10 @@ struct SidebarView {
     cordis: CordisContext,
     tagging: Option<Arc<photag_plugin_tagging::TaggingService>>,
     session: Arc<SessionService>,
-    extension_views: Vec<AnyView>,
-    launcher_shortcuts: Vec<AnyView>,
+    extension_views: Vec<(String, u64, AnyView)>,
+    launcher_shortcuts: Vec<(String, u64, AnyView)>,
+    registered_sidebar_view_ids: HashSet<String>,
+    plugin_views_revision: u64,
     active_page: NavigationPage,
     folder_path: Entity<InputState>,
     folder_search: Entity<InputState>,

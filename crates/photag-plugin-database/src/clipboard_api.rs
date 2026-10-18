@@ -2,7 +2,7 @@
 use crate::{DatabaseAccessError, DatabaseService};
 use rusqlite::params;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ClipboardCategoryRecord {
     pub id: i64,
     pub name: String,
@@ -111,7 +111,7 @@ mod tests {
         Ok(())
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ClipboardHistoryRecord {
     pub id: i64,
     pub content: String,

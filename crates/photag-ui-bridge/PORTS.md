@@ -34,6 +34,7 @@ The bridge also exposes shared PhoTag design tokens and accent state from `theme
 - `UiSurfaceState` shares open/closed, shortcut-capture, and one-shot Escape suppression state of floating surfaces between the shell host and their owning plugin. Surface owners update their own view and register the corresponding command; the host mounts `workspace.modal` views above content. State remains local to this application runtime and is recreated with the bridge.
 - `register_for_plugin(context, owner, contributions)` registers Layout/Dock/Panel/Slot/Widget/Command/MenuItem/Keybinding metadata; duplicate/empty IDs reject the batch atomically. Cordis disposal unregisters all entries for that owner.
 - `register_views_for_plugin` registers executable GPUI view factories under slot IDs; returned `OwnedUiView` instances are mounted by the shell. View catalog cleanup follows owner lifecycle.
+- Shell mounted slots reconcile by contribution ID plus registration generation. Navigation does the same for its nested launcher/add-on slots; Settings reconciles `settings.language` in its panel. Hosts that cache constructed `AnyView`s must drop them when the catalog entry disappears or its generation changes.
 - `UiCommandInvoked` carries the command ID through Cordis to plugin handlers.
 - `ContributionKind::Command { label, needs }` is the lifecycle-owned command
   registry entry. `CommandNeeds` declares invocation policy; `UiCatalog::commands()`

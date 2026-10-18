@@ -17,12 +17,15 @@ use photag_ui_bridge::{
 pub mod settings;
 pub use settings::*;
 
+mod runtime;
 mod view;
+pub use runtime::{PluginRuntimeRegistry, PluginRuntimeStatus, PluginStarter};
 
 /// Shared, mutable user preferences backed by the original settings JSON file.
 pub struct SettingsService {
     state: RwLock<Settings>,
     path: PathBuf,
+    plugin_runtime: Arc<PluginRuntimeRegistry>,
 }
 
 impl Service for SettingsService {
@@ -45,7 +48,12 @@ impl SettingsService {
         Self {
             state: RwLock::new(state),
             path,
+            plugin_runtime: Arc::new(PluginRuntimeRegistry::default()),
         }
+    }
+
+    pub fn plugin_runtime(&self) -> Arc<PluginRuntimeRegistry> {
+        Arc::clone(&self.plugin_runtime)
     }
 
     pub fn path(&self) -> &Path {

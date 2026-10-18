@@ -78,6 +78,7 @@ impl Render for LauncherShortcut {
             }))
             .child(theme::icon(IconName::LayoutGrid))
             .child(tr("Apps"))
+            .into_any_element()
     }
 }
 

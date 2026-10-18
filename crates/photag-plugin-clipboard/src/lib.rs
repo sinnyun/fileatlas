@@ -1,9 +1,10 @@
 #![cfg_attr(not(test), deny(clippy::unwrap_used, clippy::expect_used))]
-//! Text clipboard history workbench. Uses clipboard-master (MIT) for OS change
-//! notifications and arboard (MIT/Apache-2.0) for clipboard text access.
+//! Clipboard history workbench. JSON owns feature data; image assets are files.
+//! clipboard-master (MIT) observes changes and arboard reads clipboard content.
 use clipboard_master::{CallbackResult, ClipboardHandler, Master, Shutdown};
 use cordis::{Context, Plugin, Service};
 use photag_plugin_database::{ClipboardCategoryRecord, ClipboardHistoryRecord, DatabaseService};
+use photag_plugin_settings::{PluginLaunchMode, SettingsService};
 use photag_ui_bridge::{
     ContributionKind, UiBridgeService, UiContribution, register_for_plugin,
     register_views_for_plugin,
@@ -23,6 +24,36 @@ const OWNER: &str = "photag.clipboard";
 const PANEL: &str = "clipboard-workbench/panel";
 const OPEN: &str = "clipboard-workbench/open";
 pub mod content;
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+struct ClipboardFile {
+    version: u32,
+    categories: Vec<ClipboardCategoryRecord>,
+    items: Vec<ClipboardHistoryRecord>,
+    next_id: i64,
+}
+impl ClipboardFile {
+    fn persist(&self, path: &std::path::Path) -> Result<(), String> {
+        let bytes = serde_json::to_vec_pretty(self).map_err(|e| e.to_string())?;
+        let parent = path.parent().ok_or("剪贴板数据目录无效")?;
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        let temp = path.with_extension("json.tmp");
+        std::fs::write(&temp, bytes).map_err(|e| e.to_string())?;
+        if let Err(first) = std::fs::rename(&temp, path) {
+            if !path.exists() {
+                return Err(first.to_string());
+            }
+            let backup = path.with_extension("json.bak");
+            let _ = std::fs::remove_file(&backup);
+            std::fs::rename(path, &backup).map_err(|e| e.to_string())?;
+            if let Err(error) = std::fs::rename(&temp, path) {
+                let _ = std::fs::rename(&backup, path);
+                return Err(error.to_string());
+            }
+            let _ = std::fs::remove_file(backup);
+        }
+        Ok(())
+    }
+}
 fn now() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -31,7 +62,8 @@ fn now() -> i64 {
 }
 
 pub struct ClipboardService {
-    db: Arc<DatabaseService>,
+    data_path: PathBuf,
+    data: Mutex<ClipboardFile>,
     items: Mutex<Vec<ClipboardHistoryRecord>>,
     categories: Mutex<Vec<ClipboardCategoryRecord>>,
     shutdown: Mutex<Option<Shutdown>>,
@@ -44,6 +76,21 @@ impl Service for ClipboardService {
     const NAME: &'static str = "photag/clipboard";
 }
 impl ClipboardService {
+    fn update_file<R>(
+        &self,
+        update: impl FnOnce(&mut ClipboardFile) -> Result<R, String>,
+    ) -> Result<R, String> {
+        let mut data = self.data.lock().map_err(|_| "clipboard data unavailable")?;
+        let mut next = data.clone();
+        let result = update(&mut next)?;
+        next.items
+            .sort_by_key(|item| (!item.pinned, std::cmp::Reverse(item.last_used_at)));
+        next.persist(&self.data_path)?;
+        *data = next;
+        drop(data);
+        self.reload()?;
+        Ok(result)
+    }
     fn changed(&self) -> Result<(), String> {
         self.reload()?;
         self.revision.fetch_add(1, Ordering::Release);
@@ -56,22 +103,40 @@ impl ClipboardService {
                 return Err("分组已不存在，请重新选择".into());
             }
         }
-        self.db
-            .clipboard_assign_category(id, category)
-            .map_err(|e| e.to_string())?;
+        self.update_file(|data| {
+            let item = data
+                .items
+                .iter_mut()
+                .find(|item| item.id == id)
+                .ok_or("剪贴板记录已不存在")?;
+            item.category_id = category;
+            Ok(())
+        })?;
         self.changed()
     }
     pub fn rename_category(&self, id: i64, name: &str) -> Result<(), String> {
         self.validate_group_name(name, Some(id))?;
-        self.db
-            .clipboard_rename_category(id, name.trim())
-            .map_err(|e| e.to_string())?;
+        self.update_file(|data| {
+            let category = data
+                .categories
+                .iter_mut()
+                .find(|item| item.id == id)
+                .ok_or("分组已不存在")?;
+            category.name = name.trim().to_owned();
+            Ok(())
+        })?;
         self.changed()
     }
     pub fn delete_category(&self, id: i64) -> Result<(), String> {
-        self.db
-            .clipboard_delete_category(id)
-            .map_err(|e| e.to_string())?;
+        self.update_file(|data| {
+            data.categories.retain(|item| item.id != id);
+            for item in &mut data.items {
+                if item.category_id == Some(id) {
+                    item.category_id = None;
+                }
+            }
+            Ok(())
+        })?;
         self.changed()
     }
     fn capture(&self) -> Result<(), String> {
@@ -83,9 +148,10 @@ impl ClipboardService {
             && !text.trim().is_empty()
             && text.len() <= 1_000_000
         {
-            self.db
-                .clipboard_capture(&text, now(), 500)
-                .map_err(|e| e.to_string())?;
+            self.update_file(|data| {
+                capture_text(data, &text, now());
+                Ok(())
+            })?;
         }
         if let Ok(image) = clipboard.get_image() {
             const MAX_IMAGE_BYTES: usize = 128 * 1024 * 1024;
@@ -117,16 +183,17 @@ impl ClipboardService {
                     )
                     .map_err(|e| format!("保存剪贴板图片失败：{e}"))?;
                 }
-                self.db
-                    .clipboard_capture_image(
+                self.update_file(|data| {
+                    capture_image(
+                        data,
                         &hash,
-                        &path.to_string_lossy(),
+                        &path,
                         image.width as u32,
                         image.height as u32,
                         now(),
-                        500,
-                    )
-                    .map_err(|e| e.to_string())?;
+                    );
+                    Ok(())
+                })?;
             } else {
                 tracing::warn!("skipped clipboard image exceeding capture limits");
             }
@@ -149,7 +216,13 @@ impl ClipboardService {
             .map_err(|_| "clipboard categories unavailable".into())
     }
     fn reload(&self) -> Result<(), String> {
-        let (categories, items) = self.db.clipboard_snapshot().map_err(|e| e.to_string())?;
+        let data = self
+            .data
+            .lock()
+            .map_err(|_| "clipboard data unavailable")?
+            .clone();
+        let categories = data.categories;
+        let items = data.items;
         *self
             .categories
             .lock()
@@ -204,16 +277,19 @@ impl ClipboardService {
         self.wake.trigger();
     }
     pub fn use_item(&self, id: i64) -> Result<(), String> {
-        let content = self
-            .db
-            .clipboard_mark_used(id, now())
-            .map_err(|e| e.to_string())?;
         let mut clipboard = arboard::Clipboard::new().map_err(|e| e.to_string())?;
         let selected = self
             .snapshot()?
             .into_iter()
             .find(|item| item.id == id)
             .ok_or_else(|| "剪贴板记录已不存在".to_owned())?;
+        let content = selected.content.clone();
+        self.update_file(|data| {
+            if let Some(item) = data.items.iter_mut().find(|item| item.id == id) {
+                item.last_used_at = now();
+            }
+            Ok(())
+        })?;
         if selected.content_type == "image" {
             let path = selected
                 .image_path
@@ -248,10 +324,25 @@ impl ClipboardService {
         if content.len() > 1_000_000 {
             return Err("内容超过 1 MB".into());
         }
-        self.db
-            .clipboard_update(id, content, category, pinned, now())
-            .map_err(|e| e.to_string())?;
-        self.reload()?;
+        self.update_file(|data| {
+            if data
+                .items
+                .iter()
+                .any(|item| item.id != id && item.content == content)
+            {
+                return Err("已有相同内容的剪贴板记录".into());
+            }
+            let item = data
+                .items
+                .iter_mut()
+                .find(|item| item.id == id)
+                .ok_or("剪贴板记录已不存在")?;
+            item.content = content.to_owned();
+            item.category_id = category;
+            item.pinned |= pinned;
+            item.last_used_at = now();
+            Ok(())
+        })?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
         Ok(())
@@ -268,39 +359,78 @@ impl ClipboardService {
         if content.len() > 1_000_000 {
             return Err("内容超过 1 MB".into());
         }
-        let id = self
-            .db
-            .clipboard_add_manual(content, category, pinned, now())
-            .map_err(|e| e.to_string())?;
-        self.reload()?;
+        let id = self.update_file(|data| {
+            if let Some(item) = data.items.iter_mut().find(|item| item.content == content) {
+                item.category_id = category;
+                item.pinned |= pinned;
+                item.last_used_at = now();
+                return Ok(item.id);
+            }
+            let id = data.next_id;
+            data.next_id += 1;
+            data.items.push(ClipboardHistoryRecord {
+                id,
+                content: content.into(),
+                content_type: "text".into(),
+                image_path: None,
+                image_width: None,
+                image_height: None,
+                category_id: category,
+                pinned,
+                created_at: now(),
+                last_used_at: now(),
+            });
+            trim_history(data);
+            Ok(id)
+        })?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
         Ok(id)
     }
     pub fn add_favorite(&self, id: i64) -> Result<(), String> {
-        self.db
-            .clipboard_add_favorite(id)
-            .map_err(|e| e.to_string())?;
+        self.update_file(|data| {
+            let item = data
+                .items
+                .iter_mut()
+                .find(|item| item.id == id)
+                .ok_or("剪贴板记录已不存在")?;
+            item.pinned = true;
+            Ok(())
+        })?;
         self.changed()
     }
     pub fn remove_favorite(&self, id: i64) -> Result<(), String> {
-        self.db
-            .clipboard_remove_favorite(id)
-            .map_err(|e| e.to_string())?;
+        self.update_file(|data| {
+            let before = data.items.len();
+            data.items.retain(|item| !(item.id == id && item.pinned));
+            if before == data.items.len() {
+                return Err("收藏记录已不存在".into());
+            }
+            Ok(())
+        })?;
         self.changed()
     }
     pub fn delete(&self, id: i64) -> Result<(), String> {
-        self.db.clipboard_delete(id).map_err(|e| e.to_string())?;
-        self.reload()?;
+        self.update_file(|data| {
+            if data.items.iter().any(|item| item.id == id && item.pinned) {
+                return Err("收藏内容请使用‘从收藏中删除’".into());
+            };
+            let before = data.items.len();
+            data.items.retain(|item| item.id != id);
+            if before == data.items.len() {
+                return Err("剪贴板记录已不存在".into());
+            }
+            Ok(())
+        })?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
         Ok(())
     }
     pub fn clear_unpinned(&self) -> Result<(), String> {
-        self.db
-            .clipboard_clear_unpinned()
-            .map_err(|e| e.to_string())?;
-        self.reload()?;
+        self.update_file(|data| {
+            data.items.retain(|item| item.pinned);
+            Ok(())
+        })?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
         Ok(())
@@ -308,10 +438,20 @@ impl ClipboardService {
     pub fn add_category(&self, name: &str) -> Result<(), String> {
         let name = name.trim();
         self.validate_group_name(name, None)?;
-        self.db
-            .clipboard_add_category(name)
-            .map_err(|e| e.to_string())?;
-        self.reload()?;
+        self.update_file(|data| {
+            let id = data
+                .categories
+                .iter()
+                .map(|item| item.id)
+                .max()
+                .unwrap_or(0)
+                + 1;
+            data.categories.push(ClipboardCategoryRecord {
+                id,
+                name: name.into(),
+            });
+            Ok(())
+        })?;
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
         Ok(())
@@ -380,11 +520,91 @@ impl ClipboardService {
 
 fn image_store_directory() -> Result<PathBuf, String> {
     if let Some(profile) = std::env::var_os("PHOTAG_DEV_TEST_DIR") {
-        return Ok(PathBuf::from(profile).join("clipboard-images"));
+        return Ok(PathBuf::from(profile).join("clipboard").join("images"));
     }
     dirs::data_local_dir()
-        .map(|path| path.join("PhoTag").join("ClipboardImages"))
+        .map(|path| path.join("PhoTag").join("clipboard").join("images"))
         .ok_or_else(|| "无法确定剪贴板图片缓存目录".into())
+}
+fn clipboard_json_path(db: &DatabaseService) -> Result<PathBuf, String> {
+    if let Some(profile) = std::env::var_os("PHOTAG_DEV_TEST_DIR") {
+        return Ok(PathBuf::from(profile)
+            .join("clipboard")
+            .join("clipboard.json"));
+    }
+    Ok(db
+        .path()
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join("clipboard")
+        .join("clipboard.json"))
+}
+fn capture_text(data: &mut ClipboardFile, content: &str, timestamp: i64) {
+    if let Some(item) = data.items.iter_mut().find(|item| item.content == content) {
+        item.last_used_at = timestamp;
+    } else {
+        let id = data.next_id;
+        data.next_id += 1;
+        data.items.push(ClipboardHistoryRecord {
+            id,
+            content: content.into(),
+            content_type: "text".into(),
+            image_path: None,
+            image_width: None,
+            image_height: None,
+            category_id: None,
+            pinned: false,
+            created_at: timestamp,
+            last_used_at: timestamp,
+        });
+    }
+    trim_history(data);
+}
+fn capture_image(
+    data: &mut ClipboardFile,
+    hash: &str,
+    path: &std::path::Path,
+    width: u32,
+    height: u32,
+    timestamp: i64,
+) {
+    let content = format!("image:{hash}");
+    if let Some(item) = data.items.iter_mut().find(|item| item.content == content) {
+        item.last_used_at = timestamp;
+        item.image_path = Some(path.to_string_lossy().into_owned());
+    } else {
+        let id = data.next_id;
+        data.next_id += 1;
+        data.items.push(ClipboardHistoryRecord {
+            id,
+            content,
+            content_type: "image".into(),
+            image_path: Some(path.to_string_lossy().into_owned()),
+            image_width: Some(width),
+            image_height: Some(height),
+            category_id: None,
+            pinned: false,
+            created_at: timestamp,
+            last_used_at: timestamp,
+        });
+    }
+    trim_history(data);
+}
+fn trim_history(data: &mut ClipboardFile) {
+    let mut temporary = data
+        .items
+        .iter()
+        .filter(|item| !item.pinned)
+        .cloned()
+        .collect::<Vec<_>>();
+    temporary.sort_by_key(|item| std::cmp::Reverse(item.last_used_at));
+    let keep = temporary
+        .into_iter()
+        .take(500)
+        .map(|item| item.id)
+        .collect::<std::collections::HashSet<_>>();
+    data.items
+        .retain(|item| item.pinned || keep.contains(&item.id));
 }
 #[derive(Clone, Copy)]
 pub struct ClipboardPlugin;
@@ -404,11 +624,48 @@ impl Plugin for ClipboardPlugin {
             let db = context
                 .try_service::<DatabaseService>()
                 .map_err(|e| e.to_string())?;
-            let (categories, items) = db.clipboard_snapshot().map_err(|e| e.to_string())?;
+            let data_path = clipboard_json_path(&db)?;
+            let data = if data_path.is_file() {
+                let loaded = serde_json::from_slice::<ClipboardFile>(
+                    &std::fs::read(&data_path).map_err(|e| e.to_string())?,
+                )
+                .map_err(|e| format!("读取剪贴板 JSON 失败：{e}"))?;
+                if loaded.version != 1 {
+                    return Err(format!("不支持剪贴板数据版本：{}", loaded.version));
+                }
+                loaded
+            } else {
+                let (categories, mut items) = db.clipboard_snapshot().map_err(|e| e.to_string())?;
+                let image_dir = image_store_directory()?;
+                std::fs::create_dir_all(&image_dir).map_err(|e| e.to_string())?;
+                let new_dir = image_dir.clone();
+                for item in &mut items {
+                    if let Some(old) = item.image_path.clone() {
+                        let old = PathBuf::from(old);
+                        if old.is_file() {
+                            let name = old.file_name().ok_or("剪贴板图片路径无效")?;
+                            let new = new_dir.join(name);
+                            if old != new && !new.exists() {
+                                std::fs::copy(&old, &new).map_err(|e| e.to_string())?;
+                            }
+                            item.image_path = Some(new.to_string_lossy().into_owned());
+                        }
+                    }
+                }
+                let data = ClipboardFile {
+                    version: 1,
+                    next_id: items.iter().map(|item| item.id).max().unwrap_or(0) + 1,
+                    categories,
+                    items,
+                };
+                data.persist(&data_path)?;
+                data
+            };
             let service = Arc::new(ClipboardService {
-                db,
-                items: Mutex::new(items),
-                categories: Mutex::new(categories),
+                data_path,
+                data: Mutex::new(data.clone()),
+                items: Mutex::new(data.items),
+                categories: Mutex::new(data.categories),
                 shutdown: Mutex::new(None),
                 stopped: AtomicBool::new(false),
                 paused: AtomicBool::new(false),
@@ -432,12 +689,28 @@ impl Plugin for ClipboardPlugin {
             let bridge = context
                 .try_service::<UiBridgeService>()
                 .map_err(|e| e.to_string())?;
+            let settings = context
+                .try_service::<SettingsService>()
+                .map_err(|e| e.to_string())?;
             let panels = Arc::clone(&bridge.panels);
             let command_panels = Arc::clone(&panels);
+            let command_surfaces = Arc::clone(&bridge.surfaces);
             let _listener = context
                 .on::<photag_ui_bridge::UiCommandInvoked, _>(cordis::event::observer_sync(
                     move |_, id| {
                         if id == OPEN {
+                            let mode = settings
+                                .snapshot()
+                                .map(|settings| settings.plugin_launch_mode(OWNER))
+                                .unwrap_or_default();
+                            let _ = command_surfaces.set_value(
+                                "panel.presentation",
+                                if mode == PluginLaunchMode::PanelOnly {
+                                    "panel-only"
+                                } else {
+                                    "workspace"
+                                },
+                            );
                             let _ = command_panels.open(PANEL);
                         }
                         Ok::<_, std::convert::Infallible>(())

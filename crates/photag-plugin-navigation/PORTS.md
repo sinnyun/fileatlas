@@ -9,6 +9,12 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - Cordis plugin name: `photag.navigation`; published service: `photag/navigation` (`NavigationService`).
 - Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
+- The sidebar mounts the live `navigation.extensions` and
+  `navigation.launcher-shortcuts` UiBridge slots. It reconciles each mounted
+  view against the catalog's `(id, generation)` on render: Cordis unregister
+  drops the view, and a later registration creates a fresh view. Shell wakes
+  the navigation poller when plugin-owned view registrations change. Do not
+  retain plugin button entities past their registration generation.
 - Sidebar rail extension slot: `navigation.launcher-shortcuts`; the program
   launcher contributes the Apps button here, and Navigation mounts it beside
   Folders/Tags/Add-ons.

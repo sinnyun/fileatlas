@@ -14,6 +14,7 @@ pub struct LauncherCategoryRecord {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LauncherEntryRecord {
     pub id: i64,
+    pub discovery_key: String,
     pub display_name: String,
     pub launch_path: String,
     pub uninstall_command: Option<String>,
@@ -23,6 +24,8 @@ pub struct LauncherEntryRecord {
     pub installed_on: Option<String>,
     pub size_bytes: Option<i64>,
     pub pin_scope: i64,
+    pub custom_name: bool,
+    pub custom_category: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,7 +71,7 @@ impl DatabaseService {
             };
             let entries = {
                 let mut statement = connection.prepare(
-                    "SELECT e.id, e.display_name, e.launch_path, e.uninstall_command, e.category_id, e.hidden, e.source, m.installed_on, m.size_bytes, COALESCE(m.pin_scope, 0)
+                    "SELECT e.id, e.display_name, e.launch_path, e.uninstall_command, e.category_id, e.hidden, e.source, m.installed_on, m.size_bytes, COALESCE(m.pin_scope, 0), e.custom_name, e.custom_category, e.discovery_key
                      FROM app_launcher_entries e LEFT JOIN app_launcher_metadata m ON m.entry_id=e.id ORDER BY e.display_name COLLATE NOCASE",
                 )?;
                 statement
@@ -84,6 +87,9 @@ impl DatabaseService {
                             installed_on: row.get(7)?,
                             size_bytes: row.get(8)?,
                             pin_scope: row.get(9)?,
+                            custom_name: row.get::<_, i64>(10)? != 0,
+                            custom_category: row.get::<_, i64>(11)? != 0,
+                            discovery_key: row.get(12)?,
                         })
                     })?
                     .collect::<rusqlite::Result<Vec<_>>>()?

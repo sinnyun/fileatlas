@@ -76,6 +76,18 @@ fn default_auto_check_updates() -> bool {
     true
 }
 
+/// How a feature opened from a global shortcut should present itself.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PluginLaunchMode {
+    /// Keep the normal PhoTag workspace behind the plugin panel.
+    #[default]
+    WorkspaceAndPanel,
+    /// Hide the workspace while the plugin's shared floating panel is open.
+    PanelOnly,
+    /// Invoke the plugin's primary action without opening its management panel.
+    Direct,
+}
+
 fn default_search_scopes() -> SearchScopes {
     SearchScopes::default()
 }
@@ -240,6 +252,12 @@ pub struct Settings {
     /// Screenshot tool paths owned by the screenshot launcher feature.
     #[serde(default)]
     pub screenshot_tool: ScreenshotToolSettings,
+    /// Shortcut presentation preferences keyed by stable feature plugin ID.
+    #[serde(default)]
+    pub plugin_launch_modes: BTreeMap<String, PluginLaunchMode>,
+    /// User enabled state for runtime-controllable feature plugins.
+    #[serde(default)]
+    pub plugin_enabled: BTreeMap<String, bool>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -316,6 +334,8 @@ impl Default for Settings {
             auto_check_updates: default_auto_check_updates(),
             sidebar_folders: photag_contracts::SidebarFoldersConfig::default(),
             screenshot_tool: ScreenshotToolSettings::default(),
+            plugin_launch_modes: BTreeMap::new(),
+            plugin_enabled: BTreeMap::new(),
         }
     }
 }
@@ -374,6 +394,23 @@ pub fn default_settings_path() -> PathBuf {
 }
 
 impl Settings {
+    pub fn plugin_is_enabled(&self, plugin_id: &str) -> bool {
+        self.plugin_enabled.get(plugin_id).copied().unwrap_or(true)
+    }
+
+    pub fn plugin_launch_mode(&self, plugin_id: &str) -> PluginLaunchMode {
+        self.plugin_launch_modes
+            .get(plugin_id)
+            .copied()
+            .unwrap_or_else(|| {
+                if plugin_id == "photag.screenshot" {
+                    PluginLaunchMode::Direct
+                } else {
+                    PluginLaunchMode::WorkspaceAndPanel
+                }
+            })
+    }
+
     pub fn load() -> Self {
         std::fs::read_to_string(default_settings_path())
             .ok()

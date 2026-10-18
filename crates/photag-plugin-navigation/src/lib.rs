@@ -50,6 +50,7 @@ pub struct SubdirectoryNode {
 
 pub struct NavigationService {
     ui_wake: photag_ui_bridge::refresh::Wake,
+    plugin_views_revision: std::sync::atomic::AtomicU64,
     tag_revision: std::sync::atomic::AtomicU64,
     database: Arc<DatabaseService>,
     indexing: Arc<IndexingService>,
@@ -73,6 +74,7 @@ impl NavigationService {
     ) -> Self {
         Self {
             ui_wake: Default::default(),
+            plugin_views_revision: std::sync::atomic::AtomicU64::new(0),
             tag_revision: std::sync::atomic::AtomicU64::new(0),
             database,
             indexing,
@@ -102,6 +104,13 @@ impl NavigationService {
     }
     pub fn sidebar_folders(&self) -> &Arc<SidebarFoldersService> {
         &self.folders
+    }
+    pub fn notify_plugin_views_changed(&self) {
+        self.plugin_views_revision.fetch_add(1, Ordering::AcqRel);
+        self.ui_wake.trigger();
+    }
+    pub(crate) fn plugin_views_revision(&self) -> u64 {
+        self.plugin_views_revision.load(Ordering::Acquire)
     }
     pub fn browser_enabled(&self) -> bool {
         self.database.is_browser()

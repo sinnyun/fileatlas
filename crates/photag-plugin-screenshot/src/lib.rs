@@ -6,7 +6,7 @@ mod shotoshot_settings;
 mod view;
 
 use cordis::{Context, Plugin, Service};
-use photag_plugin_settings::{ScreenshotToolSettings, SettingsService};
+use photag_plugin_settings::{PluginLaunchMode, ScreenshotToolSettings, SettingsService};
 use photag_ui_bridge::{
     ContributionKind, UiBridgeService, UiCommandInvoked, UiContribution, register_for_plugin,
     register_views_for_plugin,
@@ -20,6 +20,7 @@ use std::{
 const OWNER: &str = "photag.screenshot";
 const PANEL: &str = "screenshot-tool/panel";
 const OPEN_PANEL: &str = "screenshot-tool/open";
+const OPEN_MANAGER: &str = "screenshot-tool/open-manager";
 const CAPTURE: &str = "screenshot-tool/capture";
 
 pub struct ScreenshotService {
@@ -328,11 +329,44 @@ impl Plugin for ScreenshotPlugin {
             .map_err(|error| ScreenshotPluginError::Dependency(error.to_string()))?;
         let panels = Arc::clone(&bridge.panels);
         let command_panels = Arc::clone(&panels);
+        let command_surfaces = Arc::clone(&bridge.surfaces);
         let capture_service = Arc::clone(&service);
+        let launch_settings = Arc::clone(&service.settings);
         let _listener = context
             .on::<UiCommandInvoked, _>(cordis::event::observer_sync(move |_, id: String| {
                 match id.as_str() {
                     OPEN_PANEL => {
+                        let mode = launch_settings
+                            .snapshot()
+                            .map(|settings| settings.plugin_launch_mode(OWNER))
+                            .unwrap_or_default();
+                        if mode == PluginLaunchMode::Direct {
+                            if let Err(error) = capture_service.launch_capture() {
+                                tracing::error!(%error, "screenshot capture could not start");
+                            }
+                        } else {
+                            let _ = command_surfaces.set_value(
+                                "panel.presentation",
+                                if mode == PluginLaunchMode::PanelOnly {
+                                    "panel-only"
+                                } else {
+                                    "workspace"
+                                },
+                            );
+                            let _ = command_panels.open(PANEL);
+                        }
+                    }
+                    OPEN_MANAGER => {
+                        let _ = command_surfaces.set_value(
+                            "panel.presentation",
+                            if launch_settings.snapshot().ok().is_some_and(|settings| {
+                                settings.plugin_launch_mode(OWNER) == PluginLaunchMode::PanelOnly
+                            }) {
+                                "panel-only"
+                            } else {
+                                "workspace"
+                            },
+                        );
                         let _ = command_panels.open(PANEL);
                     }
                     CAPTURE => {
@@ -373,6 +407,13 @@ impl Plugin for ScreenshotPlugin {
                     },
                 ),
                 UiContribution::new(
+                    OPEN_MANAGER,
+                    ContributionKind::Command {
+                        label: "打开截图工具管理面板".into(),
+                        needs: photag_ui_bridge::CommandNeeds::None,
+                    },
+                ),
+                UiContribution::new(
                     CAPTURE,
                     ContributionKind::Command {
                         label: "启动截图".into(),
@@ -383,7 +424,7 @@ impl Plugin for ScreenshotPlugin {
                     "screenshot-tool/capture-key",
                     ContributionKind::Keybinding {
                         key: "Ctrl+Shift+S".into(),
-                        command_id: CAPTURE.into(),
+                        command_id: OPEN_PANEL.into(),
                         scope: photag_ui_bridge::ShortcutScope::System,
                     },
                 ),

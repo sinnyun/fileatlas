@@ -8,6 +8,7 @@ use panel_resize::PanelSide;
 pub(super) struct PhoTagShell {
     pub(super) catalog: Arc<UiCatalog>,
     pub(super) views: Vec<(String, u64, String, Option<String>, gpui_kit::AnyView)>,
+    pub(super) view_catalog_signature: Vec<(String, u64)>,
     pub(super) view_catalog: Arc<photag_ui_bridge::UiViewCatalog>,
     pub(super) cordis: CordisContext,
     pub(super) executor: tokio::runtime::Handle,
@@ -69,6 +70,7 @@ impl Render for PhoTagShell {
         let mut auxiliary_views = Vec::new();
         let mut modal_views = Vec::new();
         let mut active_panel = None;
+        let panel_only = self.surfaces.value("panel.presentation").as_deref() == Some("panel-only");
         let active = self.surfaces.value("panel.active");
         for (_, _, slot, panel_id, view) in &self.views {
             match slot.as_str() {
@@ -93,6 +95,9 @@ impl Render for PhoTagShell {
                 }
                 _ => auxiliary_views.push(view.clone()),
             }
+        }
+        if panel_only {
+            modal_views.clear();
         }
         modal_views.extend(active_panel);
         let mut tool_commands = Vec::new();
@@ -454,57 +459,60 @@ impl Render for PhoTagShell {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.finish_panel_drag(cx)),
             )
-            .child(title_band)
-            .child(
-                div()
-                    .h_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .w_full()
-                    .relative()
-                    .when(self.sidebar_open, |row| row.child(sidebar_column))
-                    .child(content_column)
-                    .when(self.inspector_open, |row| {
-                        row.child(theme::separate_region(
-                            div()
-                                .v_flex()
-                                .w(px(self.inspector_width))
-                                .h_full()
-                                .flex_shrink_0()
-                                .min_h_0()
-                                .bg(rgb(theme::SURFACE_CARD))
-                                .children(inspector_views),
-                            theme::RegionEdge::Left,
-                        ))
-                    })
-                    .when(self.sidebar_open, |row| {
-                        row.child(self.panel_splitter(PanelSide::Sidebar, cx))
-                    })
-                    .when(self.inspector_open, |row| {
-                        row.child(self.panel_splitter(PanelSide::Inspector, cx))
-                    }),
-            )
-            .children(bottom_views)
-            .child(theme::separate_region(
-                // v5 status band: selection summary and featured actions.
-                div()
-                    .h_flex()
-                    .w_full()
-                    .flex_shrink_0()
-                    .h(px(theme::STATUS_BAR_HEIGHT))
-                    .items_center()
-                    .px(px(16.))
+            .when(!panel_only, |shell| {
+                shell
+                    .child(title_band)
                     .child(
                         div()
                             .h_flex()
                             .flex_1()
-                            .min_w_0()
-                            .overflow_hidden()
-                            .children(status_views),
+                            .min_h_0()
+                            .w_full()
+                            .relative()
+                            .when(self.sidebar_open, |row| row.child(sidebar_column))
+                            .child(content_column)
+                            .when(self.inspector_open, |row| {
+                                row.child(theme::separate_region(
+                                    div()
+                                        .v_flex()
+                                        .w(px(self.inspector_width))
+                                        .h_full()
+                                        .flex_shrink_0()
+                                        .min_h_0()
+                                        .bg(rgb(theme::SURFACE_CARD))
+                                        .children(inspector_views),
+                                    theme::RegionEdge::Left,
+                                ))
+                            })
+                            .when(self.sidebar_open, |row| {
+                                row.child(self.panel_splitter(PanelSide::Sidebar, cx))
+                            })
+                            .when(self.inspector_open, |row| {
+                                row.child(self.panel_splitter(PanelSide::Inspector, cx))
+                            }),
                     )
-                    .children(debug_status),
-                theme::RegionEdge::Top,
-            ));
+                    .children(bottom_views)
+                    .child(theme::separate_region(
+                        // v5 status band: selection summary and featured actions.
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .flex_shrink_0()
+                            .h(px(theme::STATUS_BAR_HEIGHT))
+                            .items_center()
+                            .px(px(16.))
+                            .child(
+                                div()
+                                    .h_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .overflow_hidden()
+                                    .children(status_views),
+                            )
+                            .children(debug_status),
+                        theme::RegionEdge::Top,
+                    ))
+            });
         if self.tools_open {
             shell = shell.child(
                 div()
