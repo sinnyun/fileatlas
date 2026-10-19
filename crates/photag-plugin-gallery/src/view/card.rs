@@ -346,9 +346,11 @@ pub(super) fn render_media_card(
                 this.preview_media(media_id, cx);
             }
         }))
-        .on_drag(payload, |payload, _, _, cx| {
+        .on_drag(payload, |payload, _, window, cx| {
             if payload.allowed.load(Ordering::Acquire) {
-                let _ = payload.service.start_file_drag(&payload.paths);
+                if let Err(error) = payload.service.start_file_drag(window, &payload.paths) {
+                    tracing::warn!(%error, "could not start native file drag");
+                }
             }
             cx.new(|_| FileDragGhost)
         })

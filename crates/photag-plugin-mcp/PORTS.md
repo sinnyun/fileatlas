@@ -638,6 +638,16 @@ unregistered or non-owned HWNDs; closing the selected native instance falls back
 
 `control_ui.window_close` posts WM_CLOSE only for a selected, registered native plugin HWND; main is rejected. It exercises the same OS close callback used by system chrome.
 
+## Windows drag-out diagnostics — 2026-10-19
+
+`get_ui_state.drag_drop` reports the last `DragDropService` native lifecycle:
+`idle`, `queued`, `active`, `dropped`, `cancelled`, or `failed`. This lets a
+same-process `control_ui` pointer gesture verify that the Gallery callback
+queued and entered the OLE drag path, and that the app returned to a usable
+state. `control_ui` pointer input is synthetic GPUI input; it does not simulate
+a held OS mouse button or verify a drop into Explorer/another process. Those
+system-level delivery paths still require a real Windows drag.
+
 ## Live MCP mutation access — staged permissions
 
 MCP publishes the `mcp/settings` settings-page view through `photag.mcp`; it uses

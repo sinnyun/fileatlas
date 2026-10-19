@@ -212,6 +212,12 @@ impl PhoTagMcpServer {
             "error": self.surfaces.value("settings.shortcut-error").unwrap_or_default(),
         });
         state["gallery_search_provider_detail"] = json!(self.gallery.search_provider_detail());
+        state["drag_drop"] = json!(
+            self.context
+                .try_service::<photag_plugin_drag_drop::DragDropService>()
+                .ok()
+                .map(|service| service.status())
+        );
         state["program_workspace"] = match (&self.columns, &self.workspaces) {
             (Some(columns), Some(workspaces)) => {
                 let column_state = columns.snapshot().ok();

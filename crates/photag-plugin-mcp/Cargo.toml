@@ -19,6 +19,7 @@ photag-plugin-history = { path = "../photag-plugin-history" }
 photag-plugin-metadata-export = { path = "../photag-plugin-metadata-export" }
 photag-plugin-screenshot = { path = "../photag-plugin-screenshot" }
 photag-plugin-database = { path = "../photag-plugin-database" }
+photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-navigation = { path = "../photag-plugin-navigation" }
 photag-plugin-quicklook = { path = "../photag-plugin-quicklook" }
 photag-plugin-tagging = { path = "../photag-plugin-tagging" }

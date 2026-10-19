@@ -28,7 +28,7 @@ impl Plugin for DragDropPlugin {
     #[tracing::instrument(skip_all, err)]
     async fn apply(&self, context: Context, _config: &Self::Input) -> Result<(), Self::ApplyError> {
         let _publication = context
-            .provide(Arc::new(DragDropService))
+            .provide(Arc::new(DragDropService::default()))
             .map_err(|error| DragDropPluginError::Publish(error.to_string()))?;
         Ok(())
     }

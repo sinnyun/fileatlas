@@ -39,6 +39,7 @@
     "photag-plugin-launcher -> photag-plugin-settings",
     "photag-plugin-mcp -> photag-plugin-columns",
     "photag-plugin-mcp -> photag-plugin-database",
+    "photag-plugin-mcp -> photag-plugin-drag-drop",
     "photag-plugin-mcp -> photag-plugin-gallery",
     "photag-plugin-mcp -> photag-plugin-history",
     "photag-plugin-mcp -> photag-plugin-i18n",

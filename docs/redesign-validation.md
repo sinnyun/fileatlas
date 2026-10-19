@@ -853,3 +853,13 @@ layering仍有既存launcher/clipboard→settings层级错误，无新增依赖�
 新增独立 Cordis 分栏与程序工作区插件。顶部筛选/排序/分组/视图操作作用于激活栏，搜索/功能按钮独立成组，每栏保留独立地址导航和完整文件视图；支持单栏、双栏、四栏。程序工作区保存启动布局及每栏地址、历史和浏览/视图状态，不存媒体数据。Everything 设置仍由设置界面管理。
 
 Rust1.97.1 MSVC fmt、locked offline shell check/build 与 theme/refresh/architecture/feature-ledger/layering 守卫通过。同进程 PhoTag MCP 使用隔离 dev-test profile 验证双栏与四栏显示、独立地址历史、保存当前双栏、重启恢复以及默认工作区重新应用；工作区管理器截图确认中文翻译。极窄窗口滚动、长列表选择/滚动位置恢复、所有管理器 CRUD 点击及全部主题交互状态未在本轮覆盖。完整命令、截图与边界见[多栏/程序工作区证据](validation-ui/2026-10-19-columns-foundation/README.md)。
+
+## 2026-10-19 Windows 拖出文件导致进程关闭
+
+用户反馈拖动文件时 PhoTag 自动关闭。10:03:42 的新 WER 转储经本地 PDB 符号化后确认：GPUI Windows 窗口过程在 OLE `DoDragDrop` 的嵌套消息循环重入时触发 fail-fast；仅 `Window::defer` 仍处于原消息分发周期，未消除重入。现将阻塞的 OLE 操作移到独立线程，并保留 CF_HDROP 格式/HGLOBAL 校验。Rust 1.97.1 fmt、相关 crate locked offline check、Shell locked offline build 通过。重建后 PhoTag 仍能运行，未出现新的 WER；但 Computer Use 的拖动坐标受限于当前窗口，无法把文件送出窗口，故 Explorer 和其他目标程序的实际投递及长时间拖动仍未验证。详见[拖放崩溃跟进记录](validation-ui/2026-10-19-drag-drop-crash/README.md)。
+
+后续用户实测反馈该工作线程方案无法拖动。一个中间迭代将自写 COM 数据对象替换成 `drag` 2.1.1，但仍在 GPUI 回调同步调用 OLE，并临时屏蔽源 HWND 消息；虽然通过构建和启动检查，实际拖出没有得到验证，现已由下面的事件派发重构取代，不能视为有效修复。
+
+本轮先检查 PhoTag 原始参考项目：其 `egui` Gallery 也在卡片拖动回调同步启动自写 `DoDragDrop`，保留多选路径与 copy-only 语义，但并未提供适合 GPUI 的事件循环方案。参考 Zed/GPUI、Winit、`drag-rs` 与原生 Windows 拖放实现后，改为保留 GPUI 卡片手势和路径选择，由当前 UI 线程将请求投递至临时消息窗；原始输入回调返回后再启动 `drag-rs` OLE 拖动，结束时销毁临时 HWND。该方案不拦截 GPUI 源窗口消息，也不在线程间转移鼠标手势。fmt 与拖放/Gallery crate locked offline check 已通过；Shell 构建、治理检查、同进程 MCP 和 Windows 外部目标实际投递的验证状态见[拖出重构验证记录](validation-ui/2026-10-19-drag-drop-crash/README.md)。
+
+用户确认该重构现在可正常拖动并投递到其他窗口。后续将拖动图像限制在 96×96 像素内，并为不可解码预览的文件生成带扩展名和类型颜色的文件剪影。格式检查、相关 crate locked offline check、PhoTag Shell locked offline build 通过；新剪影的实际系统拖动外观仍待用户确认。用户提供的 `0x80040064` 来自 GPUI Windows `IDropTargetHelper::DragEnter` 返回值记录，与本插件预览解码是不同路径，详见[拖动图像尺寸和回退验证](validation-ui/2026-10-19-drag-drop-crash/README.md)。
