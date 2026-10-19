@@ -15,6 +15,8 @@ pub enum NavigationUiRequest {
     ExpandPath(String),
     /// Select a real directory path contained by a registered folder.
     SelectPath(String),
+    /// Select a real path while keeping the current Navigation sidebar page.
+    SelectPathPreservingPage(String),
     CloseModal,
     /// Explorer-style sidebar sections (drives, quick access, grouped favorites).
     Sidebar(SidebarUiRequest),
@@ -57,7 +59,7 @@ pub enum SidebarUiRequest {
     ToggleDrive {
         root: String,
     },
-    /// Click a sidebar path row: browse mode selects, library mode adds.
+    /// Click a sidebar path row: browser mode selects; legacy indexed mode adds.
     ActivatePath {
         path: String,
     },
@@ -65,7 +67,7 @@ pub enum SidebarUiRequest {
     ToggleExpanded {
         path: String,
     },
-    /// Menu action "Add to library".
+    /// Legacy indexed-mode action for adding a folder to the database.
     AddToLibrary {
         path: String,
     },
@@ -130,6 +132,7 @@ impl NavigationUiRequest {
             | Self::ExpandFolder(_)
             | Self::ExpandPath(_)
             | Self::SelectPath(_)
+            | Self::SelectPathPreservingPage(_)
             | Self::CloseModal
             | Self::Sidebar(_)
             | Self::AddressBar(_) => None,

@@ -40,7 +40,7 @@ impl InspectorContext {
             Self::Program => hero(
                 IconName::Image,
                 "PhoTag",
-                &photag_ui_bridge::i18n::tr("Local photo browser and organizer"),
+                &photag_ui_bridge::i18n::tr("Local file browser and organizer"),
                 Some(theme::accent()),
             ),
             Self::Tag(tag) => tag_hero(tag),

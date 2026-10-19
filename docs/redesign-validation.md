@@ -4,6 +4,12 @@
 
 # 界面重构验证记录
 
+## 2026-10-19：项目文件夹侧栏页签
+
+更正早先浮动面板方案：独立 `photag-plugin-projects` 现通过生命周期视图贡献注册为 Navigation“项目”页签，与文件夹/标签共用同一 rail 和侧栏内容列；点项目树目录会导航主窗活动栏并保持项目页打开。Rust 1.97.1 locked offline Shell 构建通过。同进程 MCP 已从隔离 profile 添加测试根目录，验证 `docs/notes`、`src/deep` 完整展开、点击 `deep` 导航及版本 1 JSON 保存。窗口截图已检查；窄窗口、移除后重启、不可读目录和大树性能尚未验收。详情及重现命令见[项目页验证记录](validation-ui/2026-10-19-project-folders/README.md)。
+
+同期旧“图库/媒体库”语义清理只处理过时或无引用的用户文案：程序检查器改为“本地文件浏览与管理”，统计入口改为“媒体统计”，开发测试页改为“本地文件与规模数据”，删除未再被目录键引用的 Gallery/Library 翻译项，并将导航贡献元数据从 Library Navigation 改为 File Navigation。保留 `photag-plugin-gallery`、Library 数据查询/统计和 indexed-mode 导航分支：它们是现行照片管理核心、数据契约或兼容路径，不是删除安全的遗留 UI。架构守卫还发现 Preview 与 Media Playback 两个 crate 目录只剩空 `src` 子目录；已确认无文件、Cargo target 和当前代码引用后移除。默认路径数据库 API 与共享 DB 架构保持不变。
+
 ## 2026-10-19：主工具栏布局下拉与子文件夹切换图标
 
 最新用户反馈：子文件夹开启态增加持久主题强调色底框，关闭恢复普通 ghost。默认蓝/Sage Green 两种强调色的同进程 MCP 点击、移开鼠标、悬停、关闭恢复及静止 revision 检查通过，最新效果见[开启态验证](validation-ui/2026-10-19-toolbar-dropdown/README.md)的 `filled-*` 截图。

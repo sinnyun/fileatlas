@@ -159,7 +159,9 @@ impl NavigationService {
                     return Err(NavigationUiRequestError::UnknownFolder(*id));
                 }
             }
-            NavigationUiRequest::SelectPath(path) | NavigationUiRequest::ExpandPath(path) => {
+            NavigationUiRequest::SelectPath(path)
+            | NavigationUiRequest::SelectPathPreservingPage(path)
+            | NavigationUiRequest::ExpandPath(path) => {
                 let target = std::fs::canonicalize(path)
                     .ok()
                     .filter(|path| path.is_dir())
@@ -578,10 +580,19 @@ impl Plugin for NavigationPlugin {
             .map_err(|error| NavigationPluginError::Publish(error.to_string()))?;
         if let Ok(registry) = context.try_service::<photag_contracts::mcp::McpToolRegistry>() {
             let navigation = Arc::clone(&service);
+            let browser_mode = service.browser_enabled();
             let tool = photag_contracts::mcp::McpToolDefinition {
                 name: "navigation.list_library".into(),
-                title: "List folders and tags".into(),
-                description: "Read PhoTag registered folders, media counts, and hierarchical tags.".into(),
+                title: if browser_mode {
+                    "List folder favorites and tags".into()
+                } else {
+                    "List indexed folders and tags".into()
+                },
+                description: if browser_mode {
+                    "Read saved folder favorites and the hierarchical tag tree. Folder entries are shortcuts, not indexed library roots.".into()
+                } else {
+                    "Read registered indexed folders, scan metadata, media counts, and the hierarchical tag tree.".into()
+                },
                 input_schema: serde_json::json!({"type":"object","properties":{},"additionalProperties":false})
                     .as_object().cloned().unwrap_or_default(),
                 mutating: false,
@@ -626,7 +637,7 @@ impl Plugin for NavigationPlugin {
                 UiContribution::new(
                     "navigation/sidebar",
                     ContributionKind::Panel {
-                        label: "Library Navigation".into(),
+                        label: "File Navigation".into(),
                         slot: "workspace.sidebar".into(),
                         order: 0,
                     },

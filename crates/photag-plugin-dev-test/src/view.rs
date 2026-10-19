@@ -84,7 +84,7 @@ impl Render for DevTestPanel {
                 div()
                     .text_sm()
                     .font_semibold()
-                    .child("开发测试：媒体库与规模数据"),
+                    .child("开发测试：本地文件与规模数据"),
             )
             .child(
                 div()

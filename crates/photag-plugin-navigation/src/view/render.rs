@@ -15,6 +15,7 @@ impl SidebarView {
             if !matches!(
                 request,
                 crate::NavigationUiRequest::SelectPath(_)
+                    | crate::NavigationUiRequest::SelectPathPreservingPage(_)
                     | crate::NavigationUiRequest::ExpandPath(_)
                     | crate::NavigationUiRequest::AddressBar(_)
             ) {
@@ -68,34 +69,10 @@ impl SidebarView {
                     }
                 }
                 crate::NavigationUiRequest::SelectPath(path) => {
-                    self.set_navigation_page(NavigationPage::Folders);
-                    if std::path::Path::new(&path).is_dir() {
-                        let ancestors = Path::new(&path)
-                            .ancestors()
-                            .skip(1)
-                            .take_while(|ancestor| {
-                                self.snapshot.as_ref().is_ok_and(|snapshot| {
-                                    snapshot
-                                        .folders
-                                        .iter()
-                                        .any(|node| ancestor.starts_with(&node.folder.path))
-                                })
-                            })
-                            .map(|ancestor| ancestor.to_string_lossy().into_owned())
-                            .collect::<Vec<_>>();
-                        for ancestor in ancestors.into_iter().rev() {
-                            if self.service.browser_enabled() {
-                                self.queue_directory(&ancestor);
-                            } else {
-                                self.expanded_directories.insert(
-                                    ancestor.clone(),
-                                    self.service.subdirectories(&ancestor),
-                                );
-                            }
-                        }
-                        self.persist_directory_expansion();
-                        self.select_path(path, cx);
-                    }
+                    self.select_directory_request(path, true, cx);
+                }
+                crate::NavigationUiRequest::SelectPathPreservingPage(path) => {
+                    self.select_directory_request(path, false, cx);
                 }
                 crate::NavigationUiRequest::CloseModal => self.close_tag_modal(),
                 crate::NavigationUiRequest::Sidebar(request) => {
@@ -107,6 +84,42 @@ impl SidebarView {
             }
             self.publish_sidebar_state(cx);
             cx.notify();
+        }
+    }
+
+    fn select_directory_request(
+        &mut self,
+        path: String,
+        switch_page: bool,
+        cx: &mut Context<Self>,
+    ) {
+        if switch_page {
+            self.set_navigation_page(NavigationPage::Folders);
+        }
+        if std::path::Path::new(&path).is_dir() {
+            let ancestors = Path::new(&path)
+                .ancestors()
+                .skip(1)
+                .take_while(|ancestor| {
+                    self.snapshot.as_ref().is_ok_and(|snapshot| {
+                        snapshot
+                            .folders
+                            .iter()
+                            .any(|node| ancestor.starts_with(&node.folder.path))
+                    })
+                })
+                .map(|ancestor| ancestor.to_string_lossy().into_owned())
+                .collect::<Vec<_>>();
+            for ancestor in ancestors.into_iter().rev() {
+                if self.service.browser_enabled() {
+                    self.queue_directory(&ancestor);
+                } else {
+                    self.expanded_directories
+                        .insert(ancestor.clone(), self.service.subdirectories(&ancestor));
+                }
+            }
+            self.persist_directory_expansion();
+            self.select_path(path, cx);
         }
     }
 }
@@ -184,6 +197,19 @@ impl Render for SidebarView {
                 .size_full()
                 .child(rail)
                 .child(pages::render_extensions(self));
+        }
+        if self.active_page == NavigationPage::Projects {
+            let content = self
+                .project_views
+                .iter()
+                .map(|(_, _, view)| view.clone())
+                .collect::<Vec<_>>();
+            let page = div()
+                .h_flex()
+                .size_full()
+                .child(rail)
+                .child(div().v_flex().flex_1().min_w_0().h_full().children(content));
+            return page;
         }
         let mut panel = div()
             .v_flex()
@@ -440,6 +466,13 @@ impl SidebarView {
                     && entry.generation == *generation
             })
         });
+        self.project_views.retain(|(id, generation, _)| {
+            entries.iter().any(|entry| {
+                entry.contribution.slot == "navigation.sidebar-projects"
+                    && entry.contribution.id == *id
+                    && entry.generation == *generation
+            })
+        });
         self.launcher_shortcuts.retain(|(id, generation, _)| {
             entries.iter().any(|entry| {
                 entry.contribution.slot == "navigation.launcher-shortcuts"
@@ -477,9 +510,26 @@ impl SidebarView {
                         (entry.contribution.factory)(window, cx),
                     ));
                 }
+                "navigation.sidebar-projects"
+                    if !self
+                        .project_views
+                        .iter()
+                        .any(|(current_id, current_generation, _)| {
+                            current_id == &id && *current_generation == generation
+                        }) =>
+                {
+                    self.project_views.push((
+                        id,
+                        generation,
+                        (entry.contribution.factory)(window, cx),
+                    ));
+                }
                 _ => {}
             }
         }
         self.registered_sidebar_view_ids = live_ids;
+        if self.active_page == NavigationPage::Projects && self.project_views.is_empty() {
+            self.set_navigation_page(NavigationPage::Folders);
+        }
     }
 }

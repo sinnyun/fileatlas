@@ -420,7 +420,7 @@ impl GalleryView {
                                 .child(photag_ui_bridge::i18n::tr(if self.show_records {
                                     "Relink missing files"
                                 } else if showing_statistics {
-                                    "Library Statistics"
+                                    "Media Statistics"
                                 } else {
                                     "Bulk actions…"
                                 })),

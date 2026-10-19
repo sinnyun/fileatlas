@@ -5,6 +5,7 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
     let items = [
         (NavigationPage::Folders, IconName::Folder, "Folders"),
         (NavigationPage::Tags, IconName::Tag, "Tags"),
+        (NavigationPage::Projects, IconName::Folder, "Projects"),
         (NavigationPage::Extensions, IconName::Puzzle, "Add-ons"),
     ];
     let mut rail = theme::separate_region(
@@ -20,6 +21,9 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
         theme::RegionEdge::Right,
     );
     for (page, icon, label) in items {
+        if page == NavigationPage::Projects && view.project_views.is_empty() {
+            continue;
+        }
         let selected = view.active_page == page;
         rail = rail.child(
             div()

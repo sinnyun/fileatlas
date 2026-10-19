@@ -42,6 +42,9 @@ photag-plugin-drag-drop = { path = "../photag-plugin-drag-drop" }
 photag-plugin-mcp = { path = "../photag-plugin-mcp" }
 photag-plugin-dev-test = { path = "../photag-plugin-dev-test" }
 photag-plugin-screenshot = { path = "../photag-plugin-screenshot" }
+photag-plugin-material-theme = { path = "../photag-plugin-material-theme" }
+photag-plugin-shell-controls = { path = "../photag-plugin-shell-controls" }
+photag-plugin-projects = { path = "../photag-plugin-projects" }
 gpui-kit.workspace = true
 raw-window-handle = "0.6.2"
 

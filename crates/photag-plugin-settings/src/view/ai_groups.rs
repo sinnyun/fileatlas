@@ -25,7 +25,7 @@ impl SettingsView {
         if self.tag_choices.value().is_none() {
             panel = panel.child(tr("Loading file info…"));
         } else if available.is_empty() {
-            panel=panel.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary())).child(tr("No library tags are available for adding to groups while Navigation is stopped or the tag library is empty.")));
+            panel=panel.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary())).child(tr("No tags are available for adding to groups while Navigation is stopped or no tags exist.")));
         }
         for (index, stored) in settings.ai.mandatory_groups.iter().enumerate() {
             let mut group = div()
@@ -184,7 +184,7 @@ impl SettingsView {
                     div()
                         .text_size(px(theme::FONT_SIZE_SMALL))
                         .text_color(rgb(theme::text_secondary()))
-                        .child(tr("No library tags are available to add.")),
+                        .child(tr("No tags are available to add.")),
                 );
             }
             panel = panel.child(group);

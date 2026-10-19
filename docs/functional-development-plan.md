@@ -1,3 +1,12 @@
+# 当前主题配置管线（2026-10-19 用户要求）
+
+所有框架控件和自绘视图采用 GPUI Kit ThemeRegistry/ThemeConfig/Theme 唯一颜色来源。
+Material 新增为独立编译期 Cordis 功能插件：生成器输入种子、风格、对比度，生成亮暗
+ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色表和组件覆盖表已移除。
+持久化复用 Settings.theme_file/color_mode；生成器采用版本化 JSON（体量小、整体读写），
+具体路径、兼容、备份和恢复见 Material 插件 PORTS；不增建 SQLite 或插件管理器。
+更新 AGENTS.md、ui-theme.md 与主题守卫，禁止桥接层或插件重新写私有 palette。
+
 2026-10-18 用户追加设置中心全面简化：先生成并检查十页完整概念，再逐页还原。
 同轮明确要求设置页通过通用配置生成，UI Bridge新增声明式表单与既有view目录对接，
 后续插件不再单独设计常规设置页。不增加持久化层或插件管理器，详见
@@ -5,6 +14,13 @@
 [公共契约](settings-page-contract.md)。
 
 # 下一阶段：功能操作优化与功能扩展
+
+2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `photag-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/photag-plugin-projects/PORTS.md)；同进程交互验证待执行。
+
+2026-10-19 用户要求增加暗/亮主题模式与左侧主题切换入口，并将 Shell 直接绘制的功能按钮迁移到插件托槽。
+主题设置复用 `photag-plugin-settings` 和现有 Settings JSON；颜色由 UI Bridge 语义访问器解析。
+设置/主题入口与 Shell 四个常用动作均由 Cordis 插件注册视图。布局框架、品牌、resize 及通用贡献渲染仍归宿主组合。
+代码已静态编译，窗口行为与视觉验收见[主题模式证据](validation-ui/2026-10-19-theme-modes/README.md)，当前仍待同进程 MCP 验证。
 
 2026-10-19 用户指定新增两个独立编译期 Cordis 功能插件：主工作区多栏与程序工作区。
 用户补充明确：主窗公共操作带位于地址导航之上，并分为左侧筛选/排序/分组/视图控制区与右侧搜索/功能按钮区，

@@ -176,6 +176,7 @@
     "photag-plugin-launcher",
     "photag-plugin-mcp",
     "photag-plugin-metadata-export",
+    "photag-plugin-projects",
     "photag-plugin-screenshot",
     "photag-plugin-shortcuts"
   ],

@@ -36,6 +36,7 @@ members = [
     "crates/photag-plugin-shell-controls",
     "crates/photag-plugin-material-theme",
     "crates/photag-plugin-screenshot",
+    "crates/photag-plugin-projects",
 ]
 default-members = ["crates/photag-shell"]
 

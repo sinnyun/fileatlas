@@ -37,11 +37,12 @@ pub(super) fn tools(
     context: &cordis::Context,
 ) -> Vec<McpToolDefinition> {
     let mut tools = Vec::new();
+    let browser_mode = service.browser_enabled();
     let add_scan_context = context.clone();
     let rescan_context = context.clone();
 
     let navigation = Arc::clone(service);
-    tools.push(tool("navigation.add_folder", "Register library folder", "Register an existing directory and start or refresh its indexing, according to the active library mode. Requires explicit confirmation.", json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}), true, true, move |args| {
+    tools.push(tool("navigation.add_folder", if browser_mode { "Add folder favorite" } else { "Register indexed folder" }, if browser_mode { "Save an existing directory as a folder favorite. This does not scan or index its contents. Requires explicit confirmation." } else { "Register an existing directory and start or refresh its media indexing. Requires explicit confirmation." }, json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}), true, true, move |args| {
         let navigation=Arc::clone(&navigation);
         let context=add_scan_context.clone();
         Box::pin(async move {
@@ -53,20 +54,20 @@ pub(super) fn tools(
     }));
 
     let navigation = Arc::clone(service);
-    tools.push(tool("navigation.remove_folder", "Remove library folder", "Remove a registered folder and its indexed rows. This does not delete files from disk; requires explicit confirmation.", json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, true, move |args| {
+    tools.push(tool("navigation.remove_folder", if browser_mode { "Remove folder favorite" } else { "Remove indexed folder" }, if browser_mode { "Remove a folder favorite. This does not delete files from disk. Requires explicit confirmation." } else { "Remove a registered folder and its indexed rows. This does not delete files from disk; requires explicit confirmation." }, json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, true, move |args| {
         let navigation=Arc::clone(&navigation);
         Box::pin(async move { let request:FolderRequest=parse(args)?; let folder=navigation.remove_folder(request.folder_id).map_err(|error|error.to_string())?; Ok(json!({"ok":true,"folder":folder})) })
     }));
 
     let navigation = Arc::clone(service);
-    tools.push(tool("navigation.rescan_folder", "Rescan library folder", "Refresh the registered folder view or clear and rebuild its indexed rows, according to the active library mode. Requires explicit confirmation.", json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, true, move |args| {
+    tools.push(tool("navigation.rescan_folder", if browser_mode { "Open folder favorite" } else { "Rescan indexed folder" }, if browser_mode { "Open the saved folder in the active browser column. No indexing is performed." } else { "Clear and rebuild the registered folder's indexed rows. Requires explicit confirmation." }, json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, true, move |args| {
         let navigation=Arc::clone(&navigation);
         let context=rescan_context.clone();
         Box::pin(async move { let request:FolderRequest=parse(args)?; let progress=navigation.rescan(request.folder_id).map_err(|error|error.to_string())?; observe_scan(context,progress); Ok(json!({"ok":true,"started":true,"folder_id":request.folder_id})) })
     }));
 
     let navigation = Arc::clone(service);
-    tools.push(tool("navigation.cancel_scan", "Cancel folder scan", "Cancel indexing for one registered folder without removing its current media records.", json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, false, move |args| {
+    tools.push(tool("navigation.cancel_scan", "Cancel folder scan", if browser_mode { "No folder indexing runs in browser mode; this call is retained for older indexed-mode clients." } else { "Cancel indexing for one registered folder without removing its current media records." }, json!({"type":"object","properties":{"folder_id":{"type":"integer","minimum":1}},"required":["folder_id"],"additionalProperties":false}), true, false, move |args| {
         let navigation=Arc::clone(&navigation);
         Box::pin(async move { let request:FolderRequest=parse(args)?; navigation.cancel_scan(request.folder_id).map_err(|error|error.to_string())?; Ok(json!({"ok":true,"folder_id":request.folder_id})) })
     }));

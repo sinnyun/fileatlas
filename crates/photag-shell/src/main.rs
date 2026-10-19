@@ -33,6 +33,7 @@ fn dev_plugin_config() -> String {
         "mcp",
         "dev-test",
         "screenshot",
+        "projects",
     ];
     for plugin in config
         .split(',')
@@ -105,28 +106,28 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
         .gap_3()
         .rounded_md()
         .border_1()
-        .border_color(rgba(theme::BORDER.to_rgba()))
-        .bg(rgb(theme::SURFACE_PANEL))
+        .border_color(rgba(theme::border().to_rgba()))
+        .bg(rgb(theme::surface_panel()))
         .px_3()
         .py_2()
         .child(
             div()
                 .w_24()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(category),
         )
         .child(div().flex_1().child(title))
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(location),
         )
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .child(owned.owner.clone()),
         )
 }
@@ -160,6 +161,10 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "screenshot");
+    let enable_projects = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "projects");
     let enable_launcher = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -183,7 +188,8 @@ fn main() {
         || enable_launcher
         || dev_plugin_enabled(&plugin_config, "navigation")
         || enable_clipboard
-        || enable_screenshot;
+        || enable_screenshot
+        || enable_projects;
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -241,6 +247,11 @@ fn main() {
     let _bridge_publication = cordis
         .provide(Arc::clone(&bridge))
         .expect("publish UI bridge service");
+
+    let shell_controls_plugin = photag_plugin_shell_controls::ShellControlsPlugin;
+    let _shell_controls_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(shell_controls_plugin, ())))
+        .expect("start shell controls plugin");
 
     let debug_plugin = photag_plugin_debug::DebugPlugin;
     let debug_input = debug_plugin
@@ -477,6 +488,10 @@ fn main() {
     let settings_service = cordis
         .try_service::<photag_plugin_settings::SettingsService>()
         .ok();
+    let material_plugin = photag_plugin_material_theme::MaterialThemePlugin;
+    let material_fiber = runtime
+        .block_on(cordis.spawn(PreparedPlugin::from_input(material_plugin, ())))
+        .expect("start Material theme generator plugin");
     let plugin_runtime = settings_service
         .as_ref()
         .map(|service| service.plugin_runtime())
@@ -491,6 +506,52 @@ fn main() {
         enable_clipboard && plugin_preferences.plugin_is_enabled("photag.clipboard");
     let enable_screenshot =
         enable_screenshot && plugin_preferences.plugin_is_enabled("photag.screenshot");
+    let enable_projects =
+        enable_projects && plugin_preferences.plugin_is_enabled("photag.projects");
+    let projects_fiber = if enable_projects {
+        let plugin = photag_plugin_projects::ProjectsPlugin;
+        let input = match plugin.prepare(photag_plugin_projects::ProjectsConfig) {
+            Ok(input) => input,
+            Err(never) => match never {},
+        };
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start projects plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let projects_context = cordis.clone();
+    let projects_starter: photag_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = projects_context.clone();
+        Box::pin(async move {
+            let plugin = photag_plugin_projects::ProjectsPlugin;
+            let input = match plugin.prepare(photag_plugin_projects::ProjectsConfig) {
+                Ok(input) => input,
+                Err(never) => match never {},
+            };
+            context
+                .spawn(PreparedPlugin::from_input(plugin, input))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "photag.projects",
+        "Projects",
+        "Browse project folders and their complete directory trees.",
+        vec![
+            photag_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            photag_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        projects_fiber,
+        projects_starter,
+    )) {
+        tracing::error!(%error, "could not register Projects plugin runtime control");
+    }
     let launcher_fiber = if enable_launcher {
         let plugin = photag_plugin_launcher::LauncherPlugin;
         let input = match plugin.prepare(photag_plugin_launcher::LauncherConfig) {
@@ -1068,6 +1129,9 @@ fn main() {
     if let Some(fiber) = ai_fiber {
         runtime.block_on(fiber.dispose()).expect("stop AI plugin");
     }
+    runtime
+        .block_on(material_fiber.dispose())
+        .expect("stop Material theme generator plugin");
     runtime
         .block_on(settings_fiber.dispose())
         .expect("stop settings plugin");

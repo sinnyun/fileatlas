@@ -28,11 +28,15 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
 - The sidebar mounts the live `navigation.extensions` and
-  `navigation.launcher-shortcuts` UiBridge slots. It reconciles each mounted
+  `navigation.launcher-shortcuts` and `navigation.sidebar-projects` UiBridge slots. It reconciles each mounted
   view against the catalog's `(id, generation)` on render: Cordis unregister
   drops the view, and a later registration creates a fresh view. Shell wakes
   the navigation poller when plugin-owned view registrations change. Do not
   retain plugin button entities past their registration generation.
+- The `Projects` rail tab is rendered only while a view contributes to
+  `navigation.sidebar-projects`; Navigation falls back to Folders if the
+  contributor is removed while Projects is active. The project feature owns
+  its path list/tree UI and registers this content slot through Cordis.
 - Sidebar rail extension slot: `navigation.launcher-shortcuts`; the program
   launcher contributes the Apps button here, and Navigation mounts it beside
   Folders/Tags/Add-ons.
@@ -43,7 +47,7 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 ## Service input/output
 
 - `snapshot()` -> registered folders with media counts and the recursive PhoTag tag tree.
-- `request_ui(NavigationUiRequest)` -> queues one typed action for the mounted sidebar. Tag modal requests (`OpenCreate`, `OpenEdit(tag_id)`, `OpenDelete(tag_id)`, `OpenMerge(tag_id)`, `OpenMove(tag_id)`, and `CloseModal`) retain their existing validation and behavior. `ExpandFolder(folder_id)` loads that registered root's direct children idempotently; `SelectPath(path)` validates the canonical directory is inside a registered root before selecting it through existing folder/path events. `AllFiles` clears scope. Requests are consumed on the GPUI thread by the same cached `SidebarView` used by sidebar, breadcrumb, and tag modal. Invalid IDs/paths, a poisoned queue, and a second pending request return `NavigationUiRequestError`. The sidebar polls this queue with the existing native folder-picker request.
+- `request_ui(NavigationUiRequest)` -> queues one typed action for the mounted sidebar. Tag modal requests (`OpenCreate`, `OpenEdit(tag_id)`, `OpenDelete(tag_id)`, `OpenMerge(tag_id)`, `OpenMove(tag_id)`, and `CloseModal`) retain their existing validation and behavior. `ExpandFolder(folder_id)` loads that registered root's direct children idempotently; `SelectPath(path)` validates the canonical directory is inside a registered root before selecting it through existing folder/path events and activates Folders; `SelectPathPreservingPage(path)` uses the same path validation/navigation while retaining the active sidebar page for plugin tree navigation. `AllFiles` clears scope. Requests are consumed on the GPUI thread by the same cached `SidebarView` used by sidebar, breadcrumb, and tag modal. Invalid IDs/paths, a poisoned queue, and a second pending request return `NavigationUiRequestError`. The sidebar polls this queue with the existing native folder-picker request.
 - `subdirectories(path)` -> lazy direct child nodes: name, path, child-presence and indexed count.
 - `add_folder(path)` -> validates an existing directory; returns `(Folder, Receiver<Option<ScanProgress>>)` after registering it and scheduling indexing. Watcher registration follows when available.
 - `rescan(folder_id)` -> cancels prior scan, clears folder media rows and starts scanning; returns a progress receiver.

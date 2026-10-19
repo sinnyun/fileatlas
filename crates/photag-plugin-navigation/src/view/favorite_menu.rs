@@ -1,4 +1,4 @@
-//! Registered-library actions remain available on unified bookmark rows.
+//! Folder favorite actions remain available on unified bookmark rows.
 use super::*;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 pub(super) fn favorite_menu(
@@ -29,7 +29,7 @@ pub(super) fn favorite_menu(
         ),
     )
     .item(
-        PopupMenuItem::new(photag_ui_bridge::i18n::tr("Remove from library")).on_click(
+        PopupMenuItem::new(photag_ui_bridge::i18n::tr("Remove favorite")).on_click(
             move |_, _, cx| {
                 let _ = view.update(cx, |this, cx| {
                     this.remove_folder(folder_id, cx);
