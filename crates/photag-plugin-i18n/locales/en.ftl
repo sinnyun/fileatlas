@@ -726,6 +726,11 @@ msg-da9f7dc827a7 = Folder favorites
 msg-7a1f2a83aca9 = Favorites
 
 msg-64a56c42b330 = Show subfolders
+msg-20261019001 = Column layout and active column
+msg-20261019002 = Single column
+msg-20261019003 = Two columns
+msg-20261019004 = Four columns
+msg-20261019005 = Active column
 
 msg-6a9084025c4b = Open folder
 

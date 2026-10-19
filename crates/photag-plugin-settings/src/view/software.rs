@@ -84,9 +84,9 @@ impl SettingsView {
                         _ => "Not detected",
                     };
                     let state_color = if item.state == "installed" {
-                        theme::SUCCESS
+                        theme::success_text()
                     } else {
-                        theme::TEXT_SECONDARY
+                        theme::text_secondary()
                     };
                     let mut details = div().v_flex().gap_2();
                     details = details.child(
@@ -112,7 +112,7 @@ impl SettingsView {
                     details = details.child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(photag_ui_bridge::i18n::tr(item.purpose)),
                     );
                     if let Some(version) = &item.version {
@@ -125,7 +125,7 @@ impl SettingsView {
                         details = details.child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(format!(
                                     "{}: {path}",
                                     photag_ui_bridge::i18n::tr("Location")
@@ -163,7 +163,7 @@ impl SettingsView {
                         details = details.child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(photag_ui_bridge::i18n::tr(note)),
                         );
                     }
@@ -172,7 +172,7 @@ impl SettingsView {
                             .w_full()
                             .py(px(theme::SPACE_4))
                             .border_b_1()
-                            .border_color(rgb(theme::SEPARATOR))
+                            .border_color(rgb(theme::separator()))
                             .child(details),
                     );
                 }
@@ -184,13 +184,13 @@ impl SettingsView {
                 content = content.child(
                     div()
                         .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr("Checking installed software…")),
                 );
             }
         }
         if !screenshot_plugin {
-            content=content.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::TEXT_SECONDARY))
+            content=content.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr("This page only reads installation records and checks common paths. It does not install or start listed software.")));
         }
         content

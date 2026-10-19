@@ -14,7 +14,7 @@ impl SettingsView {
                 div()
                     .text_xs()
                     .font_semibold()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .px_2()
                     .pt_2()
                     .pb_1()
@@ -30,7 +30,6 @@ impl SettingsView {
                     .px(px(10.))
                     .justify_start()
                     .rounded(px(theme::ROUND_MD))
-                    .text_color(rgb(theme::TEXT_PRIMARY))
                     .text_size(px(theme::FONT_SIZE_BODY))
                     .child(
                         div()
@@ -40,20 +39,16 @@ impl SettingsView {
                             .justify_start()
                             .gap_2()
                             .child(theme::icon(icon))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .text_size(px(theme::FONT_SIZE_BODY))
-                                    .text_color(rgb(theme::TEXT_PRIMARY))
-                                    .child(photag_ui_bridge::i18n::tr(match tab {
-                                        Tab::Tags => "Tags and search",
-                                        Tab::Ai => "AI analysis",
-                                        Tab::Updates => "Software updates",
-                                        Tab::Software => "External software",
-                                        Tab::Plugins => "Plugin management",
-                                        _ => name,
-                                    })),
-                            ),
+                            .child(div().flex_1().text_size(px(theme::FONT_SIZE_BODY)).child(
+                                photag_ui_bridge::i18n::tr(match tab {
+                                    Tab::Tags => "Tags and search",
+                                    Tab::Ai => "AI analysis",
+                                    Tab::Updates => "Software updates",
+                                    Tab::Software => "External software",
+                                    Tab::Plugins => "Plugin management",
+                                    _ => name,
+                                }),
+                            )),
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.cancel_shortcut_capture();
@@ -91,7 +86,7 @@ impl SettingsView {
                 .w_full()
                 .h(px(1.))
                 .my_2()
-                .bg(rgba(theme::HAIRLINE.to_rgba())),
+                .bg(rgba(theme::hairline().to_rgba())),
         );
         rail = add_group(rail, "Plugin settings");
         let mut plugins = self
@@ -119,7 +114,6 @@ impl SettingsView {
                 .px(px(10.))
                 .justify_start()
                 .rounded(px(theme::ROUND_MD))
-                .text_color(rgb(theme::TEXT_PRIMARY))
                 .text_size(px(theme::FONT_SIZE_BODY))
                 .child(
                     div()
@@ -202,11 +196,11 @@ impl Render for SettingsView {
             .h(px(card_height))
             .max_h(px(card_height))
             .rounded_md()
-            .bg(rgb(theme::SURFACE_MODAL))
-            .text_color(rgb(theme::TEXT_PRIMARY))
+            .bg(rgb(theme::surface_modal()))
+            .text_color(rgb(theme::text_primary()))
             .font_family(theme::SETTINGS_FONT_FAMILY)
             .border_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
+            .border_color(rgba(theme::hairline().to_rgba()))
             .track_focus(&self.focus_handle)
             .child(
                 div()
@@ -220,7 +214,7 @@ impl Render for SettingsView {
                             .w(px(theme::SETTINGS_NAV_WIDTH))
                             .h(px(body_height))
                             .flex_shrink_0()
-                            .bg(rgb(theme::SURFACE_BASE))
+                            .bg(rgb(theme::surface_base()))
                             .child(self.tabs(cx)),
                     )
                     .child(
@@ -228,7 +222,7 @@ impl Render for SettingsView {
                             .h(px(body_height))
                             .w(px(1.))
                             .flex_shrink_0()
-                            .bg(rgba(theme::HAIRLINE.to_rgba())),
+                            .bg(rgba(theme::hairline().to_rgba())),
                     )
                     .child(
                         div()
@@ -236,7 +230,7 @@ impl Render for SettingsView {
                             .w(px(content_width))
                             .h(px(body_height))
                             .flex_shrink_0()
-                            .bg(rgb(theme::SURFACE_MODAL))
+                            .bg(rgb(theme::surface_modal()))
                             .child(
                                 div()
                                     .v_flex()
@@ -269,8 +263,8 @@ impl Render for SettingsView {
                 .items_center()
                 .justify_between()
                 .border_t_1()
-                .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                .bg(rgb(theme::SURFACE_MODAL))
+                .border_color(rgba(theme::hairline().to_rgba()))
+                .bg(rgb(theme::surface_modal()))
                 .px_3()
                 .py_2()
                 .child(
@@ -279,7 +273,7 @@ impl Render for SettingsView {
                         .items_center()
                         .gap_2()
                         .text_size(px(14.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(theme::small_icon(gpui_kit::assets::IconName::Check))
                         .child(photag_ui_bridge::i18n::tr(
                             "Settings changes are saved automatically.",
@@ -301,7 +295,7 @@ impl Render for SettingsView {
                     .px_3()
                     .py_2()
                     .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(format!("Could not save: {e}")),
             );
         }

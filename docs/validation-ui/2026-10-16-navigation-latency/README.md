@@ -90,4 +90,4 @@ release性能尚未验证。
 本轮没有新增界面布局，保持用户顶部地址栏与已接受面板结构；检查 address-fixed 的
 address-breadcrumb.png，地址栏、三导航按钮、文件和预览结构正常。没有新增缺失控件。
 先前失败的 address-diagnose 与 refresh-final 报告/日志保留在target，已以修复后的全新
-profile重跑，未通过放宽断言来隐藏问题。聚合结果随 [summary.json](summary.json) 保存。
+profile重跑，未通过放宽断言来隐藏问题。聚合结果随 [summary.json](../../../.local/validation/artifacts/2026-10-16-navigation-latency/summary.json) 保存。

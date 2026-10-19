@@ -42,7 +42,7 @@ impl GalleryView {
                 .v_flex()
                 .gap_2()
                 .rounded_md()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .p_3()
                 .child(
                     div()
@@ -165,7 +165,7 @@ impl GalleryView {
                 .w(px(420.))
                 .max_h(px(600.))
                 .overflow_y_scrollbar()
-                .bg(rgb(theme::SURFACE_MODAL))
+                .bg(rgb(theme::surface_modal()))
                 .rounded_md()
                 .p_3()
                 .child(panel),

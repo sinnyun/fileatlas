@@ -184,7 +184,7 @@ impl SettingsPage {
     }
     pub fn render_body(self, handler: SettingHandler) -> Div {
         if let Err(error) = self.validate() {
-            return div().text_color(rgb(theme::DANGER)).child(error);
+            return div().text_color(rgb(theme::danger_text())).child(error);
         }
         let mut page = div().v_flex().w_full().min_w_0().gap(px(theme::SPACE_2));
         for section in self.sections {
@@ -200,7 +200,7 @@ impl SettingsPage {
             for (index, row) in section.rows.into_iter().enumerate() {
                 let mut rendered = render_row(row, handler.clone());
                 if divided && index + 1 < count {
-                    rendered = rendered.border_b_1().border_color(rgb(theme::SEPARATOR));
+                    rendered = rendered.border_b_1().border_color(rgb(theme::separator()));
                 }
                 page = page.child(rendered);
             }
@@ -287,7 +287,7 @@ pub fn page_heading(title: &str, description: &str) -> Div {
         .child(
             div()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(tr(description)),
         )
 }
@@ -298,7 +298,7 @@ pub fn section_heading(title: &str) -> Div {
         .pt(px(theme::SPACE_3))
         .pb(px(theme::SPACE_2))
         .border_t_1()
-        .border_color(rgb(theme::SEPARATOR))
+        .border_color(rgb(theme::separator()))
 }
 pub fn row() -> Div {
     div()
@@ -321,7 +321,7 @@ pub fn label(title: &str, note: &str) -> Div {
         label = label.child(
             div()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(tr(note)),
         );
     }

@@ -1,12 +1,29 @@
 # UI bridge ports / UI 托槽数据对接
 
-## Unified workbench theme (2026-10-18)
+## Native GPUI theme gateway (2026-10-19; current)
 
-`theme` owns clipboard-v2-derived navy semantic paints, fonts, geometry and the
-runtime accent; `theme::apply_components(&mut App)` and
-`apply_accent_components(&mut App)` synchronize every Kit state, including active
-buttons/links/sidebar on accent changes. Default is `Workbench Blue`; saved
-`System`/legacy presets remain valid. No schema/path migration is involved.
+GPUI Kit ThemeRegistry/ThemeConfig/Theme is the sole palette resolver. UI Bridge
+`theme::request_theme(mode: &str, json: Option<String>) -> Result<(), String>` validates
+and queues a native ThemeSet; None chooses native defaults. `apply_components(&mut App)`
+installs an app-lifetime event listener and native Theme observer, applies queued JSON
+via the registry, and refreshes windows only when a new request is applied. It performs
+no filesystem IO or timer polling. It is host infrastructure, not a second plugin manager.
+
+`theme::roles` maps existing custom-widget role names to fields of the native resolved
+ThemeColor. A read-only, atomically replaced projection supports helpers/MCP threads
+that cannot access GPUI App. It is refreshed from every native Theme update; it owns no
+color configuration and contains no mode palette. New views can use ActiveTheme directly. Content contrast helpers select existing native
+foreground roles; they no longer mix or interpolate a new UI palette. Shared nav_button
+uses the native primary/selected variant so Kit owns hover/focus/disabled presentation.
+All prior fixed RGB constants and the theme/components.rs override table were removed.
+`theme_name()` and color_mode() report the actual applied framework theme, not a request.
+
+Material generation is a separate Cordis plugin producing standard ThemeSet JSON;
+UI Bridge does not implement Material, read its data files, or choose seeds. Settings
+owns mode/theme_file preferences and action-time/startup loading. Missing/invalid JSON
+is recovered there to native defaults with diagnostics. Geometry still lives in theme.rs;
+metadata schema and lifecycle catalog remain unchanged.
+
 `components::WorkbenchStyle` applies sections, selectable cards and navigation to
 any `Styled + InteractiveElement`, preserving IDs/actions. `section()`,
 `action(id, label, primary)`, `icon_button(id, IconName)` and `section_heading(label)`

@@ -120,13 +120,13 @@ pub(super) fn badge(id: i64, state: &FileVersionState, cx: &mut Context<GalleryV
         .w(px(24.))
         .h(px(24.))
         .rounded_full()
-        .bg(rgba(theme::TOOLTIP_SURFACE))
+        .bg(rgba(theme::tooltip_surface()))
         .icon(
             theme::icon(IconName::Circle)
                 .size(px(13.))
                 .rounded_full()
-                .bg(rgb(theme::WARNING))
-                .text_color(rgb(theme::WARNING)),
+                .bg(rgb(theme::surface_elevated()))
+                .text_color(rgb(theme::warning_text())),
         )
         .tooltip(message(state))
         .on_click(cx.listener(move |view, _, window, cx| view.open_unsaved_history(id, window, cx)))

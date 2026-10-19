@@ -39,7 +39,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 
 ## 结果与证据
 
-最终数值与场景清单见 [summary.json](summary.json)，截图见本目录PNG。完整MCP请求/日志/SQLite与exe留在对应target隔离profile，不能当作发布包。
+最终数值与场景清单见 [summary.json](../../../.local/validation/artifacts/2026-10-15-browser/summary.json)，截图见本目录PNG。完整MCP请求/日志/SQLite与exe留在对应target隔离profile，不能当作发布包。
 
 - 静态fmt、locked check/build、刷新归属脚本通过；相关13个crate **62项测试通过，0失败**。包含内存浏览不持久化、标签重启、缓存淘汰/历史保护、重新链接冲突、缩略图版本与配额、原生监听事件及原有查询/分组/预览等回归。
 - 未收藏目录直属浏览、明确后代范围、原生新增/删除/覆盖/新子目录、收藏别名/排序/移除保留标签、标签定位、缩略图禁用、缺失面板候选应用和清理通过。

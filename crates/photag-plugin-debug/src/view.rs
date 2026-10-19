@@ -271,9 +271,9 @@ impl Render for DebugView {
             let row_bounds = Arc::clone(&self.row_bounds);
             let id = r.id;
             let color = match r.level.as_str() {
-                "ERROR" => theme::DANGER,
-                "WARN" => theme::WARNING,
-                _ => theme::TEXT_SECONDARY,
+                "ERROR" => theme::danger_text(),
+                "WARN" => theme::warning_text(),
+                _ => theme::text_secondary(),
             };
             rows = rows.child(
                 div()
@@ -286,14 +286,14 @@ impl Render for DebugView {
                     .py_1()
                     .px_2()
                     .border_b_1()
-                    .border_color(rgb(theme::SEPARATOR))
+                    .border_color(rgb(theme::separator()))
                     .cursor_pointer()
                     .bg(rgb(if ui.selected_ids.contains(&r.id) {
-                        theme::SURFACE_ELEVATED
+                        theme::surface_elevated()
                     } else {
-                        theme::SURFACE_PANEL
+                        theme::surface_panel()
                     }))
-                    .hover(|s| s.bg(rgb(theme::SURFACE_CARD)))
+                    .hover(|s| s.bg(rgb(theme::surface_card())))
                     .child(
                         div()
                             .w(px(91.))
@@ -354,8 +354,8 @@ impl Render for DebugView {
             .flex_shrink_0()
             .min_h_0()
             .border_t_1()
-            .border_color(rgba(theme::BORDER_STRONG))
-            .bg(rgb(theme::SURFACE_PANEL))
+            .border_color(rgba(theme::border_strong()))
+            .bg(rgb(theme::surface_panel()))
             .text_size(px(11.))
             .px_2()
             .py_1()
@@ -367,7 +367,7 @@ impl Render for DebugView {
                     .flex_shrink_0()
                     .gap_2()
                     .px_2()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .children(
                         [
                             (91., "Time"),
@@ -382,7 +382,7 @@ impl Render for DebugView {
             )
             .child(self.selectable_list(rows, page.latest_id, cx));
         if let Some(message) = ui.feedback {
-            panel = panel.child(div().text_color(rgb(theme::TEXT_MUTED)).child(message));
+            panel = panel.child(div().text_color(rgb(theme::text_muted())).child(message));
         }
         if let Some(r) = selected {
             panel = panel.child(
@@ -392,7 +392,7 @@ impl Render for DebugView {
                     .flex_shrink_0()
                     .overflow_y_scrollbar()
                     .p_2()
-                    .bg(rgb(theme::SURFACE_CARD))
+                    .bg(rgb(theme::surface_card()))
                     .child(format!(
                         "#{}  {}  {} {}  {}  elapsed={:.3} ms duration={:?} ms  span={:?} parent={:?}  {}\n{}",
                         r.id, r.time, r.level, r.action, r.target, r.elapsed_ms, r.duration_ms, r.span_id, r.parent_span_id, r.thread, r.message

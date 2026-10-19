@@ -30,15 +30,15 @@ LNK4098 链接警告与历史孤立目录提示，未降低工具链或修改架
 仅在隔离 profile 内。真实点击 relocated grid/list 确认布局状态；子文件夹开关令
 文件数1→2→1；真实滑块点击将Session保存尺寸150→269.2；当前目录/全机图标往返、
 范围弹窗、工具图标均实点验证。静置900ms Gallery snapshot revision保持9。
-[精简结果](toolbar-summary.json)，复现入口为 scripts/validate-toolbar-icons.cjs。
+[精简结果](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/toolbar-summary.json)，复现入口为 scripts/validate-toolbar-icons.cjs。
 
 | 检查 | 实际结果 / 截图 |
 |---|---|
-| 顶栏图标化、筛选栏右对齐、底部清理 | [main](main.png)，已打开检查；原文字操作已移除，搜索/地址保留 |
-| 选中与真实视图切换 | [list-selected](list-selected.png)、[subfolders-selected](subfolders-selected.png)，状态与内容一致 |
-| 缩放、悬停提示 | [zoom-larger](zoom-larger.png)、[grid-tooltip](grid-tooltip.png)，已查看提示及尺寸变化 |
-| 搜索与工具 | [scope-popover](scope-popover.png)、[tools](tools.png)，已查看弹层；[全机状态](search-entire-computer.png) |
-| 1510×1000物理像素小窗 | [compact](compact.png)，已查看；顶部全部图标和右侧视图/滑块可见，左侧筛选横向滚动布局 |
+| 顶栏图标化、筛选栏右对齐、底部清理 | [main](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/main.png)，已打开检查；原文字操作已移除，搜索/地址保留 |
+| 选中与真实视图切换 | [list-selected](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/list-selected.png)、[subfolders-selected](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/subfolders-selected.png)，状态与内容一致 |
+| 缩放、悬停提示 | [zoom-larger](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/zoom-larger.png)、[grid-tooltip](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/grid-tooltip.png)，已查看提示及尺寸变化 |
+| 搜索与工具 | [scope-popover](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/scope-popover.png)、[tools](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/tools.png)，已查看弹层；[全机状态](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/search-entire-computer.png) |
+| 1510×1000物理像素小窗 | [compact](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/compact.png)，已查看；顶部全部图标和右侧视图/滑块可见，左侧筛选横向滚动布局 |
 
 小窗地址面包屑按可用空间截断；左侧筛选不保证全部同时可见。未实测触摸板横向手势、
 原生文件夹选取或 Everything 安装下载；相关操作回调沿用原入口。工具弹层沿用既有

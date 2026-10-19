@@ -2,6 +2,13 @@
 msg-a4fe65264ef7 = 语言
 msg-ea93d6a262ec = 工具
 msg-74a883a037bc = 设置
+msg-9f1e7d7d98b2 = 颜色模式
+msg-ec4b5fc6fd14 = 工作台主题
+msg-60acc53f13a5 = 暗色
+msg-dbcd5e7bb7a0 = 亮色
+msg-fc43ea9804c7 = 切换到暗色模式
+msg-bfa0cab91d75 = 切换到亮色模式
+msg-3c6db1637ff3 = 切换颜色模式
 msg-7d9eb7acb13e = 关闭
 msg-ad8c41bed497 = 关闭 ×
 msg-3907fa7f8072 = 外观
@@ -718,6 +725,11 @@ msg-da9f7dc827a7 = 文件夹收藏
 msg-7a1f2a83aca9 = 收藏集合
 
 msg-64a56c42b330 = 显示子文件夹
+msg-20261019001 = 栏位布局与活动栏
+msg-20261019002 = 单栏
+msg-20261019003 = 双栏
+msg-20261019004 = 四栏
+msg-20261019005 = 活动栏
 
 msg-6a9084025c4b = 打开文件夹
 

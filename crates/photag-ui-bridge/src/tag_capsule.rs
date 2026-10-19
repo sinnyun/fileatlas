@@ -49,13 +49,7 @@ impl TagCapsule {
             .as_deref()
             .and_then(theme::parse_hex_color)
             .map(|[r, g, b]| (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b));
-        let color = tint.unwrap_or(theme::TEXT_SECONDARY);
-        let background = tint.map_or(theme::SURFACE_FAINT, |color| {
-            theme::accent_alpha(color, if self.selected { 0.34 } else { 0.18 })
-        });
-        let border = tint.map_or(theme::SEPARATOR_LIGHT, |color| {
-            theme::accent_alpha(color, if self.selected { 0.86 } else { 0.54 })
-        });
+        let colors = theme::tag_colors(tint, self.selected);
         let (gap, height, padding, icon_size, font_size) = if self.compact {
             (2., 18., 4., 10., theme::FONT_SIZE_TINY)
         } else {
@@ -70,20 +64,16 @@ impl TagCapsule {
             .px(px(padding))
             .rounded_full()
             .border_1()
-            .border_color(rgb(if self.selected {
-                theme::accent()
-            } else {
-                border
-            }))
-            .bg(rgb(background))
+            .border_color(rgb(colors.border))
+            .bg(rgb(colors.background))
             .text_size(px(font_size))
-            .text_color(rgb(theme::TEXT_PRIMARY))
+            .text_color(rgb(colors.foreground))
             .hover(|style| style.border_color(rgb(theme::accent())))
             .child(
                 theme::small_icon(theme::tag_icon(self.icon.as_deref()))
                     .size(px(icon_size))
                     .flex_shrink_0()
-                    .text_color(rgb(color)),
+                    .text_color(rgb(colors.icon)),
             )
             .child(
                 div()

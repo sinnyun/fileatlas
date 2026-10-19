@@ -30,7 +30,7 @@ pub(super) fn render_requested(
             .w(px(76.))
             .h(px(72.))
             .rounded_sm()
-            .bg(rgb(theme::SURFACE_FAINT))
+            .bg(rgb(theme::surface_faint()))
             .flex()
             .items_center()
             .justify_center()
@@ -40,7 +40,7 @@ pub(super) fn render_requested(
                     "audio" => IconName::FileMusic,
                     _ => IconName::FileImage,
                 })
-                .text_color(rgb(theme::TEXT_MUTED)),
+                .text_color(rgb(theme::text_muted())),
             )
             .into_any_element()
     };
@@ -71,8 +71,8 @@ pub(super) fn render_requested(
         .p_3()
         .rounded(px(8.))
         .border_1()
-        .border_color(rgb(theme::SEPARATOR))
-        .bg(rgb(theme::SURFACE_MODAL))
+        .border_color(rgb(theme::separator()))
+        .bg(rgb(theme::surface_modal()))
         .child(
             div()
                 .h_flex()
@@ -96,7 +96,7 @@ pub(super) fn render_requested(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(format!(
                                     "{} · {}",
                                     dimensions,
@@ -106,7 +106,7 @@ pub(super) fn render_requested(
                         .child(
                             div()
                                 .text_size(px(9.))
-                                .text_color(rgb(theme::TEXT_MUTED))
+                                .text_color(rgb(theme::text_muted()))
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(media.full_path.clone()),
@@ -123,7 +123,7 @@ pub(super) fn render_requested(
                         })),
                 ),
         )
-        .child(div().h(px(1.)).bg(rgb(theme::SEPARATOR)))
+        .child(div().h(px(1.)).bg(rgb(theme::separator())))
         .child(
             Button::new("gallery-locate-file")
                 .ghost()
@@ -310,13 +310,13 @@ pub(super) fn build(
                     .child(
                         div()
                             .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(dimensions.clone()),
                     )
                     .child(
                         div()
                             .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child(bytes.clone()),
                     ),
             )

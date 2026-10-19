@@ -342,3 +342,9 @@ owned here and call `NavigationService`; folder add/remove/rescan and tag delete
 require explicit confirmation. `navigation.manage_favorite` renames or reorders
 folder favorite aliases without changing local paths. Folder removal only removes the PhoTag library
 registration and indexed rows. Legacy MCP names remain during migration.
+
+## Native theme consumption (2026-10-19)
+
+Navigation rail, selected rows, hierarchy rules, popovers, dialogs and color suggestions
+now consume native GPUI Theme roles through UI Bridge. Suggested tag swatches come from
+the active theme; saved user colors are retained. No per-mode palette or private Theme update.

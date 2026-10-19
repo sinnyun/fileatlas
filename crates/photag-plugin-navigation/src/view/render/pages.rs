@@ -16,7 +16,7 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
             .items_center()
             .gap(px(5.))
             .py(px(6.))
-            .bg(rgb(theme::SURFACE_RAIL)),
+            .bg(rgb(theme::surface_rail())),
         theme::RegionEdge::Right,
     );
     for (page, icon, label) in items {
@@ -33,16 +33,16 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
                 .rounded(px(6.))
                 .text_xs()
                 .text_color(rgb(if selected {
-                    theme::accent_hover()
+                    theme::selection_text()
                 } else {
-                    theme::TEXT_SECONDARY
+                    theme::text_secondary()
                 }))
                 .when(selected, |item| item.bg(rgb(theme::selection_color())))
                 .hover(move |style| {
                     style.bg(if selected {
                         rgb(theme::selection_color())
                     } else {
-                        rgb(theme::SURFACE_ELEVATED)
+                        rgb(theme::surface_elevated())
                     })
                 })
                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -87,7 +87,7 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
                 .items_center()
                 .gap(px(6.))
                 .py(px(26.))
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .child(theme::large_icon(IconName::Puzzle))
                 .child(photag_ui_bridge::i18n::tr("No available add-ons.")),
         );

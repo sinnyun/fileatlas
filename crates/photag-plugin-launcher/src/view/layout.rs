@@ -140,7 +140,7 @@ impl Render for LauncherPanel {
                             .gap(px(4.))
                             .min_w_0()
                             .child(div().text_size(px(18.)).font_semibold().child(heading))
-                            .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                            .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
                                 photag_ui_bridge::i18n::tr_args(
                                     "Showing {count} programs",
                                     &[("count", count.to_string())],
@@ -195,7 +195,7 @@ impl Render for LauncherPanel {
             body = body.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(message.clone()),
             );
         }
@@ -206,7 +206,7 @@ impl Render for LauncherPanel {
                 .justify_center()
                 .h(px(200.))
                 .gap(px(12.))
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .child(theme::empty_state_icon(IconName::LayoutGrid))
                 .child(tr(if self.snapshot.scanning {
                     "Discovering system programs…"
@@ -237,7 +237,7 @@ impl Render for LauncherPanel {
             .size_full()
             .min_h_0()
             .text_size(px(theme::FONT_SIZE_BODY))
-            .bg(rgb(theme::SURFACE_BASE))
+            .bg(rgb(theme::surface_base()))
             .child(
                 div()
                     .h_flex()
@@ -257,9 +257,9 @@ impl Render for LauncherPanel {
                     .justify_between()
                     .px(px(14.))
                     .border_t_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .border_color(rgba(theme::separator_light()))
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(photag_ui_bridge::i18n::tr_args(
                         "{programs} programs · {categories} categories",
                         &[
@@ -273,9 +273,9 @@ impl Render for LauncherPanel {
                     .child(
                         div()
                             .text_color(rgb(if self.snapshot.scanning || self.icons.is_pending() {
-                                theme::accent()
+                                theme::accent_text()
                             } else {
-                                theme::SUCCESS
+                                theme::success_text()
                             }))
                             .child(tr(if self.snapshot.scanning {
                                 "◌ Scanning"

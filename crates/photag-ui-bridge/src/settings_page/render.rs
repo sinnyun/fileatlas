@@ -51,15 +51,15 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
         SettingControl::Status { value, enabled } => div()
             .text_size(px(theme::FONT_SIZE_BODY))
             .text_color(rgb(if enabled {
-                theme::SUCCESS
+                theme::success_text()
             } else {
-                theme::TEXT_MUTED
+                theme::text_muted()
             }))
             .child(tr(&value))
             .into_any_element(),
         SettingControl::ReadOnly(value) => div()
             .text_size(px(theme::FONT_SIZE_SMALL))
-            .text_color(rgb(theme::TEXT_SECONDARY))
+            .text_color(rgb(theme::text_secondary()))
             .child(tr(&value))
             .into_any_element(),
         SettingControl::Action { label, primary } => {
@@ -139,12 +139,17 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
                         .border_color(rgb(if chosen {
                             theme::accent()
                         } else {
-                            theme::SEPARATOR
+                            theme::separator()
                         }))
                         .bg(rgb(if chosen {
                             theme::selection_color()
                         } else {
-                            theme::SURFACE_FAINT
+                            theme::surface_faint()
+                        }))
+                        .text_color(rgb(if chosen {
+                            theme::selection_text()
+                        } else {
+                            theme::text_primary()
                         }))
                         .label(tr(&option.label))
                         .on_click(move |_, window, cx| {
@@ -186,7 +191,7 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
                             .text_color(rgb(if chosen {
                                 theme::accent()
                             } else {
-                                theme::TEXT_SECONDARY
+                                theme::text_secondary()
                             })),
                         )
                         .child(label(&option.label, &option.description))
@@ -212,14 +217,16 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
                 let edit = handler.clone();
                 let row_id = id.clone();
                 let chosen = value == option.value;
+                let color = option.color.unwrap_or_else(theme::accent);
                 let mut swatch = div()
                     .size(px(22.))
                     .rounded_full()
                     .flex_shrink_0()
-                    .bg(rgb(option.color.unwrap_or_else(theme::accent)));
+                    .bg(rgb(color));
                 if chosen {
                     swatch = swatch.h_flex().items_center().justify_center().child(
-                        theme::small_icon(IconName::Check).text_color(rgb(theme::TEXT_ON_ACCENT)),
+                        theme::small_icon(IconName::Check)
+                            .text_color(rgb(theme::contrasting_text(color))),
                     );
                 }
                 choices = choices.child(
@@ -260,7 +267,7 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
         result = result.child(
             div()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::DANGER))
+                .text_color(rgb(theme::danger_text()))
                 .child(error),
         );
     }

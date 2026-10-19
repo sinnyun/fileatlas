@@ -56,16 +56,16 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 
 | 检查项 | 参考要求 | 实际表现及证据 |
 |---|---|---|
-| 主窗 | 保留横向工具/筛选带、导航/媒体/检查器、状态带，统一深蓝层级 | [main](main.png)，实际选择 medium.webp；标签数据色和测试媒体条纹不重染 |
-| 剪贴板 | 三栏、分区薄边框、深凹输入、蓝选中、主/次按钮 | [clipboard](clipboard.png)；卡片/导航/按钮来自公共组件，右侧保存与复制均完整 |
-| 输入焦点/空态 | 原生焦点环，清除搜索后恢复条目 | [clipboard-empty-focus](clipboard-empty-focus.png)，真实输入无结果文本并断言可见项为零；Ctrl+A/Backspace 恢复 |
-| hover/选中 | 普通卡提亮，选中悬停保持蓝底蓝边 | [普通悬停](clipboard-hover.png)、[选中悬停](clipboard-selected-hover.png) |
-| 菜单 | 同样面板底、边框与文字色 | 实际点击历史菜单：[clipboard-menu](clipboard-menu.png)，没有执行清理 |
-| 启动台 | 分类/图标网格/详情保持原布局，类别与 fallback 用 Lucide | [launcher](launcher.png)、[单击选中与表单](launcher-selected-focus.png)；保存无改动时禁用，未触发程序启动 |
-| 强调色同步 | 设置、剪贴板、启动台均同步，选中/主按钮不能残留蓝色 | 真实色板点击后 [settings-teal](settings-teal.png)、[clipboard-teal](clipboard-teal.png)、[launcher-teal](launcher-teal.png)；断言灰青后恢复蓝 |
-| 设置 | 左导航、右横向设置行、分区线、固定页脚 | [外观](settings-appearance.png)、[快捷键](settings-shortcuts.png)、[标签](settings-tags.png)、[AI](settings-ai.png)、[更新](settings-updates.png)、[软件](settings-software.png)；默认 F1–F9 完整 |
-| 历史/辅助弹层 | 相同输入/状态/颜色角色，保留原分区 | [空历史](history.png)、[统计](statistics.png)、[批量操作](bulk-actions.png)、[JSON导出待机](export.png)；统计/批量读模型待 ready 后截图；没有执行删除或导出 |
-| 小窗口 | 正文可滚动，关键操作和页脚不被裁掉 | [小窗设置](compact-settings.png)；[小窗剪贴板](compact-clipboard.png)→[滚动到底](compact-clipboard-scrolled.png)，“我的分组”可达、右侧保存/复制和捕获栏完整 |
+| 主窗 | 保留横向工具/筛选带、导航/媒体/检查器、状态带，统一深蓝层级 | [main](../../../.local/validation/artifacts/2026-10-18-unified-theme/main.png)，实际选择 medium.webp；标签数据色和测试媒体条纹不重染 |
+| 剪贴板 | 三栏、分区薄边框、深凹输入、蓝选中、主/次按钮 | [clipboard](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard.png)；卡片/导航/按钮来自公共组件，右侧保存与复制均完整 |
+| 输入焦点/空态 | 原生焦点环，清除搜索后恢复条目 | [clipboard-empty-focus](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard-empty-focus.png)，真实输入无结果文本并断言可见项为零；Ctrl+A/Backspace 恢复 |
+| hover/选中 | 普通卡提亮，选中悬停保持蓝底蓝边 | [普通悬停](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard-hover.png)、[选中悬停](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard-selected-hover.png) |
+| 菜单 | 同样面板底、边框与文字色 | 实际点击历史菜单：[clipboard-menu](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard-menu.png)，没有执行清理 |
+| 启动台 | 分类/图标网格/详情保持原布局，类别与 fallback 用 Lucide | [launcher](../../../.local/validation/artifacts/2026-10-18-unified-theme/launcher.png)、[单击选中与表单](../../../.local/validation/artifacts/2026-10-18-unified-theme/launcher-selected-focus.png)；保存无改动时禁用，未触发程序启动 |
+| 强调色同步 | 设置、剪贴板、启动台均同步，选中/主按钮不能残留蓝色 | 真实色板点击后 [settings-teal](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-teal.png)、[clipboard-teal](../../../.local/validation/artifacts/2026-10-18-unified-theme/clipboard-teal.png)、[launcher-teal](../../../.local/validation/artifacts/2026-10-18-unified-theme/launcher-teal.png)；断言灰青后恢复蓝 |
+| 设置 | 左导航、右横向设置行、分区线、固定页脚 | [外观](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-appearance.png)、[快捷键](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-shortcuts.png)、[标签](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-tags.png)、[AI](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-ai.png)、[更新](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-updates.png)、[软件](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-software.png)；默认 F1–F9 完整 |
+| 历史/辅助弹层 | 相同输入/状态/颜色角色，保留原分区 | [空历史](../../../.local/validation/artifacts/2026-10-18-unified-theme/history.png)、[统计](../../../.local/validation/artifacts/2026-10-18-unified-theme/statistics.png)、[批量操作](../../../.local/validation/artifacts/2026-10-18-unified-theme/bulk-actions.png)、[JSON导出待机](../../../.local/validation/artifacts/2026-10-18-unified-theme/export.png)；统计/批量读模型待 ready 后截图；没有执行删除或导出 |
+| 小窗口 | 正文可滚动，关键操作和页脚不被裁掉 | [小窗设置](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-settings.png)；[小窗剪贴板](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-clipboard.png)→[滚动到底](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-clipboard-scrolled.png)，“我的分组”可达、右侧保存/复制和捕获栏完整 |
 | quiet/真实变化 | 静置不重复绘制/查询，真实输入和设置变化更新 | Launcher 稳定后 `ui.render_count` 不变；Gallery `snapshot_revision`、Clipboard revision 静置不变；搜索和强调色实际操作有相应变化，场景有断言 |
 
 fmt、locked check/build、20 项测试（UI Bridge 13 / Settings 3 / i18n 4）通过；

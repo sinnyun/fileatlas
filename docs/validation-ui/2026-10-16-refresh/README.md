@@ -10,7 +10,7 @@
 
 改为先订阅、后由可取消的后台生产线程等待注册完成再枚举；取消伪造根事件。窗口焦点变化不触发 Gallery 重扫，现有监听始终工作。初次快照在当前枚举首批发布前不展示旧缓存清单。背景刷新保留列表、选择、滚动和当前 rich window，选择在新快照交付时验证。侧栏原有盘容量后台刷新保留；它不触发图库枚举。
 
-布局对照仍为已接受的 sidebar-pages-preview-v2 与 Explorer 侧栏，本轮不改屏幕结构。[恢复后的实际窗口](after-activation.png)，[状态摘要](summary.json)。
+布局对照仍为已接受的 sidebar-pages-preview-v2 与 Explorer 侧栏，本轮不改屏幕结构。[恢复后的实际窗口](../../../.local/validation/artifacts/2026-10-16-refresh/after-activation.png)，[状态摘要](../../../.local/validation/artifacts/2026-10-16-refresh/summary.json)。
 
 ## 验证
 

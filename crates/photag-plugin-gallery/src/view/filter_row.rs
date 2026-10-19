@@ -38,15 +38,7 @@ pub(super) fn render(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> A
     row = row.child(rating_chip(view, weak.clone(), cx));
     row = row.child(sort_chip(view, weak.clone(), cx));
     row = row.child(grouping_chip(view, cx));
-    div()
-        .h_flex()
-        .w_full()
-        .min_w_0()
-        .items_center()
-        .gap(px(10.))
-        .child(row)
-        .child(view_controls::render(view, cx))
-        .into_any_element()
+    row.into_any_element()
 }
 
 /// Scoped-search control in the top bar, using the managed popover layer so
@@ -121,7 +113,7 @@ fn search_scope_popover_panel(scopes: SearchScopes, weak: WeakEntity<GalleryView
                 .px(px(6.))
                 .rounded(px(theme::ROUND_SM))
                 .cursor_pointer()
-                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+                .hover(|style| style.bg(rgba(theme::fill_hover())))
                 .child(Checkbox::new(format!("gallery-{id}-box")).checked(checked))
                 .child(
                     div()
@@ -129,13 +121,13 @@ fn search_scope_popover_panel(scopes: SearchScopes, weak: WeakEntity<GalleryView
                         .child(
                             div()
                                 .text_size(px(theme::FONT_SIZE_BUTTON))
-                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .text_color(rgb(theme::text_primary()))
                                 .child(photag_ui_bridge::i18n::tr(title)),
                         )
                         .child(
                             div()
                                 .text_size(px(theme::FONT_SIZE_TINY))
-                                .text_color(rgb(theme::TEXT_MUTED))
+                                .text_color(rgb(theme::text_muted()))
                                 .child(photag_ui_bridge::i18n::tr(subtitle)),
                         ),
                 )
@@ -193,7 +185,7 @@ fn type_chip(
                             Radio::new(format!("gallery-filter-type-radio-{}", value as u8))
                                 .checked(value == selected),
                         )
-                        .child(theme::small_icon(icon).text_color(rgb(theme::TEXT_MUTED)))
+                        .child(theme::small_icon(icon).text_color(rgb(theme::text_muted())))
                         .child(row_label(photag_ui_bridge::i18n::tr(label).to_string()))
                         .on_click(move |_, window, cx| {
                             let _ = weak.update(cx, |this, cx| this.set_media_type(value, cx));
@@ -343,16 +335,16 @@ fn rating_chip(
                     .id(format!("gallery-filter-rating-star-{star}"))
                     .cursor_pointer()
                     .text_color(rgb(if i32::from(star) <= rating_min {
-                        theme::STAR
+                        theme::star_text()
                     } else {
-                        theme::TEXT_MUTED
+                        theme::text_muted()
                     }))
-                    .hover(|style| style.text_color(rgb(theme::STAR)))
+                    .hover(|style| style.text_color(rgb(theme::star_text())))
                     .child(theme::icon(IconName::Star).text_color(rgb(
                         if i32::from(star) <= rating_min {
-                            theme::STAR
+                            theme::star_text()
                         } else {
-                            theme::TEXT_MUTED
+                            theme::text_muted()
                         },
                     )))
                     .on_click(cx.listener(move |_, _, _, cx| {
@@ -383,14 +375,14 @@ fn rating_chip(
                     .child(
                         div()
                             .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child("0"),
                     )
                     .child(rating_slider(weak, popup, rating_min, rating_max))
                     .child(
                         div()
                             .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child("5"),
                     ),
             )
@@ -438,7 +430,7 @@ fn sort_chip(
                             Radio::new(format!("gallery-filter-sort-radio-{}", order as u8))
                                 .checked(order == selected),
                         )
-                        .child(theme::small_icon(icon).text_color(rgb(theme::TEXT_MUTED)))
+                        .child(theme::small_icon(icon).text_color(rgb(theme::text_muted())))
                         .child(row_label(
                             photag_ui_bridge::i18n::tr(order.label()).to_string(),
                         ))

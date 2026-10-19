@@ -427,7 +427,7 @@ impl Render for AiSuggestionsView {
             .gap_2()
             .p_3()
             .rounded_md()
-            .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)));
+            .bg(rgba(theme::modal_rgba(theme::surface_modal())));
         content = content.child(
             div()
                 .h_flex()
@@ -451,7 +451,7 @@ impl Render for AiSuggestionsView {
             content = content.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr(
                         "Open an indexed image to analyze it.",
                     )),
@@ -463,7 +463,7 @@ impl Render for AiSuggestionsView {
             content = content.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr(
                         "The first analysis downloads the MobileNet model (~14 MB).",
                     )),
@@ -476,7 +476,7 @@ impl Render for AiSuggestionsView {
             content = content.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }
@@ -484,7 +484,7 @@ impl Render for AiSuggestionsView {
             content = content.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr("No suggestions yet.")),
             );
         }

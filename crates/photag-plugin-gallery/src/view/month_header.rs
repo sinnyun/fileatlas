@@ -23,7 +23,7 @@ pub(super) fn render(
             .relative()
             .w_full()
             .h(px(theme::GROUP_HEADER_HEIGHT))
-            .bg(rgb(theme::SURFACE_GROUP_HEADER))
+            .bg(rgb(theme::surface_group_header()))
             .rounded(px(theme::ROUND_SM))
             .h_flex()
             .items_center()
@@ -41,21 +41,21 @@ pub(super) fn render(
             .text_ellipsis()
             .font_family(theme::SEMIBOLD_FONT_FAMILY)
             .text_size(px(theme::FONT_SIZE_HEADING))
-            .text_color(rgb(theme::TEXT_PRIMARY))
+            .text_color(rgb(theme::text_primary()))
             .child(display),
     )
     .child(
         div()
             .text_size(px(theme::FONT_SIZE_SMALL))
             .pt(px(2.))
-            .text_color(rgb(theme::TEXT_MUTED))
+            .text_color(rgb(theme::text_muted()))
             .child("·"),
     )
     .child(
         div()
             .text_size(px(theme::FONT_SIZE_SMALL))
             .pt(px(2.))
-            .text_color(rgb(theme::TEXT_MUTED))
+            .text_color(rgb(theme::text_muted()))
             .child(photag_ui_bridge::i18n::tr_args(
                 "{count} items",
                 &[("count", count.to_string())],
@@ -81,5 +81,5 @@ pub(super) fn render(
         this.toggle_month_collapsed(label.clone(), cx);
     }))
     .cursor_pointer()
-    .hover(|style| style.bg(rgb(theme::SURFACE_GROUP_HEADER_HOVER)))
+    .hover(|style| style.bg(rgb(theme::surface_group_header_hover())))
 }

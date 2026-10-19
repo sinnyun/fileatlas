@@ -41,8 +41,8 @@ impl Render for ScreenshotButton {
             .gap(px(4.))
             .rounded(px(6.))
             .text_xs()
-            .text_color(rgb(theme::TEXT_SECONDARY))
-            .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+            .text_color(rgb(theme::text_secondary()))
+            .hover(|style| style.bg(rgba(theme::fill_hover())))
             .on_click(cx.listener(|this, _, _, _| {
                 if let Err(error) = this.panels.open(PANEL) {
                     tracing::error!(%error, "could not open screenshot tool manager");
@@ -136,9 +136,9 @@ impl Render for ScreenshotManagerPanel {
                 div()
                     .text_sm()
                     .text_color(rgb(if available {
-                        theme::TEXT_SECONDARY
+                        theme::text_secondary()
                     } else {
-                        theme::WARNING
+                        theme::warning_text()
                     }))
                     .overflow_hidden()
                     .text_ellipsis()
@@ -163,7 +163,7 @@ impl Render for ScreenshotManagerPanel {
             .items_center()
             .gap_3()
             .p_3()
-            .child(theme::icon(IconName::AppWindow).text_color(rgb(theme::accent())))
+            .child(theme::icon(IconName::AppWindow).text_color(rgb(theme::accent_text())))
             .child(executable_details)
             .child(
                 Button::new("screenshot-tool-choose-executable")
@@ -179,7 +179,7 @@ impl Render for ScreenshotManagerPanel {
             .items_center()
             .gap_3()
             .p_3()
-            .child(theme::icon(IconName::Folder).text_color(rgb(theme::accent())))
+            .child(theme::icon(IconName::Folder).text_color(rgb(theme::accent_text())))
             .child(
                 div()
                     .v_flex()
@@ -190,7 +190,7 @@ impl Render for ScreenshotManagerPanel {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .overflow_hidden()
                             .text_ellipsis()
                             .child(directory_label),
@@ -198,7 +198,7 @@ impl Render for ScreenshotManagerPanel {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child("已同步到 Shotoshot 的保存位置设置"),
                     ),
             )
@@ -216,7 +216,7 @@ impl Render for ScreenshotManagerPanel {
             .child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child("PhoTag 启动时检测一次 Shotoshot。截图时由 PhoTag 转发捕获请求，截图、选区、标注和编辑均由 Shotoshot 完成；截图保存到 PhoTag 设置的目录。快捷键可在设置中修改。"),
             )
             .child(executable_card)
@@ -227,7 +227,7 @@ impl Render for ScreenshotManagerPanel {
                 div()
                     .id("screenshot-tool-error")
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }
@@ -245,7 +245,7 @@ impl Render for ScreenshotManagerPanel {
                     div()
                         .id("screenshot-tool-capture-status")
                         .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(status),
                 );
             }
@@ -256,7 +256,7 @@ impl Render for ScreenshotManagerPanel {
                 div()
                     .id("screenshot-tool-last-capture-error")
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(format!("最近一次启动失败：{error}")),
             );
         }

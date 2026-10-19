@@ -1,80 +1,29 @@
-//! PhoTag's shared GPUI design tokens.
-//!
-//! The workbench theme follows the clipboard v2 navy palette.
-//! See `docs/ui-theme.md` for component, layout and contribution rules. Colors are packed `0xRRGGBB` values for direct use with
-//! `gpui_kit::rgb`; overlay fills are packed `0xRRGGBBAA` for `gpui_kit::rgba`.
-
+//! GPUI Kit is the only palette and theme resolver. This module provides
+//! geometry and role aliases for custom views; aliases read the native Theme
+//! projection and never define independent dark/light colors.
 use gpui_kit::Styled as _;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-
-/// Window root: title band, sidebar backdrop and status bar.
-pub const SURFACE_BASE: u32 = 0x0e1823;
-/// Content surfaces: gallery body and sidebar panel.
-pub const SURFACE_PANEL: u32 = 0x152230;
-/// Cards, inspector panel and raised wells.
-pub const SURFACE_CARD: u32 = 0x1b2a3b;
-/// Hover fills and elevated controls.
-pub const SURFACE_ELEVATED: u32 = 0x24374b;
-/// Menus, popovers and dialogs.
-pub const SURFACE_MODAL: u32 = 0x152230;
-/// Inset wells: search input, calendar, thumb placeholders.
-pub const SURFACE_FAINT: u32 = 0x101b27;
-/// Audio/video stage background, darker than `SURFACE_FAINT`.
-pub const SURFACE_AUDIO: u32 = 0x101b27;
-/// Lowest contrast surface.
-pub const SURFACE_EXTREME: u32 = 0x0a121b;
-/// Leftmost navigation rail: darker than the window base so the rail, the
-/// sidebar and the content column read as three separate regions.
-pub const SURFACE_RAIL: u32 = 0x0b141e;
-/// Sidebar panel between the rail and the content column.
-pub const SURFACE_SIDEBAR: u32 = 0x152230;
-/// Inset well behind a bounded sidebar region (drives, favorites, …).
-pub const SURFACE_REGION: u32 = 0x101b27;
-/// Region rule in border mode, as 0xRRGGBBAA.
-pub const REGION_EDGE: u32 = 0x304357ff;
-/// Raised band behind a browser group title.
-pub const SURFACE_GROUP_HEADER: u32 = 0x1b2a3b;
-/// Hover fill for a browser group title.
-pub const SURFACE_GROUP_HEADER_HOVER: u32 = 0x24374b;
-pub const TEXT_PRIMARY: u32 = 0xe7eef7;
-pub const TEXT_SECONDARY: u32 = 0x9eafc5;
-pub const TEXT_MUTED: u32 = 0x8195ad;
-pub const DANGER: u32 = 0xe5484d;
-pub const DANGER_HOVER: u32 = 0xf06065;
-pub const WARNING: u32 = 0xe4ac55;
-pub const SUCCESS: u32 = 0x32cd8b;
-pub const STAR: u32 = 0xf6c654;
-
-/// Resting fill for chips, rows and ghost controls (`rgba`).
-pub const FILL_SUBTLE: u32 = 0xffffff0a;
-/// Hover fill (`rgba`).
-pub const FILL_HOVER: u32 = 0xffffff12;
-/// Pressed/active fill (`rgba`).
-pub const FILL_ACTIVE: u32 = 0xffffff1c;
-/// Accent-tinted selection fill used for tree rows and segments (`rgba`).
-pub const SELECTION_FILL_ALPHA: u32 = 0x3d;
-/// Navy hairline between surfaces (`rgb`).
-pub const SEPARATOR: u32 = 0x304357;
-/// Light hairline inside dark wells and menus (`rgba`).
-pub const SEPARATOR_LIGHT: u32 = 0x304357ff;
-/// Modal scrim over the application (`rgba`).
-pub const SCRIM: u32 = 0x060d17b8;
-
-/// Semantic colors and overlays for custom-painted controls and media badges.
-pub const TEXT_ON_ACCENT: u32 = 0xffffff;
-pub const BRANCH_ALTERNATE: u32 = 0xb574ec;
-pub const INFO: u32 = 0x2787ff;
-pub const CATEGORY: u32 = 0xb379e8;
-pub const DATA: u32 = 0x38b9ce;
-pub const MEDIA_SCRIM: u32 = 0x00000096;
-pub const MEDIA_SCRIM_STRONG: u32 = 0x000000d8;
-pub const TOOLTIP_SURFACE: u32 = 0x101b27ed;
-pub const SHADOW_OVERLAY: u32 = 0x00000060;
-pub const TRACK_SHADOW: u32 = 0x0000006e;
-pub const TRACK_HIGHLIGHT: u32 = 0xffffff16;
-pub const TRACK_ACTIVE: u32 = 0xffffff28;
-pub const FILL_TRANSPARENT_WHITE: u32 = 0xffffff00;
-pub const BORDER_STRONG: u32 = 0x43566dff;
+mod color;
+mod contrast;
+mod roles;
+mod runtime;
+pub use color::PremultipliedColor;
+pub use contrast::*;
+pub use roles::*;
+pub use runtime::*;
+static BACKDROP_ACTIVE: AtomicBool = AtomicBool::new(false);
+pub fn backdrop_active() -> bool {
+    BACKDROP_ACTIVE.load(Ordering::Relaxed)
+}
+pub fn set_backdrop_active(active: bool) {
+    BACKDROP_ACTIVE.store(active, Ordering::Relaxed);
+}
+// Legacy persisted accent names are accepted as metadata, never used as a palette.
+pub const DEFAULT_ACCENT_NAME: &str = "Workbench Blue";
+pub const SYSTEM_ACCENT_NAME: &str = "System";
+pub fn normalize_accent(color: u32) -> u32 {
+    color
+}
 pub const SPACE_1: f32 = 4.;
 pub const SPACE_2: f32 = 8.;
 pub const SPACE_3: f32 = 12.;
@@ -83,17 +32,6 @@ pub const PANEL_GAP: f32 = 10.;
 pub const NAV_ROW_HEIGHT: f32 = 40.;
 pub const ACTION_HEIGHT: f32 = 38.;
 pub const ICON_BUTTON_SIZE: f32 = 30.;
-
-/// Opaque selection paint is shared across cards/navigation and preserves user accents.
-pub fn selection_color() -> u32 {
-    if accent() == 0x2787ff {
-        return 0x163b63;
-    }
-    let [r, g, b] = channels(accent());
-    let [br, bg, bb] = channels(SURFACE_PANEL);
-    let mix = |base: u8, color: u8| ((u32::from(base) * 3 + u32::from(color)) / 4) as u8;
-    pack(mix(br, r), mix(bg, g), mix(bb, b))
-}
 
 // Shared workbench geometry; feature-specific layouts keep their own constraints.
 /// Lower bound for the startup window; the actual size grows with the display.
@@ -137,63 +75,6 @@ pub const SOURCE_MENU_MARGIN_X: f32 = 10.0;
 pub const SOURCE_MENU_MARGIN_Y: f32 = 8.0;
 pub const SOURCE_WINDOW_MARGIN: f32 = 14.0;
 pub const SOURCE_SCROLLBAR_WIDTH: f32 = 7.0;
-mod color;
-pub use color::PremultipliedColor;
-
-// Control fills are light overlays on workbench surfaces. The legacy
-// premultiplied representation is kept so existing call sites compile; the
-// packed values resolve to the same `FILL_*` overlays as the rgba tokens.
-pub const CONTROL_HOVER: PremultipliedColor = PremultipliedColor {
-    red: 20,
-    green: 20,
-    blue: 20,
-    alpha: 20,
-};
-pub const CONTROL_ACTIVE: PremultipliedColor = PremultipliedColor {
-    red: 30,
-    green: 30,
-    blue: 30,
-    alpha: 30,
-};
-pub const CONTROL_GHOST: PremultipliedColor = PremultipliedColor {
-    red: 10,
-    green: 10,
-    blue: 10,
-    alpha: 10,
-};
-pub const CONTROL_GHOST_HOVER: PremultipliedColor = PremultipliedColor {
-    red: 18,
-    green: 18,
-    blue: 18,
-    alpha: 18,
-};
-pub const CONTROL_GHOST_PRESSED: PremultipliedColor = PremultipliedColor {
-    red: 28,
-    green: 28,
-    blue: 28,
-    alpha: 28,
-};
-pub const CONTROL_BOX: u32 = 0x304357;
-pub const CONTROL_BOX_HOVER: u32 = 0x3d536c;
-pub const CONTROL_BOX_PRESSED: u32 = 0x4b6380;
-pub const HAIRLINE: PremultipliedColor = PremultipliedColor {
-    red: 48,
-    green: 67,
-    blue: 87,
-    alpha: 255,
-};
-pub const BORDER: PremultipliedColor = PremultipliedColor {
-    red: 0,
-    green: 0,
-    blue: 0,
-    alpha: 130,
-};
-pub const FAINT_OVERLAY: PremultipliedColor = PremultipliedColor {
-    red: 8,
-    green: 8,
-    blue: 8,
-    alpha: 8,
-};
 pub const SELECTION_BAR_WIDTH: f32 = 3.0;
 pub const ROUND_SM: f32 = 4.0;
 pub const ROUND_MD: f32 = 6.0;
@@ -266,112 +147,6 @@ pub fn tag_icon(name: Option<&str>) -> gpui_kit::assets::IconName {
     }
 }
 
-mod components;
-pub use components::{apply_accent_components, apply_components};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AccentPreset {
-    pub name: &'static str,
-    pub color: u32,
-}
-
-pub const ACCENT_PRESETS: &[AccentPreset] = &[
-    AccentPreset {
-        name: "Workbench Blue",
-        color: 0x2787ff,
-    },
-    AccentPreset {
-        name: "Slate Blue",
-        color: 0x5a7fa0,
-    },
-    AccentPreset {
-        name: "Dusty Teal",
-        color: 0x5a8a88,
-    },
-    AccentPreset {
-        name: "Muted Copper",
-        color: 0xa0654a,
-    },
-    AccentPreset {
-        name: "Dusty Rose",
-        color: 0xa07478,
-    },
-    AccentPreset {
-        name: "Sage Green",
-        color: 0x6a9a78,
-    },
-    AccentPreset {
-        name: "Dusty Mauve",
-        color: 0x8a7098,
-    },
-    AccentPreset {
-        name: "Warm Taupe",
-        color: 0x7a6b5e,
-    },
-];
-
-pub const SYSTEM_ACCENT_NAME: &str = "System";
-pub const DEFAULT_ACCENT_NAME: &str = "Workbench Blue";
-pub const FALLBACK_ACCENT_NAME: &str = DEFAULT_ACCENT_NAME;
-static ACCENT: AtomicU32 = AtomicU32::new(0x2787ff);
-static BACKDROP_ACTIVE: AtomicBool = AtomicBool::new(false);
-
-pub fn preset_by_name(name: &str) -> &'static AccentPreset {
-    ACCENT_PRESETS
-        .iter()
-        .find(|preset| preset.name == name)
-        .unwrap_or_else(|| {
-            ACCENT_PRESETS
-                .iter()
-                .find(|preset| preset.name == FALLBACK_ACCENT_NAME)
-                .unwrap()
-        })
-}
-
-pub fn normalize_accent(color: u32) -> u32 {
-    let [r, g, b] = channels(color);
-    // Match PhoTag's winfx brightness lift: preserve the source hue by
-    // scaling all channels until the brightest channel reaches 150.
-    const MIN_BRIGHTEST_CHANNEL: u32 = 150;
-    let brightest = u32::from(r.max(g).max(b));
-    if brightest >= MIN_BRIGHTEST_CHANNEL {
-        return color;
-    }
-    if brightest == 0 {
-        return 0x969696;
-    }
-    let scale = MIN_BRIGHTEST_CHANNEL;
-    pack(
-        ((u32::from(r) * scale) / brightest).min(255) as u8,
-        ((u32::from(g) * scale) / brightest).min(255) as u8,
-        ((u32::from(b) * scale) / brightest).min(255) as u8,
-    )
-}
-
-pub fn resolve_accent(name: &str) -> u32 {
-    if name == SYSTEM_ACCENT_NAME {
-        crate::winfx::system_accent().unwrap_or_else(|| preset_by_name(FALLBACK_ACCENT_NAME).color)
-    } else {
-        preset_by_name(name).color
-    }
-}
-
-pub fn accent() -> u32 {
-    ACCENT.load(Ordering::Relaxed)
-}
-pub fn set_accent(color: u32) {
-    ACCENT.store(color & 0x00ff_ffff, Ordering::Relaxed);
-}
-pub fn set_accent_name(name: &str) {
-    set_accent(resolve_accent(name));
-}
-pub fn backdrop_active() -> bool {
-    BACKDROP_ACTIVE.load(Ordering::Relaxed)
-}
-pub fn set_backdrop_active(active: bool) {
-    BACKDROP_ACTIVE.store(active, Ordering::Relaxed);
-}
-
 /// How the application separates its regions from each other.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegionDepth {
@@ -422,7 +197,7 @@ pub fn separate_region(region: gpui_kit::Div, edge: RegionEdge) -> gpui_kit::Div
     if region_depth() == RegionDepth::Shadow {
         return region.shadow(region_shadows(edge));
     }
-    let region = region.border_color(gpui_kit::rgba(REGION_EDGE));
+    let region = region.border_color(gpui_kit::rgba(region_edge()));
     match edge {
         RegionEdge::All => region.border_1(),
         RegionEdge::Left => region.border_l_1(),
@@ -433,7 +208,7 @@ pub fn separate_region(region: gpui_kit::Div, edge: RegionEdge) -> gpui_kit::Div
 }
 
 fn region_shadows(edge: RegionEdge) -> Vec<gpui_kit::BoxShadow> {
-    use gpui_kit::{BoxShadow, hsla, px};
+    use gpui_kit::{BoxShadow, px, rgba};
     let (offset_x, offset_y) = match edge {
         RegionEdge::All => (0., 6.),
         RegionEdge::Left => (-10., 0.),
@@ -442,59 +217,51 @@ fn region_shadows(edge: RegionEdge) -> Vec<gpui_kit::BoxShadow> {
         RegionEdge::Bottom => (0., 10.),
     };
     vec![
-        BoxShadow::new(px(offset_x), px(offset_y), hsla(0., 0., 0., 0.72))
+        BoxShadow::new(px(offset_x), px(offset_y), rgba(shadow_overlay()).into())
             .blur_radius(px(18.))
             .spread_radius(px(-2.)),
     ]
 }
 
-/// Header tints used to tell the custom sidebar groups apart.
-pub const GROUP_TINTS: &[u32] = &[0x5a7fa0, 0x6a9a78, 0xa0654a, 0x8a7098, 0x5a8a88, 0xa07478];
-
-/// Deterministic tint for the group at `index`.
-pub fn group_tint(index: usize) -> u32 {
-    GROUP_TINTS[index % GROUP_TINTS.len()]
-}
-
-/// Source card opacity (232/255 with Mica/Acrylic, opaque otherwise).
+/// Compatibility RGB adapters preserve native Theme alpha, never inject backdrop colors.
 pub fn panel_alpha() -> u8 {
-    if backdrop_active() { 0xe8 } else { 0xff }
+    (native_colors().group_box.a * 255.).round() as u8
 }
-
-/// Source base-panel opacity (222/255 with Mica/Acrylic, opaque otherwise).
 pub fn base_rgba(color: u32) -> u32 {
-    (color << 8) | if backdrop_active() { 0xde } else { 0xff }
+    let native = native_colors();
+    if color == packed(native.background) {
+        packed_rgba(native.background)
+    } else {
+        (color << 8) | 255
+    }
 }
-
-/// Source modal/window opacity (244/255 with Mica/Acrylic, opaque otherwise).
 pub fn modal_rgba(color: u32) -> u32 {
-    (color << 8) | if backdrop_active() { 0xf4 } else { 0xff }
+    let native = native_colors();
+    if color == packed(native.popover) {
+        packed_rgba(native.popover)
+    } else {
+        (color << 8) | 255
+    }
 }
-
-/// Pack an RGB surface token with the application backdrop-aware panel alpha.
 pub fn panel_rgba(color: u32) -> u32 {
-    (color << 8) | u32::from(panel_alpha())
+    let native = native_colors();
+    if color == packed(native.group_box) {
+        packed_rgba(native.group_box)
+    } else {
+        base_rgba(color)
+    }
 }
-
-pub fn accent_hover() -> u32 {
-    let [r, g, b] = channels(accent());
-    pack(
-        r.saturating_add(24),
-        g.saturating_add(24),
-        b.saturating_add(24),
-    )
+pub fn group_tint(index: usize) -> u32 {
+    let colors = native_colors();
+    let palette = [
+        colors.chart_1,
+        colors.chart_2,
+        colors.chart_3,
+        colors.chart_4,
+        colors.chart_5,
+    ];
+    packed(palette[index % palette.len()])
 }
-
-pub fn accent_alpha(color: u32, alpha: f32) -> u32 {
-    let [r, g, b] = channels(color);
-    let factor = alpha.clamp(0.0, 1.0);
-    pack(
-        (f32::from(r) * factor) as u8,
-        (f32::from(g) * factor) as u8,
-        (f32::from(b) * factor) as u8,
-    )
-}
-
 pub fn channels(color: u32) -> [u8; 3] {
     [(color >> 16) as u8, (color >> 8) as u8, color as u8]
 }
@@ -503,7 +270,7 @@ pub fn channels(color: u32) -> [u8; 3] {
 /// `vendor/photag-source/src/ui/sidebar.rs:8-15`.
 pub fn parse_hex_color(value: &str) -> Option<[u8; 3]> {
     let value = value.trim().trim_start_matches('#');
-    if value.len() != 6 {
+    if value.len() != 6 || !value.is_ascii() {
         return None;
     }
     Some([
@@ -518,7 +285,7 @@ pub fn parse_hex_color(value: &str) -> Option<[u8; 3]> {
 pub fn tag_tint(color: Option<&str>) -> u32 {
     color
         .and_then(parse_hex_color)
-        .map_or(0x78787a, |[r, g, b]| pack(r, g, b))
+        .map_or(text_muted(), |[r, g, b]| pack(r, g, b))
 }
 
 const fn pack(r: u8, g: u8, b: u8) -> u32 {

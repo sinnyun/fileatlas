@@ -35,3 +35,10 @@ PhoTag 是面向个人使用的 Windows 桌面全能工作台。照片管理是�
 ## 版本说明
 
 PhoTag 0.2 是本仓库采用的项目定义/开发基线版本，用于区分 2026-10-14 的布局基线与当前增加了完整多栏浏览和程序工作区能力的产品状态。它不表示所有 F0–F3 操作项目已完成，也不表示已发布 0.2 安装包。应用构建版本仍由 Cargo workspace 的版本字段独立管理。
+
+## 原生主题与 Material 生成器（2026-10-19）
+
+用户要求所有插件及自绘控件统一消费 GPUI Kit 原生主题。原手写 RGB palette、
+mode_color 和组件覆盖表退役；UI Bridge 只适配原生角色与请求入口。
+Material 以独立 Cordis 插件生成标准 ThemeSet JSON，主题系统负责应用；配置和存储
+见 docs/ui-theme.md 与 photag-plugin-material-theme/PORTS.md。布局和几何沿用本基线。

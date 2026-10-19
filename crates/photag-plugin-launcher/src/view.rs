@@ -73,8 +73,8 @@ impl Render for LauncherShortcut {
             .gap(px(3.))
             .rounded(px(6.))
             .text_xs()
-            .text_color(rgb(theme::TEXT_SECONDARY))
-            .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+            .text_color(rgb(theme::text_secondary()))
+            .hover(|style| style.bg(rgba(theme::fill_hover())))
             .on_click(cx.listener(|this, _, _, _| {
                 if let Err(error) = this.panels.open(PANEL_ID) {
                     tracing::error!(%error, "could not open program launchpad");

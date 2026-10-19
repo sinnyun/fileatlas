@@ -50,24 +50,24 @@ launcher/clipboard(L3)依赖settings(L4)两项；本次没有新增依赖边，�
 
 ## 最终结果
 
-最终构建的64步场景完整通过，退出码0；同进程摘要见[summary.json](summary.json)，
+最终构建的64步场景完整通过，退出码0；同进程摘要见[summary.json](../../../.local/validation/artifacts/2026-10-18-native-panels/summary.json)，
 可复现场景见 `scripts/validate-native-panels.cjs`，完整本机逐步报告在 `target/mcp-native-panels/report.json`。
 最终源代码的fmt、locked Shell check、独立命名EXE构建与19测试均通过。
 构建保留既有 LNK4098 LIBCMT 链接警告；指定-o的两项Cargo输出命名警告不影响生成EXE。
 
 | 检查 | 结果与证据 |
 |---|---|
-| 主窗最小化打开剪贴板 | 原主窗保持minimized，独立HWND属于本进程且visible；[剪贴板](clipboard-native.png) |
+| 主窗最小化打开剪贴板 | 原主窗保持minimized，独立HWND属于本进程且visible；[剪贴板](../../../.local/validation/artifacts/2026-10-18-native-panels/clipboard-native.png) |
 | 目标窗最小化后重唤起 | 恢复同一实例，主窗仍最小化 |
 | 实际控件操作 | 同进程指针点击暂停/恢复，真实capture_paused两次反转并恢复 |
-| 多工具并存 | 剪贴板与启动台两个独立HWND；[启动台](launcher-native.png) |
+| 多工具并存 | 剪贴板与启动台两个独立HWND；[启动台](../../../.local/validation/artifacts/2026-10-18-native-panels/launcher-native.png) |
 | idle | 两次1.5秒等待之间，独立根视图render_count不变；不扩展为全部子视图/IO计数证明 |
-| 较小窗口 | 请求1450×1050，系统/插件最小宽度使实际1522×1050；编辑底部完整；[截图](clipboard-compact.png) |
-| 截图管理器 | [独立窗口](screenshot-native.png)；实际指针点击正文“关闭”成功；重开后WM_CLOSE成功；主窗保持最小化 |
+| 较小窗口 | 请求1450×1050，系统/插件最小宽度使实际1522×1050；编辑底部完整；[截图](../../../.local/validation/artifacts/2026-10-18-native-panels/clipboard-compact.png) |
+| 截图管理器 | [独立窗口](../../../.local/validation/artifacts/2026-10-18-native-panels/screenshot-native.png)；实际指针点击正文“关闭”成功；重开后WM_CLOSE成功；主窗保持最小化 |
 | Escape / 停用 | Escape关闭目标；停用Clipboard经Cordis移除原生窗口；重新启用后可以重新打开 |
-| 切回工作区 | 从native切为workspace，恢复主窗并沿用旧浮窗；[截图](workspace-restored.png) |
-| 主窗内容保持 | 主窗可见时再开native，顶栏/侧栏/信息栏均保留，无空白替代；[截图](main-content-retained.png) |
-| 设置说明 | [设置](settings-native-mode.png)保持两项策略、横向快捷键、固定底栏，说明明确不唤起主界面 |
+| 切回工作区 | 从native切为workspace，恢复主窗并沿用旧浮窗；[截图](../../../.local/validation/artifacts/2026-10-18-native-panels/workspace-restored.png) |
+| 主窗内容保持 | 主窗可见时再开native，顶栏/侧栏/信息栏均保留，无空白替代；[截图](../../../.local/validation/artifacts/2026-10-18-native-panels/main-content-retained.png) |
+| 设置说明 | [设置](../../../.local/validation/artifacts/2026-10-18-native-panels/settings-native-mode.png)保持两项策略、横向快捷键、固定底栏，说明明确不唤起主界面 |
 
 最终截图均已实际打开核对。较小剪贴板窗口沿用插件原有自适应逻辑，隐藏“我的分组”创建区；
 本次未调整该既有响应行为，不能据此宣称较小窗口下全部分组管理控件均可见。

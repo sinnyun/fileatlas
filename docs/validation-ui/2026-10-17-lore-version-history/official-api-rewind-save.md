@@ -38,5 +38,5 @@ Lore 父 revision 是已有分支 tip02，01/02 的内容保持可切换。没�
 
 实际源文件 MCP 验证通过：原路径 `00.png` 上先完成01/02往返，再停01编辑创建03；
 三份版本都恢复出各自字节，历史页保持可见，quiet 查询代次22→22。源文件已恢复
-开始时字节和时间戳。见 [运行报告](edit-after-rewind.json) 与
-[恢复校验](edit-after-rewind-restoration.json)。
+开始时字节和时间戳。见 [运行报告](../../../.local/validation/artifacts/2026-10-17-lore-version-history/edit-after-rewind.json) 与
+[恢复校验](../../../.local/validation/artifacts/2026-10-17-lore-version-history/edit-after-rewind-restoration.json)。

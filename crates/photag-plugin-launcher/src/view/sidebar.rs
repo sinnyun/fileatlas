@@ -118,8 +118,8 @@ impl LauncherPanel {
             .gap(px(7.))
             .pt(px(12.))
             .border_t_1()
-            .border_color(rgba(theme::SEPARATOR_LIGHT))
-            .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+            .border_color(rgba(theme::separator_light()))
+            .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
                 if self.editing_category.is_some() {
                     tr("Rename")
                 } else {
@@ -159,9 +159,9 @@ impl LauncherPanel {
             .flex_shrink_0()
             .p(px(12.))
             .gap(px(8.))
-            .bg(rgb(theme::SURFACE_FAINT))
+            .bg(rgb(theme::surface_faint()))
             .border_r_1()
-            .border_color(rgba(theme::SEPARATOR_LIGHT))
+            .border_color(rgba(theme::separator_light()))
             .child(
                 div()
                     .h_flex()
@@ -171,7 +171,7 @@ impl LauncherPanel {
                     .child(
                         div()
                             .text_size(px(27.))
-                            .text_color(rgb(theme::accent()))
+                            .text_color(rgb(theme::accent_text()))
                             .child(theme::large_icon(IconName::LayoutGrid)),
                     )
                     .child(
@@ -187,7 +187,7 @@ impl LauncherPanel {
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(rgb(theme::TEXT_MUTED))
+                                    .text_color(rgb(theme::text_muted()))
                                     .child(tr("Personal program workbench")),
                             ),
                     ),
@@ -219,9 +219,9 @@ impl LauncherPanel {
                     .pb(px(5.))
                     .px(px(10.))
                     .border_t_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .border_color(rgba(theme::separator_light()))
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(tr("Categories")),
             )
             .child(categories)

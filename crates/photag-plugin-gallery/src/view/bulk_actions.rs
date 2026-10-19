@@ -256,7 +256,7 @@ pub(super) fn render(
         .min_h_0()
         .overflow_hidden()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_MODAL))
+        .bg(rgb(theme::surface_modal()))
         .p_3();
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
@@ -301,14 +301,14 @@ pub(super) fn render(
                             .compact()
                             .w_full()
                             .bg(if view.bulk_action == Some(choice) {
-                                rgba((theme::accent() << 8) | 48)
+                                rgb(theme::selection_color())
                             } else {
                                 rgba(0)
                             })
                             .text_color(rgb(if view.bulk_action == Some(choice) {
-                                theme::accent()
+                                theme::selection_text()
                             } else {
-                                theme::TEXT_PRIMARY
+                                theme::text_primary()
                             }))
                             .child(choice_row(choice.label(), selected))
                             .toggled(selected)
@@ -335,14 +335,14 @@ pub(super) fn render(
                         .compact()
                         .w_full()
                         .bg(if view.bulk_source == choice {
-                            rgba((theme::accent() << 8) | 48)
+                            rgb(theme::selection_color())
                         } else {
                             rgba(0)
                         })
                         .text_color(rgb(if view.bulk_source == choice {
-                            theme::accent()
+                            theme::selection_text()
                         } else {
-                            theme::TEXT_PRIMARY
+                            theme::text_primary()
                         }))
                         .child(choice_row(choice.label(), selected))
                         .toggled(selected)
@@ -369,11 +369,16 @@ pub(super) fn render(
                 .gap_3()
                 .p_2()
                 .rounded_md()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .child(action_source),
         );
     if let Some(error) = error {
-        controls = controls.child(div().text_sm().text_color(rgb(theme::DANGER)).child(error));
+        controls = controls.child(
+            div()
+                .text_sm()
+                .text_color(rgb(theme::danger_text()))
+                .child(error),
+        );
     }
     if loading {
         controls = controls.child(photag_ui_bridge::i18n::tr("Loading file info…"));
@@ -382,7 +387,7 @@ pub(super) fn render(
         controls = controls.child(
             div()
                 .text_sm()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(status.clone()),
         );
     }
@@ -390,7 +395,7 @@ pub(super) fn render(
         controls = controls.child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr(
                     "Current selection uses its selected items directly; filters are skipped.",
                 )),
@@ -418,7 +423,7 @@ pub(super) fn render(
             .mt(px(3.))
             .pt(px(10.))
             .border_t_1()
-            .border_color(rgba(theme::SEPARATOR_LIGHT))
+            .border_color(rgba(theme::separator_light()))
             .child(div().text_sm().child(photag_ui_bridge::i18n::tr_args(
                 "Matches: {count} items",
                 &[("count", count.to_string())],
@@ -483,7 +488,7 @@ fn choice_row(label: &str, selected: bool) -> Div {
                 .border_color(if selected {
                     rgb(accent)
                 } else {
-                    rgba(theme::BORDER.to_rgba())
+                    rgba(theme::border().to_rgba())
                 })
                 .flex()
                 .items_center()

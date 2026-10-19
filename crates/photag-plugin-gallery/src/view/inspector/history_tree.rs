@@ -11,8 +11,8 @@ pub(super) fn thumbnail(path: Option<PathBuf>, width: f32, height: f32) -> Div {
         .rounded(px(5.))
         .overflow_hidden()
         .border_1()
-        .border_color(rgba(theme::SEPARATOR_LIGHT))
-        .bg(rgb(theme::SURFACE_FAINT))
+        .border_color(rgba(theme::separator_light()))
+        .bg(rgb(theme::surface_faint()))
         .flex()
         .items_center()
         .justify_center();
@@ -25,7 +25,7 @@ pub(super) fn thumbnail(path: Option<PathBuf>, width: f32, height: f32) -> Div {
                 .with_fallback(|| {
                     theme::icon(IconName::FileImage)
                         .size(px(24.))
-                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_color(rgb(theme::text_muted()))
                         .into_any_element()
                 }),
         )
@@ -33,7 +33,7 @@ pub(super) fn thumbnail(path: Option<PathBuf>, width: f32, height: f32) -> Div {
         slot.child(
             theme::icon(IconName::FileImage)
                 .size(px(24.))
-                .text_color(rgb(theme::TEXT_MUTED)),
+                .text_color(rgb(theme::text_muted())),
         )
     };
     slot
@@ -48,7 +48,7 @@ pub(super) fn render(
     cx: &mut Context<GalleryView>,
 ) -> Div {
     let line_color = if filter == 2 {
-        theme::BRANCH_ALTERNATE
+        theme::branch_alternate()
     } else {
         theme::accent()
     };
@@ -75,9 +75,13 @@ pub(super) fn render(
                     .rounded_full()
                     .border_1()
                     .border_color(rgba((line_color << 8) | 0x90))
-                    .bg(rgb(theme::SURFACE_FAINT))
+                    .bg(rgb(theme::surface_faint()))
                     .text_size(px(12.))
-                    .text_color(rgb(line_color))
+                    .text_color(rgb(if filter == 2 {
+                        theme::branch_alternate_text()
+                    } else {
+                        theme::accent_text()
+                    }))
                     .child(photag_ui_bridge::i18n::tr(if filter == 2 {
                         "Alternate branch"
                     } else {
@@ -90,7 +94,7 @@ pub(super) fn render(
             continue;
         }
         let color = if version.branch {
-            theme::BRANCH_ALTERNATE
+            theme::branch_alternate()
         } else {
             theme::accent()
         };
@@ -135,7 +139,7 @@ pub(super) fn render(
                     .bg(rgb(if is_selected {
                         color
                     } else {
-                        theme::SURFACE_CARD
+                        theme::surface_card()
                     })),
             )
             .child(
@@ -166,21 +170,28 @@ pub(super) fn render(
                                         div()
                                             .text_size(px(14.))
                                             .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                                            .text_color(rgb(theme::TEXT_PRIMARY))
+                                            .text_color(rgb(theme::text_primary()))
                                             .child(version.label.clone()),
                                     )
                                     .when(index == active, |row| {
                                         row.child(
-                                            div().text_size(px(10.)).text_color(rgb(color)).child(
-                                                photag_ui_bridge::i18n::tr("Version baseline"),
-                                            ),
+                                            div()
+                                                .text_size(px(10.))
+                                                .text_color(rgb(if version.branch {
+                                                    theme::branch_alternate_text()
+                                                } else {
+                                                    theme::accent_text()
+                                                }))
+                                                .child(photag_ui_bridge::i18n::tr(
+                                                    "Version baseline",
+                                                )),
                                         )
                                     }),
                             )
                             .child(
                                 div()
                                     .text_size(px(11.))
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
+                                    .text_color(rgb(theme::text_secondary()))
                                     .child(card::format_timestamp(version.modified)),
                             ),
                     )

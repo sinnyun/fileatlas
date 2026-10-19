@@ -50,7 +50,7 @@ impl GalleryView {
                 div()
                     .font_family(theme::SEMIBOLD_FONT_FAMILY)
                     .text_size(px(14.))
-                    .text_color(rgb(theme::TEXT_PRIMARY))
+                    .text_color(rgb(theme::text_primary()))
                     .child(photag_ui_bridge::i18n::tr(context.title())),
             )
             .child(
@@ -226,7 +226,7 @@ impl GalleryView {
                     .w_full()
                     .pb(px(6.))
                     .text_size(px(theme::FONT_SIZE_TINY))
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(display_path(&media.full_path)),
             );
         }
@@ -272,7 +272,7 @@ impl GalleryView {
                             .child(
                                 theme::icon(IconName::X)
                                     .size(px(11.))
-                                    .text_color(rgb(theme::TEXT_MUTED)),
+                                    .text_color(rgb(theme::text_muted())),
                             )
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 let media_ids = vec![media_id];
@@ -345,7 +345,7 @@ impl GalleryView {
                     .rounded(px(8.))
                     .border_1()
                     .border_color(rgb(theme::accent()))
-                    .bg(rgb(theme::SURFACE_ELEVATED));
+                    .bg(rgb(theme::surface_elevated()));
                 for (tag, _) in &selected_tags {
                     let tag_id = tag.id;
                     let chip_view = weak.clone();
@@ -509,7 +509,7 @@ impl GalleryView {
             .gap(px(8.))
             .p(px(12.))
             .border_t_1()
-            .border_color(rgb(theme::SEPARATOR))
+            .border_color(rgb(theme::separator()))
             .child(
                 div().flex_1().child(
                     Button::new("gallery-inspector-reveal")
@@ -535,7 +535,7 @@ impl GalleryView {
             .child(
                 div()
                     .text_size(px(theme::FONT_SIZE_BODY))
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr_args(
                         "{count} selected",
                         &[("count", count.to_string())],
@@ -595,7 +595,7 @@ fn inspector_picker_section(title: &str, rows: Vec<Div>, max_height: Option<Pixe
         .px(px(7.))
         .py(px(3.))
         .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(title));
     let section = div().v_flex().w_full().child(heading);
     if rows.is_empty() {

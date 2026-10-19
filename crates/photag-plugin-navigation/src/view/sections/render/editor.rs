@@ -51,7 +51,12 @@ impl SidebarView {
         Some(div().v_flex().gap_1().child(row).when_some(
             self.sidebar_editor_error.clone(),
             |column, error| {
-                column.child(div().text_xs().text_color(rgb(theme::DANGER)).child(error))
+                column.child(
+                    div()
+                        .text_xs()
+                        .text_color(rgb(theme::danger_text()))
+                        .child(error),
+                )
             },
         ))
     }

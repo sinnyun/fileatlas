@@ -1,5 +1,23 @@
 # MCP plugin ports / MCP 对接
 
+## Live column toolbar diagnostics — 2026-10-19
+
+`get_ui_state.theme` now reports `mode` (`dark`/`light`), the native theme name as `id`,
+`framework: "GPUI Kit ThemeRegistry"`,
+and current base/panel/card/border/text semantic colors so live mode checks do
+not mistake the former fixed navy values for the selected palette.
+
+Material tools are lifecycle-owned by `photag.material-theme`, not hardcoded here.
+`material-theme.state` returns generator domain errors as `last_error`; a failed
+generation call uses the ordinary MCP failure result. See that plugin's PORTS.
+
+`get_ui_state.program_workspace.current_snapshot` reads the existing public
+`workspace.current_snapshot` surface as a typed `ProgramWorkspace`, or null
+before publication. Its `columns[i].list_layout` and `show_subfolders` describe
+each live pane's view controls. `active_workspace` remains the saved definition;
+the legacy top-level `gallery`/`browser` diagnostics describe the primary pane.
+This read-only projection adds no polling, IO or state mutations.
+
 ## Access levels — 2026-10-19
 
 The MCP plugin contributes the `photag.mcp` settings page. `Settings.mcp_access_level`
@@ -658,3 +676,14 @@ permits plugin-declared high-impact tools, which retain per-call `confirm=true`.
 Changes apply immediately without restarting MCP. The old boolean-key validation
 below is historical; current same-process Windows evidence is documented at
 `docs/validation-ui/2026-10-19-mcp-access-stages/`.
+
+## Actual content paint pairs — 2026-10-19
+
+`get_ui_state.theme.content_colors` is read-only: `formats` lists extension,
+background and foreground from the same `file_format_colors` used by Gallery;
+`tags` lists tint/selected/background/foreground/icon from `tag_colors` (neutral,
+black, white, purple, blue and yellow in both selection states). `selection_text`,
+`media_background`, `media_text` and `media_star` resolve actual navigation and
+thumbnail roles. This projection performs no IO and adds no timers or mutation
+permissions. `scripts/validate-thumbnail-contrast.cjs` uses these roles plus real
+isolated local files, assigned tags, rating, and captured same-process windows.

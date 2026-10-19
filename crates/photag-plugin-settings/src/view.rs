@@ -27,6 +27,8 @@ mod design;
 mod layout;
 #[path = "view/plugins.rs"]
 mod plugins;
+#[path = "view/rail_entry.rs"]
+mod rail_entry;
 #[path = "view/shortcuts.rs"]
 mod shortcuts;
 #[path = "view/software.rs"]
@@ -52,6 +54,13 @@ enum Tab {
     Software,
     Plugins,
     PluginSettings,
+}
+
+pub(super) fn rail_entry(
+    service: Arc<SettingsService>,
+    surfaces: Arc<UiSurfaceState>,
+) -> UiViewContribution {
+    rail_entry::contribution(service, surfaces)
 }
 pub(super) fn settings(
     service: Arc<SettingsService>,
@@ -280,6 +289,11 @@ impl SettingsView {
         });
         match self.service.update(f) {
             Ok(settings) => {
+                photag_ui_bridge::theme::set_color_mode(if settings.color_mode == "light" {
+                    photag_ui_bridge::theme::ColorMode::Light
+                } else {
+                    photag_ui_bridge::theme::ColorMode::Dark
+                });
                 photag_ui_bridge::theme::apply_accent_components(cx);
                 // Paint-time tokens (accent, region separation) live in every region, so
                 // repaint all windows instead of waiting for each view's next notify.

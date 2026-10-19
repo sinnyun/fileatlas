@@ -1,10 +1,21 @@
 use super::*;
 pub(super) use gpui_kit::assets::IconName;
 
-pub(super) use photag_ui_bridge::theme::{
-    SEPARATOR as RULE, SURFACE_BASE as BACKGROUND, SURFACE_FAINT as INSET, TEXT_PRIMARY as TEXT,
-    TEXT_SECONDARY as MUTED,
-};
+pub(super) fn rule() -> u32 {
+    photag_ui_bridge::theme::separator()
+}
+pub(super) fn background() -> u32 {
+    photag_ui_bridge::theme::surface_base()
+}
+pub(super) fn inset() -> u32 {
+    photag_ui_bridge::theme::surface_faint()
+}
+pub(super) fn text() -> u32 {
+    photag_ui_bridge::theme::text_primary()
+}
+pub(super) fn muted() -> u32 {
+    photag_ui_bridge::theme::text_secondary()
+}
 pub(super) fn icon(name: IconName, size: f32) -> gpui_kit::component::Icon {
     gpui_kit::component::Icon::new(name).size(px(size))
 }

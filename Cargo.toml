@@ -33,6 +33,8 @@ members = [
     "crates/photag-plugin-drag-drop",
     "crates/photag-plugin-mcp",
     "crates/photag-plugin-dev-test",
+    "crates/photag-plugin-shell-controls",
+    "crates/photag-plugin-material-theme",
     "crates/photag-plugin-screenshot",
 ]
 default-members = ["crates/photag-shell"]

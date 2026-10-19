@@ -39,7 +39,7 @@ impl LauncherPanel {
             .justify_center()
             .rounded(px(12.))
             .bg(rgba((theme::accent() << 8) | 0x18))
-            .text_color(rgb(theme::accent()))
+            .text_color(rgb(theme::accent_text()))
             .text_size(px(size * 0.6))
             .child(theme::icon(category_icon(category)).size(px(size * 0.5)))
             .into_any_element()
@@ -64,9 +64,9 @@ impl LauncherPanel {
             .gap(px(10.))
             .workbench_card(selected)
             .text_color(rgb(if entry.available {
-                theme::TEXT_PRIMARY
+                theme::text_primary()
             } else {
-                theme::TEXT_MUTED
+                theme::text_muted()
             }))
             .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 this.select_entry(id, window, cx);
@@ -96,7 +96,7 @@ impl LauncherPanel {
                         .top(px(5.))
                         .right(px(7.))
                         .text_size(px(14.))
-                        .text_color(rgb(theme::STAR))
+                        .text_color(rgb(theme::star_text()))
                         .child(if entry.pin_scope == crate::PinScope::AllPrograms {
                             "★"
                         } else {

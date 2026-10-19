@@ -22,7 +22,7 @@ full-size oriented PNG. Explicit user transformations remain asynchronous.
 Development builds now optimize `image`, `jpeg-decoder`, `zune-jpeg` and
 GPUI's pixel conversion; application crates remain incremental debug builds.
 The normal `target/debug/photag-shell.exe` was rebuilt and is the final tested
-executable. Its SHA-256 is in [summary.json](summary.json).
+executable. Its SHA-256 is in [summary.json](../../../.local/validation/artifacts/2026-10-15-preview-feedback/summary.json).
 
 ## Environment and commands
 
@@ -61,7 +61,7 @@ session's `preview_path` was cleared and selection set empty, preventing startup
 restoration from warming the native full-image cache. Gallery thumbnails and
 on-disk progressive caches already exist, as in normal indexed browsing.
 
-The [final plan](final-plan.json) and [19-step report](final-report.json) use
+The [final plan](final-plan.json) and [19-step report](../../../.local/validation/artifacts/2026-10-15-preview-feedback/final-report.json) use
 the project MCP server and GPUI window in the same child process. The server
 activates the native accessibility provider using WM_GETOBJECT on its own
 verified HWND; the report retains real `Accessibility activated` and subsequent
@@ -79,7 +79,7 @@ the final explicit double-click sequence succeeded for JPEG, TIFF and reopening.
 | JPEG, reopen in same process | 20.24 ms, full image | 20.24 ms |
 | JPEG, earlier unoptimized development build | 64.02 ms, progressive cache | 9806.41 ms |
 
-The slow baseline is preserved in [unoptimized-report.json](unoptimized-report.json)
+The slow baseline is preserved in [unoptimized-report.json](../../../.local/validation/artifacts/2026-10-15-preview-feedback/unoptimized-report.json)
 and [its plan](unoptimized-plan.json). Its original executable was rebuilt during
 optimization and is not an independently retained baseline binary. The baseline
 already included the paint instrumentation/progressive corrections, so it
@@ -101,4 +101,4 @@ not promises for RAW, corrupt media, network drives, all codecs or every DPI.
 AI model download/inference and all transform combinations were not exercised.
 No claims about those paths are added here.
 
-![Final native window: full JPEG with Debug still expanded](cold-jpeg-full.png)
+![Final native window: full JPEG with Debug still expanded](../../../.local/validation/artifacts/2026-10-15-preview-feedback/cold-jpeg-full.png)

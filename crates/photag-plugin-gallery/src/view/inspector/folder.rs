@@ -39,7 +39,7 @@ pub(super) fn render(
                 .child(
                     div()
                         .text_size(px(12.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(display_path(&folder.path)),
                 )
                 .child(

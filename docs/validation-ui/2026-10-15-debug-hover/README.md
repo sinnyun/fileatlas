@@ -14,9 +14,9 @@ Windows/Rust1.97.1 同进程 MCP、隔离 profile `target/mcp-debug-hover-filter
 原生无障碍provider响应true。实际GPUI指针滑过网格/列表按钮产生10条重绘记录，
 原始查询95条，抽屉筛选查询82条且无常规重绘记录；打开统计后仍能读取18条数据库
 日志。搜索常规重绘文本返回0，第二页正常返回2条非重绘记录。
-真实窗口[截图](hover-filter.png)已检查，保留正常操作与数据库条目。
+真实窗口[截图](../../../.local/validation/artifacts/2026-10-15-debug-hover/hover-filter.png)已检查，保留正常操作与数据库条目。
 测试使用MCP指针命令，命令本身的INFO日志仍作为实际调试动作显示。
-[原始报告](report.json.gz)包含查询结果、筛选条件和实际EXE SHA-256。
+[原始报告](../../../.local/validation/artifacts/2026-10-15-debug-hover/report.json.gz)包含查询结果、筛选条件和实际EXE SHA-256。
 
 命令：
 - `cargo +1.97.1 test --locked -p photag-plugin-debug -p photag-plugin-mcp -j 2`：7项通过。

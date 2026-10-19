@@ -13,14 +13,12 @@ impl DebugView {
             .h_flex()
             .gap_1()
             .items_center()
-            .child(
-                div()
-                    .text_color(rgb(theme::TEXT_MUTED))
-                    .child(photag_ui_bridge::i18n::tr_args(
-                        "{count} selected",
-                        &[("count", ui.selected_ids.len().to_string())],
-                    )),
-            )
+            .child(div().text_color(rgb(theme::text_muted())).child(
+                photag_ui_bridge::i18n::tr_args(
+                    "{count} selected",
+                    &[("count", ui.selected_ids.len().to_string())],
+                ),
+            ))
             .child(
                 Button::new("debug-copy")
                     .ghost()

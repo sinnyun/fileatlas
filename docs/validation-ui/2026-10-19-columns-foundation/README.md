@@ -20,14 +20,14 @@
 
 ## 截图与边界
 
-- [双栏：独立目录、共享顶部筛选操作](dual.png)
-- [四栏：2×2 布局与每栏地址区](quad.png)
-- [程序工作区管理器（中文）](workspace-manager.png)
-- [重启恢复的双栏工作区](restored-startup.png)
-- [点击右栏后的活动栏状态](active-column-after-click.png)
-- [单栏 Gallery 空文件夹状态](single-gallery-render.png)
-- [双栏可点击地址面包屑](address-breadcrumbs.png)
-- [四栏地址行按钮保持单行](quad-address-row.png)
-- [面包屑跳转到父目录后的结果](breadcrumb-navigation-result.png)
+- [双栏：独立目录、共享顶部筛选操作](../../../.local/validation/artifacts/2026-10-19-columns-foundation/dual.png)
+- [四栏：2×2 布局与每栏地址区](../../../.local/validation/artifacts/2026-10-19-columns-foundation/quad.png)
+- [程序工作区管理器（中文）](../../../.local/validation/artifacts/2026-10-19-columns-foundation/workspace-manager.png)
+- [重启恢复的双栏工作区](../../../.local/validation/artifacts/2026-10-19-columns-foundation/restored-startup.png)
+- [点击右栏后的活动栏状态](../../../.local/validation/artifacts/2026-10-19-columns-foundation/active-column-after-click.png)
+- [单栏 Gallery 空文件夹状态](../../../.local/validation/artifacts/2026-10-19-columns-foundation/single-gallery-render.png)
+- [双栏可点击地址面包屑](../../../.local/validation/artifacts/2026-10-19-columns-foundation/address-breadcrumbs.png)
+- [四栏地址行按钮保持单行](../../../.local/validation/artifacts/2026-10-19-columns-foundation/quad-address-row.png)
+- [面包屑跳转到父目录后的结果](../../../.local/validation/artifacts/2026-10-19-columns-foundation/breadcrumb-navigation-result.png)
 
 已在可用主窗口尺寸下通过同进程截图检查双栏与四栏结构、顶部栏分组、工作区管理器和恢复结果。尚未在本轮实际操作窗口缩放/极窄宽度下验证横向滚动；选择项和滚动偏移已纳入持久化模型，但本轮未用有大量结果的文件夹验证这两种长列表恢复。逐项 CRUD 运行点击、主题强调色切换和高密度操作状态尚未做完整视觉遍历。右侧检查器容器和左侧导航是全局共享；检查器贡献与侧栏导航选择目标跟随当前激活栏，各栏内部地址导航独立。`workspace.current_snapshot` 由宿主维护并供管理器保存。

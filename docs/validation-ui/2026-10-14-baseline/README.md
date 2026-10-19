@@ -2,14 +2,14 @@
 
 对应Git标记：`dev-baseline-2026-10-14`。用户确认的完整边界见[开发基线](../../development-baseline-2026-10-14.md)。
 
-![当前实际界面](main.png)
+![当前实际界面](../../../.local/validation/artifacts/2026-10-14-baseline/main.png)
 
 | 文件 | 内容 |
 |---|---|
-| [main.png](main.png) | 最新源码构建经PhoTag MCP获取的真实窗口；层级线、选中蓝边、固定预览和恢复后的双侧宽度 |
-| [layout-report.json](layout-report.json) | 32步布局/目录/搜索/分页/宽度/小窗口/折叠结果 |
-| [pointer-report.json](pointer-report.json) | 16步同进程GPUI down/drag/up和真实页点击；左264→304、右300→340 |
-| [restoration-report.json](restoration-report.json) | 5步重启恢复304/340、默认只读拒绝pointer修改 |
+| [main.png](../../../.local/validation/artifacts/2026-10-14-baseline/main.png) | 最新源码构建经PhoTag MCP获取的真实窗口；层级线、选中蓝边、固定预览和恢复后的双侧宽度 |
+| [layout-report.json](../../../.local/validation/artifacts/2026-10-14-baseline/layout-report.json) | 32步布局/目录/搜索/分页/宽度/小窗口/折叠结果 |
+| [pointer-report.json](../../../.local/validation/artifacts/2026-10-14-baseline/pointer-report.json) | 16步同进程GPUI down/drag/up和真实页点击；左264→304、右300→340 |
+| [restoration-report.json](../../../.local/validation/artifacts/2026-10-14-baseline/restoration-report.json) | 5步重启恢复304/340、默认只读拒绝pointer修改 |
 | [layout-plan.json](layout-plan.json) | 对应布局操作计划 |
 | [pointer-plan.json](pointer-plan.json) | 对应鼠标事件操作计划 |
 | [restoration-plan.json](restoration-plan.json) | 对应只读恢复操作计划 |
@@ -20,4 +20,4 @@
 
 格式、Shell check/build和相关5crate tests25通过；精确命令和剩余边界见[界面验证记录](../../redesign-validation.md)最后v2节。GPUI内拖动/点击通过不代表OS窗口外捕获、所有媒体拖放或原生对话框已验。
 
-本机已验debug构建的SHA-256/工具链指纹见[build-manifest.json](build-manifest.json)，不要求其他机器的重建二进制字节一致。
+本机已验debug构建的SHA-256/工具链指纹见[build-manifest.json](../../../.local/validation/artifacts/2026-10-14-baseline/build-manifest.json)，不要求其他机器的重建二进制字节一致。

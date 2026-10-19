@@ -1,5 +1,0 @@
-Starting development plugins: dev-test
-
-thread 'main' (39104) panicked at C:\Users\Administrator\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\gpui-pre-0.3.8\src\app\async_context.rs:66:27:
-RefCell already borrowed
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

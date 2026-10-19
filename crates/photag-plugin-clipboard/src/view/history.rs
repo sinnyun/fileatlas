@@ -64,13 +64,23 @@ impl ClipboardPanel {
                     .child(
                         div()
                             .pt(px(2.))
-                            .text_color(rgb(if selected { theme::TEXT_PRIMARY } else { MUTED }))
+                            .text_color(rgb(if selected {
+                                theme::selection_text()
+                            } else {
+                                muted()
+                            }))
                             .child(icon(kind_icon(kind), 21.)),
                     )
                     .child(preview)
                     .child(
                         small_icon(format!("clipboard-favorite-{id}"), IconName::Star)
-                            .text_color(rgb(if item.pinned { theme::STAR } else { MUTED }))
+                            .text_color(rgb(if selected {
+                                theme::selection_text()
+                            } else if item.pinned {
+                                theme::star_text()
+                            } else {
+                                muted()
+                            }))
                             .on_click(cx.listener(move |this, _, window, cx| {
                                 cx.stop_propagation();
                                 if let Some(item) = this.items.iter().find(|item| item.id == id) {
@@ -140,7 +150,11 @@ impl ClipboardPanel {
                     .gap(px(10.))
                     .pl(px(33.))
                     .text_size(px(12.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(if selected {
+                        theme::selection_text()
+                    } else {
+                        muted()
+                    }))
                     .child(date(item.last_used_at, "%H:%M"))
                     .child(if item.image_path.is_some() {
                         format!(
@@ -162,9 +176,9 @@ impl ClipboardPanel {
                             .border_color(rgb(if selected {
                                 theme::accent()
                             } else {
-                                theme::SEPARATOR
+                                theme::separator()
                             }))
-                            .bg(rgba(theme::FILL_SUBTLE))
+                            .bg(rgba(theme::fill_subtle()))
                             .max_w(px(110.))
                             .overflow_hidden()
                             .child(self.group_name(item.category_id)),
@@ -198,7 +212,7 @@ impl ClipboardPanel {
                         .pb(px(3.))
                         .text_size(px(13.))
                         .font_semibold()
-                        .text_color(rgb(MUTED))
+                        .text_color(rgb(muted()))
                         .child(group.clone()),
                 );
                 previous = group;
@@ -213,7 +227,7 @@ impl ClipboardPanel {
                     .justify_center()
                     .h(px(240.))
                     .gap(px(12.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(muted()))
                     .child(icon(IconName::Clipboard, 36.))
                     .child("没有符合条件的记录")
                     .child(
@@ -231,7 +245,7 @@ impl ClipboardPanel {
                 .gap(px(10.))
                 .p(px(16.))
                 .border_b_1()
-                .border_color(rgb(RULE))
+                .border_color(rgb(rule()))
                 .child(
                     div()
                         .flex_1()
@@ -247,7 +261,7 @@ impl ClipboardPanel {
                         )
                         .child(
                             div()
-                                .text_color(rgb(MUTED))
+                                .text_color(rgb(muted()))
                                 .text_size(px(14.))
                                 .child(format!("({})", ids.len())),
                         ),
@@ -289,7 +303,7 @@ impl ClipboardPanel {
                     .v_flex()
                     .gap(px(8.))
                     .p(px(12.))
-                    .bg(rgb(INSET))
+                    .bg(rgb(inset()))
                     .text_size(px(13.))
                     .child("确认清理临时历史？收藏内容将保留。")
                     .child(
@@ -329,7 +343,7 @@ impl ClipboardPanel {
                 .px(px(14.))
                 .pb(px(10.))
                 .text_size(px(12.))
-                .text_color(rgb(MUTED))
+                .text_color(rgb(muted()))
                 .child(
                     self.message
                         .clone()

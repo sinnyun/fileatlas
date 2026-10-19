@@ -27,11 +27,11 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
         "Ready"
     };
     let status_color = if error.is_some() {
-        theme::DANGER
+        theme::danger()
     } else if busy {
-        theme::WARNING
+        theme::warning()
     } else {
-        theme::SUCCESS
+        theme::success()
     };
     let mut body = div()
         .v_flex()
@@ -60,7 +60,7 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                             "Visible folders",
                             folders.to_string(),
                             IconName::Folder,
-                            theme::WARNING,
+                            theme::warning_text(),
                         )),
                 )
                 .child(
@@ -72,13 +72,13 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                             "Tags",
                             tags.to_string(),
                             IconName::Tag,
-                            theme::CATEGORY,
+                            theme::category_text(),
                         ))
                         .child(metric(
                             "Version",
                             env!("CARGO_PKG_VERSION").into(),
                             IconName::Info,
-                            theme::DATA,
+                            theme::data_text(),
                         )),
                 ),
         )
@@ -94,7 +94,7 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
             "Lore version storage",
             &lore_path,
             IconName::Folder,
-            theme::CATEGORY,
+            theme::category_text(),
         ))
         .child(inspector_divider())
         .child(section_title("Program status"))
@@ -106,11 +106,11 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                 .justify_between()
                 .py(px(9.))
                 .border_b_1()
-                .border_color(rgba(theme::SEPARATOR_LIGHT))
+                .border_color(rgba(theme::separator_light()))
                 .child(
                     div()
                         .text_size(px(13.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr("Browsing state")),
                 )
                 .child(
@@ -122,7 +122,7 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
                         .child(
                             div()
                                 .text_size(px(13.))
-                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .text_color(rgb(theme::text_primary()))
                                 .child(photag_ui_bridge::i18n::tr(state)),
                         ),
                 ),
@@ -137,8 +137,8 @@ pub(super) fn render(view: &GalleryView) -> AnyElement {
     }
     body.child(inspector_divider()).child(section_title("Usage tips"))
         .child(well().h_flex().items_center().gap(px(12.))
-            .child(theme::icon(IconName::Info).size(px(25.)).flex_shrink_0().text_color(rgb(theme::accent())))
-            .child(div().flex_1().min_w_0().text_size(px(13.)).text_color(rgb(theme::TEXT_SECONDARY))
+            .child(theme::icon(IconName::Info).size(px(25.)).flex_shrink_0().text_color(rgb(theme::accent_text())))
+            .child(div().flex_1().min_w_0().text_size(px(13.)).text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr("Select a folder or tag on the left to view its details, or select a file to inspect it."))))
         .into_any_element()
 }
@@ -157,7 +157,7 @@ fn storage_row(title: &str, path: &str, icon: IconName, color: u32) -> Div {
                 .child(
                     div()
                         .text_size(px(12.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(title)),
                 ),
         )
@@ -166,7 +166,7 @@ fn storage_row(title: &str, path: &str, icon: IconName, color: u32) -> Div {
                 .w_full()
                 .min_w_0()
                 .text_size(px(12.))
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(path.to_owned()),
         )
 }
@@ -191,7 +191,7 @@ fn metric(title: &str, value: String, icon: IconName, color: u32) -> Div {
                 .child(
                     div()
                         .text_size(px(12.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(title)),
                 ),
         )
@@ -200,7 +200,7 @@ fn metric(title: &str, value: String, icon: IconName, color: u32) -> Div {
                 .pl(px(24.))
                 .text_size(px(25.))
                 .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(value),
         )
 }

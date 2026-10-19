@@ -80,14 +80,64 @@ impl PhoTagMcpServer {
                 .as_ref()
                 .and_then(|state| state["inspector_context"].as_str())
                 == Some("file");
+        // These are the same role resolvers consumed by cards/capsules, not a separate palette.
+        let content_colors = {
+            use photag_ui_bridge::theme as t;
+            let formats = [
+                "png", "psd", "ipk", "zip", "toml", "py", "svg", "", "jpg", "mp4", "txt",
+            ]
+            .map(|extension| {
+                let (background, foreground) = t::file_format_colors(extension);
+                json!({"extension":extension,"background":background,"foreground":foreground})
+            });
+            let tags = [
+                None,
+                Some(0x000000),
+                Some(0xffffff),
+                Some(0x763c98),
+                Some(0x315ca8),
+                Some(0xffff00),
+            ]
+            .into_iter()
+            .flat_map(|tint| {
+                [false, true].map(move |selected| {
+                    let colors = t::tag_colors(tint, selected);
+                    json!({"tint":tint,"selected":selected,"background":colors.background,
+                        "foreground":colors.foreground,"icon":colors.icon})
+                })
+            })
+            .collect::<Vec<_>>();
+            json!({"formats":formats,"tags":tags,"selection_text":t::selection_text(),
+                "media_background":t::media_badge_background(),"media_text":t::text_on_media_badge(),
+                "media_star":t::star_on_media_badge()})
+        };
         let theme_state = json!({
-            "id":"workbench-navy",
+            "id":photag_ui_bridge::theme::theme_name(),
+            "framework":"GPUI Kit ThemeRegistry",
+            "mode":if photag_ui_bridge::theme::color_mode() == photag_ui_bridge::theme::ColorMode::Light { "light" } else { "dark" },
             "accent":photag_ui_bridge::theme::accent(),
+            "content_colors":content_colors,
+            "accent_text":photag_ui_bridge::theme::accent_text(),
+            "button_text":photag_ui_bridge::theme::text_on_accent(),
             "selection":photag_ui_bridge::theme::selection_color(),
-            "base":photag_ui_bridge::theme::SURFACE_BASE,
-            "panel":photag_ui_bridge::theme::SURFACE_PANEL,
-            "card":photag_ui_bridge::theme::SURFACE_CARD,
-            "border":photag_ui_bridge::theme::SEPARATOR,
+            "danger":photag_ui_bridge::theme::danger(),
+            "danger_text":photag_ui_bridge::theme::text_on_danger(),
+            "danger_label":photag_ui_bridge::theme::danger_text(),
+            "warning":photag_ui_bridge::theme::warning(),
+            "warning_text":photag_ui_bridge::theme::text_on_warning(),
+            "warning_label":photag_ui_bridge::theme::warning_text(),
+            "success":photag_ui_bridge::theme::success(),
+            "success_text":photag_ui_bridge::theme::text_on_success(),
+            "success_label":photag_ui_bridge::theme::success_text(),
+            "star_label":photag_ui_bridge::theme::star_text(),
+            "base":photag_ui_bridge::theme::surface_base(),
+            "panel":photag_ui_bridge::theme::surface_panel(),
+            "card":photag_ui_bridge::theme::surface_card(),
+            "elevated":photag_ui_bridge::theme::surface_elevated(),
+            "border":photag_ui_bridge::theme::separator(),
+            "text":photag_ui_bridge::theme::text_primary(),
+            "text_secondary":photag_ui_bridge::theme::text_secondary(),
+            "text_muted":photag_ui_bridge::theme::text_muted(),
             "body_size":photag_ui_bridge::theme::FONT_SIZE_BODY,
         });
         let plugin_settings = self
@@ -229,6 +279,9 @@ impl PhoTagMcpServer {
                     "revision": column_state.map(|s| s.revision),
                     "active_workspace_id": active.as_ref().map(|w| w.id.clone()),
                     "active_workspace": active,
+                    "current_snapshot": self.surfaces
+                        .value(photag_plugin_workspaces::CURRENT_SNAPSHOT_SURFACE_KEY)
+                        .and_then(|raw| serde_json::from_str::<photag_plugin_workspaces::ProgramWorkspace>(&raw).ok()),
                     "default_workspace_id": document.as_ref().map(|d| d.default_workspace_id.clone()),
                     "workspaces": document.map(|d| d.workspaces),
                     "manager_open": self.surfaces.is_open("workspace-manager"),

@@ -7,10 +7,6 @@ impl SettingsView {
         let language = div()
             .w_full()
             .children(self.language_views.iter().map(|(_, _, view)| view.clone()));
-        let colors = theme::ACCENT_PRESETS
-            .iter()
-            .map(|p| Choice::new(p.name, p.name).swatch(p.color))
-            .collect();
         let weak = cx.entity().downgrade();
         SettingsPage::new(
             "",
@@ -25,25 +21,44 @@ impl SettingsView {
                     )],
                 ),
                 SettingsSection::new(
-                    "Accent color",
+                    "主题来源",
                     vec![
                         SettingRow::new(
-                            "settings-accent",
-                            "Application accent",
-                            SettingControl::Swatches {
-                                value: s.accent_name.clone(),
-                                options: colors,
+                            "settings-native-theme",
+                            "GPUI Kit 主题",
+                            SettingControl::Select {
+                                value: if s.theme_file.is_some() {
+                                    "material"
+                                } else {
+                                    "default"
+                                }
+                                .into(),
+                                options: if s.theme_file.is_some() {
+                                    vec![
+                                        Choice::new("default", "框架默认主题"),
+                                        Choice::new("material", "Material 生成主题"),
+                                    ]
+                                } else {
+                                    vec![Choice::new("default", "框架默认主题")]
+                                },
                             },
-                        ),
-                        SettingRow::new(
-                            "settings-accent-system",
-                            "",
-                            SettingControl::InlineToggle {
-                                value: s.accent_name == theme::SYSTEM_ACCENT_NAME,
-                                label: "Follow the Windows accent color".into(),
-                            },
-                        ),
+                        )
+                        .description("在插件设置 → Material 主题生成中生成并应用主题。"),
                     ],
+                ),
+                SettingsSection::new(
+                    "Color mode",
+                    vec![SettingRow::new(
+                        "settings-color-mode",
+                        "Workbench theme",
+                        SettingControl::Segments {
+                            value: s.color_mode.clone(),
+                            options: vec![
+                                Choice::new("dark", "Dark"),
+                                Choice::new("light", "Light"),
+                            ],
+                        },
+                    )],
                 ),
                 SettingsSection::new(
                     "Interface layers",
@@ -68,16 +83,15 @@ impl SettingsView {
             let _ = weak.update(cx, |view, cx| {
                 view.edit(
                     |settings| match (id, &value) {
-                        ("settings-accent", SettingValue::Choice(value)) => {
-                            settings.accent_name = value.clone()
+                        ("settings-native-theme", SettingValue::Choice(value))
+                            if value == "default" =>
+                        {
+                            settings.theme_file = None;
                         }
-                        ("settings-accent-system", SettingValue::Bool(value)) => {
-                            settings.accent_name = if *value {
-                                theme::SYSTEM_ACCENT_NAME
-                            } else {
-                                theme::DEFAULT_ACCENT_NAME
-                            }
-                            .into()
+                        ("settings-color-mode", SettingValue::Choice(value))
+                            if value == "dark" || value == "light" =>
+                        {
+                            settings.color_mode = value.clone()
                         }
                         ("settings-region", SettingValue::Choice(value)) => {
                             settings.region_separation = value.clone()

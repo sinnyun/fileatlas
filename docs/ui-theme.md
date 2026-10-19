@@ -1,41 +1,67 @@
 # 工作台统一主题与后续开发规范
 
-2026-10-18，依据用户明确要求，将剪贴板 v2 的深蓝样式提升为全局主题。
+2026-10-19，依据用户明确要求，GPUI Kit 原生主题成为唯一颜色系统，Material 插件生成主题 JSON。
+此前剪贴板 v2 的手写深蓝配色已退役。
 本规范覆盖历史 v5 的颜色、通用控件样式；每页的功能结构、控件顺序、滚动边界仍按
 [活动参考](reference-ui/README.md) 和用户最新决定。概念与编码前清单见
 [统一主题](reference-ui/concepts/unified-workbench-theme-2026-10-18.md)。
 
-## 唯一所有者
+## 唯一颜色来源：GPUI Kit 原生主题（2026-10-19 更新）
 
-`photag-ui-bridge::theme` 是颜色、字体、尺寸、状态及 GPUI Kit Theme 的唯一来源。
-`theme/components.rs` 将 token 同步到 Kit 的按钮、输入、菜单、列表、开关、进度、
-滑块、焦点环和弹层；插件不得自行调用 `Theme::change/update` 或创建一套私有 palette。
-`components` 负责通用容器和控件形态，`panels` 负责浮窗外壳、标题栏、拖动和调整大小。
-它们都复用既有桥接设施，不新增插件管理器；业务动作、状态和 Cordis 清理由插件所有者负责。
+用户明确要求所有插件、自绘控件与框架控件使用同一主题系统。GPUI Kit 的
+`ThemeRegistry` / `ThemeConfig` / `Theme` 是唯一配色解析与分发者，取代以前的
+RGB 常量表、`mode_color` 和 `theme/components.rs` 逐项覆盖方式。
 
-| 语义 | 令牌/默认值 | 用途 |
-|---|---|---|
-| 根背景 | `SURFACE_BASE` / #0e1823 | 主窗、浮窗底 |
-| 面板 | `SURFACE_PANEL` / #152230 | 分区、设置、菜单 |
-| 卡片 | `SURFACE_CARD` / #1b2a3b | 内容块、次按钮 |
-| 悬停 | `SURFACE_ELEVATED` / #24374b | 非选中卡、按钮 hover |
-| 输入凹槽 | `SURFACE_FAINT` / #101b27 | 搜索、正文输入、占位 |
-| 分隔与边框 | `SEPARATOR` (RGB)、`SEPARATOR_LIGHT` (RGBA) / #304357 | 禁止混用 RGB/RGBA |
-| 正文 / 次要 / 弱化 | `TEXT_PRIMARY` / `TEXT_SECONDARY` / `TEXT_MUTED` | 白蓝正文与灰蓝辅助信息 |
-| 强调 / 选中 | `accent()` / `selection_color()` | 默认 #2787ff / #163b63，随设置同步 |
-| 状态 | `DANGER` / `WARNING` / `SUCCESS` / `STAR` | 错误、警告、成功、收藏/评分 |
-| 语义装饰 | `BRANCH_ALTERNATE` / `CATEGORY` / `DATA` | 分支、标签类别、数据信息 |
+- `photag-ui-bridge::theme::runtime` 只负责请求、注册原生 ThemeSet JSON、调用原生
+  `Theme::update/apply_config` 和订阅框架主题变化。所有主题修改必须从此公共入口经过。
+- 新自绘视图优先通过 `ActiveTheme` / `cx.theme()` 读取框架角色；按钮、输入、菜单
+  优先使用 Kit 控件及其原生状态。不得按当前模式写两套颜色，也不得在插件写主题字段。
+- 现有无 App 上下文的辅助构造器以及 MCP 工作线程，通过 `theme::roles` 读取框架
+  ThemeColor 的只读投影。投影只由框架 Theme 更新通知生成，不含独立 palette、颜色
+  配置或模式求色逻辑；不能把它扩展成另一个主题管理器。
+- `theme.rs` 保留产品几何、字体尺寸和角色别名；`components` 管通用形态、`panels`
+  管浮窗外壳。几何不随配色迁移重排，Settings/Session 路径保留。
+- 普通颜色角色直接来自当前 Theme：背景/foreground、popover/foreground、primary/
+  primary_foreground、accent/accent_foreground、状态色及其 foreground。
+  自绘实心控件必须消费实际背景对应的 foreground，不能用另一个按钮的前景色。
+- 图片覆盖信息使用当前主题 popover 的不透明底与配对前景。用户标签色、照片像素和
+  OS 图标是内容数据；标签使用主题表面/文字，用户色图标仅在实际表面上调整可读性。
+  推荐标签色也来自当前主题，不在视图写固定色表。
 
-新安装/缺省设置使用“工作台蓝”。已有 JSON 中显式保存的 System 和旧预设仍兼容，
-外观页可以选择工作台蓝或其他强调色；所有插件必须随同变化。不得为了统一样式重写
-用户配置文件。用户标签颜色、照片像素、操作系统程序图标是业务内容，保留原色。
-新增语义颜色必须先放入 theme 并写明用途，不能为单页随意添加近似颜色。
+## Material 只生成原生主题配置
+
+`photag-plugin-material-theme` 通过 Cordis 注册独立设置页与 MCP 工具；固定
+`material-colors = 0.4.2`。输入种子色、风格、对比度，输出同时含亮/暗模式的原生
+GPUI ThemeSet JSON。用户通过“生成并应用”或“应用已生成主题”激活。
+生成器不得更新 GPUI Theme，不得在视图生成 palette，也不得把算法复制到各插件。
+
+种子颜色使用 GPUI Kit 原生 `ColorSelect`，点击色块从其开源多色阶色板/滑杆选择，
+不要求手输色值，不在插件维护固定色表。选色仅更新草稿，“生成并应用”才持久化。
+色板本身的选中/焦点/弹层均交给 Kit；所选色是输入数据，不是控件私有主题。
+
+默认使用 GPUI 内嵌 Default Light/Dark；Material 默认参数是低色度 Neutral。
+生成文件正常路径为 `%LOCALAPPDATA%/PhoTag/themes/material.json`，参数为同目录
+版本化 `material-settings.json`；隔离 profile 使用其自身 themes 目录。
+Settings 新增可选 `theme_file` 保存所选 JSON 路径，已有 `color_mode` 保留。
+旧 `accent_name` 作为兼容元数据读取保留，不再驱动另一套颜色表。损坏/缺失主题回退
+框架默认并报告日志，原文件保留；再次生成前保存 `.bak`。详见插件 PORTS。
+
+## 防止回到手写配色
+
+`check-ui-theme.cjs` 同时检查插件、Shell、自绘辅助模块和 UI Bridge theme 目录，
+不再豁免整个 theme 目录。禁止十六进制 UI 色表、数值 rgb/hsl/hsla 绘制、旧大写
+palette 常量、`mode_color`，并禁止桥接 runtime 以外修改 Theme。
+零透明绘制、用户输入色及源媒体像素不是独立 palette。
+所有新增主题都应提供 ThemeConfig/ThemeSet JSON 或由 Material 生成；角色扩展优先
+复用框架 token。颜色生成算法、亮暗取色和控件状态计算不得重写在产品插件中。
 
 ## 通用组件的使用顺序
 
 1. 常规按钮、菜单、Checkbox 使用已经应用主题的 GPUI Kit 控件，
    使用 `.primary()`、`.outline()`、`.danger()` 和 `.disabled()` 表达语义；不要在插件
    用 `.bg()` 固定按钮色，这会绕过 hover、pressed、disabled 和强调色切换。
+   Button 的选中/悬停由原生 primary/selected/variant 管理，不要额外注册 `.hover()`；
+   这个版本的 Kit 会自行注册 hover，重复设置会触发 GPUI 断言。自绘实心控件若确实需要不同底色，文字/图标前景必须与底色配对，优先使用对应原生 foreground；用户自定义内容色才使用 `contrasting_text(background)`（只从原生前景角色选择）；不能默认使用全局正文色。
 2. 单行编辑用 `components::text_input(&state)`，多行用 `components::textarea(&state)`；
    搜索用 `components::search_input(&state)`，提供统一的搜索图标、凹槽、原生焦点环、
    清除操作和字号。这些构造器返回原生 Kit 控件，继续支持原有 builder 与 Entity。
@@ -110,7 +136,8 @@ CI 已接入主题守卫。守卫扫描所有插件及嵌套 view、Shell、公�
 
 运行验收始终使用同进程 PhoTag MCP，隔离 dev-test profile。至少查看主窗、目标插件、
 菜单/下拉和与其共享组件的另一个插件：常态、hover、焦点、选中、禁用、空态/错误、
-长内容、小窗。强调色切换必须检查至少两个插件和菜单，并恢复测试设置。
+长内容、小窗。强调色切换必须检查至少两个插件和菜单，并恢复测试设置；颜色模式切换需检查
+亮/暗两态、至少两个插件与设置托槽，并恢复隔离测试 profile 的设置。
 检查 quiet-state 和真实变化，禁止引入额外 IO/轮询通知。截图片必须打开对照，
 将命令、环境、功能结果、视觉差异及未验状态记入 `docs/redesign-validation.md`。
 编译成功不代表视觉或全部 Windows 行为通过。
@@ -122,3 +149,8 @@ CI 已接入主题守卫。守卫扫描所有插件及嵌套 view、Shell、公�
 设计设置外框、分区、字号和布局。复杂业务交互可保留局部 Entity/Custom，仍复用公共
 标题、分区、行和原生控件。详见[公共契约](settings-page-contract.md)及
 [十页概念](reference-ui/concepts/settings-complete-2026-10-18.md)。
+
+## 历史配色记录
+
+旧手写语义色与缩略图对比修正记录仍保留作为历史证据。其固定 RGB、手工混色和
+组件覆盖实现已由本页原生主题契约取代；布局与可读性要求继续有效。

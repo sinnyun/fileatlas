@@ -11,6 +11,8 @@ enum Region {
     Search,
     Size,
     Filters,
+    ViewModes,
+    ViewOptions,
     Status,
     Tools,
     Modal,
@@ -45,6 +47,8 @@ impl Render for GalleryRegion {
                     .child(directory_browser::refresh_button(cx))
                     .into_any_element(),
                 Region::Filters => view.render_filters(cx),
+                Region::ViewModes => view_controls::modes(view, cx).into_any_element(),
+                Region::ViewOptions => view_controls::options(view, cx).into_any_element(),
                 Region::Status => view.render_status(cx),
                 Region::Tools => view.render_tools(cx),
                 Region::Modal => view.render_modal(window, cx),
@@ -87,6 +91,8 @@ pub(super) fn column_contributions(
         (Region::Search, "search", "search"),
         (Region::Size, "size", "size"),
         (Region::Filters, "filters", "filters"),
+        (Region::ViewModes, "view-modes", "view-modes"),
+        (Region::ViewOptions, "view-options", "view-options"),
         (Region::Status, "status", "status"),
         (Region::Tools, "tools", "tools"),
         (Region::Modal, "modal", "modal"),
@@ -206,11 +212,11 @@ impl GalleryView {
             .text_size(px(theme::FONT_SIZE_SMALL))
             .child(
                 div()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(count_label),
             )
-            .child(div().text_color(rgb(theme::TEXT_MUTED)).child("·"))
-            .child(div().text_color(rgb(theme::TEXT_SECONDARY)).child(
+            .child(div().text_color(rgb(theme::text_muted())).child("·"))
+            .child(div().text_color(rgb(theme::text_secondary())).child(
                 photag_ui_bridge::i18n::tr_args(
                     "{count} selected",
                     &[(
@@ -230,7 +236,7 @@ impl GalleryView {
                     .min_w_0()
                     .overflow_hidden()
                     .text_ellipsis()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }
@@ -260,7 +266,7 @@ impl GalleryView {
                 .child(gpui_kit::component::spinner::Spinner::new())
                 .child(
                     div()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(&progress.phase)),
                 )
                 .child(
@@ -347,11 +353,11 @@ impl GalleryView {
             .child(
                 div()
                     .border_t_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .border_color(rgba(theme::separator_light()))
                     .mt(px(6.))
                     .pt(px(6.))
                     .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(photag_ui_bridge::i18n::tr("View")),
             )
             .children(
@@ -395,7 +401,7 @@ impl GalleryView {
                 .min_h_0()
                 .overflow_hidden()
                 .workbench_section()
-                .bg(rgb(theme::SURFACE_MODAL))
+                .bg(rgb(theme::surface_modal()))
                 .child(
                     div()
                         .h_flex()
@@ -405,12 +411,12 @@ impl GalleryView {
                         .flex_shrink_0()
                         .px(px(14.))
                         .border_b_1()
-                        .border_color(rgba(theme::SEPARATOR_LIGHT))
+                        .border_color(rgba(theme::separator_light()))
                         .child(
                             div()
                                 .text_size(px(theme::FONT_SIZE_BODY))
                                 .font_semibold()
-                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .text_color(rgb(theme::text_primary()))
                                 .child(photag_ui_bridge::i18n::tr(if self.show_records {
                                     "Relink missing files"
                                 } else if showing_statistics {
@@ -450,7 +456,7 @@ impl GalleryView {
                             .h(px(44.))
                             .px(px(14.))
                             .border_t_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .border_color(rgba(theme::separator_light()))
                             .child(
                                 Button::new("gallery-statistics-close")
                                     .ghost()
@@ -474,7 +480,7 @@ impl GalleryView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(rgba(theme::SHADOW_OVERLAY))
+                    .bg(rgba(theme::shadow_overlay()))
                     .child(card),
             );
         }
@@ -488,7 +494,7 @@ impl GalleryView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .bg(rgba(theme::SCRIM))
+                    .bg(rgba(theme::scrim()))
                     .child(
                         div()
                             .w(px(picker_width))
@@ -520,7 +526,7 @@ impl GalleryView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .bg(rgba(theme::SCRIM))
+                            .bg(rgba(theme::scrim()))
                             .child(card_menu::render_requested(&media, cx)),
                     );
                 }
@@ -536,7 +542,7 @@ impl GalleryView {
                     .bottom(px(48.))
                     .p_2()
                     .rounded_md()
-                    .bg(rgb(theme::SURFACE_PANEL))
+                    .bg(rgb(theme::surface_panel()))
                     .child(status.clone()),
             );
         }

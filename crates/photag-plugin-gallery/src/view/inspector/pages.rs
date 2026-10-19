@@ -30,17 +30,17 @@ impl GalleryView {
                     .gap(px(2.))
                     .p(px(8.))
                     .rounded(px(theme::ROUND_SM))
-                    .bg(rgb(theme::SURFACE_PANEL))
+                    .bg(rgb(theme::surface_panel()))
                     .child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_PRIMARY))
+                            .text_color(rgb(theme::text_primary()))
                             .child(view.contribution.id),
                     )
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(format!("{} · {}", view.owner, view.contribution.slot)),
                     )
             }))

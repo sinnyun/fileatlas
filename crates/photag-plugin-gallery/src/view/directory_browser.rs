@@ -122,7 +122,7 @@ impl GalleryView {
                     if index > 0 {
                         trail = trail.child(
                             theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::TEXT_MUTED)),
+                                .text_color(rgb(theme::text_muted())),
                         );
                     }
                     let destination = target.clone();
@@ -147,7 +147,7 @@ impl GalleryView {
                     if has_ancestors {
                         current_view = current_view.child(
                             theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::TEXT_MUTED)),
+                                .text_color(rgb(theme::text_muted())),
                         );
                     }
                     current_crumb = Some(
@@ -461,7 +461,7 @@ pub(super) fn tile(
         .items_center()
         .justify_center()
         .rounded(px(theme::THUMB_ROUND))
-        .bg(rgb(theme::SURFACE_FAINT))
+        .bg(rgb(theme::surface_faint()))
         .border_2()
         .border_color(if selected {
             rgb(theme::accent())
@@ -475,7 +475,7 @@ pub(super) fn tile(
                 } else {
                     (thumb * 0.46).clamp(40., 96.)
                 }))
-                .text_color(rgb(theme::WARNING)),
+                .text_color(rgb(theme::warning_text())),
         );
     let caption = div()
         .min_w_0()
@@ -496,7 +496,7 @@ pub(super) fn tile(
             row.h_flex()
                 .items_center()
                 .rounded(px(4.))
-                .bg(rgb(theme::SURFACE_CARD))
+                .bg(rgb(theme::surface_card()))
         })
         .when(!list, |row| row.v_flex())
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -523,7 +523,7 @@ pub(super) fn tile(
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_color(rgb(theme::text_muted()))
                         .child(photag_ui_bridge::i18n::tr("Folder")),
                 )
         } else {
@@ -534,7 +534,7 @@ pub(super) fn tile(
                 .text_center()
                 .child(caption)
         })
-        .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+        .hover(|style| style.bg(rgba(theme::fill_hover())))
         .cursor_pointer()
         .into_any_element()
 }
@@ -562,10 +562,10 @@ pub(super) fn empty(
         .child(
             theme::icon(IconName::FolderOpen)
                 .size(px(48.))
-                .text_color(rgb(theme::WARNING)),
+                .text_color(rgb(theme::warning_text())),
         )
         .child(
-            div().text_color(rgb(theme::TEXT_SECONDARY)).child(
+            div().text_color(rgb(theme::text_secondary())).child(
                 message
                     .map(|text| photag_ui_bridge::i18n::tr(text).to_string())
                     .unwrap_or_else(|| {

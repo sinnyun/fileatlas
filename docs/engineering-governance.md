@@ -1,5 +1,16 @@
 # 工程治理守卫（2026-10-16 起）
 
+## 验证产物的本地目录（2026-10-19）
+
+所有运行期测试数据与中间产物统一置于 Git 忽略的 `.local/validation/`：
+同进程 MCP profile、fixture、SQLite、Settings、Session、缩略图和配置写入
+`.local/validation/profiles/<运行名>/`；截图、原始 JSON/压缩报告和日志写入
+`.local/validation/artifacts/<验证记录名>/`。MCP runner 默认写入 profiles 子目录。
+可复用的场景脚本和简洁 Markdown 验证说明仍提交；运行结果本体不进入版本控制。
+验证说明的附件链接可以指向同路径下被忽略的本地 artifact，未在本机跑过测试的克隆
+只会看不到这些附件。新测试不得回写 `docs/validation-ui/`、主机 `%LOCALAPPDATA%`
+或应用程序的用户数据目录。详见 [验证数据目录规则](validation-data-policy.md)。
+
 借鉴 PdfCraft（storytold/pdfcraft，浅克隆于 `%TEMP%/pdfcraft` 供查阅）的分层守卫、
 命令/清单一致性与 lint 棘轮做法。本文档是本批次的唯一事实源：令牌、基线数字、
 阶段复选框与进度台账都写在这里；脚本文件只承载执行逻辑，不另写说明。

@@ -50,7 +50,7 @@ pub(super) fn render_media_card(
         .inset_0()
         .overflow_hidden()
         .rounded(px(theme::THUMB_ROUND))
-        .bg(rgb(theme::SURFACE_FAINT));
+        .bg(rgb(theme::surface_faint()));
     if let Some(image) = micro_image.clone() {
         frame = frame.child(img(image).absolute().inset_0().object_fit(ObjectFit::Cover));
     }
@@ -80,7 +80,8 @@ pub(super) fn render_media_card(
                 .bottom_1()
                 .left_1()
                 .px_2()
-                .bg(rgb(theme::DANGER))
+                .bg(rgb(theme::danger()))
+                .text_color(rgb(theme::text_on_danger()))
                 .child(photag_ui_bridge::i18n::tr("File missing")),
         );
     }
@@ -93,13 +94,15 @@ pub(super) fn render_media_card(
                 .top(px(6.))
                 .h(px(18.))
                 .rounded_full()
-                .bg(rgba(theme::MEDIA_SCRIM))
+                .bg(rgb(theme::media_badge_background()))
                 .px_2()
                 .flex()
                 .items_center()
                 .text_xs()
-                .text_color(rgb(theme::STAR))
-                .child(theme::small_icon(IconName::Star).text_color(rgb(theme::STAR)))
+                .text_color(rgb(theme::star_on_media_badge()))
+                .child(
+                    theme::small_icon(IconName::Star).text_color(rgb(theme::star_on_media_badge())),
+                )
                 .child(media.rating.to_string()),
         );
     }
@@ -111,11 +114,11 @@ pub(super) fn render_media_card(
                 .bottom(px(6.))
                 .h(px(18.))
                 .rounded_full()
-                .bg(rgba(theme::MEDIA_SCRIM))
+                .bg(rgb(theme::media_badge_background()))
                 .px_2()
                 .flex()
                 .items_center()
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_on_media_badge()))
                 .child(theme::small_icon(IconName::Play)),
         );
     }
@@ -164,9 +167,9 @@ pub(super) fn render_media_card(
                         .h(px(18.))
                         .px(px(4.))
                         .rounded_full()
-                        .bg(rgba(theme::MEDIA_SCRIM_STRONG))
+                        .bg(rgb(theme::media_badge_background()))
                         .text_size(px(theme::FONT_SIZE_TINY))
-                        .text_color(rgb(theme::TEXT_PRIMARY))
+                        .text_color(rgb(theme::text_on_media_badge()))
                         .child(format!("+{overflow}")),
                 );
             }
@@ -174,12 +177,9 @@ pub(super) fn render_media_card(
         }
     }
     if hover > 0.01 {
-        frame = frame.child(
-            div()
-                .absolute()
-                .inset_0()
-                .bg(rgba(theme::FILL_TRANSPARENT_WHITE | (18. * hover) as u32)),
-        );
+        frame = frame.child(div().absolute().inset_0().bg(rgba(
+            theme::fill_transparent_overlay() | (18. * hover) as u32,
+        )));
     }
     frame = frame.child(super::file_format::badge(&media.filename, thumb_size));
     let mut image_area = div()
@@ -231,7 +231,7 @@ pub(super) fn render_media_card(
             div()
                 .w_full()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .overflow_hidden()
                 .text_ellipsis()
                 .text_center()
@@ -242,7 +242,7 @@ pub(super) fn render_media_card(
             div()
                 .w_full()
                 .text_size(px(theme::FONT_SIZE_TINY))
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .overflow_hidden()
                 .text_ellipsis()
                 .text_center()
@@ -291,7 +291,7 @@ pub(super) fn render_media_card(
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .text_ellipsis()
                     .overflow_hidden()
                     .child(metadata.join(" · ")),
@@ -312,7 +312,7 @@ pub(super) fn render_media_card(
         .when(list_width.is_some(), |row| {
             row.h_flex()
                 .rounded(px(4.))
-                .bg(rgba(theme::panel_rgba(theme::SURFACE_CARD)))
+                .bg(rgba(theme::panel_rgba(theme::surface_card())))
         })
         .when(list_width.is_none(), |row| row.v_flex())
         .id(format!("gallery-media-{media_id}"))
@@ -348,7 +348,16 @@ pub(super) fn render_media_card(
         }))
         .on_drag(payload, |payload, _, window, cx| {
             if payload.allowed.load(Ordering::Acquire) {
-                if let Err(error) = payload.service.start_file_drag(window, &payload.paths) {
+                if let Err(error) = payload.service.start_file_drag(
+                    window,
+                    &payload.paths,
+                    photag_plugin_drag_drop::DragImageStyle {
+                        background: theme::channels(theme::surface_card()),
+                        foreground: theme::channels(theme::text_primary()),
+                        border: theme::channels(theme::separator()),
+                        accent: theme::channels(theme::accent()),
+                    },
+                ) {
                     tracing::warn!(%error, "could not start native file drag");
                 }
             }
@@ -448,7 +457,7 @@ pub(super) fn render_media_details(
         .v_flex()
         .gap_1()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_PANEL))
+        .bg(rgb(theme::surface_panel()))
         .p_3()
         .child(
             div()
@@ -519,7 +528,7 @@ pub(super) fn render_media_details(
         details = details.child(
             div()
                 .text_sm()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr("No tags assigned.")),
         );
     }
@@ -549,7 +558,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(photag_ui_bridge::i18n::tr("No EXIF metadata.")),
                     );
                 }
@@ -562,7 +571,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(message.clone()),
                     );
                 }
@@ -570,7 +579,7 @@ pub(super) fn render_media_details(
                     details = details.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(photag_ui_bridge::i18n::tr(
                                 "Select one image to read EXIF metadata.",
                             )),
@@ -653,7 +662,7 @@ fn detail_line(key: &str, value: &str) -> Div {
         .text_sm()
         .child(
             div()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(format!("{}:", photag_ui_bridge::i18n::tr(key))),
         )
         .child(div().flex_1().child(value.to_string()))

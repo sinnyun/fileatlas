@@ -5,8 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const profile = path.join(root, 'target', 'mcp-ui-validation');
-const output = path.join(root, 'target', 'mcp-ui-screenshots');
+const profile = path.join(root, '.local', 'validation', 'profiles', 'mcp-ui-validation');
+const output = path.join(root, '.local', 'validation', 'artifacts', 'ui-mcp-screenshots');
 fs.mkdirSync(profile, { recursive: true });
 fs.mkdirSync(output, { recursive: true });
 // Only the isolated profile is configured; regular PhoTag data is untouched.

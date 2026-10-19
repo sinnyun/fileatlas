@@ -170,8 +170,18 @@ fn path_row(
                 .h(px(24.))
                 .rounded(px(4.))
                 .px(px(4.))
-                .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
-                .when(selected, |style| style.bg(rgb(theme::selection_color())))
+                .hover(move |style| {
+                    style.bg(if selected {
+                        rgb(theme::selection_color())
+                    } else {
+                        rgba(theme::fill_hover())
+                    })
+                })
+                .when(selected, |style| {
+                    style
+                        .bg(rgb(theme::selection_color()))
+                        .text_color(rgb(theme::selection_text()))
+                })
                 .on_click(move |_, _, cx| {
                     let _ = activate_view.update(cx, |this, cx| {
                         if browse {
@@ -184,9 +194,9 @@ fn path_row(
                 .child(
                     theme::small_icon(if expanded { IconName::FolderOpen } else { icon })
                         .text_color(rgb(if selected {
-                            theme::accent_hover()
+                            theme::selection_text()
                         } else {
-                            theme::TEXT_SECONDARY
+                            theme::text_secondary()
                         })),
                 )
                 .child(
@@ -244,7 +254,7 @@ fn children_column(
             .ml(px(22.))
             .pl(px(8.))
             .border_l_1()
-            .border_color(rgba(theme::BORDER_STRONG))
+            .border_color(rgba(theme::border_strong()))
             .children(rows),
     )
 }
@@ -310,7 +320,7 @@ impl SidebarView {
                     .text_color(rgb(if network_shown {
                         theme::accent()
                     } else {
-                        theme::TEXT_MUTED
+                        theme::text_muted()
                     }))
                     .on_click(move |_, _, cx| {
                         let _ = toggle_view.update(cx, |this, cx| {
@@ -327,7 +337,7 @@ impl SidebarView {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::DANGER))
+                            .text_color(rgb(theme::danger_text()))
                             .child(format!(
                                 "{}: {error}",
                                 photag_ui_bridge::i18n::tr("Sidebar changes not saved")
@@ -359,7 +369,7 @@ impl SidebarView {
                     section = section.child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child(photag_ui_bridge::i18n::tr("No drives found")),
                     );
                 }
@@ -402,8 +412,18 @@ impl SidebarView {
                                     .rounded(px(4.))
                                     .px(px(4.))
                                     .py(px(2.))
-                                    .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
-                                    .when(selected, |style| style.bg(rgb(theme::selection_color())))
+                                    .hover(move |style| {
+                                        style.bg(if selected {
+                                            rgb(theme::selection_color())
+                                        } else {
+                                            rgba(theme::fill_hover())
+                                        })
+                                    })
+                                    .when(selected, |style| {
+                                        style
+                                            .bg(rgb(theme::selection_color()))
+                                            .text_color(rgb(theme::selection_text()))
+                                    })
                                     .on_click(move |_, _, cx| {
                                         let _ = activate_view.update(cx, |this, cx| {
                                             if browse {
@@ -424,9 +444,9 @@ impl SidebarView {
                                             .child(
                                                 theme::small_icon(drive_icon(&drive)).text_color(
                                                     rgb(if selected {
-                                                        theme::accent_hover()
+                                                        theme::selection_text()
                                                     } else {
-                                                        theme::TEXT_SECONDARY
+                                                        theme::text_secondary()
                                                     }),
                                                 ),
                                             )
@@ -441,7 +461,7 @@ impl SidebarView {
                                             .child(
                                                 div()
                                                     .text_size(px(10.5))
-                                                    .text_color(rgb(theme::TEXT_MUTED))
+                                                    .text_color(rgb(theme::text_muted()))
                                                     .child(if drive.usage_error.is_some() {
                                                         photag_ui_bridge::i18n::tr("Unavailable")
                                                     } else {
@@ -501,7 +521,7 @@ impl SidebarView {
                 section = section.child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::DANGER))
+                        .text_color(rgb(theme::danger_text()))
                         .child(error.clone()),
                 );
             }
@@ -509,7 +529,7 @@ impl SidebarView {
                 section = section.child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_color(rgb(theme::text_muted()))
                         .child(photag_ui_bridge::i18n::tr("Loading drives…")),
                 );
             }

@@ -180,7 +180,11 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             photag_ui_bridge::i18n::tr("Missing files")
         )));
     if let Some(Err(error)) = view.records_read.value() {
-        content = content.child(div().text_color(rgb(theme::DANGER)).child(error.clone()));
+        content = content.child(
+            div()
+                .text_color(rgb(theme::danger_text()))
+                .child(error.clone()),
+        );
     }
     if view.records_read.is_pending() {
         content = content.child(gpui_kit::component::spinner::Spinner::new());
@@ -217,12 +221,12 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             .gap_2()
             .p_3()
             .rounded_md()
-            .bg(rgb(theme::SURFACE_FAINT))
+            .bg(rgb(theme::surface_faint()))
             .child(div().font_semibold().child(item.filename))
             .child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(format!(
                         "{} · {}",
                         card::format_bytes(item.file_size),
@@ -234,7 +238,7 @@ pub(super) fn render(view: &GalleryView, cx: &mut Context<GalleryView>) -> AnyEl
             .child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(item.full_path),
             )
             .child(

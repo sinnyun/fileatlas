@@ -221,14 +221,14 @@ impl Render for SidebarView {
                             .mt(px(8.))
                             .pt(px(8.))
                             .border_t_1()
-                            .border_color(rgb(theme::SEPARATOR))
+                            .border_color(rgb(theme::separator()))
                             .child(
                                 div()
                                     .h_flex()
                                     .items_center()
                                     .gap(px(5.))
                                     .text_xs()
-                                    .text_color(rgb(theme::TEXT_MUTED))
+                                    .text_color(rgb(theme::text_muted()))
                                     .child(div().child(theme::small_icon(IconName::Tag)))
                                     .child(photag_ui_bridge::i18n::tr("Tags").to_uppercase()),
                             )
@@ -397,7 +397,7 @@ impl Render for SidebarView {
             Err(error) => panel.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(format!("Could not load library: {error}")),
             ),
         };

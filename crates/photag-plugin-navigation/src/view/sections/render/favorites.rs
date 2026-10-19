@@ -266,7 +266,7 @@ impl SidebarView {
             region = region.child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }

@@ -14,6 +14,7 @@ impl SettingsView {
                 "photag.launcher" => gpui_kit::assets::IconName::LayoutGrid,
                 "photag.clipboard" => gpui_kit::assets::IconName::Clipboard,
                 "photag.screenshot" => gpui_kit::assets::IconName::Aperture,
+                "photag.projects" => gpui_kit::assets::IconName::Folder,
                 _ => gpui_kit::assets::IconName::Puzzle,
             };
             let enabled = plugin.enabled;
@@ -28,7 +29,7 @@ impl SettingsView {
                     .min_h(px(100.))
                     .justify_center()
                     .border_b_1()
-                    .border_color(rgb(theme::SEPARATOR))
+                    .border_color(rgb(theme::separator()))
                     .child(
                         div()
                             .h_flex()
@@ -39,7 +40,7 @@ impl SettingsView {
                                 div()
                                     .size(px(30.))
                                     .rounded(px(theme::ROUND_MD))
-                                    .bg(rgb(theme::SURFACE_PANEL))
+                                    .bg(rgb(theme::surface_panel()))
                                     .h_flex()
                                     .items_center()
                                     .justify_center()
@@ -60,7 +61,7 @@ impl SettingsView {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                            .text_color(rgb(theme::text_secondary()))
                                             .child(photag_ui_bridge::i18n::tr(&description)),
                                     ),
                             )
@@ -68,9 +69,9 @@ impl SettingsView {
                                 div()
                                     .text_size(px(theme::FONT_SIZE_SMALL))
                                     .text_color(rgb(if enabled {
-                                        theme::SUCCESS
+                                        theme::success_text()
                                     } else {
-                                        theme::TEXT_MUTED
+                                        theme::text_muted()
                                     }))
                                     .child(if busy {
                                         "处理中"
@@ -139,7 +140,7 @@ impl SettingsView {
         body.child(
             div()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child("停用会停止相关任务并移除命令和面板，数据文件会保留。"),
         )
     }
@@ -287,6 +288,11 @@ impl SettingsView {
                 "screenshot-tool/open-manager",
                 "打开插件面板",
                 "截图保存和软件路径在管理器中调整。",
+            ),
+            "photag.projects" => (
+                "projects/open",
+                "打开项目文件夹",
+                "管理项目目录并展开其全部子文件夹。",
             ),
             _ => ("", "Open plugin panel", ""),
         };

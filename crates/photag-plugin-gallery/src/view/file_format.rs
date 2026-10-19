@@ -15,16 +15,7 @@ pub(super) fn extension(filename: &str) -> String {
 
 pub(super) fn badge(filename: &str, width: f32) -> Div {
     let extension = extension(filename);
-    // A stable per-format hue, saturation and lightness also covers future formats.
-    let hash = extension.bytes().fold(2166136261u32, |hash, byte| {
-        (hash ^ u32::from(byte)).wrapping_mul(16777619)
-    });
-    let color = hsla(
-        (hash % 360) as f32 / 360.,
-        0.42 + ((hash >> 9) % 20) as f32 / 100.,
-        0.26 + ((hash >> 17) % 8) as f32 / 100.,
-        1.,
-    );
+    let (background, foreground) = theme::file_format_colors(&extension);
     div()
         .absolute()
         .top(px(5.))
@@ -33,9 +24,9 @@ pub(super) fn badge(filename: &str, width: f32) -> Div {
         .px(px(5.))
         .py(px(2.))
         .rounded(px(3.))
-        .bg(color)
-        .text_color(rgb(theme::TEXT_ON_ACCENT))
-        .text_size(px(9.))
+        .bg(rgb(background))
+        .text_color(rgb(foreground))
+        .text_size(px(theme::FONT_SIZE_TINY))
         .font_semibold()
         .overflow_hidden()
         .text_ellipsis()
@@ -71,6 +62,6 @@ pub(super) fn placeholder(filename: &str, media_type: &str, size: f32) -> Div {
         .items_center()
         .justify_center()
         .text_size(px(size))
-        .text_color(rgb(theme::TEXT_MUTED))
+        .text_color(rgb(theme::text_muted()))
         .child(icon)
 }

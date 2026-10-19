@@ -10,11 +10,11 @@
 
 截图：
 
-- [图标网格和信息编辑区](icon-grid-inspector-v3.png)
-- [真实程序右键菜单](right-click-menu-v3.png)
-- [排序选项](sort-options-v3.png)
-- [950×660逻辑像素面板，三列图标](narrow-layout-v3.png)
-- [两个全部置顶和一个分类置顶](pinned-programs.png)
+- [图标网格和信息编辑区](../../../.local/validation/artifacts/2026-10-17-program-launcher/icon-grid-inspector-v3.png)
+- [真实程序右键菜单](../../../.local/validation/artifacts/2026-10-17-program-launcher/right-click-menu-v3.png)
+- [排序选项](../../../.local/validation/artifacts/2026-10-17-program-launcher/sort-options-v3.png)
+- [950×660逻辑像素面板，三列图标](../../../.local/validation/artifacts/2026-10-17-program-launcher/narrow-layout-v3.png)
+- [两个全部置顶和一个分类置顶](../../../.local/validation/artifacts/2026-10-17-program-launcher/pinned-programs.png)
 
 对照结果：上述分区、图标/名称层级、选中和悬停、右键菜单、排序、信息编辑均已显示。现有宿主标题栏沿用原样；分类采用现有字体字形，程序图标由Windows Shell提供。2个真实条目未取得图像，保留分类回退图标。原型中的侧栏隐藏开关当前以可点击的勾选按钮表达。路径和安装信息位于可滚动信息区，安装信息只读。
 
@@ -38,7 +38,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 
 ## 同进程运行结果
 
-[验证摘要](launcher-validation.json)。完整输入步骤/状态保存在本机 `target/mcp-launcher-add-visible/report.json`，不把target数据当作发布产物。
+[验证摘要](../../../.local/validation/artifacts/2026-10-17-program-launcher/launcher-validation.json)。完整输入步骤/状态保存在本机 `target/mcp-launcher-add-visible/report.json`，不把target数据当作发布产物。
 
 - 扫描398个真实程序；额外通过公开服务添加一个隔离的无窗口EXE，所以截图和摘要共399项。396项获得原生图标，3项使用回退（含该样例）。45项有系统安装日期，100项有系统登记大小。
 - 聚焦搜索输入框，通过MCP原生GPUI文本输入筛选到样例；单击选中并更新右侧信息，没有启动标记。

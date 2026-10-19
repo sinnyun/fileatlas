@@ -122,7 +122,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr("0–5")),
                 ),
         )
@@ -157,7 +157,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr("Minimum / maximum age")),
                 ),
         )
@@ -177,7 +177,7 @@ pub(super) fn filter_controls(view: &GalleryView, cx: &mut Context<GalleryView>)
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr("Minimum / maximum size")),
                 ),
         );
@@ -265,7 +265,7 @@ pub(super) fn match_results_list(
         .min_h_0()
         .h(px(height))
         .rounded_md()
-        .bg(rgb(theme::SURFACE_PANEL))
+        .bg(rgb(theme::surface_panel()))
         .p_2()
         .child(
             div()
@@ -280,7 +280,7 @@ pub(super) fn match_results_list(
         list = list.child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr(
                     "No matching media preview is available.",
                 )),
@@ -304,7 +304,7 @@ pub(super) fn match_results_list(
                         .flex()
                         .items_center()
                         .justify_center()
-                        .bg(rgb(theme::SURFACE_FAINT))
+                        .bg(rgb(theme::surface_faint()))
                         .child(theme::large_icon(if item.media_type == "video" {
                             gpui_kit::assets::IconName::Play
                         } else if item.media_type == "audio" {
@@ -324,7 +324,7 @@ pub(super) fn match_results_list(
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(photag_ui_bridge::i18n::tr(item.media_type.as_str())),
                         ),
                 ),

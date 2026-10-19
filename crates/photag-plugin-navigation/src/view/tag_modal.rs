@@ -24,7 +24,7 @@ impl SidebarView {
                             .h_flex()
                             .pt(px(10.))
                             .border_t_1()
-                            .border_color(rgb(theme::SEPARATOR))
+                            .border_color(rgb(theme::separator()))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -58,7 +58,7 @@ impl SidebarView {
                                 .h_flex()
                                 .pt(px(10.))
                                 .border_t_1()
-                                .border_color(rgb(theme::SEPARATOR))
+                                .border_color(rgb(theme::separator()))
                                 .justify_end()
                                 .gap_2()
                                 .child(
@@ -123,12 +123,18 @@ impl SidebarView {
             let selected_color = self.tag_color.read(cx).value().trim().to_ascii_lowercase();
             let swatches = [
                 [
-                    "#E85D5D", "#F07855", "#F08C46", "#D9A541", "#D9C044", "#9DAA47", "#69A96B",
-                    "#4FAF9F", "#4AAFB5", "#4A9CC7", "#5C7FE0",
+                    theme::accent(),
+                    theme::danger(),
+                    theme::warning(),
+                    theme::success(),
+                    theme::info(),
                 ],
                 [
-                    "#716DDD", "#8A69CE", "#A168C7", "#C168A6", "#E06FA3", "#A77C5A", "#BE8C63",
-                    "#858A92", "#A6ABB2", "#D1D5DA", "#E6E9ED",
+                    theme::category(),
+                    theme::data(),
+                    theme::text_primary(),
+                    theme::text_muted(),
+                    theme::surface_elevated(),
                 ],
             ]
             .into_iter()
@@ -137,25 +143,22 @@ impl SidebarView {
                     .h_flex()
                     .gap(px(4.))
                     .children(row.into_iter().map(|color| {
-                        let value = color.to_owned();
-                        let selected = selected_color == color.to_ascii_lowercase();
-                        let parsed = crate::parse_hex_color(color).unwrap_or([120, 120, 130]);
-                        let tint = (u32::from(parsed[0]) << 16)
-                            | (u32::from(parsed[1]) << 8)
-                            | u32::from(parsed[2]);
+                        let value = format!("#{color:06x}");
+                        let selected = selected_color == value;
+                        let tint = color;
                         Button::new(format!("navigation-tag-color-{color}"))
                             .when(selected, |button| {
                                 button.icon(theme::small_icon(IconName::Check))
                             })
-                            .text_color(rgb(theme::TEXT_ON_ACCENT))
+                            .text_color(rgb(theme::contrasting_text(tint)))
                             .w(px(22.))
                             .h(px(22.))
                             .rounded(px(12.))
                             .border_2()
                             .border_color(rgb(if selected {
-                                theme::TEXT_PRIMARY
+                                theme::text_primary()
                             } else {
-                                theme::SURFACE_MODAL
+                                theme::surface_modal()
                             }))
                             .bg(rgb(tint))
                             .on_click(cx.listener(move |this, _, window, cx| {
@@ -203,20 +206,20 @@ impl SidebarView {
                             .h(px(30.))
                             .rounded(px(4.))
                             .text_color(rgb(if selected {
-                                theme::accent_hover()
+                                theme::selection_text()
                             } else {
-                                theme::TEXT_PRIMARY
+                                theme::text_primary()
                             }))
                             .bg(if selected {
                                 rgb(theme::selection_color())
                             } else {
-                                rgba(theme::FILL_SUBTLE)
+                                rgba(theme::fill_subtle())
                             })
                             .border_1()
                             .border_color(rgb(if selected {
                                 theme::accent()
                             } else {
-                                theme::SEPARATOR
+                                theme::separator()
                             }))
                             .icon(theme::small_icon(icon))
                             .accessibility_label(value.clone())
@@ -284,9 +287,9 @@ impl SidebarView {
                                             .gap_1()
                                             .p(px(8.))
                                             .rounded(px(4.))
-                                            .bg(rgb(theme::SURFACE_FAINT))
+                                            .bg(rgb(theme::surface_faint()))
                                             .border_1()
-                                            .border_color(rgb(theme::SEPARATOR))
+                                            .border_color(rgb(theme::separator()))
                                             .child(associations),
                                     )
                                     .child(
@@ -330,7 +333,7 @@ impl SidebarView {
                             .h_flex()
                             .pt(px(10.))
                             .border_t_1()
-                            .border_color(rgb(theme::SEPARATOR))
+                            .border_color(rgb(theme::separator()))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -381,7 +384,7 @@ impl SidebarView {
                             .gap_3()
                             .child(
                                 div()
-                                    .text_color(rgb(theme::DANGER))
+                                    .text_color(rgb(theme::danger_text()))
                                     .child(theme::large_icon(IconName::TriangleAlert)),
                             )
                             .child(
@@ -394,7 +397,7 @@ impl SidebarView {
                                     .child(
                                         div()
                                             .text_sm()
-                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                            .text_color(rgb(theme::text_secondary()))
                                             .child(photag_ui_bridge::i18n::tr_args(
                                                 "Used by {count} media items",
                                                 &[("count", count.to_string())],
@@ -435,7 +438,7 @@ impl SidebarView {
                                 cx.notify();
                             })),
                     )
-                    .child(div().text_sm().text_color(rgb(theme::TEXT_MUTED)).child(
+                    .child(div().text_sm().text_color(rgb(theme::text_muted())).child(
                         photag_ui_bridge::i18n::tr(
                             "This action removes tag assignments from matching media.",
                         ),
@@ -445,7 +448,7 @@ impl SidebarView {
                             .h_flex()
                             .pt(px(10.))
                             .border_t_1()
-                            .border_color(rgb(theme::SEPARATOR))
+                            .border_color(rgb(theme::separator()))
                             .justify_end()
                             .gap_2()
                             .child(
@@ -538,9 +541,9 @@ impl SidebarView {
                                             .max_h(px(310.))
                                             .overflow_y_scrollbar()
                                             .rounded(px(4.))
-                                            .bg(rgb(theme::SURFACE_FAINT))
+                                            .bg(rgb(theme::surface_faint()))
                                             .border_1()
-                                            .border_color(rgb(theme::SEPARATOR))
+                                            .border_color(rgb(theme::separator()))
                                             .children(targets),
                                     ),
                             )
@@ -551,7 +554,7 @@ impl SidebarView {
                                     .min_w_0()
                                     .gap_2()
                                     .child(field_label("Child tag handling"))
-                                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
                                         photag_ui_bridge::i18n::tr_args(
                                             "This tag has {count} direct child tags.",
                                             &[("count", child_count.to_string())],
@@ -573,7 +576,7 @@ impl SidebarView {
                                                 cx.notify();
                                             })),
                                     )
-                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::text_muted())).child(
                                         photag_ui_bridge::i18n::tr("Existing child tags are kept and moved below the target."),
                                     ))
                                     .child(
@@ -592,7 +595,7 @@ impl SidebarView {
                                                 cx.notify();
                                             })),
                                     )
-                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::text_muted())).child(
                                         photag_ui_bridge::i18n::tr("Child tag assignments are removed with the source tag."),
                                     )),
                             ),
@@ -659,7 +662,7 @@ fn modal_shell(title: String, body: Div, close: Button, width: f32) -> Div {
         .flex()
         .items_center()
         .justify_center()
-        .bg(rgba(theme::SCRIM))
+        .bg(rgba(theme::scrim()))
         .child(
             div()
                 .v_flex()
@@ -671,9 +674,9 @@ fn modal_shell(title: String, body: Div, close: Button, width: f32) -> Div {
                 .gap_3()
                 .p(px(18.))
                 .rounded(px(6.))
-                .bg(rgb(theme::SURFACE_MODAL))
+                .bg(rgb(theme::surface_modal()))
                 .border_1()
-                .border_color(rgb(theme::SEPARATOR))
+                .border_color(rgb(theme::separator()))
                 .child(
                     div()
                         .h_flex()
@@ -682,7 +685,7 @@ fn modal_shell(title: String, body: Div, close: Button, width: f32) -> Div {
                         .w_full()
                         .pb(px(10.))
                         .border_b_1()
-                        .border_color(rgb(theme::SEPARATOR))
+                        .border_color(rgb(theme::separator()))
                         .child(
                             div()
                                 .text_size(px(15.))
@@ -711,7 +714,7 @@ fn modal_close_button(cx: &mut Context<SidebarView>) -> Button {
 fn field_label(label: &str) -> Div {
     div()
         .text_size(px(11.))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(label))
 }
 

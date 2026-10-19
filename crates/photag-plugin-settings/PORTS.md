@@ -1,3 +1,15 @@
+# Native GPUI theme preferences — current 2026-10-19
+
+Settings retains `color_mode` and adds `theme_file: Option<PathBuf>` (serde default None).
+None selects GPUI's default theme pair. Startup/action persistence reads the selected native
+ThemeSet JSON, queues it through UI Bridge, and falls back to native defaults on missing or
+invalid files while preserving the original data. File reads do not run in render.
+Old accent_name is still serialized for compatibility but no longer drives a private palette.
+The Appearance page selects framework defaults and the active generated theme; the Material
+plugin registers its own settings page for seed/style/contrast generation and activation.
+Existing rail mode action persists through Settings; all framework/custom views update from
+the native theme gateway. Older manual-theme notes below are historical implementation only.
+
 # Settings plugin ports / 设置面板对接
 
 ## QuickLook replacement — 2026-10-16
@@ -67,7 +79,15 @@ presence; it does not query Everything or integrate its search.
 - `snapshot()` returns a settings clone; `update` persists each interaction and reports errors in-panel. Missing/invalid JSON loads original PhoTag defaults.
 - Compare the JSON schema/defaults against pinned `vendor/photag-source/src/settings.rs`. For save errors check the LocalAppData path and permissions. UI wiring errors usually indicate the bridge service or slot host was not initialized before this plugin.
 
-## Shared visual tokens
+## Theme modes and shared visual tokens
+
+`Settings.color_mode` persists `dark` / `light` in the existing
+source-compatible settings JSON (missing field defaults to dark). The Appearance
+page edits this field through `SettingsService`; successful writes publish it to
+`photag-ui-bridge::theme::ColorMode` and refresh Kit controls and semantic-color
+consumers. `settings/rail-entry` is a Cordis-owned `workspace.sidebar-footer`
+view containing the theme toggle directly above Settings. A failed write leaves
+the prior mode active and logs the persistence error.
 
 The floating Settings panel uses the shared backdrop-aware base and modal surface helpers, primary/danger text, and hairline tokens. Layout spacing and typography still use GPUI Kit presets; Windows visual parity is unverified.
 

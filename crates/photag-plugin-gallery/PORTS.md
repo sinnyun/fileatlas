@@ -14,12 +14,21 @@ legacy single-view `SessionService` record, avoiding competing session writers.
 Column state is persisted through `ProgramWorkspace` by the host; the Gallery
 crate does not own workspace storage.
 
-Each pane separately publishes `command.column.{i}.filters`, `.search`, `.size`,
+Each pane separately publishes `command.column.{i}.filters`, `.view-modes`,
+`.view-options`, `.search`, `.size`,
 `.tools`, `.status`, `.modal`, and `.inspector`; the host should display the
 control/status/modal/inspector slot for the active index. Current limit: the
 global Navigation sidebar still emits events to column 0; host-side active-pane
 routing is required before sidebar selections follow the active pane. Some
 inspector/file operations continue to use global feature services.
+
+The host composes the active pane's `.view-modes` (grid/list), the Columns
+plugin's `command.columns` layout dropdown, then `.view-options` (stateful
+subfolder toggle/thumbnail zoom). Filters remain a separately scrollable region.
+Both projections reuse the same pane entity and subscription; no browsing state
+is duplicated. Subfolder icons use ToggleLeft when off and ToggleRight when on.
+The enabled subfolder button uses the theme-owned primary variant for a persistent
+accent background; when off, it uses the ordinary ghost presentation.
 
 ## MCP contributions (2026-10-19)
 
@@ -475,3 +484,20 @@ than hiding OpenTelemetry logs, and verifies both unrelated writes and real chan
 ## MCP feature contributions
 
 Gallery owns `gallery.search_media`, `gallery.get_media`, and `gallery.set_rating` through `McpToolRegistry`. Search/get schemas and handlers use `GalleryService`; rating accepts 1–100 positive media IDs and a 0–5 value and calls `apply_rating`. These writes are mutation-gated. The old unnamespaced aliases are retired; `tools/list` exposes the plugin-owned names.
+
+## Thumbnail contrast correction — 2026-10-19
+
+File-extension badges consume UI Bridge `file_format_colors` instead of HSL
+paints and an unrelated accent-button foreground. Compact tag capsules use the
+shared opaque `tag_colors` role pair; ratings, playback and overflow badges use
+media-specific background/text roles. Missing-file banners pair danger fill with
+`text_on_danger`. No data schema, path, media pixel, or backend behavior changes.
+Live evidence: `docs/validation-ui/2026-10-19-thumbnail-contrast/README.md`.
+
+## Native theme role consumption (2026-10-19; supersedes manual colors)
+
+All Gallery backgrounds/text/states, custom file-format/rating/tag badges and tag color
+suggestions resolve through UI Bridge's native GPUI ThemeColor role projection. There is
+no Gallery palette or per-mode RGB path. Drag-out supplies current native paints through
+DragImageStyle to the platform adapter. Media pixels and persisted user tag colors remain
+content; label surfaces/foregrounds are native roles. See the native-theme validation record.

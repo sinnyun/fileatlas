@@ -21,7 +21,7 @@ impl GalleryView {
             .px(px(8.))
             .border_t_1()
             .border_b_1()
-            .border_color(rgb(theme::SEPARATOR));
+            .border_color(rgb(theme::separator()));
         for (key, label) in [
             ("information", "Information"),
             ("history", "History"),
@@ -37,13 +37,13 @@ impl GalleryView {
                     .text_color(rgb(if selected {
                         theme::accent()
                     } else {
-                        theme::TEXT_SECONDARY
+                        theme::text_secondary()
                     }))
                     .border_b_2()
                     .border_color(rgb(if selected {
                         theme::accent()
                     } else {
-                        theme::SURFACE_MODAL
+                        theme::surface_modal()
                     }))
                     .child(
                         div()
@@ -74,7 +74,7 @@ impl GalleryView {
             .pt(px(8.))
             .pb(px(10.))
             .border_b_1()
-            .border_color(rgb(theme::SEPARATOR));
+            .border_color(rgb(theme::separator()));
         if let Some(media) = media {
             let media_id = media.id;
             let media_type = media.media_type.clone();
@@ -88,7 +88,7 @@ impl GalleryView {
                 .h(px(180.))
                 .rounded(px(theme::ROUND_SM))
                 .overflow_hidden()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .flex()
                 .items_center()
                 .justify_center();
@@ -115,7 +115,7 @@ impl GalleryView {
             preview = preview.child(
                 thumbnail
                     .cursor_pointer()
-                    .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+                    .hover(|style| style.bg(rgba(theme::fill_hover())))
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.preview_media(media_id, cx);
                     })),
@@ -127,7 +127,7 @@ impl GalleryView {
                     .text_ellipsis()
                     .text_size(px(theme::FONT_SIZE_BODY))
                     .text_center()
-                    .text_color(rgb(theme::TEXT_PRIMARY))
+                    .text_color(rgb(theme::text_primary()))
                     .child(media.filename),
             );
             if selected_count == 1 {
@@ -137,7 +137,7 @@ impl GalleryView {
                 preview = preview.child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr_args(
                             "{count} selected",
                             &[("count", selected_count.to_string())],
@@ -158,12 +158,12 @@ impl GalleryView {
                     .w_full()
                     .h(px(220.))
                     .rounded(px(theme::ROUND_SM))
-                    .bg(rgb(theme::SURFACE_PANEL))
+                    .bg(rgb(theme::surface_panel()))
                     .flex()
                     .items_center()
                     .justify_center()
                     .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(photag_ui_bridge::i18n::tr(message)),
             );
         }
@@ -198,15 +198,15 @@ impl GalleryView {
                     .text_color(rgb(if star <= rating {
                         theme::accent()
                     } else {
-                        theme::TEXT_MUTED
+                        theme::text_muted()
                     }))
-                    .hover(|style| style.text_color(rgb(theme::accent())))
+                    .hover(|style| style.text_color(rgb(theme::accent_text())))
                     .child(
                         theme::icon(gpui_kit::assets::IconName::Star).text_color(rgb(
                             if star <= rating {
                                 theme::accent()
                             } else {
-                                theme::TEXT_MUTED
+                                theme::text_muted()
                             },
                         )),
                     )

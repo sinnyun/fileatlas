@@ -32,14 +32,14 @@ GPUI Windows 依赖的标准激活实现包含上游原有焦点兼容处理，�
 最终36步通过：剪贴板、启动台、截图管理器首次创建和最小化后重唤起均 active=true，
 复用同一实例；主窗始终最小化。激活后等待1.8秒稳定，再等待1.2秒，根视图 render_count 不变。
 初版测试仅等0.6秒仍有激活后续重绘，未记为 quiet 通过。
-截图均已打开检查，正文布局不变；[摘要](summary.json)。
+截图均已打开检查，正文布局不变；[摘要](../../../.local/validation/artifacts/2026-10-18-native-foreground/summary.json)。
 
 同一默认 EXE 另用隔离 profile 执行原独立窗口64步场景，全部通过（退出码0）：
 实际指针暂停/恢复、较小窗、并存、Escape/正文关闭/WM_CLOSE、Cordis停用/重启、模式切换保持正常。
 
-- [剪贴板](clipboard-foreground.png)
-- [启动台](launcher-foreground.png)
-- [截图管理器](screenshot-foreground.png)
+- [剪贴板](../../../.local/validation/artifacts/2026-10-18-native-foreground/clipboard-foreground.png)
+- [启动台](../../../.local/validation/artifacts/2026-10-18-native-foreground/launcher-foreground.png)
+- [截图管理器](../../../.local/validation/artifacts/2026-10-18-native-foreground/screenshot-foreground.png)
 
 fmt、locked Shell check/build、theme/refresh/architecture/feature-ledger 通过。
 保留既有 LNK4098 链接警告与两个无 Cargo.toml 目录的架构警告。

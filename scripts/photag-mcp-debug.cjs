@@ -13,15 +13,16 @@ function option(name, fallback) {
   return index < 0 ? fallback : argv[index + 1];
 }
 if (!option('--exe')) {
-  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile target/mcp-handoff] [--plugins dev-test] [--plan <json>] [--interactive] [--access-level off|standard|full]');
+  console.error('Usage: node scripts/photag-mcp-debug.cjs --exe <exe> [--profile .local/validation/profiles/mcp-handoff] [--plugins dev-test] [--plan <json>] [--interactive] [--access-level off|standard|full]');
   process.exit(2);
 }
 const exe = path.resolve(root, option('--exe'));
-const profile = path.resolve(root, option('--profile', 'target/mcp-handoff'));
-const relativeProfile = path.relative(path.join(root, 'target'), profile);
-if (relativeProfile.startsWith('..') || path.isAbsolute(relativeProfile)) {
-  throw Error('The development profile must be inside this workspace target directory.');
-}
+const profile = path.resolve(root, option('--profile', '.local/validation/profiles/mcp-handoff'));
+const allowedProfileRoots = [path.join(root, '.local', 'validation', 'profiles'), path.join(root, 'target')];
+if (!allowedProfileRoots.some(base => {
+  const relative = path.relative(base, profile);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+})) throw Error('The development profile must be inside .local/validation/profiles (legacy target profiles remain supported).');
 if (!fs.existsSync(exe)) throw Error(`Build the selected executable first: ${exe}`);
 const output = path.join(profile, 'screenshots');
 // Windows Known Folders can ignore LOCALAPPDATA overrides. Enabling dev-test

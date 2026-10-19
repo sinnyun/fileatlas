@@ -110,7 +110,7 @@ impl ClipboardPanel {
                             .w_full()
                             .text_size(px(theme::FONT_SIZE_BODY))
                             .line_height(px(23.))
-                            .text_color(rgb(TEXT)),
+                            .text_color(rgb(text())),
                     )
                     .into_any_element()
             })
@@ -119,7 +119,7 @@ impl ClipboardPanel {
                     .h_flex()
                     .justify_between()
                     .text_size(px(12.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(muted()))
                     .child(if selected_image.is_some() {
                         "图片内容".to_owned()
                     } else {
@@ -144,7 +144,7 @@ impl ClipboardPanel {
             .child(
                 div()
                     .text_size(px(11.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(muted()))
                     .child(if id.is_some() {
                         "分组变更即时保存，独立于正文编辑"
                     } else {
@@ -171,7 +171,11 @@ impl ClipboardPanel {
                                 false,
                             )
                             .icon(icon(IconName::Star, 17.))
-                            .text_color(rgb(if item.pinned { theme::STAR } else { MUTED }))
+                            .text_color(rgb(if item.pinned {
+                                theme::star_text()
+                            } else {
+                                muted()
+                            }))
                             .on_click(cx.listener(
                                 move |this, _, window, cx| {
                                     if let Some(item) =
@@ -192,7 +196,7 @@ impl ClipboardPanel {
                     div()
                         .v_flex()
                         .gap(px(7.))
-                        .text_color(rgb(MUTED))
+                        .text_color(rgb(muted()))
                         .text_size(px(12.))
                         .child(
                             div().h_flex().justify_between().child("内容类型").child(
@@ -218,7 +222,7 @@ impl ClipboardPanel {
                     .v_flex()
                     .gap(px(8.))
                     .text_size(px(12.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(muted()))
                     .child("将永久删除这条本地收藏内容，无法恢复。")
                     .child(
                         div()

@@ -422,7 +422,7 @@ impl Render for GalleryView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(photag_ui_bridge::i18n::tr("Loading…"))
                             .into_any_element();
                     }
@@ -673,7 +673,7 @@ impl Render for GalleryView {
                                                                 .h(px(card_size
                                                                     + card::CARD_CAPTION_HEIGHT))
                                                                 .rounded(px(theme::THUMB_ROUND))
-                                                                .bg(rgb(theme::SURFACE_FAINT))
+                                                                .bg(rgb(theme::surface_faint()))
                                                                 .into_any_element(),
                                                         );
                                                     }
@@ -767,16 +767,16 @@ impl Render for GalleryView {
                                 .h(px(height))
                                 .border_1()
                                 .border_color(rgb(theme::accent()))
-                                .bg(rgb(theme::accent_alpha(theme::accent(), 0.2)))
+                                .bg(rgb(theme::selection_color()))
                         })),
                 );
                 grid.into_any_element()
             }
             Err(error) => div()
                 .size_full()
-                .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+                .bg(rgba(theme::base_rgba(theme::surface_base())))
                 .p_4()
-                .text_color(rgb(theme::DANGER))
+                .text_color(rgb(theme::danger_text()))
                 .child(format!("Could not load media: {error}"))
                 .into_any_element(),
         }

@@ -26,8 +26,8 @@ fn keycap(label: String) -> Div {
         .justify_center()
         .rounded(px(4.))
         .border_1()
-        .border_color(rgba(theme::HAIRLINE.to_rgba()))
-        .bg(rgb(theme::SURFACE_BASE))
+        .border_color(rgba(theme::hairline().to_rgba()))
+        .bg(rgb(theme::surface_base()))
         .child(label)
 }
 
@@ -39,7 +39,7 @@ fn setting_row() -> Div {
         .items_center()
         .gap_3()
         .border_b_1()
-        .border_color(rgba(theme::HAIRLINE.to_rgba()))
+        .border_color(rgba(theme::hairline().to_rgba()))
 }
 
 fn description(title: &'static str, note: &'static str) -> Div {
@@ -55,7 +55,7 @@ fn description(title: &'static str, note: &'static str) -> Div {
                 .flex_1()
                 .min_w_0()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(note),
         )
 }
@@ -127,7 +127,7 @@ impl SettingsView {
                     .py_1()
                     .text_center()
                     .text_size(px(12.))
-                    .bg(rgb(theme::SURFACE_ELEVATED))
+                    .bg(rgb(theme::surface_elevated()))
                     .child(scope),
             );
         let controls = if capture {
@@ -142,7 +142,9 @@ impl SettingsView {
                     .border_1()
                     .border_color(rgb(theme::accent()))
                     .bg(rgba((theme::accent() << 8) | 0x28))
-                    .child(theme::small_icon(IconName::Keyboard).text_color(rgb(theme::accent())))
+                    .child(
+                        theme::small_icon(IconName::Keyboard).text_color(rgb(theme::accent_text())),
+                    )
                     .child(div().flex_1().child("按下组合键…"))
                     .child(
                         Button::new(format!("shortcut-cancel-{id}"))
@@ -226,7 +228,7 @@ impl SettingsView {
             .v_flex()
             .py(px(2.))
             .border_b_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
+            .border_color(rgba(theme::hairline().to_rgba()))
             .child(row);
         if capture && let Some(error) = &self.shortcut_error {
             container = container.child(
@@ -235,7 +237,7 @@ impl SettingsView {
                         .flex_1()
                         .pb_1()
                         .text_size(px(12.))
-                        .text_color(rgb(theme::DANGER))
+                        .text_color(rgb(theme::danger_text()))
                         .child(error.clone()),
                 ),
             );
@@ -279,7 +281,7 @@ impl SettingsView {
             page = page.child(
                 div()
                     .py_3()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child("暂无其他程序快捷键。工具快捷键可在各插件设置中调整。"),
             );
         }
@@ -374,8 +376,8 @@ impl SettingsView {
                         .justify_center()
                         .rounded(px(4.))
                         .border_1()
-                        .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                        .bg(rgb(theme::SURFACE_ELEVATED))
+                        .border_color(rgba(theme::hairline().to_rgba()))
+                        .bg(rgb(theme::surface_elevated()))
                         .child(key),
                 );
             row = match self.tag_choices.value() {
@@ -387,11 +389,14 @@ impl SettingsView {
                     cx.entity().downgrade(),
                 )),
                 _ => row.child(
-                    div().flex_1().text_color(rgb(theme::TEXT_SECONDARY)).child(
-                        selected
-                            .map(|id| format!("标签 #{id}"))
-                            .unwrap_or_else(|| "正在加载标签…".into()),
-                    ),
+                    div()
+                        .flex_1()
+                        .text_color(rgb(theme::text_secondary()))
+                        .child(
+                            selected
+                                .map(|id| format!("标签 #{id}"))
+                                .unwrap_or_else(|| "正在加载标签…".into()),
+                        ),
                 ),
             };
             tags = tags.child(row);
@@ -401,7 +406,7 @@ impl SettingsView {
             page = page.child(
                 div()
                     .text_size(px(12.))
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(format!("无法加载标签：{error}")),
             );
         }
@@ -434,7 +439,7 @@ impl SettingsView {
             }
         }
         if count == 0 {
-            page = page.child(div().py_3().text_color(rgb(theme::TEXT_SECONDARY)).child(
+            page = page.child(div().py_3().text_color(rgb(theme::text_secondary())).child(
                 photag_ui_bridge::i18n::tr(
                     "No active keyboard shortcuts are registered by this plugin.",
                 ),

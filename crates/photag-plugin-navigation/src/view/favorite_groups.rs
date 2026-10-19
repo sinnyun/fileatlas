@@ -12,7 +12,7 @@ impl SidebarView {
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(parent.clone()),
                 )
                 .child(photag_ui_bridge::components::text_input(&self.new_folder_name).w_full())

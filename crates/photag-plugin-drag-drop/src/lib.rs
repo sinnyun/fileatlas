@@ -17,6 +17,15 @@ use cordis::Service;
 
 pub use plugin::{DragDropConfig, DragDropPlugin, DragDropPluginError};
 
+/// Resolved UI colors supplied by the host; the platform adapter owns no palette.
+#[derive(Clone, Copy)]
+pub struct DragImageStyle {
+    pub background: [u8; 3],
+    pub foreground: [u8; 3],
+    pub border: [u8; 3],
+    pub accent: [u8; 3],
+}
+
 /// Stable Cordis service for starting source-compatible OS file drags.
 #[derive(Default)]
 pub struct DragDropService {
@@ -55,13 +64,14 @@ impl DragDropService {
         &self,
         window: &W,
         paths: &[PathBuf],
+        style: DragImageStyle,
     ) -> Result<(), DragDropError> {
         if paths.is_empty() {
             return Ok(());
         }
 
         #[cfg(target_os = "windows")]
-        return dispatch::queue_file_drag(&self.status, window, paths);
+        return dispatch::queue_file_drag(&self.status, window, paths, style);
 
         #[cfg(not(target_os = "windows"))]
         Err(DragDropError::UnsupportedPlatform)

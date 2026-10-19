@@ -47,10 +47,10 @@ impl ClipboardPanel {
             .gap(px(8.))
             .p(px(10.))
             .rounded(px(7.))
-            .bg(rgb(INSET))
+            .bg(rgb(inset()))
             .border_1()
-            .border_color(rgb(RULE))
-            .child(div().text_size(px(12.)).text_color(rgb(MUTED)).child(
+            .border_color(rgb(rule()))
+            .child(div().text_size(px(12.)).text_color(rgb(muted())).child(
                 if self.rename_group.is_some() {
                     "重命名分组"
                 } else {
@@ -136,8 +136,8 @@ impl ClipboardPanel {
                     .pt(px(14.))
                     .mb(px(6.))
                     .border_t_1()
-                    .border_color(rgb(RULE))
-                    .text_color(rgb(MUTED))
+                    .border_color(rgb(rule()))
+                    .text_color(rgb(muted()))
                     .text_size(px(12.))
                     .font_semibold()
                     .child("内容类型 · 自动识别"),
@@ -167,11 +167,11 @@ impl ClipboardPanel {
                 .mt(px(12.))
                 .pt(px(10.))
                 .border_t_1()
-                .border_color(rgb(RULE))
+                .border_color(rgb(rule()))
                 .child(
                     div()
                         .text_size(px(12.))
-                        .text_color(rgb(MUTED))
+                        .text_color(rgb(muted()))
                         .font_semibold()
                         .child("我的分组"),
                 )
@@ -202,7 +202,7 @@ impl ClipboardPanel {
                     .px(px(12.))
                     .py(px(10.))
                     .text_size(px(12.))
-                    .text_color(rgb(MUTED))
+                    .text_color(rgb(muted()))
                     .child("点击 ＋ 创建自己的分组"),
             );
         }
@@ -239,7 +239,7 @@ impl ClipboardPanel {
                         .gap(px(8.))
                         .p(px(10.))
                         .text_size(px(12.))
-                        .text_color(rgb(MUTED))
+                        .text_color(rgb(muted()))
                         .child("仅删除分组，记录将回到未分类。")
                         .child(
                             action("clipboard-group-delete-confirm", "确认删除分组", false)
@@ -268,7 +268,7 @@ impl ClipboardPanel {
                     .pt(px(6.))
                     .child(
                         div()
-                            .text_color(rgb(theme::accent()))
+                            .text_color(rgb(theme::accent_text()))
                             .child(icon(IconName::Clipboard, 28.)),
                     )
                     .child(div().text_size(px(23.)).font_semibold().child("剪贴板")),
@@ -297,16 +297,16 @@ impl ClipboardPanel {
                     .gap(px(10.))
                     .pt(px(14.))
                     .border_t_1()
-                    .border_color(rgb(RULE))
+                    .border_color(rgb(rule()))
                     .child(
                         div()
                             .h_flex()
                             .items_center()
                             .gap(px(8.))
                             .child(div().size(px(8.)).rounded_full().bg(rgb(if paused {
-                                theme::WARNING
+                                theme::warning()
                             } else {
-                                theme::SUCCESS
+                                theme::success()
                             })))
                             .child(div().flex_1().text_size(px(13.)).child(if paused {
                                 "已暂停捕获"
@@ -334,7 +334,7 @@ impl ClipboardPanel {
                     .child(
                         div()
                             .text_size(px(11.))
-                            .text_color(rgb(MUTED))
+                            .text_color(rgb(muted()))
                             .child("Ctrl+Shift+V 唤醒工作台"),
                     ),
             )

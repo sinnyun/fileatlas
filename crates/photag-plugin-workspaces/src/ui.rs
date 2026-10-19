@@ -77,7 +77,7 @@ impl Render for WorkspaceManager {
         }
         let Ok(document) = self.service.snapshot() else {
             return div()
-                .text_color(rgb(theme::DANGER))
+                .text_color(rgb(theme::danger_text()))
                 .child(tr("Could not read program workspaces"))
                 .into_any_element();
         };
@@ -101,7 +101,7 @@ impl Render for WorkspaceManager {
                 .py(px(theme::SPACE_1))
                 .rounded(px(4.))
                 .border_1()
-                .border_color(rgb(theme::SEPARATOR));
+                .border_color(rgb(theme::separator()));
             if is_editing {
                 row = row
                     .child(photag_ui_bridge::components::text_input(&self.input).flex_1())
@@ -134,7 +134,7 @@ impl Render for WorkspaceManager {
                                 .when(is_default, |this| {
                                     this.child(
                                         div()
-                                            .text_color(rgb(theme::TEXT_ON_ACCENT))
+                                            .text_color(rgb(theme::accent_text()))
                                             .text_size(px(theme::FONT_SIZE_SMALL))
                                             .child(tr("Default")),
                                     )
@@ -142,7 +142,7 @@ impl Render for WorkspaceManager {
                                 .when(is_active, |this| {
                                     this.child(
                                         div()
-                                            .text_color(rgb(theme::TEXT_SECONDARY))
+                                            .text_color(rgb(theme::text_secondary()))
                                             .text_size(px(theme::FONT_SIZE_SMALL))
                                             .child(tr("Active")),
                                     )
@@ -210,7 +210,7 @@ impl Render for WorkspaceManager {
         let error = self.error.clone();
         div().v_flex().gap(px(theme::SPACE_3)).p(px(theme::SPACE_4)).w_full().max_h(px(440.)).overflow_y_scrollbar()
             .child(div().font_semibold().child(tr("Program workspaces")))
-            .child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::TEXT_SECONDARY))
+            .child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary()))
                 .child(tr("Save launch layouts with independent folders and view settings for each column.")))
             .child(entries)
             .child(div().h_flex().items_center().gap(px(theme::SPACE_2))
@@ -241,7 +241,7 @@ impl Render for WorkspaceManager {
                         view.error = workspace.and_then(|workspace| view.service.save_active(workspace)).err().map(|error| error.to_string());
                         cx.notify();
                     }))))
-            .when_some(error, |this, error| this.child(div().text_color(rgb(theme::DANGER)).child(error)))
+            .when_some(error, |this, error| this.child(div().text_color(rgb(theme::danger_text())).child(error)))
             .into_any_element()
     }
 }

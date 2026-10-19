@@ -115,7 +115,26 @@ impl SettingsService {
         }
         let serialized = serde_json::to_string_pretty(settings)?;
         std::fs::write(&self.path, serialized)?;
-        photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+        let json =
+            settings
+                .theme_file
+                .as_ref()
+                .and_then(|path| match std::fs::read_to_string(path) {
+                    Ok(text) => Some(text),
+                    Err(error) => {
+                        tracing::error!(%error, ?path, "theme unavailable; using native default");
+                        None
+                    }
+                });
+        if let Err(error) = photag_ui_bridge::theme::request_theme(&settings.color_mode, json) {
+            tracing::error!(%error, "invalid theme; using native default");
+            let _ = photag_ui_bridge::theme::request_theme(&settings.color_mode, None);
+        }
+        photag_ui_bridge::theme::set_color_mode(if settings.color_mode == "light" {
+            photag_ui_bridge::theme::ColorMode::Light
+        } else {
+            photag_ui_bridge::theme::ColorMode::Dark
+        });
         photag_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
         Ok(())
     }
@@ -201,7 +220,26 @@ impl Plugin for SettingsPlugin {
         let session = context
             .try_service::<photag_plugin_session::SessionService>()
             .ok();
-        photag_ui_bridge::theme::set_accent_name(&settings.accent_name);
+        let json =
+            settings
+                .theme_file
+                .as_ref()
+                .and_then(|path| match std::fs::read_to_string(path) {
+                    Ok(text) => Some(text),
+                    Err(error) => {
+                        tracing::error!(%error, ?path, "theme unavailable; using native default");
+                        None
+                    }
+                });
+        if let Err(error) = photag_ui_bridge::theme::request_theme(&settings.color_mode, json) {
+            tracing::error!(%error, "invalid theme; using native default");
+            let _ = photag_ui_bridge::theme::request_theme(&settings.color_mode, None);
+        }
+        photag_ui_bridge::theme::set_color_mode(if settings.color_mode == "light" {
+            photag_ui_bridge::theme::ColorMode::Light
+        } else {
+            photag_ui_bridge::theme::ColorMode::Dark
+        });
         photag_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
         let publication = context
             .provide(Arc::clone(&service))
@@ -269,14 +307,17 @@ impl Plugin for SettingsPlugin {
         register_views_for_plugin(
             &context,
             "photag.settings",
-            [view::settings(
-                service,
-                navigation,
-                updater,
-                session,
-                surfaces,
-                context.clone(),
-            )],
+            [
+                view::settings(
+                    Arc::clone(&service),
+                    navigation,
+                    updater,
+                    session,
+                    Arc::clone(&surfaces),
+                    context.clone(),
+                ),
+                view::rail_entry(service, surfaces),
+            ],
         )
         .map_err(|error| SettingsPluginError::UiRegistration(error.to_string()))?;
         drop(publication);

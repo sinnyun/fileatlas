@@ -65,8 +65,8 @@ impl Render for ClipboardButton {
             .gap(px(4.))
             .rounded(px(6.))
             .text_xs()
-            .text_color(rgb(theme::TEXT_SECONDARY))
-            .hover(|s| s.bg(rgba(theme::FILL_HOVER)))
+            .text_color(rgb(theme::text_secondary()))
+            .hover(|s| s.bg(rgba(theme::fill_hover())))
             .on_click(cx.listener(|this, _, _, _| {
                 if let Err(error) = this.panels.open(PANEL) {
                     tracing::error!(%error, "could not open clipboard workbench");
@@ -347,8 +347,8 @@ impl Render for ClipboardPanel {
             .min_h_0()
             .gap(px(theme::PANEL_GAP))
             .p(px(theme::PANEL_GAP))
-            .bg(rgb(BACKGROUND))
-            .text_color(rgb(TEXT))
+            .bg(rgb(background()))
+            .text_color(rgb(text()))
             .text_size(px(theme::FONT_SIZE_BODY))
             .child(self.sidebar(cx))
             .child(self.history(&ids, cx))

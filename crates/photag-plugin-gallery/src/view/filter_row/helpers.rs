@@ -15,14 +15,14 @@ pub(super) fn chip(
     clear: Option<AnyElement>,
 ) -> Button {
     let text_color = if active {
-        theme::accent()
+        theme::accent_text()
     } else {
-        theme::TEXT_SECONDARY
+        theme::text_secondary()
     };
     let trailing = clear.unwrap_or_else(|| {
         div()
             .ml(px(2.))
-            .child(theme::small_icon(IconName::ChevronDown).text_color(rgb(theme::TEXT_MUTED)))
+            .child(theme::small_icon(IconName::ChevronDown).text_color(rgb(theme::text_muted())))
             .into_any_element()
     });
     Button::new(id)
@@ -31,7 +31,7 @@ pub(super) fn chip(
         .h(px(theme::FILTER_CHIP_HEIGHT))
         .px(px(7.))
         .rounded(px(theme::ROUND_SM))
-        .when(active, |button| button.bg(rgba(theme::FILL_SUBTLE)))
+        .when(active, |button| button.bg(rgba(theme::fill_subtle())))
         .text_size(px(theme::FONT_SIZE_BUTTON))
         .text_color(rgb(text_color))
         .child(
@@ -40,9 +40,9 @@ pub(super) fn chip(
                 .items_center()
                 .gap(px(4.))
                 .child(theme::small_icon(icon).text_color(rgb(if active {
-                    theme::accent()
+                    theme::accent_text()
                 } else {
-                    theme::TEXT_MUTED
+                    theme::text_muted()
                 })))
                 .child(div().child(photag_ui_bridge::i18n::tr(&label)))
                 .child(trailing),
@@ -60,7 +60,7 @@ pub(super) fn clear_control(
         .ml(px(2.))
         .cursor_pointer()
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(theme::small_icon(IconName::X).text_color(rgb(theme::accent())))
+        .child(theme::small_icon(IconName::X).text_color(rgb(theme::accent_text())))
         .on_click(move |event, window, cx| {
             cx.stop_propagation();
             clear(event, window, cx);
@@ -73,7 +73,7 @@ pub(super) fn popover_title(title: &str) -> Div {
         .px(px(6.))
         .pb(px(6.))
         .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(title))
 }
 
@@ -84,7 +84,7 @@ pub(super) fn row_label(label: impl Into<String>) -> Div {
         .overflow_hidden()
         .text_ellipsis()
         .text_size(px(theme::FONT_SIZE_BUTTON))
-        .text_color(rgb(theme::TEXT_PRIMARY))
+        .text_color(rgb(theme::text_primary()))
         .child(label.into())
 }
 
@@ -98,7 +98,7 @@ pub(super) fn menu_row(id: impl Into<ElementId>) -> Stateful<Div> {
         .px(px(6.))
         .rounded(px(theme::ROUND_SM))
         .cursor_pointer()
-        .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
+        .hover(|style| style.bg(rgba(theme::fill_hover())))
 }
 
 pub(super) fn empty_hint(message: &str) -> Div {
@@ -106,7 +106,7 @@ pub(super) fn empty_hint(message: &str) -> Div {
         .px(px(6.))
         .py(px(8.))
         .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::TEXT_MUTED))
+        .text_color(rgb(theme::text_muted()))
         .child(photag_ui_bridge::i18n::tr(message))
 }
 
@@ -159,9 +159,9 @@ pub(super) fn segment_pair(
 
 fn segment(id: &'static str, label: &'static str, selected: bool) -> Button {
     let text_color = if selected {
-        theme::SURFACE_BASE
+        theme::contrasting_text(theme::accent())
     } else {
-        theme::TEXT_SECONDARY
+        theme::text_secondary()
     };
     Button::new(id)
         .ghost()
@@ -219,7 +219,7 @@ pub(super) fn rating_slider(
                 .w(px(track))
                 .h(px(3.))
                 .rounded_full()
-                .bg(rgba(theme::TRACK_HIGHLIGHT)),
+                .bg(rgba(theme::track_highlight())),
         )
         .child(
             div()
@@ -270,13 +270,13 @@ fn slider_thumb(x: f32) -> Div {
         .top(px(3.))
         .size(px(16.))
         .rounded_full()
-        .bg(rgba(theme::TRACK_SHADOW))
+        .bg(rgba(theme::track_shadow()))
         .child(
             div()
                 .absolute()
                 .inset(px(1.5))
                 .rounded_full()
-                .bg(rgb(theme::SURFACE_ELEVATED)),
+                .bg(rgb(theme::surface_elevated())),
         )
         .child(
             div()

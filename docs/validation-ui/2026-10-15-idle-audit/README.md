@@ -208,9 +208,9 @@ thumbnail/full were 21.13/58.95 ms; the 6000×4000 JPEG thumbnail/full were
 32.64/486.80 ms. They measure paint submission in this isolated development
 process, not physical GPU presentation or a promise for all user files/storage.
 
-Evidence: [compact summary](summary.json), [full matrix](unified-matrix.json.gz),
-[extended follow-up](unified-followup.json.gz), and original historical runs
-listed in summary.history. [Preview screenshot](preview-image.png),
-[empty-library Statistics](statistics.png), [broken-image state](preview-broken.png)
-and [manual updater result](manual-update-result.png) are same-process captures.
+Evidence: [compact summary](../../../.local/validation/artifacts/2026-10-15-idle-audit/summary.json), [full matrix](../../../.local/validation/artifacts/2026-10-15-idle-audit/unified-matrix.json.gz),
+[extended follow-up](../../../.local/validation/artifacts/2026-10-15-idle-audit/unified-followup.json.gz), and original historical runs
+listed in summary.history. [Preview screenshot](../../../.local/validation/artifacts/2026-10-15-idle-audit/preview-image.png),
+[empty-library Statistics](../../../.local/validation/artifacts/2026-10-15-idle-audit/statistics.png), [broken-image state](../../../.local/validation/artifacts/2026-10-15-idle-audit/preview-broken.png)
+and [manual updater result](../../../.local/validation/artifacts/2026-10-15-idle-audit/manual-update-result.png) are same-process captures.
 Build/check/test/format/architecture logs are alongside these records.

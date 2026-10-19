@@ -55,7 +55,7 @@ pub(super) fn render(
         picker = picker.child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr("No matching tags.")),
         );
     } else {
@@ -66,7 +66,7 @@ pub(super) fn render(
                 .flex_1()
                 .min_h_0()
                 .rounded_sm()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .p_1()
                 .overflow_y_scrollbar()
                 .children(tag_tree_rows(
@@ -125,7 +125,7 @@ pub(super) fn render(
         .min_h_0()
         .overflow_hidden()
         .rounded_md()
-        .bg(rgb(theme::SURFACE_MODAL))
+        .bg(rgb(theme::surface_modal()))
         .child(
             div()
                 .h_flex()
@@ -134,7 +134,7 @@ pub(super) fn render(
                 .items_center()
                 .justify_between()
                 .border_b_1()
-                .border_color(rgba(theme::BORDER.to_rgba()))
+                .border_color(rgba(theme::border().to_rgba()))
                 .px_4()
                 .child(
                     div()
@@ -171,7 +171,7 @@ pub(super) fn render(
                         .min_w_0()
                         .min_h_0()
                         .border_l_1()
-                        .border_color(rgba(theme::BORDER.to_rgba()))
+                        .border_color(rgba(theme::border().to_rgba()))
                         .child(preview),
                 ),
         )
@@ -185,7 +185,7 @@ pub(super) fn render(
                 .justify_end()
                 .gap_2()
                 .border_t_1()
-                .border_color(rgba(theme::BORDER.to_rgba()))
+                .border_color(rgba(theme::border().to_rgba()))
                 .px_4()
                 .child(
                     Button::new("gallery-tag-picker-clear")
@@ -365,11 +365,11 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
                     .w_full()
                     .h(px(132.))
                     .rounded_md()
-                    .bg(rgb(theme::SURFACE_FAINT))
+                    .bg(rgb(theme::surface_faint()))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_color(rgb(theme::TEXT_MUTED))
+                    .text_color(rgb(theme::text_muted()))
                     .child(theme::large_icon(if media.media_type == "video" {
                         gpui_kit::assets::IconName::FileVideoCamera
                     } else if media.media_type == "audio" {
@@ -390,7 +390,7 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
             preview = preview.child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(format!("{width} × {height}")),
             );
         }
@@ -407,7 +407,7 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
             preview = preview.child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr("No tags assigned yet.")),
             );
         } else {
@@ -432,7 +432,7 @@ fn selected_media_preview(view: &GalleryView, width: f32) -> Div {
         preview = preview.child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr("Select media to see a preview.")),
         );
     }

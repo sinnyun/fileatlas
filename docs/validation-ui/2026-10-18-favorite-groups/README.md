@@ -41,17 +41,17 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 首个运行场景通过测量的组标题 bounds 发送真实 GPUI 指针移动/按下/抬起，验证＋、菜单
 和折叠；其余场景复用公开语义处理器。验证当前根目录/子目录添加到指定组、折叠组＋
 展开、重复不变、长路径、失效目录、空组、Home 禁用、删除后库记录不变、小窗滚动。
-静置900ms完整 sidebar 状态不变（revision=10）。[场景摘要](favorite-groups-summary.json)。
+静置900ms完整 sidebar 状态不变（revision=10）。[场景摘要](../../../.local/validation/artifacts/2026-10-18-favorite-groups/favorite-groups-summary.json)。
 
 第二个新子进程禁用 mutations，确认组顺序、别名、收藏及折叠状态恢复，旧收藏不复活，
-写入工具仍受禁用保护。[重启摘要](favorite-groups-restart.json)。客户端 profile/report.json
+写入工具仍受禁用保护。[重启摘要](../../../.local/validation/artifacts/2026-10-18-favorite-groups/favorite-groups-restart.json)。客户端 profile/report.json
 会被第二次运行覆盖，因此不把该文件描述为两次完整运行日志。
 
 ## 已查看截图与边界
 
-- [全部独立分组](independent-groups.png)、[组菜单](group-menu.png)、[折叠](collapsed-group.png)。
-- [长路径](long-path.png)、[Home 禁用＋](home-plus-disabled.png)、[失效目录反馈](missing-current-folder.png)。
-- [空组](empty-group.png)、[小窗滚动到底](compact-scrolled.png)、[新进程恢复](restarted.png)。
+- [全部独立分组](../../../.local/validation/artifacts/2026-10-18-favorite-groups/independent-groups.png)、[组菜单](../../../.local/validation/artifacts/2026-10-18-favorite-groups/group-menu.png)、[折叠](../../../.local/validation/artifacts/2026-10-18-favorite-groups/collapsed-group.png)。
+- [长路径](../../../.local/validation/artifacts/2026-10-18-favorite-groups/long-path.png)、[Home 禁用＋](../../../.local/validation/artifacts/2026-10-18-favorite-groups/home-plus-disabled.png)、[失效目录反馈](../../../.local/validation/artifacts/2026-10-18-favorite-groups/missing-current-folder.png)。
+- [空组](../../../.local/validation/artifacts/2026-10-18-favorite-groups/empty-group.png)、[小窗滚动到底](../../../.local/validation/artifacts/2026-10-18-favorite-groups/compact-scrolled.png)、[新进程恢复](../../../.local/validation/artifacts/2026-10-18-favorite-groups/restarted.png)。
 
 采用用户图的结构和现有深蓝组件，未复制第二张的灰色底与黄色系统文件夹图标；这符合
 同时要求与上方两区统一的方向。长路径在行内省略，保留地址栏/信息区的完整路径入口。

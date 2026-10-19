@@ -32,8 +32,8 @@ pub(super) fn render(
         .p_3()
         .rounded_md()
         .border_1()
-        .border_color(rgb(theme::DANGER))
-        .bg(rgb(theme::SURFACE_MODAL))
+        .border_color(rgb(theme::danger()))
+        .bg(rgb(theme::surface_modal()))
         .child(
             div()
                 .h_flex()
@@ -42,13 +42,13 @@ pub(super) fn render(
                 .child(
                     theme::icon(IconName::CircleX)
                         .size(px(16.))
-                        .text_color(rgb(theme::DANGER)),
+                        .text_color(rgb(theme::danger_text())),
                 )
                 .child(
                     div()
                         .text_sm()
                         .font_semibold()
-                        .text_color(rgb(theme::DANGER))
+                        .text_color(rgb(theme::danger_text()))
                         .child(photag_ui_bridge::i18n::tr("Metadata writeback failed")),
                 ),
         )
@@ -58,7 +58,7 @@ pub(super) fn render(
                 .overflow_hidden()
                 .text_sm()
                 .text_ellipsis()
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(filename),
         )
         .child(
@@ -67,7 +67,7 @@ pub(super) fn render(
                 .max_h(px(48.))
                 .overflow_hidden()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(failure.error),
         )
         .child(

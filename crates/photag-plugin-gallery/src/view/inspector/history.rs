@@ -190,11 +190,11 @@ impl GalleryView {
                 .child(
                     div()
                         .text_size(px(11.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(format!("{} versions · Lore", versions.len())),
                 ),
         );
-        body = body.child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)));
+        body = body.child(div().h(px(1.)).w_full().bg(rgba(theme::separator_light())));
         if let Some(message) = error.or_else(|| self.history_error.clone()) {
             body = body.child(inspector_message(&message));
         } else if loading && versions.is_empty() {
@@ -214,7 +214,7 @@ impl GalleryView {
             ));
             if let Some(selected_version) = selected_version {
                 body = body
-                    .child(div().h(px(1.)).w_full().bg(rgba(theme::SEPARATOR_LIGHT)))
+                    .child(div().h(px(1.)).w_full().bg(rgba(theme::separator_light())))
                     .child(
                         well()
                             .gap(px(7.))
@@ -262,9 +262,9 @@ impl GalleryView {
                 && state.status != photag_plugin_versions::FileVersionStatus::Unversioned
             {
                 let color = if state.status == photag_plugin_versions::FileVersionStatus::Modified {
-                    theme::WARNING
+                    theme::warning_text()
                 } else {
-                    theme::TEXT_SECONDARY
+                    theme::text_secondary()
                 };
                 body = body.child(
                     div()

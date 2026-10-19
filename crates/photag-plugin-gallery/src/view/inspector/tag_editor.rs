@@ -33,8 +33,8 @@ pub(super) fn render(tag: &Tag, view: &mut GalleryView, cx: &mut Context<Gallery
                 .w_full()
                 .rounded(px(6.))
                 .border_1()
-                .border_color(rgba(theme::REGION_EDGE))
-                .bg(rgb(theme::SURFACE_PANEL))
+                .border_color(rgba(theme::region_edge()))
+                .bg(rgb(theme::surface_panel()))
                 .child(photag_ui_bridge::components::text_input(&view.inspector_tag_name).w_full()),
         )
         .child(label("Color"))
@@ -55,20 +55,27 @@ pub(super) fn render(tag: &Tag, view: &mut GalleryView, cx: &mut Context<Gallery
 fn label(text: &str) -> Div {
     div()
         .text_size(px(12.))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(text))
 }
 
 fn swatches(draft: &TagDraft, cx: &mut Context<GalleryView>) -> Div {
     let mut row = div().h_flex().w_full().flex_wrap().gap(px(7.));
-    for color in [
-        "#3185ED", "#E36B6B", "#E3BD68", "#68B887", "#9B68D7", "#54AEB5", "#8B929E",
+    for tint in [
+        theme::accent(),
+        theme::danger(),
+        theme::warning(),
+        theme::success(),
+        theme::category(),
+        theme::data(),
+        theme::text_muted(),
     ] {
-        let value = parse_tag_color(Some(color));
+        let color = format!("#{tint:06x}");
+        let value = parse_tag_color(Some(&color));
         let selected = draft
             .color
             .as_deref()
-            .is_some_and(|c| c.eq_ignore_ascii_case(color));
+            .is_some_and(|c| c.eq_ignore_ascii_case(&color));
         row = row.child(
             div()
                 .id(format!("gallery-inspector-color-{color}"))
@@ -80,15 +87,15 @@ fn swatches(draft: &TagDraft, cx: &mut Context<GalleryView>) -> Div {
                 .rounded_full()
                 .border_1()
                 .border_color(if selected {
-                    rgb(theme::TEXT_PRIMARY)
+                    rgb(theme::text_primary())
                 } else {
-                    rgba(theme::SEPARATOR_LIGHT)
+                    rgba(theme::separator_light())
                 })
                 .cursor_pointer()
                 .child(div().size(px(17.)).rounded_full().bg(rgb(value)))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     if let Some(draft) = &mut this.inspector_tag_draft {
-                        draft.color = Some(color.into());
+                        draft.color = Some(color.clone());
                     }
                     cx.notify();
                 })),
@@ -127,17 +134,17 @@ fn icons(draft: &TagDraft, cx: &mut Context<GalleryView>) -> Div {
                 .border_color(if active {
                     rgb(theme::accent())
                 } else {
-                    rgba(theme::REGION_EDGE)
+                    rgba(theme::region_edge())
                 })
                 .bg(if active {
                     rgb(theme::selection_color())
                 } else {
-                    rgba(theme::FILL_SUBTLE)
+                    rgba(theme::fill_subtle())
                 })
                 .text_color(rgb(if active {
-                    theme::accent()
+                    theme::selection_text()
                 } else {
-                    theme::TEXT_SECONDARY
+                    theme::text_secondary()
                 }))
                 .icon(theme::small_icon(icon))
                 .accessibility_label(value.clone())
@@ -165,7 +172,7 @@ fn visibility_toggle(draft: &TagDraft, cx: &mut Context<GalleryView>) -> gpui_ki
         .justify_between()
         .min_h(px(32.))
         .text_size(px(12.))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(text)
         .child(
             div()
@@ -177,7 +184,7 @@ fn visibility_toggle(draft: &TagDraft, cx: &mut Context<GalleryView>) -> gpui_ki
                 .bg(rgb(if visible {
                     theme::accent()
                 } else {
-                    theme::SURFACE_ELEVATED
+                    theme::surface_elevated()
                 }))
                 .child(
                     div()
@@ -186,7 +193,7 @@ fn visibility_toggle(draft: &TagDraft, cx: &mut Context<GalleryView>) -> gpui_ki
                         .left(px(if visible { 16. } else { 2. }))
                         .size(px(16.))
                         .rounded_full()
-                        .bg(rgb(theme::TEXT_ON_ACCENT)),
+                        .bg(rgb(theme::text_on_accent())),
                 ),
         )
         .on_change(move |_, _, _, cx| {

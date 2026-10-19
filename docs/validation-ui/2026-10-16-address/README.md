@@ -1,6 +1,6 @@
 # 顶部面包屑地址栏（2026-10-16）
 
-依据用户本轮圈定顶部区域的[参考截图](user-reference.png)及文字要求实施；保留 accepted sidebar-pages-preview-v2 与 Explorer 侧栏结构。此次仅整理顶部位置区域，右侧重复的 Up 移到地址栏前。用户所说“上一页”按“上一级文件夹”实现，后退/前进使用独立导航历史。
+依据用户本轮圈定顶部区域的[参考截图](../../../.local/validation/artifacts/2026-10-16-address/user-reference.png)及文字要求实施；保留 accepted sidebar-pages-preview-v2 与 Explorer 侧栏结构。此次仅整理顶部位置区域，右侧重复的 Up 移到地址栏前。用户所说“上一页”按“上一级文件夹”实现，后退/前进使用独立导航历史。
 
 ## 已实现
 
@@ -34,9 +34,9 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-address.exe --
 
 11 项运行场景覆盖路径/编辑/分支/失效历史/标签往返；Enter、Escape、Ctrl+L 走实际 GPUI KeyDown/InputEvent，文本准备使用真实 InputState 的 set_text，不宣称这证明了全部输入法/剪贴板交互。4 项 pointer 场景实际点击后退/前进/Up、父级面包屑、空白编辑以及当前层级不重载。指针坐标基于当前 150% 窗口截图的逻辑位置，其他窗口尺寸应重新测量。
 
-文件夹及标签视图都在只读重启后等待约 3 秒核验；地址与内容仍一致，导航历史从恢复点开始，修改请求被只读保护拒绝。此前窗口切换重复刷新回归也通过：三次实际最小化/恢复不改变枚举/查询版本、选择和滚动，真实外部新增/删除仍生效。[摘要](summary.json)保留场景清单与地址数据；完整本机日志与报告留在 target 隔离 profile。
+文件夹及标签视图都在只读重启后等待约 3 秒核验；地址与内容仍一致，导航历史从恢复点开始，修改请求被只读保护拒绝。此前窗口切换重复刷新回归也通过：三次实际最小化/恢复不改变枚举/查询版本、选择和滚动，真实外部新增/删除仍生效。[摘要](../../../.local/validation/artifacts/2026-10-16-address/summary.json)保留场景清单与地址数据；完整本机日志与报告留在 target 隔离 profile。
 
-对照参考与实际截图已检查顶部位置、按钮顺序、完整层级、地址输入/错误状态及原右侧工具区保留：[面包屑](address-breadcrumb.png)、[编辑](address-editing.png)、[非法路径](address-invalid.png)、[实际点击后](address-pointer.png)。
+对照参考与实际截图已检查顶部位置、按钮顺序、完整层级、地址输入/错误状态及原右侧工具区保留：[面包屑](../../../.local/validation/artifacts/2026-10-16-address/address-breadcrumb.png)、[编辑](../../../.local/validation/artifacts/2026-10-16-address/address-editing.png)、[非法路径](../../../.local/validation/artifacts/2026-10-16-address/address-invalid.png)、[实际点击后](../../../.local/validation/artifacts/2026-10-16-address/address-pointer.png)。
 
 ## 仍未实机覆盖
 

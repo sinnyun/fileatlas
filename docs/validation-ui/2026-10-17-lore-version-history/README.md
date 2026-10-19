@@ -70,7 +70,7 @@ Final validation passed on Windows / 150% DPI with Rust 1.97.1:
 - With `PHOTAG_LORE_TEST_FILE=D:\桌面文件夹\测试\临时文件\00.png`, ran `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-lore-real-file-complete-20261017 --plugins dev-test --allow-mutations --scenario scripts/validate-lore-history-click.cjs`.
 - This actual source path was used throughout, without relocating it. Two versions were created; real GPUI pointer events selected the older version and Switch, then the newer row and Switch. Both content comparisons passed, both records stayed visible and ordered, the active marker changed correctly, file selection survived refresh, and History remained visible.
 - After settling, Gallery snapshot revision stayed 9→9 across the 1-second quiet sample. Final source SHA-256 matched the starting value: `AC42FDB1715623D1EFFF456EAD8D56DF3F5137CBF94A71065FFC4C1C84E327F5`; original bytes and timestamp were restored.
-- Evidence: [round-trip report](real-file-roundtrip.json), [source restoration](source-restoration.json), [older version visible](real-file-after-rewind.png), [newer version visible again](real-file-roundtrip.png). The accepted Inspector structure is preserved; this is a behavior correction.
+- Evidence: [round-trip report](../../../.local/validation/artifacts/2026-10-17-lore-version-history/real-file-roundtrip.json), [source restoration](../../../.local/validation/artifacts/2026-10-17-lore-version-history/source-restoration.json), [older version visible](../../../.local/validation/artifacts/2026-10-17-lore-version-history/real-file-after-rewind.png), [newer version visible again](../../../.local/validation/artifacts/2026-10-17-lore-version-history/real-file-roundtrip.png). The accepted Inspector structure is preserved; this is a behavior correction.
 
 ## Save after a historical checkout — follow-up
 
@@ -90,8 +90,8 @@ MCP command using profile `target/mcp-lore-edit-after-rewind-20261017`. Actual
 01/02 pointer round trip plus 01-edit-create03 and restoration of all three
 versions passed; History remained visible and quiet snapshot stayed 22→22.
 Original bytes/timestamp were restored, with starting/final SHA-256 equal.
-Evidence: [report](edit-after-rewind.json), [source restoration](edit-after-rewind-restoration.json),
-[three-version screenshot](edit-after-rewind.png).
+Evidence: [report](../../../.local/validation/artifacts/2026-10-17-lore-version-history/edit-after-rewind.json), [source restoration](../../../.local/validation/artifacts/2026-10-17-lore-version-history/edit-after-rewind-restoration.json),
+[three-version screenshot](../../../.local/validation/artifacts/2026-10-17-lore-version-history/edit-after-rewind.png).
 
 ## Review follow-up — shared metadata service and bounded state reads
 

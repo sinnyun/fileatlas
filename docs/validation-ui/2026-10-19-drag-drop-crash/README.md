@@ -104,8 +104,8 @@ confirmation after this visual change.
   path. The window remained visible and responsive. This is not evidence of a
   successful operating-system drag.
 - The initial MCP window and loaded fixture gallery are captured in
-  [main-window-mcp.png](main-window-mcp.png) and
-  [main-window-worker-thread.png](main-window-worker-thread.png).
+  [main-window-mcp.png](../../../.local/validation/artifacts/2026-10-19-drag-drop-crash/main-window-mcp.png) and
+  [main-window-worker-thread.png](../../../.local/validation/artifacts/2026-10-19-drag-drop-crash/main-window-worker-thread.png).
 - Explorer/desktop delivery, target-program import, long hold, cancellation,
   and native source-drag gesture remain unverified. The MCP pointer controls
   cannot establish a real Windows mouse-held OLE drag; the project requires

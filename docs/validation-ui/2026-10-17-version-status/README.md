@@ -75,10 +75,10 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-version-status
 Shell locked check与治理/fmt复查均通过；本次成功链接产物复制为
 `target/debug/photag-shell-version-status.exe` 可直接运行。
 
-- [最终运行报告](version-badges-report.json)
-- [网格提示点](unsaved-grid.png)
-- [中文悬停说明](unsaved-dot-tooltip.png)
-- [点击打开历史页](unsaved-history-opened-by-dot.png)
-- [列表提示点（文件名前，避开格式角标）](unsaved-list.png)
-- [匹配其他已存版本与版本基准说明](matches-other-saved-version.png)
-- [保存后无提示点](saved-no-dot.png)
+- [最终运行报告](../../../.local/validation/artifacts/2026-10-17-version-status/version-badges-report.json)
+- [网格提示点](../../../.local/validation/artifacts/2026-10-17-version-status/unsaved-grid.png)
+- [中文悬停说明](../../../.local/validation/artifacts/2026-10-17-version-status/unsaved-dot-tooltip.png)
+- [点击打开历史页](../../../.local/validation/artifacts/2026-10-17-version-status/unsaved-history-opened-by-dot.png)
+- [列表提示点（文件名前，避开格式角标）](../../../.local/validation/artifacts/2026-10-17-version-status/unsaved-list.png)
+- [匹配其他已存版本与版本基准说明](../../../.local/validation/artifacts/2026-10-17-version-status/matches-other-saved-version.png)
+- [保存后无提示点](../../../.local/validation/artifacts/2026-10-17-version-status/saved-no-dot.png)

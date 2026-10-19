@@ -80,8 +80,8 @@ pub(super) fn render(
                     .my(px(3.))
                     .rounded(px(7.))
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(
                         photag_ui_bridge::tag_capsule::TagCapsule::new(child.name.clone())
                             .color(child.color.as_deref())
@@ -94,7 +94,7 @@ pub(super) fn render(
                         div()
                             .text_right()
                             .text_size(px(12.))
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(child.media_count.to_string()),
                     )
                     .child(

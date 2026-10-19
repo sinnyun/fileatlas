@@ -47,8 +47,8 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 分组筛选、链接/代码筛选、未分类排除已分组项、搜索/清空及检查器跟随结果、面板关闭重开、重命名、
 删除分组保留4条历史、暂停/恢复捕获和静止时revision不变。截图只显示隔离样例：
 
-- [工作台](clipboard-workbench.png)：卡片“工作”徽标、侧栏数量1和右侧分组一致。
-- [分组筛选](group-filter.png)：可见ID只包含分配到该组的记录。
+- [工作台](../../../.local/validation/artifacts/2026-10-18-clipboard-workbench-v2/clipboard-workbench.png)：卡片“工作”徽标、侧栏数量1和右侧分组一致。
+- [分组筛选](../../../.local/validation/artifacts/2026-10-18-clipboard-workbench-v2/group-filter.png)：可见ID只包含分配到该组的记录。
 
 真实进程重启使用同一隔离profile，依次运行下列命令两次，再去掉 `--allow-mutations` 运行第三次：
 
@@ -62,7 +62,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 | 13584 | 新进程恢复相同历史/分组ID与归属；再通过UI删除分组和历史 |
 | 38344 | 只读确认历史0、分组0，已删除数据未复活 |
 
-[重启恢复截图](restart-restored.png)。元数据证据在
+[重启恢复截图](../../../.local/validation/artifacts/2026-10-18-clipboard-workbench-v2/restart-restored.png)。元数据证据在
 `target/mcp-clipboard-v2-isolated-restart/restart-{created,restored,deleted,deleted-verified}.json`。
 
 ## 验证隔离更正

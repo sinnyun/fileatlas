@@ -79,7 +79,7 @@ impl Render for DevTestPanel {
             .gap_2()
             .p_3()
             .border_t_1()
-            .border_color(rgb(theme::SURFACE_FAINT))
+            .border_color(rgb(theme::surface_faint()))
             .child(
                 div()
                     .text_sm()
@@ -89,7 +89,7 @@ impl Render for DevTestPanel {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child("样例扫描会读 test-data/photag-library 中的真实文件，并使用隔离的开发数据库。"),
             )
             .child(
@@ -141,7 +141,7 @@ impl Render for DevTestPanel {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(self.service.status()),
             )
     }

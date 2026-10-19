@@ -42,13 +42,13 @@ impl Render for ConfiguredPage {
                     cx.notify();
                 });
             })),
-            Err(error) => div().text_color(rgb(theme::DANGER)).child(error),
+            Err(error) => div().text_color(rgb(theme::danger_text())).child(error),
         };
         if let Some(error) = &self.error {
             body = body.child(
                 div()
                     .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }

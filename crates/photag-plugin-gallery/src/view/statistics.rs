@@ -48,7 +48,7 @@ pub(super) fn render(
                 panel = panel.child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::DANGER))
+                        .text_color(rgb(theme::danger_text()))
                         .child(format!("Audio count unavailable: {error}")),
                 );
             }
@@ -88,7 +88,7 @@ pub(super) fn render(
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(
                             "Total size across indexed media.",
                         )),
@@ -149,7 +149,7 @@ pub(super) fn render(
         Some(Err(error)) => {
             panel = panel.child(
                 div()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(format!("Error loading statistics: {error}")),
             );
         }
@@ -169,7 +169,7 @@ fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
         .gap_1()
         .p_3()
         .workbench_section()
-        .bg(rgb(theme::SURFACE_CARD))
+        .bg(rgb(theme::surface_card()))
         .child(
             div()
                 .h_flex()
@@ -178,12 +178,12 @@ fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
                 .child(
                     theme::icon(icon)
                         .size(px(16.))
-                        .text_color(rgb(theme::TEXT_SECONDARY)),
+                        .text_color(rgb(theme::text_secondary())),
                 )
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(label)),
                 ),
         )
@@ -199,7 +199,7 @@ fn stat_section(title: &'static str) -> Div {
         .gap_2()
         .p_3()
         .workbench_section()
-        .bg(rgb(theme::SURFACE_CARD))
+        .bg(rgb(theme::surface_card()))
         .child(
             div()
                 .text_sm()
@@ -235,7 +235,7 @@ fn bar_row(label: String, count: i64, max: i64, color: u32, width: f32) -> Div {
                 .w(px(width))
                 .h(px(14.))
                 .rounded_sm()
-                .bg(rgb(theme::SURFACE_FAINT))
+                .bg(rgb(theme::surface_faint()))
                 .child(
                     div()
                         .w(px(width * fraction))
@@ -271,7 +271,7 @@ fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
                 .child(
                     div()
                         .text_size(px(9.))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(count.to_string()),
                 )
                 .child(
@@ -285,7 +285,7 @@ fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
                     div()
                         .w_full()
                         .text_size(px(9.))
-                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_color(rgb(theme::text_muted()))
                         .text_center()
                         .overflow_hidden()
                         .text_ellipsis()

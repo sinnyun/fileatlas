@@ -15,7 +15,7 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                 .gap_1()
                 .p_2()
                 .rounded_md()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .child(
                     div()
                         .h_flex()
@@ -40,7 +40,7 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr_args(
                             "{scanned} / {total} files",
                             &[
@@ -58,7 +58,7 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                 .gap_1()
                 .p_2()
                 .rounded_md()
-                .bg(rgb(theme::SURFACE_PANEL))
+                .bg(rgb(theme::surface_panel()))
                 .child(
                     div()
                         .h_flex()
@@ -66,13 +66,13 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                         .gap_2()
                         .child(
                             theme::small_icon(gpui_kit::assets::IconName::TriangleAlert)
-                                .text_color(rgb(theme::WARNING)),
+                                .text_color(rgb(theme::warning_text())),
                         )
                         .child(
                             div()
                                 .flex_1()
                                 .text_sm()
-                                .text_color(rgb(theme::DANGER))
+                                .text_color(rgb(theme::danger_text()))
                                 .child(photag_ui_bridge::i18n::tr("Folder scan failed")),
                         )
                         .child(
@@ -88,7 +88,7 @@ pub(super) fn append(mut panel: Div, view: &SidebarView, cx: &mut Context<Sideba
                 .child(
                     div()
                         .text_xs()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(message),
                 ),
         );

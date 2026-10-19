@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::*;
 use photag_plugin_workspaces::ColumnLayout;
-use photag_ui_bridge::{UiViewContribution, refresh};
+use photag_ui_bridge::{UiViewContribution, components, refresh, theme};
 
 use crate::{ColumnLayoutService, ColumnState};
 
@@ -72,87 +71,64 @@ struct ColumnToolbar {
 }
 
 impl Render for ColumnToolbar {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut controls = div()
-            .h_flex()
-            .items_center()
-            .gap(px(4.))
-            .child(layout_button(
-                "columns-layout-single",
-                "单栏",
-                ColumnLayout::Single,
-                self.state.layout,
-                Arc::clone(&self.service),
-                cx,
-            ))
-            .child(layout_button(
-                "columns-layout-dual",
-                "双栏",
-                ColumnLayout::Dual,
-                self.state.layout,
-                Arc::clone(&self.service),
-                cx,
-            ))
-            .child(layout_button(
-                "columns-layout-quad",
-                "四栏",
-                ColumnLayout::Quad,
-                self.state.layout,
-                Arc::clone(&self.service),
-                cx,
-            ));
-
-        if self.state.layout.column_count() > 1 {
-            controls = controls.child(
-                div()
-                    .w(px(1.))
-                    .h(px(20.))
-                    .mx(px(4.))
-                    .bg(rgb(photag_ui_bridge::theme::SEPARATOR)),
-            );
-            for index in 0..self.state.layout.column_count() {
-                let service = Arc::clone(&self.service);
-                let selected = self.state.active_index == index;
-                let label = (index + 1).to_string();
-                let button = Button::new(ElementId::Name(format!("columns-active-{index}").into()))
-                    .compact()
-                    .label(label)
-                    .on_click(cx.listener(move |_, _, _, _| {
-                        if let Err(error) = service.activate(index) {
-                            tracing::error!(%error, "could not activate gallery column");
-                        }
-                    }));
-                controls = controls.child(if selected {
-                    button.primary()
-                } else {
-                    button.ghost()
-                });
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        let state = self.state;
+        let service = Arc::clone(&self.service);
+        components::icon_button(
+            "columns-layout-menu",
+            match state.layout {
+                ColumnLayout::Single => gpui_kit::assets::IconName::Square,
+                ColumnLayout::Dual => gpui_kit::assets::IconName::Columns2,
+                ColumnLayout::Quad => gpui_kit::assets::IconName::Grid2x2,
+            },
+        )
+        .w(px(theme::ICON_BUTTON_SIZE
+            + theme::ICON_SIZE_SMALL
+            + theme::SPACE_1))
+        .tooltip(photag_ui_bridge::i18n::tr(
+            "Column layout and active column",
+        ))
+        .accessibility_label(photag_ui_bridge::i18n::tr(
+            "Column layout and active column",
+        ))
+        .dropdown_caret(true)
+        .dropdown_menu(move |mut menu, _, _| {
+            for (label, layout) in [
+                ("Single column", ColumnLayout::Single),
+                ("Two columns", ColumnLayout::Dual),
+                ("Four columns", ColumnLayout::Quad),
+            ] {
+                let layout_service = Arc::clone(&service);
+                menu = menu.item(
+                    PopupMenuItem::new(photag_ui_bridge::i18n::tr(label))
+                        .checked(state.layout == layout)
+                        .on_click(move |_, _, _| {
+                            if let Err(error) = layout_service.set_layout(layout) {
+                                tracing::error!(%error, "could not change gallery column layout");
+                            }
+                        }),
+                );
             }
-        }
-
-        controls.into_any_element()
-    }
-}
-
-fn layout_button(
-    id: &'static str,
-    label: &'static str,
-    layout: ColumnLayout,
-    current: ColumnLayout,
-    service: Arc<ColumnLayoutService>,
-    cx: &mut Context<ColumnToolbar>,
-) -> Button {
-    let button = Button::new(id)
-        .compact()
-        .label(label)
-        .on_click(cx.listener(move |_, _, _, _| {
-            if let Err(error) = service.set_layout(layout) {
-                tracing::error!(%error, "could not change gallery column layout");
+            if state.layout.column_count() > 1 {
+                for index in 0..state.layout.column_count() {
+                    let column_service = Arc::clone(&service);
+                    menu = menu.item(
+                        PopupMenuItem::new(format!(
+                            "{} {}",
+                            photag_ui_bridge::i18n::tr("Active column"),
+                            index + 1
+                        ))
+                        .checked(state.active_index == index)
+                        .on_click(move |_, _, _| {
+                            if let Err(error) = column_service.activate(index) {
+                                tracing::error!(%error, "could not activate gallery column");
+                            }
+                        }),
+                    );
+                }
             }
-        }));
-    if current == layout {
-        button.primary()
-    } else {
-        button.ghost()
+            menu
+        })
+        .into_any_element()
     }
 }

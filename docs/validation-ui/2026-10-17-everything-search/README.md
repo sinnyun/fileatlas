@@ -34,7 +34,7 @@ Windows / 150% DPI；Rust 1.97.1 Windows MSVC；Everything 1.5.0.1423。
 - `node scripts/check-ui-refresh.cjs`、`node scripts/check-architecture.cjs`、`node scripts/check-feature-ledger.cjs`、`node scripts/check-layering.cjs` 和 `git diff --check` 通过。架构脚本仍报告已有 preview/media-playback 遗留空目录，不影响本轮通过。
 - 已实际检查截图：搜索后的范围弹层四项完整可见；缺失/版本不兼容时搜索栏后的琥珀色安装提示清楚可见；软件页同时显示 QuickLook、Everything、版本及官方/GitHub 链接，保持已接受的主窗布局。
 
-可复查证据：[精简报告](verification-summary.json)、[搜索范围](search-scopes.png)、[软件检查](software.png)、[缺失安装](missing.png)、[版本不兼容](incompatible.png)、[兼容安装](ready.png)。报告省略本机全索引命中的非测试路径；完整 MCP 原始调用仅保存在 target 隔离档案。
+可复查证据：[精简报告](../../../.local/validation/artifacts/2026-10-17-everything-search/verification-summary.json)、[搜索范围](../../../.local/validation/artifacts/2026-10-17-everything-search/search-scopes.png)、[软件检查](../../../.local/validation/artifacts/2026-10-17-everything-search/software.png)、[缺失安装](../../../.local/validation/artifacts/2026-10-17-everything-search/missing.png)、[版本不兼容](../../../.local/validation/artifacts/2026-10-17-everything-search/incompatible.png)、[兼容安装](../../../.local/validation/artifacts/2026-10-17-everything-search/ready.png)。报告省略本机全索引命中的非测试路径；完整 MCP 原始调用仅保存在 target 隔离档案。
 
 最终成功场景使用已就绪的客户端，没有观测到首次全盘索引的 loading→ready 分支。后台客户端启动曾实际观测到，但修复后的长时间冷索引自动恢复与 RPC 超时取消分支仍需独立覆盖，不能据本次成功查询宣称已验证。官方下载按钮的 URL 已核对，验证未实际打开浏览器或运行安装器。
 
@@ -52,7 +52,7 @@ Windows / 150% DPI；Rust 1.97.1 Windows MSVC；Everything 1.5.0.1423。
 精确命令：`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-everything-location --plugins dev-test --allow-mutations --scenario scripts/validate-everything-location.cjs`。
 重启读取使用同一入口与 profile、`--plan target/mcp-everything-location/restore-plan.json`，对 `get_ui_state.gallery.search_entire_computer == true` 断言通过。
 截图沿用既有主窗设计，检查按钮、字段范围和 Everything 提示完整并排可见，没有裁切。
-[当前目录截图](location-current-folder.png)、[整台电脑截图](location-entire-computer.png)、[验证摘要](location-report.json)。
+[当前目录截图](../../../.local/validation/artifacts/2026-10-17-everything-search/location-current-folder.png)、[整台电脑截图](../../../.local/validation/artifacts/2026-10-17-everything-search/location-entire-computer.png)、[验证摘要](../../../.local/validation/artifacts/2026-10-17-everything-search/location-report.json)。
 
 ## 官方参考链接
 

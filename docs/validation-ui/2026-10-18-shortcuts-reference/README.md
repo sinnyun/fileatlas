@@ -10,14 +10,14 @@
 
 | 检查项 | 参考要求 | 本轮实际结果与证据 |
 |---|---|---|
-| 插件行结构 | 命令、范围、按键、更改/恢复/禁用在同一横行，列对齐 | [之前](before.png) 把按钮固定放到第二行；[修正后](final.png) 横向对齐，插件 ID 移入信息提示 |
-| 正文层级 | 大标题、范围说明、插件组、其他快捷键组，细线分区 | [final.png](final.png) 使用 22/16/14/12 字号层级和 20 逻辑像素正文留白，移除重复的小节标题 |
+| 插件行结构 | 命令、范围、按键、更改/恢复/禁用在同一横行，列对齐 | [之前](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/before.png) 把按钮固定放到第二行；[修正后](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/final.png) 横向对齐，插件 ID 移入信息提示 |
+| 正文层级 | 大标题、范围说明、插件组、其他快捷键组，细线分区 | [final.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/final.png) 使用 22/16/14/12 字号层级和 20 逻辑像素正文留白，移除重复的小节标题 |
 | 默认窗口内容 | 两个插件绑定及 F1–F9 可同时看见 | 面板 1120×840 逻辑像素，正常与冲突图均可看见 F9；正文可滚动，页脚固定 |
-| 录入状态 | 同行蓝框、组合键提示、取消入口 | 实际点击更改，[recording.png](recording.png)；可点击取消，Esc 也取消且不关设置 |
-| 冲突状态 | 录入框下红字说明占用命令，原值保留 | 向剪贴板录入 Ctrl+F，显示启动台占用，[conflict.png](conflict.png)；断言磁盘不变，仍可继续录入 |
-| 禁用/恢复/成功录入 | 禁用可读，恢复插件默认值，合法值即时保存 | [disabled.png](disabled.png)；真实点击保存 Ctrl+Alt+Q 后检查 JSON，再点击恢复删除覆盖项 |
-| 标签选择器 | F1–F9 单列九行，选择器填满剩余宽度 | [final.png](final.png)；修正 GPUI DropdownMenu 外层未继承 flex 的问题，宽度按当前内容区计算 |
-| 小窗口 | 列布局和页脚完整，纵向滚动可到 F9 | [compact.png](compact.png) → MCP 实际滚轮 → [compact-scrolled.png](compact-scrolled.png)；[F9 菜单](compact-f9-menu.png) 在右侧箭头处实际点击打开 |
+| 录入状态 | 同行蓝框、组合键提示、取消入口 | 实际点击更改，[recording.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/recording.png)；可点击取消，Esc 也取消且不关设置 |
+| 冲突状态 | 录入框下红字说明占用命令，原值保留 | 向剪贴板录入 Ctrl+F，显示启动台占用，[conflict.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/conflict.png)；断言磁盘不变，仍可继续录入 |
+| 禁用/恢复/成功录入 | 禁用可读，恢复插件默认值，合法值即时保存 | [disabled.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/disabled.png)；真实点击保存 Ctrl+Alt+Q 后检查 JSON，再点击恢复删除覆盖项 |
+| 标签选择器 | F1–F9 单列九行，选择器填满剩余宽度 | [final.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/final.png)；修正 GPUI DropdownMenu 外层未继承 flex 的问题，宽度按当前内容区计算 |
+| 小窗口 | 列布局和页脚完整，纵向滚动可到 F9 | [compact.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/compact.png) → MCP 实际滚轮 → [compact-scrolled.png](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/compact-scrolled.png)；[F9 菜单](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/compact-f9-menu.png) 在右侧箭头处实际点击打开 |
 | 临时状态清理 | 取消、切页、关闭释放键盘捕获 | 场景断言 `settings_shortcuts.capturing_key` 返回 false；防止系统键继续暂停 |
 | 静置 | 不重复请求标签模型/改变图库 revision | 等待 700ms 后标签 ReadModel 快照及图库 revision 不变；不把它描述为 OS 系统级键验证 |
 
@@ -44,7 +44,7 @@ git diff --check
 fmt、locked shell check 和四项治理脚本通过。shell **编译与链接成功，但 Cargo 最终复制
 `target/debug/photag-shell.exe` 失败（os error 5，旧用户进程占用）**，因此不记为完整的
 `cargo build` 通过。保留原窗口，使用本次链接的 `target/debug/deps/photag_shell.exe`
-另存为验证专用 EXE；两个新文件哈希一致，见 [summary.json](summary.json)。现有主 EXE
+另存为验证专用 EXE；两个新文件哈希一致，见 [summary.json](../../../.local/validation/artifacts/2026-10-18-shortcuts-reference/summary.json)。现有主 EXE
 仍是旧版本，旧窗口不会热更新；运行新界面需关闭旧窗口后启动验证专用 EXE。
 链接保留项目既有 LNK4098 警告。治理守卫仅报告既存 preview/media-playback 空目录警告。
 

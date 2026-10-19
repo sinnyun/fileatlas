@@ -34,6 +34,7 @@ struct DragRequest {
     source_window: RawWindowHandle,
     paths: Vec<PathBuf>,
     status: Arc<AtomicU8>,
+    style: crate::DragImageStyle,
 }
 
 struct SourceWindow(RawWindowHandle);
@@ -49,6 +50,7 @@ pub(super) fn queue_file_drag<W: HasWindowHandle>(
     status: &Arc<AtomicU8>,
     source: &W,
     paths: &[PathBuf],
+    style: crate::DragImageStyle,
 ) -> Result<(), crate::DragDropError> {
     let source_window = source
         .window_handle()
@@ -72,6 +74,7 @@ pub(super) fn queue_file_drag<W: HasWindowHandle>(
             source_window,
             paths: paths.to_vec(),
             status: Arc::clone(status),
+            style,
         });
         let request_ptr = Box::into_raw(request);
         if unsafe {
@@ -170,7 +173,7 @@ fn run_file_drag(request: DragRequest) -> Result<(), crate::DragDropError> {
     let Some(preview_path) = request.paths.first().cloned() else {
         return Ok(());
     };
-    let preview = make_drag_preview(&preview_path);
+    let preview = make_drag_preview(&preview_path, request.style);
     let source = SourceWindow(request.source_window);
     let status = Arc::clone(&request.status);
     drag::start_drag(
@@ -191,13 +194,13 @@ fn run_file_drag(request: DragRequest) -> Result<(), crate::DragDropError> {
 
 const PREVIEW_EDGE: u32 = 96;
 
-fn make_drag_preview(path: &std::path::Path) -> Vec<u8> {
+fn make_drag_preview(path: &std::path::Path, style: crate::DragImageStyle) -> Vec<u8> {
     let image = image::ImageReader::open(path)
         .and_then(|reader| reader.with_guessed_format())
         .ok()
         .and_then(|reader| reader.decode().ok())
         .map(|image| image.thumbnail(PREVIEW_EDGE, PREVIEW_EDGE).to_rgba8());
-    let image = image.unwrap_or_else(|| fallback_file_icon(path));
+    let image = image.unwrap_or_else(|| fallback_file_icon(path, style));
     let mut png = Cursor::new(Vec::new());
     if DynamicImage::ImageRgba8(image)
         .write_to(&mut png, ImageFormat::Png)
@@ -211,36 +214,25 @@ fn make_drag_preview(path: &std::path::Path) -> Vec<u8> {
     }
 }
 
-fn fallback_file_icon(path: &std::path::Path) -> RgbaImage {
+fn fallback_file_icon(path: &std::path::Path, style: crate::DragImageStyle) -> RgbaImage {
     let mut image = RgbaImage::from_pixel(80, 96, Rgba([0, 0, 0, 0]));
     let ext = path
         .extension()
         .and_then(|value| value.to_str())
         .unwrap_or("FILE")
         .to_ascii_uppercase();
-    let accent = extension_color(&ext);
-    fill_rect(&mut image, 14, 5, 52, 84, Rgba([245, 247, 250, 255]));
+    let paint = |[r, g, b]: [u8; 3]| Rgba([r, g, b, 255]);
+    let accent = paint(style.accent);
+    fill_rect(&mut image, 14, 5, 52, 84, paint(style.background));
     fill_rect(&mut image, 14, 5, 52, 7, accent);
     // Folded page corner.
-    fill_rect(&mut image, 55, 5, 11, 11, Rgba([218, 224, 232, 255]));
-    fill_rect(&mut image, 20, 27, 39, 3, Rgba([198, 205, 215, 255]));
-    fill_rect(&mut image, 20, 35, 31, 3, Rgba([218, 224, 232, 255]));
-    fill_rect(&mut image, 20, 43, 35, 3, Rgba([218, 224, 232, 255]));
+    fill_rect(&mut image, 55, 5, 11, 11, paint(style.border));
+    fill_rect(&mut image, 20, 27, 39, 3, paint(style.foreground));
+    fill_rect(&mut image, 20, 35, 31, 3, paint(style.border));
+    fill_rect(&mut image, 20, 43, 35, 3, paint(style.border));
     let label = if ext.is_empty() { "FILE" } else { ext.as_str() };
     draw_label(&mut image, label, accent);
     image
-}
-
-fn extension_color(ext: &str) -> Rgba<u8> {
-    match ext {
-        "JPG" | "JPEG" | "PNG" | "GIF" | "WEBP" | "BMP" | "HEIC" | "TIFF" => {
-            Rgba([59, 130, 246, 255])
-        }
-        "MP4" | "MOV" | "AVI" | "MKV" | "WEBM" => Rgba([139, 92, 246, 255]),
-        "MP3" | "WAV" | "FLAC" | "M4A" => Rgba([16, 160, 132, 255]),
-        "PDF" => Rgba([224, 76, 76, 255]),
-        _ => Rgba([100, 116, 139, 255]),
-    }
 }
 
 fn fill_rect(image: &mut RgbaImage, x: u32, y: u32, width: u32, height: u32, color: Rgba<u8>) {

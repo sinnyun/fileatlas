@@ -1,6 +1,5 @@
 use super::*;
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::ButtonVariants;
 
 mod native_panels;
 mod panel_resize;
@@ -87,15 +86,24 @@ impl Render for PhoTagShell {
         let mut size_views = Vec::new();
         let mut filter_views = Vec::new();
         let mut column_control_views = Vec::new();
+        let mut view_mode_views = Vec::new();
+        let mut view_option_views = Vec::new();
         let mut status_views = Vec::new();
         let mut debug_status = Vec::new();
         let mut bottom_views = Vec::new();
         let mut tool_views = Vec::new();
         let mut sidebar_views = Vec::new();
+        let mut sidebar_footer_views = Vec::new();
+        let mut title_left_actions = Vec::new();
+        let mut toolbar_actions = Vec::new();
         let mut content_views = Vec::new();
         let mut column_addresses: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
         let mut column_contents: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
         let mut column_filters: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
+        let mut column_view_modes: [Vec<gpui_kit::AnyView>; 4] =
+            std::array::from_fn(|_| Vec::new());
+        let mut column_view_options: [Vec<gpui_kit::AnyView>; 4] =
+            std::array::from_fn(|_| Vec::new());
         let mut column_searches: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
         let mut column_sizes: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
         let mut column_status: [Vec<gpui_kit::AnyView>; 4] = std::array::from_fn(|_| Vec::new());
@@ -125,6 +133,8 @@ impl Render for PhoTagShell {
                             if index < 4 {
                                 match region {
                                     "filters" => column_filters[index].push(view.clone()),
+                                    "view-modes" => column_view_modes[index].push(view.clone()),
+                                    "view-options" => column_view_options[index].push(view.clone()),
                                     "search" => column_searches[index].push(view.clone()),
                                     "size" => column_sizes[index].push(view.clone()),
                                     "status" => column_status[index].push(view.clone()),
@@ -142,6 +152,9 @@ impl Render for PhoTagShell {
                 "workspace.bottom" => bottom_views.push(view.clone()),
                 "command.tools" => tool_views.push(view.clone()),
                 "workspace.sidebar" => sidebar_views.push(view.clone()),
+                "workspace.sidebar-footer" => sidebar_footer_views.push(view.clone()),
+                "shell.title-left-action" => title_left_actions.push(view.clone()),
+                "shell.toolbar-actions" => toolbar_actions.push(view.clone()),
                 "gallery.content" => content_views.push(view.clone()),
                 slot if slot.starts_with("gallery.column.") => {
                     let mut parts = slot.split('.');
@@ -180,6 +193,8 @@ impl Render for PhoTagShell {
             .unwrap_or(0)
             .min(3);
         filter_views.extend(column_filters[active_column].clone());
+        view_mode_views.extend(column_view_modes[active_column].clone());
+        view_option_views.extend(column_view_options[active_column].clone());
         search_views.extend(column_searches[active_column].clone());
         status_views.extend(column_status[active_column].clone());
         tool_views.extend(column_tools[active_column].clone());
@@ -187,13 +202,11 @@ impl Render for PhoTagShell {
         modal_views.extend(column_modals[active_column].clone());
         modal_views.extend(active_panel);
         let mut tool_commands = Vec::new();
-        let mut settings_available = false;
         for button in contributions.iter().filter_map(|owned| {
             let ContributionKind::Command { label, .. } = &owned.contribution.kind else {
                 return None;
             };
             if owned.contribution.id == "settings/toggle" {
-                settings_available = true;
                 return None;
             }
             if owned.contribution.id == "metadata-export/export" {
@@ -222,78 +235,6 @@ impl Render for PhoTagShell {
         }) {
             tool_commands.push(button);
         }
-        let settings_entry = {
-            let cordis = self.cordis.clone();
-            let executor = self.executor.clone();
-            theme::separate_region(
-                div()
-                    .v_flex()
-                    .w(px(48.))
-                    .flex_shrink_0()
-                    .h(px(56.))
-                    .items_center()
-                    .justify_center()
-                    .gap(px(4.))
-                    .bg(rgb(theme::SURFACE_RAIL))
-                    .child(
-                        theme::icon(IconName::Settings)
-                            .size(px(16.))
-                            .text_color(rgb(theme::TEXT_SECONDARY)),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(10.))
-                            .child(photag_ui_bridge::i18n::tr("Settings")),
-                    ),
-                theme::RegionEdge::Top,
-            )
-            .id("shell-settings-entry")
-            .cursor_pointer()
-            .hover(|style| style.bg(rgba(theme::FILL_HOVER)))
-            .on_click(move |_, _, _| {
-                let cordis = cordis.clone();
-                let executor = executor.clone();
-                executor.spawn(async move {
-                    if let Err(error) = cordis
-                        .emit::<UiCommandInvoked>(Routing::Unscoped, "settings/toggle".into())
-                        .await
-                    {
-                        tracing::error!("settings toggle failed: {error}");
-                    }
-                });
-            })
-        };
-        let sidebar_toggle = Button::new("shell-sidebar")
-            .ghost()
-            .compact()
-            .icon(theme::small_icon(if self.sidebar_open {
-                IconName::PanelLeftClose
-            } else {
-                IconName::PanelLeft
-            }))
-            .tooltip(photag_ui_bridge::i18n::tr("Toggle sidebar"))
-            .on_click(cx.listener(|this, _, _, cx| {
-                this.sidebar_open = !this.sidebar_open;
-                let _ = this.surfaces.set_value(
-                    "sidebar.visible",
-                    if this.sidebar_open { "true" } else { "false" },
-                );
-                cx.notify();
-            }));
-        let inspector_toggle = Button::new("shell-inspector")
-            .ghost()
-            .compact()
-            .icon(theme::icon(IconName::PanelRight))
-            .toggled(self.inspector_open)
-            .tooltip(photag_ui_bridge::i18n::tr("Toggle inspector"))
-            .on_click(cx.listener(|this, _, _, cx| {
-                let next = !this.surfaces.is_open("inspector");
-                if let Err(error) = this.surfaces.set_open("inspector", next) {
-                    tracing::error!("inspector toggle failed: {error}");
-                }
-                this.inspector_open = next;
-                cx.notify();
-            }));
         // Shared operation band: filters/view controls and search/functions are
         // separate groups. Address navigation stays in the row below.
         let logo_zone = div()
@@ -319,9 +260,10 @@ impl Render for PhoTagShell {
                 .gap(px(8.))
                 .child(
                     logo_zone
-                        .child(sidebar_toggle)
+                        .children(title_left_actions)
                         .child(
-                            theme::large_icon(IconName::Aperture).text_color(rgb(theme::accent())),
+                            theme::large_icon(IconName::Aperture)
+                                .text_color(rgb(theme::accent_text())),
                         )
                         .child(
                             div()
@@ -339,7 +281,17 @@ impl Render for PhoTagShell {
                         .items_center()
                         .overflow_hidden()
                         .children(filter_views)
-                        .children(column_control_views),
+                        .child(
+                            div()
+                                .h_flex()
+                                .flex_shrink_0()
+                                .items_center()
+                                .gap(px(theme::SPACE_1))
+                                .ml(px(theme::PANEL_GAP))
+                                .children(view_mode_views)
+                                .children(column_control_views)
+                                .children(view_option_views),
+                        ),
                 )
                 .child(theme::separate_region(
                     div()
@@ -351,39 +303,9 @@ impl Render for PhoTagShell {
                         .pl(px(8.))
                         .pr(px(8.))
                         .children(search_views)
-                        .child(
-                            Button::new("shell-workspaces")
-                                .ghost()
-                                .compact()
-                                .label(photag_ui_bridge::i18n::tr("Workspaces"))
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    if let Err(error) =
-                                        this.surfaces.set_open("workspace-manager", true)
-                                    {
-                                        tracing::error!(
-                                            "could not open workspace manager: {error}"
-                                        );
-                                    }
-                                    cx.notify();
-                                })),
-                        )
-                        .child(
-                            Button::new("shell-tools")
-                                .ghost()
-                                .compact()
-                                .icon(theme::icon(IconName::Wrench))
-                                .tooltip(photag_ui_bridge::i18n::tr("Tools"))
-                                .accessibility_label(photag_ui_bridge::i18n::tr("Tools"))
-                                .toggled(self.tools_open)
-                                .on_click(cx.listener(|this, _, _, cx| {
-                                    this.tools_open = !this.tools_open;
-                                    let _ = this.surfaces.set_open("tools", this.tools_open);
-                                    cx.notify();
-                                })),
-                        ),
+                        .children(toolbar_actions),
                     theme::RegionEdge::Left,
-                ))
-                .child(inspector_toggle),
+                )),
             theme::RegionEdge::Bottom,
         );
         let mut sidebar_column = theme::separate_region(
@@ -393,7 +315,7 @@ impl Render for PhoTagShell {
                 .h_full()
                 .flex_shrink_0()
                 .min_h_0()
-                .bg(rgb(theme::SURFACE_SIDEBAR)),
+                .bg(rgb(theme::surface_sidebar())),
             theme::RegionEdge::Right,
         )
         .child(
@@ -404,13 +326,13 @@ impl Render for PhoTagShell {
                 .w_full()
                 .children(sidebar_views),
         );
-        if settings_available {
+        if !sidebar_footer_views.is_empty() {
             sidebar_column = sidebar_column.child(
                 div()
                     .h_flex()
                     .w_full()
                     .flex_shrink_0()
-                    .child(settings_entry),
+                    .children(sidebar_footer_views),
             );
         }
         let layout = self
@@ -455,7 +377,7 @@ impl Render for PhoTagShell {
                     .when(index > 0, |column| {
                         column
                             .border_l_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .border_color(rgba(theme::separator_light()))
                     })
                     .when(index == active_column && column_count > 1, |column| {
                         column.border_1().border_color(rgb(theme::accent()))
@@ -535,7 +457,7 @@ impl Render for PhoTagShell {
                             .w_full()
                             .overflow_x_scrollbar()
                             .border_t_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .border_color(rgba(theme::separator_light()))
                             .child(make_column(2))
                             .child(make_column(3)),
                     )
@@ -559,7 +481,7 @@ impl Render for PhoTagShell {
             .min_w_0()
             .relative()
             .overflow_hidden()
-            .bg(rgb(theme::SURFACE_PANEL))
+            .bg(rgb(theme::surface_panel()))
             .when(column_count == 1, |content| {
                 let single_addresses = if column_addresses[0].is_empty() {
                     breadcrumb_views
@@ -607,7 +529,7 @@ impl Render for PhoTagShell {
                         body.child(
                             div()
                                 .text_sm()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child("No feature plugins are active."),
                         )
                     }),
@@ -616,11 +538,11 @@ impl Render for PhoTagShell {
         let mut shell = div()
             .v_flex()
             .size_full()
-            .bg(rgba(theme::base_rgba(theme::SURFACE_BASE)))
+            .bg(rgba(theme::base_rgba(theme::surface_base())))
             .relative()
             .font_family(theme::UI_FONT_FAMILY)
             .text_size(px(theme::FONT_SIZE_BODY))
-            .text_color(rgb(theme::TEXT_PRIMARY))
+            .text_color(rgb(theme::text_primary()))
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                 if !event.keystroke.key.eq_ignore_ascii_case("escape") {
                     if !this.surfaces.is_capturing_key("settings") {
@@ -725,7 +647,7 @@ impl Render for PhoTagShell {
                                         .h_full()
                                         .flex_shrink_0()
                                         .min_h_0()
-                                        .bg(rgb(theme::SURFACE_CARD))
+                                        .bg(rgb(theme::surface_card()))
                                         .children(inspector_views),
                                     theme::RegionEdge::Left,
                                 ))
@@ -773,8 +695,8 @@ impl Render for PhoTagShell {
                     .p(px(10.))
                     .rounded(px(theme::ROUND_LG))
                     .border_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
-                    .bg(rgba(theme::modal_rgba(theme::SURFACE_MODAL)))
+                    .border_color(rgba(theme::separator_light()))
+                    .bg(rgba(theme::modal_rgba(theme::surface_modal())))
                     .child(
                         div()
                             .v_flex()
@@ -798,7 +720,7 @@ impl Render for PhoTagShell {
                     div()
                         .absolute()
                         .inset_0()
-                        .bg(rgba(theme::SHADOW_OVERLAY))
+                        .bg(rgba(theme::shadow_overlay()))
                         .occlude()
                         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                         .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation()),

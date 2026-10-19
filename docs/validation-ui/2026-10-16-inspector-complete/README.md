@@ -13,13 +13,13 @@
 
 | 状态 | 已填充及核对内容 | 运行截图 |
 |---|---|---|
-| 程序 | 身份卡、2×2概览、实际位置、绿色就绪状态、提示；当前18文件/5子目录/8标签；无具体标签列表、媒体库容量或扫描任务 | [程序](screenshots/program-complete.png) |
-| 标签 | 名称、色值、父级、18关联、5个子标签；输入与保存、7色色板、可见性开关、子项数量/菜单 | [标签](screenshots/tag-complete.png)、[子项菜单](screenshots/tag-child-menu.png) |
-| 文件夹 | 实际名称、18当前结果、5子目录、完整路径、浏览状态、复制/打开/刷新入口 | [文件夹](screenshots/folder-complete.png) |
-| 文件 | 真实缩略图、4星、5个彩色标签、名称/大小/尺寸/时间、相机/镜头/光圈/快门/ISO/拍摄时间与路径 | [文件](screenshots/file-complete.png)、[EXIF与路径](screenshots/file-exif-complete.png) |
-| 模拟历史 | 主线v1/v0、弯曲侧分支v0.1、图片缩略图、选中描边、分支选择、创建/切换、完整版本详情 | [历史](screenshots/history-complete.png)、[分支筛选](screenshots/history-branch-filtered.png) |
-| 普通历史 | 真实当前副本和元数据、无旧版本状态，演示开关关闭且没有残留模拟节点 | [普通启动](screenshots/history-normal.png) |
-| 文件扩展 | 当前无文件扩展贡献，显示实际空态 | [空态](screenshots/file-extensions-empty.png) |
+| 程序 | 身份卡、2×2概览、实际位置、绿色就绪状态、提示；当前18文件/5子目录/8标签；无具体标签列表、媒体库容量或扫描任务 | [程序](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/program-complete.png) |
+| 标签 | 名称、色值、父级、18关联、5个子标签；输入与保存、7色色板、可见性开关、子项数量/菜单 | [标签](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/tag-complete.png)、[子项菜单](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/tag-child-menu.png) |
+| 文件夹 | 实际名称、18当前结果、5子目录、完整路径、浏览状态、复制/打开/刷新入口 | [文件夹](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/folder-complete.png) |
+| 文件 | 真实缩略图、4星、5个彩色标签、名称/大小/尺寸/时间、相机/镜头/光圈/快门/ISO/拍摄时间与路径 | [文件](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/file-complete.png)、[EXIF与路径](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/file-exif-complete.png) |
+| 模拟历史 | 主线v1/v0、弯曲侧分支v0.1、图片缩略图、选中描边、分支选择、创建/切换、完整版本详情 | [历史](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/history-complete.png)、[分支筛选](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/history-branch-filtered.png) |
+| 普通历史 | 真实当前副本和元数据、无旧版本状态，演示开关关闭且没有残留模拟节点 | [普通启动](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/history-normal.png) |
+| 文件扩展 | 当前无文件扩展贡献，显示实际空态 | [空态](../../../.local/validation/artifacts/2026-10-16-inspector-complete/screenshots/file-extensions-empty.png) |
 
 ## 数据及边界
 
@@ -76,7 +76,7 @@ MCP crate 编译/test目标通过（0测试，不宣称自动覆盖工具行为�
 
 随后 `verify-normal.cjs` 在**无演示环境变量**的最终构建上完成20步，核对去重后的EXIF/路径、
 普通工作副本历史和1920×1080小窗口；演示enabled=false，节点count=null，静止日志426→426。
-两个脚本均只由项目MCP控制窗口。简要结构化证据见 [results.json](results.json)，
+两个脚本均只由项目MCP控制窗口。简要结构化证据见 [results.json](../../../.local/validation/artifacts/2026-10-16-inspector-complete/results.json)，
 完整报告、DB、EXE和补充截图位于隔离profile的target输出中。
 
 小窗口内容通过既有滚动区/展开区访问；截图检查了布局，不宣称本轮已穷尽滚轮、非150%DPI、

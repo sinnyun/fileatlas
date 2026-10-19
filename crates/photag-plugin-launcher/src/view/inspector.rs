@@ -7,7 +7,7 @@ fn information_row(label: &str, value: String) -> AnyElement {
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .child(tr(label)),
         )
         .child(div().text_sm().child(value))
@@ -39,8 +39,8 @@ impl LauncherPanel {
             .p(px(14.))
             .gap(px(14.))
             .border_l_1()
-            .border_color(rgba(theme::SEPARATOR_LIGHT))
-            .bg(rgb(theme::SURFACE_FAINT))
+            .border_color(rgba(theme::separator_light()))
+            .bg(rgb(theme::surface_faint()))
             .child(
                 div()
                     .h_flex()
@@ -71,7 +71,7 @@ impl LauncherPanel {
                         .items_center()
                         .justify_center()
                         .gap(px(14.))
-                        .text_color(rgb(theme::TEXT_MUTED))
+                        .text_color(rgb(theme::text_muted()))
                         .child(theme::empty_state_icon(IconName::LayoutGrid))
                         .child(div().text_sm().child(tr("Select a program")))
                         .child(
@@ -115,7 +115,7 @@ impl LauncherPanel {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child(tr("Display name")),
                     )
                     .child(photag_ui_bridge::components::text_input(&self.entry_name).w_full()),
@@ -131,7 +131,7 @@ impl LauncherPanel {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_MUTED))
+                            .text_color(rgb(theme::text_muted()))
                             .child(tr("Categories")),
                     )
                     .child(
@@ -203,7 +203,7 @@ impl LauncherPanel {
                 div()
                     .pt(px(12.))
                     .border_t_1()
-                    .border_color(rgba(theme::SEPARATOR_LIGHT))
+                    .border_color(rgba(theme::separator_light()))
                     .font_semibold()
                     .child(tr("Installation information")),
             )
@@ -230,9 +230,14 @@ impl LauncherPanel {
                     .to_string_lossy()
                     .replace('\\', "\\\u{200b}"),
             ))
-            .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(tr(
-                "Installation information comes from Windows. Missing values are unknown.",
-            )));
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(rgb(theme::text_muted()))
+                    .child(tr(
+                        "Installation information comes from Windows. Missing values are unknown.",
+                    )),
+            );
         panel = panel
             .child(
                 div()

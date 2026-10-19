@@ -43,7 +43,7 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(if let Some(tag) = &selected {
                     div()
                         .h_flex()
@@ -129,7 +129,7 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
         .child(
             div()
                 .text_xs()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(if let Some(tag) = &selected {
                     div()
                         .h_flex()

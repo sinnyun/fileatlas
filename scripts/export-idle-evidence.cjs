@@ -5,8 +5,8 @@ const zlib = require('node:zlib');
 const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname, '..');
-const profile = path.resolve(root, process.argv[2] ?? 'target/mcp-unified-refresh-final');
-const output = path.join(root, 'docs/validation-ui/2026-10-15-idle-audit');
+const profile = path.resolve(root, process.argv[2] ?? '.local/validation/profiles/mcp-unified-refresh-final');
+const output = path.join(root, '.local/validation/artifacts/2026-10-15-idle-audit');
 fs.mkdirSync(output, { recursive: true });
 const summary = { generated: new Date().toISOString(), profile, suites: [], history: [] };
 for (const [source, name] of [['idle-report.json', 'unified-matrix'], ['idle-followup-report.json', 'unified-followup']]) {

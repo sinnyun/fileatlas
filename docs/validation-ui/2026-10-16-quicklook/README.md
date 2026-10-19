@@ -125,7 +125,7 @@ QuickLook 忙碌（`WaitNamedPipeW` 250 ms）时重试的实际表现、真实�
 连按或单实例被占时误报；名字不存在时立即失败，不产生等待。
 
 QuickLook 关闭状态下的同进程实测（profile `target/mcp-ql-nostart2`，截图
-[quicklook-not-running-alert.png](quicklook-not-running-alert.png)）：
+[quicklook-not-running-alert.png](../../../.local/validation/artifacts/2026-10-16-quicklook/quicklook-not-running-alert.png)）：
 
 ```powershell
 node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-ql-nostart2 --scenario scripts/validate-quicklook-mcp.cjs --allow-mutations
@@ -150,11 +150,11 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 
 ## 截图与边界
 
-- [图库缩略图](gallery-preserved.png)：PNG和视频卡片缩略图仍存在。
-- [右侧预览](inspector-preserved.png)：同一预览、文件名、评分、信息/历史/扩展页仍存在。
-- [真实错误提示](missing-original-alert.png)：沿用已有Alert，未创建新的查看窗口。
-- [QuickLook 未运行提示](quicklook-not-running-alert.png)：中文 Alert；未启动任何外部进程，也没有回退到其他查看器。
-- [设置](settings-without-viewer-toolbar.png)：原独立查看器Toolbar页已移除。
+- [图库缩略图](../../../.local/validation/artifacts/2026-10-16-quicklook/gallery-preserved.png)：PNG和视频卡片缩略图仍存在。
+- [右侧预览](../../../.local/validation/artifacts/2026-10-16-quicklook/inspector-preserved.png)：同一预览、文件名、评分、信息/历史/扩展页仍存在。
+- [真实错误提示](../../../.local/validation/artifacts/2026-10-16-quicklook/missing-original-alert.png)：沿用已有Alert，未创建新的查看窗口。
+- [QuickLook 未运行提示](../../../.local/validation/artifacts/2026-10-16-quicklook/quicklook-not-running-alert.png)：中文 Alert；未启动任何外部进程，也没有回退到其他查看器。
+- [设置](../../../.local/validation/artifacts/2026-10-16-quicklook/settings-without-viewer-toolbar.png)：原独立查看器Toolbar页已移除。
 
 本机已安装QuickLook，未卸载用户软件来测试“确实未安装”的系统状态；NotInstalled
 返回分支及中英文本已实现，真实未安装机器仍待验。Store启动/桥接、未运行的其他安装

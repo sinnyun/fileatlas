@@ -65,6 +65,9 @@ fn default_open_key() -> String {
 fn default_accent_name() -> String {
     photag_ui_bridge::theme::DEFAULT_ACCENT_NAME.to_string()
 }
+fn default_color_mode() -> String {
+    "dark".into()
+}
 /// Mirrors `theme::REGION_DEPTH_BORDER`; kept literal so this model stays UI-free.
 fn default_region_separation() -> String {
     "border".to_string()
@@ -240,10 +243,16 @@ pub struct Settings {
     /// currently-selected gallery thumbnail in the preview view.
     #[serde(default = "default_open_key")]
     pub open_key: String,
-    /// Name of the accent preset from `theme::ACCENT_PRESETS`. Falls back
-    /// to the default if the stored value is unknown (e.g. after a rename).
+    /// Legacy accent name retained for JSON compatibility. Native ThemeConfig
+    /// is now the only paint source; this field is not used as a palette.
     #[serde(default = "default_accent_name")]
     pub accent_name: String,
+    /// Semantic workbench color mode: `dark` or `light`.
+    #[serde(default = "default_color_mode")]
+    pub color_mode: String,
+    /// Native GPUI ThemeSet JSON, None selects framework defaults.
+    #[serde(default)]
+    pub theme_file: Option<PathBuf>,
     /// How the UI separates its regions: `"border"` hairlines or `"shadow"`.
     /// Applied to `theme::set_region_depth_name` at startup and on change.
     #[serde(default = "default_region_separation")]
@@ -375,6 +384,8 @@ impl Default for Settings {
             exclude_modifier: ExcludeModifier::Ctrl,
             open_key: default_open_key(),
             accent_name: default_accent_name(),
+            color_mode: default_color_mode(),
+            theme_file: None,
             region_separation: default_region_separation(),
             show_date_dividers: default_show_date_dividers(),
             search_scopes: SearchScopes::default(),

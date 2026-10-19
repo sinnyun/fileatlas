@@ -18,7 +18,7 @@ Windows，同进程 MCP stdio，隔离 profile 位于 `target/mcp-settings-toggl
 
 ## 结果
 
-- 页面呈现与状态：通过。开/关状态截图分别见 [启用](enabled.png) 和 [拦截](disabled.png)。
+- 页面呈现与状态：通过。开/关状态截图分别见 [启用](../../../.local/validation/artifacts/2026-10-19-mcp-settings-toggle/enabled.png) 和 [拦截](../../../.local/validation/artifacts/2026-10-19-mcp-settings-toggle/disabled.png)。
 - 即时拦截：通过。开关写入现有 `SettingsService` 后，同一进程的下一次修改工具调用读取最新快照并拒绝请求，无需重启。
 - 持久化：通过。开关状态保存在既有设置 JSON 的 `mcp_allow_mutations` 字段；新字段使用 serde 默认值 `false`，旧设置文件保持兼容。
 - 新配置默认态：通过。字段缺失的隔离 profile 启动后状态为 `false`，修改请求也被拦截。

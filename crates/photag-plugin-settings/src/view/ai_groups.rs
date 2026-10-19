@@ -16,12 +16,16 @@ impl SettingsView {
             .cloned()
             .unwrap_or_default();
         if let Some(Err(error)) = self.tag_choices.value() {
-            panel = panel.child(div().text_color(rgb(theme::DANGER)).child(error.clone()));
+            panel = panel.child(
+                div()
+                    .text_color(rgb(theme::danger_text()))
+                    .child(error.clone()),
+            );
         }
         if self.tag_choices.value().is_none() {
             panel = panel.child(tr("Loading file info…"));
         } else if available.is_empty() {
-            panel=panel.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::TEXT_SECONDARY)).child(tr("No library tags are available for adding to groups while Navigation is stopped or the tag library is empty.")));
+            panel=panel.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary())).child(tr("No library tags are available for adding to groups while Navigation is stopped or the tag library is empty.")));
         }
         for (index, stored) in settings.ai.mandatory_groups.iter().enumerate() {
             let mut group = div()
@@ -29,7 +33,7 @@ impl SettingsView {
                 .gap_2()
                 .py(px(theme::SPACE_3))
                 .border_b_1()
-                .border_color(rgb(theme::SEPARATOR));
+                .border_color(rgb(theme::separator()));
             let mut header = div().h_flex().w_full().items_center().gap_2();
             if self.editing_group == Some(index) {
                 header = header
@@ -89,7 +93,7 @@ impl SettingsView {
                 group = group.child(
                     div()
                         .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(tr("Selected tags")),
                 );
             }
@@ -179,7 +183,7 @@ impl SettingsView {
                 group = group.child(
                     div()
                         .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(tr("No library tags are available to add.")),
                 );
             }

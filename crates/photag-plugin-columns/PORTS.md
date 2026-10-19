@@ -13,9 +13,14 @@
 - `activate(index)` selects an existing column and rejects out-of-range indices.
 - Startup layout is read from the selected program workspace.
 - Lifecycle-owned view contribution: `columns/toolbar` in slot `command.columns`.
-  The toolbar offers explicit Single/Dual/Quad layout actions and, for multi-
-  column layouts, a numbered active-column selector. It calls this service and
-  refreshes from its `Wake`; removing `photag.columns` unregisters the view.
+  One compact layout icon opens a dropdown with checked Single/Dual/Quad layout
+  choices and, when multiple columns are visible, checked active-column choices.
+  Both operations call this service and the toolbar refreshes from its `Wake`;
+  removing `photag.columns` unregisters the view.
+  Shell places this contribution between the active Gallery pane's view-mode
+  and view-option projections, next to grid/list. It uses the shared ghost icon
+  button with room for the caret; Square/Columns2/Grid2x2 represent single,
+  side-by-side dual and 2×2 quad layouts respectively.
 
 ## Current limits
 

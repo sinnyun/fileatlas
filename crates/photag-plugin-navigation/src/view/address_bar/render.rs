@@ -41,9 +41,9 @@ impl SidebarView {
             .rounded(px(5.))
             .border_1()
             .border_color(rgb(if self.address.error.is_some() {
-                theme::DANGER
+                theme::danger()
             } else {
-                theme::CONTROL_BOX
+                theme::control_box()
             }))
             .px(px(5.));
         if self.address.editing {
@@ -83,7 +83,7 @@ impl SidebarView {
                     if i > 0 {
                         trail = trail.child(
                             theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::TEXT_MUTED)),
+                                .text_color(rgb(theme::text_muted())),
                         );
                     }
                     let target = crumb.path.clone();
@@ -111,7 +111,7 @@ impl SidebarView {
                         trail = trail.child(
                             div()
                                 .text_sm()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(photag_ui_bridge::i18n::tr("Tags")),
                         );
                         if let Some(snapshot) = self.snapshot.as_ref().ok() {
@@ -138,7 +138,7 @@ impl SidebarView {
                         trail = trail.child(
                             div()
                                 .text_sm()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(photag_ui_bridge::i18n::tr("Favorites")),
                         );
                     }
@@ -173,7 +173,7 @@ impl SidebarView {
                     .ghost()
                     .compact()
                     .label("!")
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .tooltip(error.clone()),
             );
         }

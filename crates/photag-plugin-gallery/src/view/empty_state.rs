@@ -19,17 +19,17 @@ pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElem
     };
     let emblem = if no_results {
         theme::empty_state_icon(IconName::Search)
-            .text_color(rgb(theme::TEXT_MUTED))
+            .text_color(rgb(theme::text_muted()))
             .into_any_element()
     } else {
         div()
             .size(px(72.))
             .rounded(px(theme::ROUND_XL))
-            .bg(rgb(theme::SURFACE_FAINT))
+            .bg(rgb(theme::surface_faint()))
             .flex()
             .items_center()
             .justify_center()
-            .child(theme::empty_state_icon(IconName::Image).text_color(rgb(theme::TEXT_MUTED)))
+            .child(theme::empty_state_icon(IconName::Image).text_color(rgb(theme::text_muted())))
             .into_any_element()
     };
     let action = if no_results {
@@ -65,14 +65,14 @@ pub(super) fn render(no_results: bool, cx: &mut Context<GalleryView>) -> AnyElem
                         .mt(px(16.))
                         .font_family(theme::SEMIBOLD_FONT_FAMILY)
                         .text_size(px(theme::FONT_SIZE_HEADING))
-                        .text_color(rgb(theme::TEXT_PRIMARY))
+                        .text_color(rgb(theme::text_primary()))
                         .child(photag_ui_bridge::i18n::tr(title)),
                 )
                 .child(
                     div()
                         .mt(px(6.))
                         .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(body)),
                 )
                 .child(div().mt(px(20.)).child(action)),

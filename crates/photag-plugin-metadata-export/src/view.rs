@@ -124,13 +124,13 @@ impl Render for ExportPanel {
                     &[("records", records.to_string())],
                 ),
                 IconName::CircleCheck,
-                theme::SUCCESS,
+                theme::success_text(),
             ),
             MetadataExportStatus::Failed(error) => (
                 tr("Export failed"),
                 error.clone(),
                 IconName::CircleX,
-                theme::DANGER,
+                theme::danger_text(),
             ),
         };
         let mut body = div().v_flex().gap_3().p_4().child(
@@ -149,10 +149,10 @@ impl Render for ExportPanel {
                         .child(
                             div()
                                 .text_sm()
-                                .text_color(rgb(if color == theme::DANGER {
-                                    color
+                                .text_color(rgb(if color == theme::danger_text() {
+                                    theme::danger_text()
                                 } else {
-                                    theme::TEXT_SECONDARY
+                                    theme::text_secondary()
                                 }))
                                 .child(detail),
                         ),
@@ -173,7 +173,7 @@ impl Render for ExportPanel {
                     .v_flex()
                     .gap_1()
                     .p_3()
-                    .bg(rgb(theme::SURFACE_PANEL))
+                    .bg(rgb(theme::surface_panel()))
                     .rounded(px(4.))
                     .child(
                         div().text_sm().child(
@@ -185,7 +185,7 @@ impl Render for ExportPanel {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .overflow_hidden()
                             .text_ellipsis()
                             .child(path.display().to_string()),
@@ -196,7 +196,7 @@ impl Render for ExportPanel {
             body = body.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::DANGER))
+                    .text_color(rgb(theme::danger_text()))
                     .child(error.clone()),
             );
         }
@@ -206,15 +206,15 @@ impl Render for ExportPanel {
             .flex()
             .items_center()
             .justify_center()
-            .bg(rgba(theme::SCRIM))
+            .bg(rgba(theme::scrim()))
             .child(
                 div()
                     .v_flex()
                     .w(px((f32::from(window.bounds().size.width) - 48.).min(560.)))
                     .rounded(px(6.))
                     .border_1()
-                    .border_color(rgb(theme::SEPARATOR))
-                    .bg(rgb(theme::SURFACE_MODAL))
+                    .border_color(rgb(theme::separator()))
+                    .bg(rgb(theme::surface_modal()))
                     .child(
                         div()
                             .h_flex()
@@ -222,8 +222,10 @@ impl Render for ExportPanel {
                             .h(px(48.))
                             .px_4()
                             .border_b_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
-                            .child(theme::icon(IconName::Upload).text_color(rgb(theme::accent())))
+                            .border_color(rgba(theme::separator_light()))
+                            .child(
+                                theme::icon(IconName::Upload).text_color(rgb(theme::accent_text())),
+                            )
                             .child(
                                 div()
                                     .flex_1()
@@ -251,7 +253,7 @@ impl Render for ExportPanel {
                             .px_4()
                             .py_3()
                             .border_t_1()
-                            .border_color(rgba(theme::SEPARATOR_LIGHT))
+                            .border_color(rgba(theme::separator_light()))
                             .when(!exporting, |row| {
                                 row.child(
                                     Button::new("export-choose")

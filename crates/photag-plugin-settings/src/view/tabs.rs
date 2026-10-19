@@ -35,7 +35,7 @@ impl SettingsView {
                 .child(
                     div()
                         .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(photag_ui_bridge::i18n::tr(
                             "Each group defines required tags for automatic analysis.",
                         )),

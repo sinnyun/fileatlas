@@ -15,13 +15,13 @@ fn thumb(x: f32) -> Div {
         .top(px(3.))
         .size(px(16.))
         .rounded_full()
-        .bg(rgba(theme::TRACK_SHADOW))
+        .bg(rgba(theme::track_shadow()))
         .child(
             div()
                 .absolute()
                 .inset(px(1.5))
                 .rounded_full()
-                .bg(rgb(theme::SURFACE_ELEVATED)),
+                .bg(rgb(theme::surface_elevated())),
         )
         .child(
             div()
@@ -81,14 +81,18 @@ fn slider(view: &GalleryView, rating: bool, cx: &mut Context<GalleryView>) -> im
             .absolute()
             .size_full(),
         )
-        .child(rail(pad, width - pad, rgba(theme::TRACK_HIGHLIGHT).into()))
+        .child(rail(
+            pad,
+            width - pad,
+            rgba(theme::track_highlight()).into(),
+        ))
         .child(rail(
             low,
             high,
             if active {
                 rgb(theme::accent()).into()
             } else {
-                rgba(theme::TRACK_ACTIVE).into()
+                rgba(theme::track_active()).into()
             },
         ))
         .child(thumb(high))
@@ -131,7 +135,7 @@ pub(super) fn thumbnail(view: &GalleryView, cx: &mut Context<GalleryView>) -> Di
         .gap(px(8.))
         .child(
             div()
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(theme::small_icon(gpui_kit::assets::IconName::ZoomIn)),
         )
         .child(slider(view, false, cx))

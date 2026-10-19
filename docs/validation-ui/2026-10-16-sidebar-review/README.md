@@ -26,7 +26,7 @@ Shell 的工作区比例初始化和 MCP 截图坐标换算继续保留；本轮
 
 ## 命令和结果
 
-Windows、150% DPI、Rust 1.97.1 MSVC、debug、增量编译。所有运行测试由 `photag-shell --mcp` 与窗口共享进程，使用 `target/` 隔离配置。详见 [summary.json](summary.json)。
+Windows、150% DPI、Rust 1.97.1 MSVC、debug、增量编译。所有运行测试由 `photag-shell --mcp` 与窗口共享进程，使用 `target/` 隔离配置。详见 [summary.json](../../../.local/validation/artifacts/2026-10-16-sidebar-review/summary.json)。
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
@@ -57,7 +57,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 - SQLite 离线检查：十万普通浏览之后，photag-tags.db 的 media/media_tags/tag_previews 各 1 行，均属于明确标记的 version.png。
 - Debug 静止 2.5 秒 latest_id 保持不变，数值见 summary；没有隐藏重复日志。
 
-截图：[快速访问折叠](quick-collapsed.png)、[保存失败反馈](sidebar-save-failed.png)、[实际箭头点击后展开](sidebar-pointer-expanded.png)。逐张检查了现有主窗口结构、快捷目录树、内联错误位置、收藏分组和已移除的虚假 0 计数。
+截图：[快速访问折叠](../../../.local/validation/artifacts/2026-10-16-sidebar-review/quick-collapsed.png)、[保存失败反馈](../../../.local/validation/artifacts/2026-10-16-sidebar-review/sidebar-save-failed.png)、[实际箭头点击后展开](../../../.local/validation/artifacts/2026-10-16-sidebar-review/sidebar-pointer-expanded.png)。逐张检查了现有主窗口结构、快捷目录树、内联错误位置、收藏分组和已移除的虚假 0 计数。
 
 ## 尚未验收的边界
 

@@ -63,7 +63,7 @@ pub(super) fn render_history_branches(view: &GalleryView, cx: &mut Context<Galle
                         .border_color(rgba(if is_current {
                             (theme::accent() << 8) | 0x80
                         } else {
-                            theme::SEPARATOR_LIGHT
+                            theme::separator_light()
                         }))
                         .child(
                             div()
@@ -71,13 +71,13 @@ pub(super) fn render_history_branches(view: &GalleryView, cx: &mut Context<Galle
                                 .justify_between()
                                 .child(
                                     div()
-                                        .text_color(rgb(theme::TEXT_PRIMARY))
+                                        .text_color(rgb(theme::text_primary()))
                                         .child(name.clone()),
                                 )
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(rgb(theme::TEXT_SECONDARY))
+                                        .text_color(rgb(theme::text_secondary()))
                                         .child(if is_current { "Current" } else { "Branch" }),
                                 ),
                         )
@@ -133,7 +133,7 @@ pub(super) fn render_history_branches(view: &GalleryView, cx: &mut Context<Galle
                         .gap(px(6.))
                         .p(px(8.))
                         .rounded(px(7.))
-                        .bg(rgba((theme::WARNING << 8) | 0x20))
+                        .bg(rgba((theme::warning() << 8) | 0x20))
                         .child(branch_section_title("Merge conflicts"))
                         .child(format!(
                             "{} into {}: {}",
@@ -347,7 +347,7 @@ fn branch_section_title(title: &str) -> Div {
         .py(px(6.))
         .font_family(theme::SEMIBOLD_FONT_FAMILY)
         .text_size(px(14.))
-        .text_color(rgb(theme::TEXT_PRIMARY))
+        .text_color(rgb(theme::text_primary()))
         .child(photag_ui_bridge::i18n::tr(title))
 }
 
@@ -356,6 +356,6 @@ fn branch_note(message: &str) -> Div {
         .w_full()
         .py(px(6.))
         .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(message))
 }

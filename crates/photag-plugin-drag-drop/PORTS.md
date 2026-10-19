@@ -84,3 +84,12 @@ emit tracing records captured by photag.debug; instrumented public operations
 report wall-clock span duration and errors. Domain service contracts, event
 payloads and source operation ordering are unchanged. See
 `photag-plugin-debug/PORTS.md` for capture scope and limits.
+
+## Native theme paints (2026-10-19)
+
+`start_file_drag(window, paths: &[PathBuf], style: DragImageStyle)` now requires
+`DragImageStyle { background, foreground, border, accent: [u8;3] }` from the caller's
+resolved native theme. Gallery supplies current UI Bridge/native roles. Fallback document
+icons no longer contain a private pixel palette or file-format color table. Real image
+preview pixels and OS behavior are unchanged; native OLE drag execution was not revalidated
+by the theme migration. No UI-stack dependency was added to this low-level service.

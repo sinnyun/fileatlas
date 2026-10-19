@@ -52,8 +52,8 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 - 未打开History，连续3次无关剪贴板写入+普通重绘，事件计数均95；额外静置2.2秒仍不变。
 - 真实文件修改经监听自动显示Modified/未保存徽标，事件计数增到127。
 - 创建第二个版本自动变回Saved，读完后2秒静置计数207不变；版本列表仅01/02。
-- [精简结果](version-idle-summary.json)、[未打开版本页的静置截图](quiet-no-history.png)、
-  [真实文件修改](real-file-modified.png)。已打开前一张确认实际窗口与调试面板状态。
+- [精简结果](../../../.local/validation/artifacts/2026-10-18-version-idle/version-idle-summary.json)、[未打开版本页的静置截图](../../../.local/validation/artifacts/2026-10-18-version-idle/quiet-no-history.png)、
+  [真实文件修改](../../../.local/validation/artifacts/2026-10-18-version-idle/real-file-modified.png)。已打开前一张确认实际窗口与调试面板状态。
 
 初次加载已建版本的文件、真实版本动作及实际文件变化仍会产生有限统计日志；本轮没有
 消除这些有实际工作对应的日志。未在用户原始82文件目录及其后台事件环境重放，若更新后

@@ -19,7 +19,7 @@ impl SettingsView {
                 .gap_2()
                 .p_3()
                 .border_b_1()
-                .border_color(rgb(theme::SEPARATOR))
+                .border_color(rgb(theme::separator()))
                 .child(
                     div()
                         .v_flex()
@@ -27,7 +27,7 @@ impl SettingsView {
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .child(photag_ui_bridge::i18n::tr("Current version")),
                         )
                         .child(div().font_semibold().child(format!(
@@ -81,16 +81,16 @@ impl SettingsView {
         let (status, status_color) = if checking {
             (
                 "Checking GitHub for a newer release…".to_owned(),
-                theme::TEXT_SECONDARY,
+                theme::text_secondary(),
             )
         } else if let Some(error) = &self.update_error {
-            (format!("Update error: {error}"), theme::DANGER)
+            (format!("Update error: {error}"), theme::danger_text())
         } else if let Some(status) = &self.update_status {
-            (status.clone(), theme::TEXT_SECONDARY)
+            (status.clone(), theme::text_secondary())
         } else {
             (
                 "No update check has run in this session.".to_owned(),
-                theme::TEXT_SECONDARY,
+                theme::text_secondary(),
             )
         };
         page = page.child(
@@ -125,7 +125,7 @@ impl SettingsView {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(format!("{:.1} MB", info.size_mb())),
                     ),
             );
@@ -138,14 +138,14 @@ impl SettingsView {
                         .max_h(px(150.))
                         .overflow_y_scrollbar()
                         .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(notes),
                 );
             }
             release = release.child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr(
                         "The downloaded file is checked against the published SHA-256 checksum before it is staged.",
                     )),
@@ -199,7 +199,7 @@ impl SettingsView {
                                 .child(
                                     div()
                                         .text_xs()
-                                        .text_color(rgb(theme::TEXT_SECONDARY))
+                                        .text_color(rgb(theme::text_secondary()))
                                         .child(photag_ui_bridge::i18n::tr(
                                             "The update is staged. Restart and install only when you are ready.",
                                         )),
@@ -222,7 +222,7 @@ impl SettingsView {
                     release = release.child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(photag_ui_bridge::i18n::tr(
                                 "PhoTag will replace its executable and launch the updated version.",
                             )),

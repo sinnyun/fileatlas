@@ -164,7 +164,7 @@ impl SettingsView {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr("Current version")),
             )
             .child(
@@ -172,8 +172,8 @@ impl SettingsView {
                     .p_2()
                     .rounded_sm()
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(format!(
                         "PhoTag {}",
                         photag_plugin_updater::current_version()
@@ -182,7 +182,7 @@ impl SettingsView {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr("Update available")),
             )
             .child(
@@ -192,8 +192,8 @@ impl SettingsView {
                     .p_2()
                     .rounded_sm()
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(
                         div()
                             .h_flex()
@@ -207,14 +207,14 @@ impl SettingsView {
                             .child(
                                 div()
                                     .text_xs()
-                                    .text_color(rgb(theme::TEXT_SECONDARY))
+                                    .text_color(rgb(theme::text_secondary()))
                                     .child(format!("{:.1} MB", info.size_mb())),
                             ),
                     )
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(format!(
                                 "You're running PhoTag {}.",
                                 photag_plugin_updater::current_version()
@@ -235,7 +235,7 @@ impl SettingsView {
                         .max_h(px(notes_height))
                         .overflow_y_scrollbar()
                         .text_sm()
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(notes),
                 );
         }
@@ -269,8 +269,8 @@ impl SettingsView {
                     .p_3()
                     .rounded_sm()
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(
                         div()
                             .font_semibold()
@@ -279,7 +279,7 @@ impl SettingsView {
                     .child(
                         div()
                             .text_sm()
-                            .text_color(rgb(theme::TEXT_SECONDARY))
+                            .text_color(rgb(theme::text_secondary()))
                             .child(format!(
                                 "{:.1} MB / {:.1} MB ({percent:.0}%)",
                                 done as f64 / 1_048_576.0,
@@ -291,7 +291,7 @@ impl SettingsView {
                             .w_full()
                             .h(px(8.))
                             .rounded_full()
-                            .bg(rgb(theme::SURFACE_ELEVATED))
+                            .bg(rgb(theme::surface_elevated()))
                             .child(
                                 div()
                                     .w(px(bar_width))
@@ -300,7 +300,7 @@ impl SettingsView {
                                     .bg(rgb(theme::accent())),
                             ),
                     )
-                    .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
+                    .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
                         photag_ui_bridge::i18n::tr(
                             "The update offer stays open while downloading.",
                         ),
@@ -314,13 +314,13 @@ impl SettingsView {
                     .p_3()
                     .rounded_sm()
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(div().font_semibold().child(photag_ui_bridge::i18n::tr("Download verified")))
-                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
                         photag_ui_bridge::i18n::tr("The update is staged. Restart and install only when you are ready."),
                     ))
-                    .child(div().text_xs().text_color(rgb(theme::SUCCESS)).child(
+                    .child(div().text_xs().text_color(rgb(theme::success_text())).child(
                         photag_ui_bridge::i18n::tr("The downloaded file is checked against the published SHA-256 checksum before it is staged."),
                     )),
             );
@@ -332,10 +332,10 @@ impl SettingsView {
                     .p_3()
                     .rounded_sm()
                     .border_1()
-                    .border_color(rgba(theme::HAIRLINE.to_rgba()))
-                    .bg(rgb(theme::SURFACE_BASE))
+                    .border_color(rgba(theme::hairline().to_rgba()))
+                    .bg(rgb(theme::surface_base()))
                     .child(div().font_semibold().child(photag_ui_bridge::i18n::tr("Download")))
-                    .child(div().text_sm().text_color(rgb(theme::TEXT_SECONDARY)).child(
+                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
                         photag_ui_bridge::i18n::tr("The downloaded file is checked against the published SHA-256 checksum before it is staged."),
                     )),
             );
@@ -345,8 +345,8 @@ impl SettingsView {
                 div()
                     .p_2()
                     .rounded_sm()
-                    .bg(rgb(theme::DANGER))
-                    .text_color(rgb(theme::TEXT_PRIMARY))
+                    .bg(rgb(theme::danger()))
+                    .text_color(rgb(theme::text_on_danger()))
                     .child(error.clone()),
             );
         }
@@ -354,7 +354,7 @@ impl SettingsView {
             right = right.child(
                 div()
                     .text_sm()
-                    .text_color(rgb(theme::TEXT_SECONDARY))
+                    .text_color(rgb(theme::text_secondary()))
                     .child(photag_ui_bridge::i18n::tr(
                         "PhoTag will replace its executable and launch the updated version.",
                     )),
@@ -369,8 +369,8 @@ impl SettingsView {
             .justify_between()
             .px_4()
             .border_b_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-            .bg(rgb(theme::SURFACE_MODAL))
+            .border_color(rgba(theme::hairline().to_rgba()))
+            .bg(rgb(theme::surface_modal()))
             .child(
                 div()
                     .text_lg()
@@ -416,7 +416,7 @@ impl SettingsView {
                         })),
                 );
         } else if downloading {
-            actions = actions.child(div().text_sm().text_color(rgb(theme::TEXT_MUTED)).child(
+            actions = actions.child(div().text_sm().text_color(rgb(theme::text_muted())).child(
                 photag_ui_bridge::i18n::tr("The update offer stays open while downloading."),
             ));
         } else {
@@ -462,8 +462,8 @@ impl SettingsView {
             .gap_2()
             .px_4()
             .border_t_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-            .bg(rgb(theme::SURFACE_MODAL))
+            .border_color(rgba(theme::hairline().to_rgba()))
+            .bg(rgb(theme::surface_modal()))
             .child(actions);
         let body = div()
             .h_flex()
@@ -472,7 +472,7 @@ impl SettingsView {
             .gap_4()
             .px_4()
             .py_3()
-            .bg(rgb(theme::SURFACE_MODAL))
+            .bg(rgb(theme::surface_modal()))
             .child(left)
             .child(right);
         let dialog = div()
@@ -483,9 +483,9 @@ impl SettingsView {
             .max_h(px((f32::from(viewport.height) - 24.).max(1.)))
             .rounded_md()
             .border_1()
-            .border_color(rgba(theme::HAIRLINE.to_rgba()))
-            .bg(rgb(theme::SURFACE_MODAL))
-            .text_color(rgb(theme::TEXT_PRIMARY))
+            .border_color(rgba(theme::hairline().to_rgba()))
+            .bg(rgb(theme::surface_modal()))
+            .text_color(rgb(theme::text_primary()))
             .child(header)
             .child(body)
             .child(footer);
@@ -495,7 +495,7 @@ impl SettingsView {
             .h_flex()
             .items_center()
             .justify_center()
-            .child(div().absolute().inset_0().bg(rgba(theme::SCRIM)))
+            .child(div().absolute().inset_0().bg(rgba(theme::scrim())))
             .child(dialog)
     }
 

@@ -9,7 +9,7 @@
 - 修正规则后的隔离 MCP 快照有 292 个程序、13 个分类（其中“其他”和常用/General 为 0）；分类覆盖 AI、文件同步、远程连接、开发、设计、办公、通讯、浏览器、影音、游戏与系统工具。没有卸载器、安装器目标或仅文档类入口。所有快照条目均有非空一句话说明。
 - 随后以正常用户配置启动构建后的 PhoTag，`%LOCALAPPDATA%\PhoTag\launcher\launcher.json` 从 298 项清理到 295 项，未发现卸载/安装器目标、空说明或“其他”类条目。CADCraft、LightCraft、NeatReader 三条旧自动分类项现分别归入设计创作、设计创作、办公软件并生成产品说明。用户配置的扫描与合并已落盘；原有隐藏、自定义名称和手动分类继续由插件合并规则保留。
 - Photoshop 2025 显示产品说明“用于图像处理、照片修饰、合成与视觉设计。”；右键菜单显示“卸载”，对应系统已登记命令。未点击卸载。
-- 截图：[程序说明](../../../../target/mcp-launcher-current-review/screenshots/launcher-description-row.png)、[右键卸载菜单](../../../../target/mcp-launcher-current-review/screenshots/launcher-uninstall-menu.png)。完整 MCP 结果：`target/mcp-launcher-current-review/report.json`。
+- 截图：[程序说明](../../../.local/validation/artifacts/2026-10-19-launcher-classification/screenshots/launcher-description-row.png)、[右键卸载菜单](../../../.local/validation/artifacts/2026-10-19-launcher-classification/screenshots/launcher-uninstall-menu.png)。完整 MCP 结果：`.local/validation/artifacts/2026-10-19-launcher-classification/report.json`。
 
 ## 说明来源
 

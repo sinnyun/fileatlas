@@ -35,13 +35,13 @@ pub(super) fn info_row(label: &str, value: String) -> Div {
         .gap(px(8.))
         .py(px(6.))
         .border_b_1()
-        .border_color(rgba(theme::SEPARATOR_LIGHT))
+        .border_color(rgba(theme::separator_light()))
         .child(
             div()
                 .w(px(84.))
                 .flex_shrink_0()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr(label)),
         )
         .child(
@@ -50,7 +50,7 @@ pub(super) fn info_row(label: &str, value: String) -> Div {
                 .min_w_0()
                 .text_right()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(value),
         )
 }
@@ -75,12 +75,12 @@ pub(super) fn section_header(
             } else {
                 IconName::ChevronRight
             })
-            .text_color(rgb(theme::TEXT_MUTED)),
+            .text_color(rgb(theme::text_muted())),
         )
         .child(
             div()
                 .text_size(px(theme::FONT_SIZE_BODY))
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(photag_ui_bridge::i18n::tr(title)),
         )
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_inspector_section(key, cx)))
@@ -96,12 +96,12 @@ pub(super) fn inspector_empty() -> AnyElement {
         .child(
             theme::icon(IconName::Info)
                 .size(px(24.))
-                .text_color(rgb(theme::TEXT_MUTED)),
+                .text_color(rgb(theme::text_muted())),
         )
         .child(
             div()
                 .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .child(photag_ui_bridge::i18n::tr("No file selected")),
         )
         .into_any_element()
@@ -112,7 +112,7 @@ pub(super) fn inspector_message(message: &str) -> AnyElement {
         .w_full()
         .py(px(8.))
         .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::TEXT_SECONDARY))
+        .text_color(rgb(theme::text_secondary()))
         .child(photag_ui_bridge::i18n::tr(message))
         .into_any_element()
 }
@@ -123,7 +123,7 @@ pub(super) fn inspector_divider() -> Div {
         .w_full()
         .flex_shrink_0()
         .my(px(10.))
-        .bg(rgba(theme::SEPARATOR_LIGHT))
+        .bg(rgba(theme::separator_light()))
 }
 
 pub(super) fn section_title(title: &str) -> Div {
@@ -153,17 +153,17 @@ pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {
         .gap(px(9.))
         .py(px(9.))
         .border_b_1()
-        .border_color(rgba(theme::SEPARATOR_LIGHT))
+        .border_color(rgba(theme::separator_light()))
         .child(
             theme::icon(icon)
                 .size(px(16.))
                 .flex_shrink_0()
-                .text_color(rgb(theme::TEXT_SECONDARY)),
+                .text_color(rgb(theme::text_secondary())),
         )
         .child(
             div()
                 .text_size(px(13.))
-                .text_color(rgb(theme::TEXT_SECONDARY))
+                .text_color(rgb(theme::text_secondary()))
                 .child(photag_ui_bridge::i18n::tr(label)),
         )
         .child(
@@ -172,7 +172,7 @@ pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {
                 .min_w_0()
                 .text_right()
                 .text_size(px(13.))
-                .text_color(rgb(theme::TEXT_PRIMARY))
+                .text_color(rgb(theme::text_primary()))
                 .child(value),
         )
 }

@@ -59,8 +59,13 @@
 
 ## 5. 交付证据
 
-在 `docs/validation-ui/<日期-功能>/` 保存可复现的 MCP 场景入口、最终截图和精简结果，
-在 `docs/redesign-validation.md` 链接它们。至少包含：
+在 `docs/validation-ui/<日期-功能>/` 保存可复现的 MCP 场景入口和简洁 Markdown 结论；
+截图、完整 MCP 报告、日志、profile 与 fixture 放到 Git 忽略的
+`.local/validation/artifacts/<日期-功能>/`、`.local/validation/profiles/<运行名>/`。
+脚本可提交，运行产生的数据不能提交。Markdown 可以指向同路径的本地 artifact，
+并需写明完整报告/截图的本机位置。默认使用 `scripts/photag-mcp-debug.cjs` 的
+`.local/validation/profiles/`，不要将新产物写进 `docs/validation-ui/` 或 `target/`。
+在 `docs/redesign-validation.md` 链接相应的人类可读 Markdown 结论。至少包含：
 
 | 检查项 | 参考要求 | 实际表现 | 证据/剩余差异 |
 |---|---|---|---|

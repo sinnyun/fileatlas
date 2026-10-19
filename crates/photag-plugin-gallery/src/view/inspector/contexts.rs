@@ -48,7 +48,7 @@ impl InspectorContext {
                 IconName::Folder,
                 &folder.name,
                 &display_path(&folder.path),
-                Some(theme::WARNING),
+                Some(theme::warning()),
             ),
             Self::File => div().into_any_element(),
         }
@@ -91,7 +91,7 @@ fn tag_hero(tag: &photag_plugin_database::Tag) -> AnyElement {
                 .child(
                     div()
                         .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::TEXT_SECONDARY))
+                        .text_color(rgb(theme::text_secondary()))
                         .child(format!(
                             "{} · {}",
                             photag_ui_bridge::i18n::tr_args(
@@ -219,7 +219,7 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
                         .items_center()
                         .justify_center()
                         .child(theme::icon(icon).size(px(30.)).text_color(rgb(if solid {
-                            theme::TEXT_ON_ACCENT
+                            theme::contrasting_text(color)
                         } else {
                             color
                         }))),
@@ -234,7 +234,7 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
                             div()
                                 .text_size(px(20.))
                                 .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                                .text_color(rgb(theme::TEXT_PRIMARY))
+                                .text_color(rgb(theme::text_primary()))
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(title.to_string()),
@@ -242,7 +242,7 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
                         .child(
                             div()
                                 .text_size(px(12.))
-                                .text_color(rgb(theme::TEXT_SECONDARY))
+                                .text_color(rgb(theme::text_secondary()))
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(subtitle.to_string()),

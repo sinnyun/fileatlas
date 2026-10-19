@@ -4,6 +4,14 @@
 
 # 界面重构验证记录
 
+## 2026-10-19：主工具栏布局下拉与子文件夹切换图标
+
+最新用户反馈：子文件夹开启态增加持久主题强调色底框，关闭恢复普通 ghost。默认蓝/Sage Green 两种强调色的同进程 MCP 点击、移开鼠标、悬停、关闭恢复及静止 revision 检查通过，最新效果见[开启态验证](validation-ui/2026-10-19-toolbar-dropdown/README.md)的 `filled-*` 截图。
+
+后续用户反馈修正：布局入口已从缩放之后移至网格/列表旁，使用共享 ghost 图标按钮；单/双/四栏分别为方框、左右分栏和 2×2 图标，子文件夹按开关状态显示 ToggleLeft/ToggleRight。Windows 同进程 MCP 已点击验证三种布局、活动栏 2/4、各栏独立网格/列表和子文件夹配置、回切恢复及 1500 ms 静止 revision；原截图关于图标/位置的结论由 `corrected-*` 截图覆盖。当前截图、场景与未验状态见[修正记录](validation-ui/2026-10-19-toolbar-dropdown/README.md)。
+
+顶部栏位布局切换合并为一个图标下拉；单/双/四栏与多栏活动栏切换均保留，移除工具栏数字焦点按钮。子文件夹操作改用 ToggleRight 图标，原开关行为不变。同进程 MCP 验证双栏选择、活动栏 2 路由和子文件夹切换；Windows 150% DPI 截图已对照检查。构建/守卫、截图及未验状态见[工具栏验证](validation-ui/2026-10-19-toolbar-dropdown/README.md)。
+
 ## 2026-10-18：剪贴板参考还原与分类修复 v2
 
 用户指出上一版视觉未还原参考且分类不正确；结合EcoPaste、CopyQ、Ditto一手文档/截图重做。
@@ -867,3 +875,47 @@ Rust1.97.1 MSVC fmt、locked offline shell check/build 与 theme/refresh/archite
 2026-10-19 程序启动台整理：按现有 v3 图标网格参考保留面板结构，在程序信息区增加一句话说明，并完善自动分类和无关安装/帮助快捷方式筛除；右键卸载入口仅对应 Windows 注册的卸载命令且需要确认。隔离同进程 MCP 扫描 292 个主机程序，确认无卸载器/安装器目标混入、所有项目均有说明、Photoshop 信息说明和卸载菜单可见。随后正常用户配置启动并完成扫描，启动台 JSON 从 298 项清理到 295 项，零无效安装/卸载器目标、零空说明、“其他”类别零条目；三条旧自动分类项目也完成归类。Rust 1.97.1 shell 检查/构建及治理检查结果、截图和说明来源见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。真实卸载器执行/提权和未知产品的精确说明仍未在本轮验证。
 
 2026-10-19 程序启动台整理：按现有 v3 图标网格参考保留面板结构，在程序信息区增加一句话说明，并完善自动分类和无关安装/帮助快捷方式筛除；右键卸载入口仅对应 Windows 注册的卸载命令且需要确认。隔离同进程 MCP 扫描 295 个主机程序，确认无卸载器/安装器目标混入、所有项目均有说明、Photoshop 信息说明和卸载菜单可见。Rust 1.97.1 shell 检查/构建及治理检查结果、截图和说明来源见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。真实卸载器执行/提权、未知产品的精确说明和用户常规配置迁移仍未在本轮验证。
+
+## 2026-10-19 低饱和度语义配色与亮色对比修正
+
+按用户要求统一全插件 palette 并修复前景/背景遮盖。UI Bridge theme 现在提供暗亮两态的低饱和度表面、文字、强调和状态语义，并按实际填充色计算按钮文字；状态/强调文字通过对比度辅助函数适配中性凸起表面。全部 UI 消费 crate 不再直接读取暗色兼容颜色常量。同进程 MCP 两态对比校验通过，亮色弱化正文首次 4.30:1 的边界值已修正为 4.5:1 以上。fmt、locked shell check/build 和 theme/refresh/architecture/feature-ledger 检查通过。运行窗口主视图、已选文件和浅色设置页已截图打开核对；菜单/键盘焦点/禁用状态/小窗口/其他强调色的实画状态仍未全验。完整边界、命令与截图见[低饱和度语义主题验证](validation-ui/2026-10-19-muted-semantic-colors/README.md)。
+# Theme modes and Shell action ownership — 2026-10-19
+
+## Material native color palette — 2026-10-19
+
+The seed text field is replaced with GPUI Kit's existing open-source ColorSelect.
+Same-process MCP exercised palette selection, draft-only edits, Generate, dark/light,
+hover cancellation, smaller-window rendering and persisted restart. Formatting,
+locked shell check/build and governance checks passed. Exact scope and screenshots:
+[native seed color picker](validation-ui/2026-10-19-material-color-picker/README.md).
+
+## Native GPUI theme convergence / Material generator — 2026-10-19
+
+Current implementation supersedes the handwritten palettes described in the historical
+theme-mode, muted-color and thumbnail records below. GPUI Kit now resolves and distributes
+all theme colors; Material is an independently registered Cordis JSON generator.
+Locked shell check/build, generator tests, formatting and governance checks passed.
+Same-process isolated MCP verified actual generation/input, invalid-input preservation,
+light/dark changes, plugin surfaces, native menu, small-window scrolling and restart.
+Exact commands, screenshots, retained reports and coverage limits:
+[native Material theme validation](validation-ui/2026-10-19-native-material-theme/README.md).
+
+The dark/light theme setting and plugin-owned rail/toolbar actions were
+implemented against the active theme concepts. Static checks and the main-window
+dark-to-light toggle were verified through same-process PhoTag MCP; broader UI
+states remain incomplete. See [theme modes and Shell actions](validation-ui/2026-10-19-theme-modes/README.md).
+
+## 2026-10-19 用户截图：缩略图角标与标签对比纠错
+
+用户截图推翻前轮对格式角标/图片标签的充分覆盖：前轮仅验证普通 Theme token，未覆盖实际 HSL 角标、黑色混合标签背景及图片遮罩。
+已按实际底色修复角标、标签文字/图标、评分/计数和选中导航。使用隔离真实文件、黑白彩色 PNG、四个彩色标签与四星，通过同进程 MCP 切换亮/暗并打开截图检查；实际角色对比全部达到 4.5:1，静置不重载。
+命令、截图、精确范围与未验项见[本轮修复证据](validation-ui/2026-10-19-thumbnail-contrast/README.md)。静态格式/编译/构建及主题、刷新、架构、分层、台账检查通过。
+## Validation artifact storage policy (2026-10-19)
+
+Reusable scenario scripts and concise Markdown findings are kept in the repository.
+Generated screenshots, full JSON reports, fixtures, logs and profiles are Git-ignored
+under `.local/validation/`; their former tracked attachments were moved to
+`.local/validation/artifacts/` while preserving their validation-record subdirectories.
+New same-process MCP profiles default to `.local/validation/profiles/`. Historic `target/`
+commands below describe past runs and are retained as a record; new tests use the local
+validation root. Directory and link rules: [validation data policy](validation-data-policy.md).

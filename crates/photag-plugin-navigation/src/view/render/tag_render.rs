@@ -15,12 +15,7 @@ pub(in crate::view) fn render_tag(
     let is_included = included.contains(&tag_id);
     let is_excluded = excluded.contains(&tag_id);
     let selected = is_included || is_excluded;
-    let [red, green, blue] = tag
-        .color
-        .as_deref()
-        .and_then(crate::parse_hex_color)
-        .unwrap_or([120, 120, 130]);
-    let tag_color = (u32::from(red) << 16) | (u32::from(green) << 8) | u32::from(blue);
+    let tag_color = theme::tag_tint(tag.color.as_deref());
     let row_group = format!("navigation-tag-row-{}", tag.id);
     let select_name_id = tag.id;
     let name = Button::new(format!("navigation-tag-name-{}", tag.id))
@@ -209,7 +204,7 @@ pub(in crate::view) fn render_tag(
                             .top(px(0.))
                             .bottom(px(0.))
                             .w(px(1.))
-                            .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                            .bg(rgb(theme::separator())),
                     )
                     .children(rows),
             ]
@@ -225,10 +220,13 @@ pub(in crate::view) fn render_tag(
         .items_center()
         .justify_center()
         .text_xs()
-        .text_color(rgb(theme::TEXT_MUTED))
+        .text_color(rgb(theme::text_muted()))
         .child(photag_ui_bridge::i18n::tr("Drop above to place before"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.opacity(1.).bg(rgb(theme::selection_color()))
+            style
+                .opacity(1.)
+                .bg(rgb(theme::selection_color()))
+                .text_color(rgb(theme::selection_text()))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -253,11 +251,12 @@ pub(in crate::view) fn render_tag(
                 .pr(px(5.))
                 .h(px(theme::SIDEBAR_ROW_HEIGHT))
                 .rounded(px(9.))
-                .bg(rgb(theme::SURFACE_BASE))
+                .bg(rgb(theme::surface_base()))
                 .border_1()
-                .border_color(rgba(theme::HAIRLINE.to_rgba()))
+                .border_color(rgba(theme::hairline().to_rgba()))
                 .when(selected, |row| {
                     row.bg(rgb(theme::selection_color()))
+                        .text_color(rgb(theme::selection_text()))
                         .border_color(rgb(theme::accent()))
                         .child(
                             div()
@@ -308,9 +307,9 @@ pub(in crate::view) fn render_tag(
                                 .px(px(5.))
                                 .py(px(1.))
                                 .rounded(px(7.))
-                                .bg(rgb(theme::SURFACE_ELEVATED))
+                                .bg(rgb(theme::surface_elevated()))
                                 .text_size(px(10.))
-                                .text_color(rgb(theme::TEXT_MUTED))
+                                .text_color(rgb(theme::text_muted()))
                                 .child(tag.media_count.to_string()),
                         )
                         .child(actions),
@@ -324,7 +323,7 @@ pub(in crate::view) fn render_tag(
                     .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
                     .w(px(8.))
                     .h(px(1.))
-                    .bg(rgb(theme::accent_alpha(theme::TEXT_MUTED, 0.32))),
+                    .bg(rgb(theme::separator())),
             )
         })
         .children(children);
@@ -336,10 +335,13 @@ pub(in crate::view) fn render_tag(
         .items_center()
         .justify_center()
         .text_xs()
-        .text_color(rgb(theme::TEXT_MUTED))
+        .text_color(rgb(theme::text_muted()))
         .child(photag_ui_bridge::i18n::tr("Drop below to place after"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.opacity(1.).bg(rgb(theme::selection_color()))
+            style
+                .opacity(1.)
+                .bg(rgb(theme::selection_color()))
+                .text_color(rgb(theme::selection_text()))
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -361,7 +363,7 @@ impl Render for TagDragGhost {
             .px_2()
             .py_1()
             .rounded_md()
-            .bg(rgb(theme::SURFACE_PANEL))
+            .bg(rgb(theme::surface_panel()))
             .text_sm()
             .child(self.label.clone())
     }
@@ -413,7 +415,7 @@ pub(in crate::view) fn render_subdirectory(
         .accessibility_label(photag_ui_bridge::i18n::tr("Folder actions"))
         .w(px(20.))
         .h(px(22.))
-        .bg(rgb(theme::SURFACE_BASE))
+        .bg(rgb(theme::surface_base()))
         .dropdown_menu(move |mut menu, _, _| {
             let create_path = menu_path.clone();
             let create_view = view.clone();
@@ -463,60 +465,62 @@ pub(in crate::view) fn render_subdirectory(
             .w(px(18.))
             .label(" ")
     };
-    let row =
-        div()
-            .group(row_group)
-            .relative()
-            .h_flex()
-            .w_full()
-            .h(px(26.))
-            .items_center()
-            .gap(px(3.))
-            .rounded(px(4.))
-            .px(px(3.))
-            .hover(move |style| {
-                style.bg(if selected {
-                    rgb(theme::selection_color())
-                } else {
-                    rgb(theme::SURFACE_ELEVATED)
-                })
+    let row = div()
+        .group(row_group)
+        .relative()
+        .h_flex()
+        .w_full()
+        .h(px(26.))
+        .items_center()
+        .gap(px(3.))
+        .rounded(px(4.))
+        .px(px(3.))
+        .hover(move |style| {
+            style.bg(if selected {
+                rgb(theme::selection_color())
+            } else {
+                rgb(theme::surface_elevated())
             })
-            .when(selected, |row| row.bg(rgb(theme::selection_color())))
-            .child(div().w(px(8.)).h(px(1.)).bg(rgba(theme::BORDER_STRONG)))
-            .child(expand)
-            .child(
-                div()
-                    .id(format!("navigation-open-dir-{}", node.path))
-                    .h_flex()
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .items_center()
-                    .gap(px(6.))
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.select_path(selected_path.clone(), cx)
-                    }))
-                    .child(theme::small_icon(if expanded.contains_key(&node.path) {
-                        IconName::FolderOpen
+        })
+        .when(selected, |row| {
+            row.bg(rgb(theme::selection_color()))
+                .text_color(rgb(theme::selection_text()))
+        })
+        .child(div().w(px(8.)).h(px(1.)).bg(rgba(theme::border_strong())))
+        .child(expand)
+        .child(
+            div()
+                .id(format!("navigation-open-dir-{}", node.path))
+                .h_flex()
+                .flex_1()
+                .min_w_0()
+                .h_full()
+                .items_center()
+                .gap(px(6.))
+                .on_click(
+                    cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
+                )
+                .child(theme::small_icon(if expanded.contains_key(&node.path) {
+                    IconName::FolderOpen
+                } else {
+                    IconName::Folder
+                }))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .text_xs()
+                        .text_ellipsis()
+                        .child(node.name.clone()),
+                )
+                .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
+                    if counts_known {
+                        node.media_count.to_string()
                     } else {
-                        IconName::Folder
-                    }))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_xs()
-                            .text_ellipsis()
-                            .child(node.name.clone()),
-                    )
-                    .child(div().text_xs().text_color(rgb(theme::TEXT_MUTED)).child(
-                        if counts_known {
-                            node.media_count.to_string()
-                        } else {
-                            String::new()
-                        },
-                    )),
-            );
+                        String::new()
+                    },
+                )),
+        );
     let row = row.child(menu);
     let mut subtree = div().v_flex().child(row);
     if !children.is_empty() {
@@ -526,7 +530,7 @@ pub(in crate::view) fn render_subdirectory(
                 .ml(px(9.))
                 .pl(px(9.))
                 .border_l_1()
-                .border_color(rgba(theme::BORDER_STRONG))
+                .border_color(rgba(theme::border_strong()))
                 .children(children),
         );
     }

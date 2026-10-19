@@ -1,5 +1,13 @@
 # Shell composition ports / Shell 对接
 
+## Main toolbar view composition — 2026-10-19
+
+The host mounts the active pane's `command.column.{i}.view-modes`, the
+Columns-owned `command.columns` dropdown, then the active pane's
+`command.column.{i}.view-options` in a fixed-size horizontal group beside the
+scrollable filters. Gallery retains view behavior; Columns retains layout and
+active-pane actions. The visible order is grid, list, layout, subfolders, zoom.
+
 ## QuickLook replacement — 2026-10-16
 
 Shell starts `photag.quicklook` before Gallery/MCP and stops it after both
@@ -91,3 +99,20 @@ Cordis owner cleanup removes the native record and the host closes its window on
 shared poll. Main workspace rendering is never suppressed. Only an embedded panel launch
 requests restoring the main HWND. Native reopen activates/restores only its own HWND.
 MCP capture/input can select `main` or a live native panel ID; both stay in this child process.
+# Shell control ownership (2026-10-19)
+
+Shell composes plugin views by named slot. The Settings plugin owns
+`workspace.sidebar-footer`; `photag-plugin-shell-controls` owns sidebar,
+inspector, workspace-manager and Tools action views. Shell retains framing,
+branding, region layout, status composition, resize surfaces and generic rendering
+of plugin command contributions. New application actions belong to lifecycle-owned
+view contributions rather than hardcoded Shell buttons.
+
+
+## Native themes / Material generator (2026-10-19)
+
+Shell starts the compile-time MaterialThemePlugin after Settings and disposes it before
+Settings. The plugin owns its service/settings/MCP contributions and versioned generation
+files. Shell initializes UI Bridge's native-theme listener at GPUI startup; theme JSON is
+loaded by Settings on startup/actions, never by Shell render. Custom host surfaces consume
+the same native ThemeColor roles as plugins. The former component override palette is gone.

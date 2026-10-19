@@ -5,11 +5,11 @@
 ## 修改与真实截图
 
 - 文件信息、历史和扩展共用相同标题、180逻辑像素预览、文件名、评分和页签行，只更换下方内容。
-  [信息](screenshots/file-information.png) / [历史](screenshots/file-history.png) / [扩展](screenshots/file-extensions.png)。
+  [信息](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/file-information.png) / [历史](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/file-history.png) / [扩展](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/file-extensions.png)。
 - 标签编辑直接展开：名称 → 颜色 → 图标 → 显示开关 → 确认修改。
-  [全部展开](screenshots/tag-expanded.png) / [未确认草稿](screenshots/tag-draft.png) / [一次确认后](screenshots/tag-confirmed.png) / [恢复样例](screenshots/tag-restored.png)。
+  [全部展开](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-expanded.png) / [未确认草稿](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-draft.png) / [一次确认后](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-confirmed.png) / [恢复样例](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-restored.png)。
 - 窄面板300、1920×1080：图标自动换行，编辑主卡及确认按钮完整可见；历史正文独立滚动。
-  [标签小窗口](screenshots/tag-small.png) / [历史小窗口](screenshots/history-small.png)。
+  [标签小窗口](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-small.png) / [历史小窗口](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/history-small.png)。
 
 截图均由同进程PhoTag MCP `screenshot_window`直接取得，无重绘或拼接。
 文件和标签继续使用[上一轮准备的真实隔离样例](../2026-10-16-inspector-complete/README.md)，
@@ -24,12 +24,12 @@
 3. 再统一确认恢复旅行、珊瑚红、Tag图标、显示开启；子标签显示恢复。
 4. 同一真实文件依次切换信息/历史/扩展，选择ID不变。对原始1920×1560截图的右栏区域
    `(1370,130,1908,553)`进行RGB逐像素比较，三页顶部标题、预览、文件名及评分的差异边界均为空。
-   比较排除会改变选中态的页签本身，结果见[results.json](results.json)。
+   比较排除会改变选中态的页签本身，结果见[results.json](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/results.json)。
 5. 小窗口300宽度截图；静止日志latest_id为798→798。
 
 随后无演示环境变量启动同一最终构建，复用上一轮 `verify-normal.cjs` 完成20步；
 普通历史为真实当前副本，demo enabled=false、count=null；静止日志448→448。
-原始普通历史图见[普通历史](screenshots/history-normal.png)。
+原始普通历史图见[普通历史](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/history-normal.png)。
 
 初次指针脚本100ms间隔触发MCP已有“pointer request is still pending”并停止；
 调整为450ms且在服务明确拒绝排队时有界重试后，完整62步通过。重跑只恢复本隔离样例。

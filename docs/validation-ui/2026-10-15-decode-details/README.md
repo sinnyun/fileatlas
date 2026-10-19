@@ -29,8 +29,8 @@ JPEG回退时相应阶段累计两次尝试。generic为分离读取计时先读
 验证：Windows、Rust1.97.1、同进程PhoTag MCP、隔离profile
 `target/mcp-decode-details-verified`。24MP JPEG首次处理包含完整字段，重开命中缓存，
 损坏JPEG产生ERROR并标出header阶段/具体错误。点击实际日志行并检查
-[详情截图](decode-details.png)，后台任务结束后3秒观察期间preview记录数不变。
-[完整原始报告](report.json.gz)记录结果与实际EXE哈希。
+[详情截图](../../../.local/validation/artifacts/2026-10-15-decode-details/decode-details.png)，后台任务结束后3秒观察期间preview记录数不变。
+[完整原始报告](../../../.local/validation/artifacts/2026-10-15-decode-details/report.json.gz)记录结果与实际EXE哈希。
 
 14项相关测试通过，包含PNG/BMP/TIFF/WebP与原open_oriented输出像素一致、JPEG缩放尺寸、
 缺失文件读取错误、损坏文件解析错误。强制系统缓存写入拒绝未在本轮MCP中触发。

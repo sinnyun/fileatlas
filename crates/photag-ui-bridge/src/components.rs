@@ -1,6 +1,7 @@
 //! Shared workbench primitives. Callers own content, actions and lifecycle.
 //! Import `WorkbenchStyle` for a Div whose ID/geometry the feature already owns.
 use crate::theme;
+use gpui_kit::base::Selectable as _;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 use gpui_kit::component::input::{Input, InputState, Textarea, TextareaState};
@@ -15,10 +16,10 @@ pub trait WorkbenchStyle: Sized {
 
 impl<T: Styled + InteractiveElement> WorkbenchStyle for T {
     fn workbench_section(self) -> Self {
-        self.bg(rgb(theme::SURFACE_PANEL))
+        self.bg(rgb(theme::surface_panel()))
             .rounded(px(theme::ROUND_LG))
             .border_1()
-            .border_color(rgb(theme::SEPARATOR))
+            .border_color(rgb(theme::separator()))
             .min_h_0()
     }
 
@@ -28,18 +29,23 @@ impl<T: Styled + InteractiveElement> WorkbenchStyle for T {
             .border_color(rgb(if selected {
                 theme::accent()
             } else {
-                theme::SEPARATOR
+                theme::separator()
             }))
             .bg(rgb(if selected {
                 theme::selection_color()
             } else {
-                theme::SURFACE_CARD
+                theme::surface_card()
+            }))
+            .text_color(rgb(if selected {
+                theme::selection_text()
+            } else {
+                theme::text_primary()
             }))
             .hover(move |style| {
                 style.bg(rgb(if selected {
                     theme::selection_color()
                 } else {
-                    theme::SURFACE_ELEVATED
+                    theme::surface_elevated()
                 }))
             })
     }
@@ -55,18 +61,18 @@ impl<T: Styled + InteractiveElement> WorkbenchStyle for T {
             .bg(rgb(if selected {
                 theme::selection_color()
             } else {
-                theme::SURFACE_PANEL
+                theme::surface_panel()
             }))
             .text_color(rgb(if selected {
-                theme::TEXT_PRIMARY
+                theme::selection_text()
             } else {
-                theme::TEXT_SECONDARY
+                theme::text_secondary()
             }))
             .hover(move |style| {
                 style.bg(rgb(if selected {
                     theme::selection_color()
                 } else {
-                    theme::SURFACE_CARD
+                    theme::surface_card()
                 }))
             })
     }
@@ -102,25 +108,25 @@ pub fn icon_button(id: impl Into<SharedString>, name: gpui_kit::assets::IconName
 
 /// Native keyboard/focus behavior with the shared workbench navigation paint.
 pub fn nav_button(id: impl Into<SharedString>, selected: bool) -> Button {
-    Button::new(ElementId::Name(id.into()))
+    let button = Button::new(ElementId::Name(id.into()))
         .ghost()
         .w_full()
         .h(px(theme::NAV_ROW_HEIGHT))
         .justify_start()
         .rounded(px(theme::ROUND_MD))
-        .text_size(px(theme::FONT_SIZE_BODY))
-        .bg(rgba(if selected {
-            (theme::selection_color() << 8) | 0xff
-        } else {
-            0
-        }))
+        .text_size(px(theme::FONT_SIZE_BODY));
+    if selected {
+        button.primary().selected(true)
+    } else {
+        button
+    }
 }
 
 pub fn section_heading(label: impl Into<SharedString>) -> Div {
     div()
         .text_size(px(theme::FONT_SIZE_HEADING))
         .font_semibold()
-        .text_color(rgb(theme::TEXT_PRIMARY))
+        .text_color(rgb(theme::text_primary()))
         .child(label.into())
 }
 
@@ -135,13 +141,13 @@ pub fn search_input(state: &Entity<InputState>) -> Input {
 pub fn text_input(state: &Entity<InputState>) -> Input {
     Input::new(state)
         .h(px(theme::SEARCH_FIELD_HEIGHT))
-        .bg(rgb(theme::SURFACE_FAINT))
+        .bg(rgb(theme::surface_faint()))
         .text_size(px(theme::FONT_SIZE_BODY))
 }
 
 pub fn textarea(state: &Entity<TextareaState>) -> Textarea {
     Textarea::new(state)
-        .bg(rgb(theme::SURFACE_FAINT))
+        .bg(rgb(theme::surface_faint()))
         .text_size(px(theme::FONT_SIZE_BODY))
 }
 
@@ -154,7 +160,7 @@ pub fn sidebar_section(body: Div) -> Div {
             .gap(px(2.))
             .p(px(6.))
             .rounded(px(theme::ROUND_MD))
-            .bg(rgb(theme::SURFACE_REGION)),
+            .bg(rgb(theme::surface_region())),
         theme::RegionEdge::All,
     )
 }
@@ -178,7 +184,7 @@ pub fn sidebar_header(
                 .min_w_0()
                 .text_size(px(11.5))
                 .font_semibold()
-                .text_color(rgb(theme::TEXT_MUTED))
+                .text_color(rgb(theme::text_muted()))
                 .text_ellipsis()
                 .child(label.into()),
         )

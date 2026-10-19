@@ -41,7 +41,7 @@ impl PhoTagShell {
             .child(div().w(px(2.)).h(px(24.)).rounded_full().bg(rgb(if active {
                 theme::accent()
             } else {
-                theme::TEXT_MUTED
+                theme::text_muted()
             })))
             .on_mouse_down(
                 MouseButton::Left,

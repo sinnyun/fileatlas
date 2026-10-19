@@ -40,8 +40,8 @@ the same database service.
 
 Screenshots from that child process:
 
-- [Inline multi-select open](dropdown-open.png)
-- [Two tags assigned in the Inspector](tags-added.png)
+- [Inline multi-select open](../../../.local/validation/artifacts/2026-10-17-tagging-inspector/dropdown-open.png)
+- [Two tags assigned in the Inspector](../../../.local/validation/artifacts/2026-10-17-tagging-inspector/tags-added.png)
 
 Real third-party editor interoperability is not applicable to normal tagging
 now that file metadata is not written. Explicit integration writeback remains
@@ -51,5 +51,5 @@ outside this UI flow.
 
 The Inspector picker now opens as a GPUI Popover anchored to Add tags, so it overlays the Tags section without increasing the Inspector body height. It shows the file's currently assigned tags in 已选中 and remaining tags in 所有值. Clicking an available value calls the existing database assignment action immediately; clicking an assigned value or its chip removes it immediately. There is no staged selection or confirmation button. The existing metadata-writeback policy remains database-only.
 
-Same-process MCP with the isolated profile 	arget/mcp-tag-picker-final captured the open popover after a real GPUI click; the floating layer does not move the EXIF/file-path sections. Screenshot: [popover-open.png](popover-open.png). Static checks after this UI change: fmt, locked shell check/build, and the three governance scripts passed. Pointer-driven add/remove through the new popover still needs a confirmed real-change check; the attempted MCP pointer target did not produce a DB assignment, so this is not reported as interaction-verified.
+Same-process MCP with the isolated profile 	arget/mcp-tag-picker-final captured the open popover after a real GPUI click; the floating layer does not move the EXIF/file-path sections. Screenshot: [popover-open.png](../../../.local/validation/artifacts/2026-10-17-tagging-inspector/popover-open.png). Static checks after this UI change: fmt, locked shell check/build, and the three governance scripts passed. Pointer-driven add/remove through the new popover still needs a confirmed real-change check; the attempted MCP pointer target did not produce a DB assignment, so this is not reported as interaction-verified.
 

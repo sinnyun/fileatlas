@@ -159,11 +159,26 @@ written.
   distribution obligations. The user accepts GPL-3.0 dependencies for personal
   use; do not silently change the workspace's declared license.
 
+## Native theme ownership (2026-10-19; supersedes manual palette rules)
+
+- GPUI Kit ThemeRegistry/ThemeConfig/Theme owns every plugin's colors, including
+  custom-painted controls. Never introduce a Rust RGB palette, mode_color, private
+  Theme state, or per-plugin Theme updates. UI Bridge theme/runtime is the sole
+  application gateway. Existing role aliases only project native ThemeColor.
+- Material is a compile-time Cordis generator plugin. It outputs native GPUI
+  ThemeSet JSON from seed/style/contrast; it must not apply paints itself.
+  Reuse its public service and existing Settings persistence, not another manager.
+- Pair fills with their native foreground roles; media badges and custom widgets
+  obey the same native theme. Preserve real media pixels and user tag data.
+- Read docs/ui-theme.md and the Material plugin PORTS before extending themes.
+  Run the theme guard including self-test: it also scans the bridge theme itself.
+  Old manually coded palettes in historical validation notes are not a template.
+
 ## Implementation rules
 
 - Global styling follows the clipboard-v2-derived workbench theme. Before UI work,
-  read `docs/ui-theme.md` and its active concept/checklist. `photag-ui-bridge::theme`
-  owns colors, typography, spacing, component states and GPUI Kit Theme;
+  read `docs/ui-theme.md` and its active concept/checklist. `GPUI Kit Theme` owns all resolved colors and component states;
+  `photag-ui-bridge::theme` owns the native theme gateway and product geometry;
   `components` owns shared cards/navigation/actions/headings, and `panels` owns
   floating chrome. Reuse these public facilities; do not add plugin-local palettes,
   hardcoded paint colors or independent Theme updates. Preserve feature-specific
@@ -284,6 +299,18 @@ tools. High-impact calls still require per-call `confirm=true`. New profiles
 default to Off; isolated validation may set a profile's `mcp_access_level` to
 the minimum stage needed. Do not use the retired `PHOTAG_MCP_ALLOW_MUTATIONS`
 environment variable as an authorization mechanism.
+
+All generated test data, intermediate MCP reports, logs and runtime screenshots
+must live under the git-ignored `.local/validation/` directory. New MCP runs use
+`.local/validation/profiles/<run-name>` for isolated profiles, fixtures, reports
+and screenshots; reusable scenario scripts remain in `scripts/` or their feature
+source directory. Keep concise human-readable findings and reproducible scenario
+code in the repository. If a validation document links an output artifact, link
+its corresponding `.local/validation/artifacts/<original-relative-path>` file.
+Never check in generated screenshots, databases, profiles, raw MCP logs or result
+JSON just to make evidence links portable; record their local-only location and
+verification summary in Markdown instead. Existing `target/` profiles are legacy;
+new validation runs must use `.local/validation/profiles/`.
 
 If a required interaction or state is not exposed by the plugin, inspect and
 extend the PhoTag MCP public tools and their PORTS.md as part of the debugging
