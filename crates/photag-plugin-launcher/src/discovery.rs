@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+mod catalog;
+
 use std::path::{Path, PathBuf};
 
 use winreg::RegKey;
@@ -13,6 +15,7 @@ pub(super) struct DiscoveredProgram {
     pub source: String,
     pub installed_on: Option<String>,
     pub size_bytes: Option<i64>,
+    pub description: String,
 }
 
 struct InstalledProgram {
@@ -21,6 +24,19 @@ struct InstalledProgram {
     name: String,
     launch_path: Option<PathBuf>,
     uninstall_command: Option<String>,
+    description: Option<String>,
+}
+
+pub(super) fn program_description(name: &str, path: &Path, category: &str) -> String {
+    catalog::program_description(name, path, category)
+}
+
+pub(super) fn classify_program(name: &str, path: &Path) -> String {
+    catalog::classify_program(name, path)
+}
+
+pub(super) fn has_product_description(name: &str) -> bool {
+    catalog::has_product_description(name)
 }
 
 pub(super) fn discover() -> Result<Vec<DiscoveredProgram>, String> {
@@ -45,7 +61,17 @@ pub(super) fn discover() -> Result<Vec<DiscoveredProgram>, String> {
         let (uninstall_command, display_name) = matching
             .map(|item| (item.uninstall_command.clone(), item.name.clone()))
             .unwrap_or((None, name));
-        let category_name = classify_program(&display_name, &launch_path);
+        let category_name = catalog::classify_program(&display_name, &launch_path);
+        let description = matching
+            .filter(|_| !catalog::has_product_description(&display_name))
+            .and_then(|item| {
+                item.description
+                    .as_deref()
+                    .and_then(catalog::clean_registry_description)
+            })
+            .unwrap_or_else(|| {
+                catalog::program_description(&display_name, &launch_path, &category_name)
+            });
         results.entry(key.clone()).or_insert(DiscoveredProgram {
             key,
             name: display_name,
@@ -54,6 +80,7 @@ pub(super) fn discover() -> Result<Vec<DiscoveredProgram>, String> {
             category_name,
             installed_on: matching.and_then(|p| p.installed_on.clone()),
             size_bytes: matching.and_then(|p| p.size_bytes),
+            description,
             source: if matching.is_some() {
                 "installed"
             } else {
@@ -70,7 +97,13 @@ pub(super) fn discover() -> Result<Vec<DiscoveredProgram>, String> {
             continue;
         };
         let key = format!("path:{}", normalize_path(&path));
-        let category_name = classify_program(&item.name, &path);
+        let category_name = catalog::classify_program(&item.name, &path);
+        let description = item
+            .description
+            .as_deref()
+            .and_then(catalog::clean_registry_description)
+            .filter(|_| !catalog::has_product_description(&item.name))
+            .unwrap_or_else(|| catalog::program_description(&item.name, &path, &category_name));
         results.entry(key.clone()).or_insert(DiscoveredProgram {
             key,
             name: item.name,
@@ -79,168 +112,13 @@ pub(super) fn discover() -> Result<Vec<DiscoveredProgram>, String> {
             category_name,
             installed_on: item.installed_on,
             size_bytes: item.size_bytes,
+            description,
             source: "installed".into(),
         });
     }
     let mut values = results.into_values().collect::<Vec<_>>();
     values.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
     Ok(values)
-}
-
-fn classify_program(name: &str, path: &Path) -> String {
-    let text = format!(
-        "{} {}",
-        name.to_lowercase(),
-        path.to_string_lossy().to_lowercase()
-    );
-    let matches = |terms: &[&str]| terms.iter().any(|term| text.contains(term));
-    let category = if matches(&[
-        "visual studio",
-        "vscode",
-        "vs code",
-        "jetbrains",
-        "intellij",
-        "android studio",
-        "pycharm",
-        "webstorm",
-        "rider",
-        "rustdesk",
-        "python",
-        "anaconda",
-        "miniconda",
-        "node.js",
-        "nodejs",
-        "git",
-        "github desktop",
-        "docker",
-        "postman",
-        "insomnia",
-        "powershell",
-        "terminal",
-        "windows sdk",
-        "developer command prompt",
-        "开发",
-        "编程",
-    ]) {
-        "开发工具"
-    } else if matches(&[
-        "photoshop",
-        "illustrator",
-        "indesign",
-        "premiere",
-        "after effects",
-        "lightroom",
-        "affinity",
-        "figma",
-        "blender",
-        "autocad",
-        "sketchup",
-        "krita",
-        "comfyui",
-        "davinci resolve",
-        "设计",
-        "绘图",
-        "剪映",
-        "美图",
-    ]) {
-        "设计创作"
-    } else if matches(&[
-        "wechat",
-        "weixin",
-        "微信",
-        "qq",
-        "discord",
-        "telegram",
-        "slack",
-        "teams",
-        "钉钉",
-        "飞书",
-        "企业微信",
-        "messenger",
-    ]) {
-        "通讯社交"
-    } else if matches(&[
-        "microsoft office",
-        "office",
-        "word",
-        "excel",
-        "powerpoint",
-        "outlook",
-        "onenote",
-        "wps",
-        "libreoffice",
-        "acrobat",
-        "foxit",
-        "pdf",
-        "notion",
-        "obsidian",
-        "文档",
-        "办公",
-    ]) {
-        "办公软件"
-    } else if matches(&[
-        "chrome",
-        "firefox",
-        "edge",
-        "browser",
-        "浏览器",
-        "vpn",
-        "network",
-        "网络",
-    ]) {
-        "网络浏览"
-    } else if matches(&[
-        "vlc",
-        "potplayer",
-        "foobar",
-        "spotify",
-        "itunes",
-        "musicbee",
-        "obs studio",
-        "audacity",
-        "media player",
-        "播放器",
-        "音乐",
-        "视频",
-    ]) {
-        "影音播放"
-    } else if matches(&[
-        "steam",
-        "epic games",
-        "riot client",
-        "battle.net",
-        "ubisoft connect",
-        "xbox",
-        "game",
-        "游戏",
-    ]) {
-        "游戏"
-    } else if matches(&[
-        "driver",
-        "驱动",
-        "update",
-        "updater",
-        "uninstall",
-        "setup",
-        "utility",
-        "工具",
-        "管理工具",
-        "7-zip",
-        "7zip",
-        "defender",
-        "antivirus",
-        "nvidia",
-        "amd software",
-        "intel",
-        "realtek",
-        "device manager",
-        "control panel",
-    ]) {
-        "系统工具"
-    } else {
-        "其他"
-    };
-    category.to_owned()
 }
 
 fn installed_programs() -> Vec<InstalledProgram> {
@@ -285,7 +163,7 @@ fn installed_programs() -> Vec<InstalledProgram> {
                         item.get_value::<String, _>("InstallLocation")
                             .ok()
                             .map(PathBuf::from)
-                            .filter(|path| path.is_file())
+                            .filter(|path| path.is_file() && is_launch_target(path))
                     });
                 let installed_on =
                     item.get_value::<String, _>("InstallDate")
@@ -306,6 +184,7 @@ fn installed_programs() -> Vec<InstalledProgram> {
                     name,
                     launch_path,
                     uninstall_command,
+                    description: item.get_value::<String, _>("Comments").ok(),
                 });
             }
         }
@@ -329,12 +208,76 @@ fn icon_executable(value: &str) -> Option<PathBuf> {
     (path.is_file() && is_launch_target(&path)).then_some(path)
 }
 
-fn is_launch_target(path: &Path) -> bool {
+pub(super) fn is_launch_target(path: &Path) -> bool {
     path.extension().is_some_and(|extension| {
         ["exe", "com", "bat", "cmd", "lnk"]
             .iter()
             .any(|supported| extension.eq_ignore_ascii_case(supported))
-    })
+    }) && !is_installer_or_uninstaller(path)
+}
+
+pub(super) fn is_non_program_entry(name: &str, path: &Path) -> bool {
+    is_installer_or_uninstaller(path)
+        || is_non_program_shortcut(name)
+        || (path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("lnk"))
+            && path
+                .file_stem()
+                .and_then(|stem| stem.to_str())
+                .is_some_and(is_non_program_shortcut))
+}
+
+fn is_installer_or_uninstaller(path: &Path) -> bool {
+    let name = path
+        .file_stem()
+        .and_then(|v| v.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let full = path.to_string_lossy().to_lowercase();
+    name.contains("uninst")
+        || name.starts_with("uninstall")
+        || name.starts_with("unins")
+        || name.starts_with("remove")
+        || name.starts_with("卸载")
+        || name.starts_with("setup")
+        || name == "arpproducticon"
+        || name == "setup"
+        || name.ends_with("setup")
+        || name.ends_with("installer")
+        || full.contains("\\package cache\\")
+        || full.contains("\\windows\\installer\\")
+}
+
+fn is_non_program_shortcut(name: &str) -> bool {
+    let normalized = name.trim().to_lowercase();
+    ["uninstall", "remove", "卸载", "repair"]
+        .iter()
+        .any(|part| normalized.starts_with(part))
+        || [
+            "readme",
+            "license",
+            "licence",
+            "documentation",
+            "tutorial",
+            "sample",
+            "release notes",
+            "end user license",
+            "config file",
+            "reference",
+        ]
+        .iter()
+        .any(|part| normalized.contains(part))
+        || [
+            " help",
+            " manual",
+            " web site",
+            " license",
+            " tutorials",
+            " samples",
+        ]
+        .iter()
+        .any(|part| normalized.ends_with(part))
 }
 
 fn expand_environment(input: &str) -> String {
@@ -395,6 +338,7 @@ fn collect_shortcuts(directory: &Path, depth: usize, output: &mut Vec<(PathBuf, 
                 .file_stem()
                 .and_then(|name| name.to_str())
                 .map(str::to_owned)
+                .filter(|name| !is_non_program_shortcut(name))
             {
                 output.push((path, name));
             }

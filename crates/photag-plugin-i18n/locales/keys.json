@@ -860,6 +860,7 @@
   "Select a program": "msg-launcher-select",
   "Select an icon to view and edit its information.": "msg-launcher-select-hint",
   "Display name": "msg-launcher-display-name",
+  "Program description": "msg-launcher-program-description",
   "☑ Hidden program": "msg-launcher-hidden-on",
   "☐ Hide this program": "msg-launcher-hidden-off",
   "Installation information": "msg-launcher-install-info",

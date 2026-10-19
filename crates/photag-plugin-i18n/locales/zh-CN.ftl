@@ -1040,6 +1040,7 @@ msg-launcher-select = 选择程序
 msg-launcher-select-hint = 单击图标即可查看和编辑程序信息。
 
 msg-launcher-display-name = 显示名称
+msg-launcher-program-description = 程序说明
 
 msg-launcher-hidden-on = ☑ 已隐藏程序
 

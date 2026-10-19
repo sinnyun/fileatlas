@@ -1048,6 +1048,7 @@ msg-launcher-select = Select a program
 msg-launcher-select-hint = Select an icon to view and edit its information.
 
 msg-launcher-display-name = Display name
+msg-launcher-program-description = Program description
 
 msg-launcher-hidden-on = ☑ Hidden program
 

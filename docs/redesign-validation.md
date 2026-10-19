@@ -863,3 +863,7 @@ Rust1.97.1 MSVC fmt、locked offline shell check/build 与 theme/refresh/archite
 本轮先检查 PhoTag 原始参考项目：其 `egui` Gallery 也在卡片拖动回调同步启动自写 `DoDragDrop`，保留多选路径与 copy-only 语义，但并未提供适合 GPUI 的事件循环方案。参考 Zed/GPUI、Winit、`drag-rs` 与原生 Windows 拖放实现后，改为保留 GPUI 卡片手势和路径选择，由当前 UI 线程将请求投递至临时消息窗；原始输入回调返回后再启动 `drag-rs` OLE 拖动，结束时销毁临时 HWND。该方案不拦截 GPUI 源窗口消息，也不在线程间转移鼠标手势。fmt 与拖放/Gallery crate locked offline check 已通过；Shell 构建、治理检查、同进程 MCP 和 Windows 外部目标实际投递的验证状态见[拖出重构验证记录](validation-ui/2026-10-19-drag-drop-crash/README.md)。
 
 用户确认该重构现在可正常拖动并投递到其他窗口。后续将拖动图像限制在 96×96 像素内，并为不可解码预览的文件生成带扩展名和类型颜色的文件剪影。格式检查、相关 crate locked offline check、PhoTag Shell locked offline build 通过；新剪影的实际系统拖动外观仍待用户确认。用户提供的 `0x80040064` 来自 GPUI Windows `IDropTargetHelper::DragEnter` 返回值记录，与本插件预览解码是不同路径，详见[拖动图像尺寸和回退验证](validation-ui/2026-10-19-drag-drop-crash/README.md)。
+
+2026-10-19 程序启动台整理：按现有 v3 图标网格参考保留面板结构，在程序信息区增加一句话说明，并完善自动分类和无关安装/帮助快捷方式筛除；右键卸载入口仅对应 Windows 注册的卸载命令且需要确认。隔离同进程 MCP 扫描 292 个主机程序，确认无卸载器/安装器目标混入、所有项目均有说明、Photoshop 信息说明和卸载菜单可见。随后正常用户配置启动并完成扫描，启动台 JSON 从 298 项清理到 295 项，零无效安装/卸载器目标、零空说明、“其他”类别零条目；三条旧自动分类项目也完成归类。Rust 1.97.1 shell 检查/构建及治理检查结果、截图和说明来源见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。真实卸载器执行/提权和未知产品的精确说明仍未在本轮验证。
+
+2026-10-19 程序启动台整理：按现有 v3 图标网格参考保留面板结构，在程序信息区增加一句话说明，并完善自动分类和无关安装/帮助快捷方式筛除；右键卸载入口仅对应 Windows 注册的卸载命令且需要确认。隔离同进程 MCP 扫描 295 个主机程序，确认无卸载器/安装器目标混入、所有项目均有说明、Photoshop 信息说明和卸载菜单可见。Rust 1.97.1 shell 检查/构建及治理检查结果、截图和说明来源见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。真实卸载器执行/提权、未知产品的精确说明和用户常规配置迁移仍未在本轮验证。

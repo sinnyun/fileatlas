@@ -130,6 +130,8 @@ SQLite 原表保留作恢复数据。详细运行证据见
 插件身份、复用现有程序数据库、当前发现范围及验证边界见
 [`photag-plugin-launcher/PORTS.md`](../crates/photag-plugin-launcher/PORTS.md)。
 
+2026-10-19 工作台整理：补齐 AI 工具、文件与同步、远程连接等自动分类规则；信息区新增只读的一句话程序说明，优先使用 Windows 注册说明或已核实的产品说明，其他项目按功能分类生成说明。发现扫描与手动添加会排除卸载器、安装器和说明文档快捷方式，程序右键菜单仅在系统登记卸载命令时提供“卸载”，执行前确认。隔离 Windows 主机扫描得到 295 项；分类、说明与菜单检查见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。
+
 ### 用户指定：剪贴板工作台（2026-10-18）
 
 新增独立 `photag-plugin-clipboard`，通过左侧快捷入口及 Ctrl+Shift+V 全局快捷键

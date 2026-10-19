@@ -13,6 +13,7 @@
 | 菜单、对话框 | [final-v5 索引](final-v5/README.md) 对应画面 | [v5 companion notes](concepts/photag-v5-companion-interfaces-2026-10-13.md)，应用后续用户决定 |
 | 主窗及文件预览侧栏 | [sidebar-pages-preview v2](concepts/sidebar-pages-preview-2026-10-14-v2.png) | 侧栏/检查器结构沿用[历史界面基线](../development-baseline-2026-10-14.md)；主窗整体定义见[PhoTag 0.2 基线](../development-baseline-0.2-2026-10-19.md)，中间文件区支持单/双/四栏 |
 | 剪贴板工作台 | [clipboard-workbench v2](concepts/clipboard-workbench-layout-2026-10-18-v2.png) | [v2 布局](concepts/clipboard-workbench-layout-2026-10-18-v2.md)；图片历史显示补充[图片预览清单](concepts/clipboard-workbench-images-2026-10-18.md) |
+| 程序启动台 | [桌面图标布局 v3](concepts/program-launcher-2026-10-17-v3.png) | [v3 清单](concepts/program-launcher-2026-10-17-v3.md)：本次保留原布局，在程序信息区的名称后增加一行只读单句说明；右键卸载仅针对系统提供有效卸载命令的已安装程序 |
 | 截图快捷启动管理 | 轻量管理面板；设置 → 软件显示安装状态 | [Shotoshot 集成清单](concepts/shotoshot-launcher-2026-10-18.md)：PhoTag 启动时只检测一次；缺失时用户自行安装。截图选区、编辑、标注均由上游提供，最终图像保存到 PhoTag 专用目录 |
 | 主工作区多栏与程序工作区 | [多栏概念图](concepts/multi-column-workspaces-2026-10-19.png)及[最新用户标注与清单](concepts/multi-column-workspaces-2026-10-19.md) | 沿用现有控件样式；网格/列表旁增加分栏按钮，选择单栏/双栏/四栏；操作带分为筛选/视图区与搜索/功能区；Everything 配置迁入设置 |
 

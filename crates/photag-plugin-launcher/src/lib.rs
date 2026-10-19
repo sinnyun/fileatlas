@@ -73,6 +73,8 @@ pub struct LauncherEntry {
     pub available: bool,
     pub installed_on: Option<String>,
     pub size_bytes: Option<i64>,
+    #[serde(default)]
+    pub description: String,
     pub pin_scope: PinScope,
     #[serde(default)]
     discovery_key: String,
@@ -159,9 +161,38 @@ impl LauncherService {
             if loaded.version != 1 {
                 return Err(LauncherError::UnsupportedDataVersion(loaded.version));
             }
+            loaded.entries.retain(|entry| {
+                !discovery::is_non_program_entry(&entry.display_name, &entry.launch_path)
+            });
             for entry in &mut loaded.entries {
                 if entry.discovery_key.is_empty() {
                     entry.discovery_key = discovery_key(&entry.launch_path);
+                }
+                let suggested_category =
+                    discovery::classify_program(&entry.display_name, &entry.launch_path);
+                if !entry.custom_category {
+                    if let Some(category) = loaded
+                        .categories
+                        .iter()
+                        .find(|category| category.name == suggested_category)
+                    {
+                        entry.category_id = category.id;
+                    }
+                }
+                let category = loaded
+                    .categories
+                    .iter()
+                    .find(|category| category.id == entry.category_id)
+                    .map(|category| category.name.as_str())
+                    .unwrap_or("其他");
+                if discovery::has_product_description(&entry.display_name)
+                    || entry.description.trim().is_empty()
+                {
+                    entry.description = discovery::program_description(
+                        &entry.display_name,
+                        &entry.launch_path,
+                        category,
+                    );
                 }
             }
             loaded
@@ -180,21 +211,29 @@ impl LauncherService {
                     .collect(),
                 entries: entries
                     .into_iter()
-                    .map(|e| LauncherEntry {
-                        available: Path::new(&e.launch_path).exists(),
-                        id: e.id,
-                        display_name: e.display_name,
-                        launch_path: PathBuf::from(e.launch_path),
-                        uninstall_command: e.uninstall_command,
-                        category_id: e.category_id,
-                        hidden: e.hidden,
-                        source: e.source,
-                        installed_on: e.installed_on,
-                        size_bytes: e.size_bytes,
-                        pin_scope: PinScope::from_db(e.pin_scope),
-                        discovery_key: e.discovery_key,
-                        custom_name: e.custom_name,
-                        custom_category: e.custom_category,
+                    .map(|e| {
+                        let description = discovery::program_description(
+                            &e.display_name,
+                            Path::new(&e.launch_path),
+                            "其他",
+                        );
+                        LauncherEntry {
+                            available: Path::new(&e.launch_path).exists(),
+                            id: e.id,
+                            display_name: e.display_name,
+                            launch_path: PathBuf::from(e.launch_path),
+                            uninstall_command: e.uninstall_command,
+                            category_id: e.category_id,
+                            hidden: e.hidden,
+                            source: e.source,
+                            installed_on: e.installed_on,
+                            size_bytes: e.size_bytes,
+                            description,
+                            pin_scope: PinScope::from_db(e.pin_scope),
+                            discovery_key: e.discovery_key,
+                            custom_name: e.custom_name,
+                            custom_category: e.custom_category,
+                        }
                     })
                     .collect(),
                 scanning: false,
@@ -304,22 +343,30 @@ impl LauncherService {
     ) -> Result<(), LauncherError> {
         let records = found
             .into_iter()
-            .map(|program| LauncherDiscoveredProgram {
-                discovery_key: program.key,
-                display_name: program.name,
-                launch_path: program.launch_path.to_string_lossy().into_owned(),
-                uninstall_command: program.uninstall_command,
-                category_name: program.category_name,
-                source: program.source,
-                installed_on: program.installed_on,
-                size_bytes: program.size_bytes,
+            .map(|program| {
+                (
+                    LauncherDiscoveredProgram {
+                        discovery_key: program.key,
+                        display_name: program.name,
+                        launch_path: program.launch_path.to_string_lossy().into_owned(),
+                        uninstall_command: program.uninstall_command,
+                        category_name: program.category_name,
+                        source: program.source,
+                        installed_on: program.installed_on,
+                        size_bytes: program.size_bytes,
+                    },
+                    program.description,
+                )
             })
             .collect::<Vec<_>>();
         let mut state = self
             .state
             .lock()
             .map_err(|_| LauncherError::StatePoisoned)?;
-        for record in records {
+        state.entries.retain(|entry| {
+            !discovery::is_non_program_entry(&entry.display_name, &entry.launch_path)
+        });
+        for (record, description) in records {
             let category_id = if let Some(category) = state
                 .categories
                 .iter()
@@ -359,6 +406,7 @@ impl LauncherService {
                 entry.source = record.source;
                 entry.installed_on = record.installed_on;
                 entry.size_bytes = record.size_bytes;
+                entry.description = description;
             } else {
                 let id = state.entries.iter().map(|e| e.id).max().unwrap_or(0) + 1;
                 state.entries.push(LauncherEntry {
@@ -372,6 +420,7 @@ impl LauncherService {
                     source: record.source,
                     installed_on: record.installed_on,
                     size_bytes: record.size_bytes,
+                    description,
                     pin_scope: PinScope::None,
                     discovery_key: record.discovery_key,
                     custom_name: false,
@@ -471,6 +520,12 @@ impl LauncherService {
             if !state.categories.iter().any(|c| c.id == category_id) {
                 return Err(LauncherError::EntryMissing);
             }
+            let category_name = state
+                .categories
+                .iter()
+                .find(|c| c.id == category_id)
+                .map(|c| c.name.clone())
+                .unwrap_or_else(|| "其他".into());
             let e = state
                 .entries
                 .iter_mut()
@@ -485,6 +540,8 @@ impl LauncherService {
             e.display_name = name.into();
             e.category_id = category_id;
             e.hidden = hidden;
+            e.description =
+                discovery::program_description(&e.display_name, &e.launch_path, &category_name);
             Ok(())
         })
     }
@@ -495,6 +552,18 @@ impl LauncherService {
             return Err(LauncherError::EmptyName);
         }
         self.edit(|state| {
+            let category_name = state
+                .entries
+                .iter()
+                .find(|entry| entry.id == id)
+                .and_then(|entry| {
+                    state
+                        .categories
+                        .iter()
+                        .find(|category| category.id == entry.category_id)
+                })
+                .map(|category| category.name.clone())
+                .unwrap_or_else(|| "其他".into());
             let e = state
                 .entries
                 .iter_mut()
@@ -502,15 +571,20 @@ impl LauncherService {
                 .ok_or(LauncherError::EntryMissing)?;
             e.display_name = name.into();
             e.custom_name = true;
+            e.description =
+                discovery::program_description(&e.display_name, &e.launch_path, &category_name);
             Ok(())
         })
     }
 
     pub fn move_entry(&self, id: i64, category_id: i64) -> Result<(), LauncherError> {
         self.edit(|state| {
-            if !state.categories.iter().any(|c| c.id == category_id) {
-                return Err(LauncherError::EntryMissing);
-            }
+            let category_name = state
+                .categories
+                .iter()
+                .find(|category| category.id == category_id)
+                .map(|category| category.name.clone())
+                .ok_or(LauncherError::EntryMissing)?;
             let e = state
                 .entries
                 .iter_mut()
@@ -518,6 +592,8 @@ impl LauncherService {
                 .ok_or(LauncherError::EntryMissing)?;
             e.category_id = category_id;
             e.custom_category = true;
+            e.description =
+                discovery::program_description(&e.display_name, &e.launch_path, &category_name);
             Ok(())
         })
     }
@@ -562,11 +638,7 @@ impl LauncherService {
         if !path.is_file() {
             return Err(LauncherError::InvalidPath(path));
         }
-        if !path.extension().is_some_and(|extension| {
-            ["exe", "com", "bat", "cmd", "lnk"]
-                .iter()
-                .any(|supported| extension.eq_ignore_ascii_case(supported))
-        }) {
+        if !discovery::is_launch_target(&path) {
             return Err(LauncherError::UnsupportedProgram(path));
         }
         let name = path
@@ -603,6 +675,7 @@ impl LauncherService {
                 source: "manual".into(),
                 installed_on: None,
                 size_bytes: None,
+                description: discovery::program_description(name, &path, "常用"),
                 pin_scope: PinScope::None,
                 discovery_key: key,
                 custom_name: false,

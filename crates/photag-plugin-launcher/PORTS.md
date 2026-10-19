@@ -21,7 +21,9 @@ persisted edits and discovery merges are saved before the in-memory snapshot is 
 
 - On first start only, `DatabaseService::launcher_snapshot()` supplies the legacy projection for JSON import; after import the service never reads launcher tables. Passive rendering reads the in-memory JSON snapshot.
 - `refresh_discovery()` scans supported Windows sources on a worker, then merges discovered entries. It preserves custom names, manual category assignments and hidden status.
-- New discoveries receive one of the Chinese categories using normalized program name/path heuristics. Subsequent scans can update an automatically assigned category (`custom_category=0`); user-moved entries are retained.
+- New discoveries receive one of the Chinese categories using normalized program name/path heuristics, including AI tools, file sync, remote access, Windows/system administration, development, creative, office, communication, browser, media and games. Subsequent scans can update an automatically assigned category (`custom_category=0`); user-moved entries are retained.
+- Startup and rescans prune stale discovery records whose name/path identifies an installer, uninstaller, uninstall shortcut or documentation-only Start Menu link. The scanner rejects installer/uninstaller executable targets for both discovery and manual addition; it does not run or delete them.
+- `LauncherEntry.description` is a derived one-sentence description. It prefers registered Windows `Comments` metadata, then a curated product-name mapping, then a category-level sentence. It is backward compatible in `launcher.json` through a serde default; rescans regenerate descriptions and user category/name edits refresh the fallback text.
 - CRUD operations cover categories, custom display names, category assignment, hidden status, removal, and manual executable/shortcut addition.
 - Each program can be unpinned, pinned at its category top, or pinned at the top of All Programs. Pin choices persist in JSON; several programs may share either scope. The star badge distinguishes global (filled) and category (outline) pins. Pin priority precedes the selected name/date/size sort.
 - `launch(id)` starts the selected executable/script or opens its shortcut via Explorer. `uninstall(id)` uses a registered uninstall command and requests explicit confirmation first.
@@ -31,7 +33,7 @@ persisted edits and discovery merges are saved before the in-memory snapshot is 
 - UI command `program-launcher/open` opens/focuses the existing generic floating panel.
 - `PanelOnly` hides the main workspace under the shared panel; the default keeps the PhoTag workspace visible.
 - Sidebar view slot: `navigation.launcher-shortcuts`.
-- Panel: searchable desktop-style icon tiles in the middle, categories/counts on the left and an information editor on the right. Right-click menus retain launch, rename, move, hide/show, uninstall and remove.
+- Panel: searchable desktop-style icon tiles in the middle, categories/counts on the left and an information editor on the right, including a read-only Program description row. Right-click menus retain launch, rename, move, hide/show, uninstall and remove; uninstall is offered only when Windows registered an uninstall command and is confirmed before execution.
 - Visible UI strings use the shared i18n catalog. Category icons are glyphs from the existing text/icon rendering path.
 - No new Cordis events are emitted. Panel and contribution lifetimes use shared UI Bridge contracts.
 
@@ -39,7 +41,7 @@ persisted edits and discovery merges are saved before the in-memory snapshot is 
 
 - Discovery covers per-user and machine uninstall registry entries plus per-user and common Start Menu `.lnk` files. It does not scan all executables on every disk; entries without a usable executable/shortcut are omitted.
 - Name matching preserves Unicode letters and digits. `DisplayIcon` is accepted as a launch target only for supported executable/script/shortcut paths; icon-only `.ico` files are not programs.
-- Categories are heuristic and may need manual correction. Automatic rescans preserve manual category changes.
+- Categories are heuristic and may need manual correction. Automatic rescans preserve manual category changes. Generic fallback descriptions describe the category-level purpose when no product-specific description is available.
 - Uninstall commands come from registry command lines. Review the confirmation and Windows behavior; elevated uninstallers may launch separately and complete asynchronously.
 - Inspect `LauncherService` JSON persistence errors and `photag-program-discovery` tracing for failures. Live checks must use same-process PhoTag MCP.
 

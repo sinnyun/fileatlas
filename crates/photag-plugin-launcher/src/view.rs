@@ -36,6 +36,10 @@ fn category_icon(name: &str) -> IconName {
         "网络浏览" => IconName::Globe,
         "影音播放" => IconName::Music,
         "游戏" => IconName::Puzzle,
+        "AI 工具" => IconName::Sparkles,
+        "文件与同步" => IconName::Folder,
+        "远程连接" => IconName::Link,
+        "系统与硬件" => IconName::Settings,
         "系统工具" => IconName::Settings,
         _ => IconName::LayoutGrid,
     }

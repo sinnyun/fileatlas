@@ -120,6 +120,10 @@ impl LauncherPanel {
                     )
                     .child(photag_ui_bridge::components::text_input(&self.entry_name).w_full()),
             )
+            .child(information_row(
+                "Program description",
+                entry.description.clone(),
+            ))
             .child(
                 div()
                     .v_flex()
