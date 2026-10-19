@@ -106,6 +106,7 @@ struct GalleryView {
     tag_picker_selected: std::collections::HashSet<i64>,
     search: Entity<InputState>,
     address: Entity<InputState>,
+    address_editing: bool,
     column_index: usize,
     _workspace_task: Option<Task<()>>,
     workspace_id: String,

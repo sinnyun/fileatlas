@@ -369,6 +369,7 @@ impl GalleryView {
             tag_picker_selected: Default::default(),
             search,
             address,
+            address_editing: false,
             column_index,
             _workspace_task: None,
             workspace_id: String::new(),

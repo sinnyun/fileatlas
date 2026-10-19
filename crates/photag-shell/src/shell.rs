@@ -425,6 +425,11 @@ impl Render for PhoTagShell {
             .min(4);
         let has_column_contributions = (0..column_count)
             .any(|index| !column_contents[index].is_empty() || !column_addresses[index].is_empty());
+        let single_content_views = if column_contents[0].is_empty() {
+            content_views.clone()
+        } else {
+            column_contents[0].clone()
+        };
         let multi_content = if column_count == 1 {
             div()
                 .v_flex()
@@ -432,7 +437,7 @@ impl Render for PhoTagShell {
                 .min_h_0()
                 .w_full()
                 .overflow_hidden()
-                .children(content_views.clone())
+                .children(single_content_views)
                 .into_any_element()
         } else if has_column_contributions {
             let column_service = self
@@ -455,8 +460,28 @@ impl Render for PhoTagShell {
                     .when(index == active_column && column_count > 1, |column| {
                         column.border_1().border_color(rgb(theme::accent()))
                     })
-                    .children(column_addresses[index].clone())
-                    .children(column_sizes[index].clone())
+                    .child(
+                        div()
+                            .h_flex()
+                            .w_full()
+                            .min_w_0()
+                            .items_center()
+                            .child(
+                                div()
+                                    .h_flex()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .overflow_hidden()
+                                    .children(column_addresses[index].clone()),
+                            )
+                            .child(
+                                div()
+                                    .h_flex()
+                                    .flex_shrink_0()
+                                    .items_center()
+                                    .children(column_sizes[index].clone()),
+                            ),
+                    )
                     .child(
                         div()
                             .v_flex()
@@ -466,7 +491,10 @@ impl Render for PhoTagShell {
                             .children(column_contents[index].clone()),
                     );
                 if let Some(service) = column_service.clone() {
-                    column = column.on_mouse_down(MouseButton::Left, move |_, _, _| {
+                    // Activate before child controls handle the same pointer event.
+                    // Gallery cards and controls may stop bubbling, which otherwise
+                    // leaves the shell's shared toolbar and inspector on the old column.
+                    column = column.capture_any_mouse_down(move |_, _, _| {
                         let _ = service.activate(index);
                     });
                 }
@@ -533,6 +561,16 @@ impl Render for PhoTagShell {
             .overflow_hidden()
             .bg(rgb(theme::SURFACE_PANEL))
             .when(column_count == 1, |content| {
+                let single_addresses = if column_addresses[0].is_empty() {
+                    breadcrumb_views
+                } else {
+                    column_addresses[0].clone()
+                };
+                let single_navigation_actions = if column_sizes[0].is_empty() {
+                    size_views
+                } else {
+                    column_sizes[0].clone()
+                };
                 content.child(
                     div()
                         .h_flex()
@@ -542,8 +580,8 @@ impl Render for PhoTagShell {
                         .items_center()
                         .gap(px(8.))
                         .px(px(16.))
-                        .children(breadcrumb_views)
-                        .children(size_views),
+                        .children(single_addresses)
+                        .children(single_navigation_actions),
                 )
             })
             .child(multi_content)

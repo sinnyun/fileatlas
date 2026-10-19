@@ -183,6 +183,7 @@ fn tick(view: &mut GalleryView, cx: &mut Context<GalleryView>) -> bool {
     let index_changed = revision != view.observed_index_revision;
     view.observed_index_revision = revision;
     if changed {
+        view.address_editing = false;
         if let Some(path) = selected_path.as_deref() {
             view.record_address_history(path);
         }

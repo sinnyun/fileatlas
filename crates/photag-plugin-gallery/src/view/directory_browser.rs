@@ -18,6 +18,27 @@ fn same_path(left: &str, right: &str) -> bool {
         .eq_ignore_ascii_case(right.trim_end_matches(['\\', '/']))
 }
 
+fn address_crumbs(path: &str) -> Vec<(String, String)> {
+    let path = path
+        .strip_prefix(r"\\?\UNC\")
+        .map(|tail| format!(r"\\{tail}"))
+        .unwrap_or_else(|| path.strip_prefix(r"\\?\").unwrap_or(path).to_owned());
+    let mut parts = std::path::Path::new(&path)
+        .ancestors()
+        .filter(|part| part.has_root())
+        .map(|part| {
+            let value = part.to_string_lossy().into_owned();
+            let label = part
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_else(|| value.clone());
+            (label, value)
+        })
+        .collect::<Vec<_>>();
+    parts.reverse();
+    parts
+}
+
 impl GalleryView {
     pub(super) fn render_column_address(
         &mut self,
@@ -29,13 +50,17 @@ impl GalleryView {
             self.address
                 .update(cx, |input, cx| input.set_value(&current, window, cx));
         }
-        let path = self.filter.path_prefix.as_deref();
-        let parent = path.and_then(parent_path);
-        div()
+        if current.is_empty() && !self.address_editing {
+            self.address_editing = true;
+        }
+        let path = self.filter.path_prefix.clone();
+        let parent = path.as_deref().and_then(parent_path);
+        let mut row = div()
             .h_flex()
             .items_center()
             .gap(px(3.))
             .w_full()
+            .min_w_0()
             .px(px(6.))
             .child(self.address_nav_button(
                 "back",
@@ -57,26 +82,118 @@ impl GalleryView {
                 "Up one folder",
                 parent.is_some(),
                 cx,
-            ))
-            .child(
+            ));
+        if self.address_editing {
+            row = row.child(
                 div()
+                    .h_flex()
                     .flex_1()
                     .min_w_0()
-                    .child(photag_ui_bridge::components::text_input(&self.address)),
-            )
-            .child(
-                Button::new(format!("gallery-column-{0}-address-go", self.column_index))
+                    .gap(px(3.))
+                    .child(photag_ui_bridge::components::text_input(&self.address))
+                    .child(
+                        Button::new(format!("gallery-column-{0}-address-go", self.column_index))
+                            .ghost()
+                            .compact()
+                            .label(photag_ui_bridge::i18n::tr("Go"))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                let path = this.address.read(cx).value().to_string();
+                                if !path.trim().is_empty() {
+                                    this.open_column_path(path, cx);
+                                }
+                            })),
+                    ),
+            );
+        } else {
+            let mut trail = div()
+                .h_flex()
+                .flex_1()
+                .min_w_0()
+                .items_center()
+                .gap(px(2.))
+                .overflow_x_scrollbar();
+            let mut current_crumb = None;
+            if let Some(path) = path.as_deref() {
+                trail = trail.child(theme::small_icon(IconName::FolderOpen));
+                let mut crumbs = address_crumbs(path);
+                let current = crumbs.pop();
+                let has_ancestors = !crumbs.is_empty();
+                for (index, (label, target)) in crumbs.into_iter().enumerate() {
+                    if index > 0 {
+                        trail = trail.child(
+                            theme::small_icon(IconName::ChevronRight)
+                                .text_color(rgb(theme::TEXT_MUTED)),
+                        );
+                    }
+                    let destination = target.clone();
+                    trail = trail.child(
+                        Button::new(format!(
+                            "gallery-column-{}-crumb-{index}",
+                            self.column_index
+                        ))
+                        .ghost()
+                        .compact()
+                        .flex_shrink_0()
+                        .label(label)
+                        .tooltip(target)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.open_column_path(destination.clone(), cx);
+                        })),
+                    );
+                }
+                if let Some((label, target)) = current {
+                    let destination = target.clone();
+                    let mut current_view = div().h_flex().items_center().gap(px(2.));
+                    if has_ancestors {
+                        current_view = current_view.child(
+                            theme::small_icon(IconName::ChevronRight)
+                                .text_color(rgb(theme::TEXT_MUTED)),
+                        );
+                    }
+                    current_crumb = Some(
+                        current_view.child(
+                            Button::new(format!(
+                                "gallery-column-{}-crumb-current",
+                                self.column_index
+                            ))
+                            .ghost()
+                            .compact()
+                            .flex_shrink_0()
+                            .max_w(px(140.))
+                            .label(label)
+                            .tooltip(target)
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.open_column_path(destination.clone(), cx);
+                                },
+                            )),
+                        ),
+                    );
+                }
+            }
+            row = row.child(trail);
+            if let Some(current_crumb) = current_crumb {
+                row = row.child(current_crumb);
+            }
+            row = row.child(
+                Button::new(format!("gallery-column-{}-address-edit", self.column_index))
                     .ghost()
                     .compact()
-                    .label(photag_ui_bridge::i18n::tr("Go"))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        let path = this.address.read(cx).value().to_string();
-                        if !path.trim().is_empty() {
-                            this.open_column_path(path, cx);
-                        }
+                    .w(px(26.))
+                    .h(px(28.))
+                    .icon(theme::small_icon(IconName::Pencil))
+                    .tooltip(photag_ui_bridge::i18n::tr("Edit folder address"))
+                    .accessibility_label(photag_ui_bridge::i18n::tr("Edit folder address"))
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        let value = this.filter.path_prefix.clone().unwrap_or_default();
+                        this.address
+                            .update(cx, |input, cx| input.set_value(&value, window, cx));
+                        this.address_editing = true;
+                        cx.notify();
                     })),
-            )
-            .into_any_element()
+            );
+        }
+        row.into_any_element()
     }
 
     fn address_nav_button(
@@ -91,6 +208,7 @@ impl GalleryView {
         Button::new(format!("gallery-column-{column}-address-{action}"))
             .ghost()
             .compact()
+            .flex_shrink_0()
             .w(px(28.))
             .h(px(28.))
             .icon(theme::small_icon(icon))
@@ -110,6 +228,7 @@ impl GalleryView {
     }
 
     fn open_column_path(&mut self, path: String, cx: &mut Context<Self>) {
+        self.address_editing = false;
         self.navigate_column_path(path, true, cx);
     }
 
