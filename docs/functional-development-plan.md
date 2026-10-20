@@ -15,6 +15,8 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 # 下一阶段：功能操作优化与功能扩展
 
+2026-10-20 用户指定 WorkCrate：在 FileAtlas 增加项目与客户交付工作流，选择方案 A（项目总览 + 独立 PhotoCraft 文件编辑），支持任意格式文件引用、每引用可选自定义预览、可编辑画布/展示母版、单画布图片导出及按顺序合并 PDF。源码映射、分插件职责和迭代验收已细化到[WorkCrate 开发计划](workcrate-development-plan.md)；原始源码快照与总体架构见[WorkCrate 架构提案](workcrate-architecture-proposal.md)，画布目录视觉参考见[参考入口](reference-ui/README.md)。优先复用 pinned FigCraft/DesignCraft/PdfCraft 的 core crates/算法，不引入其 egui UI；现有 FileManager/File Operations/Thumbnails/QuickLook/UI Bridge 提供通用能力，WorkCrate 项目引用、画布/模板、导出由新增编译期 Cordis 插件负责。此项处于需求与架构设计阶段，尚未实现或验证。
+
 2026-10-20：实现首版 `fileatlas-plugin-file-staging` 文件暂存篮（版本化 JSON 路径清单、原生多文件选择、FileManager 选区加入、逐项复制/移动结果、Sidebar 面板入口和生命周期清理）；复制/移动委托既有 File Operations。同进程 MCP 已验证真实隔离文件复制/移动、冲突保护、路径失效处理、重启恢复和面板截图；Windows 原生选择器点击、网络/权限路径和大批次性能仍待覆盖。设计、证据与剩余工作见[功能完整性计划](file-workbench-completeness-plan.md)、[插件 PORTS](../crates/fileatlas-plugin-file-staging/PORTS.md)及[运行记录](validation-ui/2026-10-20-file-staging/README.md)。
 
 2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `fileatlas-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/fileatlas-plugin-projects/PORTS.md)；同进程交互验证待执行。

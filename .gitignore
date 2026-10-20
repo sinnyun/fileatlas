@@ -1,3 +1,6 @@
 /target/
 /upstream/
 /.local/validation/
+
+# Local shallow source checkouts used only for WorkCrate research
+/vendor/workcrate-references/
