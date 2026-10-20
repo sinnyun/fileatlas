@@ -56,6 +56,7 @@ pub(super) fn render(
         let surfaces = Arc::clone(&view.surfaces);
         let column = view.column_index;
         let measured_path = destination.clone();
+        let native_destination = destination.clone();
         frame = frame
             .child(
                 canvas(
@@ -86,12 +87,31 @@ pub(super) fn render(
                 .absolute()
                 .size_full(),
             )
-            .on_drop::<card::FileDragPayload>(cx.listener(
-                move |this, payload: &card::FileDragPayload, _, cx| {
+            .on_drop::<fileatlas_contracts::FileManagerFileDragPayload>(cx.listener(
+                move |this, payload: &fileatlas_contracts::FileManagerFileDragPayload, _, cx| {
                     let _ = this.surfaces.set_value(&hover_key(this.column_index), "");
                     if payload.allows_drop() {
-                        this.move_ids_to_directory(payload.ids.clone(), destination.clone(), cx);
+                        this.move_ids_to_directory(
+                            payload.ids.clone(),
+                            native_destination.clone(),
+                            cx,
+                        );
                     }
+                },
+            ));
+        let staging_destination = destination.clone();
+        frame = frame
+            .drag_over::<fileatlas_contracts::FileStagingDragPayload>(|style, _, _, _| {
+                style.bg(rgb(theme::selection_color()))
+            })
+            .on_drop::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
+                move |this, payload: &fileatlas_contracts::FileStagingDragPayload, _, cx| {
+                    let _ = this.surfaces.set_value(&hover_key(this.column_index), "");
+                    this.move_staged_paths_to_directory(
+                        payload.paths.clone(),
+                        staging_destination.clone(),
+                        cx,
+                    );
                 },
             ));
     }
@@ -106,34 +126,58 @@ pub(super) fn hover_key(column: usize) -> String {
 /// the target directory changes, including leaving the FileManager viewport.
 pub(super) fn track_drag(
     view: &FileManagerView,
-    event: &::gpui::DragMoveEvent<card::FileDragPayload>,
+    event: &::gpui::DragMoveEvent<fileatlas_contracts::FileManagerFileDragPayload>,
     cx: &mut Context<FileManagerView>,
 ) {
     let destination = (event.drag(cx).allows_drop()
         && event.bounds.contains(&event.event.position))
-    .then(|| {
-        view.surfaces.value(&format!(
+    .then(|| destination_at(view, event.event.position))
+    .flatten();
+    set_hover_destination(view, destination, cx);
+}
+
+pub(super) fn track_staging_drag(
+    view: &FileManagerView,
+    event: &::gpui::DragMoveEvent<fileatlas_contracts::FileStagingDragPayload>,
+    cx: &mut Context<FileManagerView>,
+) {
+    let destination = event
+        .bounds
+        .contains(&event.event.position)
+        .then(|| destination_at(view, event.event.position))
+        .flatten();
+    set_hover_destination(view, destination, cx);
+}
+
+pub(super) fn destination_at(view: &FileManagerView, position: Point<Pixels>) -> Option<String> {
+    view.surfaces
+        .value(&format!(
             "file_manager.column.{}.group-frames",
             view.column_index
         ))
-    })
-    .flatten()
-    .and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok())
-    .and_then(|regions| {
-        regions.as_object().and_then(|regions| {
-            regions.values().find_map(|region| {
-                let bounds = region["bounds"].as_array()?;
-                let x = bounds.first()?.as_f64()? as f32;
-                let y = bounds.get(1)?.as_f64()? as f32;
-                let w = bounds.get(2)?.as_f64()? as f32;
-                let h = bounds.get(3)?.as_f64()? as f32;
-                Bounds::new(point(px(x), px(y)), size(px(w), px(h)))
-                    .contains(&event.event.position)
-                    .then(|| region["path"].as_str().map(str::to_owned))
-                    .flatten()
+        .and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok())
+        .and_then(|regions| {
+            regions.as_object().and_then(|regions| {
+                regions.values().find_map(|region| {
+                    let bounds = region["bounds"].as_array()?;
+                    let x = bounds.first()?.as_f64()? as f32;
+                    let y = bounds.get(1)?.as_f64()? as f32;
+                    let w = bounds.get(2)?.as_f64()? as f32;
+                    let h = bounds.get(3)?.as_f64()? as f32;
+                    Bounds::new(point(px(x), px(y)), size(px(w), px(h)))
+                        .contains(&position)
+                        .then(|| region["path"].as_str().map(str::to_owned))
+                        .flatten()
+                })
             })
         })
-    });
+}
+
+fn set_hover_destination(
+    view: &FileManagerView,
+    destination: Option<String>,
+    cx: &mut Context<FileManagerView>,
+) {
     let key = hover_key(view.column_index);
     let destination = destination.unwrap_or_default();
     if view.surfaces.value(&key).unwrap_or_default() != destination {

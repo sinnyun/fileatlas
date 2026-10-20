@@ -17,6 +17,7 @@ mod plugin;
 
 pub use model::{
     BulkCopyOutcome, BulkDeleteOutcome, BulkMoveOutcome, DeleteResult, FileOperationError,
+    PathOperationOutcome,
 };
 pub use plugin::{FileOperationsConfig, FileOperationsPlugin, FileOperationsPluginError};
 
@@ -32,6 +33,117 @@ impl Service for FileOperationsService {
 impl FileOperationsService {
     pub fn new(database: Arc<DatabaseService>, cordis: Context) -> Self {
         Self { database, cordis }
+    }
+
+    /// Copy staged arbitrary files into a destination folder without replacing
+    /// existing files. Indexed sources use their current database path.
+    pub async fn copy_paths_to_folder(
+        self: &Arc<Self>,
+        paths: Vec<PathBuf>,
+        destination_dir: PathBuf,
+    ) -> Result<Vec<PathOperationOutcome>, FileOperationError> {
+        let service = Arc::clone(self);
+        Ok(tokio::task::spawn_blocking(move || {
+            paths
+                .into_iter()
+                .map(|source| {
+                    let result = (|| {
+                        let source = service.current_source_path(&source)?;
+                        let name = source
+                            .file_name()
+                            .ok_or(FileOperationError::InvalidParent)?;
+                        let destination = destination_dir.join(name);
+                        if destination.exists() {
+                            return Ok(false);
+                        }
+                        copy_new_file(&source, &destination)?;
+                        Ok(true)
+                    })();
+                    model::path_outcome(source, result)
+                })
+                .collect()
+        })
+        .await?)
+    }
+
+    /// Move staged arbitrary files through the existing file-operation service.
+    /// Known indexed rows receive the same path/database follow-through as the
+    /// normal FileManager move; unindexed files are observed by Watcher if needed.
+    pub async fn move_paths_to_folder(
+        self: &Arc<Self>,
+        paths: Vec<PathBuf>,
+        destination_dir: PathBuf,
+    ) -> Result<Vec<PathOperationOutcome>, FileOperationError> {
+        let service = Arc::clone(self);
+        let (outcomes, changed) = tokio::task::spawn_blocking(move || {
+            let mut changed = false;
+            let outcomes = paths
+                .into_iter()
+                .map(|source| {
+                    let result = (|| {
+                        let source = service.current_source_path(&source)?;
+                        let name = source
+                            .file_name()
+                            .ok_or(FileOperationError::InvalidParent)?
+                            .to_owned();
+                        let destination = destination_dir.join(name);
+                        if destination.exists() {
+                            return Ok(false);
+                        }
+                        if let Some(id) = service
+                            .database
+                            .ids_for_paths(&path_candidates(&source))?
+                            .first()
+                            .copied()
+                        {
+                            let moved =
+                                service.move_into_folder_blocking(id, destination_dir.clone())?;
+                            changed |= moved;
+                            Ok(moved)
+                        } else {
+                            copy_new_file(&source, &destination)?;
+                            std::fs::remove_file(&source)?;
+                            Ok(true)
+                        }
+                    })();
+                    model::path_outcome(source, result)
+                })
+                .collect();
+            (outcomes, changed)
+        })
+        .await?;
+        if changed {
+            self.emit_index_changed().await?;
+        }
+        Ok(outcomes)
+    }
+
+    fn current_source_path(&self, source: &Path) -> Result<PathBuf, FileOperationError> {
+        let id = self
+            .database
+            .ids_for_paths(&path_candidates(source))?
+            .first()
+            .copied();
+        if let Some(id) = id {
+            let indexed = self
+                .media(id)?
+                .map(|item| PathBuf::from(item.full_path))
+                .ok_or(FileOperationError::MissingMedia(id));
+            let indexed = indexed?;
+            if !indexed.is_file() {
+                return Err(FileOperationError::MissingMedia(id));
+            }
+            return Ok(indexed);
+        }
+        let source = source.canonicalize()?;
+        if !source.is_file() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "source is not a file",
+            )
+            .into());
+        }
+        Ok(source)
     }
 
     #[tracing::instrument(skip_all, err)]
@@ -502,6 +614,65 @@ impl FileOperationsService {
     }
 }
 
+fn copy_new_file(source: &Path, destination: &Path) -> Result<(), FileOperationError> {
+    use std::io::Write;
+    let mut input = std::fs::File::open(source)?;
+    let mut output = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(destination)?;
+    let result = (|| {
+        std::io::copy(&mut input, &mut output)?;
+        output.flush()?;
+        Ok::<_, std::io::Error>(())
+    })();
+    drop(output);
+    if let Err(error) = result {
+        let _ = std::fs::remove_file(destination);
+        return Err(error.into());
+    }
+    Ok(())
+}
+
+fn path_candidates(path: &Path) -> Vec<String> {
+    let mut values = Vec::new();
+    let mut push = |value: String| {
+        if !values
+            .iter()
+            .any(|known: &String| known.eq_ignore_ascii_case(&value))
+        {
+            values.push(value);
+        }
+    };
+    let raw = path.to_string_lossy().into_owned();
+    for value in [
+        Some(raw),
+        path.canonicalize()
+            .ok()
+            .map(|p| p.to_string_lossy().into_owned()),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if let Some(unc) = value.strip_prefix(r"\\?\UNC\") {
+            push(format!(r"\\{unc}"));
+        } else if let Some(normal) = value.strip_prefix(r"\\?\") {
+            push(normal.to_owned());
+        } else {
+            push(value.clone());
+        }
+        if value.starts_with(r"\\") && !value.starts_with(r"\\?\") {
+            push(format!(r"\\?\UNC\{}", value.trim_start_matches('\\')));
+        } else if value.len() >= 3
+            && value.as_bytes().get(1) == Some(&b':')
+            && !value.starts_with(r"\\?\")
+        {
+            push(format!(r"\\?\{value}"));
+        }
+    }
+    values
+}
+
 /// FileAtlas's registered-root matching uses string-prefix comparison; retain the
 /// same behavior so moved rows attach to the same root as the original app.
 pub fn registered_folder_for_path(folders: &[Folder], path: &str) -> Option<i64> {
@@ -515,12 +686,9 @@ fn move_file(source: &str, destination: &Path) -> bool {
     match std::fs::rename(source, destination) {
         Ok(()) => true,
         Err(_) => {
-            if std::fs::copy(source, destination).is_ok() {
-                std::fs::remove_file(source).ok();
-                true
-            } else {
-                false
-            }
+            let source_path = Path::new(source);
+            copy_new_file(source_path, destination).is_ok()
+                && std::fs::remove_file(source_path).is_ok()
         }
     }
 }

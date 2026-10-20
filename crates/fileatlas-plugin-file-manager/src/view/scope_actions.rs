@@ -2,6 +2,35 @@
 use super::*;
 
 impl FileManagerView {
+    pub(super) fn stage_media_ids(&self, ids: Vec<i64>) {
+        let service = Arc::clone(&self.service);
+        let cordis = self.cordis.clone();
+        self.runtime.spawn(async move {
+            let paths =
+                match tokio::task::spawn_blocking(move || service.media_paths_by_ids(&ids)).await {
+                    Ok(Ok(paths)) => paths,
+                    Ok(Err(error)) => {
+                        tracing::warn!(%error, "could not resolve selected files for staging");
+                        return;
+                    }
+                    Err(error) => {
+                        tracing::warn!(%error, "selected path lookup worker failed");
+                        return;
+                    }
+                };
+            let paths = paths
+                .into_iter()
+                .map(|path| path.to_string_lossy().into_owned())
+                .collect();
+            if let Err(error) = cordis
+                .emit::<fileatlas_contracts::FileStagingAddRequested>(Routing::Unscoped, paths)
+                .await
+            {
+                tracing::debug!(%error, "file staging feature is unavailable");
+            }
+        });
+    }
+
     /// Dispatch a plugin command through Cordis, matching the shell's
     /// UiCommandInvoked contract so feature plugins stay decoupled.
     pub(super) fn dispatch_command(&self, command_id: &str) {

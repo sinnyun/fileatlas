@@ -37,6 +37,7 @@ members = [
     "crates/fileatlas-plugin-material-theme",
     "crates/fileatlas-plugin-screenshot",
     "crates/fileatlas-plugin-projects",
+    "crates/fileatlas-plugin-file-staging",
 ]
 default-members = ["crates/fileatlas-shell"]
 

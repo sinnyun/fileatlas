@@ -758,6 +758,7 @@ impl Plugin for ClipboardPlugin {
                     options: fileatlas_ui_bridge::panels::PanelOptions {
                         id: PANEL.into(),
                         title: "剪贴板工作台".into(),
+                        modal: true,
                         default_size: (1160., 760.),
                         min_size: (1000., 660.),
                     },

@@ -420,6 +420,20 @@ pub(super) fn build(
             }),
     );
     menu = menu.item(PopupMenuItem::separator());
+    let stage_targets = menu_targets.clone();
+    let stage_view = menu_view.clone();
+    menu = menu.item(
+        PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Add to staging basket"))
+            .icon(theme::icon(IconName::Briefcase))
+            .on_click(move |_, _, cx| {
+                let targets = stage_targets.clone();
+                let _ = stage_view.update(cx, |view, cx| {
+                    view.stage_media_ids(targets);
+                    view.media_actions_id = None;
+                    cx.notify();
+                });
+            }),
+    );
     let rename_view = menu_view.clone();
     let rename_filename = media.filename.clone();
     menu = menu.item(

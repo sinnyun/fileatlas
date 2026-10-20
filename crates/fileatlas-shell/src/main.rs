@@ -34,6 +34,7 @@ fn dev_plugin_config() -> String {
         "dev-test",
         "screenshot",
         "projects",
+        "file-staging",
     ];
     for plugin in config
         .split(',')
@@ -165,6 +166,10 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "projects");
+    let enable_file_staging = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "file-staging");
     let enable_launcher = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -524,6 +529,46 @@ fn main() {
     } else {
         None
     };
+    let enable_file_staging =
+        enable_file_staging && plugin_preferences.plugin_is_enabled("fileatlas.file-staging");
+    let file_staging_fiber = if enable_file_staging {
+        let plugin = fileatlas_plugin_file_staging::FileStagingPlugin;
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, ()))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start file staging plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let staging_context = cordis.clone();
+    let staging_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = staging_context.clone();
+        Box::pin(async move {
+            context
+                .spawn(PreparedPlugin::from_input(
+                    fileatlas_plugin_file_staging::FileStagingPlugin,
+                    (),
+                ))
+                .await
+                .map_err(|e| e.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "fileatlas.file-staging",
+        "File Staging Basket",
+        "Collect files from different folders, then copy or move them as a batch.",
+        vec![
+            fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        file_staging_fiber,
+        staging_starter,
+    )) {
+        tracing::error!(%error, "could not register File Staging Basket runtime control");
+    }
     let projects_context = cordis.clone();
     let projects_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
         let context = projects_context.clone();

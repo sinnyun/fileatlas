@@ -923,5 +923,6 @@
   "Default": "msg-workspaces-default",
   "Active": "msg-workspaces-active",
   "Set default": "msg-workspaces-set-default",
-  "New workspace": "msg-workspaces-new"
+  "New workspace": "msg-workspaces-new",
+  "Add to staging basket": "msg-file-staging-add"
 }

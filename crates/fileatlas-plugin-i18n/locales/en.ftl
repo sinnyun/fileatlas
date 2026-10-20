@@ -1164,6 +1164,7 @@ msg-project-folder-path = Project folder path
 msg-project-add-folder = Add folder
 msg-project-loading-folders = Loading project folders…
 msg-project-remove = Remove project
+msg-file-staging-add = Add to staging basket
 msg-3c6db1637ff3 = Toggle color mode
 msg-60acc53f13a5 = Dark
 msg-9f1e7d7d98b2 = Color mode

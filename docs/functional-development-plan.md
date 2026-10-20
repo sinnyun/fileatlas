@@ -15,6 +15,8 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 # 下一阶段：功能操作优化与功能扩展
 
+2026-10-20：实现首版 `fileatlas-plugin-file-staging` 文件暂存篮（版本化 JSON 路径清单、原生多文件选择、FileManager 选区加入、逐项复制/移动结果、Sidebar 面板入口和生命周期清理）；复制/移动委托既有 File Operations。同进程 MCP 已验证真实隔离文件复制/移动、冲突保护、路径失效处理、重启恢复和面板截图；Windows 原生选择器点击、网络/权限路径和大批次性能仍待覆盖。设计、证据与剩余工作见[功能完整性计划](file-workbench-completeness-plan.md)、[插件 PORTS](../crates/fileatlas-plugin-file-staging/PORTS.md)及[运行记录](validation-ui/2026-10-20-file-staging/README.md)。
+
 2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `fileatlas-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/fileatlas-plugin-projects/PORTS.md)；同进程交互验证待执行。
 
 2026-10-19 用户要求增加暗/亮主题模式与左侧主题切换入口，并将 Shell 直接绘制的功能按钮迁移到插件托槽。

@@ -2604,6 +2604,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-plugin-file-staging"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-plugin-file-operations",
+ "fileatlas-plugin-settings",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fileatlas-plugin-grouping"
 version = "0.1.0"
 dependencies = [
@@ -3004,6 +3024,7 @@ dependencies = [
  "fileatlas-plugin-everything-search",
  "fileatlas-plugin-file-manager",
  "fileatlas-plugin-file-operations",
+ "fileatlas-plugin-file-staging",
  "fileatlas-plugin-grouping",
  "fileatlas-plugin-history",
  "fileatlas-plugin-i18n",

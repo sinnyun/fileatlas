@@ -1163,3 +1163,4 @@ msg-project-folder-path = 项目文件夹路径
 msg-project-add-folder = 添加文件夹
 msg-project-loading-folders = 正在加载项目文件夹…
 msg-project-remove = 移除项目
+msg-file-staging-add = 添加到文件暂存篮

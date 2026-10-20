@@ -491,9 +491,30 @@ impl Render for FileManagerView {
                 let row_layout = Arc::clone(&row_layout);
                 let mut grid = div()
                     .id("file_manager-grid-root")
-                    .on_drag_move::<card::FileDragPayload>(cx.listener(|this, event, _, cx| {
-                        super::group_frame::track_drag(this, event, cx)
-                    }))
+                    .on_drag_move::<fileatlas_contracts::FileManagerFileDragPayload>(cx.listener(
+                        |this, event, _, cx| super::group_frame::track_drag(this, event, cx),
+                    ))
+                    .on_drag_move::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
+                        |this, event, _, cx| {
+                            super::group_frame::track_staging_drag(this, event, cx)
+                        },
+                    ))
+                    .on_drop::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
+                        |this,
+                         payload: &fileatlas_contracts::FileStagingDragPayload,
+                         window,
+                         cx| {
+                            if let Some(destination) =
+                                super::group_frame::destination_at(this, window.mouse_position())
+                            {
+                                this.move_staged_paths_to_directory(
+                                    payload.paths.clone(),
+                                    destination,
+                                    cx,
+                                );
+                            }
+                        },
+                    ))
                     .track_focus(&self.focus_handle)
                     .on_key_down(
                         cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),

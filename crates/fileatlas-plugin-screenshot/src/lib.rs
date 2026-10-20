@@ -434,6 +434,7 @@ impl Plugin for ScreenshotPlugin {
                 options: fileatlas_ui_bridge::panels::PanelOptions {
                     id: PANEL.into(),
                     title: "截图工具".into(),
+                    modal: true,
                     default_size: (640., 420.),
                     min_size: (540., 360.),
                 },

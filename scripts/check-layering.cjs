@@ -42,6 +42,7 @@ const layers = [
     'fileatlas-plugin-projects',
   ],
   ['fileatlas-plugin-versions', 'fileatlas-plugin-material-theme'],
+  ['fileatlas-plugin-file-staging'],
   ['fileatlas-plugin-ai'],
   ['fileatlas-plugin-file-manager'],
   ['fileatlas-plugin-mcp', 'fileatlas-shell'],

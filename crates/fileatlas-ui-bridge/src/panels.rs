@@ -14,6 +14,8 @@ pub const HEADER_HEIGHT: f32 = 36.;
 pub struct PanelOptions {
     pub id: String,
     pub title: String,
+    /// Modal panels dim and block the workspace outside their frame.
+    pub modal: bool,
     pub default_size: (f32, f32),
     pub min_size: (f32, f32),
 }
@@ -23,6 +25,7 @@ impl PanelOptions {
         Self {
             id: id.into(),
             title: title.into(),
+            modal: true,
             default_size: size,
             min_size: (360., 240.),
         }

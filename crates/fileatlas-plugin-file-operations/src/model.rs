@@ -23,6 +23,31 @@ pub struct BulkDeleteOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathOperationOutcome {
+    pub source: std::path::PathBuf,
+    pub completed: bool,
+    pub error: Option<String>,
+}
+
+pub(super) fn path_outcome(
+    source: std::path::PathBuf,
+    result: Result<bool, FileOperationError>,
+) -> PathOperationOutcome {
+    match result {
+        Ok(completed) => PathOperationOutcome {
+            source,
+            completed,
+            error: (!completed).then(|| "目标文件已存在".into()),
+        },
+        Err(error) => PathOperationOutcome {
+            source,
+            completed: false,
+            error: Some(error.to_string()),
+        },
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeleteResult {
     pub removed_from_database: bool,
     pub recycled: bool,

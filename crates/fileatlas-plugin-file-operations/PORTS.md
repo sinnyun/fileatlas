@@ -30,6 +30,18 @@ pass.
   with its current filename, continues after per-item errors, and returns one
   `BulkCopyOutcome` per input ID. It does not alter rows; the folder watcher
   discovers successful copies under registered roots.
+- `copy_paths_to_folder(paths, destination_dir)` and
+  `move_paths_to_folder(paths, destination_dir)` accept arbitrary staged file
+  paths as well as indexed paths, revalidate each source at execution, and
+  return one `PathOperationOutcome` (`source`, `completed`, `error`) per input.
+  Existing destinations are skipped/reported and the path-copy helper uses
+  `create_new` so a concurrent collision cannot overwrite destination bytes;
+  cross-volume move fallback uses the same no-overwrite copy path before source
+  removal. Windows verbatim/ordinary paths are matched before deciding whether
+  a staged source is already indexed.
+  Indexed moves retain the existing database/root reconciliation and emit one
+  `MediaIndexChanged`; unindexed moves use copy-then-remove and registered-root
+  Watcher discovers resulting content. Staging basket calls these methods.
 - `move_to(media_id, destination)` uses rename then copy/delete fallback for
   cross-volume moves. It updates the row when the destination string begins
   with a registered root, otherwise removes the row, matching FileAtlas's logic.

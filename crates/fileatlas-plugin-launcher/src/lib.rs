@@ -947,6 +947,7 @@ impl Plugin for LauncherPlugin {
                 options: fileatlas_ui_bridge::panels::PanelOptions {
                     id: PANEL_ID.into(),
                     title: "Program Launchpad".into(),
+                    modal: true,
                     default_size: (1200., 760.),
                     min_size: (900., 540.),
                 },

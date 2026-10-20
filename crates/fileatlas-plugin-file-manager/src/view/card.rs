@@ -1,5 +1,6 @@
 //! GPUI media tile rendering and click selection.
 
+use fileatlas_contracts::FileManagerFileDragPayload;
 use fileatlas_contracts::TagDragPayload;
 use fileatlas_plugin_drag_drop::DragDropService;
 use fileatlas_ui_bridge::theme;
@@ -39,12 +40,16 @@ pub(super) fn render_media_card(
     cx: &mut Context<FileManagerView>,
 ) -> impl IntoElement + 'static {
     let media_id = media.id;
-    let payload = FileDragPayload {
-        service: drag_drop,
-        paths: drag_paths,
+    let payload = FileManagerFileDragPayload {
+        paths: drag_paths
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect(),
         ids: drag_ids,
         allowed: drag_allowed.clone(),
     };
+    let native_drag_service = drag_drop;
+    let native_drag_paths = drag_paths;
     let media_type = media.media_type.as_str();
     let micro_image = micro_thumb.and_then(micro_render_image);
     let mut frame = div()
@@ -350,10 +355,10 @@ pub(super) fn render_media_card(
             }
         }))
         .on_drag(payload, move |payload, _, window, cx| {
-            if native_drag && payload.allowed.load(Ordering::Acquire) {
-                if let Err(error) = payload.service.start_file_drag(
+            if native_drag && payload.allows_drop() {
+                if let Err(error) = native_drag_service.start_file_drag(
                     window,
-                    &payload.paths,
+                    &native_drag_paths,
                     fileatlas_plugin_drag_drop::DragImageStyle {
                         background: theme::channels(theme::surface_card()),
                         foreground: theme::channels(theme::text_primary()),
@@ -432,20 +437,7 @@ fn micro_render_image(data: &[u8]) -> Option<Arc<::gpui::RenderImage>> {
     )])))
 }
 
-pub(super) struct FileDragPayload {
-    service: Arc<DragDropService>,
-    paths: Vec<PathBuf>,
-    pub(super) ids: Vec<i64>,
-    allowed: Arc<AtomicBool>,
-}
-
 struct FileDragGhost;
-
-impl FileDragPayload {
-    pub(super) fn allows_drop(&self) -> bool {
-        self.allowed.load(Ordering::Acquire) && !self.ids.is_empty()
-    }
-}
 
 impl Render for FileDragGhost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {

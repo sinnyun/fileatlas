@@ -101,6 +101,45 @@ impl Event for MediaIndexChanged {
     type Output = ();
 }
 
+/// Add selected FileManager paths to the optional persistent staging basket.
+pub struct FileStagingAddRequested;
+
+impl Event for FileStagingAddRequested {
+    const NAME: &'static str = "fileatlas/file-staging/add-requested";
+    type Args = Vec<String>;
+    type Output = ();
+}
+
+/// Internal GPUI drag payload shared by the staging panel and file views.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FileStagingDragPayload {
+    pub paths: Vec<String>,
+}
+
+/// GPUI drag payload for files dragged from a FileManager view. Cross-feature
+/// targets can accept paths without depending on FileManager's private view.
+#[derive(Clone)]
+pub struct FileManagerFileDragPayload {
+    pub paths: Vec<String>,
+    pub ids: Vec<i64>,
+    pub allowed: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl FileManagerFileDragPayload {
+    pub fn allows_drop(&self) -> bool {
+        self.allowed.load(std::sync::atomic::Ordering::Acquire) && !self.ids.is_empty()
+    }
+}
+
+/// Remove successfully moved paths from the persistent staging basket.
+pub struct FileStagingPathsMoved;
+
+impl Event for FileStagingPathsMoved {
+    const NAME: &'static str = "fileatlas/file-staging/paths-moved";
+    type Args = Vec<String>;
+    type Output = ();
+}
+
 /// Notify FileManager's per-file History panel after a saved revision or branch
 /// graph changes.
 pub struct MediaVersionHistoryChanged;

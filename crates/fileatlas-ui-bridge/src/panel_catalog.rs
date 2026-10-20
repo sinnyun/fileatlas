@@ -178,6 +178,10 @@ impl PanelCatalog {
             .set_value("workspace.activate", &state.activation.to_string())?;
         let mut options = definition.options;
         options.id = id.clone();
+        self.surfaces.set_value(
+            &format!("panel.{id}.modal"),
+            if options.modal { "true" } else { "false" },
+        )?;
         let visible = self.surfaces.clone();
         let surfaces = self.surfaces.clone();
         let visible_id = id.clone();

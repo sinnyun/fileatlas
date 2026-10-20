@@ -3,6 +3,7 @@
 use std::future::Future;
 use std::sync::Arc;
 
+use cordis::Routing;
 use fileatlas_plugin_file_operations::{BulkCopyOutcome, BulkDeleteOutcome, BulkMoveOutcome};
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::*;
@@ -10,6 +11,83 @@ use gpui_kit::*;
 use super::FileManagerView;
 
 impl FileManagerView {
+    pub(super) fn move_staged_paths_to_directory(
+        &mut self,
+        paths: Vec<String>,
+        destination: String,
+        cx: &mut Context<Self>,
+    ) {
+        let destination_path = std::path::PathBuf::from(&destination);
+        if self.grouping_mode != fileatlas_plugin_grouping::GroupingMode::Subfolder
+            || !destination_path.is_dir()
+            || paths.is_empty()
+        {
+            return;
+        }
+        let operations = Arc::clone(&self.file_operations);
+        let cordis = self.cordis.clone();
+        let requested = paths.len();
+        let destination_label = destination.clone();
+        self.start_file_operation(
+            async move {
+                match operations
+                    .move_paths_to_folder(
+                        paths.iter().map(std::path::PathBuf::from).collect(),
+                        destination_path,
+                    )
+                    .await
+                {
+                    Err(error) => (format!("Staging move failed: {error}"), Vec::new()),
+                    Ok(outcomes) => {
+                        let completed = outcomes
+                            .iter()
+                            .filter(|outcome| outcome.completed)
+                            .map(|outcome| outcome.source.to_string_lossy().into_owned())
+                            .collect::<Vec<_>>();
+                        if !completed.is_empty()
+                            && let Err(error) = cordis
+                                .emit::<fileatlas_contracts::FileStagingPathsMoved>(
+                                    Routing::Unscoped,
+                                    completed,
+                                )
+                                .await
+                        {
+                            tracing::warn!(%error, "could not update staging basket after drop move");
+                        }
+                        let moved = outcomes.iter().filter(|outcome| outcome.completed).count();
+                        let failed = outcomes.iter().filter(|outcome| !outcome.completed).count();
+                        let errors = outcomes
+                            .iter()
+                            .filter(|outcome| !outcome.completed)
+                            .take(3)
+                            .map(|outcome| {
+                                format!(
+                                    "{}: {}",
+                                    outcome.source.display(),
+                                    outcome.error.as_deref().unwrap_or("not moved")
+                                )
+                            })
+                            .collect::<Vec<_>>();
+                        let mut status = format!(
+                            "Moved {moved} of {requested} staged files to {destination_label}."
+                        );
+                        if failed > 0 {
+                            status.push_str(&format!(" {failed} failed or skipped."));
+                            if !errors.is_empty() {
+                                status.push(' ');
+                                status.push_str(&errors.join("; "));
+                            }
+                        }
+                        (status, Vec::new())
+                    }
+                }
+            },
+            true,
+            false,
+            cx,
+        );
+    }
+
     pub(super) fn move_ids_to_directory(
         &mut self,
         ids: Vec<i64>,

@@ -992,3 +992,9 @@ validation root. Directory and link rules: [validation data policy](validation-d
 MCP 同步增加 `move_files_to_subfolder` 控制入口用于隔离进程实测。生产索引器扫描的两目录 fixture
 通过同进程 MCP 完成实际文件移动和索引路径刷新。功能链路通过；Windows 原生拖放手势和视觉截图验收
 仍未覆盖。详细命令、路径和边界见[验证记录](validation-ui/2026-10-20-subfolder-drop/README.md)。
+
+## 2026-10-20 文件暂存篮首版
+
+新增独立 File Staging Cordis 插件、版本化 JSON 路径清单、主题面板/Launcher 入口、FileManager 选区加入事件，以及委托 File Operations 的逐项复制/移动。隔离同进程 MCP 使用真实临时文件覆盖多目录添加与去重、复制、冲突不覆盖及失败保留、移动、失效清理和新进程重启持久化。格式、受影响 crate/shell check/build 与架构、分层、主题、刷新、feature ledger 检查通过。原生文件/目录选择器点击、FileManager 菜单点击、跨卷/权限行为和小窗/浅色状态仍未验证；不支持任务取消/恢复。详见[文件暂存篮验证记录](validation-ui/2026-10-20-file-staging/README.md)。
+
+后续按用户要求改为缩略图/标题网格卡片，并将暂存面板设为非模态，保留显式复制入口；拖放意图为松开即移动，成功路径应从暂存篮移除。发现 Shell 遮罩谓词未排除非模态面板，导致主界面变暗且无法交互；现已仅对模态面板创建遮罩。同进程 MCP 实测暂存面板打开时仍可点击选择 FileManager 子文件夹。并新增 FileManager → 暂存篮拖入：共享文件拖拽载荷通过 GPUI 后台执行器写入清单；同进程 MCP 验证 tiny.jpg 加入暂存且源文件保留。反向暂存篮 → 文件夹拖放仍显示 ghost 和目标高亮，但 pointer-up 未执行移动，仍待修复/验证。编译和主题/刷新/架构/ledger 检查通过，详见[文件暂存篮验证记录](validation-ui/2026-10-20-file-staging/README.md)。

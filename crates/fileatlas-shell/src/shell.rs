@@ -115,6 +115,7 @@ impl Render for FileAtlasShell {
         let mut inspector_views = Vec::new();
         let mut auxiliary_views = Vec::new();
         let mut modal_views = Vec::new();
+        let mut floating_panel_views = Vec::new();
         let mut active_panel = None;
         let active = self.surfaces.value("panel.active");
         for (_, _, slot, panel_id, view) in &self.views {
@@ -176,7 +177,15 @@ impl Render for FileAtlasShell {
                 "workspace.main" => context_views.push(view.clone()),
                 "workspace.modal" => {
                     if panel_id.is_some() && panel_id == &active {
-                        active_panel = Some(view.clone());
+                        let is_non_modal = panel_id.as_ref().is_some_and(|id| {
+                            self.surfaces.value(&format!("panel.{id}.modal")).as_deref()
+                                == Some("false")
+                        });
+                        if is_non_modal {
+                            floating_panel_views.push(view.clone());
+                        } else {
+                            active_panel = Some(view.clone());
+                        }
                     } else {
                         modal_views.push(view.clone());
                     }
@@ -710,12 +719,17 @@ impl Render for FileAtlasShell {
                     ),
             );
         }
+        if !floating_panel_views.is_empty() {
+            shell = shell.children(floating_panel_views);
+        }
         if !modal_views.is_empty() {
             if self.surfaces.open_panel_ids().iter().any(|id| {
-                self.surfaces
-                    .value(&format!("panel.{id}.native"))
-                    .as_deref()
-                    != Some("true")
+                self.surfaces.value(&format!("panel.{id}.modal")).as_deref() != Some("false")
+                    && self
+                        .surfaces
+                        .value(&format!("panel.{id}.native"))
+                        .as_deref()
+                        != Some("true")
             }) {
                 shell = shell.child(
                     div()

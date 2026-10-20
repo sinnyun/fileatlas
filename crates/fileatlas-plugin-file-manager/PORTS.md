@@ -34,6 +34,13 @@ group. It is a test/control route; ordinary use remains pointer drag and drop.
 Initial service-route evidence is in
 `docs/validation-ui/2026-10-20-subfolder-drop/README.md`.
 
+Media cards publish the shared `FileManagerFileDragPayload` from
+`fileatlas-contracts` with paths, selected IDs, and live modifier-state drop
+eligibility. File Staging accepts that payload and adds the paths without
+moving the source files. The inbound FileManager-to-staging pointer drag passed
+same-process MCP in
+`docs/validation-ui/2026-10-20-file-staging/README.md`.
+
 ## Common group frame and pointer drop validation (2026-10-20)
 
 `view/group_frame.rs` owns the group boundary, shared drag hover and file drop.
@@ -62,6 +69,15 @@ per column, defaults false, and is reported as `file_manager.debug_internal_file
 for the primary pane. It is not a saved product setting. The normal native OLE
 handoff still requires physical Windows input coverage. Live pointer evidence and
 remaining limits: `docs/validation-ui/2026-10-20-group-frame-drop/README.md`.
+
+The same subfolder frame also accepts the shared `FileStagingDragPayload` from
+the staging panel. This follows the normal FileManager drop contract: release
+moves available staged paths immediately; no copy/move chooser is shown. The
+FileManager calls `FileOperationsService::move_paths_to_folder`, refreshes the
+current view, reports per-path failures, and emits `FileStagingPathsMoved` so
+the staging feature removes successful paths. Other grouping modes ignore this
+payload. Staging drag payload is internal GPUI data and does not start native
+OLE drag-out.
 
 ## Independent FileManager columns (2026-10-19)
 
