@@ -15,7 +15,7 @@ impl Render for WorkCratePanel {
                     .filter_map(|id| c.board.image_layout(id).ok().map(|l| (id.clone(), l)))
                     .collect::<std::collections::BTreeMap<_, _>>()
             });
-        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"busy":self.busy,"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"selected_pages":self.selected_pages,"selected_image":self.selected_image,"layouts":layouts,"crop_mode":self.crop_mode,"edit_saving":self.edit_saving,"gesture":self.gesture.as_ref().map(|g| serde_json::json!({"asset":g.asset,"frame":g.current.frame,"content":g.current.content})),"editing":self.editing,"message":self.message}).to_string();
+        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"busy":self.busy,"preview_cache_hits":self.preview_hits,"previews_ready":self.boards_view.iter().filter(|c| c.image.is_some()).count(),"display_images":self.boards_view.iter().map(|c| c.originals.len()).sum::<usize>(),"display_rgba_bytes":self.boards_view.iter().flat_map(|c| c.originals.values()).map(|i| i.as_bytes(0).map_or(0,|b| b.len())).sum::<usize>(),"export_status":self.export_status,"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"selected_pages":self.selected_pages,"selected_image":self.selected_image,"layouts":layouts,"crop_mode":self.crop_mode,"edit_saving":self.edit_saving,"gesture":self.gesture.as_ref().map(|g| serde_json::json!({"asset":g.asset,"frame":g.current.frame,"content":g.current.content})),"editing":self.editing,"message":self.message}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
         }
@@ -147,7 +147,13 @@ impl Render for WorkCratePanel {
             .child(toolbar)
             .child(content)
             .when(self.busy, |el| {
-                el.child(div().px_3().text_xs().child("正在处理…"))
+                el.child(
+                    div().px_3().pb_2().text_xs().child(
+                        self.export_status
+                            .clone()
+                            .unwrap_or_else(|| "正在处理…".into()),
+                    ),
+                )
             })
             .when_some(self.message.clone(), |el, message| {
                 el.child(div().px_3().pb_2().text_xs().child(message))
@@ -459,6 +465,12 @@ impl WorkCratePanel {
     }
 
     pub(super) fn open_page(&mut self, id: &str, cx: &mut ViewContext<Self>) {
+        for card in &mut self.boards_view {
+            if card.board.id != id {
+                card.originals.clear();
+                card.sources.clear();
+            }
+        }
         self.selected_board = Some(id.into());
         self.gesture = None;
         self.crop_mode = false;
@@ -471,6 +483,8 @@ impl WorkCratePanel {
             .map(|card| card.board.clone())
         {
             self.render_canvas(board, cx);
+            self.proxy_request = None;
+            self.load_editor_images(cx);
         }
         cx.notify();
     }

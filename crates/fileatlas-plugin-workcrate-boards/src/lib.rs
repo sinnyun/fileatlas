@@ -20,6 +20,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 const BOARD_VERSION: u32 = 1;
+mod cache;
 mod presentation;
 pub use presentation::PageInfo;
 
@@ -218,47 +219,7 @@ impl WorkCrateBoardsService {
         {
             return Err(BoardsError::InvalidBoard);
         }
-        // Product pages have fixed A3 geometry. Old physical-size fields are only
-        // labels; do not continue the retired behavior that resized the document.
-        if board.info.order > 0
-            && ((board.source.settings.page_width - 420. * 72. / 25.4).abs() > 0.01
-                || (board.source.settings.page_height - 297. * 72. / 25.4).abs() > 0.01)
-        {
-            let mut session = Session::new();
-            session.add_document(DocState::new(board.source.clone(), None));
-            session.execute(
-                "layout.documentSetup",
-                &json!({"width":420.*72./25.4,"height":297.*72./25.4,"adjustLayout":false}),
-            )?;
-            board.source = session
-                .active()
-                .ok_or(BoardsError::NoDocument)?
-                .doc
-                .as_ref()
-                .clone();
-        }
-        // Retain editable manifest metadata even if a linked source cannot hydrate.
-        if board.info.first_image.is_none() {
-            board.info.first_image = board
-                .placements
-                .keys()
-                .min_by_key(|id| id.parse::<u64>().unwrap_or(u64::MAX))
-                .cloned();
-        }
-        for (asset, placement) in &mut board.placements {
-            if placement.item_id.is_none() {
-                placement.item_id = board
-                    .source
-                    .spreads
-                    .iter()
-                    .flat_map(|spread| spread.items.iter())
-                    .find(|item| {
-                        item.graphic()
-                            .is_some_and(|graphic| graphic.asset.to_string() == *asset)
-                    })
-                    .map(|item| item.id.0);
-            }
-        }
+        normalize_manifest(&mut board)?;
         self.boards
             .write()
             .map_err(|_| BoardsError::Poisoned)?
@@ -352,14 +313,21 @@ impl WorkCrateBoardsService {
         let mut boards = paths
             .iter()
             .map(|path| {
-                let board: WorkCrateBoard = serde_json::from_slice(&fs::read(path)?)?;
+                let mut board: WorkCrateBoard = serde_json::from_slice(&fs::read(path)?)?;
                 if board.version != BOARD_VERSION || board.project_id != project_id {
                     return Err(BoardsError::InvalidBoard);
                 }
+                normalize_manifest(&mut board)?;
                 Ok(board)
             })
             .collect::<Result<Vec<_>, BoardsError>>()?;
         boards.sort_by_key(|board| board.info.order);
+        let mut registered = self.boards.write().map_err(|_| BoardsError::Poisoned)?;
+        for board in &boards {
+            registered
+                .entry(board.id.clone())
+                .or_insert_with(|| board.clone());
+        }
         Ok(boards)
     }
 
@@ -396,6 +364,51 @@ impl WorkCrateBoardsService {
             Ok(path)
         }
     }
+}
+
+fn normalize_manifest(board: &mut WorkCrateBoard) -> Result<(), BoardsError> {
+    // Product pages have fixed A3 geometry. Old physical-size fields are only
+    // labels; do not continue the retired behavior that resized the document.
+    if board.info.order > 0
+        && ((board.source.settings.page_width - 420. * 72. / 25.4).abs() > 0.01
+            || (board.source.settings.page_height - 297. * 72. / 25.4).abs() > 0.01)
+    {
+        let mut session = Session::new();
+        session.add_document(DocState::new(board.source.clone(), None));
+        session.execute(
+            "layout.documentSetup",
+            &json!({"width":420.*72./25.4,"height":297.*72./25.4,"adjustLayout":false}),
+        )?;
+        board.source = session
+            .active()
+            .ok_or(BoardsError::NoDocument)?
+            .doc
+            .as_ref()
+            .clone();
+    }
+    // Retain editable manifest metadata even if a linked source cannot hydrate.
+    if board.info.first_image.is_none() {
+        board.info.first_image = board
+            .placements
+            .keys()
+            .min_by_key(|id| id.parse::<u64>().unwrap_or(u64::MAX))
+            .cloned();
+    }
+    for (asset, placement) in &mut board.placements {
+        if placement.item_id.is_none() {
+            placement.item_id = board
+                .source
+                .spreads
+                .iter()
+                .flat_map(|spread| spread.items.iter())
+                .find(|item| {
+                    item.graphic()
+                        .is_some_and(|graphic| graphic.asset.to_string() == *asset)
+                })
+                .map(|item| item.id.0);
+        }
+    }
+    Ok(())
 }
 
 fn write_board(project_dir: &Path, board: &WorkCrateBoard) -> Result<(), BoardsError> {

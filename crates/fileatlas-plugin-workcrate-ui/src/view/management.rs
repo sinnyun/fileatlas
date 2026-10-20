@@ -61,7 +61,7 @@ impl WorkCratePanel {
             {
                 let path = file.path().to_path_buf();
                 let _ = this.update(cx, |view, cx| {
-                    view.perform(
+                    view.perform_export(
                         move || {
                             exports
                                 .export_page_image(&id, &path)
@@ -112,29 +112,14 @@ impl WorkCratePanel {
                     items
                         .into_iter()
                         .filter_map(|p| {
-                            let path = p
-                                .main_image
-                                .and_then(|cover| {
-                                    projects
-                                        .project_directory(&p.id)
-                                        .ok()
-                                        .map(|root| root.join(cover.path))
-                                })
-                                .or_else(|| {
-                                    boards
-                                        .board_catalog(&p.id)
-                                        .ok()?
-                                        .first()?
-                                        .placements
-                                        .values()
-                                        .next()
-                                        .map(|placed| PathBuf::from(&placed.path))
-                                })?;
-                            let bytes = std::fs::read(path).ok()?;
-                            let image = image::load_from_memory(&bytes)
-                                .ok()?
-                                .thumbnail(720, 480)
-                                .into_rgba8();
+                            let image = if let Some(cover) = p.main_image {
+                                let path = projects.project_directory(&p.id).ok()?.join(cover.path);
+                                image::open(path).ok()?.thumbnail(720, 480).into_rgba8()
+                            } else {
+                                let board = boards.board_catalog(&p.id).ok()?.into_iter().next()?;
+                                let asset = board.placements.keys().next()?;
+                                boards.display_image(&board, asset, 720).ok()?
+                            };
                             Some((p.id, render_image(image)))
                         })
                         .collect()
@@ -313,21 +298,23 @@ impl WorkCratePanel {
                         }
                     }
                     let _ = this.update(cx, |view, cx| {
-                        view.perform(
+                        view.perform_export(
                             move || {
-                                for (index, id) in ids.iter().enumerate() {
-                                    exports
-                                        .export_page_image(
-                                            id,
-                                            &root.join(format!(
-                                                "page-{:02}.{}",
-                                                index + 1,
-                                                if jpeg { "jpg" } else { "png" }
-                                            )),
-                                        )
-                                        .map_err(|e| e.to_string())?;
-                                }
-                                Ok(())
+                                let paths = ids
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(index, _)| {
+                                        root.join(format!(
+                                            "page-{:02}.{}",
+                                            index + 1,
+                                            if jpeg { "jpg" } else { "png" }
+                                        ))
+                                    })
+                                    .collect::<Vec<_>>();
+                                exports
+                                    .export_pages_images(&ids, &paths)
+                                    .map(|_| ())
+                                    .map_err(|e| e.to_string())
                             },
                             cx,
                         )
@@ -341,7 +328,7 @@ impl WorkCratePanel {
             {
                 let path = file.path().to_path_buf();
                 let _ = this.update(cx, |view, cx| {
-                    view.perform(
+                    view.perform_export(
                         move || {
                             exports
                                 .export_pages_pdf(&ids, &path)

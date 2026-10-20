@@ -10,6 +10,7 @@ use thiserror::Error;
 
 pub struct WorkCrateExportService {
     boards: Arc<WorkCrateBoardsService>,
+    progress: std::sync::RwLock<Option<String>>,
 }
 
 impl Service for WorkCrateExportService {
@@ -26,75 +27,146 @@ pub struct ExportedPage {
 
 impl WorkCrateExportService {
     pub fn new(boards: Arc<WorkCrateBoardsService>) -> Self {
-        Self { boards }
+        Self {
+            boards,
+            progress: Default::default(),
+        }
+    }
+
+    /// Latest actual stage; retained on completion for UI/MCP inspection.
+    pub fn progress(&self) -> Option<String> {
+        self.progress.read().ok().and_then(|p| p.clone())
+    }
+
+    fn report(&self, page: usize, total: usize, stage: &str) {
+        if let Ok(mut p) = self.progress.write() {
+            *p = Some(format!("导出 {page}/{total} 页 · {stage}"));
+        }
     }
 
     pub fn export_pages_pdf(&self, ids: &[String], path: &Path) -> Result<usize, ExportError> {
         if ids.is_empty() {
             return Err(ExportError::EmptySelection);
         }
+        let started = std::time::Instant::now();
         let mut documents = Vec::new();
-        for id in ids {
-            let board = self.boards.board(id)?;
+        for (index, id) in ids.iter().enumerate() {
+            self.report(index + 1, ids.len(), "读取原图");
+            let board = self.boards.prepare_export(id)?;
             let dpi = source_dpi(&board);
+            self.report(index + 1, ids.len(), "渲染 A3 页面");
             let page = self.boards.render_page(id, 0, dpi / 72.0)?;
+            self.report(index + 1, ids.len(), "无损编码 PDF 图像");
             let document = pdfcraft_create::from_images_with_resolution(
-                &[(format!("{}.png", board.title), page.to_png())],
+                &[(
+                    format!("{}.png", board.title),
+                    lossless_png(page.width, page.height, &page.to_straight(), None)?,
+                )],
                 pdfcraft_create::ImageResolution::Dpi(dpi),
             )?;
             documents.push((board.title, document));
         }
+        self.report(ids.len(), ids.len(), "合并 PDF 页面");
         let sources = documents
             .iter()
             .map(|(name, document)| (name.as_str(), document, None))
             .collect::<Vec<_>>();
         let document = pdfcraft_organize::combine_selected(&sources)?;
+        self.report(ids.len(), ids.len(), "序列化并写入 PDF");
         atomic_output(
             path,
             &pdfcraft_cos::write_full(&document, &pdfcraft_cos::SaveOptions::default())?,
         )?;
+        self.report(
+            ids.len(),
+            ids.len(),
+            &format!("完成 · {:.1} 秒", started.elapsed().as_secs_f64()),
+        );
+        Ok(ids.len())
+    }
+
+    pub fn export_pages_images(
+        &self,
+        ids: &[String],
+        paths: &[PathBuf],
+    ) -> Result<usize, ExportError> {
+        if ids.is_empty() || ids.len() != paths.len() {
+            return Err(ExportError::EmptySelection);
+        }
+        let started = std::time::Instant::now();
+        for (index, (id, path)) in ids.iter().zip(paths).enumerate() {
+            self.export_image(id, path, index + 1, ids.len())?;
+        }
+        self.report(
+            ids.len(),
+            ids.len(),
+            &format!("完成 · {:.1} 秒", started.elapsed().as_secs_f64()),
+        );
         Ok(ids.len())
     }
 
     pub fn export_page_image(&self, id: &str, path: &Path) -> Result<ExportedPage, ExportError> {
-        let board = self.boards.board(id)?;
+        let result = self.export_image(id, path, 1, 1)?;
+        self.report(1, 1, "完成");
+        Ok(result)
+    }
+
+    fn export_image(
+        &self,
+        id: &str,
+        path: &Path,
+        index: usize,
+        total: usize,
+    ) -> Result<ExportedPage, ExportError> {
+        self.report(index, total, "读取原图");
+        let board = self.boards.prepare_export(id)?;
         let dpi = source_dpi(&board);
+        self.report(index, total, "渲染 A3 页面");
         let page = self.boards.render_page(id, 0, dpi / 72.0)?;
-        let png = page.to_png();
+        self.report(index, total, "编码图片");
+        // DesignCraft's buffer is premultiplied RGBA. Use its straight conversion
+        // directly, avoiding the previous PNG encode/decode/encode round trip.
+        let rgba = page.to_straight();
         let bytes = if path
             .extension()
             .and_then(|x| x.to_str())
             .is_some_and(|x| x.eq_ignore_ascii_case("jpg") || x.eq_ignore_ascii_case("jpeg"))
         {
+            let rgb = rgba
+                .chunks_exact(4)
+                .flat_map(|p| {
+                    let a = p[3] as u32;
+                    [0, 1, 2].map(|i| ((p[i] as u32 * a + 255 * (255 - a)) / 255) as u8)
+                })
+                .collect::<Vec<_>>();
             let mut output = Vec::new();
             let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, 100);
             encoder.set_pixel_density(image::codecs::jpeg::PixelDensity {
                 density: (
-                    (page.width as f64 * 72.0 / board.source.settings.page_width).round() as u16,
-                    (page.height as f64 * 72.0 / board.source.settings.page_height).round() as u16,
+                    (page.width as f64 * 72. / board.source.settings.page_width).round() as u16,
+                    (page.height as f64 * 72. / board.source.settings.page_height).round() as u16,
                 ),
                 unit: image::codecs::jpeg::PixelDensityUnit::Inches,
             });
-            encoder.encode_image(&image::load_from_memory(&png)?.to_rgb8())?;
+            encoder.encode(
+                &rgb,
+                page.width,
+                page.height,
+                image::ExtendedColorType::Rgb8,
+            )?;
             output
         } else {
-            // Match PdfCraft crates/create/src/tests.rs PNG physical-density encoding;
-            // retain the DesignCraft raster unchanged and store the real page print size.
-            let pixels = image::load_from_memory(&png)?.into_rgba8();
-            let mut output = Vec::new();
-            let mut encoder = png::Encoder::new(&mut output, page.width, page.height);
-            encoder.set_color(png::ColorType::Rgba);
-            encoder.set_depth(png::BitDepth::Eight);
-            encoder.set_pixel_dims(Some(png::PixelDimensions {
-                xppu: (page.width as f64 / (board.source.settings.page_width / 72.0 * 0.0254))
-                    .round() as u32,
-                yppu: (page.height as f64 / (board.source.settings.page_height / 72.0 * 0.0254))
-                    .round() as u32,
-                unit: png::Unit::Meter,
-            }));
-            encoder.write_header()?.write_image_data(pixels.as_raw())?;
-            output
+            lossless_png(
+                page.width,
+                page.height,
+                &rgba,
+                Some((
+                    board.source.settings.page_width,
+                    board.source.settings.page_height,
+                )),
+            )?
         };
+        self.report(index, total, "写入图片");
         atomic_output(path, &bytes)?;
         Ok(ExportedPage {
             path: path.to_path_buf(),
@@ -104,45 +176,23 @@ impl WorkCrateExportService {
         })
     }
 
-    /// Render a board from DesignCraft's hydrated source image bytes, then package that unchanged
-    /// raster into PdfCraft. DPI is the highest effective placed-source PPI (300 for an empty
-    /// page), with at least 72 DPI so the board raster preserves page geometry, bounded by
-    /// PdfCraft's 1200 DPI limit. The PNG is never resampled by PdfCraft.
     pub fn export_page_pdf(
         &self,
         board_id: &str,
         page_index: usize,
         path: &Path,
     ) -> Result<ExportedPage, ExportError> {
+        if page_index != 0 {
+            return Err(BoardsError::RenderFailed.into());
+        }
         let board = self.boards.board(board_id)?;
-        let dpi = board
-            .placements
-            .values()
-            .map(|placed| placed.pixel_width as f64 * 72.0 / placed.placed_width_pt)
-            .reduce(f64::max)
-            .unwrap_or(300.0)
-            .max(72.0)
-            .min(1200.0);
-        let rendered = self.boards.render_page(board_id, page_index, dpi / 72.0)?;
-        let png = rendered.to_png();
-        let document = pdfcraft_create::from_images_with_resolution(
-            &[(format!("{}.png", board.title), png)],
-            pdfcraft_create::ImageResolution::Dpi(dpi),
-        )?;
-        let bytes = pdfcraft_cos::write_full(&document, &pdfcraft_cos::SaveOptions::default())?;
-        let parent = path
-            .parent()
-            .filter(|parent| !parent.as_os_str().is_empty())
-            .unwrap_or(Path::new("."));
-        let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
-        temporary.write_all(&bytes)?;
-        temporary.as_file().sync_all()?;
-        temporary.persist(path).map_err(|error| error.error)?;
+        let dpi = source_dpi(&board);
+        self.export_pages_pdf(&[board_id.to_owned()], path)?;
         Ok(ExportedPage {
             path: path.to_path_buf(),
             dpi,
-            width_px: rendered.width,
-            height_px: rendered.height,
+            width_px: (board.source.settings.page_width * dpi / 72.).round() as u32,
+            height_px: (board.source.settings.page_height * dpi / 72.).round() as u32,
         })
     }
 }
@@ -172,11 +222,40 @@ pub enum ExportError {
 fn source_dpi(board: &fileatlas_plugin_workcrate_boards::WorkCrateBoard) -> f64 {
     board
         .placements
-        .values()
-        .map(|p| p.pixel_width as f64 * 72.0 / p.placed_width_pt)
+        .iter()
+        .map(|(id, p)| {
+            let width = board
+                .image_layout(id)
+                .map(|l| l.content[2] - l.content[0])
+                .unwrap_or(p.placed_width_pt);
+            p.pixel_width as f64 * 72.0 / width.max(0.001)
+        })
         .reduce(f64::max)
         .unwrap_or(72.0)
         .clamp(72.0, 1200.0)
+}
+
+/// Fast compression is still lossless; physical dimensions use the actual raster size.
+fn lossless_png(
+    width: u32,
+    height: u32,
+    pixels: &[u8],
+    physical_pt: Option<(f64, f64)>,
+) -> Result<Vec<u8>, ExportError> {
+    let mut output = Vec::new();
+    let mut encoder = png::Encoder::new(&mut output, width, height);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    encoder.set_compression(png::Compression::Fast);
+    if let Some((w, h)) = physical_pt {
+        encoder.set_pixel_dims(Some(png::PixelDimensions {
+            xppu: (width as f64 / (w / 72. * 0.0254)).round() as u32,
+            yppu: (height as f64 / (h / 72. * 0.0254)).round() as u32,
+            unit: png::Unit::Meter,
+        }));
+    }
+    encoder.write_header()?.write_image_data(pixels)?;
+    Ok(output)
 }
 
 fn atomic_output(path: &Path, bytes: &[u8]) -> Result<(), std::io::Error> {

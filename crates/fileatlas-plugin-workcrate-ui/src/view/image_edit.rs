@@ -158,6 +158,8 @@ impl WorkCratePanel {
                         if let Some(card) = view.boards_view.iter_mut().find(|c| c.board.id == id) {
                             card.board = board;
                         }
+                        view.proxy_request = None;
+                        view.load_editor_images(cx);
                         view.refresh_page_preview(id, cx);
                     }
                     Err(e) => view.message = Some(e),
@@ -181,11 +183,8 @@ impl WorkCratePanel {
                     let boards = Arc::clone(&boards);
                     let id = id.clone();
                     async move {
-                        boards
-                            .render_page(&id, 0, 0.25)
-                            .ok()
-                            .and_then(|r| image::load_from_memory(&r.to_png()).ok())
-                            .map(|i| render_image(i.into_rgba8()))
+                        let board = boards.board(&id).ok()?;
+                        boards.cache_preview(&board).ok().map(render_image)
                     }
                 })
                 .await;

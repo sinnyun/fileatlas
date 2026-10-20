@@ -33,8 +33,12 @@ impl WorkCratePanel {
         );
         self.fit_scale = fit;
         self.zoom = 1.;
+        if !self.busy {
+            self.load_editor_images(cx);
+        }
         if !self.busy && (fit * self.device_scale - self.rendered_scale).abs() > 0.005 {
             self.render_canvas(board.clone(), cx);
+            self.load_editor_images(cx);
         }
         let mut rail = div()
             .id("workcrate-page-rail")

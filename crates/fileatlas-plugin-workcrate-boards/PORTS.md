@@ -1,10 +1,10 @@
 # WorkCrate Boards plugin ports
 
-Status: DesignCraft-backed board data, image-only placement, source-pixel rendering,
-and PDF output through the separate export service are implemented. The first
-WorkCrate UI supplies three-level navigation, image placement, DesignCraft drag,
-scale/rotation, metadata editing and export. Template/master and crop/handle
-editing remain open.
+Status: fixed A3 DesignCraft documents, linked JPEG/PNG placement, uniform corner
+resize, reversible crop, independent source-document links, project refresh and
+persistent page/display caches are implemented. Source-resolution export belongs
+to the separate export service. Generic master/template editing is outside the
+current simplified product UI.
 
 ## Cordis identity and startup
 
@@ -119,3 +119,28 @@ Refreshing a source with a changed aspect ratio uses proportional fitting.
 `render_template(id,scale)` renders paper and information with placed-image items
 removed for the cached editor background. Full render_page remains the export
 and page-preview source, including frame clipping.
+
+## Persistent display caches (2026-10-20; supersedes eager UI hydration)
+
+`board_catalog(project)` normalizes legacy fixed-A3 metadata and registers only
+missing in-memory documents. It never reads linked binaries. `cached_preview(&board)`
+returns a cached RGBA page or None without opening originals. `cache_preview(&board)`
+uses DesignCraft with disposable 1024-side proxies and preserves original frame,
+content, clipping and header geometry. `preview_revision(&board)` hashes cache
+version, serialized document/placements/info and resolved global/local project name.
+
+Storage is feature-owned `projects/<id>/cache-v1/`: `<page-id>-<revision>.png` (two recent versions per page); `<source-sha256>-<resolution-tier>.png` contains lossless display proxies.
+These modest derivative files need no database or document migration. Binary
+publication uses same-directory temporary files; page revision is part of the atomic PNG filename, preventing mixed
+revision/pixel pairs after interruption or overlapping workers. Missing/corrupt/mismatched entries rebuild. Interrupted writes become
+cache misses; deleting cache-v1 is safe. Source JSON and linked originals remain
+untouched. Source changes are accepted only by the explicit refresh action; its
+new digest invalidates proxies. Old digest proxy files may remain until cache
+cleanup/project deletion. Page edits update previews asynchronously as they save,
+so reopening need not wait for an exit-time render of every page.
+
+`display_image(board,asset,requested_side)` rounds up to a power-of-two tier,
+clamps at native dimensions, uses an existing larger tier when available, and
+verifies source SHA-256 on a cold miss. The first cold PNG/JPEG decode still has
+to read the original; subsequent opens use proxy files. `prepare_export(id)`
+rehydrates and verifies original bytes at action time; export never uses proxies.

@@ -11,7 +11,7 @@ pub(super) fn tools(
     let p = Arc::clone(projects);
     let b = Arc::clone(boards);
     let ui = Arc::clone(state);
-    let panels = Arc::clone(panels);
+    let navigate_panels = Arc::clone(panels);
     let navigate = tool(
         "navigate",
         "Navigate WorkCrate project, page list or editor",
@@ -35,7 +35,7 @@ pub(super) fn tools(
                     .map_err(|e| e.to_string())?;
             }
             ui.navigate(project, board)?;
-            panels.open(PANEL).map_err(|e| e.to_string())?;
+            navigate_panels.open(PANEL).map_err(|e| e.to_string())?;
             Ok(json!({"navigated":true}))
         },
     );
@@ -147,10 +147,12 @@ pub(super) fn tools(
     );
     let b = Arc::clone(boards);
     let e = Arc::clone(exports);
+    let batch_ui = Arc::clone(state);
+    let batch_panels = Arc::clone(panels);
     let batch = tool(
         "export_pages",
         "Export ordered project pages to one PDF or an individual page to a PNG/JPEG",
-        json!({"project_id":{"type":"string"},"board_ids":{"type":"array","items":{"type":"string"}},"path":{"type":"string"},"format":{"enum":["pdf","image"]}}),
+        json!({"project_id":{"type":"string"},"board_ids":{"type":"array","items":{"type":"string"}},"path":{"type":"string"},"format":{"enum":["pdf","image"]},"background":{"type":"boolean","default":false}}),
         vec!["project_id", "board_ids", "path", "format"],
         true,
         move |v| {
@@ -160,11 +162,26 @@ pub(super) fn tools(
                 .iter()
                 .map(|v| v.as_str().map(str::to_owned).ok_or("invalid board id"))
                 .collect::<Result<Vec<_>, _>>()?;
-            for id in &ids {
-                b.load_board(required(&v, "project_id")?, id)
-                    .map_err(|e| e.to_string())?;
+            let catalog = b
+                .board_catalog(required(&v, "project_id")?)
+                .map_err(|e| e.to_string())?;
+            if ids.is_empty()
+                || ids
+                    .iter()
+                    .any(|id| !catalog.iter().any(|board| &board.id == id))
+            {
+                return Err("invalid page selection".into());
             }
             let path = std::path::Path::new(required(&v, "path")?);
+            if v["background"].as_bool().unwrap_or(false) {
+                batch_panels.open(PANEL).map_err(|e| e.to_string())?;
+                batch_ui.queue_export(
+                    ids,
+                    path.to_path_buf(),
+                    required(&v, "format")? == "image",
+                )?;
+                return Ok(json!({"queued":true}));
+            }
             if required(&v, "format")? == "pdf" {
                 let count = e.export_pages_pdf(&ids, path).map_err(|e| e.to_string())?;
                 Ok(json!({"exported":true,"page_count":count}))

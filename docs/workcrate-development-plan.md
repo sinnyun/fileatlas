@@ -338,3 +338,18 @@ automatic gallery/grid layout, batch numbering, optional delivery package with
 source-file list and richer board object controls. Keep the initial feature
 focused on referenced files, page-sized boards, inherited presentation
 metadata and dependable image/PDF output.
+
+
+## 2026-10-20 性能实现补充
+
+| 源码映射 | 本次复用与调整 |
+|---|---|
+| DesignCraft `render/src/lib.rs` Rendered/Renderer | 继续同一页面/裁剪渲染；直接 to_straight 交给图片编码，去掉 PNG 往返 |
+| DesignCraft `render/src/images.rs` decoded/mip | 保留导出的原图 mip 路径；编辑器单页显示代理独立于原始 Asset.data |
+| DesignCraft `engine/src/cmd/file.rs` file.place | 原图链接及原始像素元数据保留，不将显示代理写回文档 |
+| PdfCraft `create/src/lib.rs` png_image/from_images_with_resolution | 保留无损图像建页、页面组织和原子输出；优化其 CPU 构建配置及 zlib-rs 压缩后端 |
+| FileAtlas UI Bridge read_model/refresh | 当前页代理按文档修订和显示分辨率合并读取；有限导出阶段采样停止后无空转 |
+
+页面缩略图增量保存到项目 cache-v1，启动先读缩略图，缺失逐页后台补齐；
+无需在退出时重新加载全部原图。详细缓存格式、失效与恢复见 Boards PORTS。
+性能、重启缓存和导出进度证据见本次性能验证记录。

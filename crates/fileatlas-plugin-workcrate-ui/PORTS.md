@@ -112,3 +112,30 @@ for arbitrary PSD/etc. links without indexing them. No private imports.
 MCP state adds painted `controls` bounds and live `ui.layouts`/`ui.gesture`;
 `image_links` sets extended links or refreshes a project through the same service.
 The prior `canvas_mode`/`pan_offset` snapshot fields were retired with whole-page pan.
+
+## Lazy pages, progressive display and export footer (2026-10-20)
+
+Page catalog loading only decodes cached page thumbnails. Missing previews fill
+one page at a time in a bounded background worker; the list becomes interactive
+before cache rebuild finishes. Generation/revision checks discard stale UI results.
+The selected editor page loads a small proxy first, then the tier required by its
+content bounds × fit scale × device scale. Increasing visible size requests a
+larger tier; source dimensions are the ceiling. Switching pages releases other
+pages' GPUI image textures. Header rendering converts straight RGBA directly,
+without a PNG round trip. Native image input/drop still share import_images.
+
+Export uses a finite shared refresh::poll (100ms), updates only on stage changes,
+and stops on success/error. Footer shows actual page/total, stage and completion.
+Export completion does not reload the project. UI state adds preview_cache_hits,
+previews_ready, display_images, display_rgba_bytes, export_status; top-level MCP
+state adds export_progress. `export_pages` retains synchronous default behavior;
+optional `background:true` queues the same UI export job and returns queued=true,
+allowing MCP to exercise/capture the running footer. Background image export accepts
+one filename or a directory for an ordered multi-page PNG batch. Full access and
+confirm=true are still required. Queued UI export reports a busy-operation conflict
+in the visible message; it never reports success for an unstarted job.
+
+Viewport proxy reads use the shared `ReadModel<(generation,revision+tiers,coarse), DisplayImages>`
+with lifecycle-owned Wake/listen. It coalesces rapid resize requests, caches
+failures and discards stale results; fine resolution starts only after the small
+preview completes. An existing larger texture is never replaced by a coarse one.

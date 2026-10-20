@@ -23,6 +23,7 @@ pub(super) fn register(
     };
     let state_projects = Arc::clone(projects);
     let state_boards = Arc::clone(boards);
+    let state_exports = Arc::clone(exports);
     let state_surfaces = Arc::clone(
         &context
             .try_service::<fileatlas_ui_bridge::UiBridgeService>()
@@ -39,6 +40,7 @@ pub(super) fn register(
         handler: Arc::new(move |_| {
             let projects = Arc::clone(&state_projects);
             let boards = Arc::clone(&state_boards);
+            let exports = Arc::clone(&state_exports);
             let surfaces=Arc::clone(&state_surfaces);
             Box::pin(async move {
                 let mut values = Vec::new();
@@ -62,7 +64,7 @@ pub(super) fn register(
                 }
                 let ui=surfaces.value("workcrate.ui").and_then(|v|serde_json::from_str::<serde_json::Value>(&v).ok());
                 let controls=["artboard","canvas-crop-mode","canvas-restore-crop","canvas-refresh-project","canvas-add-image","canvas-confirm-images"].into_iter().filter_map(|id| surfaces.value(&format!("workcrate.control.{id}")).map(|v|(id,v))).collect::<std::collections::BTreeMap<_,_>>();
-                Ok(json!({"projects": values,"ui":ui,"controls":controls}))
+                Ok(json!({"projects": values,"ui":ui,"controls":controls,"export_progress":exports.progress()}))
             })
         }),
     };

@@ -116,6 +116,34 @@ opt-level = 3
 [profile.dev.package.crc32fast]
 opt-level = 3
 
+# WorkCrate uses DesignCraft's CPU page renderer for thumbnails and source-size exports.
+# Keep upstream raster loops optimized in the normal development executable as well.
+[profile.dev.package.designcraft-render]
+opt-level = 3
+
+[profile.dev.package."vello_cpu:0.2.0"]
+opt-level = 3
+
+[profile.dev.package."vello_common:0.2.0"]
+opt-level = 3
+
+# PdfCraft's PNG-to-PDF pixel packing and object serialization are also CPU hot paths.
+[profile.dev.package.pdfcraft-create]
+opt-level = 3
+
+[profile.dev.package.pdfcraft-cos]
+opt-level = 3
+
+[profile.dev.package.pdfcraft-organize]
+opt-level = 3
+
+# The unified flate2 feature set selects zlib-rs for PDF stream compression.
+[profile.dev.package.zlib-rs]
+opt-level = 3
+
+[profile.dev.package.pdfcraft-filters]
+opt-level = 3
+
 [profile.test]
 debug = 0
 incremental = true

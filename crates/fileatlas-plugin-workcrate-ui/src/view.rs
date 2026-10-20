@@ -54,6 +54,34 @@ pub(super) fn panel(
             cx,
             selection_wake,
             |view: &mut WorkCratePanel, cx| {
+                if let Some((ids, path, images)) = view.ui_state.take_export() {
+                    let exports = view.exports.clone();
+                    view.perform_export(
+                        move || {
+                            if images {
+                                let paths = if ids.len() == 1 && path.extension().is_some() {
+                                    vec![path]
+                                } else {
+                                    ids.iter()
+                                        .enumerate()
+                                        .map(|(i, _)| path.join(format!("page-{:02}.png", i + 1)))
+                                        .collect()
+                                };
+                                exports
+                                    .export_pages_images(&ids, &paths)
+                                    .map(|_| ())
+                                    .map_err(|e| e.to_string())
+                            } else {
+                                exports
+                                    .export_pages_pdf(&ids, &path)
+                                    .map(|_| ())
+                                    .map_err(|e| e.to_string())
+                            }
+                        },
+                        cx,
+                    );
+                    return true;
+                }
                 let Some((project_id, board_id)) = view.ui_state.selected_board() else {
                     return false;
                 };
@@ -64,6 +92,14 @@ pub(super) fn panel(
                 view.reload(cx);
                 true
             },
+        );
+        let proxy_wake = fileatlas_ui_bridge::refresh::Wake::default();
+        let mut proxy_model = fileatlas_ui_bridge::read_model::ReadModel::default();
+        proxy_model.set_wake(proxy_wake.clone());
+        let proxy_task = fileatlas_ui_bridge::refresh::listen(
+            cx,
+            proxy_wake,
+            |view: &mut WorkCratePanel, cx| view.deliver_display(cx),
         );
         let selected_project = initial_selection
             .as_ref()
@@ -105,6 +141,13 @@ pub(super) fn panel(
             device_scale: 1.0,
             rendered_scale: 0.0,
             busy: false,
+            load_generation: 0,
+            proxy_request: None,
+            proxy_model,
+            display_request: None,
+            _proxy_wake_task: proxy_task,
+            preview_hits: 0,
+            export_status: None,
             message: None,
             _wake_task: task,
             _selection_wake_task: selection_task,
@@ -157,6 +200,14 @@ struct WorkCratePanel {
     device_scale: f64,
     rendered_scale: f64,
     busy: bool,
+    load_generation: u64,
+    proxy_request: Option<String>,
+    proxy_model:
+        fileatlas_ui_bridge::read_model::ReadModel<(u64, String, bool), loading::DisplayImages>,
+    display_request: Option<loading::DisplayRequest>,
+    _proxy_wake_task: Task<()>,
+    preview_hits: usize,
+    export_status: Option<String>,
     message: Option<String>,
     _wake_task: Task<()>,
     _selection_wake_task: Task<()>,
@@ -165,6 +216,7 @@ struct WorkCratePanel {
 #[derive(Default)]
 pub(super) struct WorkCrateUiState {
     selected_board: std::sync::RwLock<Option<(String, String)>>,
+    export_request: std::sync::Mutex<Option<(Vec<String>, PathBuf, bool)>>,
     wake: fileatlas_ui_bridge::refresh::Wake,
 }
 
@@ -173,6 +225,24 @@ impl Service for WorkCrateUiState {
 }
 
 impl WorkCrateUiState {
+    pub fn queue_export(
+        &self,
+        ids: Vec<String>,
+        path: PathBuf,
+        images: bool,
+    ) -> Result<(), String> {
+        let mut pending = self.export_request.lock().map_err(|e| e.to_string())?;
+        if pending.is_some() {
+            return Err("已有等待执行的导出".into());
+        }
+        *pending = Some((ids, path, images));
+        self.wake.trigger();
+        Ok(())
+    }
+
+    fn take_export(&self) -> Option<(Vec<String>, PathBuf, bool)> {
+        self.export_request.lock().ok()?.take()
+    }
     pub fn selected_board(&self) -> Option<(String, String)> {
         self.selected_board
             .read()
@@ -199,97 +269,6 @@ impl WorkCrateUiState {
 }
 
 impl WorkCratePanel {
-    fn reload(&mut self, cx: &mut ViewContext<Self>) {
-        let Some(project_id) = self.selected_project.clone() else {
-            self.busy = false;
-            self.boards_view.clear();
-            self.load_project_covers(cx);
-            cx.notify();
-            return;
-        };
-        let boards = Arc::clone(&self.boards);
-        let requested_project = project_id.clone();
-        self.busy = true;
-        cx.notify();
-        cx.spawn(async move |this, cx| {
-            let loaded = cx
-                .background_executor()
-                .spawn(async move {
-                    let models = boards
-                        .board_catalog(&project_id)
-                        .map_err(|error| error.to_string())?;
-                    let mut cards = Vec::new();
-                    for model in models {
-                        let (board, error) = match boards.load_board(&project_id, &model.id) {
-                            Ok(board) => (board, None),
-                            Err(error) => (
-                                boards.board(&model.id).unwrap_or(model),
-                                Some(error.to_string()),
-                            ),
-                        };
-                        let preview = boards
-                            .render_page(&board.id, 0, 0.5)
-                            .ok()
-                            .and_then(|page| image::load_from_memory(&page.to_png()).ok())
-                            .map(|image| render_image(image.into_rgba8()));
-                        let decoded: std::collections::BTreeMap<_, _> = board
-                            .source
-                            .assets
-                            .iter()
-                            .filter_map(|(id, asset)| {
-                                image::load_from_memory(&asset.data)
-                                    .ok()
-                                    .map(|image| (id.to_string(), image))
-                            })
-                            .collect();
-                        let sources = decoded
-                            .iter()
-                            .map(|(id, image)| {
-                                (
-                                    id.clone(),
-                                    render_image(image.thumbnail(120, 120).into_rgba8()),
-                                )
-                            })
-                            .collect();
-                        let originals = decoded
-                            .into_iter()
-                            .map(|(id, image)| (id, render_image(image.into_rgba8())))
-                            .collect();
-                        cards.push(BoardCard {
-                            error: error.clone(),
-                            sources,
-                            originals,
-                            board,
-                            image: if error.is_some() { None } else { preview },
-                        });
-                    }
-                    Ok::<_, String>(cards)
-                })
-                .await;
-            let _ = this.update(cx, |view, cx| {
-                if view.selected_project.as_ref() != Some(&requested_project) {
-                    return;
-                }
-                view.busy = false;
-                match loaded {
-                    Ok(cards) => {
-                        view.boards_view = cards;
-                        if let Some(id) = &view.selected_board {
-                            if let Some(board) =
-                                view.boards_view.iter().find(|card| &card.board.id == id)
-                            {
-                                view.render_canvas(board.board.clone(), cx);
-                            }
-                        }
-                    }
-                    Err(error) => view.message = Some(error),
-                };
-                cx.notify();
-            });
-        })
-        .detach();
-    }
-
     fn render_canvas(&mut self, board: WorkCrateBoard, cx: &mut ViewContext<Self>) {
         let boards = Arc::clone(&self.boards);
         let zoom = self.fit_scale * self.zoom * self.device_scale;
@@ -302,9 +281,9 @@ impl WorkCratePanel {
                     let page = boards
                         .render_template(&board.id, zoom)
                         .map_err(|error| error.to_string())?;
-                    image::load_from_memory(&page.to_png())
-                        .map(|image| render_image(image.into_rgba8()))
-                        .map_err(|error| error.to_string())
+                    image::RgbaImage::from_raw(page.width, page.height, page.to_straight())
+                        .map(render_image)
+                        .ok_or_else(|| "页面像素无效".to_string())
                 })
                 .await;
             let _ = this.update(cx, |view, cx| {
@@ -400,55 +379,40 @@ impl WorkCratePanel {
     }
 
     fn export(&mut self, cx: &mut ViewContext<Self>) {
-        let Some(board_id) = self.selected_board.clone() else {
-            self.message = Some("请先选择画板".into());
-            cx.notify();
+        let Some(id) = self.selected_board.clone() else {
             return;
         };
-        let exports = Arc::clone(&self.exports);
-        self.busy = true;
-        cx.notify();
+        let exports = self.exports.clone();
         cx.spawn(async move |this, cx| {
-            let target = rfd::AsyncFileDialog::new()
+            if let Some(file) = rfd::AsyncFileDialog::new()
                 .add_filter("PDF", &["pdf"])
-                .set_file_name("board.pdf")
+                .set_file_name("page.pdf")
                 .save_file()
                 .await
-                .map(|file| file.path().to_path_buf());
-            let result = if let Some(path) = target {
-                cx.background_executor()
-                    .spawn(async move {
-                        exports
-                            .export_page_pdf(&board_id, 0, &path)
-                            .map_err(|error| error.to_string())
-                    })
-                    .await
-                    .map(Some)
-            } else {
-                Ok(None)
-            };
-            let _ = this.update(cx, |view, cx| {
-                view.busy = false;
-                match result {
-                    Ok(Some(export)) => {
-                        view.message = Some(format!(
-                            "已导出 PDF：{} DPI，{}×{} px",
-                            export.dpi, export.width_px, export.height_px
-                        ))
-                    }
-                    Ok(None) => {}
-                    Err(error) => view.message = Some(format!("导出失败：{error}")),
-                };
-                cx.notify();
-            });
+            {
+                let path = file.path().to_path_buf();
+                let _ = this.update(cx, |view, cx| {
+                    view.perform_export(
+                        move || {
+                            exports
+                                .export_page_pdf(&id, 0, &path)
+                                .map(|_| ())
+                                .map_err(|e| e.to_string())
+                        },
+                        cx,
+                    )
+                });
+            }
         })
         .detach();
     }
 }
 
 mod canvas;
+mod exporting;
 mod images;
 mod inspector;
+mod loading;
 use images::render_image;
 
 impl Drop for WorkCratePanel {

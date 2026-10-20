@@ -1021,3 +1021,10 @@ Images support linked originals, independent PSD/source links, uniform corner
 resize, reversible crop and project-wide refresh. Source behavior and actual
 same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
 [fixed A3 validation](validation-ui/2026-10-20-workcrate-simple-layout/README.md).
+
+## WorkCrate 性能优化（2026-10-20）
+
+持久页面缩略图、按当前页可见密度的显示代理、原图导出和阶段页脚已实现。
+本机三页合成大图项目：打开中位数 2451→125 ms，单页 PNG 12180→950 ms，
+三页 PDF 26242→4449 ms，PNG 原始 RGBA 完全一致。
+[实测记录与范围](validation-ui/2026-10-20-workcrate-performance/README.md)。

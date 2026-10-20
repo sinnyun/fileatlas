@@ -2,8 +2,8 @@
 
 Status: core single-board PDF service, atomic output handoff, UI export command,
 and Full-access MCP export flow are implemented, including ordered multi-page
-PDF and PNG/JPEG. Progress/cancel and native Windows save-dialog validation remain
-open.
+PDF and PNG/JPEG, with visible page/stage progress. Cancellation and native
+Windows save-dialog interaction validation remain open.
 
 ## Cordis identity and dependencies
 
@@ -53,3 +53,29 @@ Poppler reopened the PDF and rendered the page at 110 DPI for visual inspection.
 Native PDF save-dialog interaction and camera-level resolution remain
 unverified. Inspect the returned error and target file when diagnosing export
 failures.
+
+## Export performance and progress (2026-10-20)
+
+`progress() -> Option<String>` returns the latest page/total and real stage:
+original hydration, A3 rendering, lossless PDF image encoding/image encoding,
+PDF combination, serialization/output write, completion including elapsed time
+for batches. `export_pages_images(ids,&[PathBuf])` exports ordered selections with
+continuous batch progress. Failures return errors; UI retains the failure message
+and does not claim the remaining pages completed. Already-written image files
+remain available after a later page fails. No cancellation API is provided yet.
+
+Each page hydrates original linked bytes before rendering. Effective source PPI
+uses the current content width (including uniform resize, excluding crop-frame
+width), capped at the existing 1200 DPI limit. PNG/JPEG export uses DesignCraft
+`Rendered::to_straight` directly, removing the old encode/decode/encode cycle.
+PNG uses fast **lossless** compression with unchanged pixels and A3 density metadata;
+JPEG stays quality 100. Intermediate PdfCraft PNG encoding also uses fast lossless
+compression. PdfCraft still decodes its input PNG, combines pages and writes PDF;
+that upstream path is retained. Sequential pages bound raster memory and avoid
+competing with DesignCraft's own multithreaded renderer. Root dev profile optimizes
+DesignCraft rendering and its vello_cpu/vello_common 0.2 raster loops; release was
+already optimized. Output files retain the temporary-write/sync/atomic replace path.
+
+The unified flate2 backend is zlib-rs, so its dev profile is optimized too, along
+with PdfCraft create/cos/organize/filters. No upstream source or compression
+quality is patched; these are build-profile settings for CPU hot paths.
