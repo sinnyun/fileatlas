@@ -154,6 +154,7 @@ struct FileManagerView {
     focus_handle: FocusHandle,
     filter: FileManagerFilter,
     selection: FileManagerSelection,
+    file_copy_buffer: Vec<i64>,
     selected_directory: Option<String>,
     inspector_deselected: bool,
     observed_navigation_revision: u64,

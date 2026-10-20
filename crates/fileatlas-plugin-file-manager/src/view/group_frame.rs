@@ -97,6 +97,7 @@ pub(super) fn render(
                             cx,
                         );
                     }
+                    cx.stop_propagation();
                 },
             ));
         let staging_destination = destination.clone();
@@ -150,7 +151,8 @@ pub(super) fn track_staging_drag(
 }
 
 pub(super) fn destination_at(view: &FileManagerView, position: Point<Pixels>) -> Option<String> {
-    view.surfaces
+    let grouped_destination = view
+        .surfaces
         .value(&format!(
             "file_manager.column.{}.group-frames",
             view.column_index
@@ -170,7 +172,17 @@ pub(super) fn destination_at(view: &FileManagerView, position: Point<Pixels>) ->
                         .flatten()
                 })
             })
-        })
+        });
+    grouped_destination.or_else(|| {
+        if view.grouping_mode != fileatlas_plugin_grouping::GroupingMode::Subfolder {
+            return None;
+        }
+        let current = view.snapshot.as_ref().ok()?.browser.directory.as_ref()?;
+        view.scroll
+            .viewport_bounds()
+            .contains(&position)
+            .then(|| current.clone())
+    })
 }
 
 fn set_hover_destination(

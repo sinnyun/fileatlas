@@ -78,6 +78,7 @@ pub struct FileManagerUiSnapshot {
     pub directory_error: Option<String>,
     pub selected_directory: Option<String>,
     pub selected_media_ids: Vec<i64>,
+    pub file_copy_buffer_count: usize,
     pub matched_count: usize,
     pub window_offset: usize,
     pub loaded_count: usize,

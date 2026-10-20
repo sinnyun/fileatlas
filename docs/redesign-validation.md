@@ -4,6 +4,12 @@
 
 # 界面重构验证记录
 
+## 2026-10-20：文件视图快捷复制与主目录拖放
+
+FileManager 焦点下新增 Ctrl+C/ Ctrl+V：按栏保存选择，Ctrl+V 根据鼠标命中子文件夹框架或空白主网格，调用现有 FileOperations 复制服务。子文件夹分组下卡片拖动交给应用内 GPUI 路由，未命中分组框架时落到当前主目录；父目录悬停使用主题 selection 状态。活动概念图及布局清单见多栏工作区参考说明。
+
+Rust 1.97.1 MSVC、150% DPI、隔离 dev-test profile，通过 `scripts/fileatlas-mcp-debug.cjs` 启动 shell 与 GPUI 同进程。生产扫描后 MCP `ctrl-c` 将缓冲计数设为 1；鼠标位于 beta 子文件夹时 `ctrl-v` 实际复制 `alpha.png`；主目录无直连文件组时，从 alpha 卡片拖到网格空白处实际移入主目录，再将 beta 文件 Ctrl+V 至主网格空白处成功。悬停与完成截图已打开检查，场景脚本及准确命令、截图位置、覆盖范围见[快捷复制与主目录拖放验证](validation-ui/2026-10-20-file-keyboard-parent-drop/README.md)。物理键盘输入和平台 OLE 拖出仍未覆盖。
+
 ## 2026-10-19：项目文件夹侧栏页签
 
 更正早先浮动面板方案：独立 `fileatlas-plugin-projects` 现通过生命周期视图贡献注册为 Navigation“项目”页签，与文件夹/标签共用同一 rail 和侧栏内容列；点项目树目录会导航主窗活动栏并保持项目页打开。Rust 1.97.1 locked offline Shell 构建通过。同进程 MCP 已从隔离 profile 添加测试根目录，验证 `docs/notes`、`src/deep` 完整展开、点击 `deep` 导航及版本 1 JSON 保存。窗口截图已检查；窄窗口、移除后重启、不可读目录和大树性能尚未验收。详情及重现命令见[项目页验证记录](validation-ui/2026-10-19-project-folders/README.md)。
@@ -998,3 +1004,11 @@ MCP 同步增加 `move_files_to_subfolder` 控制入口用于隔离进程实测�
 新增独立 File Staging Cordis 插件、版本化 JSON 路径清单、主题面板/Launcher 入口、FileManager 选区加入事件，以及委托 File Operations 的逐项复制/移动。隔离同进程 MCP 使用真实临时文件覆盖多目录添加与去重、复制、冲突不覆盖及失败保留、移动、失效清理和新进程重启持久化。格式、受影响 crate/shell check/build 与架构、分层、主题、刷新、feature ledger 检查通过。原生文件/目录选择器点击、FileManager 菜单点击、跨卷/权限行为和小窗/浅色状态仍未验证；不支持任务取消/恢复。详见[文件暂存篮验证记录](validation-ui/2026-10-20-file-staging/README.md)。
 
 后续按用户要求改为缩略图/标题网格卡片，并将暂存面板设为非模态，保留显式复制入口；拖放意图为松开即移动，成功路径应从暂存篮移除。发现 Shell 遮罩谓词未排除非模态面板，导致主界面变暗且无法交互；现已仅对模态面板创建遮罩。同进程 MCP 实测暂存面板打开时仍可点击选择 FileManager 子文件夹。并新增 FileManager → 暂存篮拖入：共享文件拖拽载荷通过 GPUI 后台执行器写入清单；同进程 MCP 验证 tiny.jpg 加入暂存且源文件保留。反向暂存篮 → 文件夹拖放仍显示 ghost 和目标高亮，但 pointer-up 未执行移动，仍待修复/验证。编译和主题/刷新/架构/ledger 检查通过，详见[文件暂存篮验证记录](validation-ui/2026-10-20-file-staging/README.md)。
+
+## 2026-10-20 文件操作面板样式与右键复制崩溃
+
+批量操作弹层标题高度改用 UI Bridge 通用浮动面板的 36 逻辑像素规格，并统一紧凑水平留白；布局、筛选/匹配正文和固定页脚保持活动参考。右键“复制到…”单文件和多文件流程中的同步 rfd 调用改为 GPUI 异步文件选择器，确认目标后继续调用原 File Operations 服务，取消不执行操作。锁定 Shell build 通过；同进程 MCP 打开批量操作面板、截图并再次读取状态成功。原生保存对话框的选择/确认尚未通过 MCP 实测。详见[文件操作验证记录](validation-ui/2026-10-20-file-operations-panel/README.md)。
+
+## 2026-10-20 项目树层级与项目切换
+
+项目页仅展开当前项目根目录的子树，根行点击切换当前项目并导航，箭头单独收起/展开；新增根目录后立即选中并展开。子目录通过 GPUI Kit Theme 分隔色点状竖线/横线表达层级。统一 Windows 路径比较以去掉 canonical path 的 `\\?\` 前缀，修复新增根目录无法与 Navigation 当前目录匹配的问题。同进程 MCP 用两个隔离项目实测添加、自动展开、切换和收起，并检查项目根与深层目录截图。格式、锁定 Shell 构建与治理检查通过；超大树性能和窄窗未覆盖。详见[项目树验证记录](validation-ui/2026-10-20-project-tree-switch/README.md)。

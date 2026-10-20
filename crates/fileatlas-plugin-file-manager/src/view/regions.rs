@@ -407,9 +407,10 @@ impl FileManagerView {
                         .h_flex()
                         .items_center()
                         .justify_between()
-                        .h(px(44.))
+                        .h(px(fileatlas_ui_bridge::panels::HEADER_HEIGHT))
                         .flex_shrink_0()
-                        .px(px(14.))
+                        .px_2()
+                        .gap_2()
                         .border_b_1()
                         .border_color(rgba(theme::separator_light()))
                         .child(

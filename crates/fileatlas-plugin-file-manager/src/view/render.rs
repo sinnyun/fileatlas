@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::prelude::FluentBuilder as _;
 
 pub(super) const GRID_GAP: f32 = 16.;
 pub(super) const GRID_PADDING: f32 = 16.;
@@ -308,6 +309,7 @@ impl Render for FileManagerView {
                 filter: self.filter.clone(),
                 search_scopes_open: self.search_scopes_open,
                 selected_media_ids: self.selection.selected_media_ids.clone(),
+                file_copy_buffer_count: self.file_copy_buffer.len(),
                 matched_count: self
                     .snapshot
                     .as_ref()
@@ -438,6 +440,19 @@ impl Render for FileManagerView {
         }
         let row_layout = Arc::clone(&self.row_layout);
 
+        let parent_folder_hovered = self.grouping_mode
+            == fileatlas_plugin_grouping::GroupingMode::Subfolder
+            && self
+                .snapshot
+                .as_ref()
+                .ok()
+                .and_then(|snapshot| snapshot.browser.directory.as_deref())
+                .is_some_and(|path| {
+                    self.surfaces
+                        .value(&super::group_frame::hover_key(self.column_index))
+                        .as_deref()
+                        == Some(path)
+                });
         match &self.snapshot {
             Ok(snapshot) => {
                 if snapshot.skeletons.is_empty() && snapshot.browser.directories.is_empty() {
@@ -499,6 +514,25 @@ impl Render for FileManagerView {
                             super::group_frame::track_staging_drag(this, event, cx)
                         },
                     ))
+                    .on_drop::<fileatlas_contracts::FileManagerFileDragPayload>(cx.listener(
+                        |this,
+                         payload: &fileatlas_contracts::FileManagerFileDragPayload,
+                         window,
+                         cx| {
+                            if payload.allows_drop() {
+                                if let Some(destination) = super::group_frame::destination_at(
+                                    this,
+                                    window.mouse_position(),
+                                ) {
+                                    this.move_ids_to_directory(
+                                        payload.ids.clone(),
+                                        destination,
+                                        cx,
+                                    );
+                                }
+                            }
+                        },
+                    ))
                     .on_drop::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
                         |this,
                          payload: &fileatlas_contracts::FileStagingDragPayload,
@@ -554,6 +588,9 @@ impl Render for FileManagerView {
                         .min_h_0()
                         .w_full()
                         .relative()
+                        .when(parent_folder_hovered, |frame| {
+                            frame.bg(rgb(theme::selection_color()))
+                        })
                         .on_mouse_down(
                             MouseButton::Left,
                             cx.listener(|this, event: &MouseDownEvent, _, cx| {
@@ -701,7 +738,8 @@ impl Render for FileManagerView {
                                                                 Arc::clone(&this.drag_drop),
                                                                 drag_paths,
                                                                 drag_ids,
-                                                                !this.surfaces.is_open(&format!("file_manager.column.{}.internal-file-drag", this.column_index)),
+                                this.grouping_mode != fileatlas_plugin_grouping::GroupingMode::Subfolder
+                                    && !this.surfaces.is_open(&format!("file_manager.column.{}.internal-file-drag", this.column_index)),
                                                                 Arc::clone(&this.drag_allowed),
                                                                 card_size,
                                                                 list_width,

@@ -53,6 +53,22 @@ and continuation rows; collapsed groups retain their frame target. Other groupin
 modes have frames but no file-move handler. Native theme roles supply borders and
 drag feedback. No new storage, database schema or file-operation semantics.
 
+Subfolder mode gives the whole FileManager list viewport a parent-folder drop
+fallback. A pointer inside a painted child frame resolves to that child; blank
+grid space resolves to `browser.directory`, including when the parent has no
+direct media group. Parent-target hover uses the native selection role. The
+card's platform OLE handoff is suppressed only in Subfolder mode so GPUI can
+route internal child-to-parent and child-to-child drags; other layouts retain
+native file drag-out.
+
+With the FileManager view focused, Ctrl+C stores the current selected media IDs
+in that column's in-memory copy buffer. Ctrl+V copies them with
+`FileOperationsService::bulk_copy_to_folder` to the child group under the mouse,
+or to the current directory when the pointer is in otherwise blank grid space.
+The buffer is per view/column and is not an OS clipboard integration. The MCP
+UI snapshot exposes `file_copy_buffer_count` for same-process interaction checks.
+Runtime evidence: `docs/validation-ui/2026-10-20-file-keyboard-parent-drop/README.md`.
+
 The MCP `get_ui_state.file_manager.group_frames` diagnostic maps currently painted
 virtual row indexes to `{path,first,bounds:[x,y,width,height]}` in logical client
 coordinates. It is transient paint geometry, can be briefly empty between render

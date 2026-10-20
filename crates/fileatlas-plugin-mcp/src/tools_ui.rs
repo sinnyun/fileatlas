@@ -59,6 +59,7 @@ impl FileAtlasMcpServer {
                 "dialog_reads": dialog_reads,
                 "media_actions_open": state.media_actions_open, "media_actions_id": state.media_actions_id,
             });
+            snapshot["file_copy_buffer_count"] = json!(state.file_copy_buffer_count);
             snapshot["search_scopes_open"] = json!(state.search_scopes_open);
             snapshot["debug_internal_file_drag"] = json!(self.surfaces.is_open("file_manager.column.0.internal-file-drag"));
             snapshot["group_frames"] = self.surfaces.value("file_manager.column.0.group-frames")

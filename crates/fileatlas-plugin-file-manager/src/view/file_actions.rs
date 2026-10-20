@@ -11,6 +11,33 @@ use gpui_kit::*;
 use super::FileManagerView;
 
 impl FileManagerView {
+    pub(super) fn copy_ids_to_directory(
+        &mut self,
+        ids: Vec<i64>,
+        destination: String,
+        cx: &mut Context<Self>,
+    ) {
+        if ids.is_empty() || !std::path::Path::new(&destination).is_dir() {
+            return;
+        }
+        let operations = Arc::clone(&self.file_operations);
+        let requested = ids.len();
+        self.start_file_operation(
+            async move {
+                match operations
+                    .bulk_copy_to_folder(ids, std::path::PathBuf::from(destination))
+                    .await
+                {
+                    Err(error) => (format!("Copy failed: {error}"), Vec::new()),
+                    Ok(outcomes) => (format_copy_outcome(requested, &outcomes), Vec::new()),
+                }
+            },
+            false,
+            false,
+            cx,
+        );
+    }
+
     pub(super) fn move_staged_paths_to_directory(
         &mut self,
         paths: Vec<String>,
@@ -146,22 +173,31 @@ impl FileManagerView {
             self.copy_selected_to_file(cx);
             return;
         }
-        let Some(destination) = rfd::FileDialog::new().pick_folder() else {
-            return;
-        };
         let operations = Arc::clone(&self.file_operations);
         let requested = ids.len();
-        self.start_file_operation(
-            async move {
-                match operations.bulk_copy_to_folder(ids, destination).await {
-                    Err(error) => (format!("Copy failed: {error}"), Vec::new()),
-                    Ok(outcomes) => (format_copy_outcome(requested, &outcomes), Vec::new()),
-                }
-            },
-            false,
-            false,
-            cx,
-        );
+        cx.spawn(async move |this, cx| {
+            let destination = rfd::AsyncFileDialog::new().pick_folder().await;
+            if let Some(destination) = destination {
+                let destination = destination.path().to_path_buf();
+                let operations = Arc::clone(&operations);
+                let _ = this.update(cx, |this, cx| {
+                    this.start_file_operation(
+                        async move {
+                            match operations.bulk_copy_to_folder(ids, destination).await {
+                                Err(error) => (format!("Copy failed: {error}"), Vec::new()),
+                                Ok(outcomes) => {
+                                    (format_copy_outcome(requested, &outcomes), Vec::new())
+                                }
+                            }
+                        },
+                        false,
+                        false,
+                        cx,
+                    );
+                });
+            }
+        })
+        .detach();
     }
 
     /// Open the source-compatible folder picker for a multi-item move.
@@ -222,24 +258,32 @@ impl FileManagerView {
             cx.notify();
             return;
         };
-        let Some(destination) = rfd::FileDialog::new()
-            .set_file_name(&item.filename)
-            .save_file()
-        else {
-            return;
-        };
         let operations = Arc::clone(&self.file_operations);
-        self.start_file_operation(
-            async move {
-                match operations.copy_to(media_id, destination).await {
-                    Ok(_) => ("Copied selected file.".into(), Vec::new()),
-                    Err(error) => (format!("Copy failed: {error}"), Vec::new()),
-                }
-            },
-            false,
-            false,
-            cx,
-        );
+        let filename = item.filename;
+        cx.spawn(async move |this, cx| {
+            let destination = rfd::AsyncFileDialog::new()
+                .set_file_name(&filename)
+                .save_file()
+                .await;
+            if let Some(destination) = destination {
+                let destination = destination.path().to_path_buf();
+                let operations = Arc::clone(&operations);
+                let _ = this.update(cx, |this, cx| {
+                    this.start_file_operation(
+                        async move {
+                            match operations.copy_to(media_id, destination).await {
+                                Ok(_) => ("Copied selected file.".into(), Vec::new()),
+                                Err(error) => (format!("Copy failed: {error}"), Vec::new()),
+                            }
+                        },
+                        false,
+                        false,
+                        cx,
+                    );
+                });
+            }
+        })
+        .detach();
     }
 
     /// Move one selected item through a native Save File dialog.

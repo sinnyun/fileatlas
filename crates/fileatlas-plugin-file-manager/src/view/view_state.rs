@@ -416,6 +416,7 @@ impl FileManagerView {
             focus_handle,
             filter,
             selection,
+            file_copy_buffer: Vec::new(),
             selected_directory: None,
             inspector_deselected: false,
             observed_navigation_revision,

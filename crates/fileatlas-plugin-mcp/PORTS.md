@@ -17,6 +17,12 @@ use existing `control_ui` events and real filesystem outcomes, rather than the
 direct `move_files_to_subfolder` control route. See FileManager PORTS and
 `docs/validation-ui/2026-10-20-group-frame-drop/README.md`.
 
+The `get_ui_state.file_manager.file_copy_buffer_count` field reports the active
+primary view's in-memory Ctrl+C selection count. `control_ui {action:"key_press",
+value:"ctrl-c"|"ctrl-v"}` dispatches chords into the same GPUI process; pointer
+position determines the Ctrl+V folder target. See
+`docs/validation-ui/2026-10-20-file-keyboard-parent-drop/README.md`.
+
 ## Live column toolbar diagnostics — 2026-10-19
 
 `get_ui_state.theme` now reports `mode` (`dark`/`light`), the native theme name as `id`,

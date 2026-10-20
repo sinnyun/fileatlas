@@ -57,6 +57,43 @@ impl FileManagerView {
             cx.notify();
             return;
         }
+        if file_manager_focused
+            && event.keystroke.modifiers.control
+            && !event.keystroke.modifiers.alt
+            && !event.keystroke.modifiers.shift
+            && event.keystroke.key.eq_ignore_ascii_case("c")
+        {
+            if !self.selection.selected_media_ids.is_empty() {
+                self.file_copy_buffer = self.selection.selected_media_ids.clone();
+                self.operation_status = Some(format!(
+                    "Ready to copy {} selected item(s). Move the pointer to a folder and press Ctrl+V.",
+                    self.file_copy_buffer.len()
+                ));
+                cx.notify();
+            }
+            cx.stop_propagation();
+            return;
+        }
+        if file_manager_focused
+            && event.keystroke.modifiers.control
+            && !event.keystroke.modifiers.alt
+            && !event.keystroke.modifiers.shift
+            && event.keystroke.key.eq_ignore_ascii_case("v")
+        {
+            if !self.file_copy_buffer.is_empty() {
+                let destination = super::group_frame::destination_at(self, window.mouse_position());
+                if let Some(destination) = destination {
+                    self.copy_ids_to_directory(self.file_copy_buffer.clone(), destination, cx);
+                } else {
+                    self.operation_status = Some(
+                        "Move the pointer over a folder or folder group to paste here.".into(),
+                    );
+                    cx.notify();
+                }
+            }
+            cx.stop_propagation();
+            return;
+        }
         if file_manager_focused && event.keystroke.modifiers.alt && event.keystroke.key == "up" {
             self.directory_up(cx);
             return;

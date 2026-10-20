@@ -147,9 +147,15 @@ impl ProjectsService {
 }
 
 fn same_path(a: &str, b: &str) -> bool {
-    a.replace('/', "\\")
+    normalize_path(a) == normalize_path(b)
+}
+
+fn normalize_path(path: &str) -> String {
+    let path = path
+        .replace('/', "\\")
         .trim_end_matches('\\')
-        .eq_ignore_ascii_case(b.replace('/', "\\").trim_end_matches('\\'))
+        .to_lowercase();
+    path.strip_prefix("\\\\?\\").unwrap_or(&path).to_owned()
 }
 
 #[derive(Debug, Error)]
