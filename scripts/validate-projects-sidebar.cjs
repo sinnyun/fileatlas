@@ -24,11 +24,11 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
 
   const tree = path.join(profile, 'fixture-worktree');
   for (const child of ['docs/notes', 'src/deep']) fs.mkdirSync(path.join(tree, child), { recursive: true });
-  await invoke('control_gallery', { action: 'navigate', value: tree });
+  await invoke('control_file_manager', { action: 'navigate', value: tree });
   await delay(1000);
   state = await invoke('get_ui_state');
   const normalize = value => value.replace(/^\\\\\?\\/, '').replaceAll('/', '\\').replace(/\\+$/, '').toLowerCase();
-  if (normalize(state.gallery.current_directory ?? '') !== normalize(tree)) throw new Error(`Fixture folder did not open: ${state.gallery.current_directory}`);
+  if (normalize(state.file_manager.current_directory ?? '') !== normalize(tree)) throw new Error(`Fixture folder did not open: ${state.file_manager.current_directory}`);
   await click(22, 206);
   state = await invoke('get_ui_state');
   if (state.navigation_tab !== 'projects') throw new Error('Projects tab did not activate after opening a folder.');
@@ -48,13 +48,13 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   state = await invoke('get_ui_state');
   const expectedDirectory = path.join(tree, 'src', 'deep');
   if (state.navigation_tab !== 'projects') throw new Error(`Selecting a project child changed the sidebar tab: ${state.navigation_tab}`);
-  if (normalize(state.gallery.current_directory ?? '') !== normalize(expectedDirectory)) {
-    throw new Error(`Selecting a nested project directory did not navigate the browser: ${state.gallery.current_directory}`);
+  if (normalize(state.file_manager.current_directory ?? '') !== normalize(expectedDirectory)) {
+    throw new Error(`Selecting a nested project directory did not navigate the browser: ${state.file_manager.current_directory}`);
   }
   await pointer('pointer_move', 900, 700);
   await delay(300);
   shot = await call('screenshot_window');
   image = shot.content.find(item => item.type === 'image');
   fs.writeFileSync(path.join(output, 'projects-sidebar-navigated.png'), Buffer.from(image.data, 'base64'));
-  console.log(JSON.stringify({ initialTab: initial.navigation_tab, activeTab: state.navigation_tab, manifest, tree, navigatedTo: state.gallery.current_directory, screenshots: ['projects-sidebar-restored.png', 'projects-sidebar-added.png', 'projects-sidebar-navigated.png'] }));
+  console.log(JSON.stringify({ initialTab: initial.navigation_tab, activeTab: state.navigation_tab, manifest, tree, navigatedTo: state.file_manager.current_directory, screenshots: ['projects-sidebar-restored.png', 'projects-sidebar-added.png', 'projects-sidebar-navigated.png'] }));
 };

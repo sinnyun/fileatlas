@@ -7,7 +7,7 @@ module.exports = async ({call, step, delay, profile}) => {
     (await step({tool, arguments: arguments_, ...options})).result;
   await step({tool:'get_ui_state',until:{field:'window_status.valid',equals:true,attempts:60,interval_ms:400}});
   await invoke('control_ui',{action:'settings_open'});
-  await invoke('control_ui',{action:'settings_plugin_page',value:'photag.mcp'});
+  await invoke('control_ui',{action:'settings_plugin_page',value:'fileatlas.mcp'});
   await delay(700);
   const initial = await invoke('get_ui_state');
   assert.equal(initial.settings_plugins.mcp_access_level, 'full');

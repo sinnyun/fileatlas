@@ -1,0 +1,20 @@
+[package]
+name = "fileatlas-plugin-version-info"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,4 +1,4 @@
-// Same-process live Gallery validation for unsaved-version indicators.
+// Same-process live FileManager validation for unsaved-version indicators.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -7,7 +7,7 @@ const { execFileSync } = require('node:child_process');
 
 module.exports = async ({ call, payload, delay, profile, output }) => {
   const invoke = async (tool, args = {}) => payload(await call(tool, args));
-  const actual = process.env.PHOTAG_LORE_TEST_FILE;
+  const actual = process.env.FILEATLAS_LORE_TEST_FILE;
   const file = actual || path.join(profile, 'fixture', 'version-badge.png');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const initial = actual ? fs.readFileSync(file) : null;
@@ -29,7 +29,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
       if (probe(state)) return state;
       await delay(250);
     }
-    throw Error(`Timeout ${label}: ${JSON.stringify(state.gallery)}`);
+    throw Error(`Timeout ${label}: ${JSON.stringify(state.file_manager)}`);
   }
   const images = {};
   try {
@@ -41,10 +41,10 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     if (!actual) fs.writeFileSync(file, images.purple);
     const baseline = fs.readFileSync(file);
     await invoke('add_folder', { path: path.dirname(file), confirm: true });
-    await invoke('control_gallery', { action: 'navigate', value: path.dirname(file) });
-    await until(state => state.gallery?.current_directory?.toLowerCase().endsWith(path.dirname(file).toLowerCase()), 'directory navigation consumed');
-    await invoke('control_gallery', { action: 'search', value: path.basename(file) });
-    await until(state => state.gallery?.matched_count === 1, 'one searched file');
+    await invoke('control_file_manager', { action: 'navigate', value: path.dirname(file) });
+    await until(state => state.file_manager?.current_directory?.toLowerCase().endsWith(path.dirname(file).toLowerCase()), 'directory navigation consumed');
+    await invoke('control_file_manager', { action: 'search', value: path.basename(file) });
+    await until(state => state.file_manager?.matched_count === 1, 'one searched file');
     const found = await invoke('search_media', { search: path.basename(file), limit: 100 });
     const media = found.items.find(item => item.filename === path.basename(file)
       && path.win32.normalize(item.full_path).toLowerCase().endsWith(path.win32.normalize(file).toLowerCase()));
@@ -54,11 +54,11 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
       const direct = await invoke('get_file_version_state', { media_id: media.id });
       assert.equal(direct.state.status, expected, 'Direct immutable-version classification');
       const ui = await until(state => {
-        const item = state.gallery?.version_states?.find(item => item.media_id === media.id);
-        return !state.gallery.version_states_loading && item?.state?.status === expected && item.badge_visible === badge;
-      }, `automatic Gallery ${expected} badge=${badge}`);
+        const item = state.file_manager?.version_states?.find(item => item.media_id === media.id);
+        return !state.file_manager.version_states_loading && item?.state?.status === expected && item.badge_visible === badge;
+      }, `automatic FileManager ${expected} badge=${badge}`);
       console.log(`version state: ${expected}, badge=${badge}`);
-      report.cases.push({ status: expected, badge, current: direct.state.currentVersionId, matching: direct.state.matchingVersionId, snapshot_revision: ui.gallery.snapshot_revision });
+      report.cases.push({ status: expected, badge, current: direct.state.currentVersionId, matching: direct.state.matchingVersionId, snapshot_revision: ui.file_manager.snapshot_revision });
       return ui;
     }
     await status('unversioned', false);
@@ -69,14 +69,14 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     await capture('unsaved-grid');
     const listedBefore = await invoke('list_file_versions', { media_id: media.id });
     assert.equal(listedBefore.versions.length, 1, 'Indicator must not create versions automatically');
-    const pointer = process.env.PHOTAG_BADGE_POINTER;
+    const pointer = process.env.FILEATLAS_BADGE_POINTER;
     if (pointer) {
       for (const action of ['pointer_move', 'pointer_down', 'pointer_up']) {
         await invoke('control_ui', { action, value: pointer });
         await delay(action === 'pointer_move' ? 1000 : 400);
         if (action === 'pointer_move') await capture('unsaved-dot-tooltip');
       }
-      await until(state => state.inspector_history.visible && state.gallery.selected_media_ids.includes(media.id), 'actual amber indicator click opens file History');
+      await until(state => state.inspector_history.visible && state.file_manager.selected_media_ids.includes(media.id), 'actual amber indicator click opens file History');
       report.badge_clicked = pointer;
       await capture('unsaved-history-opened-by-dot');
     } else {
@@ -86,11 +86,11 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     }
     await until(state => state.inspector_history.visible, 'History page');
     await capture('unsaved-history');
-    await invoke('control_gallery', { action: 'layout', value: 'list' });
-    await until(state => state.gallery.layout === 'list', 'list view');
+    await invoke('control_file_manager', { action: 'layout', value: 'list' });
+    await until(state => state.file_manager.layout === 'list', 'list view');
     await status('modified', true);
     await capture('unsaved-list');
-    await invoke('control_gallery', { action: 'layout', value: 'grid' });
+    await invoke('control_file_manager', { action: 'layout', value: 'grid' });
     const second = (await invoke('create_file_version', { media_id: media.id, title: '02 blue', confirm: true })).version;
     await status('saved', false);
     await invoke('activate_file_version', { media_id: media.id, version_id: first.versionId, confirm: true });
@@ -100,7 +100,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     await status('saved', false);
     fs.writeFileSync(file, images.blue);
     const matched = await status('matches_saved_version', false);
-    assert.equal(matched.gallery.version_states.find(item => item.media_id === media.id).state.matchingVersionId, second.versionId);
+    assert.equal(matched.file_manager.version_states.find(item => item.media_id === media.id).state.matchingVersionId, second.versionId);
     await capture('matches-other-saved-version');
     fs.writeFileSync(file, images.green);
     assert.equal(images.green.length, images.blue.length, 'Same-size edit fixture');
@@ -112,9 +112,9 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     const quiet1 = await invoke('get_ui_state');
     await delay(1000);
     const quiet2 = await invoke('get_ui_state');
-    assert.equal(quiet1.gallery.snapshot_revision, quiet2.gallery.snapshot_revision, 'Idle Gallery reload');
-    assert.equal(quiet2.gallery.version_states_loading, false, 'Idle state reader restarted');
-    report.quiet = { before: quiet1.gallery.snapshot_revision, after: quiet2.gallery.snapshot_revision };
+    assert.equal(quiet1.file_manager.snapshot_revision, quiet2.file_manager.snapshot_revision, 'Idle FileManager reload');
+    assert.equal(quiet2.file_manager.version_states_loading, false, 'Idle state reader restarted');
+    report.quiet = { before: quiet1.file_manager.snapshot_revision, after: quiet2.file_manager.snapshot_revision };
     report.dirty_geometry = dirty.window_status.geometry;
     const versions = await invoke('list_file_versions', { media_id: media.id });
     assert.equal(versions.versions.length, 3, 'Unexpected automatic or duplicate version');

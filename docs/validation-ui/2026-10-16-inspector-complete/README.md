@@ -7,7 +7,7 @@
 
 ## 本轮结果
 
-四种上下文及文件信息/历史/扩展分页已用同进程 PhoTag MCP 实测。
+四种上下文及文件信息/历史/扩展分页已用同进程 FileAtlas MCP 实测。
 程序、标签、文件夹和文件信息使用实际模型；历史的多版本数据使用明确标识的隔离演示模型。
 所有截图均为 MCP `screenshot_window` 的原始窗口截图，没有重绘、拼接或用概念图代替。
 
@@ -30,7 +30,7 @@
   相机/镜头/曝光字段是测试信息；这验证字段解析及显示，不代表真实相机/editor互操作验收。
 - 文件夹和标签通过真实服务创建，关联数经过 `assign_tags` 写入并由 `list_library` 核对。
   代表文件实际存在、rating=4、thumb_path有效、关联5个标签；没有使用missing虚拟文件替代预览。
-- 多版本图只在 `PHOTAG_DEMO_INSPECTOR=1`、`dev-test`、隔离profile同时启用时出现。
+- 多版本图只在 `FILEATLAS_DEMO_INSPECTOR=1`、`dev-test`、隔离profile同时启用时出现。
   创建/切换只是内存演示，最多16节点，不保存版本或改写文件内容。普通启动没有这些示例。
   真实版本存储与恢复策略继续按用户此前决定暂缓。
 - 程序、标签、文件夹上下文不显示文件独有的历史/扩展页签。
@@ -54,17 +54,17 @@
 ```powershell
 rustup toolchain list
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-gallery -p photag-plugin-i18n -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-file-manager -p fileatlas-plugin-i18n -j 2
 node scripts/check-ui-refresh.cjs
 git diff --check
 ```
 
-最终 Gallery 21项、i18n 4项通过；包括一项防止EXIF合并丢失不同值/未知字段的回归。
+最终 FileManager 21项、i18n 4项通过；包括一项防止EXIF合并丢失不同值/未知字段的回归。
 MCP crate 编译/test目标通过（0测试，不宣称自动覆盖工具行为）。
-默认构建为 `target/debug/photag-shell.exe`；完整检查的独立输出为
-`target/debug/photag-shell-inspector-complete-final.exe`。
+默认构建为 `target/debug/fileatlas-shell.exe`；完整检查的独立输出为
+`target/debug/fileatlas-shell-inspector-complete-final.exe`。
 
 `verify.cjs` 完成95步同进程调用并断言通过：
 
@@ -89,13 +89,13 @@ MCP crate 编译/test目标通过（0测试，不宣称自动覆盖工具行为�
 ```powershell
 python docs/validation-ui/2026-10-16-inspector-complete/prepare-fixture.py
 $fixtureAssets = (Resolve-Path docs/validation-ui/2026-10-16-inspector-complete/fixtures).Path
-$env:PHOTAG_DEMO_INSPECTOR = '1'
-$env:PHOTAG_DEMO_HISTORY_THUMBS = (@('history-v1.jpg','history-v0.jpg','history-branch.jpg') | ForEach-Object { Join-Path $fixtureAssets $_ }) -join ';'
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/seed.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/verify.cjs
-Remove-Item Env:PHOTAG_DEMO_INSPECTOR
-Remove-Item Env:PHOTAG_DEMO_HISTORY_THUMBS
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/verify-normal.cjs
+$env:FILEATLAS_DEMO_INSPECTOR = '1'
+$env:FILEATLAS_DEMO_HISTORY_THUMBS = (@('history-v1.jpg','history-v0.jpg','history-branch.jpg') | ForEach-Object { Join-Path $fixtureAssets $_ }) -join ';'
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/seed.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/verify.cjs
+Remove-Item Env:FILEATLAS_DEMO_INSPECTOR
+Remove-Item Env:FILEATLAS_DEMO_HISTORY_THUMBS
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-inspector-complete-final.exe --profile target/mcp-inspector-complete-20261016 --plugins dev-test --allow-mutations --scenario docs/validation-ui/2026-10-16-inspector-complete/verify-normal.cjs
 ```
 
 指针场景按本机1920×1800、150%DPI及360宽度面板记录；新profile由seed以固定顺序建立标签和文件。

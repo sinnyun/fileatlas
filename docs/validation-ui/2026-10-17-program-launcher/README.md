@@ -24,14 +24,14 @@ Windows / 150% DPI；同一子进程内运行MCP服务和GPUI窗口，窗口截�
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked --offline -p photag-shell -j 2
-cargo +1.97.1 build --locked --offline -p photag-shell -j 2
-cargo +1.97.1 test --locked --offline -p photag-plugin-database -p photag-plugin-i18n --lib -j 2
+cargo +1.97.1 check --locked --offline -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked --offline -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked --offline -p fileatlas-plugin-database -p fileatlas-plugin-i18n --lib -j 2
 node scripts/check-layering.cjs
 node scripts/check-architecture.cjs
 node scripts/check-feature-ledger.cjs
 node scripts/check-ui-refresh.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-launcher-add-visible --plugins dev-test,launcher --scenario scripts/validate-program-launcher.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-launcher-add-visible --plugins dev-test,launcher --scenario scripts/validate-program-launcher.cjs --allow-mutations
 ```
 
 最终格式、check/build、四项治理检查通过。Database 10项测试通过；i18n初次未给全量目录格式测试提供新增的programs/categories参数，补齐测试参数后4项通过。针对手动添加文件选择器的后续修复，fmt/check/build和本记录中的扩展同进程场景再次通过。已有LNK4098链接警告和两个无Cargo.toml旧目录提示仍存在，不影响本轮通过项。
@@ -70,13 +70,13 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 冷启动验证命令：
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-launcher-icon-cache-validation --plugins dev-test,launcher --allow-mutations --scenario scripts/validate-program-launcher.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-launcher-icon-cache-validation --plugins dev-test,launcher --allow-mutations --scenario scripts/validate-program-launcher.cjs
 ```
 
 全套GPUI/MCP流程中，手动添加的隔离EXE图标状态为 `shell-extracted`；399项全部成功提取。关闭进程后，使用相同隔离档案再次启动：
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-launcher-icon-cache-validation --plugins dev-test,launcher --allow-mutations --scenario scripts/validate-launcher-icon-cache.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-launcher-icon-cache-validation --plugins dev-test,launcher --allow-mutations --scenario scripts/validate-launcher-icon-cache.cjs
 ```
 
 重启后的第一次状态读取已从数据库显示全部399项，`scanning=false`，图标读取显示后台等待中；随后在1.8秒内命中399个磁盘PNG，Shell重新提取为0，失败为0，手动程序图标来源为 `disk-cache`。运行状态和重启后截图位于隔离档案 `target/mcp-launcher-icon-cache-complete/launcher-icon-cache-restart.json` 和 `screenshots/icon-grid-after-restart.png`。程序发现刷新与图标读取互不依赖；程序列表先显示，缓存图标随后完成加载。

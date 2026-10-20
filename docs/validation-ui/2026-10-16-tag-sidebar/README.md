@@ -10,9 +10,9 @@
 
 - `rustup toolchain list`：已安装 Rust 1.97.1 MSVC。
 - `cargo +1.97.1 fmt --all -- --check`：通过。
-- `cargo +1.97.1 check --locked -p photag-plugin-navigation -j 2`：通过。
-- `cargo +1.97.1 build --locked -p photag-shell -j 2`：通过。
-- 使用 `scripts/photag-mcp-debug.cjs` 同进程 MCP 和隔离 profile `target/mcp-tag-style-final5`，建立 3 个父标签、7 个子标签，并为标签设置多种颜色。
+- `cargo +1.97.1 check --locked -p fileatlas-plugin-navigation -j 2`：通过。
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`：通过。
+- 使用 `scripts/fileatlas-mcp-debug.cjs` 同进程 MCP 和隔离 profile `target/mcp-tag-style-final5`，建立 3 个父标签、7 个子标签，并为标签设置多种颜色。
 - [实际窗口截图](../../../.local/validation/artifacts/2026-10-16-tag-sidebar/tags-expanded.png)显示胶囊按标签颜色着色，计数徽标在各行对齐，“…”操作入口始终可见；[菜单截图](../../../.local/validation/artifacts/2026-10-16-tag-sidebar/tags-menu-open.png)确认按钮可打开真实标签操作菜单。窗口 DPI 为 150%。
 
-MCP 使用 `PHOTAG_MCP_ALLOW_MUTATIONS=1`，仅操作隔离 profile 中的临时标签；测试数据无媒体关联，因此计数为 0。非零计数显示和筛选行为未在本轮验证。
+MCP 使用 `FILEATLAS_MCP_ALLOW_MUTATIONS=1`，仅操作隔离 profile 中的临时标签；测试数据无媒体关联，因此计数为 0。非零计数显示和筛选行为未在本轮验证。

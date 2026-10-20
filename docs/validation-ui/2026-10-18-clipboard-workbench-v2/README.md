@@ -21,10 +21,10 @@
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-clipboard --lib -j 2
-cargo +1.97.1 test --locked -p photag-plugin-database --lib -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-clipboard --lib -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-database --lib -j 2
 node scripts/check-ui-refresh.cjs
 node scripts/check-layering.cjs
 node scripts/check-architecture.cjs
@@ -34,13 +34,13 @@ node scripts/check-feature-ledger.cjs
 自动类型1项通过；数据库11项通过。Shell构建保留既有LNK4098提示。
 架构脚本保留既有两个无Cargo.toml目录提示，不属于本次新增问题。
 
-## 同进程 PhoTag MCP
+## 同进程 FileAtlas MCP
 
 调试客户端现在强制把 `dev-test` 加入插件组合，并显式设置 profile 内数据库路径；
 报告记录 `plugins`、`processId`、`isolated`。不再依赖Windows已知文件夹可能忽略的LOCALAPPDATA覆盖。
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-clipboard-v2-isolated-final --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-clipboard-v2-isolated-final --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations
 ```
 
 实际启用 `core,dev-test`；91步通过：中文分组键入、创建、即时分配（未点击正文保存）、
@@ -53,7 +53,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 真实进程重启使用同一隔离profile，依次运行下列命令两次，再去掉 `--allow-mutations` 运行第三次：
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-clipboard-v2-isolated-restart --plugins core --scenario scripts/validate-clipboard-restart.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-clipboard-v2-isolated-restart --plugins core --scenario scripts/validate-clipboard-restart.cjs --allow-mutations
 ```
 
 | 子进程 | 结果 |

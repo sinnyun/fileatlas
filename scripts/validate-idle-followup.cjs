@@ -28,7 +28,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
     return result;
   }
   const ui = (action, value) => invoke('control_ui', { action, value });
-  const gallery = (action, extra = {}) => invoke('control_gallery', { action, ...extra });
+  const file_manager = (action, extra = {}) => invoke('control_file_manager', { action, ...extra });
   const preview = action => invoke('control_preview', { action });
   async function sample() {
     const view = await invoke('get_view_state');
@@ -81,49 +81,49 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
     report.accessibility = await invoke('control_ui', { action: 'accessibility_activate' });
     assert.equal(report.accessibility.provider_response, true);
     await invoke('control_debug', { action: 'open' });
-    await ui('settings_close'); await ui('export_close'); await ui('gallery_dialogs_close');
+    await ui('settings_close'); await ui('export_close'); await ui('file_manager_dialogs_close');
     await preview('close'); await invoke('control_playback', { action: 'close' });
     await invoke('control_navigation', { action: 'close' });
-    await gallery('clear_filters'); await invoke('control_navigation', { action: 'all' });
+    await file_manager('clear_filters'); await invoke('control_navigation', { action: 'all' });
     await invoke('dev_test_clear_virtual'); await delay(2000);
     const media = await invoke('search_media', { limit: 100 });
     const image = media.items.find(m => m.filename === 'small.png');
     assert(image); report.media_id = image.id;
     await ui('pointer_move', '1,1');
     for (const label of ['preview-still-first', 'preview-still-reopen', 'preview-still-third']) {
-      await check(label, () => gallery('preview', { media_id: image.id }), { settle: 5000, interval: 5000, capture: label === 'preview-still-first' });
+      await check(label, () => file_manager('preview', { media_id: image.id }), { settle: 5000, interval: 5000, capture: label === 'preview-still-first' });
       await check(label + '-extended', undefined, { settle: 1000, interval: 5000 });
       await preview('close');
     }
-    await gallery('preview', { media_id: image.id });
+    await file_manager('preview', { media_id: image.id });
     await check('preview-pointer-inside', () => ui('pointer_move', '650,260'), { settle: 4500, interval: 5000 });
     await check('preview-pointer-unchanged', () => ui('pointer_move', '650,260'), { settle: 4500, interval: 5000 });
     await preview('close'); await ui('pointer_move', '1,1');
     await ui('statistics');
     await check('statistics-live-rating-five', () => invoke('set_rating', { media_ids: [image.id], rating: 5 }), {
-      verify: s => assert(s.ui.gallery.dialog_reads.statistics.rating_counts[5] >= 1), capture: true,
+      verify: s => assert(s.ui.file_manager.dialog_reads.statistics.rating_counts[5] >= 1), capture: true,
     });
     const rated = await invoke('get_ui_state');
-    const countFive = rated.gallery.dialog_reads.statistics.rating_counts[5];
+    const countFive = rated.file_manager.dialog_reads.statistics.rating_counts[5];
     await check('statistics-live-rating-clear', () => invoke('set_rating', { media_ids: [image.id], rating: 0 }), {
-      verify: s => assert.equal(s.ui.gallery.dialog_reads.statistics.rating_counts[5], countFive - 1),
+      verify: s => assert.equal(s.ui.file_manager.dialog_reads.statistics.rating_counts[5], countFive - 1),
     });
-    await ui('gallery_dialogs_close');
-    await gallery('bulk_configure', { value: 'copy', bulk_source: 'all' });
-    await gallery('bulk_field', { field_index: 2, value: '5' });
+    await ui('file_manager_dialogs_close');
+    await file_manager('bulk_configure', { value: 'copy', bulk_source: 'all' });
+    await file_manager('bulk_field', { field_index: 2, value: '5' });
     await check('bulk-live-rating-added', () => invoke('set_rating', { media_ids: [image.id], rating: 5 }), {
-      verify: s => assert(s.ui.gallery.dialog_reads.bulk.count >= 1),
+      verify: s => assert(s.ui.file_manager.dialog_reads.bulk.count >= 1),
     });
     const bulkBefore = await invoke('get_ui_state');
     await check('bulk-live-rating-removed', () => invoke('set_rating', { media_ids: [image.id], rating: 0 }), {
-      verify: s => assert.equal(s.ui.gallery.dialog_reads.bulk.count, bulkBefore.gallery.dialog_reads.bulk.count - 1),
+      verify: s => assert.equal(s.ui.file_manager.dialog_reads.bulk.count, bulkBefore.file_manager.dialog_reads.bulk.count - 1),
     });
-    await gallery('bulk_close');
+    await file_manager('bulk_close');
     await check('hover-animation-settled', () => ui('hover_media', String(image.id)));
     await check('hover-animation-cleared', () => ui('hover_clear'));
     for (const value of ['type', 'tags', 'extensions', 'date', 'rating', 'sort', 'grouping']) {
-      await check('populated-filter-' + value, () => gallery('popover', { value }));
-      await gallery('popover', { value: 'close' });
+      await check('populated-filter-' + value, () => file_manager('popover', { value }));
+      await file_manager('popover', { value: 'close' });
     }
     let single, multi1, multi2;
     await check('plugin-single-panel', async () => {
@@ -141,7 +141,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
     await check('plugin-panels-disposed');
     await ui('select_media', String(image.id)); await ui('inspector_tab', 'information');
     for (const value of ['tags', 'exif', 'path'])
-      await check('inspector-section-' + value, () => gallery('inspector_section', { value }));
+      await check('inspector-section-' + value, () => file_manager('inspector_section', { value }));
     const another = media.items.find(m => m.media_type === 'image' && m.id !== image.id);
     await check('exif-switch-selection', () => ui('select_media', String(another.id)));
     await check('exif-clear-selection', () => ui('deselect'));
@@ -151,7 +151,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
       if (!(await invoke('dev_test_status')).running) break;
       await delay(200);
     }
-    await check('exif-scroll-selection', () => gallery('scroll', { value: '900' }), { settle: 3000 });
+    await check('exif-scroll-selection', () => file_manager('scroll', { value: '900' }), { settle: 3000 });
     const virtual = await invoke('search_media', { search: 'virtual-', limit: 10 });
     await check('exif-missing-source-cached', () => ui('select_media', String(virtual.items[0].id)));
     await invoke('dev_test_clear_virtual'); await delay(1500);

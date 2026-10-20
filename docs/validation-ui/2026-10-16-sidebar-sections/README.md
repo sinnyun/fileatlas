@@ -6,9 +6,9 @@
 
 ## 改了什么
 
-- `photag-plugin-settings`：JSON 模型新增 `sidebar_folders` 区块（`quick_access`、`favorite_groups`、
-  `show_network_drives`）。SQLite 与 `%LOCALAPPDATA%\PhoTag` 既有字段未改。
-- `photag-plugin-navigation`：Windows 驱动器枚举与用量（`GetLogicalDrives`/`GetDriveType`/
+- `fileatlas-plugin-settings`：JSON 模型新增 `sidebar_folders` 区块（`quick_access`、`favorite_groups`、
+  `show_network_drives`）。SQLite 与 `%LOCALAPPDATA%\FileAtlas` 既有字段未改。
+- `fileatlas-plugin-navigation`：Windows 驱动器枚举与用量（`GetLogicalDrives`/`GetDriveType`/
   `GetDiskFreeSpaceExW`）通过 `read_model::ReadModel` 被动读取；侧栏渲染驱动器区（盘符+卷标+已用/总量 GB+
   进度条，网络盘只留盘符+用量+地球图标）、快速访问区（系统 6 项 + 用户项）、分组收藏夹区（分组/收藏行 +
   “新建分组”）。
@@ -22,15 +22,15 @@
 
 ```
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 test -p photag-plugin-navigation -j 2
-cargo +1.97.1 build -p photag-shell -j 2
+cargo +1.97.1 test -p fileatlas-plugin-navigation -j 2
+cargo +1.97.1 build -p fileatlas-shell -j 2
 node scripts/check-ui-refresh.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe \
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe \
   --profile target/mcp-sidebar-sections --plugins dev-test --allow-mutations \
   --scenario target/mcp-sidebar-sections/<scenario>.cjs
 ```
 
-同进程 PhoTag MCP（`photag-shell --mcp` 子进程），隔离 dev-test profile
+同进程 FileAtlas MCP（`fileatlas-shell --mcp` 子进程），隔离 dev-test profile
 `target/mcp-sidebar-sections`（独立 DB/settings/session/缩略图缓存）。未使用 OS 鼠标键盘注入，
 未附加到另行启动的进程。主机：2560×1440，`GetDpiForWindow` = 144 → 缩放 150%。
 
@@ -47,7 +47,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe \
 最终状态既出现在 `get_ui_state.sidebar_folders`，也写入
 `profile-settings-after.json`（本次隔离 profile 的 `settings.json`）：
 `quick_access` 为改名后的 crates 项、`favorite_groups` 为 `seedgroup/摄影分组` + 1 个收藏文件夹、
-`show_network_drives: true`。正常 `%LOCALAPPDATA%\PhoTag` 未被写入。
+`show_network_drives: true`。正常 `%LOCALAPPDATA%\FileAtlas` 未被写入。
 
 ### 指针弹出菜单（`scenario-pointer-*.cjs`）
 
@@ -70,8 +70,8 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe \
 
 ### 静态门
 
-`cargo +1.97.1 fmt --all -- --check` 无差异；`test -p photag-plugin-navigation` 7 项通过（含新增的
-`sidebar_requests_parse_from_json_and_validate_known_targets`）；`check -p photag-shell` locked 构建通过；
+`cargo +1.97.1 fmt --all -- --check` 无差异；`test -p fileatlas-plugin-navigation` 7 项通过（含新增的
+`sidebar_requests_parse_from_json_and_validate_known_targets`）；`check -p fileatlas-shell` locked 构建通过；
 `node scripts/check-ui-refresh.cjs` → “UI timer ownership: passed”。
 
 ## 仍未验证

@@ -7,7 +7,7 @@
 
 用户要求：GPUI Kit 负责主题解析、应用和分发，Material 只负责生成配置。
 此记录取代前几轮手写深浅色表、accent 插值和主题字段逐项覆盖方案。
-结构继续遵循 PhoTag 0.2；配色层次按[低饱和度概念及检查清单](../../reference-ui/concepts/semantic-muted-theme-2026-10-19.md)。
+结构继续遵循 FileAtlas 0.2；配色层次按[低饱和度概念及检查清单](../../reference-ui/concepts/semantic-muted-theme-2026-10-19.md)。
 没有重排主窗、导航或检查器。旧概念中的具体 RGB 不再是实现要求。
 
 - 删除旧 `theme/components.rs` 配色覆盖表；唯一应用入口为 UI Bridge 的原生
@@ -18,38 +18,38 @@
   剪贴板选中内容等的前景配对。拖放兜底图标也由调用者传入当前主题角色。
 - 原生 Button 保留 Kit 的 selected/hover/focus 状态处理。验证曾发现叠加 `.hover`
   导致 GPUI `hover style already set`，已移除叠加，改用原生 primary/ghost/selected。
-- 新 Cordis 插件 `photag.material-theme` 注册设置页与 MCP 工具，使用固定
+- 新 Cordis 插件 `fileatlas.material-theme` 注册设置页与 MCP 工具，使用固定
   `material-colors 0.4.2`，默认 Neutral 低色度。生成原生亮/暗 ThemeSet JSON；
   无独立主题管理器，也不从插件修改 Theme。
-- 正常数据位于 `%LOCALAPPDATA%/PhoTag/themes/`：`material.json` 和版本化
+- 正常数据位于 `%LOCALAPPDATA%/FileAtlas/themes/`：`material.json` 和版本化
   `material-settings.json`。单文件原子替换、保留备份；两文件不是一个事务。
   Settings 保存 `theme_file` 与既有 `color_mode`，旧 accent 字段只保留兼容。
 
 接口、错误与恢复、上游版本和许可证详见
-[Material PORTS](../../../crates/photag-plugin-material-theme/PORTS.md)；
+[Material PORTS](../../../crates/fileatlas-plugin-material-theme/PORTS.md)；
 后续开发必须遵循 [ui-theme.md](../../ui-theme.md) 和 AGENTS.md 的原生主题规则。
 主题检查脚本包含 theme 目录、新 UI 模块及所有 Rust 文件中的 Theme 修改检测。
 
 ## 环境与精确命令
 
 Windows MSVC，Rust 1.97.1，主窗截图 3286×1831，缩放 150%；小窗 1510×1000。
-使用原有 target/incremental。仅同进程 PhoTag MCP，隔离 profile
+使用原有 target/incremental。仅同进程 FileAtlas MCP，隔离 profile
 `target/mcp-native-material-ok`，Standard 权限；未改用户正常数据。
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-material-theme -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-material-theme -j 2
 node scripts/check-ui-theme.cjs --self-test
 node scripts/check-ui-theme.cjs
 node scripts/check-ui-refresh.cjs
 node scripts/check-architecture.cjs
 node scripts/check-layering.cjs
 node scripts/check-feature-ledger.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-material-theme.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-theme-input.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-theme-restart.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-material-theme.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-theme-input.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-native-material-ok --plugins core --access-level standard --scenario scripts/validate-native-theme-restart.cjs
 ```
 
 以上均通过。构建保留既有 LNK4098 LIBCMT 警告。架构检查通过（106 edges，debt 742）；
@@ -70,7 +70,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 | 原生下拉菜单 | 指针打开扩展名菜单，底色、正文、选中按钮可辨；![material-native-menu.png](../../../.local/validation/artifacts/2026-10-19-native-material-theme/material-native-menu.png) |
 | 小窗 | 正文可滚动到两项主题动作，页脚保留；![material-small-scrolled.png](../../../.local/validation/artifacts/2026-10-19-native-material-theme/material-small-scrolled.png) |
 | 重启 | 同 profile 新 MCP 子进程恢复青色生成主题、亮色模式及参数；![material-restart.png](../../../.local/validation/artifacts/2026-10-19-native-material-theme/material-restart.png) |
-| 静置 | Gallery revision 在 1.2 秒内不变，无循环重载 |
+| 静置 | FileManager revision 在 1.2 秒内不变，无循环重载 |
 
 两个自动回归测试通过：3 个极端种子 × 3 风格 × 2 对比值 × 2 模式，
 通过原生 Theme::apply_config 验证 JSON 字段被识别及代表性文字对 ≥4.5:1；

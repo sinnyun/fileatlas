@@ -1,0 +1,27 @@
+[package]
+name = "fileatlas-plugin-file-operations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+open = "5"
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+trash = "5"
+
+[dev-dependencies]
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database", features = ["test-api"] }
+thiserror.workspace = true
+tokio.workspace = true
+trash = "5"
+
+[lints]
+workspace = true

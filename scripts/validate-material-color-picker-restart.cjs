@@ -13,7 +13,7 @@ module.exports = async ({ step, delay }) => {
   assert.equal((await invoke('material-theme.state')).preferences.seed, '#3b82f6');
   await invoke('resize_window', { width: 1920, height: 1200 }, { wait_ms: 500 });
   await ui('settings_open');
-  await ui('settings_plugin_page', 'photag.material-theme');
+  await ui('settings_plugin_page', 'fileatlas.material-theme');
   const page = await invoke('get_ui_state', {}, { capture: 'picker-restart' });
   const [x, y, w] = page.panels.find(p => p.id === 'settings').bounds.split(',').map(Number);
   await click(x + w - 130, y + 334);

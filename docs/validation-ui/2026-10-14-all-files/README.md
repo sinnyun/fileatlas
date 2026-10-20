@@ -2,21 +2,21 @@
 
 参考：`docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png`、其说明及 final-v5 主界面。保持布局结构，按本轮用户要求替换卡片角落 More 为格式角标。长格式在紧凑列表角标中省略，完整名称仍在文件名/Inspector中可见。
 
-环境：Windows MSVC，Rust 1.97.1，窗口1500×1000物理像素，150%显示缩放，中文；PhoTag MCP server/GPUI 同进程，由项目客户端启动；profile=`target/mcp-all-files-final-20261014`，仅测试库及隔离设置/缓存，修改权限显式开启。正常PhoTag数据库及正在运行的旧窗口未修改。
+环境：Windows MSVC，Rust 1.97.1，窗口1500×1000物理像素，150%显示缩放，中文；FileAtlas MCP server/GPUI 同进程，由项目客户端启动；profile=`target/mcp-all-files-final-20261014`，仅测试库及隔离设置/缓存，修改权限显式开启。正常FileAtlas数据库及正在运行的旧窗口未修改。
 
 命令：
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -j 2 -p photag-shell
-cargo +1.97.1 test --locked -j 2 -p photag-plugin-indexing -p photag-plugin-database -p photag-plugin-watcher -p photag-plugin-dev-test -p photag-plugin-gallery
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-all-files.exe --profile target/mcp-all-files-final-20261014 --plan target/mcp-all-files-final-plan.json --interactive --allow-mutations
+cargo +1.97.1 check --locked -j 2 -p fileatlas-shell
+cargo +1.97.1 test --locked -j 2 -p fileatlas-plugin-indexing -p fileatlas-plugin-database -p fileatlas-plugin-watcher -p fileatlas-plugin-dev-test -p fileatlas-plugin-file-manager
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-all-files.exe --profile target/mcp-all-files-final-20261014 --plan target/mcp-all-files-final-plan.json --interactive --allow-mutations
 ```
 
-默认`cargo +1.97.1 build --locked -j 2 -p photag-shell`因用户运行中的`target/debug/photag-shell.exe`无法覆盖（os error 5）。为验证，临时在shell Cargo.toml声明同src/main.rs的`photag-shell-all-files`及原`photag-shell` bin，执行：
+默认`cargo +1.97.1 build --locked -j 2 -p fileatlas-shell`因用户运行中的`target/debug/fileatlas-shell.exe`无法覆盖（os error 5）。为验证，临时在shell Cargo.toml声明同src/main.rs的`fileatlas-shell-all-files`及原`fileatlas-shell` bin，执行：
 
 ```powershell
-cargo +1.97.1 rustc --locked -j 2 -p photag-shell --bin photag-shell-all-files -- -C link-arg=/STACK:8388608
+cargo +1.97.1 rustc --locked -j 2 -p fileatlas-shell --bin fileatlas-shell-all-files -- -C link-arg=/STACK:8388608
 ```
 
 随后还原Cargo.toml，无产品配置差异。最终编译成功。第一次备用bin没有继承build.rs只针对原bin的8 MiB stack参数，启动stack overflow；显式加相同stack参数后正常，最终stderr无崩溃。初次客户端过早resize也返回window-handle未就绪；最终plan先等待窗口启动。这些是验证启动问题，不计为通过。

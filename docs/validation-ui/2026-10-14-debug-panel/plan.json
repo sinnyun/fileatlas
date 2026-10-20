@@ -69,7 +69,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "none"
@@ -224,7 +224,7 @@
     "capture": "debug-paused"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"

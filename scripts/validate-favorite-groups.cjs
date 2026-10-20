@@ -1,4 +1,4 @@
-// Native same-process GPUI clicks through PhoTag MCP, isolated dev-test profile.
+// Native same-process GPUI clicks through FileAtlas MCP, isolated dev-test profile.
 const fs=require('node:fs'), path=require('node:path'), assert=require('node:assert/strict');
 module.exports=async({step,delay,profile})=>{
   const invoke=async(tool,args={},extra={})=>(await step({tool,arguments:args,...extra})).result;
@@ -20,7 +20,7 @@ module.exports=async({step,delay,profile})=>{
   };
   const plus=async(id)=>{const[x,y,w]=await header(id);await click(x+w-11,y+17);};
   const navigate=async(folder)=>{
-    await invoke('control_gallery',{action:'navigate',value:folder});
+    await invoke('control_file_manager',{action:'navigate',value:folder});
     await until(s=>normalize(s.sidebar_folders.favorite_current_path??'')===normalize(folder)&&!s.browser.worker_active);
   };
   const create=async(name)=>{

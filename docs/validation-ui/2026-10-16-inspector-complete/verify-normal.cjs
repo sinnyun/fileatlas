@@ -7,16 +7,16 @@ module.exports = async ({step,profile}) => {
   await run('resize_window',{width:1920,height:1800});
   await run('control_ui',{action:'inspector_width',value:'360'});
   await run('control_navigation',{action:'select_path',value:path.join(profile,'fixtures','2026-秋日旅行')},800);
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:18,attempts:60,interval_ms:300}});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:18,attempts:60,interval_ms:300}});
   await run('control_ui',{action:'select_media',value:'1'},500);
   await run('control_ui',{action:'inspector_tab',value:'information'});
   let state=await run('get_ui_state');
   assert.equal(state.inspector_demo.enabled,false);
   for(const section of ['basic','tags','exif','path']) {
-    if(!state.gallery.inspector_sections.includes(section)) await run('control_gallery',{action:'inspector_section',value:section});
+    if(!state.file_manager.inspector_sections.includes(section)) await run('control_file_manager',{action:'inspector_section',value:section});
   }
   await run('get_ui_state',{},700,'file-complete');
-  await run('control_gallery',{action:'inspector_section',value:'basic'});
+  await run('control_file_manager',{action:'inspector_section',value:'basic'});
   await run('get_ui_state',{},400,'file-exif-complete');
   await run('control_ui',{action:'inspector_tab',value:'history'});
   state=await run('get_ui_state',{},400,'history-normal');

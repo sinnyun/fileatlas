@@ -1,5 +1,5 @@
 // Replay against the isolated fixture prepared in target; every UI operation
-// is a public same-process PhoTag MCP call, never an OS input injection.
+// is a public same-process FileAtlas MCP call, never an OS input injection.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -14,20 +14,20 @@ module.exports = async ({step,call,payload,profile,delay}) => {
   const fixture = path.join(profile,'fixtures','2026-秋日旅行');
   assert(fs.existsSync(path.join(fixture,'DSC08812.jpg')),'Prepare isolated fixture first');
   await step({tool:'get_ui_state',until:{field:'window_status.valid',equals:true,attempts:60,interval_ms:500}});
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',at_least:0,attempts:60,interval_ms:300}});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',at_least:0,attempts:60,interval_ms:300}});
   await run('resize_window',{width:1920,height:1800});
   await run('control_ui',{action:'inspector_open'});
   await run('control_ui',{action:'inspector_width',value:'360'});
   await run('control_navigation',{action:'all'});
   await run('control_ui',{action:'navigation_tab',value:'tags'});
-  await run('control_gallery',{action:'tag',tag_id:1},650);
-  assert.equal((await ui('tag-complete')).gallery.inspector_context,'tag');
+  await run('control_file_manager',{action:'tag',tag_id:1},650);
+  assert.equal((await ui('tag-complete')).file_manager.inspector_context,'tag');
   assert.equal((await rootTag()).media_count,18);
-  await run('control_gallery',{action:'inspector_tag_name',value:'旅行 · 测试'});
+  await run('control_file_manager',{action:'inspector_tag_name',value:'旅行 · 测试'});
   await click(1100,629);
   assert.equal((await rootTag()).name,'旅行 · 测试');
   await ui('tag-renamed-final');
-  await run('control_gallery',{action:'inspector_tag_name',value:'旅行'});
+  await run('control_file_manager',{action:'inspector_tag_name',value:'旅行'});
   await click(1100,629);
   assert.equal((await rootTag()).name,'旅行');
   await ui('tag-restored-final');
@@ -47,37 +47,37 @@ module.exports = async ({step,call,payload,profile,delay}) => {
 
   await run('control_ui',{action:'navigation_tab',value:'folders'});
   await run('control_navigation',{action:'select_path',value:fixture},800);
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:18,attempts:60,interval_ms:300}});
-  assert.equal((await ui('folder-complete')).gallery.inspector_context,'folder');
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:18,attempts:60,interval_ms:300}});
+  assert.equal((await ui('folder-complete')).file_manager.inspector_context,'folder');
   await run('control_ui',{action:'deselect'});
-  assert.equal((await ui('program-complete')).gallery.inspector_context,'program');
+  assert.equal((await ui('program-complete')).file_manager.inspector_context,'program');
   const generation=(await ui()).browser.status[0];
   await run('control_navigation',{action:'select_path',value:fixture},500);
   let state=await ui('folder-reselected');
-  assert.equal(state.gallery.inspector_context,'folder');
+  assert.equal(state.file_manager.inspector_context,'folder');
   assert.equal(state.browser.status[0],generation,'same folder selection must not re-enumerate');
   await run('control_ui',{action:'select_media',value:'1'});
   await click(870,900); // blank area beside the grid, not a file card
-  assert.equal((await ui('program-blank-click')).gallery.inspector_context,'program');
+  assert.equal((await ui('program-blank-click')).file_manager.inspector_context,'program');
   const changedFile=path.join(fixture,'review-change.jpg');
   assert(!fs.existsSync(changedFile));
   fs.copyFileSync(path.join(fixture,'DSC08812.jpg'),changedFile);
   try {
-    await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:19,attempts:60,interval_ms:300},capture:'program-real-change'});
-    assert.equal((await ui()).gallery.inspector_context,'program');
+    await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:19,attempts:60,interval_ms:300},capture:'program-real-change'});
+    assert.equal((await ui()).file_manager.inspector_context,'program');
   } finally { fs.unlinkSync(changedFile); }
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:18,attempts:60,interval_ms:300},capture:'program-complete'});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:18,attempts:60,interval_ms:300},capture:'program-complete'});
 
   await run('control_ui',{action:'select_media',value:'1'},600);
   await run('control_ui',{action:'inspector_tab',value:'information'});
   state=await ui();
   for(const section of ['basic','tags','exif','path']) {
-    if(!state.gallery.inspector_sections.includes(section)) await run('control_gallery',{action:'inspector_section',value:section});
+    if(!state.file_manager.inspector_sections.includes(section)) await run('control_file_manager',{action:'inspector_section',value:section});
   }
   await ui('file-complete');
   const media=await run('get_media',{media_ids:[1]});
   assert.equal(media.media.missing,false); assert(media.media.thumb_path); assert.equal(media.media.rating,4); assert.equal(media.tags.length,5);
-  await run('control_gallery',{action:'inspector_section',value:'basic'});
+  await run('control_file_manager',{action:'inspector_section',value:'basic'});
   await ui('file-exif-complete');
   await run('control_ui',{action:'inspector_tab',value:'extensions'});
   await ui('file-extensions-empty');

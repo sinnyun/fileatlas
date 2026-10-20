@@ -1,4 +1,4 @@
-# PhoTag 浏览模式改造需求与 Yazi 源码借鉴
+# FileAtlas 浏览模式改造需求与 Yazi 源码借鉴
 
 日期：2026-10-15  
 状态：浏览模式主体已实现，运行证据与边界见第10节。旧开发期数据迁移不纳入本期范围。
@@ -7,18 +7,18 @@
 
 本次复核包括当前工作区源码、`03b8ab8` 的统一刷新/预览优化，以及 [UI 刷新约定](ui-refresh-contract.md)、[渲染 I/O 审查](ui-render-performance-audit-2026-10-15.md)和各服务 PORTS。原产品方向不变，技术实施须使用当前已有设施：
 
-- `photag_ui_bridge::refresh::{poll, PollResult, ChangeGate}` 已统一轮询和变化判定；新浏览状态通过它交付更新，不能增加另一套 GPUI timer/无变化 notify。
+- `fileatlas_ui_bridge::refresh::{poll, PollResult, ChangeGate}` 已统一轮询和变化判定；新浏览状态通过它交付更新，不能增加另一套 GPUI timer/无变化 notify。
 - `read_model::ReadModel<K,V>` 已提供单工作线程、只保留最新排队请求、过期结果丢弃、成功/空结果/失败缓存。普通属性、EXIF、标签和统计等被动读取复用它。
 - 当前 `ReadModel` 每次交付一个完整结果，没有分块目录流、运行中任务取消或跨模型的全局并发限制；排队的新请求会等待旧 worker 结束。不能把它直接当作可取消的大目录浏览器，也不能把“丢弃旧结果”写成“旧任务已经停止”。
 - Preview 已有原图前先显示缩略图、JPEG 缩放解码、活动项优先、七图邻域、generation/取消令牌、有限渐进尝试和实际首帧/完整帧计时。新目录数据源须接入这些已有能力，并补上文件版本与非索引文件身份。
 - `DatabaseService::write_revision()` 与 `NavigationService::tag_revision()` 已是内存修订信号；它们可驱动关联数据刷新，但不能表示外部文件已变化，需要独立的目录/文件修订来源。
-- 当前 Gallery 浏览仍受 `GroupingMode::None` 和登记根目录边界限制；文件内容仍查询数据库。界面刷新优化不等于浏览模式改造已完成。
+- 当前 FileManager 浏览仍受 `GroupingMode::None` 和登记根目录边界限制；文件内容仍查询数据库。界面刷新优化不等于浏览模式改造已完成。
 
 上述现状以源码/现有验证记录为依据；本次只是文档复核，没有重新运行 GUI 或性能验收。Yazi 分析仍固定到第6节的原研究提交。
 
 ## 1. 目标与产品模型
 
-将 PhoTag 的默认工作方式统一为本地文件浏览。用户打开、切换、搜索和预览目录内容时，程序以本地文件系统为事实来源，不因为浏览而将目录加入资料库，也不递归索引目录。
+将 FileAtlas 的默认工作方式统一为本地文件浏览。用户打开、切换、搜索和预览目录内容时，程序以本地文件系统为事实来源，不因为浏览而将目录加入资料库，也不递归索引目录。
 
 系统保留两类长期用户数据：
 
@@ -112,44 +112,44 @@
 - 统计、批量预览和 EXIF 等被动结果复用已接入的模型；真正执行复制/移动/删除/标签修改前仍通过原服务重新验证目标，不执行缓存中的过期目标集合。
 - 静止页面不持续产生目录读取、DB 查询或重复预览；真实变化后必须更新。现有统一刷新验证是基线，新路径仍须补同进程 MCP 的静止与真实变化成对验证，并运行 `node scripts/check-ui-refresh.cjs`。
 
-## 5. 对照现有 PhoTag 架构的改造边界
+## 5. 对照现有 FileAtlas 架构的改造边界
 
-- `photag-plugin-gallery`：保留 GPUI 网格/列表、选择、预览、工具栏、检查器等 UI；增加基于本地目录快照的数据提供路径，避免普通浏览依赖 Gallery SQL 查询。保持200条富数据窗口可作 UI 缓存，但数据入口改成本地目录枚举，不将窗口缓存误当目录完整索引。
-- `photag-plugin-preview`：复用当前解码队列、原缩略图复用、JPEG 延迟渐进与 generation 防旧结果；把目前带索引身份的入口扩展为路径/文件版本加可选标签关联 ID。保持邻域预取有界、已完成原图停止多余任务、真实首帧与完整帧分别计时。当前缩略图 mtime 核验和部分 path-only 读取键还不足以证明同路径替换后的缓存新鲜度，属于本次改造需补的版本失效契约。
-- `photag-plugin-grouping`：复用已有独立 `GroupingService` 和虚拟分段计算；输入改为浏览条目的文件系统属性，避免为分组回查索引表。枚举范围由“显示子文件夹”开关决定，分组仅排列已取得的结果。创建时间等分组字段在后台读取，不能阻塞视图更新；分批排序更新需保持选中项和滚动锚点稳定。
-- `photag-plugin-navigation`：把登记根目录入口改为收藏集合；Folder/Path 选择只发导航事件。目录收藏、文件系统地址及标签跳转统一解析为浏览位置。
-- `photag-plugin-database`：仅为收藏/标签数据提供持久服务；开发期可采用新的产品 schema，不做迁移。未经用户标记的浏览文件不写入持久媒体表。
-- `photag-plugin-tagging`：以路径关联及文件快照维护标签；增加缺失状态、重新链接及批量移除缺失记录接口。所有读本地文件元信息均实时验证。
-- `photag-plugin-watcher`：移除“启动时逐个递归刷新所有已登记根目录”的产品默认行为。改为可管理的当前目录 watcher/事件汇聚器；通知做增量更新或失效，目录离开时撤销订阅。递归子目录模式需要按需 watcher 策略，避免注册海量 watcher；必要时只监视活动视图并在重新打开时核验。
-- `photag-plugin-indexing`：从普通浏览、收藏点击和启动路径中移除。保留其媒体解析/缩略图生成能力作为按需任务后端；递归目录浏览另用可取消的文件枚举任务，不写入资料库。
-- `photag-plugin-file-operations`：操作本地文件后发出具体路径变更事件，更新当前视图与关联路径。若关联文件变更无法确认，宁可将旧关联标记缺失，也不静默改写到错误文件。
+- `fileatlas-plugin-file-manager`：保留 GPUI 网格/列表、选择、预览、工具栏、检查器等 UI；增加基于本地目录快照的数据提供路径，避免普通浏览依赖 FileManager SQL 查询。保持200条富数据窗口可作 UI 缓存，但数据入口改成本地目录枚举，不将窗口缓存误当目录完整索引。
+- `fileatlas-plugin-preview`：复用当前解码队列、原缩略图复用、JPEG 延迟渐进与 generation 防旧结果；把目前带索引身份的入口扩展为路径/文件版本加可选标签关联 ID。保持邻域预取有界、已完成原图停止多余任务、真实首帧与完整帧分别计时。当前缩略图 mtime 核验和部分 path-only 读取键还不足以证明同路径替换后的缓存新鲜度，属于本次改造需补的版本失效契约。
+- `fileatlas-plugin-grouping`：复用已有独立 `GroupingService` 和虚拟分段计算；输入改为浏览条目的文件系统属性，避免为分组回查索引表。枚举范围由“显示子文件夹”开关决定，分组仅排列已取得的结果。创建时间等分组字段在后台读取，不能阻塞视图更新；分批排序更新需保持选中项和滚动锚点稳定。
+- `fileatlas-plugin-navigation`：把登记根目录入口改为收藏集合；Folder/Path 选择只发导航事件。目录收藏、文件系统地址及标签跳转统一解析为浏览位置。
+- `fileatlas-plugin-database`：仅为收藏/标签数据提供持久服务；开发期可采用新的产品 schema，不做迁移。未经用户标记的浏览文件不写入持久媒体表。
+- `fileatlas-plugin-tagging`：以路径关联及文件快照维护标签；增加缺失状态、重新链接及批量移除缺失记录接口。所有读本地文件元信息均实时验证。
+- `fileatlas-plugin-watcher`：移除“启动时逐个递归刷新所有已登记根目录”的产品默认行为。改为可管理的当前目录 watcher/事件汇聚器；通知做增量更新或失效，目录离开时撤销订阅。递归子目录模式需要按需 watcher 策略，避免注册海量 watcher；必要时只监视活动视图并在重新打开时核验。
+- `fileatlas-plugin-indexing`：从普通浏览、收藏点击和启动路径中移除。保留其媒体解析/缩略图生成能力作为按需任务后端；递归目录浏览另用可取消的文件枚举任务，不写入资料库。
+- `fileatlas-plugin-file-operations`：操作本地文件后发出具体路径变更事件，更新当前视图与关联路径。若关联文件变更无法确认，宁可将旧关联标记缺失，也不静默改写到错误文件。
 - Cordis 生命周期和公开服务契约保持插件边界；Shell 仅组合服务。所有 UI 增强经 UiBridge 生命周期管理。
-- `photag-ui-bridge`：继续拥有公共刷新与被动读取设施；目录枚举、监听及缓存规则归文件浏览功能服务，不把领域 I/O 塞进公共 UI 工具。Yazi 移植代码在所属服务内适配现有契约。
+- `fileatlas-ui-bridge`：继续拥有公共刷新与被动读取设施；目录枚举、监听及缓存规则归文件浏览功能服务，不把领域 I/O 塞进公共 UI 工具。Yazi 移植代码在所属服务内适配现有契约。
 - Debug/MCP：复用现有日志、加载状态和实际呈现计时，增加目录 generation、首批交付/首屏呈现、队列积压、取消及失效原因的只读状态。诊断采样不触发新的文件读取或重绘，保留原操作日志。
 
 ## 6. Yazi 源码研究及可复用点
 
 研究基准：Yazi 仓库 `main` 于 2026-10-15 查询到的提交 `ffb2e78cc70341946c04befa52e14a4494015ce8`。以下均指该提交。Yazi 是 MIT 许可；若复制/改写其代码，须保留源文件许可/版权声明，注明改写来源，并检查所引入依赖及其各自许可。不可把终端渲染代码直接塞进 GPUI。
 
-| Yazi 源文件/机制 | 源码做法 | PhoTag 可采用方式 |
+| Yazi 源文件/机制 | 源码做法 | FileAtlas 可采用方式 |
 |---|---|---|
 | [`yazi-vfs/src/entries.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-vfs/src/entries.rs) `VfsEntries::from_dir` | 逐条从 `DirReader` 取目录项，在后台 task 中异步转为 File，通过 channel 输出；接收端关闭即停止 producer。文件 metadata 失败时仍发出 dummy 条目，目录不会因单项 stat 错误整体失败。 | 复用 producer/channel/关闭取消的结构；把 channel 改为有界批次并加入目录 generation。基础目录项先显示，metadata 分级补齐。对权限/目录读取错误继续显式报告，不把缺字段当空目录。 |
 | [`yazi-vfs/src/entries.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-vfs/src/entries.rs) `from_dir_bulk` | 另一条 bulk 路径收集直接子项，再分三组并发读取每项 File/Stat；不会递归子目录。 | 对小目录或需完整排序的操作可采用有界并发 metadata 批次；不要对大目录无界建任务。UI 浏览优先使用 stream 版本。 |
-| [`yazi-fs/src/entries.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-fs/src/entries.rs) `Entries` | 内存持有 items/hidden、筛选/排序状态、ticket/revision；`update_full/part/create/delete/update/upsert` 增量维护条目，revision 变化驱动排序/重绘；hidden 单独保留，过滤/显示隐藏时少做重读。 | 移植内存目录模型与增量 patch API，改用 `PathBuf`/PhoTag 类型；增加 cache budget 和明确的 filesystem validation。筛选切换尽量在内存数据上完成。 |
-| [`yazi-core/src/tab/folder.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-core/src/tab/folder.rs) | Folder 将目录自身状态与 `Entries` 绑定，跟踪 loading stage、revision、cursor/offset；只把当前页及邻近两页传给渲染器。 | 借鉴目录状态对象、加载状态、选择位置恢复和可见窗口分页；GPUI 仍由 Gallery/ListState 渲染，不复用 TUI widget。 |
-| [`yazi-watcher/src/refresher.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-watcher/src/refresher.rs) | 单目录刷新 worker 合并重复请求；支持 Full/Part/Skip，流式批次约每5000项或500ms发出；通过 ticket 拒绝旧请求；`JoinHandle` abort 旧任务；刷新前 `revalidate` 目录。 | 直接借鉴“每个活动目录一个状态机 + ticket/generation + 可取消加载 + 批次消息”。PhoTag 的批次大小应按 GPUI 性能实测调整，不照搬 5000/500ms 常数。 |
-| [`yazi-watcher/src/local/local.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-watcher/src/local/local.rs) | 使用 `notify` 推荐 watcher，失败时回退 PollWatcher；本地路径采用 NonRecursive watch；事件过滤 access、250ms 去抖并按 URL 去重；事件后 stat 文件并产生 upsert/delete patch。 | 适合活动目录非递归 watcher + fallback polling + debounce + patch。依照 PhoTag 的本地事实要求，每次选择/预览仍自行核验；watcher 是刷新提示，不能替代目录读取。 |
+| [`yazi-fs/src/entries.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-fs/src/entries.rs) `Entries` | 内存持有 items/hidden、筛选/排序状态、ticket/revision；`update_full/part/create/delete/update/upsert` 增量维护条目，revision 变化驱动排序/重绘；hidden 单独保留，过滤/显示隐藏时少做重读。 | 移植内存目录模型与增量 patch API，改用 `PathBuf`/FileAtlas 类型；增加 cache budget 和明确的 filesystem validation。筛选切换尽量在内存数据上完成。 |
+| [`yazi-core/src/tab/folder.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-core/src/tab/folder.rs) | Folder 将目录自身状态与 `Entries` 绑定，跟踪 loading stage、revision、cursor/offset；只把当前页及邻近两页传给渲染器。 | 借鉴目录状态对象、加载状态、选择位置恢复和可见窗口分页；GPUI 仍由 FileManager/ListState 渲染，不复用 TUI widget。 |
+| [`yazi-watcher/src/refresher.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-watcher/src/refresher.rs) | 单目录刷新 worker 合并重复请求；支持 Full/Part/Skip，流式批次约每5000项或500ms发出；通过 ticket 拒绝旧请求；`JoinHandle` abort 旧任务；刷新前 `revalidate` 目录。 | 直接借鉴“每个活动目录一个状态机 + ticket/generation + 可取消加载 + 批次消息”。FileAtlas 的批次大小应按 GPUI 性能实测调整，不照搬 5000/500ms 常数。 |
+| [`yazi-watcher/src/local/local.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-watcher/src/local/local.rs) | 使用 `notify` 推荐 watcher，失败时回退 PollWatcher；本地路径采用 NonRecursive watch；事件过滤 access、250ms 去抖并按 URL 去重；事件后 stat 文件并产生 upsert/delete patch。 | 适合活动目录非递归 watcher + fallback polling + debounce + patch。依照 FileAtlas 的本地事实要求，每次选择/预览仍自行核验；watcher 是刷新提示，不能替代目录读取。 |
 | [`yazi-scheduler/src/scheduler.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-scheduler/src/scheduler.rs)、[`worker.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-scheduler/src/worker.rs) | 不同任务类型走独立 worker 池和优先级 channel；任务有 handle，取消信号能终止 worker 等待的 future，但不保证中断已经执行的底层阻塞工作。 | 在现有 Preview 解码队列和 ReadModel 基础上移植缺少的目录流式队列、优先级和取消结构。普通被动读取继续走 ReadModel；避免重建其去重/错误缓存设施，也不为复用引入平行 runtime 或插件调度体系。 |
-| [`yazi-scheduler/src/preload/preload.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-scheduler/src/preload/preload.rs) | loaded 与 loading 采用不同容量的 LRU；同一文件新任务会取消旧任务；`FileSig` 与 hook 用于结果识别/去重。 | 复用有界 LRU、loading 去重和任务代号思想。PhoTag 缓存键必须包含路径及本地文件版本信号，旧缩略图不能越过版本校验命中。 |
+| [`yazi-scheduler/src/preload/preload.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-scheduler/src/preload/preload.rs) | loaded 与 loading 采用不同容量的 LRU；同一文件新任务会取消旧任务；`FileSig` 与 hook 用于结果识别/去重。 | 复用有界 LRU、loading 去重和任务代号思想。FileAtlas 缓存键必须包含路径及本地文件版本信号，旧缩略图不能越过版本校验命中。 |
 | [`yazi-fs/src/sorter.rs`](https://github.com/sxyazi/yazi/blob/ffb2e78cc70341946c04befa52e14a4494015ce8/yazi-fs/src/sorter.rs) | 统一排序器支持自然/字母/时间/扩展名/大小/自定义顺序、目录优先和 fallback；源码避免每项重复处理字符的部分工作。 | 借鉴纯数据排序服务与稳定 fallback；按当前展示规则决定完整列表的排序策略。大小排序不触发全目录递归大小计算，除非用户明确选用并看到进度。 |
 
 ### 6.1 不应误读成 Yazi 已解决的问题
 
 - 其普通目录枚举仍需读取该目录的直接项；“streaming/chunked”降低首屏延迟和一次性 UI 工作，不代表 OS 可以按行号随机读取目录，也不保证总内存与目录大小无关。
-- Yazi 会在内存持有该目录的条目并做排序。PhoTag 若要支持超大目录，应同时测量条目内存和排序时间，不能只复制 UI 分批推送。
-- Yazi 的递归 traversal 用于复制、大小计算等被请求的操作。PhoTag 的“显示子文件夹”开启后递归枚举也会有真实 I/O/CPU 成本，必须可取消与限流。
-- Yazi 的 `File`、URL/VFS、event bus、Tokio runtime、Lua hooks、终端绘制是它自己的体系；直接依赖整套 crate 会把这些架构带入 PhoTag，与既定 Cordis/GPUI 插件边界冲突。优先对可分离的算法/状态逻辑做 MIT 许可移植或抽取；不能为复用而建立平行应用框架。
-- `VfsEntries::from_dir_bulk` 对 metadata 采用三路并发而不是适合所有硬件的最优数值；PhoTag 应按 Windows 本地 SSD、机械盘、网络/断开目录实际测量后定并发。
+- Yazi 会在内存持有该目录的条目并做排序。FileAtlas 若要支持超大目录，应同时测量条目内存和排序时间，不能只复制 UI 分批推送。
+- Yazi 的递归 traversal 用于复制、大小计算等被请求的操作。FileAtlas 的“显示子文件夹”开启后递归枚举也会有真实 I/O/CPU 成本，必须可取消与限流。
+- Yazi 的 `File`、URL/VFS、event bus、Tokio runtime、Lua hooks、终端绘制是它自己的体系；直接依赖整套 crate 会把这些架构带入 FileAtlas，与既定 Cordis/GPUI 插件边界冲突。优先对可分离的算法/状态逻辑做 MIT 许可移植或抽取；不能为复用而建立平行应用框架。
+- `VfsEntries::from_dir_bulk` 对 metadata 采用三路并发而不是适合所有硬件的最优数值；FileAtlas 应按 Windows 本地 SSD、机械盘、网络/断开目录实际测量后定并发。
 
 ## 7. 实施顺序建议
 
@@ -163,7 +163,7 @@
 6. **后代显示模式**：仅在开关打开时递归，进度/取消/分组/缓存上限和权限处理；关闭立即取消并回到直属文件列表。
 7. **操作闭环**：移动/重命名/删除/回收站对当前视图作增量更新；标签关联不能被错配，无法验证时标记缺失。
 
-每阶段依项目要求做 Rust 静态/回归验证及同进程 PhoTag MCP 运行验证；大目录性能结果必须使用隔离 profile，并明确记录 Windows、磁盘介质、DPI、项目数量、首屏时间、总排序时间、内存峰值、取消耗时和 watcher 结果。不能把 Linux/TUI 上游表现当成 PhoTag Windows/GPUI 验收证据。
+每阶段依项目要求做 Rust 静态/回归验证及同进程 FileAtlas MCP 运行验证；大目录性能结果必须使用隔离 profile，并明确记录 Windows、磁盘介质、DPI、项目数量、首屏时间、总排序时间、内存峰值、取消耗时和 watcher 结果。不能把 Linux/TUI 上游表现当成 FileAtlas Windows/GPUI 验收证据。
 
 目录任务返回/命令派发耗时只代表处理时间；首批结果可用、GPUI 实际首屏呈现、缩略图呈现和原图完整呈现要分别计时。复用当前 Preview/Debug 的呈现时钟，避免把快速返回命令误报成加载完成。
 
@@ -188,19 +188,19 @@
 - 性能文章/维护者说明：<https://github.com/sxyazi/yazi/issues/143>、<https://yazi-rs.github.io/blog/why-is-yazi-fast/>。
 - 配置和性能选项：<https://yazi-rs.github.io/docs/configuration/yazi/>、<https://yazi-rs.github.io/docs/tips/>。
 - 本文件表中源码链接固定到研究时 `main` 提交 `ffb2e78cc70341946c04befa52e14a4494015ce8`，便于复核。
-- 许可：Yazi 仓库根目录 MIT LICENSE。引入任何源代码片段时保留原始版权与许可文本，并在 PhoTag 相应源文件/第三方声明中标注来源和变更；同时审核依赖和被复制目录自身的许可文件。
+- 许可：Yazi 仓库根目录 MIT LICENSE。引入任何源代码片段时保留原始版权与许可文本，并在 FileAtlas 相应源文件/第三方声明中标注来源和变更；同时审核依赖和被复制目录自身的许可文件。
 
 
 ## 10. 已实现的运行模型（2026-10-15）
 
 本节覆盖前面的方案表述。现有 Cordis/GPUI 界面保留，所有分组均走本地目录入口，默认直属层；子目录开关才启用递归。收藏仅保存地址/别名/顺序，标签通过跨目录记录和“打开所在文件夹”跳转。缺失文件保留识别快照，经候选逐条应用/跳过或确认删除记录。
 
-实际数据库实现采用 **内存 SQLite 会话库 + 持久 photag-tags.db**，没有第二份持久浏览数据库。这样可复用现有筛选、分组、预览、评分、撤销和文件操作查询。浏览文件在内存中获得真实缓存行句柄，绝不为浏览写入持久媒体表；路径是持久关联/恢复身份。此项替代第2.3节“无媒体ID”的接口草案，不把缓存行号解释为已收藏或已标记。评分也是明确的用户数据，因此评分文件与标签文件一起持久化。
+实际数据库实现采用 **内存 SQLite 会话库 + 持久 fileatlas-tags.db**，没有第二份持久浏览数据库。这样可复用现有筛选、分组、预览、评分、撤销和文件操作查询。浏览文件在内存中获得真实缓存行句柄，绝不为浏览写入持久媒体表；路径是持久关联/恢复身份。此项替代第2.3节“无媒体ID”的接口草案，不把缓存行号解释为已收藏或已标记。评分也是明确的用户数据，因此评分文件与标签文件一起持久化。
 
 目录工作线程最新请求队列、4个有界批次、32项首批/2048文件后续批次、每轮最多消费4条、generation及实际worker_active、200项丰富数据窗口、按可见范围缩略图、文件版本前后核对已经接入现有刷新/ReadModel。最近4个目录范围缓存；总行数超过20万时淘汰旧范围，当前大目录、关联记录、预览和撤销保护项可超出预算。元数据仍在后台逐批取得，不为10万项创建10万个任务；完整文件名排序需保留当前目录的紧凑全量结果，内存不是常数。
 
 本地监听不再启动扫描收藏，默认非递归，后代视图按需递归；800ms去抖，4096通道/待合并路径预算，溢出退为根失效。订阅切换以实际已注册路径和generation维护。原生监听失败回退2秒PollWatcher。刷新、重新进入、窗口激活及操作前核对补充事件通知。无法中断已经阻塞的OS调用；UI取消状态与真实生产线程状态分别可见。
 
-标签图片识别快照在tag-previews独立保存，普通缩略图为版本化可重建缓存。工具菜单提供显示/隐藏缩略图；隐藏时不提交可见项媒体解码。图像/视频海报缓存每256次访问回收为5000项/512MiB以内（按修改时间，非真正访问LRU）。未知格式保持类型图标。持久旧photag.db不迁移、不删除。
+标签图片识别快照在tag-previews独立保存，普通缩略图为版本化可重建缓存。工具菜单提供显示/隐藏缩略图；隐藏时不提交可见项媒体解码。图像/视频海报缓存每256次访问回收为5000项/512MiB以内（按修改时间，非真正访问LRU）。未知格式保持类型图标。持久旧fileatlas.db不迁移、不删除。
 
 具体命令、真实10万文件数据、窗口截图、静止观察、重启、已验和未验边界见 [浏览模式验证记录](validation-ui/2026-10-15-browser/README.md)。上游保留源码和许可见 `vendor/yazi-reference/`；它们是参考与改写依据，不是直接编译Yazi全套依赖。慢盘、断开网络盘、强制watcher失败、复杂junction和原生文件对话框的完整系统验收不能由当前本地测试代替。

@@ -19,8 +19,8 @@ Windows/Rust1.97.1 同进程 MCP、隔离 profile `target/mcp-debug-hover-filter
 [原始报告](../../../.local/validation/artifacts/2026-10-15-debug-hover/report.json.gz)包含查询结果、筛选条件和实际EXE SHA-256。
 
 命令：
-- `cargo +1.97.1 test --locked -p photag-plugin-debug -p photag-plugin-mcp -j 2`：7项通过。
-- `cargo +1.97.1 build --locked -p photag-shell -j 2`、对应check、fmt和共享刷新架构检查通过。
-- `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-debug-hover-filter --scenario scripts/validate-debug-hover.cjs --allow-mutations`：通过。
+- `cargo +1.97.1 test --locked -p fileatlas-plugin-debug -p fileatlas-plugin-mcp -j 2`：7项通过。
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`、对应check、fmt和共享刷新架构检查通过。
+- `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-debug-hover-filter --scenario scripts/validate-debug-hover.cjs --allow-mutations`：通过。
 
 本次仅验证日志显示规则、搜索/分页和真实读取保留；不是对所有产品功能的重新验收。

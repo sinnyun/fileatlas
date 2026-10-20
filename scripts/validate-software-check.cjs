@@ -40,7 +40,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
 
   const screenshot = await call('screenshot_window');
   const image = screenshot.content.find(block => block.type === 'image');
-  assert(image, 'PhoTag MCP did not return the settings screenshot');
+  assert(image, 'FileAtlas MCP did not return the settings screenshot');
   fs.writeFileSync(path.join(output, 'settings-software-check.png'), Buffer.from(image.data, 'base64'));
   records.push('Settings Software tab displays QuickLook and Everything as installed with versions and executable locations.');
   records.push('QuickLook GitHub link, Everything official download page and official ES GitHub link are present.');

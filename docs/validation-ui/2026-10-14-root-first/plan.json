@@ -45,7 +45,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"
@@ -53,7 +53,7 @@
     "wait_ms": 200
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "sort",
       "value": "name_desc"
@@ -61,7 +61,7 @@
     "wait_ms": 200
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "subfolder"
@@ -97,7 +97,7 @@
     "capture": "nested-current-first"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "search",
       "value": "b-deep"
@@ -109,7 +109,7 @@
     "capture": "filtered-no-direct-files"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "clear_filters"
     },

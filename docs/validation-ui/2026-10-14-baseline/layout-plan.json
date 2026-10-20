@@ -15,7 +15,7 @@
     "tool": "control_navigation",
     "arguments": {
       "action": "expand_path",
-      "value": "F:/AI/geren/pho_cordis/test-data/photag-library/03-nested"
+      "value": "F:/AI/geren/pho_cordis/test-data/fileatlas-fixtures/03-nested"
     },
     "wait_ms": 350
   },
@@ -23,7 +23,7 @@
     "tool": "control_navigation",
     "arguments": {
       "action": "select_path",
-      "value": "F:/AI/geren/pho_cordis/test-data/photag-library/02-mixed-formats"
+      "value": "F:/AI/geren/pho_cordis/test-data/fileatlas-fixtures/02-mixed-formats"
     },
     "wait_ms": 550
   },
@@ -31,7 +31,7 @@
     "tool": "get_ui_state",
     "capture": "v2-folder-selected",
     "until": {
-      "field": "gallery.matched_count",
+      "field": "file_manager.matched_count",
       "equals": 3,
       "attempts": 40,
       "interval_ms": 250

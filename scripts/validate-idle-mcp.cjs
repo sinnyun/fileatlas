@@ -1,5 +1,5 @@
-// Run via photag-mcp-debug.cjs --scenario scripts/validate-idle-mcp.cjs.
-// All application interaction is same-process PhoTag MCP. Fixtures/profile
+// Run via fileatlas-mcp-debug.cjs --scenario scripts/validate-idle-mcp.cjs.
+// All application interaction is same-process FileAtlas MCP. Fixtures/profile
 // writes stay under target; source test-data and normal user data stay intact.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -39,7 +39,7 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
     }
   }
   async function ui(action, value) { await invoke('control_ui', { action, value }); }
-  async function gallery(action, more = {}) { await invoke('control_gallery', { action, ...more }); }
+  async function file_manager(action, more = {}) { await invoke('control_file_manager', { action, ...more }); }
   async function preview(action, more = {}) { await invoke('control_preview', { action, ...more }); }
   async function navigation(action, more = {}) { await invoke('control_navigation', { action, ...more }); }
   async function debug(action, value) { await invoke('control_debug', { action, value }); }
@@ -124,16 +124,16 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
   }
 
   try {
-    await waitFor('get_ui_state', 'gallery.loaded_count', n => typeof n === 'number');
+    await waitFor('get_ui_state', 'file_manager.loaded_count', n => typeof n === 'number');
     await delay(600);
     report.accessibility = await invoke('control_ui', { action: 'accessibility_activate' });
     assert.equal(report.accessibility.provider_response, true);
     await debug('open');
     // Reset transient surfaces when reusing an isolated suite profile.
     await preview('close'); await invoke('control_playback', { action: 'close' });
-    await ui('settings_close'); await ui('export_close'); await ui('gallery_dialogs_close');
-    await navigation('close'); await gallery('popover', { value: 'close' });
-    await gallery('clear_filters'); await navigation('all'); await ui('deselect');
+    await ui('settings_close'); await ui('export_close'); await ui('file_manager_dialogs_close');
+    await navigation('close'); await file_manager('popover', { value: 'close' });
+    await file_manager('clear_filters'); await navigation('all'); await ui('deselect');
     await check('library-idle', undefined, { capture: true });
     for (const page of ['folders', 'tags', 'extensions'])
       await check('navigation-' + page, () => ui('navigation_tab', page));
@@ -142,20 +142,20 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
       await check('settings-' + tab, () => ui('settings_tab', tab), { capture: tab === 'ai' });
     await ui('settings_close');
     await check('statistics', () => ui('statistics'), { capture: true });
-    await ui('gallery_dialogs_close');
-    await check('bulk-empty', () => gallery('bulk_open'));
-    await gallery('bulk_close');
+    await ui('file_manager_dialogs_close');
+    await check('bulk-empty', () => file_manager('bulk_open'));
+    await file_manager('bulk_close');
     await check('export-idle', () => ui('export_open'));
     await ui('export_close');
     for (const value of ['type', 'tags', 'extensions', 'date', 'rating', 'sort', 'grouping']) {
-      await check('filter-' + value, () => gallery('popover', { value }));
-      await gallery('popover', { value: 'close' });
+      await check('filter-' + value, () => file_manager('popover', { value }));
+      await file_manager('popover', { value: 'close' });
     }
-    await check('tools-menu', () => gallery('tools_open'));
-    await gallery('tools_close');
+    await check('tools-menu', () => file_manager('tools_open'));
+    await file_manager('tools_close');
 
     const fixtures = path.join(profile, 'fixtures');
-    fs.cpSync(path.join(root, 'test-data', 'photag-library'), fixtures, { recursive: true });
+    fs.cpSync(path.join(root, 'test-data', 'fileatlas-fixtures'), fixtures, { recursive: true });
     // Optional generated 24MP image and test video prepared before launch.
     for (const [from, to] of [
       ['target/preview-latency-fixtures/cold-24mp.jpg', 'large-preview.jpg'],
@@ -163,7 +163,7 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
       ['target/idle-suite-test.wav', 'long-audio.wav'],
     ]) if (fs.existsSync(path.join(root, from))) fs.copyFileSync(path.join(root, from), path.join(fixtures, to));
     report.folder = await invoke('add_folder', { path: fixtures, confirm: true });
-    await waitFor('get_ui_state', 'gallery.matched_count', n => n >= 12);
+    await waitFor('get_ui_state', 'file_manager.matched_count', n => n >= 12);
     await delay(2500);
     const media = await invoke('search_media', { limit: 100 });
     report.media = media.items;
@@ -198,39 +198,39 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
     for (const tab of ['information', 'history', 'extensions'])
       await check('inspector-' + tab, () => ui('inspector_tab', tab));
     await ui('inspector_tab', 'information');
-    await check('multiple-selection', () => gallery('select_many', { media_ids: [image.id, broken.id, audio.id] }));
-    await check('gallery-tag-picker', () => gallery('tag_picker', { enabled: true }));
-    await gallery('tag_picker', { enabled: false });
-    await check('media-actions', () => gallery('open_media_menu', { media_id: image.id }));
-    await gallery('close_media_menu');
-    await check('bulk-populated', () => gallery('bulk_open'));
+    await check('multiple-selection', () => file_manager('select_many', { media_ids: [image.id, broken.id, audio.id] }));
+    await check('file_manager-tag-picker', () => file_manager('tag_picker', { enabled: true }));
+    await file_manager('tag_picker', { enabled: false });
+    await check('media-actions', () => file_manager('open_media_menu', { media_id: image.id }));
+    await file_manager('close_media_menu');
+    await check('bulk-populated', () => file_manager('bulk_open'));
     for (const value of ['copy', 'move', 'delete'])
-      await check('bulk-' + value, () => gallery('bulk_configure', { value, bulk_source: 'selection' }));
-    await gallery('bulk_configure', { value: 'copy', bulk_source: 'all' });
-    await check('bulk-name-filter', () => gallery('bulk_field', { field_index: 4, value: 'small.png' }), { verify: state => {
-      assert.equal(state.ui.gallery.dialog_reads.bulk.count, 1);
+      await check('bulk-' + value, () => file_manager('bulk_configure', { value, bulk_source: 'selection' }));
+    await file_manager('bulk_configure', { value: 'copy', bulk_source: 'all' });
+    await check('bulk-name-filter', () => file_manager('bulk_field', { field_index: 4, value: 'small.png' }), { verify: state => {
+      assert.equal(state.ui.file_manager.dialog_reads.bulk.count, 1);
     }});
-    await check('bulk-filter-error', () => gallery('bulk_field', { field_index: 2, value: 'invalid' }), { verify: state => {
-      assert.equal(state.ui.gallery.dialog_reads.bulk.state, 'failed');
+    await check('bulk-filter-error', () => file_manager('bulk_field', { field_index: 2, value: 'invalid' }), { verify: state => {
+      assert.equal(state.ui.file_manager.dialog_reads.bulk.state, 'failed');
     }});
-    await check('bulk-filter-error-recovered', () => gallery('bulk_field', { field_index: 2, value: '' }), { verify: state => {
-      assert.equal(state.ui.gallery.dialog_reads.bulk.count, 1);
+    await check('bulk-filter-error-recovered', () => file_manager('bulk_field', { field_index: 2, value: '' }), { verify: state => {
+      assert.equal(state.ui.file_manager.dialog_reads.bulk.count, 1);
     }});
-    await gallery('bulk_close');
+    await file_manager('bulk_close');
     for (const value of ['none', 'month', 'file_type', 'modified', 'created', 'folder', 'subfolder'])
-      await check('grouping-' + value, () => gallery('grouping', { value }));
-    await check('gallery-list', () => gallery('layout', { value: 'list' }));
-    await gallery('layout', { value: 'grid' });
-    await check('empty-search', () => gallery('search', { value: 'no-result-idle-audit' }));
-    await gallery('clear_filters'); await gallery('grouping', { value: 'none' });
+      await check('grouping-' + value, () => file_manager('grouping', { value }));
+    await check('file_manager-list', () => file_manager('layout', { value: 'list' }));
+    await file_manager('layout', { value: 'grid' });
+    await check('empty-search', () => file_manager('search', { value: 'no-result-idle-audit' }));
+    await file_manager('clear_filters'); await file_manager('grouping', { value: 'none' });
     await check('folder-root', () => navigation('select_path', { value: fixtures }));
     await check('folder-nested', () => navigation('select_path', { value: path.join(fixtures, '03-nested', 'level-one') }));
-    await navigation('all'); await gallery('grouping', { value: 'month' });
+    await navigation('all'); await file_manager('grouping', { value: 'month' });
     for (const action of ['create', 'edit', 'delete', 'merge', 'move']) {
       await check('tag-dialog-' + action, () => navigation(action, { tag_id: report.tag.id }));
       await navigation('close');
     }
-    await check('preview-image', () => gallery('preview', { media_id: image.id }), { settle: 4500, capture: true });
+    await check('preview-image', () => file_manager('preview', { media_id: image.id }), { settle: 4500, capture: true });
     await check('preview-info', () => preview('toggle_info'), { settle: 4000 });
     await check('preview-tags', () => preview('tags_open'), { settle: 4000 });
     await preview('tags_close');
@@ -242,13 +242,13 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
     await check('preview-filmstrip', () => preview('filmstrip_show'), { settle: 4500 });
     await preview('close');
     if (large) {
-      await check('preview-large', () => gallery('preview', { media_id: large.id }), { settle: 5000 });
+      await check('preview-large', () => file_manager('preview', { media_id: large.id }), { settle: 5000 });
       await preview('close');
     }
-    await check('preview-broken', () => gallery('preview', { media_id: broken.id }), { settle: 4500, capture: true });
+    await check('preview-broken', () => file_manager('preview', { media_id: broken.id }), { settle: 4500, capture: true });
     await preview('close');
     if (animated) {
-      await check('preview-gif', () => gallery('preview', { media_id: animated.id }), { settle: 4000 });
+      await check('preview-gif', () => file_manager('preview', { media_id: animated.id }), { settle: 4000 });
       await preview('close');
     }
     for (const item of [audio, video].filter(Boolean)) {
@@ -281,23 +281,23 @@ module.exports = async ({ call, payload, delay, root, profile, output, exe }) =>
     // Scale transitions expose selection outside the 200-row media window.
     await invoke('dev_test_inject_virtual', { count: 1000 });
     await waitFor('dev_test_status', 'running', value => value === false);
-    await navigation('all'); await gallery('clear_filters');
+    await navigation('all'); await file_manager('clear_filters');
     await check('scale-library', undefined, { settle: 2500 });
     const scaled = await invoke('search_media', { search: 'virtual-', limit: 100, sort: 'oldest' });
     if (scaled.items.length) {
       await ui('select_media', String(scaled.items[0].id));
-      await check('scale-off-window-selection', () => gallery('scroll', { value: '900' }));
+      await check('scale-off-window-selection', () => file_manager('scroll', { value: '900' }));
     }
     await ui('deselect');
     await check('scale-no-selection');
     await check('scale-statistics', () => ui('statistics'), { verify: state => {
-      assert.equal(state.ui.gallery.dialog_reads.statistics.state, 'ready');
+      assert.equal(state.ui.file_manager.dialog_reads.statistics.state, 'ready');
     }});
-    await ui('gallery_dialogs_close');
-    await check('scale-bulk', () => gallery('bulk_open'), { settle: 2500, verify: state => {
-      assert(state.ui.gallery.dialog_reads.bulk.count >= 1000);
+    await ui('file_manager_dialogs_close');
+    await check('scale-bulk', () => file_manager('bulk_open'), { settle: 2500, verify: state => {
+      assert(state.ui.file_manager.dialog_reads.bulk.count >= 1000);
     }});
-    await gallery('bulk_close');
+    await file_manager('bulk_close');
     // Native picker uses the real Sidebar + through the existing GPUI queue.
     await ui('navigation_tab', 'folders');
     await ui('pointer_down', '228,72'); await delay(300);

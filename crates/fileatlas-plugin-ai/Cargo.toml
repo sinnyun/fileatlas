@@ -1,0 +1,20 @@
+[package]
+name = "fileatlas-plugin-ai"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+dirs.workspace = true
+image = "0.25"
+ndarray = "0.16"
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+thiserror.workspace = true
+tract-onnx = "0.21"
+ureq = "2"
+
+[lints]
+workspace = true

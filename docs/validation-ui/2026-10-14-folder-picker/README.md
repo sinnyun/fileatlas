@@ -2,7 +2,7 @@
 
 2026-10-14，Windows、150% DPI、Rust1.97.1 MSVC。Git起点67b079a。
 
-旧版通过同进程PhoTag MCP点击左侧标题“＋”(GPUI逻辑坐标215,74)后退出，日志为main线程 `RefCell already borrowed`，位置gpui-pre-0.3.8/src/app/async_context.rs:66。同步rfd目录选择器的Windows消息循环在GPUI实体/App借用未释放时重入。见crash-stderr.log。
+旧版通过同进程FileAtlas MCP点击左侧标题“＋”(GPUI逻辑坐标215,74)后退出，日志为main线程 `RefCell already borrowed`，位置gpui-pre-0.3.8/src/app/async_context.rs:66。同步rfd目录选择器的Windows消息循环在GPUI实体/App借用未释放时重入。见crash-stderr.log。
 
 修复仅调整调用时机：改为rfd::AsyncFileDialog，在其Windows STA线程上打开；GPUI任务await期间释放借用，返回路径后再this.update调用原add_folder_path注册／扫描。取消不变更媒体库。共享lease阻止重复打开，按钮pending时禁用，任务释放时清理状态并请求关闭已创建的所属native窗口。
 
@@ -10,10 +10,10 @@
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-navigation -p photag-plugin-mcp -j 2
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-folder-fixed --plan docs/validation-ui/2026-10-14-folder-picker/plan.json --allow-mutations
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-navigation -p fileatlas-plugin-mcp -j 2
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-folder-fixed --plan docs/validation-ui/2026-10-14-folder-picker/plan.json --allow-mutations
 ```
 
 相关5项测试通过，0失败；包括single in-flight lease/reset及原有目录注册／rescan／remove、Cordis清理测试。Node客户端语法和git diff whitespace检查通过。summary.json保存实测exe SHA256。

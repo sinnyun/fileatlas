@@ -35,7 +35,7 @@ module.exports = async ({ step, delay, profile }) => {
   await invoke('screenshot_window', {}, { capture: 'icon-grid-after-restart' });
   const cacheDir = path.join(profile, 'program-icons');
   const cachedPngs = fs.readdirSync(cacheDir).filter(name => name.endsWith('.png')).length;
-  assert(cachedPngs > 0, 'persistent icon cache files should exist beside the isolated PhoTag profile');
+  assert(cachedPngs > 0, 'persistent icon cache files should exist beside the isolated FileAtlas profile');
   const summary = {
     first_open,
     icon_cache_ready_ms: Date.now() - started,

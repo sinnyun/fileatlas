@@ -9,12 +9,12 @@
 Windows MSVC，Rust 1.97.1；沿用布局参考 `docs/reference-ui/concepts/clipboard-workbench-layout-2026-10-18-v2.png`，本次为局部语义/控件调整。代码图工具连接关闭，使用源码追踪备用路径。
 
 - `cargo +1.97.1 fmt --all -- --check`：通过。
-- `cargo +1.97.1 check --locked -p photag-shell -j 2`：通过。
-- `cargo +1.97.1 test --locked -p photag-plugin-database --lib -j 2`：12 项通过，新增收藏保护/旧数据/重启回归。
-- `cargo +1.97.1 build --locked -p photag-shell -j 2`：链接完成，但正在运行的标准 exe 被 Windows 锁定，输出安装阶段拒绝访问；未结束用户进程。
-- `cargo +1.97.1 rustc --locked -p photag-shell -j 2 --bin photag-shell -- -o target/debug/photag-clipboard-favorites.exe`：通过，使用独立文件完成同进程 MCP 验证。既有 LNK4098 警告，另有显式输出路径相关 rustc 提示。
+- `cargo +1.97.1 check --locked -p fileatlas-shell -j 2`：通过。
+- `cargo +1.97.1 test --locked -p fileatlas-plugin-database --lib -j 2`：12 项通过，新增收藏保护/旧数据/重启回归。
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`：链接完成，但正在运行的标准 exe 被 Windows 锁定，输出安装阶段拒绝访问；未结束用户进程。
+- `cargo +1.97.1 rustc --locked -p fileatlas-shell -j 2 --bin fileatlas-shell -- -o target/debug/fileatlas-clipboard-favorites.exe`：通过，使用独立文件完成同进程 MCP 验证。既有 LNK4098 警告，另有显式输出路径相关 rustc 提示。
 - `node scripts/check-ui-refresh.cjs`、`node scripts/check-architecture.cjs`、`node scripts/check-feature-ledger.cjs`：通过。既有两个无 Cargo.toml 目录警告保留。
-- `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-clipboard-favorites.exe --profile target/mcp-clipboard-favorites-verified --plugins core --scenario scripts/validate-clipboard-favorites.cjs --allow-mutations`：连续运行三次通过。core,dev-test 强制隔离，无系统剪贴板写入或 OS 输入注入。
+- `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-clipboard-favorites.exe --profile target/mcp-clipboard-favorites-verified --plugins core --scenario scripts/validate-clipboard-favorites.cjs --allow-mutations`：连续运行三次通过。core,dev-test 强制隔离，无系统剪贴板写入或 OS 输入注入。
 - 相同客户端，profile `target/mcp-clipboard-favorites-layout`、scenario `scripts/validate-clipboard-workbench.cjs`：91 步通过。
 
 ## 观察与证据

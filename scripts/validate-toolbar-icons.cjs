@@ -1,4 +1,4 @@
-// Real GPUI pointer interaction through same-process PhoTag MCP only.
+// Real GPUI pointer interaction through same-process FileAtlas MCP only.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 module.exports = async ({step, delay, profile}) => {
   const invoke = async (tool, args = {}, extra = {}) => (await step({tool, arguments:args, ...extra})).result;
@@ -20,33 +20,33 @@ module.exports = async ({step, delay, profile}) => {
   fs.writeFileSync(path.join(fixture,'one.txt'),'toolbar fixture');
   fs.writeFileSync(path.join(fixture,'child','two.txt'),'nested toolbar fixture');
   await delay(1300);
-  await invoke('control_gallery',{action:'navigate',value:fixture});
-  let s=await until(s=>s.gallery?.matched_count===1 && !s.browser.worker_active);
+  await invoke('control_file_manager',{action:'navigate',value:fixture});
+  let s=await until(s=>s.file_manager?.matched_count===1 && !s.browser.worker_active);
   const width=s.window_status.geometry.client_size.width;
   // Positions derived from the inspected rendered screenshot, logical client units.
   const right=width-s.inspector_width-18, first=right-240+15, y=81;
   await shot('main');
-  await click(first+34,y); await until(s=>s.gallery.layout==='list'); await shot('list-selected');
-  await click(first,y); await until(s=>s.gallery.layout==='grid');
-  await click(first+68,y); await until(s=>s.browser.show_descendants && s.gallery.matched_count===2 && !s.browser.worker_active);
+  await click(first+34,y); await until(s=>s.file_manager.layout==='list'); await shot('list-selected');
+  await click(first,y); await until(s=>s.file_manager.layout==='grid');
+  await click(first+68,y); await until(s=>s.browser.show_descendants && s.file_manager.matched_count===2 && !s.browser.worker_active);
   await shot('subfolders-selected');
-  await click(first+68,y); await until(s=>!s.browser.show_descendants && s.gallery.matched_count===1 && !s.browser.worker_active);
+  await click(first+68,y); await until(s=>!s.browser.show_descendants && s.file_manager.matched_count===1 && !s.browser.worker_active);
   const sessionFile=path.join(profile,'session.json');
   const before=JSON.parse(fs.readFileSync(sessionFile,'utf8')).thumb_size;
   await click(right-20,y); await delay(350);
   const after=JSON.parse(fs.readFileSync(sessionFile,'utf8')).thumb_size;
   assert.notEqual(after,before,'real relocated slider must change persisted size'); await shot('zoom-larger');
   await ui('pointer_move',`${first},${y}`); await delay(900); await shot('grid-tooltip');
-  await click(width-205,28); await until(s=>s.gallery.search_entire_computer);
+  await click(width-205,28); await until(s=>s.file_manager.search_entire_computer);
   await shot('search-entire-computer');
-  await click(width-205,28); await until(s=>!s.gallery.search_entire_computer);
-  await click(width-169,28); await until(s=>s.gallery.search_scopes_open); await shot('scope-popover');
-  await click(1000,170); await until(s=>!s.gallery.search_scopes_open);
+  await click(width-205,28); await until(s=>!s.file_manager.search_entire_computer);
+  await click(width-169,28); await until(s=>s.file_manager.search_scopes_open); await shot('scope-popover');
+  await click(1000,170); await until(s=>!s.file_manager.search_scopes_open);
   await click(width-62,28); await until(s=>s.tools_open); await shot('tools');
   await click(width-62,28); await until(s=>!s.tools_open);
   await ui('pointer_move','1000,500'); await delay(700);
-  const quiet=(await state()).gallery.snapshot_revision; await delay(900);
-  assert.equal((await state()).gallery.snapshot_revision,quiet);
+  const quiet=(await state()).file_manager.snapshot_revision; await delay(900);
+  assert.equal((await state()).file_manager.snapshot_revision,quiet);
   await invoke('resize_window',{width:1510,height:1000},{wait_ms:600});
   await shot('compact');
   fs.writeFileSync(path.join(profile,'toolbar-summary.json'),JSON.stringify({passed:true,

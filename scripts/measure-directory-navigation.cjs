@@ -9,9 +9,9 @@ module.exports=async({call,payload,delay,profile})=>{
   const key=p=>p?.replace(/^\\\\\?\\/,'').replaceAll('/','\\').replace(/\\$/,'').toLowerCase();
   const samples=[];await delay(1200);
   for(let i=0;i<10;i++){
-    const dest=i%2?a:b,started=performance.now();await invoke('control_gallery',{action:'navigate',value:dest});let addressMs=null,result;
+    const dest=i%2?a:b,started=performance.now();await invoke('control_file_manager',{action:'navigate',value:dest});let addressMs=null,result;
     while(performance.now()-started<10000){const s=await state();if(key(s.sidebar_folders?.address_bar?.path)===key(dest)&&addressMs===null)addressMs=performance.now()-started;
-      if(key(s.gallery?.current_directory)===key(dest)&&!s.browser.status[2]&&(i%2?s.gallery.matched_count===128:s.gallery.directories.length===12)){result={requestToAddressMs:addressMs,requestToContentMs:performance.now()-started,generation:s.browser.status[0]};break;}await delay(5);}
+      if(key(s.file_manager?.current_directory)===key(dest)&&!s.browser.status[2]&&(i%2?s.file_manager.matched_count===128:s.file_manager.directories.length===12)){result={requestToAddressMs:addressMs,requestToContentMs:performance.now()-started,generation:s.browser.status[0]};break;}await delay(5);}
     assert(result,'directory timing timed out');samples.push({iteration:i,directory:path.basename(dest),...result});await delay(250);
   }
   const sorted=samples.map(s=>s.requestToContentMs).sort((a,b)=>a-b),report={samples,medianMs:sorted[5],maxMs:sorted.at(-1),minMs:sorted[0]};

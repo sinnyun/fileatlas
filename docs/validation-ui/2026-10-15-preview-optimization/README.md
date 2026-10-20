@@ -1,8 +1,8 @@
 # 图片打开前三项优化实测（2026-10-15）
 
-已实现：dev PNG/DEFLATE依赖优化；胶片栏复用数据库现有图库缩略图；JPEG超过150ms仍未完整显示才申请一次渐进预览，PNG跳过重复1600px解码。切换/关闭使旧任务失效，完整图绘制后取消渐进任务。
+已实现：dev PNG/DEFLATE依赖优化；胶片栏复用数据库现有文件管理窗口缩略图；JPEG超过150ms仍未完整显示才申请一次渐进预览，PNG跳过重复1600px解码。切换/关闭使旧任务失效，完整图绘制后取消渐进任务。
 
-同进程PhoTag MCP直接添加实际sanli 0515目录，11文件中7张PNG/JPEG各首次打开及重开。每轮启动时使用全新应用缓存，索引完成生成7张图库缩略图后才打开预览。没有清除Windows文件缓存，指纹/扫描会预读文件；这是应用冷缓存，单轮观测而非均值或性能保证。
+同进程FileAtlas MCP直接添加实际sanli 0515目录，11文件中7张PNG/JPEG各首次打开及重开。每轮启动时使用全新应用缓存，索引完成生成7张文件管理窗口缩略图后才打开预览。没有清除Windows文件缓存，指纹/扫描会预读文件；这是应用冷缓存，单轮观测而非均值或性能保证。
 
 | 文件 | 原实现完整图 ms | 仅依赖优化 ms | 三项优化完整图 ms | 三项首帧 ms | 三项重开 ms |
 |---|---:|---:|---:|---:|---:|
@@ -27,15 +27,15 @@ Windows MSVC Rust1.97.1，bounded jobs2，dev profile/incremental；未改releas
 ```powershell
 cargo +1.97.1 fmt --all -- --check
 cargo +1.97.1 test --locked --workspace -j 2
-cargo +1.97.1 test --locked -p photag-plugin-preview -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-preview -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
 node scripts/check-ui-refresh.cjs
-$env:PHOTAG_REAL_FOLDER = 'D:\桌面文件夹\测试 - 副本\sanli 0515'
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-real-preview-final --scenario scripts/validate-real-folder.cjs --allow-mutations
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-preview-final-details-pass --scenario scripts/validate-decode-details.cjs --allow-mutations
+$env:FILEATLAS_REAL_FOLDER = 'D:\桌面文件夹\测试 - 副本\sanli 0515'
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-real-preview-final --scenario scripts/validate-real-folder.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-preview-final-details-pass --scenario scripts/validate-decode-details.cjs --allow-mutations
 ```
 
-重跑使用新的target档案，先写settings.json关闭auto_check_updates并开启show_filmstrip；实际目录脚本拒绝非空图片缓存。包装器设置PHOTAG_MCP_ALLOW_MUTATIONS=1，仅注册测试目录/驱动隔离窗口，不改正常PhoTag数据。
+重跑使用新的target档案，先写settings.json关闭auto_check_updates并开启show_filmstrip；实际目录脚本拒绝非空图片缓存。包装器设置FILEATLAS_MCP_ALLOW_MUTATIONS=1，仅注册测试目录/驱动隔离窗口，不改正常FileAtlas数据。
 
 源码产物和原始MCP报告仅保留于target；用户实际图片截图不复制入版本化文档。
 
@@ -43,7 +43,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 - mcp-real-png-opt-only：d2bea6d50168b3d95715461d58f9d4c2e131b103853ba0351ca2c40f6ffcb44e
 - mcp-real-preview-final：f9100b5476cfb3af60f0b5c2ef7caef62ef0233c1f2e4fcd05569b5afdebc061
 
-最终产物target/debug/photag-shell.exe的SHA256与最后一项相同。原始报告路径为target/<profile>/real-folder-report.json；首轮/重开截图为screenshots/first-target.png、reopen-target.png。
+最终产物target/debug/fileatlas-shell.exe的SHA256与最后一项相同。原始报告路径为target/<profile>/real-folder-report.json；首轮/重开截图为screenshots/first-target.png、reopen-target.png。
 
 ## 回归、界面及边界
 

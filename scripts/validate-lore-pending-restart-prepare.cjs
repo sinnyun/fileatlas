@@ -1,4 +1,4 @@
-// Persist a real merge conflict, then let photag-mcp-debug stop this process.
+// Persist a real merge conflict, then let fileatlas-mcp-debug stop this process.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -26,10 +26,10 @@ module.exports = async ({ call, payload, delay, profile }) => {
   fs.copyFileSync(images.green, file);
   const folder = await invoke('add_folder', { path: fixture, confirm: true });
   assert.equal(folder?.ok, true, JSON.stringify(folder));
-  await invoke('control_gallery', { action: 'navigate', value: fixture });
+  await invoke('control_file_manager', { action: 'navigate', value: fixture });
   await until(async () => {
     const state = await invoke('get_ui_state');
-    return state?.gallery?.matched_count > 0;
+    return state?.file_manager?.matched_count > 0;
   }, 'fixture scan');
   const found = await invoke('search_media', { limit: 100, sort: 'name_asc' });
   const media = found?.items?.find(item => item.filename === 'pending-merge.png');

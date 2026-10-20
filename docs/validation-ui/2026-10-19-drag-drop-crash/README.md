@@ -1,16 +1,16 @@
-# PhoTag Windows file drag-out refactor
+# FileAtlas Windows file drag-out refactor
 
 ## Reference behavior and diagnosis
 
-PhoTag's pinned reference implementation is in
+FileAtlas's pinned reference implementation is in
 `vendor/photag-source/src/drag.rs` and
 `vendor/photag-source/src/ui/gallery.rs`. It creates a Shell `CF_HDROP`
 `IDataObject`, allows copy only, and starts `DoDragDrop` synchronously from the
-Gallery card's `drag_started` callback. Gallery supplies every selected file
+FileManager card's `drag_started` callback. FileManager supplies every selected file
 when the grabbed card is already selected; otherwise it supplies only the
 grabbed file. This source is the behavioral contract for payload and selection.
 
-The observed PhoTag crash dump resolves through `DoDragDrop` into the GPUI
+The observed FileAtlas crash dump resolves through `DoDragDrop` into the GPUI
 Windows window procedure, whose panic boundary calls `std::process::abort`.
 Calling OLE directly from the card callback leaves that callback in the window
 message dispatch stack while `DoDragDrop` runs its nested message loop. A
@@ -33,7 +33,7 @@ as a working drag and is superseded by this refactor.
   platform formats and drag image, but does not solve GPUI callback timing.
 - Winit's Windows backend stores a pending drag in event-loop state; the
   framework owns when the platform drag starts. This reinforces that timing
-  and message-loop integration must be handled by PhoTag's adapter.
+  and message-loop integration must be handled by FileAtlas's adapter.
 - ZenDesktop documents a separate approach for native Windows drag behavior:
   mouse capture/`WM_MOUSEMOVE` for its own inter-fence movement and OLE for
   Explorer interoperability. It is a useful native-app reference, but not a
@@ -43,7 +43,7 @@ as a working drag and is superseded by this refactor.
 
 ## Refactor
 
-- Gallery retains its existing GPUI card gesture and selected-path behavior.
+- FileManager retains its existing GPUI card gesture and selected-path behavior.
 - `DragDropService` snapshots the source window handle and selected paths,
   then posts a request to a temporary message-only window on the current UI
   thread. The card callback returns before Windows starts OLE.
@@ -72,8 +72,8 @@ as a working drag and is superseded by this refactor.
   window. It is separate from our preview bitmap decoding, so the fallback
   image change should not be described as fixing that message. Whether it
   affects a target application's import needs separate reproduction.
-- Rust 1.97.1 formatting, locked offline checks for drag-drop/Gallery/MCP, and
-  the locked offline PhoTag Shell build passed. The user confirmed the prior
+- Rust 1.97.1 formatting, locked offline checks for drag-drop/FileManager/MCP, and
+  the locked offline FileAtlas Shell build passed. The user confirmed the prior
   drag implementation successfully starts a drag and transfers files to
   other windows. The new preview-size/fallback appearance still needs visual
   confirmation during an actual Windows drag; MCP synthetic pointer events do
@@ -89,21 +89,21 @@ confirmation after this visual change.
 ## Verification record
 
 - `cargo +1.97.1 fmt --all -- --check` — passed.
-- `cargo +1.97.1 check --locked --offline -j 2 -p photag-plugin-drag-drop
-  -p photag-plugin-gallery -p photag-plugin-mcp` — passed.
-- `cargo +1.97.1 build --locked --offline -j 2 -p photag-shell` — passed.
+- `cargo +1.97.1 check --locked --offline -j 2 -p fileatlas-plugin-drag-drop
+  -p fileatlas-plugin-file-manager -p fileatlas-plugin-mcp` — passed.
+- `cargo +1.97.1 build --locked --offline -j 2 -p fileatlas-shell` — passed.
 - `node scripts/check-ui-refresh.cjs`, `check-architecture.cjs`,
   `check-feature-ledger.cjs`, and `check-ui-theme.cjs` — passed. Architecture
   baseline includes the MCP diagnostic service edge; the checker still prints
   two pre-existing orphan-directory notices for playback and preview.
-- Same-process PhoTag MCP launched the rebuilt shell with isolated profile
+- Same-process FileAtlas MCP launched the rebuilt shell with isolated profile
   `target/mcp-drag-rewrite` and `dev-test`. `get_ui_state` confirmed the two
   fixture images were loaded, the main window was visible and not hung, and
   `drag_drop` began at `idle`. Synthetic MCP `pointer_down` / `pointer_drag`
   left `drag_drop` at `idle`; that input did not enter the native file drag
   path. The window remained visible and responsive. This is not evidence of a
   successful operating-system drag.
-- The initial MCP window and loaded fixture gallery are captured in
+- The initial MCP window and loaded fixture file_manager are captured in
   [main-window-mcp.png](../../../.local/validation/artifacts/2026-10-19-drag-drop-crash/main-window-mcp.png) and
   [main-window-worker-thread.png](../../../.local/validation/artifacts/2026-10-19-drag-drop-crash/main-window-worker-thread.png).
 - Explorer/desktop delivery, target-program import, long hold, cancellation,

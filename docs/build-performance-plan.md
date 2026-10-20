@@ -2,7 +2,7 @@
 
 ## 目标与适用范围
 
-本文记录 PhoTag Rust workspace 的构建提速方案，供后续开发和 CI 调整时按证据逐项评估。项目是 Windows 桌面应用，使用 GPUI/GPUI Kit、Cordis 和 14 个 workspace crate；不是 Rust WASM 网页应用。优化目标分为：
+本文记录 FileAtlas Rust workspace 的构建提速方案，供后续开发和 CI 调整时按证据逐项评估。项目是 Windows 桌面应用，使用 GPUI/GPUI Kit、Cordis 和 14 个 workspace crate；不是 Rust WASM 网页应用。优化目标分为：
 
 1. 缩短源码修改后的本地反馈时间。
 2. 缩短 CI 冷构建和重复构建时间。
@@ -15,10 +15,10 @@
 
 - **本机工具链前置规则**：默认 Rust 1.94.1 低于项目要求，但已安装可用的 1.96.0/1.97.1。先运行 `rustup toolchain list`，本机统一使用 `cargo +1.97.1 ...`；下文通用 `cargo` 命令在本机执行时均需加此工具链选择。版本拦截不能作为构建性能或代码编译结果。详见[工具链说明](rust-toolchain.md)。
 
-- 根 `Cargo.toml` 将 `photag-shell` 设为 `default-members`，日常根目录 `cargo check` 只选择 shell 及其依赖图；Shell 会带入注册的插件。
+- 根 `Cargo.toml` 将 `fileatlas-shell` 设为 `default-members`，日常根目录 `cargo check` 只选择 shell 及其依赖图；Shell 会带入注册的插件。
 - `[profile.dev]` 已设置 `debug = 0`、`incremental = true`。`codegen-units` 未设置，沿用 Cargo 开发 profile 默认值（当前默认 256）。
 - `[profile.release]` 使用 `opt-level = 3`、`lto = "thin"`、`codegen-units = 1`；这是发布优化配置，不适合作为日常迭代构建。
-- `.github/workflows/rust-checks.yml` 已使用 `Swatinem/rust-cache@v2`，设置 `CARGO_INCREMENTAL=1`、`CARGO_BUILD_JOBS=2`、`CARGO_PROFILE_DEV_DEBUG=0`，并运行格式检查及 `cargo check -p photag-shell --locked`。
+- `.github/workflows/rust-checks.yml` 已使用 `Swatinem/rust-cache@v2`，设置 `CARGO_INCREMENTAL=1`、`CARGO_BUILD_JOBS=2`、`CARGO_PROFILE_DEV_DEBUG=0`，并运行格式检查及 `cargo check -p fileatlas-shell --locked`。
 - workspace 有多个 GPUI 相关 crate；修改 shell 或公共 crate 时，下游重编译可能覆盖增量编译带来的收益。
 - 已有 validation report 的云端验证包含 Linux 编译结果；Windows MSVC GUI/链接行为仍须在 Windows 工具链上测量。
 
@@ -35,9 +35,9 @@
 **建议命令**
 
 ```powershell
-cargo check -p photag-shell --locked --timings
-cargo check -p photag-plugin-gallery --locked --timings
-cargo build -p photag-shell --locked --timings
+cargo check -p fileatlas-shell --locked --timings
+cargo check -p fileatlas-plugin-file-manager --locked --timings
+cargo build -p fileatlas-shell --locked --timings
 ```
 
 完整 `cargo build` 用于评估产物生成和链接，不作为每次编辑后的默认检查。保留 `target/cargo-timings/` 报告用于前后对比；每项实验一次只改变一个变量。
@@ -46,16 +46,16 @@ cargo build -p photag-shell --locked --timings
 
 **动作**
 
-- 日常先使用 `cargo check -p <当前 crate>`；需要检查应用集成时使用 `cargo check -p photag-shell`。
+- 日常先使用 `cargo check -p <当前 crate>`；需要检查应用集成时使用 `cargo check -p fileatlas-shell`。
 - 保留 `[profile.dev] incremental = true` 和 `debug = 0` 作为当前快速编译基线。`debug = 0` 会减少调试信息；若需要更好的本机调试体验，再单独比较 `debug = "line-tables-only"` 的耗时、磁盘占用及调试器体验。
 - 迭代时避免 `--release`；release profile 的 LTO 和单 codegen unit 会增加构建工作量。
-- 保留 workspace `default-members = ["crates/photag-shell"]`；它已让根目录命令面向主应用，而非默认构建所有成员。
+- 保留 workspace `default-members = ["crates/fileatlas-shell"]`；它已让根目录命令面向主应用，而非默认构建所有成员。
 
 **命令参考**
 
 ```powershell
-cargo check -p photag-plugin-gallery --locked
-cargo check -p photag-shell --locked
+cargo check -p fileatlas-plugin-file-manager --locked
+cargo check -p fileatlas-shell --locked
 ```
 
 Cargo 增量编译主要帮助 workspace 成员和 path dependency 的后续重编译；依赖接口或 feature 配置变化仍可能使多个 crate 重编。增量缓存放在 Cargo 构建目录中，清理 `target` 会丢失它。
@@ -65,7 +65,7 @@ Cargo 增量编译主要帮助 workspace 成员和 path dependency 的后续重�
 **候选工具**
 
 - `rust-analyzer`：编辑器内持续提供诊断和语义信息，通常是首选反馈方式。
-- `bacon`：可监视源码并持续运行指定 Cargo 命令，例如 `bacon -- cargo check -p photag-shell`；适合偏好终端界面的开发者。
+- `bacon`：可监视源码并持续运行指定 Cargo 命令，例如 `bacon -- cargo check -p fileatlas-shell`；适合偏好终端界面的开发者。
 - `cargo-watch`：类似的文件监视器，可重跑 Cargo 命令；与 bacon 功能重叠，按个人工作流选一个即可。
 
 这些工具自动触发 Cargo 检查，不替代 Cargo 增量编译，也不提供 GPUI 应用的 Rust 模块热替换。首次检查仍需编译依赖。
@@ -97,7 +97,7 @@ CI 已使用 `Swatinem/rust-cache` 缓存 Cargo/target 内容。先观察连续 
 **动作与工具**
 
 - 若 timings 显示某个 Rust crate 本身的编译/codegen 时间突出，可用 `cargo-llvm-lines` 检查泛型单态化是否过多；它用于定位代码生成规模，不会自动优化，也不能完整代表所有依赖的成本。
-- 用 `cargo tree -e features -p photag-shell` 检查实际构建的依赖 feature；只有发现未使用且明显昂贵的 feature，才评估 `default-features = false` 或可选依赖。共享依赖的 feature 会合并，需核对完整依赖图及功能兼容性。
+- 用 `cargo tree -e features -p fileatlas-shell` 检查实际构建的依赖 feature；只有发现未使用且明显昂贵的 feature，才评估 `default-features = false` 或可选依赖。共享依赖的 feature 会合并，需核对完整依赖图及功能兼容性。
 - workspace 继续保持插件公共接口稳定，避免无关插件频繁依赖变化的公共 crate。新 crate 拆分只在能形成稳定依赖边界且实测减少重编时采用，避免为提速而增加过度碎片化。
 - `cargo-hakari` 可在大型 workspace 中生成 workspace-hack crate，统一共享依赖的 feature 集合，减少同一依赖因不同 feature 集合而重复编译。当前先通过 timings/依赖构建信息确认存在重复编译，再评估引入；它会增加生成文件和维护流程。
 
@@ -107,7 +107,7 @@ CI 已使用 `Swatinem/rust-cache` 缓存 Cargo/target 内容。先观察连续 
 
 ## 不适用于本项目的建议
 
-- **Trunk、`cargo-leptos`、Dioxus CLI**：服务于各自的 WASM/web 工作流，PhoTag 当前是 GPUI Windows 桌面应用。
+- **Trunk、`cargo-leptos`、Dioxus CLI**：服务于各自的 WASM/web 工作流，FileAtlas 当前是 GPUI Windows 桌面应用。
 - **Linux `mold`、macOS `zld`**：不是当前 Windows MSVC 目标的链接器方案；现有 Linux CI 也不是交付 Windows 桌面二进制的链接验证。
 - **`-C link-arg=-fuse-ld=lld` 的 MSVC 示例**：链接器参数风格不匹配，不能原样采用。
 - **`[profile.dev.package."*"] opt-level = 2`**：目的是提高开发运行时依赖的执行速度，通常会增加依赖编译时间；只有明确以运行性能换编译时间并测量收益时才考虑。
@@ -127,10 +127,10 @@ CI 已使用 `Swatinem/rust-cache` 缓存 Cargo/target 内容。先观察连续 
 
 - 本机为 Windows MSVC，`rustc 1.96.0`；当前默认 `stable` 是 1.94.1，低于 workspace 声明的 1.95，故须显式使用已安装的 `+1.96.0` 工具链。未修改 MSRV。
 - `cargo +1.96.0 fmt --all -- --check` 通过。
-- 按 CI 的增量编译、2 个 build jobs、关闭 dev debug 设置运行 `cargo +1.96.0 check -p photag-shell --locked --timings`：完整依赖图首次编译用时 2 分 54 秒，检查通过。报告：`target/cargo-timings/cargo-timing-20261012T155111622Z-0de67308caf8ada2.html`。
+- 按 CI 的增量编译、2 个 build jobs、关闭 dev debug 设置运行 `cargo +1.96.0 check -p fileatlas-shell --locked --timings`：完整依赖图首次编译用时 2 分 54 秒，检查通过。报告：`target/cargo-timings/cargo-timing-20261012T155111622Z-0de67308caf8ada2.html`。
 - 无源码变化时重复运行同一检查：Cargo 报告 1.26 秒，PowerShell 外层计时 1.42 秒；作为当前本机热构建基线。
 - 首次检查覆盖 681 个 dirty units，包括 GPUI、图像/文本依赖和所有 Shell 插件。数据说明当前冷构建主要成本来自首次编译完整依赖图；热检查反馈已较快。由于验证只运行 `cargo check`，并未构建最终二进制，尚无链接阶段数据，暂不采纳 Windows linker 改动。
-- 首次报告中最长的单元是 `windows 0.62.2 (check)`，39.43 秒；其后是 `gpui-pre 0.3.8` 9.58 秒、`gpui-component 0.7.2` 8.76 秒及多个 Windows/GPUI 依赖。`cargo tree -e features -i windows@0.62.2 -p photag-shell --locked` 显示 Windows API feature 由 `gpui-pre`/`gpui-pre-platform` 的 Windows 后端引入，并经 GPUI Kit 进入 shell。当前应用没有直接控制这些 feature 的安全开关；需要先确认 GPUI 上游可裁剪范围和功能覆盖，再决定是否改。
+- 首次报告中最长的单元是 `windows 0.62.2 (check)`，39.43 秒；其后是 `gpui-pre 0.3.8` 9.58 秒、`gpui-component 0.7.2` 8.76 秒及多个 Windows/GPUI 依赖。`cargo tree -e features -i windows@0.62.2 -p fileatlas-shell --locked` 显示 Windows API feature 由 `gpui-pre`/`gpui-pre-platform` 的 Windows 后端引入，并经 GPUI Kit 进入 shell。当前应用没有直接控制这些 feature 的安全开关；需要先确认 GPUI 上游可裁剪范围和功能覆盖，再决定是否改。
 - 编译期间有现存警告：session/settings 的 `ServicePublication` 未使用，以及 metadata-export 的 `FluentBuilder` 未使用。它们未使检查失败；需在对应代码变更中按生命周期语义处理，不作为本次性能调整。
 - 直接使用默认 Rust 1.94.1 执行 Shell 检查时，Cargo 因 workspace `rust-version = 1.95` 在编译前拒绝。以后本机验证继续使用满足 MSRV 的工具链。
 

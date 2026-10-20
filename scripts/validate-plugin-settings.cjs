@@ -24,19 +24,19 @@ module.exports = async ({ call, payload, step, delay, output }) => {
   assert.equal(current.settings_tab, 'plugins');
   assert.equal(current.settings_plugins.runtime.length, 3);
   const ids = current.settings_plugins.runtime.map(item => item.id).sort();
-  assert.deepEqual(ids, ['photag.clipboard', 'photag.launcher', 'photag.screenshot']);
+  assert.deepEqual(ids, ['fileatlas.clipboard', 'fileatlas.launcher', 'fileatlas.screenshot']);
   await step({ tool: 'get_ui_state', capture: 'plugins-overview' });
 
-  await control('settings_plugin_page', 'photag.launcher');
+  await control('settings_plugin_page', 'fileatlas.launcher');
   await delay(250);
   current = await state();
   assert.equal(current.settings_tab, 'plugin');
-  assert.equal(current.settings_plugin_id, 'photag.launcher');
+  assert.equal(current.settings_plugin_id, 'fileatlas.launcher');
   await step({ tool: 'get_ui_state', capture: 'launcher-settings' });
 
-  await control('plugin_launch_mode', 'photag.launcher:panel');
+  await control('plugin_launch_mode', 'fileatlas.launcher:panel');
   current = await state();
-  assert.equal(current.settings_plugins.launch_modes['photag.launcher'], 'PanelOnly');
+  assert.equal(current.settings_plugins.launch_modes['fileatlas.launcher'], 'PanelOnly');
   await command('program-launcher/open');
   await delay(350);
   current = await state();
@@ -45,10 +45,10 @@ module.exports = async ({ call, payload, step, delay, output }) => {
   await step({ tool: 'get_ui_state', capture: 'launcher-panel-only' });
   const launcherPanel = current.open_panel_ids.find(id => id.startsWith('program-launcher/panel@'));
   await control('panel_close', launcherPanel);
-  await control('plugin_launch_mode', 'photag.launcher:workspace');
+  await control('plugin_launch_mode', 'fileatlas.launcher:workspace');
 
-  await control('plugin_enabled', 'photag.clipboard:off');
-  current = await waitForPlugin('photag.clipboard', false);
+  await control('plugin_enabled', 'fileatlas.clipboard:off');
+  current = await waitForPlugin('fileatlas.clipboard', false);
   let commands = payload(await call('command_list'));
   assert.ok(!commands.commands.some(item => item.id === 'clipboard-workbench/open'));
   assert.ok(!current.sidebar_plugin_buttons.some(item => item.id === 'clipboard-workbench/sidebar-button-view'));
@@ -58,25 +58,25 @@ module.exports = async ({ call, payload, step, delay, output }) => {
   await step({ tool: 'get_ui_state', capture: 'clipboard-disabled-sidebar' });
   await control('settings_open');
   await delay(350);
-  await control('plugin_enabled', 'photag.clipboard:on');
-  current = await waitForPlugin('photag.clipboard', true);
+  await control('plugin_enabled', 'fileatlas.clipboard:on');
+  current = await waitForPlugin('fileatlas.clipboard', true);
   commands = payload(await call('command_list'));
   assert.ok(commands.commands.some(item => item.id === 'clipboard-workbench/open'));
   assert.ok(current.sidebar_plugin_buttons.some(item => item.id === 'clipboard-workbench/sidebar-button-view'));
   await step({ tool: 'get_ui_state', capture: 'plugins-restored' });
 
-  await control('settings_plugin_page', 'photag.screenshot');
+  await control('settings_plugin_page', 'fileatlas.screenshot');
   await delay(900);
   current = await state();
-  assert.equal(current.settings_plugin_id, 'photag.screenshot');
-  assert.equal(current.settings_plugins.launch_modes['photag.screenshot'] ?? 'Direct', 'Direct');
+  assert.equal(current.settings_plugin_id, 'fileatlas.screenshot');
+  assert.equal(current.settings_plugins.launch_modes['fileatlas.screenshot'] ?? 'Direct', 'Direct');
   await step({ tool: 'get_ui_state', capture: 'screenshot-settings' });
 
   await control('settings_close');
   current = await state();
   assert.equal(current.settings_open, false);
-  await control('plugin_enabled', 'photag.clipboard:off');
-  current = await waitForPlugin('photag.clipboard', false);
+  await control('plugin_enabled', 'fileatlas.clipboard:off');
+  current = await waitForPlugin('fileatlas.clipboard', false);
   await delay(1500);
   current = await state();
   assert.ok(!current.sidebar_folders.plugin_buttons.includes('clipboard-workbench/sidebar-button-view'));
@@ -86,8 +86,8 @@ module.exports = async ({ call, payload, step, delay, output }) => {
     launcher_panel_presentation: 'panel-only',
     clipboard_stop_start: 'passed',
     sidebar_buttons_while_clipboard_stopped: disabledSidebarButtons,
-    final_clipboard_enabled: current.settings_plugins.runtime.find(item => item.id === 'photag.clipboard').enabled,
-    screenshot_default: current.settings_plugins.launch_modes['photag.screenshot'],
+    final_clipboard_enabled: current.settings_plugins.runtime.find(item => item.id === 'fileatlas.clipboard').enabled,
+    screenshot_default: current.settings_plugins.launch_modes['fileatlas.screenshot'],
     final_runtime: current.settings_plugins.runtime,
   }, null, 2));
 };

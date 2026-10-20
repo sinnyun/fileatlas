@@ -13,7 +13,7 @@
 新 MCP 测试直接使用默认目录：
 
 ```powershell
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile .local/validation/profiles/<run-name> --plugins dev-test --access-level standard --scenario scripts/<scenario>.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile .local/validation/profiles/<run-name> --plugins dev-test --access-level standard --scenario scripts/<scenario>.cjs
 ```
 
 不再省略 `--profile` 时会写到 `.local/validation/profiles/mcp-handoff`。

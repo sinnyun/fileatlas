@@ -1,0 +1,48 @@
+[package]
+name = "fileatlas-plugin-file-manager"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+fileatlas-plugin-ai = { path = "../fileatlas-plugin-ai" }
+fileatlas-plugin-watcher = { path = "../fileatlas-plugin-watcher" }
+tracing.workspace = true
+fileatlas-plugin-navigation = { path = "../fileatlas-plugin-navigation" }
+fileatlas-plugin-grouping = { path = "../fileatlas-plugin-grouping" }
+cordis.workspace = true
+gpui-kit.workspace = true
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+tokio.workspace = true
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-everything-search = { path = "../fileatlas-plugin-everything-search" }
+fileatlas-plugin-indexing = { path = "../fileatlas-plugin-indexing" }
+fileatlas-plugin-drag-drop = { path = "../fileatlas-plugin-drag-drop" }
+fileatlas-plugin-file-operations = { path = "../fileatlas-plugin-file-operations" }
+rfd = { version = "0.15", default-features = false }
+fileatlas-plugin-history = { path = "../fileatlas-plugin-history" }
+fileatlas-plugin-versions = { path = "../fileatlas-plugin-versions" }
+fileatlas-plugin-quicklook = { path = "../fileatlas-plugin-quicklook" }
+fileatlas-plugin-session = { path = "../fileatlas-plugin-session" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-plugin-workspaces = { path = "../fileatlas-plugin-workspaces" }
+fileatlas-plugin-columns = { path = "../fileatlas-plugin-columns" }
+fileatlas-plugin-tagging = { path = "../fileatlas-plugin-tagging" }
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+serde.workspace = true
+serde_json.workspace = true
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+thiserror = "2"
+chrono = "0.4"
+image = "0.25"
+kamadak-exif = "0.6.1"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+fileatlas-plugin-version-info = { path = "../fileatlas-plugin-version-info" }
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database", features = ["test-api"] }
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+rusqlite = { version = "0.31", features = ["bundled"] }

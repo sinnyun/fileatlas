@@ -18,13 +18,13 @@ module.exports = async ({step, delay, profile}) => {
   for (const tab of ['appearance','shortcuts','tags','ai','updates','software','plugins']) {
     await ui('settings_tab',tab); await delay(400); await shot(tab);
   }
-  for (const id of ['photag.launcher','photag.clipboard','photag.screenshot']) {
+  for (const id of ['fileatlas.launcher','fileatlas.clipboard','fileatlas.screenshot']) {
     await ui('settings_plugin_page',id); await delay(400); await shot(id.split('.')[1]);
   }
   const before = await state();
   await delay(1200);
   const after = await state();
-  assert.equal(after.gallery.snapshot_revision,before.gallery.snapshot_revision);
+  assert.equal(after.file_manager.snapshot_revision,before.file_manager.snapshot_revision);
   assert.equal(after.settings_render_count,before.settings_render_count,"settled Settings must not repaint on timer wakes");
   assert.deepEqual(after.settings_tag_choices,before.settings_tag_choices);
   await invoke('resize_window',{width:1510,height:1000},{wait_ms:500});

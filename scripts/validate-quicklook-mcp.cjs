@@ -1,4 +1,4 @@
-// Application input and screenshots use the same-process PhoTag MCP only.
+// Application input and screenshots use the same-process FileAtlas MCP only.
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 const {execFileSync} = require('node:child_process');
 module.exports = async ({call, payload, delay, profile, root, output, request}) => {
@@ -15,16 +15,16 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
   async function until(test) { let s; for(let n=0;n<100;n++){s=await state();if(test(s))return s;await delay(100);} throw Error('Timed out: '+JSON.stringify(s)); }
   async function capture(name) { const r=await call('screenshot_window');for(const b of r.content??[])if(b.type==='image')fs.writeFileSync(path.join(output,name+'.png'),Buffer.from(b.data,'base64')); }
   const fixture=path.join(profile,'原始文件 空间-'+Date.now());fs.mkdirSync(fixture,{recursive:true});
-  fs.copyFileSync(path.join(root,'test-data/photag-library/01-small/small.png'),path.join(fixture,'01 图片 & $原图.png'));
-  fs.copyFileSync(path.join(root,'test-data/photag-library/04-no-thumbnail/sample.wav'),path.join(fixture,'02 声音.wav'));
+  fs.copyFileSync(path.join(root,'test-data/fileatlas-fixtures/01-small/small.png'),path.join(fixture,'01 图片 & $原图.png'));
+  fs.copyFileSync(path.join(root,'test-data/fileatlas-fixtures/04-no-thumbnail/sample.wav'),path.join(fixture,'02 声音.wav'));
   // Generate an actual video fixture, without launching a second application UI.
   execFileSync('ffmpeg',['-y','-f','lavfi','-i','color=c=blue:s=160x90:d=1','-c:v','libx264','-pix_fmt','yuv420p',path.join(fixture,'03 视频.mp4')],{stdio:'ignore',windowsHide:true});
   fs.writeFileSync(path.join(fixture,'04 文本.txt'),'QuickLook integration fixture');
   await invoke('add_folder',{path:fixture,confirm:true});
   await delay(1500);
-  await invoke('control_gallery',{action:'navigate',value:fixture});
-  await until(s=>s.gallery?.matched_count===4&&!s.browser.status[2]);
-  await invoke('control_gallery',{action:'sort',value:'name_asc'});
+  await invoke('control_file_manager',{action:'navigate',value:fixture});
+  await until(s=>s.file_manager?.matched_count===4&&!s.browser.status[2]);
+  await invoke('control_file_manager',{action:'sort',value:'name_asc'});
   await delay(500);
   const tools=(await request('tools/list',{})).tools.map(t=>t.name);
   assert(!tools.includes('control_preview'));assert(!tools.includes('control_playback'));
@@ -34,7 +34,7 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
   const items=found.items.filter(item=>normal(item.full_path).startsWith(normal(fixture)));assert.equal(items.length,4);
   report.items=items.map(({id,filename,media_type,thumb_path})=>({id,filename,media_type,thumb_path}));save();
   assert(items.find(item=>item.media_type==='image')?.thumb_path);
-  await capture('gallery-preserved');
+  await capture('file_manager-preserved');
   const privilege=await inspectViewer();
   const dispatched=['pipe_toggle_sent'];
   const latencies=[];
@@ -50,18 +50,18 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
     const entry={media_type,outcome,dispatch_ms:dispatchMs,window_ms:windowMs,viewer_stem:stem};
     latencies.push(entry);save();return entry;
   }
-  // PhoTag sends requests only: with QuickLook closed it must prompt, never start it.
+  // FileAtlas sends requests only: with QuickLook closed it must prompt, never start it.
   if(!privilege.pipe_probe?.instance_listening) {
     await invoke('control_ui',{action:'select_media',value:String(items[0].id)});
     await delay(200);
     const t0=Date.now();
-    await invoke('control_gallery',{action:'preview',media_id:items[0].id});
+    await invoke('control_file_manager',{action:'preview',media_id:items[0].id});
     const s=await until(x=>x.quicklook.error?.includes('not responding'));
     const elapsedMs=Date.now()-t0;
     assert(s.quicklook_notice,'the failed request raised no GPUI alert');
     assert(!s.open_panel_ids.some(id=>id.includes('preview')||id.includes('playback')));
     const observed=await inspectViewer();
-    assert(!observed.windows?.length,'PhoTag opened a viewer although QuickLook is closed');
+    assert(!observed.windows?.length,'FileAtlas opened a viewer although QuickLook is closed');
     assert.equal(observed.pipe_probe.instance_listening,false);
     report.not_running={elapsed_ms:elapsedMs,notice:s.quicklook_notice,dispatch:s.quicklook,windows:observed.windows};
     await capture('quicklook-not-running-alert');
@@ -84,7 +84,7 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
     await invoke('control_ui',{action:'select_media',value:String(item.id)});
     await delay(200);
     const t0=Date.now();
-    await invoke('control_gallery',{action:'preview',media_id:item.id});
+    await invoke('control_file_manager',{action:'preview',media_id:item.id});
     if(privilege.higher_integrity_process){
       const s=await until(s=>s.quicklook.path===item.full_path&&s.quicklook.error?.includes('running as administrator'));
       assert(s.quicklook_notice?.includes('管理员身份'));
@@ -107,17 +107,17 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
       report.quicklook_window_checks.at(-1).windows_after_render=afterRender.windows??[];
       const capture=await captureViewer('quicklook-'+item.media_type);
       assert(!capture.isError);
-      report.cases.push('Gallery dispatches '+item.media_type+' and a visible QuickLook window is captured');
+      report.cases.push('FileManager dispatches '+item.media_type+' and a visible QuickLook window is captured');
     }
     save();
     await delay(500);
   }
   // Toggle the last shown file again so the Space press starts from a closed viewer.
   if((await inspectViewer()).windows?.length){
-    await invoke('control_gallery',{action:'preview',media_id:items.at(-1).id});
+    await invoke('control_file_manager',{action:'preview',media_id:items.at(-1).id});
     for(let n=0;n<60&&(await inspectViewer()).windows?.length;n++)await delay(100);
   }
-  // Put focus on the first gallery card through real GPUI pointer dispatch.
+  // Put focus on the first file_manager card through real GPUI pointer dispatch.
   for(const action of ['pointer_down','pointer_up']) {
     await invoke('control_ui',{action,value:'340,180'});await delay(200);
   }
@@ -138,16 +138,16 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
   }
   // Quiet reads must not launch or repeatedly access the external viewer.
   await delay(1000);
-  const before=await invoke('get_debug_info',{search:'photag_plugin_quicklook',page_size:100});
+  const before=await invoke('get_debug_info',{search:'fileatlas_plugin_quicklook',page_size:100});
   const settled=await state();await delay(1500);const after=await state();
-  const logsAfter=await invoke('get_debug_info',{search:'photag_plugin_quicklook',page_size:100});
+  const logsAfter=await invoke('get_debug_info',{search:'fileatlas_plugin_quicklook',page_size:100});
   assert.deepEqual(after.quicklook,settled.quicklook);
   assert.deepEqual(logsAfter.logs,before.logs);
   report.cases.push('settled viewer state and QuickLook action logs remain unchanged during passive reads');
   const original=path.join(fixture,items[0].filename), parked=path.join(profile,'parked-original.png');
   fs.renameSync(original,parked);
   try {
-    await invoke('control_gallery',{action:'preview',media_id:items[0].id});
+    await invoke('control_file_manager',{action:'preview',media_id:items[0].id});
     await until(s=>s.quicklook.error==='The selected file no longer exists.'&&s.quicklook_notice);
     await delay(300);await capture('missing-original-alert');
     report.cases.push('removed original reports a translated GPUI alert instead of opening a viewer');
@@ -162,9 +162,9 @@ module.exports = async ({call, payload, delay, profile, root, output, request}) 
   // Close whatever the run left on screen so a finished check owns no viewer window.
   if((await inspectViewer()).windows?.length){
     await invoke('control_ui',{action:'select_media',value:String(items[0].id)});
-    await invoke('control_gallery',{action:'preview',media_id:items[0].id});
+    await invoke('control_file_manager',{action:'preview',media_id:items[0].id});
     for(let n=0;n<60&&(await inspectViewer()).windows?.length;n++)await delay(100);
-    report.cases.push('the run closes its own QuickLook window again through Gallery');
+    report.cases.push('the run closes its own QuickLook window again through FileManager');
   }
   report.final=await state();report.finished=new Date().toISOString();save();
   console.log(JSON.stringify({cases:report.cases,fixture,latencies,privilege:privilege.higher_integrity_process??null,quietLogs:[before.logs.retained,logsAfter.logs.retained]}));

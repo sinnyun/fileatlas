@@ -1,12 +1,12 @@
 [
   {"tool":"get_ui_state","until":{"field":"library_refresh.running","equals":false,"attempts":60,"interval_ms":500}},
-  {"tool":"get_ui_state","until":{"field":"gallery.matched_count","at_least":0,"attempts":60,"interval_ms":500}},
+  {"tool":"get_ui_state","until":{"field":"file_manager.matched_count","at_least":0,"attempts":60,"interval_ms":500}},
   {"tool":"dev_test_inject_virtual","arguments":{"count":1000},"wait_ms":250},
   {"tool":"dev_test_status","until":{"field":"running","equals":false,"attempts":60,"interval_ms":500}},
-  {"tool":"get_ui_state","until":{"field":"gallery.matched_count","at_least":1000,"attempts":60,"interval_ms":500}},
+  {"tool":"get_ui_state","until":{"field":"file_manager.matched_count","at_least":1000,"attempts":60,"interval_ms":500}},
   {"tool":"search_media","arguments":{"offset":999,"limit":1}},
   {"tool":"control_debug","arguments":{"action":"clear"},"wait_ms":200},
-  {"tool":"control_gallery","arguments":{"action":"select_many","media_ids":[1]},"wait_ms":1000},
+  {"tool":"control_file_manager","arguments":{"action":"select_many","media_ids":[1]},"wait_ms":1000},
   {"tool":"get_ui_state","capture":"inspector-selected-async"},
   {"tool":"get_debug_info","arguments":{"page_size":200},"wait_ms":2500},
   {"tool":"get_debug_info","arguments":{"page_size":200},"wait_ms":2500}

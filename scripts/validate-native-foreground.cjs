@@ -4,7 +4,7 @@ module.exports = async ({step,delay,profile,processId}) => {
  const ui=(action,value)=>run("control_ui",{action,...(value===undefined?{}:{value})},{wait_ms:300});
  await step({tool:"get_ui_state",until:{field:"main_window_status.valid",equals:true,attempts:60,interval_ms:300}});
  await ui("window_select","main"); await ui("window_minimize");
- for(const [owner,command] of [["photag.clipboard","clipboard-workbench/open"],["photag.launcher","program-launcher/open"],["photag.screenshot","screenshot-tool/open-manager"]]) {
+ for(const [owner,command] of [["fileatlas.clipboard","clipboard-workbench/open"],["fileatlas.launcher","program-launcher/open"],["fileatlas.screenshot","screenshot-tool/open-manager"]]) {
    await ui("plugin_launch_mode",`${owner}:panel`);
    await run("command_run",{command_id:command},{wait_ms:650});
    let s=await run("get_ui_state");const panel=s.native_panels[0];

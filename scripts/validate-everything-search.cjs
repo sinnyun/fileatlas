@@ -1,4 +1,4 @@
-// Same-process PhoTag MCP verification for the Everything SDK provider.
+// Same-process FileAtlas MCP verification for the Everything SDK provider.
 // All database/settings state is isolated under target/profile.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,33 +20,33 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
   let initialUi;
   for (let attempt = 0; attempt < 30; attempt++) {
     initialUi = await invoke('get_ui_state', {}, false);
-    if (initialUi.window_status?.valid && initialUi.gallery) break;
+    if (initialUi.window_status?.valid && initialUi.file_manager) break;
     await delay(200);
   }
-  assert(initialUi.window_status?.valid && initialUi.gallery, JSON.stringify(initialUi));
-  report.cases.push('same-process PhoTag window and Gallery view are ready');
+  assert(initialUi.window_status?.valid && initialUi.file_manager, JSON.stringify(initialUi));
+  report.cases.push('same-process FileAtlas window and FileManager view are ready');
 
   const initialLibrary = await invoke('list_library');
   // One user search must recover automatically when a newly started client
   // finishes its initial index, without sending repeated search requests.
-  await invoke('control_gallery', { action: 'search', value: 'small.png' });
+  await invoke('control_file_manager', { action: 'search', value: 'small.png' });
   let indexedUi;
   let bootstrapKey;
   for (let attempt = 0; attempt < 600; attempt++) {
     indexedUi = await invoke('get_ui_state', {}, false);
-    const nextKey = JSON.stringify([indexedUi.gallery?.search_provider, indexedUi.gallery?.matched_count, indexedUi.gallery?.everything]);
+    const nextKey = JSON.stringify([indexedUi.file_manager?.search_provider, indexedUi.file_manager?.matched_count, indexedUi.file_manager?.everything]);
     if (nextKey !== bootstrapKey) {
       bootstrapKey = nextKey;
-      report.bootstrap_state = { provider: indexedUi.gallery?.search_provider, count: indexedUi.gallery?.matched_count, everything: indexedUi.gallery?.everything };
+      report.bootstrap_state = { provider: indexedUi.file_manager?.search_provider, count: indexedUi.file_manager?.matched_count, everything: indexedUi.file_manager?.everything };
       fs.writeFileSync(path.join(profile, 'everything-search-report.json'), JSON.stringify(report, null, 2));
       console.log(JSON.stringify({ bootstrap: report.bootstrap_state }));
     }
-    if (indexedUi.gallery?.everything?.index_loading) report.bootstrap_loading_observed = true;
-    if (indexedUi.gallery?.search_provider === 'everything' && indexedUi.gallery.matched_count > 0) break;
+    if (indexedUi.file_manager?.everything?.index_loading) report.bootstrap_loading_observed = true;
+    if (indexedUi.file_manager?.search_provider === 'everything' && indexedUi.file_manager.matched_count > 0) break;
     await delay(500);
   }
-  assert.equal(indexedUi.gallery?.search_provider, 'everything', JSON.stringify(indexedUi));
-  assert(indexedUi.gallery.matched_count > 0);
+  assert.equal(indexedUi.file_manager?.search_provider, 'everything', JSON.stringify(indexedUi));
+  assert(indexedUi.file_manager.matched_count > 0);
   const bootstrap = await invoke('search_media', { search: 'small.png', limit: 10 });
   await invoke('get_ui_state');
   assert.equal(bootstrap.search_provider, 'everything', JSON.stringify(bootstrap));
@@ -75,13 +75,13 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
   assert(items?.some(item => item.full_path.toLowerCase().endsWith('small.png')), JSON.stringify(search));
   report.cases.push('search_media returned small.png through real Everything SDK IPC');
 
-  // The new files live in a child directory that PhoTag never browses/scans.
+  // The new files live in a child directory that FileAtlas never browses/scans.
   // A cache-only SQL search cannot discover them.
   const fixture = path.join(profile, 'everything-fixture');
   const unvisited = path.join(fixture, 'unvisited');
   fs.mkdirSync(unvisited, { recursive: true });
   const probe = '!EverythingNative_搜索 [1].png';
-  fs.copyFileSync(path.join(root, 'test-data/photag-library/01-small/small.png'), path.join(unvisited, probe));
+  fs.copyFileSync(path.join(root, 'test-data/fileatlas-fixtures/01-small/small.png'), path.join(unvisited, probe));
   for (const suffix of ['alpha', 'beta']) {
     fs.writeFileSync(path.join(unvisited, `!EverythingNative_${suffix}.txt`), suffix);
   }
@@ -114,49 +114,49 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
 
   await invoke('control_navigation', { action: 'all' });
   await delay(250);
-  await invoke('control_gallery', { action: 'search', value: probe });
+  await invoke('control_file_manager', { action: 'search', value: probe });
   let searchUi;
   for (let attempt = 0; attempt < 60; attempt++) {
     searchUi = await invoke('get_ui_state', {}, false);
-    if (searchUi.gallery?.search === probe && searchUi.gallery.matched_count === 1 && searchUi.gallery.search_provider === 'everything') break;
+    if (searchUi.file_manager?.search === probe && searchUi.file_manager.matched_count === 1 && searchUi.file_manager.search_provider === 'everything') break;
     await delay(100);
   }
-  assert.equal(searchUi.gallery?.search, probe, JSON.stringify(searchUi));
-  assert.equal(searchUi.gallery?.matched_count, 1, JSON.stringify(searchUi));
-  assert.equal(searchUi.gallery?.search_provider, 'everything');
+  assert.equal(searchUi.file_manager?.search, probe, JSON.stringify(searchUi));
+  assert.equal(searchUi.file_manager?.matched_count, 1, JSON.stringify(searchUi));
+  assert.equal(searchUi.file_manager?.search_provider, 'everything');
   await delay(1000);
   const settled = await invoke('get_ui_state');
   await delay(1200);
   const quiet = await invoke('get_ui_state');
-  assert.equal(quiet.gallery.snapshot_revision, settled.gallery.snapshot_revision, 'quiet search must not reload repeatedly');
+  assert.equal(quiet.file_manager.snapshot_revision, settled.file_manager.snapshot_revision, 'quiet search must not reload repeatedly');
   report.cases.push('live top search renders real Everything result and remains quiet while idle');
 
-  await invoke('control_gallery', { action: 'search_scopes_open', enabled: true });
-  let gallery;
+  await invoke('control_file_manager', { action: 'search_scopes_open', enabled: true });
+  let file_manager;
   for (let attempt = 0; attempt < 20; attempt++) {
-    gallery = await invoke('get_ui_state', {}, false);
-    if (gallery.gallery?.search_scopes_open) break;
+    file_manager = await invoke('get_ui_state', {}, false);
+    if (file_manager.file_manager?.search_scopes_open) break;
     await delay(100);
   }
-  assert.equal(gallery.gallery?.search_scopes_open, true, JSON.stringify(gallery));
-  assert.equal(gallery.gallery.search_scopes.time, true, JSON.stringify(gallery));
+  assert.equal(file_manager.file_manager?.search_scopes_open, true, JSON.stringify(file_manager));
+  assert.equal(file_manager.file_manager.search_scopes.time, true, JSON.stringify(file_manager));
   await delay(350);
   const scopeScreenshot = await call('screenshot_window');
   const scopeImage = scopeScreenshot.content.find(item => item.type === 'image');
   assert(scopeImage, 'MCP scope screenshot returned no image');
   fs.writeFileSync(path.join(output, 'everything-search-scopes.png'), Buffer.from(scopeImage.data, 'base64'));
   report.search_scope_screenshot = path.join(output, 'everything-search-scopes.png');
-  await invoke('control_gallery', { action: 'search_scope', value: 'time' });
+  await invoke('control_file_manager', { action: 'search_scope', value: 'time' });
   for (let attempt = 0; attempt < 20; attempt++) {
-    gallery = await invoke('get_ui_state', {}, false);
-    if (gallery.gallery?.search_scopes?.time === false) break;
+    file_manager = await invoke('get_ui_state', {}, false);
+    if (file_manager.file_manager?.search_scopes?.time === false) break;
     await delay(100);
   }
-  assert.equal(gallery.gallery?.search_scopes?.time, false, JSON.stringify(gallery));
-  await invoke('control_gallery', { action: 'search_scope', value: 'time' });
+  assert.equal(file_manager.file_manager?.search_scopes?.time, false, JSON.stringify(file_manager));
+  await invoke('control_file_manager', { action: 'search_scope', value: 'time' });
   report.cases.push('search scope popover opens and time scope can be toggled and restored');
 
-  await invoke('control_gallery', { action: 'search_scopes_open', enabled: false });
+  await invoke('control_file_manager', { action: 'search_scopes_open', enabled: false });
   await invoke('control_ui', { action: 'settings_open' });
   await invoke('control_ui', { action: 'settings_tab', value: 'software' });
   let software;
@@ -174,7 +174,7 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
   assert(image, 'MCP screenshot returned no image');
   fs.writeFileSync(path.join(output, 'everything-settings-software.png'), Buffer.from(image.data, 'base64'));
   report.screenshot = path.join(output, 'everything-settings-software.png');
-  report.final = { search_provider: software.gallery.search_provider, settings_software_check: software.settings_software_check };
+  report.final = { search_provider: software.file_manager.search_provider, settings_software_check: software.settings_software_check };
   fs.writeFileSync(path.join(profile, 'everything-search-report.json'), JSON.stringify(report, null, 2));
   return report;
 };

@@ -44,7 +44,7 @@
 
 ## 4. 同进程 MCP 对照，修正后再验收
 
-通过 `scripts/photag-mcp-debug.cjs` 启动 `photag-shell --mcp`，使用隔离的 dev-test profile。
+通过 `scripts/fileatlas-mcp-debug.cjs` 启动 `fileatlas-shell --mcp`，使用隔离的 dev-test profile。
 实际点击可见控件进入状态，拍摄正常页、录入页、真实冲突/错误和小窗口，检查内容末尾。
 状态 API 和断言用于证明行为；图片必须另外打开并与参考图逐项对照。
 编译成功、截图文件存在、JSON 状态正确都不等于视觉通过。
@@ -63,7 +63,7 @@
 截图、完整 MCP 报告、日志、profile 与 fixture 放到 Git 忽略的
 `.local/validation/artifacts/<日期-功能>/`、`.local/validation/profiles/<运行名>/`。
 脚本可提交，运行产生的数据不能提交。Markdown 可以指向同路径的本地 artifact，
-并需写明完整报告/截图的本机位置。默认使用 `scripts/photag-mcp-debug.cjs` 的
+并需写明完整报告/截图的本机位置。默认使用 `scripts/fileatlas-mcp-debug.cjs` 的
 `.local/validation/profiles/`，不要将新产物写进 `docs/validation-ui/` 或 `target/`。
 在 `docs/redesign-validation.md` 链接相应的人类可读 Markdown 结论。至少包含：
 

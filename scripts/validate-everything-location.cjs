@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 
 module.exports = async ({ call, payload, delay, profile, output }) => {
   const invoke = async (tool, args = {}) => payload(await call(tool, args));
-  const token = `PhoTagDomain${Date.now()}`;
+  const token = `FileAtlasDomain${Date.now()}`;
   const folder = path.join(profile, 'search-location', 'selected');
   const outside = path.join(profile, 'search-location', 'selected-sibling');
   fs.mkdirSync(path.join(folder, 'nested'), { recursive: true });
@@ -23,7 +23,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
       await delay(150);
     }
     save();
-    assert.fail(`${description}: ${JSON.stringify(state.gallery)}`);
+    assert.fail(`${description}: ${JSON.stringify(state.file_manager)}`);
   };
   const capture = async name => {
     await delay(250);
@@ -32,26 +32,26 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     assert(image);
     fs.writeFileSync(path.join(output, `${name}.png`), Buffer.from(image.data, 'base64'));
   };
-  await wait(state => state.window_status?.valid && state.gallery, 'window ready');
-  await invoke('control_gallery', { action: 'search', value: '' });
+  await wait(state => state.window_status?.valid && state.file_manager, 'window ready');
+  await invoke('control_file_manager', { action: 'search', value: '' });
   await delay(200);
-  await invoke('control_gallery', { action: 'search_entire_computer', enabled: false });
+  await invoke('control_file_manager', { action: 'search_entire_computer', enabled: false });
   await delay(200);
-  await invoke('control_gallery', { action: 'navigate', value: folder });
-  await wait(state => state.gallery?.current_directory?.replace(/^\\\\\?\\/, '') === folder, 'directory navigation');
-  await invoke('control_gallery', { action: 'show_descendants', enabled: false });
+  await invoke('control_file_manager', { action: 'navigate', value: folder });
+  await wait(state => state.file_manager?.current_directory?.replace(/^\\\\\?\\/, '') === folder, 'directory navigation');
+  await invoke('control_file_manager', { action: 'show_descendants', enabled: false });
   await delay(1000);
-  await invoke('control_gallery', { action: 'search', value: token });
-  const local = await wait(state => state.gallery?.search === token && state.gallery.search_provider === 'everything' && state.gallery.matched_count === 2, 'current folder search includes nested file');
-  assert.equal(local.gallery.search_entire_computer, false);
+  await invoke('control_file_manager', { action: 'search', value: token });
+  const local = await wait(state => state.file_manager?.search === token && state.file_manager.search_provider === 'everything' && state.file_manager.matched_count === 2, 'current folder search includes nested file');
+  assert.equal(local.file_manager.search_entire_computer, false);
   report.cases.push('Current folder searches direct and nested files while excluding the sibling folder; Show subfolders is off');
-  report.snapshots.push(local.gallery);
+  report.snapshots.push(local.file_manager);
   save();
   await capture('current-folder');
-  await invoke('control_gallery', { action: 'search_entire_computer', enabled: true });
-  const global = await wait(state => state.gallery?.search_entire_computer && state.gallery.search_provider === 'everything' && state.gallery.matched_count === 3, 'entire computer discovers unregistered sibling');
+  await invoke('control_file_manager', { action: 'search_entire_computer', enabled: true });
+  const global = await wait(state => state.file_manager?.search_entire_computer && state.file_manager.search_provider === 'everything' && state.file_manager.matched_count === 3, 'entire computer discovers unregistered sibling');
   report.cases.push('Entire computer finds all three real indexed files, including an unregistered sibling directory');
-  report.snapshots.push(global.gallery);
+  report.snapshots.push(global.file_manager);
   save();
   await capture('entire-computer');
   // The switch center was measured on the preceding 3286x1831 same-process
@@ -61,18 +61,18 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   await invoke('control_ui', { action: 'pointer_down', value: point });
   await delay(100);
   await invoke('control_ui', { action: 'pointer_up', value: point });
-  await wait(state => !state.gallery?.search_entire_computer && state.gallery.matched_count === 2, 'actual switch click restores current folder');
+  await wait(state => !state.file_manager?.search_entire_computer && state.file_manager.matched_count === 2, 'actual switch click restores current folder');
   await delay(900);
   const quiet1 = await invoke('get_ui_state');
   await delay(1200);
   const quiet2 = await invoke('get_ui_state');
-  assert.equal(quiet1.gallery.snapshot_revision, quiet2.gallery.snapshot_revision);
+  assert.equal(quiet1.file_manager.snapshot_revision, quiet2.file_manager.snapshot_revision);
   report.cases.push('Actual GPUI button click switches back to two local hits; quiet state does not refresh');
-  await invoke('control_gallery', { action: 'search', value: '' });
-  await wait(state => state.gallery?.browsing && state.gallery.current_directory?.replace(/^\\\\\?\\/, '') === folder, 'clearing search restores directory browser');
+  await invoke('control_file_manager', { action: 'search', value: '' });
+  await wait(state => state.file_manager?.browsing && state.file_manager.current_directory?.replace(/^\\\\\?\\/, '') === folder, 'clearing search restores directory browser');
   report.cases.push('Clearing search restores original directory browsing');
-  await invoke('control_gallery', { action: 'search_entire_computer', enabled: true });
-  await wait(state => state.gallery?.search_entire_computer, 'save global preference');
+  await invoke('control_file_manager', { action: 'search_entire_computer', enabled: true });
+  await wait(state => state.file_manager?.search_entire_computer, 'save global preference');
   const settings = JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8'));
   assert.equal(settings.search_entire_computer, true);
   report.cases.push('Search location is persisted in isolated settings');

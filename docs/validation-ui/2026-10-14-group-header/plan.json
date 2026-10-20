@@ -12,7 +12,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "grid"
@@ -20,7 +20,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "file_type"
@@ -62,7 +62,7 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.collapsed_groups",
+      "field": "file_manager.collapsed_groups",
       "equals": [
         "PDF"
       ]
@@ -70,7 +70,7 @@
     "capture": "header-collapsed"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"
@@ -82,7 +82,7 @@
     "capture": "header-list"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "modified"

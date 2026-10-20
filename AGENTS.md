@@ -1,27 +1,29 @@
-# PhoTag workspace instructions
+# FileAtlas workspace instructions
 
 ## Status
 
-### Development baseline and current phase (PhoTag 0.2, 2026-10-19)
+### Development baseline and current phase (FileAtlas 0.2, 2026-10-19)
 
-The current project definition is PhoTag 0.2, baseline
+The current project definition is FileAtlas 0.2, baseline
 `dev-baseline-0.2-2026-10-19`. This is a project-development baseline, not the
 Cargo/application release version (still `0.1.0`). Read
 `docs/development-baseline-0.2-2026-10-19.md` and
 `docs/development-baseline-2026-10-14.md` (historical layout baseline) together
 with `docs/functional-development-plan.md` before continuing. The current phase is **functional operation
 optimization and feature development**, not continued wholesale UI redesign.
-Preserve the PhoTag 0.2 layout and plugin architecture unless the user requests
+Preserve the FileAtlas 0.2 layout and plugin architecture unless the user requests
 a change or a feature needs a targeted update. The accepted multi-column and
 program-workspace behavior is recorded in the 0.2 baseline and its validation
 evidence; the October 14 document is historical context, not the current
 complete layout specification.
-The product direction is a personal all-purpose workbench for the user's own
-use: preserve the photo library as a completed core capability while adding
-distinct, optional capabilities as compile-time Cordis feature plugins. Future
-plugins may serve unrelated needs and may integrate scripts, links, or suitable
-open-source libraries; do not assume a fixed product category or that every
-proposed idea will be built.
+FileAtlas is a personal Windows file browser and workbench manager. File browsing,
+directory navigation, multi-column workspaces and program workspace management
+are the product's primary purpose. Media indexing, thumbnails, tags and preview
+are integrated capabilities of its file-management workspace. Add distinct,
+optional capabilities as compile-time Cordis feature plugins. Future plugins may
+serve unrelated needs and may integrate scripts, links, or suitable open-source
+libraries; do not assume a fixed product category or that every proposed idea
+will be built.
 
 **Automatic continuation:** when the user says “continue” without naming a
 section, advance the first incomplete F0–F3 item in the functional development
@@ -37,12 +39,12 @@ current work. Carry remaining unverified operations into F0; do not call them
 passed merely because the layout was accepted. See
 `docs/redesign-validation.md` for current evidence. Static checks use the
 installed Rust1.97.1; live debugging, input and screenshots use same-process
-PhoTag MCP with isolated test profiles. The client is
-`scripts/photag-mcp-debug.cjs`.
+FileAtlas MCP with isolated test profiles. The client is
+`scripts/fileatlas-mcp-debug.cjs`.
 
 Automatic startup update offers remain suppressed; explicit manual checks and
 installation remain available. The current complete main-window definition is
-PhoTag 0.2 in `docs/development-baseline-0.2-2026-10-19.md`; its active
+FileAtlas 0.2 in `docs/development-baseline-0.2-2026-10-19.md`; its active
 multi-column visual reference is
 `docs/reference-ui/concepts/multi-column-workspaces-2026-10-19.png` plus its
 companion notes. The October 14 sidebar/preview image remains the reference for
@@ -65,7 +67,7 @@ written.
 - `cordis-rs` owns plugin lifecycle, typed services, events, dependencies, and
   cleanup. Do not build a parallel plugin manager.
 - GPUI and GPUI Kit own native GUI rendering. Do not add egui to the new app.
-- `photag-shell` is only startup, runtime construction, and top-level app
+- `fileatlas-shell` is only startup, runtime construction, and top-level app
   composition. Product behavior belongs to compile-time feature crates.
 - The personal workbench grows through independent compile-time feature
   plugins. Most feature UIs should reuse the existing generic floating-panel
@@ -77,7 +79,7 @@ written.
   This does not imply dynamic DLL loading or an external plugin store.
 - For every new feature, plan its persistence format from that feature's data shape:
   use a versioned JSON file for modest, whole-document settings/manifests/history;
-  use the shared `photag-plugin-database` SQLite service for growing/query-heavy,
+  use the shared `fileatlas-plugin-database` SQLite service for growing/query-heavy,
   relational, concurrent or transactional data. Keep large binary assets in separate
   feature-owned files and reference them from structured records. Record the choice,
   data paths, migration and recovery behavior in the feature PORTS.md, following
@@ -85,19 +87,24 @@ written.
   plugin always needs SQLite or that each plugin should build a new storage framework.
 - Feature UI contributions (layout/dock/panel/slot/widget/command/menu/keymap)
   must have lifecycle ownership and be removed on plugin stop.
-- `photag-ui-bridge` is the shared UI registration contract, metadata catalog,
+- `fileatlas-ui-bridge` is the shared UI registration contract, metadata catalog,
   executable GPUI view-factory catalog, and Cordis-owned cleanup boundary.
-- `photag-plugin-database` owns the source-compatible SQLite data layer. Keep
+- `fileatlas-plugin-database` owns the source-compatible SQLite data layer. Keep
   all DB access behind its Cordis service as the redesign proceeds.
-- `photag-plugin-thumbnails` retains PhoTag image thumbnail/cache generation.
-- `photag-plugin-indexing` owns recursive scanning and thumbnail backfill; its
+- `fileatlas-plugin-thumbnails` retains FileAtlas image thumbnail/cache generation.
+- `fileatlas-plugin-indexing` owns recursive scanning and thumbnail backfill; its
   service is the public entry point for scan progress/cancellation streams. Its
   current regression test uses a synthetic image and paired video poster; it
   does not establish Windows behavior or full media-format coverage.
-- `photag-plugin-watcher` owns registered-folder notifications and database
+- `fileatlas-plugin-watcher` owns registered-folder notifications and database
   reconciliation. Keep its 800 ms debounce and bounded event/path processing;
   native event delivery and filesystem race behavior still need Windows tests.
-- `photag-plugin-gallery` ports the source skeleton/window data model, paints
+- `fileatlas-plugin-file-manager` owns the primary file-management window and
+  workbench content view. It owns directory/file browsing, filtering, selection,
+  view state and integrated media-specific actions. Its package identity, Cordis
+  service ID, MCP names and runtime view keys use the file-manager naming
+  consistently.
+  It ports the source skeleton/window data model, paints
   cached image thumbnails, pages records in 200-row batches, and supports
   selection, ratings, keyboard navigation, filters, grouping, rubber-band
   selection, named tag filters, hierarchical tag assignment, settings/session
@@ -107,49 +114,49 @@ written.
   file viewing is handed to the user's running QuickLook. Record platform and
   interaction coverage from the linked MCP evidence; do not describe all
   Windows paths as either verified or unverified as a group.
-- `photag-plugin-columns` owns the active single/dual/quad layout state and
-  toolbar contribution. Shell composes the views; Gallery owns each pane's
+- `fileatlas-plugin-columns` owns the active single/dual/quad layout state and
+  toolbar contribution. Shell composes the views; FileManager owns each pane's
   browsing behavior. Shared filter/view controls target the active pane.
-- `photag-plugin-workspaces` owns the versioned JSON program-workspace list,
+- `fileatlas-plugin-workspaces` owns the versioned JSON program-workspace list,
   default selection and manager UI. It saves startup layout and each pane's
   browsing/view configuration, not media rows. Its normal path is
-  `%LOCALAPPDATA%\\PhoTag\\workspaces\\workspaces.json`; dev-test can supply
+  `%LOCALAPPDATA%\\FileAtlas\\workspaces\\workspaces.json`; dev-test can supply
   an isolated profile path.
-- `photag-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
+- `fileatlas-plugin-navigation` preserves sidebar folder/tag tree data, lazy-loads
   nested directories, coordinates folder add/rescan/remove, scanner
   cancellation and watcher registration, emits Cordis selection events, and
   provides native folder picking, tag editing menus, drag placement, and
   persisted expansion. Main-window folder/tag selection is routed to the
-  currently active Gallery pane. Check per-flow validation notes for native
+  currently active FileManager pane. Check per-flow validation notes for native
   picker, watcher and platform-specific coverage.
-- `photag-plugin-tagging` owns media/tag assignments and association/merge/
-  reparent commands through source database queries. It reuses PhoTag's XMP/
+- `fileatlas-plugin-tagging` owns media/tag assignments and association/merge/
+  reparent commands through source database queries. It reuses FileAtlas's XMP/
   IPTC writer, schedules metadata rewrites after mutations, and exposes
-  writeback failures for retry or dismissal in Gallery. Temporary-media tests
+  writeback failures for retry or dismissal in FileManager. Temporary-media tests
   cover IPTC/XMP updates, timestamps, writeback failures and queue coalescing;
   real camera/editor interoperability remains unverified.
-- `photag-plugin-settings` and `photag-plugin-session` preserve the source JSON
+- `fileatlas-plugin-settings` and `fileatlas-plugin-session` preserve the source JSON
   models and paths as Cordis services. Settings controls and active-view state
   restore/save paths are integrated; their panels are rebuilt on the current
   design while keeping these persisted models compatible.
-- `photag-plugin-metadata-export` wraps PhoTag's complete metadata query and
+- `fileatlas-plugin-metadata-export` wraps FileAtlas's complete metadata query and
   JSON writer. Its command, native JSON save dialog, progress, result, and
   error feedback are integrated; Windows interaction remains unverified.
-- `photag-plugin-file-operations` preserves source single/bulk file and
+- `fileatlas-plugin-file-operations` preserves source single/bulk file and
   database operation order and emits `MediaIndexChanged` after row mutations.
-  Gallery integrates destination/confirmation dialogs, bulk actions and
+  FileManager integrates destination/confirmation dialogs, bulk actions and
   selection repair; QuickLook is the external file-view handoff. Native Windows
   behavior remains subject to the specific validation evidence.
-- `photag-plugin-quicklook` sends a request to an already-running user-owned
-  QuickLook instance. PhoTag does not start, install, update or terminate it.
-- `photag-plugin-versions` and `photag-plugin-version-info` provide Lore-backed
+- `fileatlas-plugin-quicklook` sends a request to an already-running user-owned
+  QuickLook instance. FileAtlas does not start, install, update or terminate it.
+- `fileatlas-plugin-versions` and `fileatlas-plugin-version-info` provide Lore-backed
   per-file version history and persisted version metadata through the shared
   database service. This is distinct from global undo/redo.
-- `photag-plugin-dev-test` is opt-in development tooling, not product behavior.
-  It scans `test-data/photag-library` through the production Indexing service
+- `fileatlas-plugin-dev-test` is opt-in development tooling, not product behavior.
+  It scans `test-data/fileatlas-fixtures` through the production Indexing service
   and seeds up to 100,000 virtual rows in an isolated DB. Its profile must keep
-  the normal PhoTag DB, settings, session and thumbnail cache untouched.
-- Reuse the pinned PhoTag implementation and data semantics for backend
+  the normal FileAtlas DB, settings, session and thumbnail cache untouched.
+- Reuse the pinned PhoTag upstream implementation and data semantics for backend
   behavior. Never replace working behavior with placeholder behavior, and never
   report partial coverage as complete.
 - This is a personal-use workbench. There is no project-wide allowlist or
@@ -178,14 +185,14 @@ written.
 
 - Global styling follows the clipboard-v2-derived workbench theme. Before UI work,
   read `docs/ui-theme.md` and its active concept/checklist. `GPUI Kit Theme` owns all resolved colors and component states;
-  `photag-ui-bridge::theme` owns the native theme gateway and product geometry;
+  `fileatlas-ui-bridge::theme` owns the native theme gateway and product geometry;
   `components` owns shared cards/navigation/actions/headings, and `panels` owns
   floating chrome. Reuse these public facilities; do not add plugin-local palettes,
   hardcoded paint colors or independent Theme updates. Preserve feature-specific
   layout and existing Settings/Session geometry persistence. Run
   `node scripts/check-ui-theme.cjs` alongside the other governance checks, and
   verify default/changed accent, selected/hover/focus/disabled and small-window
-  states through same-process PhoTag MCP. Full developer rules: `docs/ui-theme.md`.
+  states through same-process FileAtlas MCP. Full developer rules: `docs/ui-theme.md`.
 
 - Before any interface change, read `docs/ui-reference-workflow.md` and resolve
   the active screen reference in `docs/reference-ui/README.md`. Open the actual
@@ -216,10 +223,10 @@ written.
   Save project-relevant concepts under `docs/reference-ui/concepts/` and record
   the concept used in the validation notes. Treat generated images as visual
   direction, not pixel measurements or product data. After implementation,
-  compare a same-process PhoTag MCP screenshot with the concept, refine visible
+  compare a same-process FileAtlas MCP screenshot with the concept, refine visible
   mismatches, and record the result and remaining gaps. Small local tweaks do
   not need a new concept unless the user asks for one.
-- Preserve SQLite schema and existing `%LOCALAPPDATA%\\PhoTag` files unless a
+- Preserve SQLite schema and existing `%LOCALAPPDATA%\\FileAtlas` files unless a
   tested compatibility migration is supplied.
 - Keep Rust files below 500 lines where practical and below 800 lines.
 - Plugins communicate through public contracts; avoid cross-plugin private
@@ -239,7 +246,7 @@ they select the old default and fail before checking the project.
 - Use the installed `1.97.1-x86_64-pc-windows-msvc` explicitly here:
   `cargo +1.97.1 ...`, including fmt, check, build, test, run, clippy and tree.
 - Keep `--locked`, bounded jobs (`-j 2` for builds/tests) and incremental settings.
-- If a running PhoTag process prevents overwriting the target EXE, the user
+- If a running FileAtlas process prevents overwriting the target EXE, the user
   explicitly authorizes closing that process and rebuilding the normal EXE.
   Verify its executable path belongs to this workspace, close it normally first,
   and terminate only that verified process if it does not exit. Do not ask again.
@@ -280,24 +287,24 @@ history. Keep each crate's `PORTS.md` aligned with observed behavior and public
 signatures.
 
 For live debugging, runtime tests, and interface/interaction verification,
-**always use the project's PhoTag MCP plugin directly**. This is the required
+**always use the project's FileAtlas MCP plugin directly**. This is the required
 workflow, not an optional fallback. Do not substitute generic computer-use,
 OS mouse/keyboard injection, or a separately launched application for plugin
 MCP debugging. Cargo fmt/check/build/test remain required static/build and
 automated regression checks; they do not replace live MCP verification.
 
 For live validation configure the MCP client to launch
-`photag-shell --mcp` as an isolated stdio child, then use its tools to read the running window, library,
+`fileatlas-shell --mcp` as an isolated stdio child, then use its tools to read the running window, library,
 media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
 The MCP server and GPUI window share that child process; it cannot attach to a
-separately launched PhoTag process. Use an isolated `dev-test` profile for
-fixture scans and virtual rows. Consult `crates/photag-plugin-mcp/PORTS.md` for
+separately launched FileAtlas process. Use an isolated `dev-test` profile for
+fixture scans and virtual rows. Consult `crates/fileatlas-plugin-mcp/PORTS.md` for
 the tool list and startup diagnostics. MCP access is controlled by Settings →
 Plugin settings → MCP → AI control: Off is read-only, Standard permits UI
 control and ordinary mutations, and Full permits plugin-declared high-impact
 tools. High-impact calls still require per-call `confirm=true`. New profiles
 default to Off; isolated validation may set a profile's `mcp_access_level` to
-the minimum stage needed. Do not use the retired `PHOTAG_MCP_ALLOW_MUTATIONS`
+the minimum stage needed. Do not use the retired `FILEATLAS_MCP_ALLOW_MUTATIONS`
 environment variable as an authorization mechanism.
 
 All generated test data, intermediate MCP reports, logs and runtime screenshots
@@ -313,7 +320,7 @@ verification summary in Markdown instead. Existing `target/` profiles are legacy
 new validation runs must use `.local/validation/profiles/`.
 
 If a required interaction or state is not exposed by the plugin, inspect and
-extend the PhoTag MCP public tools and their PORTS.md as part of the debugging
+extend the FileAtlas MCP public tools and their PORTS.md as part of the debugging
 work, then test through those tools. If MCP startup or access is blocked,
 record the exact blocker and leave the affected runtime path unverified;
 do not silently switch to generic UI automation or claim runtime coverage.
@@ -326,7 +333,7 @@ that all behavior is complete.
 
 ## UI refresh and passive read ownership (2026-10-15)
 
-- All GPUI timer-driven model/view polling uses `photag_ui_bridge::refresh::poll`.
+- All GPUI timer-driven model/view polling uses `fileatlas_ui_bridge::refresh::poll`.
   Return `PollResult` with actual changes; a timer wake, empty receiver, or an
   operation merely remaining active is not a reason to notify. Finite workers
   use `PollResult::until(changed, active)` so completion stops the timer.

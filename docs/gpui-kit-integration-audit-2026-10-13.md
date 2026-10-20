@@ -27,20 +27,20 @@ gpui-kit0.7.1、gpui-base0.7.2、gpui-component0.7.2、gpui-kit-assets0.7.2、gp
 | 项目 | 证据 |
 |---|---|
 | 单一应用入口依赖 | Cargo.toml:44 精确声明 gpui-kit =0.7.1，GUI crate 使用 workspace 依赖；未在新应用 Cargo manifest 中引入 egui/eframe |
-| 正确平台与初始化顺序 | photag-shell/src/main.rs:444-446 使用 application → init → shared theme |
+| 正确平台与初始化顺序 | fileatlas-shell/src/main.rs:444-446 使用 application → init → shared theme |
 | Root 自动包装 | main.rs:479 使用 Kit open_window；实际 Kit lib.rs 的实现创建 base::Root，不能误判项目“缺少 Root” |
-| 使用真实组件 | Gallery Input/InputState、DatePicker；Navigation DropdownMenu/PopupMenuItem；Playback Slider/SliderState；Settings/Preview/Button/Input |
-| 保留状态与订阅 | Gallery/Navigation 输入状态为 Entity，Playback 订阅存在 _playhead_subscription/_volume_subscription/_speed_subscription 字段，未在每次 render 重建 |
-| 共享主题 | photag-ui-bridge/src/theme.rs:151-188 设置 Theme::global_mut 的字体、表面、文本、primary 等 |
+| 使用真实组件 | FileManager Input/InputState、DatePicker；Navigation DropdownMenu/PopupMenuItem；Playback Slider/SliderState；Settings/Preview/Button/Input |
+| 保留状态与订阅 | FileManager/Navigation 输入状态为 Entity，Playback 订阅存在 _playhead_subscription/_volume_subscription/_speed_subscription 字段，未在每次 render 重建 |
+| 共享主题 | fileatlas-ui-bridge/src/theme.rs:151-188 设置 Theme::global_mut 的字体、表面、文本、primary 等 |
 | Cordis 所有权 | UiBridge 的目录与视图注册配合 plugin disposal；本次3项现有测试通过 |
 
-GPUI Kit 官方允许以 gpui-base 加自定义展示构建设计系统。Gallery 的 Div/canvas、自绘范围滑块和自定义层本身不是错误，也不要求为了使用 Kit 而全部改为现成组件。
+GPUI Kit 官方允许以 gpui-base 加自定义展示构建设计系统。FileManager 的 Div/canvas、自绘范围滑块和自定义层本身不是错误，也不要求为了使用 Kit 而全部改为现成组件。
 
 ## 明确发现
 
 ### P2：组件 SVG 资产未注册
 
-位置：crates/photag-shell/src/main.rs:444。
+位置：crates/fileatlas-shell/src/main.rs:444。
 
 application() 后直接 run，没有 with_assets；全项目源码未找到其他 AssetSource 注册。实际平台 application() 创建 GPUI Application，默认资产源为 Arc::new(())。Kit init() 初始化组件/Root，未注册 SVG 资产。
 
@@ -59,15 +59,15 @@ gpui_kit::application()
 
 ### P2：运行时强调色只更新自绘 token
 
-位置：crates/photag-plugin-settings/src/view.rs:257-293；crates/photag-ui-bridge/src/theme.rs:151-188,266-274。
+位置：crates/fileatlas-plugin-settings/src/view.rs:257-293；crates/fileatlas-ui-bridge/src/theme.rs:151-188,266-274。
 
 Settings edit 成功后调用 set_accent_name；后者只写入 AtomicU32。apply_components 只在 Shell 启动时调用一次。Theme::global_mut 中的 primary/accent/selection 保留旧颜色，自绘 token 与原生组件主题会分离。Settings 的 cx.notify() 也不等于重新设置 Theme。
 
-建议在 GPUI UI 上下文内统一更新 Kit Theme 中的强调色相关字段，并刷新需要的窗口/视图；沿用共享 UI Bridge 主题边界，避免每个插件独立设置颜色。验证切换颜色后 DatePicker、菜单、Slider 与 Gallery 高亮一致，且重启持久化正确。
+建议在 GPUI UI 上下文内统一更新 Kit Theme 中的强调色相关字段，并刷新需要的窗口/视图；沿用共享 UI Bridge 主题边界，避免每个插件独立设置颜色。验证切换颜色后 DatePicker、菜单、Slider 与 FileManager 高亮一致，且重启持久化正确。
 
 ## 完善项与证据边界
 
-- 自绘缩略图/评分滑块：gallery/src/view/sliders.rs:46-126 只有鼠标拖拽，无独立 FocusHandle、键盘处理或滑块语义。source 样式还原不能证明键盘/辅助功能完整。可复用 Base 行为或为自绘层补充；并非 API 编译错误。
+- 自绘缩略图/评分滑块：crates/fileatlas-plugin-file-manager/src/view/sliders.rs:46-126 只有鼠标拖拽，无独立 FocusHandle、键盘处理或滑块语义。source 样式还原不能证明键盘/辅助功能完整。可复用 Base 行为或为自绘层补充；并非 API 编译错误。
 - Settings 的 toggle_button 使用 On/Off 文本 Button（view.rs:325），未使用 Checkbox/Switch。功能可以成立，但状态语义与标准组件有差异，后续样式优化应与源码规则一起评审。
 - 自定义 Tools 弹层、Settings 层不等同 Kit PopupMenu/Dialog；不能从编译通过推断焦点陷阱、点击外部关闭、Escape 与层级都正确。Settings 源本身是 movable window，改成标准模态框前应确认兼容性。
 - 项目未发现 gpui_kit::test 或 test-support 依赖。此次3项测试为 UI ownership/service 层测试，不是按钮、输入、焦点、菜单或绘制测试。官方示例明确区分交互测试与 native review。
@@ -82,9 +82,9 @@ Settings edit 成功后调用 set_accent_name；后者只写入 AtomicU32。appl
 | 命令 | 结果 |
 |---|---|
 | cargo fmt --all -- --check | 通过 |
-| cargo check --locked -p photag-shell -j 2 | 默认 rustc1.94.1 因项目最低1.95要求停止；未进入有效编译 |
+| cargo check --locked -p fileatlas-shell -j 2 | 默认 rustc1.94.1 因项目最低1.95要求停止；未进入有效编译 |
 | rustup toolchain list | stable(default)、1.96.0、1.97.1 已安装 |
-| cargo +1.97.1 check --locked -p photag-shell -j 2 | 通过 |
-| cargo +1.97.1 test --locked -p photag-ui-bridge --lib -j 2 | 通过，3 passed |
+| cargo +1.97.1 check --locked -p fileatlas-shell -j 2 | 通过 |
+| cargo +1.97.1 test --locked -p fileatlas-ui-bridge --lib -j 2 | 通过，3 passed |
 | cargo +1.97.1 tree --locked -p gpui-kit --depth 1 --prefix none | 版本组合如上 |
 

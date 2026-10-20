@@ -64,4 +64,4 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Compile base shell and its required plugins
-        run: cargo check -p photag-shell --locked
+        run: cargo check -p fileatlas-shell --locked

@@ -1,4 +1,4 @@
-# PhoTag source UI layout and styling specification
+# PhoTag upstream source UI layout and styling specification
 
 **Phase status:** migration-phase record. The interface redesign phase uses
 [`docs/reference-ui/final-v5/`](final-v5/README.md) as the design authority;
@@ -50,11 +50,11 @@ Source structure is three horizontal bands around the main two-column body:
 ```text
 Top command bar (search + filters + conditional active-filter pills)
 ├── Left folder/tag sidebar (160–500 wide; initial 220)
-└── One elevated central Gallery card
+└── One elevated central FileManager card
 Bottom status bar (scan progress | selection actions | idle count)
 ```
 
-The window starts at **1280×800**, minimum **800×500**, titled `PhoTag`
+The window starts at **1280×800**, minimum **800×500**, titled `FileAtlas`
 (`vendor/photag-source/src/main.rs:73-82`). `AppState::new` starts with
 sidebar width **220** and thumbnail size **150** (`src/app.rs:512`). Session
 restore accepts sidebar widths **160–500** and thumbnail sizes **80–300**
@@ -65,7 +65,7 @@ restore accepts sidebar widths **160–500** and thumbnail sizes **80–300**
 The top-level panel is frameless, has no separator, and uses left/right margins
 16, top 12, bottom 8 (`src/main.rs:1007-1018`). Its content order is:
 
-1. Row 1: `PhoTag` wordmark (semibold 15), 4px gap, centered search field,
+1. Row 1: `FileAtlas` wordmark (semibold 15), 4px gap, centered search field,
    right-side thumbnail-size slider and icon, Tools, Settings. The right cluster
    reserves its width first; search fills the remainder but is clamped to
    220–540 wide (`src/main.rs:1020-1080`). Search height is **32** and pill
@@ -120,15 +120,15 @@ hovered/dragged (`main.rs:1299-1346`).
 
 See [Sidebar](#sidebar) below for row, tree, and tab details.
 
-### Gallery card
+### FileManager card
 
-The Gallery is the **only elevated card**; chrome around it is directly on base
+The FileManager is the **only elevated card**; chrome around it is directly on base
 material with no fill or border. The card uses panel fill, radius **10**, no
 stroke, inner margins left 14/right 10/top 12/bottom 10, outer margins
 left 0/right 12/top 2/bottom 12 (`main.rs:1007-1014,1351-1367`; radius in
 `theme.rs:191`). Do not give every subregion a separate raised card.
 
-The source gallery takes `ui.available_size()`, not the window size. With
+The source file_manager takes `ui.available_size()`, not the window size. With
 thumbnail size `t` and fixed gap **12**, columns are
 `floor((available_width + 12) / (t + 12))`, minimum 1; each image hit target
 is **t×t**, each row advances `t+12` (`ui/gallery.rs:990-1005,1383-1387`).
@@ -137,13 +137,13 @@ when date dividers are enabled and sort is Newest/Oldest; header height **40**,
 14px before later groups; clicking the header collapses that month
 (`gallery.rs:693-707,746-766`). Flat sorts have no month header.
 
-Gallery cards are square image surfaces, not separate thumbnail-plus-metadata
+FileManager cards are square image surfaces, not separate thumbnail-plus-metadata
 cards. Filename, rating, media badges, video/audio glyphs, tags and other card
 details are painted over the same image rect (`gallery.rs:1383-1387,
 1406-1429,1493-1538,1563-1590`). Thumbnail corner radius is **7**;
 hover scale is **1.8%** over **120ms**; selection insets image by **7**, paints
 accent fill and **2px** outline. Overlay badge offsets are 7 where specified
-(`gallery.rs:1406-1429,1493-1538,1563-1578`). Empty gallery state is centered
+(`gallery.rs:1406-1429,1493-1538,1563-1578`). Empty file_manager state is centered
 in the available card area: icon 52, headline at center+12, hint at center+36
 (`gallery.rs:997-1024`).
 
@@ -155,7 +155,7 @@ order: scan progress, selected-item count with inline actions, then idle library
 count (`main.rs:1107-1277`). Progress bar is width **180**, height **6**,
 radius **3** (`main.rs:1114-1118`). Selected-state action spacing is source
 layout (for example 8px after selected count at `main.rs:1185`); actions
-belong here and must not be invented as a full-width Gallery row.
+belong here and must not be invented as a full-width FileManager row.
 
 ## Sidebar
 
@@ -258,14 +258,14 @@ overflow is a source behavior, not a reason to infer widths from a screenshot.
 |---|---|
 | Appearance | `Accent color` heading, gap2, muted explanatory text, gap8; Windows system accent swatch **22×22**, radius4 (selected outline expands2, radius6, stroke1.5); then each `ACCENT_PRESETS` swatch **22×22**, with gap2 before each name. Selecting a swatch applies and saves the color (`main.rs:2177-2250`, `theme.rs:53-64,94-128`). |
 | Toolbar | Groups in this order: Zoom controls (Zoom mode toggle, Reset button, Zoom presets dropdown), Photo manipulation (Rotation, Mirror), Tags (Tags dropdown), File (Delete/recycle bin, Copy to…, Move to…, Show in Explorer, Open in default app), View (Filmstrip toggle). Each bold heading has gap2; groups have gap8. Controls follow source order and are checkboxes without explicit dimensions. All toolbar flags default true (`main.rs:2251-2278`, `settings.rs:202-216,240-255`). |
-| Shortcuts | Tag sidebar: heading/gap2; modifier prompt on its own row; **80-wide** None/Ctrl/Shift/Alt ComboBox beside toggle explanation; gap4 and muted two-line help. Gallery: group gap12; heading/gap2; Open selected media key-capture row; gap2 and muted help. Ratings: group gap12; heading/gap2 and muted fixed explanation. Tag hotkeys F1–F9: group gap12; heading/gap2, muted help, gap4; nine rows with **200-wide** ComboBoxes (None plus recursively flattened tag tree/path). Key capture shows current key; clicking enters capture with Press a key… and Cancel; Escape cancels, another key saves. Defaults Ctrl, Space and no tag bindings (`main.rs:2280-2389,682-710`, `settings.rs:21-50,133-138,163-165,223-224,231`). |
+| Shortcuts | Tag sidebar: heading/gap2; modifier prompt on its own row; **80-wide** None/Ctrl/Shift/Alt ComboBox beside toggle explanation; gap4 and muted two-line help. FileManager: group gap12; heading/gap2; Open selected media key-capture row; gap2 and muted help. Ratings: group gap12; heading/gap2 and muted fixed explanation. Tag hotkeys F1–F9: group gap12; heading/gap2, muted help, gap4; nine rows with **200-wide** ComboBoxes (None plus recursively flattened tag tree/path). Key capture shows current key; clicking enters capture with Press a key… and Cancel; Escape cancels, another key saves. Defaults Ctrl, Space and no tag bindings (`main.rs:2280-2389,682-710`, `settings.rs:21-50,133-138,163-165,223-224,231`). |
 | Tags | Tag tree search: heading/gap2; Match mode with Contains and Starts with choices; gap2; Keep search query when switching tabs checkbox. Merge section gap12; heading/gap2, muted child-handling explanation, gap2; Re-parent under target and Delete choices. Defaults are Contains, keep query, and Re-parent (`main.rs:2392-2443`, `settings.rs:57-62,64-110,151-162,228-230`). |
 | AI | Auto-analyze heading/gap2 and checkbox; hover gives explanation. Mandatory tag groups section gap12; heading/gap2, muted explanation, gap8. Each group: `Group:` beside single-line name editor; gap2; each selected tag as icon/name and × removal; `Add:` beside **180-wide** selector; Remove group on following row; gap4 between groups; then + Add group. The selector omits tags already in the group. Empty group collection is the default. `AiSettings::default()` yields auto-analyze false; serde missing-field default is true, a meaningful distinction to preserve (`main.rs:2445-2542`, `settings.rs:12-19,234`). |
 | Updates | Version row then gap6; startup-check checkbox and muted explanatory row; gap10, separator, gap8. Status order is checking, downloading, staged, update available, then up-to-date only without an error; error appears separately after gap2. Gap10 then one button row: Check now, conditional Show update…, Releases on GitHub. Gap10 then muted safety note. Startup-check preference defaults true; transient status/error/version is runtime state (`main.rs:2545-2632`, `settings.rs:54,177-180,235`). |
 
 All tabs share a footer: gap8, separator, gap2, Close. Escape closes Settings except
 while the shortcut capture handler consumes it. Changed settings save to
-`%LOCALAPPDATA%\\PhoTag\\settings.json`; save errors are ignored in source
+`%LOCALAPPDATA%\\FileAtlas\\settings.json`; save errors are ignored in source
 (`main.rs:2636-2650`, `settings.rs:284-305`). Content height and wrapping of
 long text are determined by egui; do not assign invented fixed heights.
 
@@ -288,7 +288,7 @@ are egui points (`main.rs:152-161`).
 | Bulk delete confirmation | Non-resizable; content-sized, placement baseline320×130. Prompt, gap6, recycle-bin note, gap8, Delete-count/Cancel. Enter confirms; Escape/close cancels (`main.rs:1949-1981`). |
 | Delete-tag confirmation | Non-resizable; content-sized, placement baseline380×160. Prompt lines separated by4, gap8, Remove with parents/Keep parents/Cancel; Escape/close cancels (`main.rs:1983-2022`). |
 | Single-file delete confirmation | Non-resizable; content-sized, placement baseline320×130. Filename/recycle-bin prompt, gap6, restore note, gap8, Delete/Cancel; Enter confirms (`main.rs:2024-2068`). |
-| Export metadata | Not an app modal. Tools invokes the OS save dialog with title `Export metadata backup`, JSON filter and default filename `photag_backup.json`; cancel does nothing (`app.rs:1535-1549`). Native dimensions/placement are OS-controlled, not specified by PhoTag. |
+| Export metadata | Not an app modal. Tools invokes the OS save dialog with title `Export metadata backup`, JSON filter and default filename `fileatlas_backup.json`; cancel does nothing (`app.rs:1535-1549`). Native dimensions/placement are OS-controlled, not specified by FileAtlas. |
 | Folder/file copy/move/pick | Uses native `rfd::FileDialog`; source doesn't define its size or position (`app.rs:1173-1180,1672-1690,1776-1810`). |
 
 Settings is fixed width360 and height auto (`main.rs:2111-2134`). Its source
@@ -299,12 +299,12 @@ overflow risk, not a value to silently normalize.
 
 | Source component | Migrated owner |
 |---|---|
-| Window composition, command bar/status bar, sidebar/gallery placement | `photag-shell` |
-| Search/filter controls, gallery card grid, selection/actions/statistics | `photag-plugin-gallery` |
-| Folder/tag tree, section tabs, folder and tag commands | `photag-plugin-navigation` |
-| Image/audio/video preview, floating toolbar, filmstrip | `photag-plugin-preview` + `photag-plugin-media-playback` |
-| Selected details and preview Info/EXIF | Gallery and Preview feature crates; source fields above define both |
-| Appearance/Toolbar/Shortcuts/Tags/AI/Updates settings | `photag-plugin-settings` |
+| Window composition, command bar/status bar, sidebar/file_manager placement | `fileatlas-shell` |
+| Search/filter controls, file_manager card grid, selection/actions/statistics | `fileatlas-plugin-file-manager` |
+| Folder/tag tree, section tabs, folder and tag commands | `fileatlas-plugin-navigation` |
+| Image/audio/video preview, floating toolbar, filmstrip | `fileatlas-plugin-preview` + `fileatlas-plugin-media-playback` |
+| Selected details and preview Info/EXIF | FileManager and Preview feature crates; source fields above define both |
+| Appearance/Toolbar/Shortcuts/Tags/AI/Updates settings | `fileatlas-plugin-settings` |
 | Source dialogs and modal confirmations | The owning feature plugin; shell only composes modal surfaces |
 
 ## Required UI change workflow
@@ -336,7 +336,7 @@ overflow risk, not a value to silently normalize.
   is content-sized. This deliberate bounded-height difference preserves working
   controls after a live intrinsic-height attempt collapsed the content to zero.
 - Language selection in Appearance is a user-requested additional control owned
-  by photag.i18n, default English with explicit Chinese selection. It has no
+  by fileatlas.i18n, default English with explicit Chinese selection. It has no
   upstream counterpart and does not replace any source control.
 - Sidebar pivot tabs use the source equal halves/minimum60, height32 and
   underline inset28%, height3/radius1.5 (sidebar.rs:181-193,228-275). Manual-path

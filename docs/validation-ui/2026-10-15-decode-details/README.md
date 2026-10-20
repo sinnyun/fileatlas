@@ -26,7 +26,7 @@ JPEG回退时相应阶段累计两次尝试。generic为分离读取计时先读
 首帧/完整图的duration_scope=open_to_paint是打开到绘制提交，与worker耗时不能相加，
 也不是GPU物理显示时刻。日志不在轮询或每次绘制时重复发出；每个后台任务一对开始/结果。
 
-验证：Windows、Rust1.97.1、同进程PhoTag MCP、隔离profile
+验证：Windows、Rust1.97.1、同进程FileAtlas MCP、隔离profile
 `target/mcp-decode-details-verified`。24MP JPEG首次处理包含完整字段，重开命中缓存，
 损坏JPEG产生ERROR并标出header阶段/具体错误。点击实际日志行并检查
 [详情截图](../../../.local/validation/artifacts/2026-10-15-decode-details/decode-details.png)，后台任务结束后3秒观察期间preview记录数不变。
@@ -36,13 +36,13 @@ JPEG回退时相应阶段累计两次尝试。generic为分离读取计时先读
 缺失文件读取错误、损坏文件解析错误。强制系统缓存写入拒绝未在本轮MCP中触发。
 
 命令：
-- `cargo +1.97.1 test --locked -p photag-plugin-preview -p photag-plugin-debug -j 2`
-- `cargo +1.97.1 check --locked -p photag-shell -j 2`
-- `cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-decode-details.exe`
-- `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-decode-details.exe --profile target/mcp-decode-details-verified --scenario scripts/validate-decode-details.cjs --allow-mutations`
+- `cargo +1.97.1 test --locked -p fileatlas-plugin-preview -p fileatlas-plugin-debug -j 2`
+- `cargo +1.97.1 check --locked -p fileatlas-shell -j 2`
+- `cargo +1.97.1 rustc --locked -p fileatlas-shell --bin fileatlas-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/fileatlas-shell-decode-details.exe`
+- `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-decode-details.exe --profile target/mcp-decode-details-verified --scenario scripts/validate-decode-details.cjs --allow-mutations`
 - fmt、差异空白与UI刷新架构检查通过。
 
-标准`photag-shell.exe`运行中导致构建覆盖被Windows拒绝，未终止用户进程。上述显式-o
+标准`fileatlas-shell.exe`运行中导致构建覆盖被Windows拒绝，未终止用户进程。上述显式-o
 构建了独立新版EXE并据此实际测试；Rust关于适配输出类型和忽略out-dir的两条警告由
 该显式输出命令产生。标准入口仍为旧进程/旧文件，使用新字段需退出后运行新版。
 保留已接受的Debug抽屉布局，未新增设计控件或正常数据/SQLite变更。

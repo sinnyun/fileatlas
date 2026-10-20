@@ -3,13 +3,13 @@
 ## Behavior
 
 - Normal tag assignment, removal, clearing, merge, reparent and record relinking
-  update PhoTag's SQLite data only. They no longer schedule automatic IPTC or
+  update FileAtlas's SQLite data only. They no longer schedule automatic IPTC or
   XMP file writes.
 - The file Inspector's Tags section expands a searchable hierarchical
   multi-select list in place. “Add selected” applies the selected tags to the
   current file and closes the list. Existing tag chips and their remove
   controls remain.
-- The broad Gallery selection picker remains available for bulk tagging.
+- The broad FileManager selection picker remains available for bulk tagging.
 - Explicit metadata-writer APIs remain opt-in for integrations.
 
 Reference comparison: `vendor/photag-source/src/xmp.rs` and its caller paths in
@@ -22,14 +22,14 @@ the same database service.
 
 - `rustup toolchain list`: selected installed Windows MSVC Rust 1.97.1.
 - `cargo +1.97.1 fmt --all -- --check`: passed.
-- `cargo +1.97.1 check --locked -p photag-shell -j 2`: passed.
-- `cargo +1.97.1 build --locked -p photag-shell -j 2`: passed with the existing
+- `cargo +1.97.1 check --locked -p fileatlas-shell -j 2`: passed.
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`: passed with the existing
   linker warning LNK4098.
 - `node scripts/check-ui-refresh.cjs`: passed.
 - `node scripts/check-architecture.cjs`: passed (84 edges, 711 debt entries).
 - `node scripts/check-feature-ledger.cjs`: passed.
 - Same-process MCP used the isolated `target/mcp-tagging-inspector-live5`
-  profile and the built `target/debug/photag-shell.exe`, with mutations enabled
+  profile and the built `target/debug/fileatlas-shell.exe`, with mutations enabled
   only for that profile. It browsed the synthetic `small.png`, opened the
   Inspector's inline list using actual GPUI pointer events, selected two tags,
   and clicked “Add selected”. `get_media` returned both database tag

@@ -12,18 +12,18 @@ module.exports=async({step,delay,profile,root})=>{
   const h=s.window_status.geometry.client_size.height;
   const toggle=async()=>{await click(22,h-116);await delay(250);};
   const fixture=path.join(profile,'native-theme-files');fs.mkdirSync(fixture,{recursive:true});
-  fs.copyFileSync(path.join(root,'test-data/photag-library/01-small/small.png'),path.join(fixture,'theme.png'));
+  fs.copyFileSync(path.join(root,'test-data/fileatlas-fixtures/01-small/small.png'),path.join(fixture,'theme.png'));
   for(const name of ['theme.py','theme.toml','theme.zip'])fs.writeFileSync(path.join(fixture,name),'Native theme fixture');
-  await invoke('control_gallery',{action:'navigate',value:fixture});await until(s=>s.gallery?.matched_count===4&&!s.browser.status[2]);
-  const media=(await invoke('gallery.search_media',{limit:10})).items;
+  await invoke('control_file_manager',{action:'navigate',value:fixture});await until(s=>s.file_manager?.matched_count===4&&!s.browser.status[2]);
+  const media=(await invoke('file_manager.search_media',{limit:10})).items;
   const png=media.find(f=>f.filename==='theme.png');assert(png);
   const tag=(await invoke('navigation.create_tag',{name:'主题标签'})).tag;
   await invoke('control_navigation',{action:'tag_appearance',tag_id:tag.id,color:'#763c98',icon:'Tag'});
   await invoke('tagging.assign',{media_ids:[png.id],tag_ids:[tag.id]});
-  await invoke('gallery.set_rating',{media_ids:[png.id],rating:4});
-  await invoke('control_gallery',{action:'refresh'},{wait_ms:600});
+  await invoke('file_manager.set_rating',{media_ids:[png.id],rating:4});
+  await invoke('control_file_manager',{action:'refresh'},{wait_ms:600});
   await shot('native-default-dark');await toggle();await until(s=>s.theme.id==='Default Light');await shot('native-default-light');
-  await ui('settings_plugin_page','photag.material-theme');await delay(400);
+  await ui('settings_plugin_page','fileatlas.material-theme');await delay(400);
   const generatorPage=await shot('material-generator');
   const [sx,sy,sw]=generatorPage.panels.find(p=>p.id==='settings').bounds.split(',').map(Number);
   // Measured from the native default-theme screenshot: the schema action row's center.
@@ -51,7 +51,7 @@ module.exports=async({step,delay,profile,root})=>{
   await toggle();await until(s=>s.theme.mode==='dark');await verify('#6686a3');await shot('material-blue-dark');
   await invoke('clipboard.add_text',{content:'原生主题：背景、文字、按钮与标签共用 GPUI Kit Theme。'});
   await ui('panel_open','clipboard-workbench/panel');await delay(400);await shot('clipboard-material-dark');await ui('panel_close',(await state()).active_panel);
-  await invoke('launcher.add_program',{path:path.join(root,'target/debug/photag-shell.exe')});
+  await invoke('launcher.add_program',{path:path.join(root,'target/debug/fileatlas-shell.exe')});
   await ui('panel_open','program-launcher/panel');await delay(1000);await shot('launcher-material-dark');await ui('panel_close',(await state()).active_panel);
   await toggle();await until(s=>s.theme.mode==='light');
   await ui('panel_open','clipboard-workbench/panel');await shot('clipboard-material-light');await ui('panel_close',(await state()).active_panel);
@@ -61,10 +61,10 @@ module.exports=async({step,delay,profile,root})=>{
   assert.equal(fs.readFileSync(generated.output,'utf8'),old);
   generated=await invoke('material-theme.generate',{seed:'#5a8a88',variant:'neutral',contrast:0.5,apply:true});
   await verify('#5a8a88');await shot('material-teal-light');
-  await invoke('control_gallery',{action:'popover',value:'extensions'});await shot('material-teal-menu');await invoke('control_gallery',{action:'popover',value:'close'});
-  await ui('settings_plugin_page','photag.material-theme');await shot('material-generated-page');await ui('settings_close');
-  await invoke('resize_window',{width:1510,height:1000},{wait_ms:500});await ui('settings_plugin_page','photag.material-theme');await shot('material-small-settings');
+  await invoke('control_file_manager',{action:'popover',value:'extensions'});await shot('material-teal-menu');await invoke('control_file_manager',{action:'popover',value:'close'});
+  await ui('settings_plugin_page','fileatlas.material-theme');await shot('material-generated-page');await ui('settings_close');
+  await invoke('resize_window',{width:1510,height:1000},{wait_ms:500});await ui('settings_plugin_page','fileatlas.material-theme');await shot('material-small-settings');
   const small=await state();await ui('pointer_scroll',`${small.window_status.geometry.client_size.width-200},400,-560`);await shot('material-small-scrolled');await ui('settings_close');
-  const before=(await state()).gallery.snapshot_revision;await delay(1200);assert.equal((await state()).gallery.snapshot_revision,before,'settled theme must not reload Gallery');
+  const before=(await state()).file_manager.snapshot_revision;await delay(1200);assert.equal((await state()).file_manager.snapshot_revision,before,'settled theme must not reload FileManager');
   fs.writeFileSync(path.join(profile,'native-theme-summary.json'),JSON.stringify({passed:true,pairs,generated,finalTheme:(await state()).theme,geometry:s.window_status.geometry},null,2));
 };

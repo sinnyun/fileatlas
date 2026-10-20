@@ -14,18 +14,18 @@ git status --short --branch
 git remote -v
 ```
 
-如果 `git rev-parse` 失败，当前目录不是仓库。先使用云端环境提供的仓库挂载/克隆能力获取 `https://github.com/sinnyun/pho_cordis.git`，再进入仓库根目录。不要在空目录里新建一套同名 Cargo 项目，也不要仅凭先前会话摘要推断源码状态。
+如果 `git rev-parse` 失败，当前目录不是仓库。先使用云端环境提供的仓库挂载/克隆能力获取 `https://github.com/sinnyun/fileatlas.git`，再进入仓库根目录。不要在空目录里新建一套同名 Cargo 项目，也不要仅凭先前会话摘要推断源码状态。
 
 确认当前分支、未提交修改和远端后，再阅读：
 
 - `AGENTS.md`：项目开发约束与任务要求。
 - `README.md`：当前迁移范围和仍未实现的功能。
-- `SOURCE_PINS.md`：PhoTag 源码基准版本。
+- `SOURCE_PINS.md`：PhoTag 上游源码基准版本。
 - `docs/source-feature-audit.md`：原项目功能与迁移映射。
 - `docs/validation-report.md`：实际验证记录与已知问题。
 - `Cargo.toml`：workspace 成员、MSRV 和共享依赖。
 
-不得覆盖或丢弃工作区中已有的用户修改。项目要求保留 PhoTag 原有功能；新增实现应沿用 `vendor/photag-source` 的行为并更新功能审计/验证记录。
+不得覆盖或丢弃工作区中已有的用户修改。项目要求保留 FileAtlas 原有功能；新增实现应沿用 `vendor/photag-source` 的行为并更新功能审计/验证记录。
 
 ## 2. 工具链和依赖
 
@@ -62,7 +62,7 @@ export CARGO_INCREMENTAL=1
 export CARGO_BUILD_JOBS=2
 export CARGO_PROFILE_DEV_DEBUG=0
 cargo fmt --all -- --check
-cargo check -p photag-shell --locked
+cargo check -p fileatlas-shell --locked
 ```
 
 依赖未缓存且网络不可用时才将 `--locked` 替换为 `--locked --offline`；离线解析失败应记录为缓存/网络问题。增量构建时不要清空 `target/`，不要从头重复完整工作区测试。Shell 检查失败时按错误涉及的 crate 与依赖链小范围修复，再重跑格式检查和 Shell check。
@@ -70,8 +70,8 @@ cargo check -p photag-shell --locked
 集中测试阶段再运行插件测试和完整回归，具体命令包括：
 
 ```bash
-cargo test --workspace --exclude photag-shell --locked
-cargo check -p photag-shell --locked
+cargo test --workspace --exclude fileatlas-shell --locked
+cargo check -p fileatlas-shell --locked
 ```
 
 当前 CI 只执行格式检查与 Shell check；它不执行插件测试。`docs/validation-report.md` 必须区分云端基础编译结果、第二轮插件测试结果及 Windows 实机结果。
@@ -89,7 +89,7 @@ cargo check -p photag-shell --locked
 ## 5. AI 接手与提交规范
 
 1. 以当前仓库文件和 Git 状态为准，重新核对最近提交及尚未完成的功能；不要重复已完成的功能，也不要按摘要臆造 API。
-2. 一次聚焦一个可审查的功能切片。先追踪 PhoTag 原实现及功能审计，再迁移行为到对应插件，并保持 Cordis 的插件、Service、Event 和依赖生命周期。
+2. 一次聚焦一个可审查的功能切片。先追踪 FileAtlas 原实现及功能审计，再迁移行为到对应插件，并保持 Cordis 的插件、Service、Event 和依赖生命周期。
 3. 代码按仓库既有 crate 边界组织；避免超大文件，补充能覆盖行为的测试。
 4. 运行与改动相称的验证，检查 `git diff --check`、`git diff` 和文件行数，更新审计/验证文档。
 5. 按用户已授权的节奏提交并推送。提交前确认目标分支、提交内容和身份验证可用；推送失败时报告具体原因，不得声称已推送。
@@ -101,4 +101,4 @@ cargo check -p photag-shell --locked
 - Rust 最低版本：1.95；依赖版本和锁文件以仓库当前内容为准。
 - CI 使用 Linux Ubuntu、Rust stable 和 rustfmt。
 - 本地验证优先采用“非 Shell workspace 测试 + Shell check”的两阶段方式。
-- 迁移仍未达到 PhoTag 全功能等价；以最新 `README.md` 和功能审计为准，不要把该状态固定为未来事实。
+- 迁移仍未达到 FileAtlas 全功能等价；以最新 `README.md` 和功能审计为准，不要把该状态固定为未来事实。

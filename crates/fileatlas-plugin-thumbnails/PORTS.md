@@ -1,0 +1,31 @@
+# Thumbnail plugin ports / 缩略图数据对接
+
+Current browser runtime supersedes the older indexed-library descriptions below; see the 2026-10-15 update at the end and `docs/validation-ui/2026-10-15-browser/README.md`.
+
+Status: original image thumbnail pipeline is wrapped as a service and cache reuse has a synthetic-image regression test. Full format and Windows parity are not established.
+
+## Lifecycle and dependency
+
+- Cordis plugin name: `fileatlas.thumbnails`; service: `fileatlas/thumbnails` (`ThumbnailService`).
+- No Cordis service dependency. `ThumbnailConfig.directory = None` selects `%LOCALAPPDATA%\FileAtlas\thumbs`; a path override is available for isolated use.
+
+## Input / output
+
+- Request: `generate_image(source: AsRef<Path>)`.
+- Result: `Option<(cache_path: String, width: u32, height: u32, micro_thumb: Option<Vec<u8>>)>`; `None` means generation could not produce an image result. A cache hit reports `(0, 0)` dimensions per the retained implementation and may still return micro-thumbnail bytes.
+- `directory()` returns the cache root. Cache filenames and image processing remain source-compatible with FileAtlas.
+- `video_thumbnail_path(source: AsRef<Path>)` returns the service-owned video poster cache path; `generate_micro_thumbnail(&DynamicImage)` returns the existing compact RGB bytes. The underlying `thumbs` implementation module is private.
+- The returned `micro_thumb` is an 8×8 RGB byte array (192 bytes) on the generation path; FileManager uses it as a low-resolution placeholder while GPUI loads the cached JPEG. Existing database cache hits may return no micro data if no stored blob exists.
+
+## Consumers and debugging
+
+Indexing calls this service to generate image caches and fills missing thumbnail rows. Do not call synchronously from GPUI render. For missing thumbnails inspect source path accessibility, decoder result, cache directory permissions, and the indexed `thumb_path`; do not infer video decoding success from this image API.
+
+## Runtime diagnostics (2026-10-14)
+
+Runtime diagnostics: plugin startup and existing error/diagnostic output now emit tracing records captured by fileatlas.debug; instrumented public operations report wall-clock span duration and errors. Domain service contracts, event payloads and source operation ordering are unchanged. See fileatlas-plugin-debug/PORTS.md for capture scope and limits.
+
+
+## Browser runtime update — 2026-10-15
+
+The derived cache key now includes source path, size and nanosecond modification time. Cached-image hits return original header dimensions instead of zero dimensions. Legacy webp reuse requires a non-older cache file. `generate_image` checks the derived JPEG/webp budget every 256 accesses: retain up to 5000 files and 512 MiB by oldest modification order (not a true access LRU), protect the current result. This maintenance runs on the requesting worker, not GPUI render. Durable tag-previews live separately and are excluded. Video poster demand uses the same versioned naming and cache maintenance budget.

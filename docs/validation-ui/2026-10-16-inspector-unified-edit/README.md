@@ -11,9 +11,9 @@
 - 窄面板300、1920×1080：图标自动换行，编辑主卡及确认按钮完整可见；历史正文独立滚动。
   [标签小窗口](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/tag-small.png) / [历史小窗口](../../../.local/validation/artifacts/2026-10-16-inspector-unified-edit/screenshots/history-small.png)。
 
-截图均由同进程PhoTag MCP `screenshot_window`直接取得，无重绘或拼接。
+截图均由同进程FileAtlas MCP `screenshot_window`直接取得，无重绘或拼接。
 文件和标签继续使用[上一轮准备的真实隔离样例](../2026-10-16-inspector-complete/README.md)，
-没有修改用户PhoTag档案。历史多版本仍是显式隔离演示；实际持久快照不属于本轮。
+没有修改用户FileAtlas档案。历史多版本仍是显式隔离演示；实际持久快照不属于本轮。
 
 ## 验证
 
@@ -39,15 +39,15 @@
 ```powershell
 rustup toolchain list
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-inspector-unified.exe
-cargo +1.97.1 test --locked -p photag-plugin-gallery -p photag-plugin-i18n -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 rustc --locked -p fileatlas-shell --bin fileatlas-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/fileatlas-shell-inspector-unified.exe
+cargo +1.97.1 test --locked -p fileatlas-plugin-file-manager -p fileatlas-plugin-i18n -j 2
 node scripts/check-ui-refresh.cjs
 git diff --check
 ```
 
-检查通过，Gallery 21项、i18n 4项测试通过。直接默认build曾因正在运行的
-`target/debug/photag-shell.exe`被Windows占用而返回os error5；使用上述独立输出成功构建并完成全部运行验证，未终止现有正常应用。
+检查通过，FileManager 21项、i18n 4项测试通过。直接默认build曾因正在运行的
+`target/debug/fileatlas-shell.exe`被Windows占用而返回os error5；使用上述独立输出成功构建并完成全部运行验证，未终止现有正常应用。
 独立输出的两个rustc警告来自显式`-o`与多种输出类型，不是源代码编译错误。
 
 复现前先按上一轮证据准备隔离fixture。使用dev-test及该profile启动独立输出，

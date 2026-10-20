@@ -2412,6 +2412,640 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-contracts"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "fileatlas-plugin-ai"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-plugin-settings",
+ "image",
+ "ndarray",
+ "thiserror 2.0.21",
+ "tracing",
+ "tract-onnx",
+ "ureq",
+]
+
+[[package]]
+name = "fileatlas-plugin-clipboard"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "chrono",
+ "clipboard-master",
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-settings",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "fileatlas-plugin-columns"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-plugin-workspaces",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "serde",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-database"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-debug"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "rfd",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "fileatlas-plugin-dev-test"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "image",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-drag-drop"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "drag",
+ "image",
+ "raw-window-handle",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows 0.61.3",
+]
+
+[[package]]
+name = "fileatlas-plugin-everything-search"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-file-manager"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-ai",
+ "fileatlas-plugin-columns",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-drag-drop",
+ "fileatlas-plugin-everything-search",
+ "fileatlas-plugin-file-operations",
+ "fileatlas-plugin-grouping",
+ "fileatlas-plugin-history",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-navigation",
+ "fileatlas-plugin-quicklook",
+ "fileatlas-plugin-session",
+ "fileatlas-plugin-settings",
+ "fileatlas-plugin-tagging",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-plugin-version-info",
+ "fileatlas-plugin-versions",
+ "fileatlas-plugin-watcher",
+ "fileatlas-plugin-workspaces",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "kamadak-exif",
+ "rfd",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-file-operations"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "open",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "trash",
+]
+
+[[package]]
+name = "fileatlas-plugin-grouping"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "fileatlas-plugin-database",
+ "fileatlas-ui-bridge",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-history"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-file-operations",
+ "fileatlas-plugin-tagging",
+ "fileatlas-ui-bridge",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-i18n"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-ui-bridge",
+ "fluent-bundle",
+ "gpui-kit",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "unic-langid",
+]
+
+[[package]]
+name = "fileatlas-plugin-indexing"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-thumbnails",
+ "image",
+ "rusqlite",
+ "thiserror 2.0.21",
+ "tracing",
+ "walkdir",
+]
+
+[[package]]
+name = "fileatlas-plugin-launcher"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-settings",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows 0.61.3",
+ "winreg",
+]
+
+[[package]]
+name = "fileatlas-plugin-material-theme"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-settings",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "material-colors",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-mcp"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-columns",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-drag-drop",
+ "fileatlas-plugin-file-manager",
+ "fileatlas-plugin-history",
+ "fileatlas-plugin-i18n",
+ "fileatlas-plugin-metadata-export",
+ "fileatlas-plugin-navigation",
+ "fileatlas-plugin-quicklook",
+ "fileatlas-plugin-screenshot",
+ "fileatlas-plugin-settings",
+ "fileatlas-plugin-tagging",
+ "fileatlas-plugin-workspaces",
+ "fileatlas-ui-bridge",
+ "image",
+ "rmcp",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "fileatlas-plugin-metadata-export"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-navigation"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-session",
+ "fileatlas-plugin-tagging",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-plugin-watcher",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "fileatlas-plugin-projects"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-plugin-navigation",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-quicklook"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-file-operations",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "fileatlas-plugin-screenshot"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-plugin-settings",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "open",
+ "rfd",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tracing",
+ "windows 0.61.3",
+]
+
+[[package]]
+name = "fileatlas-plugin-session"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-plugin-database",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-settings"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-plugin-navigation",
+ "fileatlas-plugin-session",
+ "fileatlas-plugin-updater",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "open",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-shell-controls"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "fileatlas-plugin-shortcuts"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-ui-bridge",
+ "global-hotkey",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "windows 0.61.3",
+]
+
+[[package]]
+name = "fileatlas-plugin-tagging"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-ui-bridge",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-thumbnails"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "image",
+ "jpeg-decoder",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "zune-jpeg 0.5.15",
+]
+
+[[package]]
+name = "fileatlas-plugin-updater"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.21",
+ "tracing",
+ "ureq",
+]
+
+[[package]]
+name = "fileatlas-plugin-version-info"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-plugin-database",
+ "rusqlite",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-versions"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "chrono",
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-plugin-version-info",
+ "lore-vm",
+ "mime_guess",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-watcher"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-thumbnails",
+ "notify",
+ "rusqlite",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-plugin-workspaces"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "fileatlas-shell"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-plugin-ai",
+ "fileatlas-plugin-clipboard",
+ "fileatlas-plugin-columns",
+ "fileatlas-plugin-database",
+ "fileatlas-plugin-debug",
+ "fileatlas-plugin-dev-test",
+ "fileatlas-plugin-drag-drop",
+ "fileatlas-plugin-everything-search",
+ "fileatlas-plugin-file-manager",
+ "fileatlas-plugin-file-operations",
+ "fileatlas-plugin-grouping",
+ "fileatlas-plugin-history",
+ "fileatlas-plugin-i18n",
+ "fileatlas-plugin-indexing",
+ "fileatlas-plugin-launcher",
+ "fileatlas-plugin-material-theme",
+ "fileatlas-plugin-mcp",
+ "fileatlas-plugin-metadata-export",
+ "fileatlas-plugin-navigation",
+ "fileatlas-plugin-projects",
+ "fileatlas-plugin-quicklook",
+ "fileatlas-plugin-screenshot",
+ "fileatlas-plugin-session",
+ "fileatlas-plugin-settings",
+ "fileatlas-plugin-shell-controls",
+ "fileatlas-plugin-shortcuts",
+ "fileatlas-plugin-tagging",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-plugin-updater",
+ "fileatlas-plugin-version-info",
+ "fileatlas-plugin-versions",
+ "fileatlas-plugin-watcher",
+ "fileatlas-plugin-workspaces",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "raw-window-handle",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "fileatlas-ui-bridge"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "gpui-kit",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "filedescriptor"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6747,640 +7381,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
 dependencies = [
  "siphasher",
-]
-
-[[package]]
-name = "photag-contracts"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "photag-plugin-ai"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "image",
- "ndarray",
- "photag-plugin-settings",
- "thiserror 2.0.21",
- "tracing",
- "tract-onnx",
- "ureq",
-]
-
-[[package]]
-name = "photag-plugin-clipboard"
-version = "0.1.0"
-dependencies = [
- "arboard",
- "chrono",
- "clipboard-master",
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "gpui-pre",
- "image",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-settings",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 2.0.21",
- "tracing",
- "url",
-]
-
-[[package]]
-name = "photag-plugin-columns"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "photag-plugin-workspaces",
- "photag-ui-bridge",
- "serde",
- "thiserror 2.0.21",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-database"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-debug"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "cordis-rs",
- "gpui-kit",
- "photag-contracts",
- "photag-ui-bridge",
- "rfd",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "photag-plugin-dev-test"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "image",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-indexing",
- "photag-plugin-thumbnails",
- "photag-ui-bridge",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-drag-drop"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "drag",
- "image",
- "raw-window-handle",
- "thiserror 2.0.21",
- "tracing",
- "windows 0.61.3",
-]
-
-[[package]]
-name = "photag-plugin-everything-search"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "thiserror 2.0.21",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-file-operations"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "open",
- "photag-contracts",
- "photag-plugin-database",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "trash",
-]
-
-[[package]]
-name = "photag-plugin-gallery"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "cordis-rs",
- "gpui-kit",
- "gpui-pre",
- "image",
- "kamadak-exif",
- "photag-contracts",
- "photag-plugin-ai",
- "photag-plugin-columns",
- "photag-plugin-database",
- "photag-plugin-drag-drop",
- "photag-plugin-everything-search",
- "photag-plugin-file-operations",
- "photag-plugin-grouping",
- "photag-plugin-history",
- "photag-plugin-indexing",
- "photag-plugin-navigation",
- "photag-plugin-quicklook",
- "photag-plugin-session",
- "photag-plugin-settings",
- "photag-plugin-tagging",
- "photag-plugin-thumbnails",
- "photag-plugin-version-info",
- "photag-plugin-versions",
- "photag-plugin-watcher",
- "photag-plugin-workspaces",
- "photag-ui-bridge",
- "rfd",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-grouping"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "cordis-rs",
- "photag-plugin-database",
- "photag-ui-bridge",
- "serde",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-history"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-file-operations",
- "photag-plugin-tagging",
- "photag-ui-bridge",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-i18n"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "fluent-bundle",
- "gpui-kit",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "unic-langid",
-]
-
-[[package]]
-name = "photag-plugin-indexing"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "image",
- "photag-plugin-database",
- "photag-plugin-thumbnails",
- "rusqlite",
- "thiserror 2.0.21",
- "tracing",
- "walkdir",
-]
-
-[[package]]
-name = "photag-plugin-launcher"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "cordis-rs",
- "gpui-kit",
- "gpui-pre",
- "image",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-settings",
- "photag-ui-bridge",
- "rfd",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
- "windows 0.61.3",
- "winreg",
-]
-
-[[package]]
-name = "photag-plugin-material-theme"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "material-colors",
- "photag-contracts",
- "photag-plugin-settings",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-mcp"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64 0.22.1",
- "cordis-rs",
- "image",
- "photag-contracts",
- "photag-plugin-columns",
- "photag-plugin-database",
- "photag-plugin-drag-drop",
- "photag-plugin-gallery",
- "photag-plugin-history",
- "photag-plugin-i18n",
- "photag-plugin-metadata-export",
- "photag-plugin-navigation",
- "photag-plugin-quicklook",
- "photag-plugin-screenshot",
- "photag-plugin-settings",
- "photag-plugin-tagging",
- "photag-plugin-workspaces",
- "photag-ui-bridge",
- "rmcp",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "photag-plugin-metadata-export"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "photag-contracts",
- "photag-plugin-database",
- "photag-ui-bridge",
- "rfd",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-navigation"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-indexing",
- "photag-plugin-session",
- "photag-plugin-tagging",
- "photag-plugin-thumbnails",
- "photag-plugin-watcher",
- "photag-ui-bridge",
- "rfd",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "photag-plugin-projects"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "gpui-pre",
- "photag-plugin-navigation",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-quicklook"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "photag-contracts",
- "photag-plugin-file-operations",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "photag-plugin-screenshot"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "open",
- "photag-plugin-settings",
- "photag-ui-bridge",
- "rfd",
- "serde_json",
- "thiserror 2.0.21",
- "tracing",
- "windows 0.61.3",
-]
-
-[[package]]
-name = "photag-plugin-session"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "photag-plugin-database",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-settings"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "open",
- "photag-contracts",
- "photag-plugin-navigation",
- "photag-plugin-session",
- "photag-plugin-updater",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-shell-controls"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "photag-ui-bridge",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "photag-plugin-shortcuts"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "global-hotkey",
- "photag-ui-bridge",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "windows 0.61.3",
-]
-
-[[package]]
-name = "photag-plugin-tagging"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-indexing",
- "photag-plugin-thumbnails",
- "photag-ui-bridge",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-thumbnails"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "image",
- "jpeg-decoder",
- "sha2 0.10.9",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
- "zune-jpeg 0.5.15",
-]
-
-[[package]]
-name = "photag-plugin-updater"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "serde_json",
- "sha2 0.10.9",
- "thiserror 2.0.21",
- "tracing",
- "ureq",
-]
-
-[[package]]
-name = "photag-plugin-version-info"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "photag-plugin-database",
- "rusqlite",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-versions"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "chrono",
- "cordis-rs",
- "lore-vm",
- "mime_guess",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-indexing",
- "photag-plugin-thumbnails",
- "photag-plugin-version-info",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-watcher"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "notify",
- "photag-contracts",
- "photag-plugin-database",
- "photag-plugin-indexing",
- "photag-plugin-thumbnails",
- "rusqlite",
- "thiserror 2.0.21",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-plugin-workspaces"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "photag-ui-bridge",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "photag-shell"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "dirs 5.0.1",
- "gpui-kit",
- "photag-contracts",
- "photag-plugin-ai",
- "photag-plugin-clipboard",
- "photag-plugin-columns",
- "photag-plugin-database",
- "photag-plugin-debug",
- "photag-plugin-dev-test",
- "photag-plugin-drag-drop",
- "photag-plugin-everything-search",
- "photag-plugin-file-operations",
- "photag-plugin-gallery",
- "photag-plugin-grouping",
- "photag-plugin-history",
- "photag-plugin-i18n",
- "photag-plugin-indexing",
- "photag-plugin-launcher",
- "photag-plugin-material-theme",
- "photag-plugin-mcp",
- "photag-plugin-metadata-export",
- "photag-plugin-navigation",
- "photag-plugin-projects",
- "photag-plugin-quicklook",
- "photag-plugin-screenshot",
- "photag-plugin-session",
- "photag-plugin-settings",
- "photag-plugin-shell-controls",
- "photag-plugin-shortcuts",
- "photag-plugin-tagging",
- "photag-plugin-thumbnails",
- "photag-plugin-updater",
- "photag-plugin-version-info",
- "photag-plugin-versions",
- "photag-plugin-watcher",
- "photag-plugin-workspaces",
- "photag-ui-bridge",
- "raw-window-handle",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "photag-ui-bridge"
-version = "0.1.0"
-dependencies = [
- "cordis-rs",
- "gpui-kit",
- "serde_json",
- "tokio",
- "tracing",
 ]
 
 [[package]]

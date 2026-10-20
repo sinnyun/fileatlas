@@ -3,11 +3,11 @@ const path = require('node:path');
 module.exports = async ({step,call,payload,delay,root,profile}) => {
   const run = async (tool, args={}, wait=250, capture) => (await step({tool,arguments:args,wait_ms:wait,...(capture?{capture}:{})})).result;
   await step({tool:'get_ui_state',until:{field:'window_status.valid',equals:true,attempts:60,interval_ms:500}});
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',at_least:0,attempts:60,interval_ms:300}});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',at_least:0,attempts:60,interval_ms:300}});
   await run('resize_window',{width:1920,height:1560},300);
   await run('control_ui',{action:'inspector_open'},150);
   await run('control_ui',{action:'inspector_width',value:'360'},300);
-  await run('control_gallery',{action:'grouping',value:'none'},300);
+  await run('control_file_manager',{action:'grouping',value:'none'},300);
   const fixture=path.join(profile,'fixtures','2026-秋日旅行');
   const library=await run('list_library');
   if (!library.folders.some(f=>f.path.includes('2026-秋日旅行'))) await run('add_folder',{path:fixture,confirm:true},300);
@@ -22,7 +22,7 @@ module.exports = async ({step,call,payload,delay,root,profile}) => {
     tree=(await run('list_library')).tags;
   }
   await run('control_navigation',{action:'select_path',value:fixture},1000);
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:18,attempts:80,interval_ms:300},wait_ms:700,capture:'folder-complete'});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:18,attempts:80,interval_ms:300},wait_ms:700,capture:'folder-complete'});
   let media=await run('search_media',{limit:100,sort:'name_asc'},300);
   let photos=media.items.filter(m=>m.full_path.includes('2026-秋日旅行')&&m.filename.startsWith('DSC'));
   if(photos.length!==18) throw Error('Expected 18 real images, observed '+photos.length);
@@ -38,7 +38,7 @@ module.exports = async ({step,call,payload,delay,root,profile}) => {
   await run('control_ui',{action:'select_media',value:String(photo.id)},800);
   await run('control_ui',{action:'inspector_tab',value:'information'},300);
   const ui=payload(await call('get_ui_state'));
-  if(!ui.gallery.inspector_sections.includes('exif')) await run('control_gallery',{action:'inspector_section',value:'exif'},700);
+  if(!ui.file_manager.inspector_sections.includes('exif')) await run('control_file_manager',{action:'inspector_section',value:'exif'},700);
   await run('get_ui_state',{},1000,'file-complete');
   const selected=await run('get_media',{media_ids:[photo.id]});
   if(selected.media.missing===true) throw Error('Fixture is unexpectedly missing');

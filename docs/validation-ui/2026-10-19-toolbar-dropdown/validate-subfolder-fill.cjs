@@ -46,7 +46,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   await delay(1500);
   const quiet = await state();
   assert.equal(quiet.browser.show_descendants, true);
-  assert.equal(quiet.gallery.snapshot_revision, enabled.gallery.snapshot_revision);
+  assert.equal(quiet.file_manager.snapshot_revision, enabled.file_manager.snapshot_revision);
   await toggle(false);
   await capture('subfolders-off-restored');
   fs.writeFileSync(path.join(profile, 'subfolder-fill-report.json'), JSON.stringify({ initial, enabled, quiet, restored: await state() }, null, 2));

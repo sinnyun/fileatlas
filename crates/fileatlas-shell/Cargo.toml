@@ -1,0 +1,54 @@
+[package]
+name = "fileatlas-shell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[dependencies]
+fileatlas-plugin-debug = { path = "../fileatlas-plugin-debug" }
+tracing.workspace = true
+fileatlas-plugin-grouping = { path = "../fileatlas-plugin-grouping" }
+cordis.workspace = true
+tokio.workspace = true
+dirs.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+fileatlas-plugin-indexing = { path = "../fileatlas-plugin-indexing" }
+fileatlas-plugin-watcher = { path = "../fileatlas-plugin-watcher" }
+fileatlas-plugin-file-manager = { path = "../fileatlas-plugin-file-manager" }
+fileatlas-plugin-columns = { path = "../fileatlas-plugin-columns" }
+fileatlas-plugin-workspaces = { path = "../fileatlas-plugin-workspaces" }
+fileatlas-plugin-everything-search = { path = "../fileatlas-plugin-everything-search" }
+fileatlas-plugin-launcher = { path = "../fileatlas-plugin-launcher" }
+fileatlas-plugin-shortcuts = { path = "../fileatlas-plugin-shortcuts" }
+fileatlas-plugin-clipboard = { path = "../fileatlas-plugin-clipboard" }
+fileatlas-plugin-navigation = { path = "../fileatlas-plugin-navigation" }
+fileatlas-plugin-tagging = { path = "../fileatlas-plugin-tagging" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-plugin-updater = { path = "../fileatlas-plugin-updater" }
+fileatlas-plugin-session = { path = "../fileatlas-plugin-session" }
+fileatlas-plugin-metadata-export = { path = "../fileatlas-plugin-metadata-export" }
+fileatlas-plugin-file-operations = { path = "../fileatlas-plugin-file-operations" }
+fileatlas-plugin-quicklook = { path = "../fileatlas-plugin-quicklook" }
+fileatlas-plugin-ai = { path = "../fileatlas-plugin-ai" }
+fileatlas-plugin-history = { path = "../fileatlas-plugin-history" }
+fileatlas-plugin-version-info = { path = "../fileatlas-plugin-version-info" }
+fileatlas-plugin-versions = { path = "../fileatlas-plugin-versions" }
+fileatlas-plugin-drag-drop = { path = "../fileatlas-plugin-drag-drop" }
+fileatlas-plugin-mcp = { path = "../fileatlas-plugin-mcp" }
+fileatlas-plugin-dev-test = { path = "../fileatlas-plugin-dev-test" }
+fileatlas-plugin-screenshot = { path = "../fileatlas-plugin-screenshot" }
+fileatlas-plugin-material-theme = { path = "../fileatlas-plugin-material-theme" }
+fileatlas-plugin-shell-controls = { path = "../fileatlas-plugin-shell-controls" }
+fileatlas-plugin-projects = { path = "../fileatlas-plugin-projects" }
+gpui-kit.workspace = true
+raw-window-handle = "0.6.2"
+
+fileatlas-plugin-i18n = { path = "../fileatlas-plugin-i18n" }
+
+[lints]
+workspace = true

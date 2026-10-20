@@ -19,16 +19,16 @@ Shell 只组合 GPUI Kit Root 和插件 factory；系统标题栏负责关闭/�
 
 ## 环境与命令
 
-Windows，150% DPI；同进程 `photag-shell --mcp`，隔离 `target/mcp-native-panels`。
-原有 photag-shell.exe 正运行，无法覆盖，未停止用户进程。使用独立命名的构建：
+Windows，150% DPI；同进程 `fileatlas-shell --mcp`，隔离 `target/mcp-native-panels`。
+原有 fileatlas-shell.exe 正运行，无法覆盖，未停止用户进程。使用独立命名的构建：
 
 ```powershell
 rustup toolchain list
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -j 2 -p photag-shell
-cargo +1.97.1 rustc --locked -j 2 -p photag-shell --bin photag-shell -- -o target/debug/photag-shell-native-panels.exe
-cargo +1.97.1 test --locked -j 2 -p photag-ui-bridge -p photag-plugin-shortcuts
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-native-panels.exe --profile target/mcp-native-panels --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-panels.cjs --allow-mutations
+cargo +1.97.1 check --locked -j 2 -p fileatlas-shell
+cargo +1.97.1 rustc --locked -j 2 -p fileatlas-shell --bin fileatlas-shell -- -o target/debug/fileatlas-shell-native-panels.exe
+cargo +1.97.1 test --locked -j 2 -p fileatlas-ui-bridge -p fileatlas-plugin-shortcuts
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-native-panels.exe --profile target/mcp-native-panels --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-panels.cjs --allow-mutations
 ```
 
 第一轮39步通过：主窗最小化保持、两个独立窗口、重复唤起复用、Escape、Cordis停用关闭、
@@ -43,7 +43,7 @@ launcher/clipboard(L3)依赖settings(L4)两项；本次没有新增依赖边，�
 ## 视觉对照与边界
 
 - 独立剪贴板窗口保持三栏与完整编辑底部操作，无空白主窗外框；启动台保留分类/网格/信息三栏。
-- 主窗可见时保留顶栏、侧栏、图库、信息栏；工作区+浮窗继续原有遮罩和公共浮窗。
+- 主窗可见时保留顶栏、侧栏、文件管理窗口、信息栏；工作区+浮窗继续原有遮罩和公共浮窗。
 - 独立窗口改用系统深色标题栏，属于用户要求独立原生窗口的针对性差异；插件正文沿用公共主题。
 - 没有在本轮全面复验所有插件控件、菜单、颜色预设和全部窗口尺寸。系统级按键抢占/从其他软件触发仍待验。
 

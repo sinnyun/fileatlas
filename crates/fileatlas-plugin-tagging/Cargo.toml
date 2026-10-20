@@ -1,0 +1,26 @@
+[package]
+name = "fileatlas-plugin-tagging"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+fileatlas-plugin-indexing = { path = "../fileatlas-plugin-indexing" }
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+tracing.workspace = true
+cordis.workspace = true
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+serde_json.workspace = true
+serde.workspace = true
+tokio.workspace = true
+thiserror = "2"
+
+[dev-dependencies]
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database", features = ["test-api"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[lints]
+workspace = true

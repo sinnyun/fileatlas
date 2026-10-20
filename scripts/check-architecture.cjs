@@ -49,13 +49,13 @@ for (const name of members) {
     failures.push(`A1 member crates/${name} has no Rust sources`);
 }
 
-// A2: cross-plugin import edges (photag_plugin_b:: seen from crate a).
+// A2: cross-plugin import edges (fileatlas_plugin_b:: seen from crate a).
 const edges = new Map(); // "a -> b" -> files
 for (const name of crateNames) {
   for (const file of rsFiles(path.join(cratesDir, name, 'src'))) {
     const text = fs.readFileSync(file, 'utf8');
-    for (const m of text.matchAll(/photag_plugin_([a-z0-9_]+)::/g)) {
-      const target = `photag-plugin-${m[1].replaceAll('_', '-')}`;
+    for (const m of text.matchAll(/fileatlas_plugin_([a-z0-9_]+)::/g)) {
+      const target = `fileatlas-plugin-${m[1].replaceAll('_', '-')}`;
       if (target === name || !crateNames.includes(target)) continue;
       const key = `${name} -> ${target}`;
       if (!edges.has(key)) edges.set(key, new Set());

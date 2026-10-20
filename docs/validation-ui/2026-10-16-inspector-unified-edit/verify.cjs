@@ -20,16 +20,16 @@ module.exports = async ({step, profile, delay}) => {
   };
   const tag = async () => (await run('list_library')).tags.find(t => t.id === 1);
   await step({tool:'get_ui_state',until:{field:'window_status.valid',equals:true,attempts:60,interval_ms:500}});
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',at_least:0,attempts:60,interval_ms:300}});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',at_least:0,attempts:60,interval_ms:300}});
   await run('resize_window', {width:1920,height:1560});
   await run('control_ui', {action:'inspector_open'});
   await run('control_ui', {action:'inspector_width',value:'360'});
   await run('control_navigation', {action:'all'});
   await run('control_ui', {action:'navigation_tab',value:'tags'});
-  await run('control_gallery', {action:'tag',tag_id:1}, null, 700);
+  await run('control_file_manager', {action:'tag',tag_id:1}, null, 700);
   // Reset only this known isolated fixture after an interrupted verification.
   const initial = await tag();
-  await run('control_gallery', {action:'inspector_tag_name',value:'旅行'});
+  await run('control_file_manager', {action:'inspector_tag_name',value:'旅行'});
   await click(981,359);
   await click(949,426);
   if(!initial.display) await click(1218,503);
@@ -39,7 +39,7 @@ module.exports = async ({step, profile, delay}) => {
   assert.equal(before.color, '#E36B6B');
   assert.equal(before.display, true);
   await run('get_ui_state', {}, 'tag-expanded');
-  await run('control_gallery', {action:'inspector_tag_name',value:'旅行 · 统一确认'});
+  await run('control_file_manager', {action:'inspector_tag_name',value:'旅行 · 统一确认'});
   await click(948,359); // Blue swatch.
   await click(1140,426); // Star icon.
   await click(1218,503); // Visibility draft off.
@@ -54,7 +54,7 @@ module.exports = async ({step, profile, delay}) => {
   assert.equal(changed.display, false);
   assert(changed.children.every(t => !t.display));
   await run('get_ui_state', {}, 'tag-confirmed');
-  await run('control_gallery', {action:'inspector_tag_name',value:'旅行'});
+  await run('control_file_manager', {action:'inspector_tag_name',value:'旅行'});
   await click(981,359); // Coral.
   await click(949,426); // Default Tag icon.
   await click(1218,503);
@@ -68,20 +68,20 @@ module.exports = async ({step, profile, delay}) => {
   await run('get_ui_state', {}, 'tag-restored');
 
   await run('control_navigation', {action:'select_path', value:path.join(profile,'fixtures','2026-秋日旅行')}, null, 700);
-  await step({tool:'get_ui_state',until:{field:'gallery.matched_count',equals:18,attempts:60,interval_ms:300}});
+  await step({tool:'get_ui_state',until:{field:'file_manager.matched_count',equals:18,attempts:60,interval_ms:300}});
   await run('control_ui', {action:'select_media',value:'1'});
   for(const tab of ['information','history','extensions']) {
     await run('control_ui', {action:'inspector_tab',value:tab});
     const state = await run('get_ui_state', {}, `file-${tab}`);
-    assert.equal(state.gallery.inspector_context, 'file');
-    assert.deepEqual(state.gallery.selected_media_ids, [1]);
+    assert.equal(state.file_manager.inspector_context, 'file');
+    assert.deepEqual(state.file_manager.selected_media_ids, [1]);
   }
   await run('resize_window', {width:1920,height:1080});
   await run('control_ui', {action:'inspector_width',value:'300'});
   await run('control_ui', {action:'inspector_tab',value:'history'});
   await run('get_ui_state', {}, 'history-small');
   await run('control_navigation', {action:'all'});
-  await run('control_gallery', {action:'tag',tag_id:1}, null, 700);
+  await run('control_file_manager', {action:'tag',tag_id:1}, null, 700);
   await run('get_ui_state', {}, 'tag-small');
   const quietBefore = await run('get_debug_info', {page_size:10}, null, 1800);
   const quietAfter = await run('get_debug_info', {page_size:10});

@@ -15,10 +15,10 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 # 下一阶段：功能操作优化与功能扩展
 
-2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `photag-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/photag-plugin-projects/PORTS.md)；同进程交互验证待执行。
+2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `fileatlas-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/fileatlas-plugin-projects/PORTS.md)；同进程交互验证待执行。
 
 2026-10-19 用户要求增加暗/亮主题模式与左侧主题切换入口，并将 Shell 直接绘制的功能按钮迁移到插件托槽。
-主题设置复用 `photag-plugin-settings` 和现有 Settings JSON；颜色由 UI Bridge 语义访问器解析。
+主题设置复用 `fileatlas-plugin-settings` 和现有 Settings JSON；颜色由 UI Bridge 语义访问器解析。
 设置/主题入口与 Shell 四个常用动作均由 Cordis 插件注册视图。布局框架、品牌、resize 及通用贡献渲染仍归宿主组合。
 代码已静态编译，窗口行为与视觉验收见[主题模式证据](validation-ui/2026-10-19-theme-modes/README.md)，当前仍待同进程 MCP 验证。
 
@@ -29,10 +29,10 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 沿用当前已有按钮、菜单、间距和整体界面样式；仅增加位于网格/列表控件旁的分栏按钮，菜单选择单栏/双栏/四栏。
 全局左导航及右侧检查器继续各一份。支持两栏与 2×2 四栏。
 程序工作区是启动布局清单（不是媒体数据工作区），可独立保存每栏地址、内容视图、排列、筛选等，
-并在启动时恢复选定布局。配置存为版本化 JSON；Gallery 查询仍走共享数据库。
-实现清单及现有单 Gallery 实例约束见
+并在启动时恢复选定布局。配置存为版本化 JSON；FileManager 查询仍走共享数据库。
+实现清单及现有单 FileManager 实例约束见
 [多栏/程序工作区参考与清单](reference-ui/concepts/multi-column-workspaces-2026-10-19.md)。
-2026-10-19：分栏、激活栏操作路由、独立 Gallery 栏目和程序工作区已实现；同进程 MCP
+2026-10-19：分栏、激活栏操作路由、独立 FileManager 栏目和程序工作区已实现；同进程 MCP
 验证双/四栏、独立地址历史及双栏保存/重启恢复。验证记录与未覆盖项见
 [多栏/程序工作区运行证据](validation-ui/2026-10-19-columns-foundation/README.md)。
 
@@ -57,7 +57,8 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 ## 产品方向与新增功能：个人全能工作台（2026-10-17）
 
-PhoTag 的照片管理核心功能已完成；项目后续定位为用户个人使用的全能工作台，
+FileAtlas 是个人文件浏览器与工作台管理器。文件和目录浏览、独立多栏与程序工作区
+管理构成主干；媒体索引、缩略图、标签和检查器是集成在文件浏览流程中的能力。
 在现有 Rust/Cordis 插件化框架中逐步增加相互独立、用途可以完全不同的功能插件。
 插件可以按具体需求集成脚本、链接或合适的开源库。这里记录的是可扩展方向，
 不代表所有设想都已确定或承诺实现。新功能由编译期 feature crate 实现，
@@ -82,10 +83,10 @@ PhoTag 的照片管理核心功能已完成；项目后续定位为用户个人�
 
 - 适合 JSON 文件：数量有限、以整体读取/保存为主、结构清晰且需要用户查看/备份/编辑的
   插件设置、清单、历史或配置数据。采用版本字段、serde 默认值、同目录临时文件写入后
-  原子替换；路径位于 `%LOCALAPPDATA%\\PhoTag\\<feature>\\`，媒体等大资源独立存放，
+  原子替换；路径位于 `%LOCALAPPDATA%\\FileAtlas\\<feature>\\`，媒体等大资源独立存放，
   JSON 使用相对路径或稳定标识引用资源。
 - 适合 SQLite：数据量较大或持续增长、需要过滤/排序/分页/全文检索、并发读写、事务约束、
-  关系完整性或增量更新的数据。复用 `photag-plugin-database` 的 DatabaseService，
+  关系完整性或增量更新的数据。复用 `fileatlas-plugin-database` 的 DatabaseService，
   schema 与 typed API 由该 crate 持有；不得由功能 crate 自行打开 SQLite。
 - 混合数据：元数据使用所选结构化存储，二进制图片、图标、附件等始终作为独立文件/缓存；
   结构化记录保存相对路径、内容哈希和必要的尺寸/时间信息。可重建缓存与用户原创资源须区分，
@@ -114,12 +115,12 @@ SQLite 原表保留作恢复数据。详细运行证据见
 ### 截图与标注工具（2026-10-18）
 
 按用户澄清，集成 [Shotoshot](https://github.com/Chmyke/shotoshot) 现成程序及其自带界面：
-选区捕获、可编辑标注、撤销/重做、复制和保存继续由 Shotoshot 完整处理。PhoTag 的
-独立 Cordis 插件只提供启动/管理入口，将默认保存目录设为 `%LOCALAPPDATA%\\PhoTag\\Screenshots`，
-允许选择 Shotoshot 可执行文件和调整保存目录，并注册 PhoTag 全局启动快捷键。PhoTag 在启动时
+选区捕获、可编辑标注、撤销/重做、复制和保存继续由 Shotoshot 完整处理。FileAtlas 的
+独立 Cordis 插件只提供启动/管理入口，将默认保存目录设为 `%LOCALAPPDATA%\\FileAtlas\\Screenshots`，
+允许选择 Shotoshot 可执行文件和调整保存目录，并注册 FileAtlas 全局启动快捷键。FileAtlas 在启动时
 检测一次 Shotoshot 安装并缓存结果；缺少时在设置的软件页面和截图管理器提示用户自行安装。
-截图插件只向 Shotoshot 发起捕获操作，最终图像存入 PhoTag 专用截图目录供用户管理。
-不要在 PhoTag 重写截图编辑器或复刻 Shotoshot 的绘图控件。集成与许可证边界见
+截图插件只向 Shotoshot 发起捕获操作，最终图像存入 FileAtlas 专用截图目录供用户管理。
+不要在 FileAtlas 重写截图编辑器或复刻 Shotoshot 的绘图控件。集成与许可证边界见
 [Shotoshot 集成清单](reference-ui/concepts/shotoshot-launcher-2026-10-18.md)。
 
 2026-10-18 存储迁移完成：剪贴板与程序启动台首次启动时从旧 SQLite 表导入 JSON，之后以插件各自
@@ -144,16 +145,16 @@ SQLite 原表保留作恢复数据。详细运行证据见
 具体扫描来源、快捷方式解析、分类持久化、去重规则、桌面/开始菜单覆盖范围及
 卸载反馈需在实现设计中核实 Windows 行为；不得将未覆盖的程序来源描述为全部扫描。
 插件身份、复用现有程序数据库、当前发现范围及验证边界见
-[`photag-plugin-launcher/PORTS.md`](../crates/photag-plugin-launcher/PORTS.md)。
+[`fileatlas-plugin-launcher/PORTS.md`](../crates/fileatlas-plugin-launcher/PORTS.md)。
 
 2026-10-19 工作台整理：补齐 AI 工具、文件与同步、远程连接等自动分类规则；信息区新增只读的一句话程序说明，优先使用 Windows 注册说明或已核实的产品说明，其他项目按功能分类生成说明。发现扫描与手动添加会排除卸载器、安装器和说明文档快捷方式，程序右键菜单仅在系统登记卸载命令时提供“卸载”，执行前确认。隔离 Windows 主机扫描得到 295 项；分类、说明与菜单检查见[启动台整理验证](validation-ui/2026-10-19-launcher-classification/README.md)。
 
 ### 用户指定：剪贴板工作台（2026-10-18）
 
-新增独立 `photag-plugin-clipboard`，通过左侧快捷入口及 Ctrl+Shift+V 全局快捷键
+新增独立 `fileatlas-plugin-clipboard`，通过左侧快捷入口及 Ctrl+Shift+V 全局快捷键
 打开通用悬浮面板。使用开源 `clipboard-master` 监听和 `arboard` 读取文本与图片，
-经插件独立 JSON 文件持久化历史/分类；图片原始画面另存于 PhoTag
-本地文件并在历史/详情内预览。监听只读取并保存 PhoTag 自己的数据，不写入/清空系统剪贴板；
+经插件独立 JSON 文件持久化历史/分类；图片原始画面另存于 FileAtlas
+本地文件并在历史/详情内预览。监听只读取并保存 FileAtlas 自己的数据，不写入/清空系统剪贴板；
 仅用户显式点击“复制到系统剪贴板”时写回当前选中条目。
 现有面板支持历史浏览/搜索、内容编辑、分类新建/筛选/分配、本地收藏（仅通过“从收藏中删除”永久移除）、
 单条临时记录删除/清理临时历史及将条目恢复到系统剪贴板。面板有当前会话暂停捕获；
@@ -165,24 +166,24 @@ Windows 文件拖放列表和任意应用自定义格式仍未覆盖，持久隐
 修复默认浏览模式的持久化清单遗漏；三个独立进程验证历史/分组及删除同步。
 调试客户端强制启用dev-test并显式指定隔离数据库；早期误入默认库的本轮fixture已核对清理。
 调研、概念、截图、完整命令与边界见[v2运行记录](validation-ui/2026-10-18-clipboard-workbench-v2/README.md)。
-详见 [`photag-plugin-clipboard/PORTS.md`](../crates/photag-plugin-clipboard/PORTS.md)。
+详见 [`fileatlas-plugin-clipboard/PORTS.md`](../crates/fileatlas-plugin-clipboard/PORTS.md)。
 
 2026-10-18 用户指定：新增独立系统快捷键 Cordis 插件，使用开源
-`global-hotkey` 注册全局 Ctrl+F，恢复/激活 PhoTag 主窗口并打开程序启动台。
+`global-hotkey` 注册全局 Ctrl+F，恢复/激活 FileAtlas 主窗口并打开程序启动台。
 该插件与启动台共同默认启用，注册和注销受 Cordis 生命周期管理。UI Bridge 命令目录
 支持程序内与系统级快捷键；设置页自动发现插件贡献，支持录入、恢复和禁用，覆盖值通过
 Settings 服务持久化。Ctrl+F 是启动台默认值，并非不可修改的固定绑定。快捷键页以
 [2026-10-18 参考图清单](reference-ui/concepts/shortcuts-settings-2026-10-18.md) 为准，
 本轮按图修正、实际点击、冲突及小窗口滚动见 [复核证据](validation-ui/2026-10-18-shortcuts-reference/README.md)。
 Windows 真实系统级按键派发和抢占冲突仍未验，详见
-[`photag-plugin-shortcuts/PORTS.md`](../crates/photag-plugin-shortcuts/PORTS.md)。
+[`fileatlas-plugin-shortcuts/PORTS.md`](../crates/fileatlas-plugin-shortcuts/PORTS.md)。
 
 ## 用户指定：QuickLook 原始文件查看（2026-10-16）
 
 空格/Enter/原查看入口统一调用本机已安装的 QuickLook，缺少安装时只弹提示。
 删除独立图片、音频、视频查看器及其播放/变换/胶片栏、工具栏设置和MCP控制；
-图库缩略图、右侧180逻辑像素预览、标签/评分/EXIF/历史和文件操作保留。
-AI标签建议迁入Gallery，保留显式请求与自动分析设置。
+文件管理窗口缩略图、右侧180逻辑像素预览、标签/评分/EXIF/历史和文件操作保留。
+AI标签建议迁入FileManager，保留显式请求与自动分析设置。
 此项用户决定覆盖基线中有关内置独立查看器的描述，不包含安装/下载/更新QuickLook。
 实现和实测边界见[本轮记录](validation-ui/2026-10-16-quicklook/README.md)。
 
@@ -191,10 +192,10 @@ AI标签建议迁入Gallery，保留显式请求与自动分析设置。
 File > History 接入单文件 Lore 版本仓库、标题版本创建、历史列表、当前版本标记、原路径切换、
 分支创建/切换/归档/合并、冲突选择/放弃、版本元数据维护和操作后重新索引。源码参考
 `F:\AI\geren\newworkspace` 中固定 Lore GUI 版本。
-Cordis 拆为 `photag-plugin-versions` 与 `photag-plugin-version-info`；实现及剩余边界见
+Cordis 拆为 `fileatlas-plugin-versions` 与 `fileatlas-plugin-version-info`；实现及剩余边界见
 [本轮记录](validation-ui/2026-10-17-lore-version-history/README.md)。
 
-2026-10-17 补充：画廊缩略图用琥珀点提示已纳入版本的文件存在未保存新内容；
+2026-10-17 补充：文件管理窗口缩略图用琥珀点提示已纳入版本的文件存在未保存新内容；
 点击选择文件并打开历史页，由用户手动创建版本。基准为当前所选版本，支持回退旧版；
 匹配其他已保存版本时明确显示对应名称，不提示重复保存。后台读取和实际点击证据见
 [未保存版本提示](validation-ui/2026-10-17-version-status/README.md)。
@@ -205,9 +206,9 @@ Cordis 拆为 `photag-plugin-versions` 与 `photag-plugin-version-info`；实现
 
 ### 用户指定：Everything 搜索集成（2026-10-17）
 
-图库文件名/路径文本搜索和 MCP `search_media` 使用官方 Everything SDK 3 本机 IPC；SQLite继续执行PhoTag标签/日期/评分等过滤与分页。SDK结果会进入临时浏览缓存，因此从未浏览过的文件也能出现。搜索操作可用官方 `-startup -first-instance` 准备已安装的Everything 1.5后台客户端，初始索引加载完成后自动重跑当前搜索；软件检查页仍只读，不负责安装/启动。当前目录限定该目录，收藏集合限定已登记目录，无登记目录时搜索Everything全索引。顶部搜索栏后显示未安装/版本不兼容的安装提示、官方下载入口与重新检查按钮。当前1.5.0.1423已通过真实IPC搜索；此前所谓Session 0版本不兼容是误判，那个进程实际上只是`-svc`索引服务。SDK调用和验证边界见[实现记录](validation-ui/2026-10-17-everything-search/README.md)及各crate `PORTS.md`。
+文件管理窗口文件名/路径文本搜索和 MCP `search_media` 使用官方 Everything SDK 3 本机 IPC；SQLite继续执行FileAtlas标签/日期/评分等过滤与分页。SDK结果会进入临时浏览缓存，因此从未浏览过的文件也能出现。搜索操作可用官方 `-startup -first-instance` 准备已安装的Everything 1.5后台客户端，初始索引加载完成后自动重跑当前搜索；软件检查页仍只读，不负责安装/启动。当前目录限定该目录，收藏集合限定已登记目录，无登记目录时搜索Everything全索引。顶部搜索栏后显示未安装/版本不兼容的安装提示、官方下载入口与重新检查按钮。当前1.5.0.1423已通过真实IPC搜索；此前所谓Session 0版本不兼容是误判，那个进程实际上只是`-svc`索引服务。SDK调用和验证边界见[实现记录](validation-ui/2026-10-17-everything-search/README.md)及各crate `PORTS.md`。
 
-图库顶部搜索框右侧提供“范围”按钮，可开关文件名、路径、标签和时间范围；时间范围控制现有起止日期筛选是否进入查询，默认开启以保持原行为。选择会持久化，Everything仍只负责文件名/路径候选检索。
+文件管理窗口顶部搜索框右侧提供“范围”按钮，可开关文件名、路径、标签和时间范围；时间范围控制现有起止日期筛选是否进入查询，默认开启以保持原行为。选择会持久化，Everything仍只负责文件名/路径候选检索。
 
 2026-10-17 追加：搜索栏旁增加“当前文件夹 / 整台电脑”切换并保存选择。
 当前文件夹始终包含全部子文件夹，独立于普通浏览的“显示子文件夹”开关；
@@ -221,19 +222,19 @@ Cordis 拆为 `photag-plugin-versions` 与 `photag-plugin-version-info`；实现
 
 2026-10-16 用户指定的右侧信息面板补全已按[完整概念v2](reference-ui/concepts/right-inspector-complete-2026-10-16-v2.md)实现并用隔离的真实文件/标签及显式版本演示验证；95步演示与20步普通运行、25项回归结果见[证据](validation-ui/2026-10-16-inspector-complete/README.md)。真实持久版本策略仍按用户决定暂缓，F0其他未验项继续保留。
 
-保持已确认的界面结构；围绕真实任务流发现问题→明确复现→修改→自动化回归与PhoTag MCP实测→更新接口/验证记录。不要继续默认重做页面样式，也不把历史未验项算作完成。后端行为变更先追踪vendor/photag-source的行为/调用，兼容差异与新能力须写映射与PORTS。
+保持已确认的界面结构；围绕真实任务流发现问题→明确复现→修改→自动化回归与FileAtlas MCP实测→更新接口/验证记录。不要继续默认重做页面样式，也不把历史未验项算作完成。后端行为变更先追踪vendor/photag-source的行为/调用，兼容差异与新能力须写映射与PORTS。
 
-当用户要求对项目界面进行较大范围的样式或视觉调整时，先用图像生成能力制作并审阅概念图，再依据概念图实现。概念图提示应具体描述视觉层级、颜色体系、元素间距与分隔、布局密度及选中/悬停等关键状态；不要凭代码直觉直接铺开改样式。根据概念图完成实现后，用同进程 PhoTag MCP 截图对照并迭代，记录概念图、运行截图和未覆盖状态。小范围局部修饰无需每次重做概念图，除非用户要求。
+当用户要求对项目界面进行较大范围的样式或视觉调整时，先用图像生成能力制作并审阅概念图，再依据概念图实现。概念图提示应具体描述视觉层级、颜色体系、元素间距与分隔、布局密度及选中/悬停等关键状态；不要凭代码直觉直接铺开改样式。根据概念图完成实现后，用同进程 FileAtlas MCP 截图对照并迭代，记录概念图、运行截图和未覆盖状态。小范围局部修饰无需每次重做概念图，除非用户要求。
 
 用户只说“继续”时，从以下第一项未完成工作推进；具体需求优先。需要用户决定新增功能方向时，先完成不依赖该决定的操作审查，再提出明确的功能选项；不自行发明大范围新功能。
 
-2026-10-15 浏览模式主体已按用户指令实现：本地文件浏览、收藏、标签快照/重新链接、有界目录流及按需子目录开关。实际使用内存SQLite会话库与独立photag-tags.db；用户未标记/评分的浏览记录不持久化。实施细节见[需求与实现记录](browser-mode-requirements-yazi.md)，验收见[浏览模式运行记录](validation-ui/2026-10-15-browser/README.md)。继续复用统一刷新/ReadModel/Preview；历史索引和启动递归扫描描述不再是浏览产品入口。F0其余系统集成未验项仍保留。
+2026-10-15 浏览模式主体已按用户指令实现：本地文件浏览、收藏、标签快照/重新链接、有界目录流及按需子目录开关。实际使用内存SQLite会话库与独立fileatlas-tags.db；用户未标记/评分的浏览记录不持久化。实施细节见[需求与实现记录](browser-mode-requirements-yazi.md)，验收见[浏览模式运行记录](validation-ui/2026-10-15-browser/README.md)。继续复用统一刷新/ReadModel/Preview；历史索引和启动递归扫描描述不再是浏览产品入口。F0其余系统集成未验项仍保留。
 
 | 阶段 | 范围 | 当前状态 | 验收标准 |
 |---|---|---|---|
 | F0 操作基线审查 | 从文件夹导航→筛选/选择→预览/信息开始，记录真实操作问题；接着检查标签/评分/撤销重做、文件操作/对话框、批量流程、扫描/取消/错误反馈 | 进行中；本轮完成用户反馈的设置隔离/菜单/预览/列表检查（[侧栏与浏览模式审查](validation-ui/2026-10-16-sidebar-review/README.md)、[右侧面板补全](validation-ui/2026-10-16-inspector-complete/README.md)），其余保留 | 具体复现、影响、已验/未验边界记录；可以重现的缺陷先修复并重测 |
 | F1 现有操作优化 | 依据F0和用户反馈改善点击/键盘/选择反馈、命令可达性、等待/失败/重试、会话恢复及长库交互 | 进行中；设置穿透与卡片菜单修复已验（[面板运行证据](validation-ui/2026-10-14-panels/README.md)） | 真实流程可完成，无数据兼容回归；对应MCP与必要自动化测试通过 |
-| F2 功能扩展 | 按个人全能工作台方向，定义功能行为、操作入口及面板内布局，并接入现有数据与平台服务和 Cordis 生命周期，再逐项实现 | 进行中：启动台图标网格、选择/右键菜单、隔离双击启动、信息编辑与三字段排序已验；系统快捷键插件已接线；Shotoshot 独立程序及标注界面已集成，真实 Windows 捕获/保存路径待验（[启动台](../crates/photag-plugin-launcher/PORTS.md)、[快捷键](../crates/photag-plugin-shortcuts/PORTS.md)、[截图插件](../crates/photag-plugin-screenshot/PORTS.md)）；Ctrl+F Windows 实际运行、真实卸载与原生选取程序仍待验 | 每项有明确用途、完整行为与失败处理、集成验证；无空handler/假进度/伪数据 |
+| F2 功能扩展 | 按个人全能工作台方向，定义功能行为、操作入口及面板内布局，并接入现有数据与平台服务和 Cordis 生命周期，再逐项实现 | 进行中：启动台图标网格、选择/右键菜单、隔离双击启动、信息编辑与三字段排序已验；系统快捷键插件已接线；Shotoshot 独立程序及标注界面已集成，真实 Windows 捕获/保存路径待验（[启动台](../crates/fileatlas-plugin-launcher/PORTS.md)、[快捷键](../crates/fileatlas-plugin-shortcuts/PORTS.md)、[截图插件](../crates/fileatlas-plugin-screenshot/PORTS.md)）；Ctrl+F Windows 实际运行、真实卸载与原生选取程序仍待验 | 每项有明确用途、完整行为与失败处理、集成验证；无空handler/假进度/伪数据 |
 | F3 持续集成验收 | 每项F1/F2随修改检查静态/自动化/真实Windows行为，维护PORTS、映射、验证文档 | 随开发执行；日志见[重设计验证记录](redesign-validation.md) | 当前源码和运行版本一致，结果可复查；未覆盖系统路径明确保留 |
 
 F0先使用隔离profile和既有样例；原生操作尚未暴露给MCP时扩展项目MCP/公开功能契约，仍通过同进程GPUI验证，不用通用computer-use/OS输入替代。修改和破坏性测试只针对明确的隔离样本。
@@ -248,7 +249,7 @@ F2 是个人工作台新增独立功能的阶段。功能范围可以跨越不�
 
 - 设置鼠标穿透修复：共用frame与host遮罩阻挡主界面，真实点击验证。
 - 通用浮动组件：UI Bridge公共PanelCatalog、Cordis清理、Single/Multiple、插件独立默认/最小尺寸；设置、图片、音视频内容均接入，支持移动、边角缩放、max/restore。
-- Gallery Grid/List：顶部按钮，沿用分页/选择/动作，兼容保存布局；真实100009项列表末页/cache200已验。
+- FileManager Grid/List：顶部按钮，沿用分页/选择/动作，兼容保存布局；真实100009项列表末页/cache200已验。
 - 卡片菜单按钮不因hover离开销毁：移入菜单/子菜单/Preview及直接右键已验。
 
 本轮完成范围和未覆盖操作见[运行证据](validation-ui/2026-10-14-panels/README.md)。F0其余任务仍未完成，不将四项交付等同整体功能验收。
@@ -259,11 +260,11 @@ F1/F2：扫描与监听收录所有普通文件（含未知格式、无扩展名
 
 ## 数据启动刷新缺口修复（2026-10-14）
 
-F0/F1：确认启动脚本读取的 `target/dev-test` 持久数据库仍只有40项，旧扫描没有包含后来支持的文件类型；启动时仅恢复数据库并挂载未来文件监听，没有重扫，所以扫描器代码已更新但现有资料没有自动补齐。现在Watcher启动时使用Indexing服务逐个增量核对已登记目录，变更行通过`MediaIndexChanged`刷新Gallery，离线删除也会清理；评分、标签、ID保留，未变化图片沿用缓存，内容变化时重新生成缩略图和尺寸信息，无法访问的目录保留旧记录并报告失败。通过隔离拷贝的旧档案同进程MCP实测，目录从40条增至79条，样例目录从9条增至12条；图库原选择路径显示60条，全部文件合计91条。未改变真正的`target/dev-test`数据库。证据：`validation-ui/2026-10-14-startup-refresh/README.md`。F0剩余文件操作/音视频系统路径等未验项仍保留。
+F0/F1：确认启动脚本读取的 `target/dev-test` 持久数据库仍只有40项，旧扫描没有包含后来支持的文件类型；启动时仅恢复数据库并挂载未来文件监听，没有重扫，所以扫描器代码已更新但现有资料没有自动补齐。现在Watcher启动时使用Indexing服务逐个增量核对已登记目录，变更行通过`MediaIndexChanged`刷新FileManager，离线删除也会清理；评分、标签、ID保留，未变化图片沿用缓存，内容变化时重新生成缩略图和尺寸信息，无法访问的目录保留旧记录并报告失败。通过隔离拷贝的旧档案同进程MCP实测，目录从40条增至79条，样例目录从9条增至12条；文件管理窗口原选择路径显示60条，全部文件合计91条。未改变真正的`target/dev-test`数据库。证据：`validation-ui/2026-10-14-startup-refresh/README.md`。F0剩余文件操作/音视频系统路径等未验项仍保留。
 
 ## 用户指定：独立分组插件（2026-10-14）
 
-F2：将原按月分组的规则/排序/虚拟分段移入 `photag-plugin-grouping` Cordis service；原入口扩展为不分组、按月、文件类型、修改月份、创建月份、根文件夹、子文件夹。复用原筛选/排序/选择/预览和200条完整数据缓存，兼容旧session及日期分组设置。验证记录见 `validation-ui/2026-10-14-grouping/README.md`；F0其余待验项不因此完成。
+F2：将原按月分组的规则/排序/虚拟分段移入 `fileatlas-plugin-grouping` Cordis service；原入口扩展为不分组、按月、文件类型、修改月份、创建月份、根文件夹、子文件夹。复用原筛选/排序/选择/预览和200条完整数据缓存，兼容旧session及日期分组设置。验证记录见 `validation-ui/2026-10-14-grouping/README.md`；F0其余待验项不因此完成。
 
 ## 用户指定：不分组目录浏览（2026-10-14）
 
@@ -277,7 +278,7 @@ F0/F1/F3：保留 Explorer 新侧栏布局，修复折叠/展开、别名、持�
 
 ## 用户反馈：进入目录及恢复窗口重复刷新（2026-10-16）
 
-F0/F1：移除 Gallery 焦点恢复的无条件重扫；改为先完成监听注册再枚举，取消注册后伪造根变更导致的第二次重扫。背景更新保留列表/选择/滚动及 rich window；真实本地新增/删除持续通过监听更新。验证与当前可运行构建路径见 validation-ui/2026-10-16-refresh/README.md。
+F0/F1：移除 FileManager 焦点恢复的无条件重扫；改为先完成监听注册再枚举，取消注册后伪造根变更导致的第二次重扫。背景更新保留列表/选择/滚动及 rich window；真实本地新增/删除持续通过监听更新。验证与当前可运行构建路径见 validation-ui/2026-10-16-refresh/README.md。
 
 
 ## 用户指定：Explorer 地址栏（2026-10-16）

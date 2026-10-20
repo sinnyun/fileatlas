@@ -6,7 +6,7 @@
 ## 设计方向
 
 概念稿：[clipboard-workbench-layout-2026-10-18.png](../../reference-ui/concepts/clipboard-workbench-layout-2026-10-18.png)。
-采用 PhoTag 深色蓝灰色表面和蓝色选中态，把面板分成分类导航、历史卡片和内容编辑三栏；
+采用 FileAtlas 深色蓝灰色表面和蓝色选中态，把面板分成分类导航、历史卡片和内容编辑三栏；
 左侧放搜索、分类/置顶筛选、分类新建、清理与捕获状态，中间突出记录预览和选中态，
 右侧集中多行内容编辑、分类分配、置顶、保存、复制和删除。
 
@@ -15,17 +15,17 @@
 
 ## 实现与验证
 
-- 更新 `crates/photag-plugin-clipboard/src/view.rs`：三栏排版、分类/置顶筛选选中状态、
+- 更新 `crates/fileatlas-plugin-clipboard/src/view.rs`：三栏排版、分类/置顶筛选选中状态、
   卡片选中边框和底色、统一间距/面板色阶、捕获状态/清理操作定位，以及 GPUI Kit 多行文本编辑器。
 - 保留现有主窗口布局和通用悬浮面板能力。
 - 工具链：`1.97.1-x86_64-pc-windows-msvc`。
 - `cargo +1.97.1 fmt --all -- --check` — 通过。
-- `cargo +1.97.1 check --locked -p photag-shell -j 2` — 通过。
-- `cargo +1.97.1 build --locked -p photag-shell -j 2` — 通过；存在既有 LNK4098 默认库提示。
+- `cargo +1.97.1 check --locked -p fileatlas-shell -j 2` — 通过。
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2` — 通过；存在既有 LNK4098 默认库提示。
 - `node scripts/check-layering.cjs`、`node scripts/check-architecture.cjs`、
   `node scripts/check-ui-refresh.cjs`、`node scripts/check-feature-ledger.cjs` — 通过。
-- 同进程 PhoTag MCP（隔离 profile，仅数据库 fixture 开启 mutation）：
-  `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-clipboard-ui-redesign-final-2 --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations`
+- 同进程 FileAtlas MCP（隔离 profile，仅数据库 fixture 开启 mutation）：
+  `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-clipboard-ui-redesign-final-2 --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations`
 - MCP 实际点击选中历史记录并检查捕获暂停/恢复（状态 false → true → false）；截图：
   [clipboard-workbench-selected.png](../../../target/mcp-clipboard-ui-redesign-final-2/screenshots/clipboard-workbench-selected.png)。
 

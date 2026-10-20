@@ -1,21 +1,21 @@
 # 子文件夹分组：当前目录优先（2026-10-14）
 
-用户要求：第一组显示当前根目录直属文件，然后显示内部子文件夹。分组服务新增arrange_in_scope，Gallery传入MediaQuery.path_prefix作为当前目录；未选目录时优先所有已登记根目录的直属文件组。随后子目录组按路径名称排列，组内保持所选排序。空直属组不伪造。Windows扩展路径前缀、分隔符、大小写差异仅作排序比较规范化，不改写数据库路径或组标题。原标题背景/虚拟行/缓存/会话保持。
+用户要求：第一组显示当前根目录直属文件，然后显示内部子文件夹。分组服务新增arrange_in_scope，FileManager传入MediaQuery.path_prefix作为当前目录；未选目录时优先所有已登记根目录的直属文件组。随后子目录组按路径名称排列，组内保持所选排序。空直属组不伪造。Windows扩展路径前缀、分隔符、大小写差异仅作排序比较规范化，不改写数据库路径或组标题。原标题背景/虚拟行/缓存/会话保持。
 
-源对照：vendor/photag-source/src/ui/gallery.rs build_gallery_layout及调用处1047–1063只提供日期分组；本次是本会话新分组插件的需求细化。没有改SQLite、上游筛选、文件和标签语义。
+源对照：vendor/photag-source/src/ui/gallery.rs build_file_manager_layout及调用处1047–1063只提供日期分组；本次是本会话新分组插件的需求细化。没有改SQLite、上游筛选、文件和标签语义。
 
-Windows MSVC Rust1.97.1，150%DPI，1942×1256；同进程PhoTag MCP启动target/debug/photag-shell-root-first.exe --mcp。独立profile target/mcp-root-first-validation。隔离fixture target/mcp-root-first-fixture包含a-library/a-root.txt、z-root.txt、inside/m-child.txt、inside/deeper/b-deep.txt和z-library/other-root.txt，每个内容为root-first grouping fixture。正常PhoTag资料、原窗口未改。
+Windows MSVC Rust1.97.1，150%DPI，1942×1256；同进程FileAtlas MCP启动target/debug/fileatlas-shell-root-first.exe --mcp。独立profile target/mcp-root-first-validation。隔离fixture target/mcp-root-first-fixture包含a-library/a-root.txt、z-root.txt、inside/m-child.txt、inside/deeper/b-deep.txt和z-library/other-root.txt，每个内容为root-first grouping fixture。正常FileAtlas资料、原窗口未改。
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-grouping -p photag-plugin-gallery -j 2
-cargo +1.97.1 test --locked -p photag-plugin-navigation -j 2
-cargo +1.97.1 rustc --locked -p photag-shell --bin photag-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/photag-shell-root-first.exe
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-root-first.exe --profile target/mcp-root-first-validation --plan docs/validation-ui/2026-10-14-root-first/plan.json --allow-mutations
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-grouping -p fileatlas-plugin-file-manager -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-navigation -j 2
+cargo +1.97.1 rustc --locked -p fileatlas-shell --bin fileatlas-shell -j 2 -- -o F:/AI/geren/pho_cordis/target/debug/fileatlas-shell-root-first.exe
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-root-first.exe --profile target/mcp-root-first-validation --plan docs/validation-ui/2026-10-14-root-first/plan.json --allow-mutations
 ```
 
-结果：fmt/locked check/独立完整Shell编译通过；28自动测试通过（Gallery17、Grouping6、Navigation5）。新增回归覆盖全部根目录优先、根内文件排序稳定、选中嵌套目录作为当前根、扩展路径比较，以及筛选不生成空组。Navigation原有测试仍假定隐藏目录被排除，与之前全文件策略不一致；更新断言为可见.hidden及nested后5项全部通过，没有修改隐藏目录产品行为。
+结果：fmt/locked check/独立完整Shell编译通过；28自动测试通过（FileManager17、Grouping6、Navigation5）。新增回归覆盖全部根目录优先、根内文件排序稳定、选中嵌套目录作为当前根、扩展路径比较，以及筛选不生成空组。Navigation原有测试仍假定隐藏目录被排除，与之前全文件策略不一致；更新断言为可见.hidden及nested后5项全部通过，没有修改隐藏目录产品行为。
 
 19步同进程MCP通过并对最终报告作计数/路径断言：
 

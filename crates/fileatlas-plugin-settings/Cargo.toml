@@ -1,0 +1,25 @@
+[package]
+name = "fileatlas-plugin-settings"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+gpui-kit.workspace = true
+open = "5"
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+fileatlas-plugin-navigation = { path = "../fileatlas-plugin-navigation" }
+fileatlas-plugin-updater = { path = "../fileatlas-plugin-updater" }
+fileatlas-plugin-session = { path = "../fileatlas-plugin-session" }
+dirs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true

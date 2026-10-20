@@ -25,7 +25,7 @@ module.exports = async ({ step, delay, profile }) => {
     await until(s => s.theme.mode === 'dark');
   }
   await ui('settings_open');
-  await ui('settings_plugin_page', 'photag.material-theme');
+  await ui('settings_plugin_page', 'fileatlas.material-theme');
   await delay(400);
   const page = await shot('picker-page');
   const [x, y, w] = page.panels.find(p => p.id === 'settings').bounds.split(',').map(Number);
@@ -55,7 +55,7 @@ module.exports = async ({ step, delay, profile }) => {
   await click(16, s.window_status.geometry.client_size.height - 116);
   await until(s => s.theme.mode === 'light');
   await ui('settings_open');
-  await ui('settings_plugin_page', 'photag.material-theme');
+  await ui('settings_plugin_page', 'fileatlas.material-theme');
   await delay(300);
   await click(x + w - 130, y + 334);
   await shot('picker-palette-light');

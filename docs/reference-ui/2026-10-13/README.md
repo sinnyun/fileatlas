@@ -9,7 +9,7 @@ the UI states below; they are not product assets.
 | Files | Captured state |
 |---|---|
 | `reference-main.png`, `reference-main-isolated.png`, `reference-printwindow.png` | Main library window / isolated initial state captures |
-| `reference-gallery-library.png`, `reference-after-open.png`, `reference-month-toggle.png`, `reference-month-toggle2.png`, `reference-space-preview.png` | Library gallery and alternate interaction captures |
+| `reference-file-manager-window.png`, `reference-after-open.png`, `reference-month-toggle.png`, `reference-month-toggle2.png`, `reference-space-preview.png` | Library file_manager and alternate interaction captures |
 | `reference-tags.png`, `reference-tags-tab.png`, `reference-tag-input.png`, `reference-tag-created.png`, `reference-create-tag-dialog.png` | Tag navigation and tag creation states |
 | `reference-selected-media.png`, `reference-preview.png` | Media selection and preview |
 | `reference-settings.png`, `reference-appearance.png`, `reference-shortcuts.png`, `reference-ai.png`, `reference-updates.png` | Settings tabs |

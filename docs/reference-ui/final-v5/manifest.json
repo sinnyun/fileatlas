@@ -6,47 +6,47 @@
   "images": [
     {
       "file": "00-main-library.png",
-      "source": "photag-reference-layout-v5-2026-10-13.png",
+      "source": "fileatlas-reference-layout-v5-2026-10-13.png",
       "title": "主界面"
     },
     {
       "file": "01-preview-playback.png",
-      "source": "photag-v5-01-preview-playback-2026-10-13.png",
+      "source": "fileatlas-v5-01-preview-playback-2026-10-13.png",
       "title": "图片预览与音视频播放"
     },
     {
       "file": "02-settings-appearance-toolbar-shortcuts.png",
-      "source": "photag-v5-02-settings-appearance-toolbar-shortcuts-2026-10-13-reviewed.png",
+      "source": "fileatlas-v5-02-settings-appearance-toolbar-shortcuts-2026-10-13-reviewed.png",
       "title": "设置：外观、工具栏、快捷键"
     },
     {
       "file": "03-settings-tags-ai-updates.png",
-      "source": "photag-v5-03-settings-tags-ai-updates-2026-10-13-reviewed.png",
+      "source": "fileatlas-v5-03-settings-tags-ai-updates-2026-10-13-reviewed.png",
       "title": "设置：标签、AI、更新"
     },
     {
       "file": "04-tag-management.png",
-      "source": "photag-v5-04-tag-management-2026-10-13.png",
+      "source": "fileatlas-v5-04-tag-management-2026-10-13.png",
       "title": "标签管理与 AI 建议"
     },
     {
       "file": "05-filters-menus.png",
-      "source": "photag-v5-05-filters-menus-2026-10-13.png",
+      "source": "fileatlas-v5-05-filters-menus-2026-10-13.png",
       "title": "筛选与二级菜单"
     },
     {
       "file": "06-file-operations-dialogs.png",
-      "source": "photag-v5-06-file-operations-dialogs-2026-10-13-reviewed.png",
+      "source": "fileatlas-v5-06-file-operations-dialogs-2026-10-13-reviewed.png",
       "title": "批量操作与文件弹窗"
     },
     {
       "file": "07-statistics-export-update.png",
-      "source": "photag-v5-07-statistics-export-update-2026-10-13.png",
+      "source": "fileatlas-v5-07-statistics-export-update-2026-10-13.png",
       "title": "统计、导出、更新与 EXIF"
     },
     {
       "file": "08-states-feedback.png",
-      "source": "photag-v5-08-states-feedback-2026-10-13.png",
+      "source": "fileatlas-v5-08-states-feedback-2026-10-13.png",
       "title": "空状态、扫描与错误反馈"
     }
   ]

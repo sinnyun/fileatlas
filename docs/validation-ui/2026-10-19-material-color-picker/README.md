@@ -17,24 +17,24 @@
 色板选择只更新草稿；悬停不提交。点击“生成并应用”时将选中颜色转换为 RGB 种子，
 沿现有 Material → ThemeSet JSON → GPUI Kit ThemeRegistry 管线保存和应用。
 订阅随 view 销毁。Material 不使用透明种子，选色器 alpha 不作为主题透明度。
-数据格式和路径不变，详见[插件 PORTS](../../../crates/photag-plugin-material-theme/PORTS.md)。
+数据格式和路径不变，详见[插件 PORTS](../../../crates/fileatlas-plugin-material-theme/PORTS.md)。
 
 ## 验证
 
 Windows，150% DPI。主窗 3286×1831，小窗 1920×1200。隔离
-`target/mcp-material-picker`，同进程 PhoTag MCP，Standard 权限。
+`target/mcp-material-picker`，同进程 FileAtlas MCP，Standard 权限。
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
 node scripts/check-ui-theme.cjs
 node scripts/check-ui-refresh.cjs
 node scripts/check-architecture.cjs
 node scripts/check-layering.cjs
 node scripts/check-feature-ledger.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-material-picker --plugins core --access-level standard --scenario scripts/validate-material-color-picker.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-material-picker --plugins core --access-level standard --scenario scripts/validate-material-color-picker-restart.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-material-picker --plugins core --access-level standard --scenario scripts/validate-material-color-picker.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-material-picker --plugins core --access-level standard --scenario scripts/validate-material-color-picker-restart.cjs
 ```
 
 以上均通过。构建时正常关闭了经路径确认的工作区旧进程，再使用原 target 重建；

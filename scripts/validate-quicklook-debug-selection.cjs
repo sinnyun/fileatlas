@@ -5,12 +5,12 @@ module.exports=async({call,payload,delay,profile,output,root})=>{
   const save=()=>fs.writeFileSync(path.join(profile,'debug-selection-report.json'),JSON.stringify(report,null,2));
   const fixture=path.join(profile,`debug-selection-fixture-${Date.now()}`);
   fs.mkdirSync(fixture,{recursive:true});
-  fs.copyFileSync(path.join(root,'test-data/photag-library/01-small/small.png'),path.join(fixture,'日志选择测试.png'));
+  fs.copyFileSync(path.join(root,'test-data/fileatlas-fixtures/01-small/small.png'),path.join(fixture,'日志选择测试.png'));
   await invoke('add_folder',{path:fixture,confirm:true});
-  await invoke('control_gallery',{action:'navigate',value:fixture});
-  let gallery;for(let n=0;n<100;n++){gallery=await invoke('get_ui_state');if(gallery.gallery?.matched_count>=1&&!gallery.browser.status[2])break;await delay(100);}
-  assert(gallery.gallery?.matched_count>=1,'fixture folder did not finish indexing');
-  await invoke('control_gallery',{action:'sort',value:'name_asc'});await delay(250);
+  await invoke('control_file_manager',{action:'navigate',value:fixture});
+  let file_manager;for(let n=0;n<100;n++){file_manager=await invoke('get_ui_state');if(file_manager.file_manager?.matched_count>=1&&!file_manager.browser.status[2])break;await delay(100);}
+  assert(file_manager.file_manager?.matched_count>=1,'fixture folder did not finish indexing');
+  await invoke('control_file_manager',{action:'sort',value:'name_asc'});await delay(250);
   const search=await invoke('search_media',{limit:20,sort:'name_asc'});
   const normal=p=>p.replace(/^\\\\\?\\/,'').toLowerCase();
   const media=search.items.find(item=>normal(item.full_path).startsWith(normal(fixture)));assert(media);
@@ -20,7 +20,7 @@ module.exports=async({call,payload,delay,profile,output,root})=>{
   const targetWasVisible=(initiallyVisible.windows??[]).some(window=>window.title.toLowerCase().includes(targetName));
   const targetVisible=async()=>((await invoke('inspect_quicklook')).windows??[]).some(window=>window.title.toLowerCase().includes(targetName));
   const waitForTarget=async visible=>{for(let n=0;n<30;n++){if(await targetVisible()===visible)return true;await delay(100);}return false;};
-  await invoke('control_gallery',{action:'preview',media_id:media.id});
+  await invoke('control_file_manager',{action:'preview',media_id:media.id});
   let state;for(let n=0;n<60;n++){state=await invoke('get_ui_state');if(state.quicklook.error||state.quicklook.outcome)break;await delay(100);}
   assert(state.quicklook.error||state.quicklook.outcome,'QuickLook request produced neither an outcome nor an error');
   if(state.quicklook.error?.includes('running as administrator')){
@@ -31,7 +31,7 @@ module.exports=async({call,payload,delay,profile,output,root})=>{
   if(state.quicklook.outcome){
     if(targetWasVisible){await waitForTarget(false);}
     else if(await waitForTarget(true)){
-      await invoke('control_gallery',{action:'preview',media_id:media.id});
+      await invoke('control_file_manager',{action:'preview',media_id:media.id});
       await waitForTarget(false);
     }
   }

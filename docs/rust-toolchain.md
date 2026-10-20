@@ -20,9 +20,9 @@ rustup toolchain list
 rustc +1.97.1 --version
 cargo +1.97.1 --version
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-ui-bridge --lib -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-ui-bridge --lib -j 2
 ```
 
 对 run、clippy、tree 和其他 Cargo 操作也使用 `cargo +1.97.1`。测试目标应按具体改动选择，示例不是每次都必须运行的固定测试集合。保留锁定依赖、有界并行与已有增量编译配置。
@@ -33,15 +33,15 @@ cargo +1.97.1 test --locked -p photag-ui-bridge --lib -j 2
 
 ## EXE 被运行进程占用时（用户明确要求，2026-10-18）
 
-如果构建因 PhoTag 正在运行而无法覆盖 EXE，直接关闭占用该目标的 PhoTag 进程，
-然后重新构建正常的 `target/debug/photag-shell.exe`。用户已授权这一操作，无需再次确认。
+如果构建因 FileAtlas 正在运行而无法覆盖 EXE，直接关闭占用该目标的 FileAtlas 进程，
+然后重新构建正常的 `target/debug/fileatlas-shell.exe`。用户已授权这一操作，无需再次确认。
 先核对进程的可执行文件绝对路径确实属于本工作区，优先正常关闭；无法退出时，
 只结束已核实的对应进程，不按模糊名称批量结束其他程序。
 
 继续复用当前 `target` 目录、依赖缓存和增量编译产物：
 
 ```powershell
-cargo +1.97.1 build --locked -p photag-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
 ```
 
 不得为了绕开文件占用另取 EXE 名称、设置新的 target 目录、执行 `cargo clean`
@@ -54,15 +54,15 @@ MCP 客户端通过 Cargo 启动 Shell 时，也必须在 args 中传入工具�
 ```json
 {
   "command": "cargo",
-  "args": ["+1.97.1", "run", "--locked", "-p", "photag-shell", "-j", "2", "--", "--mcp"],
+  "args": ["+1.97.1", "run", "--locked", "-p", "fileatlas-shell", "-j", "2", "--", "--mcp"],
   "env": {
-    "PHOTAG_DEV_PLUGINS": "dev-test"
+    "FILEATLAS_DEV_PLUGINS": "dev-test"
   }
 }
 ```
 
-已构建的 photag-shell.exe 不需要 Cargo 工具链选择。其他命令包装器和自动化任务应确保传入同样的工具链参数；本次只更新文档，未修改脚本、工具链安装或全局默认配置。
+已构建的 fileatlas-shell.exe 不需要 Cargo 工具链选择。其他命令包装器和自动化任务应确保传入同样的工具链参数；本次只更新文档，未修改脚本、工具链安装或全局默认配置。
 
 ## 验证记录
 
-GPUI Kit 审查中，`cargo +1.97.1 check --locked -p photag-shell -j 2` 和 UI Bridge 的3项测试已通过。此前默认1.94.1的失败保留为历史记录，不是项目编译结论。详细证据见 [GPUI Kit 接入报告](gpui-kit-integration-audit-2026-10-13.md)。
+GPUI Kit 审查中，`cargo +1.97.1 check --locked -p fileatlas-shell -j 2` 和 UI Bridge 的3项测试已通过。此前默认1.94.1的失败保留为历史记录，不是项目编译结论。详细证据见 [GPUI Kit 接入报告](gpui-kit-integration-audit-2026-10-13.md)。

@@ -2,7 +2,7 @@
 const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 module.exports = async ({ call, payload, delay, profile, output, exe }) => {
-  const folder = process.env.PHOTAG_REAL_FOLDER;
+  const folder = process.env.FILEATLAS_REAL_FOLDER;
   assert(folder && fs.statSync(folder).isDirectory());
   const report = { started: new Date().toISOString(), folder, profile, exe,
     exe_sha256: crypto.createHash('sha256').update(fs.readFileSync(exe)).digest('hex'),
@@ -58,7 +58,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
       const media = report.media.items.find(m => m.filename === name); assert(media);
       entry.media = media; entry.sequence_before = (await logs()).logs.latest_id;
       const started = Date.now();
-      await invoke('control_gallery', { action: 'preview', media_id: media.id });
+      await invoke('control_file_manager', { action: 'preview', media_id: media.id });
       let view;
       for (let i = 0; i < 240; i++) {
         view = await invoke('get_view_state');
@@ -82,7 +82,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
       entry.target_jobs = entry.jobs.filter(j => j.message.includes('source=' + media.full_path + ' '));
       if (entry.paint.cache_policy) {
         for (const job of entry.jobs.filter(j => j.max_dim === 96)) {
-          assert(job.reused, 'indexed filmstrip must reuse Gallery thumbnail');
+          assert(job.reused, 'indexed filmstrip must reuse FileManager thumbnail');
           assert.equal(job.decode_ms, 0); assert.equal(job.read_ms, 0); assert.equal(job.write_ms, 0);
         }
         assert(entry.target_jobs.filter(j => j.max_dim === 1600).length <= 1);
@@ -102,7 +102,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
   }
   try {
     report.sources_before = await fingerprint();
-    report.cache_before = { thumbs: cacheFiles(path.join(profile, 'thumbs')), local: cacheFiles(path.join(profile, 'local', 'PhoTag')) };
+    report.cache_before = { thumbs: cacheFiles(path.join(profile, 'thumbs')), local: cacheFiles(path.join(profile, 'local', 'FileAtlas')) };
     assert.equal(report.cache_before.thumbs.length, 0); assert.equal(report.cache_before.local.length, 0);
     await delay(1500); await ensureWindow();
     report.accessibility = await invoke('control_ui', { action: 'accessibility_activate' });
@@ -112,9 +112,9 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
     report.folder_result = await invoke('add_folder', { path: folder, confirm: true });
     for (let i = 0; i < 240; i++) {
       const state = await invoke('get_ui_state');
-      report.progress.push({ elapsed_ms: Date.now() - started, scan_progress: state.scan_progress, gallery: state.gallery?.matched_count });
+      report.progress.push({ elapsed_ms: Date.now() - started, scan_progress: state.scan_progress, file_manager: state.file_manager?.matched_count });
       if (state.scan_progress?.error) throw Error(state.scan_progress.error);
-      if (!state.scan_progress && state.gallery?.matched_count >= report.sources_before.length) break;
+      if (!state.scan_progress && state.file_manager?.matched_count >= report.sources_before.length) break;
       await delay(500);
     }
     report.scan_ms = Date.now() - started; report.scan_final = await invoke('get_ui_state');
@@ -122,7 +122,7 @@ module.exports = async ({ call, payload, delay, profile, output, exe }) => {
     report.media = await invoke('search_media', { limit: 100 });
     assert.equal(report.media.total, report.sources_before.length);
     assert(names.every(name => report.media.items.some(m => m.filename === name)));
-    report.pre_preview_cache = { preview: cacheFiles(path.join(profile, 'local', 'PhoTag', 'preview')), thumbs: cacheFiles(path.join(profile, 'thumbs')).length };
+    report.pre_preview_cache = { preview: cacheFiles(path.join(profile, 'local', 'FileAtlas', 'preview')), thumbs: cacheFiles(path.join(profile, 'thumbs')).length };
     assert.equal(report.pre_preview_cache.preview.length, 0);
     for (const name of names) await test(name, 'first');
     for (const name of names) await test(name, 'reopen');

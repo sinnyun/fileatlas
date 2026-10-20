@@ -1,5 +1,5 @@
-// Local, isolated UI validation through PhoTag's stdio MCP only.
-// Run after `cargo build -p photag-shell --locked -j 2`.
+// Local, isolated UI validation through FileAtlas's stdio MCP only.
+// Run after `cargo build -p fileatlas-shell --locked -j 2`.
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,18 +9,18 @@ const profile = path.join(root, '.local', 'validation', 'profiles', 'mcp-ui-vali
 const output = path.join(root, '.local', 'validation', 'artifacts', 'ui-mcp-screenshots');
 fs.mkdirSync(profile, { recursive: true });
 fs.mkdirSync(output, { recursive: true });
-// Only the isolated profile is configured; regular PhoTag data is untouched.
+// Only the isolated profile is configured; regular FileAtlas data is untouched.
 // `settings.rs:331-334` resolves through %LOCALAPPDATA%, which the child below
-// remaps into this profile. show_filmstrip stays off by default in PhoTag
+// remaps into this profile. show_filmstrip stays off by default in FileAtlas
 // (`settings.rs:232`), so the profile turns it on to make the band observable.
 const localAppData = path.join(profile, 'local');
-fs.mkdirSync(path.join(localAppData, 'PhoTag'), { recursive: true });
-fs.writeFileSync(path.join(localAppData, 'PhoTag', 'settings.json'),
+fs.mkdirSync(path.join(localAppData, 'FileAtlas'), { recursive: true });
+fs.writeFileSync(path.join(localAppData, 'FileAtlas', 'settings.json'),
   JSON.stringify({ auto_check_updates: false, show_filmstrip: true }));
-const child = spawn(path.join(root, 'target/debug/photag-shell.exe'), ['--mcp'], {
+const child = spawn(path.join(root, 'target/debug/fileatlas-shell.exe'), ['--mcp'], {
   cwd: root,
-  env: { ...process.env, PHOTAG_DEV_PLUGINS: 'dev-test', PHOTAG_DEV_TEST_DIR: profile,
-    LOCALAPPDATA: path.join(profile, 'local'), PHOTAG_MCP_ALLOW_MUTATIONS: '1' },
+  env: { ...process.env, FILEATLAS_DEV_PLUGINS: 'dev-test', FILEATLAS_DEV_TEST_DIR: profile,
+    LOCALAPPDATA: path.join(profile, 'local'), FILEATLAS_MCP_ALLOW_MUTATIONS: '1' },
   stdio: ['pipe', 'pipe', 'pipe'],
 });
 const diagnostics = fs.createWriteStream(path.join(output, 'stderr.log'));
@@ -57,7 +57,7 @@ function json(result) { return JSON.parse(result.content.find(c => c.type === 't
 async function ui(action, value) {
   const state = json(await call('control_ui', { action, value }));
   assert(!state.error, state.error);
-  await delay(450); // Gallery and Settings consume requests on their own GPUI pollers.
+  await delay(450); // FileManager and Settings consume requests on their own GPUI pollers.
   return state;
 }
 const report = { profile, screenshots: [], states: [] };
@@ -65,12 +65,12 @@ async function animation(action, value, id, field, target) {
   const start = Date.now(), samples = [];
   await call('control_ui', { action, value });
   for (let i = 0; i < 45; i++) {
-    const state = json(await call('get_ui_state')).gallery_cards.find(card => card.media_id === id);
+    const state = json(await call('get_ui_state')).file_manager_cards.find(card => card.media_id === id);
     if (state) samples.push({ elapsedMs: Date.now() - start, value: state[field] });
     if (samples.length > 1 && samples.at(-1).value === target) break;
     await delay(16);
   }
-  const frames = json(await call('get_ui_state')).gallery_animation_frames.filter(frame => frame.media_id === id && frame.timestamp_ms >= start);
+  const frames = json(await call('get_ui_state')).file_manager_animation_frames.filter(frame => frame.media_id === id && frame.timestamp_ms >= start);
   assert(frames.some(frame => frame[field] > 0 && frame[field] < 1), `missing rendered intermediate ${field}: ${JSON.stringify(frames)}`);
   assert.equal(samples.at(-1).value, target);
   (report.animations ??= []).push({ action, id, field, target, samples, frames });
@@ -85,7 +85,7 @@ async function screenshot(label) {
 }
 (async () => {
   try {
-    await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'photag-ui-validation', version: '1' } });
+    await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'fileatlas-ui-validation', version: '1' } });
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
     report.tools = (await request('tools/list', {})).tools.map(tool => tool.name);
     report.initial = json(await call('get_ui_state'));
@@ -105,9 +105,9 @@ async function screenshot(label) {
       await ui('deselect');
       await call('control_preview', { action: 'close' });
       await delay(150);
-      await screenshot(`${language}-gallery`);
+      await screenshot(`${language}-file_manager`);
       await animation('hover_media', String(sample.id), sample.id, 'hover', 1);
-      await screenshot(`${language}-gallery-hover`);
+      await screenshot(`${language}-file_manager-hover`);
       await animation('hover_clear', undefined, sample.id, 'hover', 0);
       await ui('settings_open');
       for (const tab of ['appearance', 'toolbar', 'shortcuts', 'tags', 'ai', 'updates']) {
@@ -116,9 +116,9 @@ async function screenshot(label) {
       }
       await ui('settings_close');
       await ui('statistics'); await screenshot(`${language}-statistics`);
-      await ui('gallery_dialogs_close');
+      await ui('file_manager_dialogs_close');
       await ui('bulk_actions'); await screenshot(`${language}-bulk`);
-      await ui('gallery_dialogs_close');
+      await ui('file_manager_dialogs_close');
       await animation('select_media', String(sample.id), sample.id, 'selection', 1);
       await screenshot(`${language}-selected`);
       await call('open_media', { media_id: sample.id });
@@ -160,7 +160,7 @@ async function screenshot(label) {
       // the production progress band; they never modify the source fixture.
       const corpus = path.join(profile, `scan-corpus-${Date.now()}`);
       fs.mkdirSync(corpus);
-      const source = path.join(root, 'test-data/photag-library/02-mixed-formats/large.tiff');
+      const source = path.join(root, 'test-data/fileatlas-fixtures/02-mixed-formats/large.tiff');
       for (let i = 0; i < 120; i++) fs.linkSync(source, path.join(corpus, `scan-${i}.tiff`));
       const added = json(await call('add_folder', { path: corpus, confirm: true }));
       assert(added.ok, JSON.stringify(added));

@@ -15,11 +15,11 @@ module.exports = async ({ call, payload, delay, profile }) => {
     }
     throw Error(`Timed out waiting for ${label}: ${JSON.stringify(result)}`);
   }
-  await invoke('control_gallery', { action: 'navigate', value: manifest.fixture });
+  await invoke('control_file_manager', { action: 'navigate', value: manifest.fixture });
   await until(async () => {
     const state = await invoke('get_ui_state');
-    return state?.gallery?.matched_count > 0;
-  }, 'reopened Gallery library');
+    return state?.file_manager?.matched_count > 0;
+  }, 'reopened FileManager library');
   const graph = await invoke('list_file_branches', { media_id: manifest.media_id });
   const pending = graph?.graph?.pendingMerge;
   assert(pending, `pending merge did not survive process restart: ${JSON.stringify(graph)}`);
@@ -38,7 +38,7 @@ module.exports = async ({ call, payload, delay, profile }) => {
     media_id: manifest.media_id,
     recovered_pending_merge: pending,
     resolution_after_restart: aborted,
-    cases: ['pending conflict source/target/path metadata survived a complete PhoTag MCP child restart', 'abort after restart cleared merge state and preserved original source bytes'],
+    cases: ['pending conflict source/target/path metadata survived a complete FileAtlas MCP child restart', 'abort after restart cleared merge state and preserved original source bytes'],
   };
   fs.writeFileSync(path.join(profile, 'pending-restart-report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));

@@ -1,4 +1,4 @@
-# PhoTag 最终界面设计稿（v5）
+# FileAtlas 最终界面设计稿（v5）
 
 2026-10-13。最终选用 9 张图片：1 张主界面和 8 张配套设计稿。设置与文件操作使用复核后的版本。此目录作为后续界面实现的设计参考，概念稿、初稿和历史方案保留在 ../concepts/。
 
@@ -17,7 +17,7 @@
 | [07-statistics-export-update.png](/F:/AI/geren/pho_cordis/docs/reference-ui/final-v5/07-statistics-export-update.png) | 统计、导出、更新与 EXIF |
 | [08-states-feedback.png](/F:/AI/geren/pho_cordis/docs/reference-ui/final-v5/08-states-feedback.png) | 空状态、扫描与错误反馈 |
 
-这些是图片生成工具制作的静态视觉稿，软件代码尚未修改。功能、源代码约束和图像文字瑕疵说明见 [完整设计记录](/F:/AI/geren/pho_cordis/docs/reference-ui/concepts/photag-v5-companion-interfaces-2026-10-13.md) 与 [主界面说明](/F:/AI/geren/pho_cordis/docs/reference-ui/concepts/photag-reference-layout-v5-2026-10-13.md)。不要直接把生成图片的像素尺寸视为实现规范。
+这些是图片生成工具制作的静态视觉稿，软件代码尚未修改。功能、源代码约束和图像文字瑕疵说明见 [完整设计记录](/F:/AI/geren/pho_cordis/docs/reference-ui/concepts/fileatlas-v5-companion-interfaces-2026-10-13.md) 与 [主界面说明](/F:/AI/geren/pho_cordis/docs/reference-ui/concepts/fileatlas-reference-layout-v5-2026-10-13.md)。不要直接把生成图片的像素尺寸视为实现规范。
 
 manifest.json 记录每张图片的标题及原始项目文件名；checksums.sha256 记录最终文件 SHA256。
 

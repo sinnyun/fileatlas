@@ -1,4 +1,4 @@
-// Prepare the real Gallery History tab for same-process pointer validation.
+// Prepare the real FileManager History tab for same-process pointer validation.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -18,12 +18,12 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   async function capture(name) {
     const result = await call('screenshot_window');
     const image = result.content?.find(block => block.type === 'image');
-    assert(image, 'PhoTag MCP screenshot returned no image');
+    assert(image, 'FileAtlas MCP screenshot returned no image');
     const target = path.join(output, `${name}.png`);
     fs.writeFileSync(target, Buffer.from(image.data, 'base64'));
     return target;
   }
-  const actualFile = process.env.PHOTAG_LORE_TEST_FILE;
+  const actualFile = process.env.FILEATLAS_LORE_TEST_FILE;
   const original = actualFile ? fs.readFileSync(actualFile) : null;
   const originalStat = actualFile ? fs.statSync(actualFile) : null;
   try {
@@ -40,9 +40,9 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   const folder = await invoke('add_folder', { path: source, confirm: true });
   console.log('validation folder added');
   assert.equal(folder?.ok, true, JSON.stringify(folder));
-  await invoke('control_gallery', { action: 'navigate', value: source });
-  await until(state => state.gallery?.matched_count > 0, 'fixture Gallery results');
-  console.log('validation Gallery results loaded');
+  await invoke('control_file_manager', { action: 'navigate', value: source });
+  await until(state => state.file_manager?.matched_count > 0, 'fixture FileManager results');
+  console.log('validation FileManager results loaded');
   const found = await invoke('search_media', { limit: 100, sort: 'name_asc' });
   const item = found?.items?.find(media => media.path === file || media.filename === path.basename(file));
   assert(item, `restart fixture was not indexed: ${JSON.stringify(found)}`);
@@ -56,7 +56,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   await invoke('control_ui', { action: 'select_media', value: String(item.id) });
   await invoke('control_ui', { action: 'inspector_open' });
   await invoke('control_ui', { action: 'inspector_tab', value: 'information' });
-  const before = await until(state => state.inspector_open && state.inspector_tab === 'information' && state.window_status.geometry && state.inspector_width, 'Gallery Inspector');
+  const before = await until(state => state.inspector_open && state.inspector_tab === 'information' && state.window_status.geometry && state.inspector_width, 'FileManager Inspector');
   const geometry = before.window_status.geometry;
   // On this view, the three equal-width inspector tabs occupy the top 38 px
   // navigation row below the preview. Target History's middle third using the
@@ -102,7 +102,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   assert.equal(retained.versions.length, 2, 'Switching backward dropped a saved version');
   assert(retained.versions.some(version => version.versionId === oldVersion.versionId && version.isCurrent), 'Older version is not marked current');
   assert.equal(retained.versions[newerIndex].versionId, newerVersion.versionId, 'Version rows changed order after rewind');
-  const rewoundState = await until(state => state.inspector_history.visible && state.gallery.selected_media_ids.includes(item.id) && state.inspector_history.active === oldVersion.versionId && state.inspector_history.count === 2, 'rewound history UI refresh with retained file selection');
+  const rewoundState = await until(state => state.inspector_history.visible && state.file_manager.selected_media_ids.includes(item.id) && state.inspector_history.active === oldVersion.versionId && state.inspector_history.count === 2, 'rewound history UI refresh with retained file selection');
   await capture('history-after-rewind');
   console.log(`validation rewound UI: ${JSON.stringify(rewoundState.inspector_history)}`);
   const newerRowY = 580 + newerIndex * 76;
@@ -125,7 +125,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   const finalVersions = await invoke('list_file_versions', { media_id: item.id });
   assert.equal(finalVersions.versions.length, 2, 'Switching forward dropped a saved version');
   assert(finalVersions.versions.some(version => version.versionId === newerVersion.versionId && version.isCurrent), 'Newer version is not marked current');
-  const finalState = await until(state => state.inspector_history.visible && state.gallery.selected_media_ids.includes(item.id) && state.inspector_history.active === newerVersion.versionId && state.inspector_history.count === 2, 'history round-trip UI refresh with retained file selection');
+  const finalState = await until(state => state.inspector_history.visible && state.file_manager.selected_media_ids.includes(item.id) && state.inspector_history.active === newerVersion.versionId && state.inspector_history.count === 2, 'history round-trip UI refresh with retained file selection');
   // The reported regression: finish a round trip at 01, edit it, then save 03
   // even though the shared branch's latest revision is still 02.
   await invoke('activate_file_version', { media_id: item.id, version_id: oldVersion.versionId, confirm: true });
@@ -148,21 +148,21 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   }
   const afterThird = await invoke('list_file_versions', { media_id: item.id });
   assert.equal(afterThird.versions.length, 3, 'Creating 03 lost an earlier saved revision');
-  const thirdState = await until(state => state.inspector_history.visible && state.gallery.selected_media_ids.includes(item.id) && state.inspector_history.active === thirdVersion.versionId && state.inspector_history.count === 3, 'three saved versions visible after editing historical snapshot');
+  const thirdState = await until(state => state.inspector_history.visible && state.file_manager.selected_media_ids.includes(item.id) && state.inspector_history.active === thirdVersion.versionId && state.inspector_history.count === 3, 'three saved versions visible after editing historical snapshot');
   console.log('validation edited historical 01, saved 03, and restored all three revisions');
   await delay(1200);
   const quietBefore = await invoke('get_ui_state');
   await delay(1000);
   const quietAfter = await invoke('get_ui_state');
-  assert.equal(quietAfter.gallery.snapshot_revision, quietBefore.gallery.snapshot_revision, 'Settled history view kept reloading Gallery');
-  assert(quietAfter.inspector_history.visible && quietAfter.gallery.selected_media_ids.includes(item.id), 'Settled watcher refresh lost the file History view');
+  assert.equal(quietAfter.file_manager.snapshot_revision, quietBefore.file_manager.snapshot_revision, 'Settled history view kept reloading FileManager');
+  assert(quietAfter.inspector_history.visible && quietAfter.file_manager.selected_media_ids.includes(item.id), 'Settled watcher refresh lost the file History view');
   const screenshot = await capture('history-version-roundtrip-by-click');
   const report = {
     source_file: file,
     media_id: item.id,
     screenshot,
     edit_after_rewind: { created_version: thirdVersion, versions: afterThird.versions, ui: thirdState.inspector_history },
-    quiet: { before_snapshot_revision: quietBefore.gallery.snapshot_revision, after_snapshot_revision: quietAfter.gallery.snapshot_revision, selected_media_ids: quietAfter.gallery.selected_media_ids, visible: quietAfter.inspector_history.visible },
+    quiet: { before_snapshot_revision: quietBefore.file_manager.snapshot_revision, after_snapshot_revision: quietAfter.file_manager.snapshot_revision, selected_media_ids: quietAfter.file_manager.selected_media_ids, visible: quietAfter.inspector_history.visible },
     pointer: {
       history_tab: { x, y },
       old_version_row: { x, y: rowY },

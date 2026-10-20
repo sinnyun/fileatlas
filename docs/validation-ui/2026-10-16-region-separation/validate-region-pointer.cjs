@@ -2,7 +2,7 @@
 const fs = require('node:fs'), path = require('node:path'), assert = require('node:assert/strict');
 
 module.exports = async ({ call, payload, delay, request, profile, output }) => {
-  const report = { profile, clicks: { button: process.env.PHOTAG_POINTER_CLICK, item: process.env.PHOTAG_POINTER_ITEM } };
+  const report = { profile, clicks: { button: process.env.FILEATLAS_POINTER_CLICK, item: process.env.FILEATLAS_POINTER_ITEM } };
   const save = () => fs.writeFileSync(path.join(profile, 'region-pointer-report.json'), JSON.stringify(report, null, 2));
   async function invoke(tool, args = {}) {
     const value = payload(await call(tool, args));
@@ -46,19 +46,19 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
   await invoke('control_ui', { action: 'settings_tab', value: 'appearance' });
   await delay(500);
   await capture('pointer-settings-open');
-  if (process.env.PHOTAG_POINTER_TAB) {
-    await tap(process.env.PHOTAG_POINTER_TAB);
-    report.tab_probe = { clicked: process.env.PHOTAG_POINTER_TAB, settings_tab: (await state()).settings_tab };
+  if (process.env.FILEATLAS_POINTER_TAB) {
+    await tap(process.env.FILEATLAS_POINTER_TAB);
+    report.tab_probe = { clicked: process.env.FILEATLAS_POINTER_TAB, settings_tab: (await state()).settings_tab };
     await invoke('control_ui', { action: 'settings_tab', value: 'appearance' });
     save();
   }
-  if (!process.env.PHOTAG_POINTER_CLICK) { report.cases = ['probe run: screenshot + geometry captured']; save(); return; }
+  if (!process.env.FILEATLAS_POINTER_CLICK) { report.cases = ['probe run: screenshot + geometry captured']; save(); return; }
 
-  await tap(process.env.PHOTAG_POINTER_CLICK);
+  await tap(process.env.FILEATLAS_POINTER_CLICK);
   await capture('pointer-dropdown');
-  if (process.env.PHOTAG_POINTER_ITEM) {
+  if (process.env.FILEATLAS_POINTER_ITEM) {
     const before = (await state()).region_separation;
-    await tap(process.env.PHOTAG_POINTER_ITEM);
+    await tap(process.env.FILEATLAS_POINTER_ITEM);
     for (let i = 0; i < 60; i++) { if ((await state()).region_separation !== before) break; await delay(100); }
     const after = (await state()).region_separation;
     report.change = { before, after, disk: JSON.parse(fs.readFileSync(path.join(profile, 'settings.json'), 'utf8')).region_separation };

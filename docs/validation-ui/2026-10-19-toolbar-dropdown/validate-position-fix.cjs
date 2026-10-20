@@ -1,4 +1,4 @@
-// Run through scripts/photag-mcp-debug.cjs with an isolated fresh profile.
+// Run through scripts/fileatlas-mcp-debug.cjs with an isolated fresh profile.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -80,7 +80,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   assert.equal(pane(restored, 0).list_layout, true);
   assert.equal(pane(restored, 0).show_subfolders, true);
   await click(2158, 83);
-  await until(s => s.gallery.layout === 'grid');
+  await until(s => s.file_manager.layout === 'grid');
   await click(2335, 83);
   await until(s => s.browser.show_descendants === false);
   await capture('corrected-final');
@@ -88,7 +88,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   await delay(1500);
   const quiet = await state();
   assert.equal(quiet.program_workspace.revision, settled.program_workspace.revision);
-  assert.equal(quiet.gallery.snapshot_revision, settled.gallery.snapshot_revision);
+  assert.equal(quiet.file_manager.snapshot_revision, settled.file_manager.snapshot_revision);
   fs.writeFileSync(path.join(profile, 'position-fix-report.json'), JSON.stringify({
     geometry, cases: ['single/dual/quad selected through actual dropdown', 'active columns 2 and 4 selected through dropdown', 'grid/list and subfolder controls follow the active pane', 'first pane state restored after returning to single', 'subfolder toggle on and off', 'quiet revisions unchanged over 1500 ms'],
     initial, second, restored, settled, quiet,

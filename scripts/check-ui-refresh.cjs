@@ -10,11 +10,11 @@ function visit(directory) {
     if (entry.isDirectory()) visit(file);
     else if (entry.name.endsWith('.rs')) {
       const relative = path.relative(root, file).replaceAll('\\', '/');
-      if (relative === 'crates/photag-ui-bridge/src/refresh.rs') continue;
+      if (relative === 'crates/fileatlas-ui-bridge/src/refresh.rs') continue;
       const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
       lines.forEach((line, index) => {
         if (/\.timer\s*\(/.test(line) && !line.trimStart().startsWith('//'))
-          failures.push(`${relative}:${index + 1}: use photag_ui_bridge::refresh::poll`);
+          failures.push(`${relative}:${index + 1}: use fileatlas_ui_bridge::refresh::poll`);
       });
     }
   }

@@ -13,9 +13,9 @@
 
 ## 验证
 
-命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 build --locked -p photag-shell -j 2`、`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-plugin-settings-final --plugins core --allow-mutations --scenario scripts/validate-plugin-settings.cjs`。
+命令：`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 build --locked -p fileatlas-shell -j 2`、`node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-plugin-settings-final --plugins core --allow-mutations --scenario scripts/validate-plugin-settings.cjs`。
 
-2026-10-18 纠正：程序设置“软件”页保留 QuickLook 和 Everything 检查，截图插件单页仅显示 Shotoshot。验证命令：`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-software-restored-20261018 --allow-mutations --scenario scripts/validate-software-check.cjs`。MCP 确认 QuickLook 4.5.0 与 Everything 1.5.0.1423 已安装，检查页显示版本、路径及官方链接；未启动或查询两项外部程序。截图：`target/mcp-software-restored-20261018/screenshots/settings-software-check.png`。构建命令：`cargo +1.97.1 build --locked -p photag-shell -j 2`；被运行中的程序占用时，按用户授权关闭对应 PhoTag 实例后，标准目标目录构建成功。
+2026-10-18 纠正：程序设置“软件”页保留 QuickLook 和 Everything 检查，截图插件单页仅显示 Shotoshot。验证命令：`node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-software-restored-20261018 --allow-mutations --scenario scripts/validate-software-check.cjs`。MCP 确认 QuickLook 4.5.0 与 Everything 1.5.0.1423 已安装，检查页显示版本、路径及官方链接；未启动或查询两项外部程序。截图：`target/mcp-software-restored-20261018/screenshots/settings-software-check.png`。构建命令：`cargo +1.97.1 build --locked -p fileatlas-shell -j 2`；被运行中的程序占用时，按用户授权关闭对应 FileAtlas 实例后，标准目标目录构建成功。
 
 MCP 为独立 profile、同进程窗口，允许的 mutations 仅作用于 `target/mcp-plugin-settings`。场景验证三个注册项、独立页面状态、启动台 panel-only 状态、剪贴板停用/恢复及截图默认 Direct。概览和页面截图在 `target/mcp-plugin-settings/screenshots/`。panel-only 截图确认工作台内容被隐藏且只显示启动台共享面板。
 

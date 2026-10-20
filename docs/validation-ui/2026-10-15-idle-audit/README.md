@@ -4,7 +4,7 @@
 
 The first actual same-process MCP run exercised 81 states and found 8 sustained
 states that the previous source audit had missed. Their four shared causes
-were Settings Shortcuts/AI reading Navigation snapshots during paint and Gallery
+were Settings Shortcuts/AI reading Navigation snapshots during paint and FileManager
 Statistics/Bulk matching executing queries during paint. The live Debug drawer
 correctly collected those DB records, causing the next paint to read again.
 
@@ -17,11 +17,11 @@ correctly collected those DB records, causing the next paint to read again.
 | Bulk, populated library | 80 | 32 |
 | Bulk copy / move / delete, current selection | 48 / 47 / 48 | 32 / 32 / 32 |
 
-These reads now use the shared `photag_ui_bridge::read_model::ReadModel` from
+These reads now use the shared `fileatlas_ui_bridge::read_model::ReadModel` from
 model pollers. The utility serializes work, coalesces edits to the latest key,
 ignores stale results and caches errors as well as successes. A repeated empty
 channel poll returns false. Render consumes the current result only. Navigation
-publishes a tag revision so choices update while Settings remains open. Gallery
+publishes a tag revision so choices update while Settings remains open. FileManager
 uses index events plus a new memory-only Database writer revision so direct
 service writes also refresh Statistics/Bulk without reopening the dialog.
 Writer failures conservatively invalidate too, since partial writes can exist.
@@ -52,8 +52,8 @@ crate PORTS were updated with this change.
 ## Method and reproducibility
 
 Windows 11 Pro 10.0.26200, Rust 1.97.1 Windows MSVC, GPUI 0.3.8, 150% DPI.
-The normal `target/debug/photag-shell.exe` was rebuilt. The app is launched
-through `scripts/photag-mcp-debug.cjs`, with MCP stdio and the real GPUI window
+The normal `target/debug/fileatlas-shell.exe` was rebuilt. The app is launched
+through `scripts/fileatlas-mcp-debug.cjs`, with MCP stdio and the real GPUI window
 in the same child process. Native accessibility activation returns
 `provider_response=true`; actual `Accessibility activated` and a11y paint
 records remain in the reports. Debug remains open and following live during
@@ -74,19 +74,19 @@ advance time without repeating DB queries, then settle on pause/close.
 rustup toolchain list
 rustc +1.97.1 --version
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-database -p photag-ui-bridge -p photag-plugin-settings -p photag-plugin-navigation -p photag-plugin-gallery -p photag-plugin-preview -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-database -p fileatlas-ui-bridge -p fileatlas-plugin-settings -p fileatlas-plugin-navigation -p fileatlas-plugin-file-manager -p fileatlas-plugin-preview -j 2
 ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=640x360:rate=24 -f lavfi -i sine=frequency=440:sample_rate=44100 -t 12 -c:v mpeg4 -q:v 5 -c:a aac -y target/idle-suite-test.mp4
 ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=220:sample_rate=44100 -t 30 -c:a pcm_s16le -y target/idle-suite-test.wav
 New-Item -ItemType Directory -Force target/mcp-unified-refresh-final | Out-Null
 Set-Content target/mcp-unified-refresh-final/settings.json '{"auto_check_updates":false,"show_filmstrip":true}'
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-unified-refresh-final --scenario scripts/validate-idle-mcp.cjs --allow-mutations
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-unified-refresh-final --scenario scripts/validate-idle-followup.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-unified-refresh-final --scenario scripts/validate-idle-mcp.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-unified-refresh-final --scenario scripts/validate-idle-followup.cjs --allow-mutations
 ```
 
 Use a fresh isolated profile for the complete matrix's initial empty-library
-states. The runner copies `test-data/photag-library` into that profile and
+states. The runner copies `test-data/fileatlas-fixtures` into that profile and
 optionally copies the synthetic 24 MP JPEG from the previous latency test.
 Generated 12 s MP4 and 30 s WAV give meaningful playing/paused samples; the
 original 0.25 s WAV was too short to establish sustained active playback.
@@ -96,16 +96,16 @@ read-only repository test fixture path into the isolated DB. Ratings in follow-u
 only change that DB, and no tagging writeback is requested. Native Watcher
 stimuli create/delete only `profile/fixtures/watcher-idle-probe.txt`.
 
-No normal PhoTag DB/settings/session/cache were used. No app attachment,
+No normal FileAtlas DB/settings/session/cache were used. No app attachment,
 generic computer automation or OS input injection was used. Sidebar + uses
 GPUI pointer events at observed logical 228,72 and the native picker is then
-read/cancelled by PhoTag MCP. Single/Multiple panels use registered plugin
+read/cancelled by FileAtlas MCP. Single/Multiple panels use registered plugin
 factories and are closed through the existing PanelCatalog.
 
 ## Coverage and evidence
 
 The final complete matrix has **95 cases: 93 quiet states and 2 active playback
-states**, with no sustained or blocked case. It covers empty/populated Gallery;
+states**, with no sustained or blocked case. It covers empty/populated FileManager;
 all Sidebar and Inspector pages; six Settings pages; every filter popover;
 seven grouping modes; Grid/List; root/nested folder browsing; single/multiple
 selection; tag management dialogs; media actions; bulk modes and filter error
@@ -157,7 +157,7 @@ At the user's request the repair is now a workspace-wide common mechanism,
 not separate timer/receiver fixes. `refresh::poll` is the sole GPUI timer owner;
 `ChangeGate` handles passive signatures, and `ReadModel` handles passive reads.
 All prior GPUI timers in feature views, Shell and shared frames use this entry.
-Preview's seven manual read workers, Playback tags and Gallery's Inspector,
+Preview's seven manual read workers, Playback tags and FileManager's Inspector,
 selection details and drag-path workers now reuse ReadModel too. Feature
 code retains semantic identity/revision keys and result presentation. Explicit
 commands, writes and fresh bulk-execution checks keep their existing services.
@@ -180,7 +180,7 @@ checks). Locked shell check/build and rustfmt pass; the guard and script syntax
 checks pass. These are compile/automated checks, distinct from the MCP evidence.
 
 Final evidence is generated only after both suites finish and their binary
-SHA-256 matches `target/debug/photag-shell.exe`:
+SHA-256 matches `target/debug/fileatlas-shell.exe`:
 `node scripts/export-idle-evidence.cjs target/mcp-unified-refresh-final`.
 The exporter refuses incomplete, sustained or blocked reports. It retains
 original failing/interrupted runs separately and includes quiet rechecks and

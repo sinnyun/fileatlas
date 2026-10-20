@@ -12,7 +12,7 @@
 `ThemeRegistry` / `ThemeConfig` / `Theme` 是唯一配色解析与分发者，取代以前的
 RGB 常量表、`mode_color` 和 `theme/components.rs` 逐项覆盖方式。
 
-- `photag-ui-bridge::theme::runtime` 只负责请求、注册原生 ThemeSet JSON、调用原生
+- `fileatlas-ui-bridge::theme::runtime` 只负责请求、注册原生 ThemeSet JSON、调用原生
   `Theme::update/apply_config` 和订阅框架主题变化。所有主题修改必须从此公共入口经过。
 - 新自绘视图优先通过 `ActiveTheme` / `cx.theme()` 读取框架角色；按钮、输入、菜单
   优先使用 Kit 控件及其原生状态。不得按当前模式写两套颜色，也不得在插件写主题字段。
@@ -30,7 +30,7 @@ RGB 常量表、`mode_color` 和 `theme/components.rs` 逐项覆盖方式。
 
 ## Material 只生成原生主题配置
 
-`photag-plugin-material-theme` 通过 Cordis 注册独立设置页与 MCP 工具；固定
+`fileatlas-plugin-material-theme` 通过 Cordis 注册独立设置页与 MCP 工具；固定
 `material-colors = 0.4.2`。输入种子色、风格、对比度，输出同时含亮/暗模式的原生
 GPUI ThemeSet JSON。用户通过“生成并应用”或“应用已生成主题”激活。
 生成器不得更新 GPUI Theme，不得在视图生成 palette，也不得把算法复制到各插件。
@@ -40,7 +40,7 @@ GPUI ThemeSet JSON。用户通过“生成并应用”或“应用已生成主�
 色板本身的选中/焦点/弹层均交给 Kit；所选色是输入数据，不是控件私有主题。
 
 默认使用 GPUI 内嵌 Default Light/Dark；Material 默认参数是低色度 Neutral。
-生成文件正常路径为 `%LOCALAPPDATA%/PhoTag/themes/material.json`，参数为同目录
+生成文件正常路径为 `%LOCALAPPDATA%/FileAtlas/themes/material.json`，参数为同目录
 版本化 `material-settings.json`；隔离 profile 使用其自身 themes 目录。
 Settings 新增可选 `theme_file` 保存所选 JSON 路径，已有 `color_mode` 保留。
 旧 `accent_name` 作为兼容元数据读取保留，不再驱动另一套颜色表。损坏/缺失主题回退
@@ -77,7 +77,7 @@ palette 常量、`mode_color`，并禁止桥接 runtime 以外修改 Theme。
    标题栏/关闭/拖动框架。新通用需求先扩展 UI Bridge，再由多个插件消费。
 
 ```rust
-use photag_ui_bridge::{components, components::WorkbenchStyle as _, theme};
+use fileatlas_ui_bridge::{components, components::WorkbenchStyle as _, theme};
 
 let card = div().id("entry").workbench_card(selected)
     .p(px(theme::SPACE_3)).child(content);
@@ -92,7 +92,7 @@ let save = components::action("save", "保存", true).on_click(save_handler);
 全局 Segoe UI，正文/按钮 14、辅助 12、细注 11、分区标题 15、页标题 18。
 使用 `FONT_SIZE_*`、`ROUND_*`、`SPACE_1..4`（4/8/12/16）、`PANEL_GAP`（10）。
 卡片/区域圆角 8，控件 6；普通输入 32、大操作 38、图标按钮 30、导航行 40。
-图库文件名、元数据、高密度树允许辅助字号；主窗树行维持 30，避免破坏已有密度。
+文件管理窗口文件名、元数据、高密度树允许辅助字号；主窗树行维持 30，避免破坏已有密度。
 图标使用主题的 Lucide helper（12/16/20），禁止用空格对齐计数或用字形冒充通用图标。
 
 相同布局角色用相同规则，业务布局按用途保留：
@@ -118,7 +118,7 @@ let save = components::action("save", "保存", true).on_click(save_handler);
 ## 开发与审查必须执行
 
 主窗的导航/搜索操作图标化，图标按钮需保留本地化 tooltip 与 accessibility label。
-网格/列表/子文件夹和缩放统一放在 Gallery 筛选栏右端，左侧筛选区允许横向滚动；
+网格/列表/子文件夹和缩放统一放在 FileManager 筛选栏右端，左侧筛选区允许横向滚动；
 不能重新把视图控件塞回地址栏旁。状态栏仅显示状态反馈，不再放标签/更多入口。
 
 改界面前读本规范、活动参考、对应图片和配套清单。新 UI 先选择可复用公共组件；
@@ -134,7 +134,7 @@ CI 已接入主题守卫。守卫扫描所有插件及嵌套 view、Shell、公�
 它是词法检查，不识别任意十进制颜色、别名、计算颜色，也不能证明
 控件间距一致或截图正确；不能通过改写颜色表达式绕过规范。
 
-运行验收始终使用同进程 PhoTag MCP，隔离 dev-test profile。至少查看主窗、目标插件、
+运行验收始终使用同进程 FileAtlas MCP，隔离 dev-test profile。至少查看主窗、目标插件、
 菜单/下拉和与其共享组件的另一个插件：常态、hover、焦点、选中、禁用、空态/错误、
 长内容、小窗。强调色切换必须检查至少两个插件和菜单，并恢复测试设置；颜色模式切换需检查
 亮/暗两态、至少两个插件与设置托槽，并恢复隔离测试 profile 的设置。

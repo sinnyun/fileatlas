@@ -2,14 +2,14 @@
 
 ## 当前实现
 
-- 顶部文件名/路径搜索和 MCP `search_media` 经 Cordis EverythingSearchService 调用官方 SDK 3.0.1.12；标签、日期、评分、类型和分页仍遵守 PhoTag 查询语义。
+- 顶部文件名/路径搜索和 MCP `search_media` 经 Cordis EverythingSearchService 调用官方 SDK 3.0.1.12；标签、日期、评分、类型和分页仍遵守 FileAtlas 查询语义。
 - 当前目录搜索限定目录；收藏集合使用已登记根目录；没有根目录时搜索 Everything 全索引。
 - 真实候选路径通过数据库公开 `cache_search_files` 进入临时浏览缓存，从未浏览/扫描过的文件也能显示。普通/扩展 Windows 路径复用行 ID，标签/评分和固定历史记录保留，搜索清单不写入持久注释数据库。
 - SDK 正则模式转义用户文本和根目录，保留原 SQL LIKE 子串及 %/_ 通配语义。中文、空格、方括号与前置 ! 不会被误当作 Everything 搜索操作符。
 - 搜索操作在需要时以官方 `-startup -first-instance` 参数准备已安装的 Everything 1.5 后台客户端，不显示独立搜索窗口。软件检查页仍只读；程序不负责下载、安装或升级 Everything。
-- 安装/版本检测通过 Gallery ReadModel 在后台读取真实 EXE 版本。搜索栏后：缺失显示“安装 Everything”，1.4 等不兼容版本显示“安装兼容版 Everything”，点击只打开官方下载页；相邻按钮可重新检查。索引加载中显示加载状态，真正就绪后刷新当前搜索。
+- 安装/版本检测通过 FileManager ReadModel 在后台读取真实 EXE 版本。搜索栏后：缺失显示“安装 Everything”，1.4 等不兼容版本显示“安装兼容版 Everything”，点击只打开官方下载页；相邻按钮可重新检查。索引加载中显示加载状态，真正就绪后刷新当前搜索。
 - 首次/恢复查询也进入后台 ReadModel。忙管道预检避免 SDK 默认 30 秒等待；RPC 看门狗通过官方 ShutdownClient 取消长时间无响应的客户端，查询上限 15 秒、就绪探测上限 2 秒。
-- 成功查询在 GallerySnapshot/MCP 结果中保留 search_provider=everything；异常及超过 250,000 候选时回退 SQLite，不能把检测到已安装当作搜索成功。
+- 成功查询在 FileManagerSnapshot/MCP 结果中保留 search_provider=everything；异常及超过 250,000 候选时回退 SQLite，不能把检测到已安装当作搜索成功。
 
 ## 更正先前诊断
 
@@ -19,16 +19,16 @@
 
 Windows / 150% DPI；Rust 1.97.1 Windows MSVC；Everything 1.5.0.1423。
 
-- 构建：cargo +1.97.1 build --locked -p photag-shell -j 2。
-- 检查：cargo +1.97.1 fmt --all -- --check；cargo +1.97.1 check --locked -p photag-shell -j 2。
-- 回归：cargo +1.97.1 test --locked -p photag-plugin-everything-search -p photag-plugin-database -p photag-plugin-gallery -p photag-plugin-mcp -p photag-plugin-i18n -j 2。
-- 同进程搜索：node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-everything-final --plugins dev-test --allow-mutations --scenario scripts/validate-everything-search.cjs。
-- 提示状态：scripts/validate-everything-status.cjs，隔离 profile target/mcp-everything-status。PHOTAG_EVERYTHING_EXE 指向该 profile 的临时 EXE 路径，按缺失、官方 1.4.1.1032 EXE、真实安装的 1.5.0.1423 EXE 顺序检查并手动重新检测。两个版本文件只用于读取版本资源，测试不执行、不安装它们。
-- 全部实时交互/截图使用 PhoTag 同进程 MCP；没有用通用 UI 自动化替代。
+- 构建：cargo +1.97.1 build --locked -p fileatlas-shell -j 2。
+- 检查：cargo +1.97.1 fmt --all -- --check；cargo +1.97.1 check --locked -p fileatlas-shell -j 2。
+- 回归：cargo +1.97.1 test --locked -p fileatlas-plugin-everything-search -p fileatlas-plugin-database -p fileatlas-plugin-file-manager -p fileatlas-plugin-mcp -p fileatlas-plugin-i18n -j 2。
+- 同进程搜索：node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-everything-final --plugins dev-test --allow-mutations --scenario scripts/validate-everything-search.cjs。
+- 提示状态：scripts/validate-everything-status.cjs，隔离 profile target/mcp-everything-status。FILEATLAS_EVERYTHING_EXE 指向该 profile 的临时 EXE 路径，按缺失、官方 1.4.1.1032 EXE、真实安装的 1.5.0.1423 EXE 顺序检查并手动重新检测。两个版本文件只用于读取版本资源，测试不执行、不安装它们。
+- 全部实时交互/截图使用 FileAtlas 同进程 MCP；没有用通用 UI 自动化替代。
 
 ## 最终验证结果
 
-- 上述 locked Shell 构建、fmt、40 项自动化测试通过（数据库 9、Everything 3、Gallery 24、i18n 4；MCP 当前无单元测试）。最后修复的软件页按钮重复 ID 已重新构建并完成同进程运行验证。
+- 上述 locked Shell 构建、fmt、40 项自动化测试通过（数据库 9、Everything 3、FileManager 24、i18n 4；MCP 当前无单元测试）。最后修复的软件页按钮重复 ID 已重新构建并完成同进程运行验证。
 - 搜索脚本完整 8 组检查通过：真实 provider=everything；样例扫描 12 项；未浏览子目录中的中文/方括号/前置感叹号文件；目录约束；分页；文件类型；无匹配；顶栏实际结果；范围弹层与时间开关；静置无额外 snapshot revision；软件检查页。
 - 提示脚本 3 组通过：不存在的 EXE、真实 1.4.1.1032 版本资源、真实 1.5.0.1423 版本资源。手动重新检查按 missing → incompatible → ready 切换，静置不重复刷新。
 - `node scripts/check-ui-refresh.cjs`、`node scripts/check-architecture.cjs`、`node scripts/check-feature-ledger.cjs`、`node scripts/check-layering.cjs` 和 `git diff --check` 通过。架构脚本仍报告已有 preview/media-playback 遗留空目录，不影响本轮通过。
@@ -49,8 +49,8 @@ Windows / 150% DPI；Rust 1.97.1 Windows MSVC；Everything 1.5.0.1423。
 最终 locked Shell 构建、fmt 和四项治理脚本、diff --check 通过。未新增或重跑单元测试。
 同进程 MCP 在 `target/mcp-everything-location/search-location` 创建唯一命名的三个真实文件：当前目录一个、其 nested 子目录一个、相邻 selected-sibling 目录一个。关闭浏览递归时，本地搜索为 2 项；切换全机为 3 项；真实 GPUI 指针点击顶栏按钮后恢复 2 项；静置 revision 不变；清空恢复目录浏览；选择写入设置，重启同一隔离 profile 恢复 true。
 
-精确命令：`node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-everything-location --plugins dev-test --allow-mutations --scenario scripts/validate-everything-location.cjs`。
-重启读取使用同一入口与 profile、`--plan target/mcp-everything-location/restore-plan.json`，对 `get_ui_state.gallery.search_entire_computer == true` 断言通过。
+精确命令：`node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-everything-location --plugins dev-test --allow-mutations --scenario scripts/validate-everything-location.cjs`。
+重启读取使用同一入口与 profile、`--plan target/mcp-everything-location/restore-plan.json`，对 `get_ui_state.file_manager.search_entire_computer == true` 断言通过。
 截图沿用既有主窗设计，检查按钮、字段范围和 Everything 提示完整并排可见，没有裁切。
 [当前目录截图](../../../.local/validation/artifacts/2026-10-17-everything-search/location-current-folder.png)、[整台电脑截图](../../../.local/validation/artifacts/2026-10-17-everything-search/location-entire-computer.png)、[验证摘要](../../../.local/validation/artifacts/2026-10-17-everything-search/location-report.json)。
 

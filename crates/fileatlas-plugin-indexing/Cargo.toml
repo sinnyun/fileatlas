@@ -1,0 +1,22 @@
+[package]
+name = "fileatlas-plugin-indexing"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+image = "0.25"
+thiserror = "2"
+walkdir = "2"
+
+[dev-dependencies]
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database", features = ["test-api"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[lints]
+workspace = true

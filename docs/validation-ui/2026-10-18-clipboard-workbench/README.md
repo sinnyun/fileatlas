@@ -7,7 +7,7 @@ persistence and verified isolation supersede it in the [v2 record](../2026-10-18
 
 ## Implemented
 
-- Added `photag-plugin-clipboard` and wired it into the normal `core` shell composition.
+- Added `fileatlas-plugin-clipboard` and wired it into the normal `core` shell composition.
 - Registered a lifecycle-owned left rail button and single generic floating panel.
 - Added a Ctrl+Shift+V registration alongside the existing Ctrl+F shortcut; a Ctrl+Shift+V registration conflict leaves Ctrl+F registered.
 - Uses `clipboard-master` 4.0.0 (MIT) for clipboard change notifications and `arboard` 3.7.0 (MIT OR Apache-2.0) for text access.
@@ -18,13 +18,13 @@ persistence and verified isolation supersede it in the [v2 record](../2026-10-18
 
 - `rustup toolchain list`: selected installed `1.97.1-x86_64-pc-windows-msvc`.
 - `cargo +1.97.1 fmt --all -- --check` — passed.
-- `cargo +1.97.1 check --locked -p photag-shell -j 2` — passed.
-- `cargo +1.97.1 build --locked -p photag-shell -j 2` — passed (existing linker warning LNK4098).
+- `cargo +1.97.1 check --locked -p fileatlas-shell -j 2` — passed.
+- `cargo +1.97.1 build --locked -p fileatlas-shell -j 2` — passed (existing linker warning LNK4098).
 - `node scripts/check-ui-refresh.cjs` — passed.
 - `node scripts/check-architecture.cjs` — passed (edges=93, debt=713, UI crates=11; two existing orphan-directory warnings).
 - `node scripts/check-layering.cjs` — passed (30 crates, 9 layers, 16 approved peer edges).
 - `node scripts/check-feature-ledger.cjs` — passed.
-- Same-process runtime: `node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-clipboard-final-verified --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations`. The scenario mounted the panel, verified the system-scope Ctrl+Shift+V command contribution, seeded isolated sample rows, checked content-free metadata, created a category through actual GPUI pointer/text events, paused/resumed capture, and captured [clipboard-workbench.png](../../../target/mcp-clipboard-final-verified/screenshots/clipboard-workbench.png).
+- Same-process runtime: `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-clipboard-final-verified --plugins core --scenario scripts/validate-clipboard-workbench.cjs --allow-mutations`. The scenario mounted the panel, verified the system-scope Ctrl+Shift+V command contribution, seeded isolated sample rows, checked content-free metadata, created a category through actual GPUI pointer/text events, paused/resumed capture, and captured [clipboard-workbench.png](../../../target/mcp-clipboard-final-verified/screenshots/clipboard-workbench.png).
 - The MCP mutation opt-in applied only to the isolated validation profile. No real clipboard text was read during fixture setup.
 
 ## Remaining work and verification limits

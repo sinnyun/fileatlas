@@ -38,14 +38,14 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "clear_filters"
     },
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "sort",
       "value": "name_asc"
@@ -53,7 +53,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "month_grouping",
       "enabled": false
@@ -63,7 +63,7 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.matched_count",
+      "field": "file_manager.matched_count",
       "equals": 16
     },
     "capture": "all-files-grid"
@@ -77,7 +77,7 @@
     }
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"
@@ -89,7 +89,7 @@
     "capture": "all-files-list"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "media_type",
       "value": "photos"
@@ -99,13 +99,13 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.matched_count",
+      "field": "file_manager.matched_count",
       "equals": 5
     },
     "capture": "images-filter"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "media_type",
       "value": "all"
@@ -113,7 +113,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "grid"

@@ -1,4 +1,4 @@
-// End-to-end Lore version/branch checks through this PhoTag child's MCP server.
+// End-to-end Lore version/branch checks through this FileAtlas child's MCP server.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
@@ -46,11 +46,11 @@ module.exports = async ({ call, payload, delay, request, profile }) => {
   fs.copyFileSync(baseImage, file);
   const add = await invoke('add_folder', { path: source, confirm: true });
   assert(add && !add.error, `fixture folder registration failed: ${JSON.stringify(add)}`);
-  await invoke('control_gallery', { action: 'navigate', value: source });
+  await invoke('control_file_manager', { action: 'navigate', value: source });
   await until(async () => {
     const state = await invoke('get_ui_state');
-    return state?.gallery?.matched_count > 0 ? state : null;
-  }, 'Gallery indexing and folder selection');
+    return state?.file_manager?.matched_count > 0 ? state : null;
+  }, 'FileManager indexing and folder selection');
 
   const media = await until(async () => {
     const found = await invoke('search_media', { limit: 100, sort: 'name_asc' });

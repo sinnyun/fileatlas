@@ -1,4 +1,4 @@
-// Same-process launcher interaction evidence. Run through photag-mcp-debug.cjs --scenario.
+// Same-process launcher interaction evidence. Run through fileatlas-mcp-debug.cjs --scenario.
 const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
@@ -8,7 +8,7 @@ module.exports=async({step,delay,profile})=>{
   const fixture=path.join(profile,'launcher-fixture.exe');
   const marker=path.join(profile,'double-click-launched.txt');
   const source=path.join(profile,'launcher-fixture.rs');
-  fs.writeFileSync(source,'#![windows_subsystem = "windows"]\nfn main(){let p=std::env::current_exe().unwrap();std::fs::write(p.parent().unwrap().join("double-click-launched.txt"),"launched from PhoTag").unwrap();}\n');
+  fs.writeFileSync(source,'#![windows_subsystem = "windows"]\nfn main(){let p=std::env::current_exe().unwrap();std::fs::write(p.parent().unwrap().join("double-click-launched.txt"),"launched from FileAtlas").unwrap();}\n');
   execFileSync('rustc',['+1.97.1','--crate-name','launcher_validation_fixture',source,'-o',fixture],{windowsHide:true});
   if(fs.existsSync(marker))fs.unlinkSync(marker);
   await invoke('add_launcher_program',{path:fixture});
@@ -219,7 +219,7 @@ module.exports=async({step,delay,profile})=>{
     await delay(100);
   }
   assert(state.ui.add_program_pending,'native picker task should stay pending until the dialog is dismissed');
-  assert(state.ui.render_count>0,'PhoTag must remain responsive while the native picker is open');
+  assert(state.ui.render_count>0,'FileAtlas must remain responsive while the native picker is open');
   const summary={reopened_icon_cache:true,manual_icon_source:manualIconSource,programs:state.entries.length,icons_loaded:state.ui.icons_loaded,icons_failed:state.ui.icons_failed,
     install_dates:state.entries.filter(e=>e.installed_on).length,sizes:state.entries.filter(e=>e.size_bytes!=null).length,
     single_click:'selected without launch',double_click:'fixture executable wrote marker',

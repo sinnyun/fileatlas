@@ -1,0 +1,28 @@
+[package]
+name = "fileatlas-plugin-dev-test"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-indexing = { path = "../fileatlas-plugin-indexing" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+serde.workspace = true
+serde_json.workspace = true
+gpui-kit.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database", features = ["test-api"] }
+image = "0.25"
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+[lints]
+workspace = true

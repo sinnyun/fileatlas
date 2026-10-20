@@ -1,0 +1,27 @@
+[package]
+name = "fileatlas-plugin-launcher"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+gpui-kit.workspace = true
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+rfd = { version = "0.15", default-features = false }
+thiserror.workspace = true
+tracing.workspace = true
+winreg = "0.56"
+chrono = "0.4"
+serde_json.workspace = true
+serde = { version = "1", features = ["derive"] }
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+image = "0.25"
+windows = { version = "0.61.3", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+
+[lints]
+workspace = true

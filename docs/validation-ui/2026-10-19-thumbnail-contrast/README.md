@@ -5,7 +5,7 @@
 
 ## 观察与实现
 
-用户![reported-before.png](../../../.local/validation/artifacts/2026-10-19-thumbnail-contrast/reported-before.png)中的文件格式角标为深底深字，图片底部紫/蓝标签和评分也有相同问题，左侧选中导航前景过浅。当前布局继续采用 PhoTag 0.2；配色遵循[语义主题清单](../../reference-ui/concepts/semantic-muted-theme-2026-10-19.md)，此次属于局部纠错。
+用户![reported-before.png](../../../.local/validation/artifacts/2026-10-19-thumbnail-contrast/reported-before.png)中的文件格式角标为深底深字，图片底部紫/蓝标签和评分也有相同问题，左侧选中导航前景过浅。当前布局继续采用 FileAtlas 0.2；配色遵循[语义主题清单](../../reference-ui/concepts/semantic-muted-theme-2026-10-19.md)，此次属于局部纠错。
 
 根因：格式角标把深色 HSL 底色与无关的 `text_on_accent()` 配对；`accent_alpha()` 将 RGB 乘 alpha、等价混合到黑色，却被当成浅色胶囊背景；图片深色遮罩又使用亮色模式的深正文色。
 
@@ -15,9 +15,9 @@
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-thumbnail-contrast-final --plugins core --access-level standard --scenario scripts/validate-thumbnail-contrast.cjs
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-thumbnail-contrast-final --plugins core --access-level standard --scenario scripts/validate-thumbnail-contrast.cjs
 ```
 
 Windows，同进程 MCP 子进程；截图 3286×1831，150% DPI，client 2176×1183.33 逻辑像素。所有新文件、数据库、标签、评分、设置均在隔离 `target/mcp-thumbnail-contrast-final`；源照片未修改。原正常 EXE 被锁定时，核对本工作区路径后关闭，再使用原 target 增量构建。
@@ -32,9 +32,9 @@ Windows，同进程 MCP 子进程；截图 3286×1831，150% DPI，client 2176×
 | 扩展名弹出筛选 | ![extensions-light.png](../../../.local/validation/artifacts/2026-10-19-thumbnail-contrast/extensions-light.png)；行文、边框与底色可分辨 |
 | 设置插件共享颜色 | ![tag-settings-light.png](../../../.local/validation/artifacts/2026-10-19-thumbnail-contrast/tag-settings-light.png)；已打开检查，正文/选中导航/表单可读 |
 | 实际角色对比度 | 来自与绘制相同的 Theme 函数；11 种格式、6 种标签色×普通/选中×文字/图标，以及评分/计数/导航共 114 次断言，均 ≥4.5:1，最低 4.51:1；详见 [contrast-summary.json](../../../.local/validation/artifacts/2026-10-19-thumbnail-contrast/contrast-summary.json) |
-| quiet state | 静置一秒 Gallery snapshot revision 不变 |
+| quiet state | 静置一秒 FileManager snapshot revision 不变 |
 
-格式、标签等元数据通过公共插件 API 写入隔离 profile 后，场景主动刷新 Gallery；本轮未验证每个外部 MCP 写入工具是否都自动刷新现有 UI，不能据此宣称该路径通过。
+格式、标签等元数据通过公共插件 API 写入隔离 profile 后，场景主动刷新 FileManager；本轮未验证每个外部 MCP 写入工具是否都自动刷新现有 UI，不能据此宣称该路径通过。
 
 静态 fmt/check/build、theme ownership/self-test、refresh、architecture、layering、feature-ledger 检查通过。Layer map 补录前轮已新增的 shell-controls 插件（依赖仍只向公共桥接层）；没有放宽依赖规则。构建保留已有 LNK4098 默认库警告；architecture 报告已有两个无 Cargo 清单目录。
 

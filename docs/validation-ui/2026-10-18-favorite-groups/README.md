@@ -22,16 +22,16 @@ Windows，150% DPI，Rust 1.97.1 MSVC；独立 profile `target/mcp-favorite-grou
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-navigation -p photag-plugin-settings -p photag-ui-bridge -p photag-plugin-i18n --lib -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-navigation -p fileatlas-plugin-settings -p fileatlas-ui-bridge -p fileatlas-plugin-i18n --lib -j 2
 node scripts/check-ui-theme.cjs
 node scripts/check-ui-refresh.cjs
 node scripts/check-architecture.cjs
 node scripts/check-layering.cjs
 node scripts/check-feature-ledger.cjs
 git diff --check
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-favorite-groups-v2 --allow-mutations --scenario scripts/validate-favorite-groups.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-favorite-groups-v2 --scenario scripts/validate-favorite-groups-restart.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-favorite-groups-v2 --allow-mutations --scenario scripts/validate-favorite-groups.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-favorite-groups-v2 --scenario scripts/validate-favorite-groups-restart.cjs
 ```
 
 构建、fmt、治理检查通过；33项单元测试通过（Navigation13、Settings3、UI Bridge13、i18n4）。

@@ -4,7 +4,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 module.exports = async ({ call, payload, delay, profile, root, output }) => {
-  const target = path.resolve(process.env.PHOTAG_EVERYTHING_EXE || '');
+  const target = path.resolve(process.env.FILEATLAS_EVERYTHING_EXE || '');
   assert(target.startsWith(profile + path.sep), 'version fixture must stay inside isolated profile');
   const report = { cases: [], states: [] };
   const invoke = async (name, args = {}) => {
@@ -16,10 +16,10 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
     let snapshot;
     for (let attempt = 0; attempt < 80; attempt++) {
       snapshot = await invoke('get_ui_state');
-      if (snapshot.gallery?.everything?.state === state) return snapshot;
+      if (snapshot.file_manager?.everything?.state === state) return snapshot;
       await delay(100);
     }
-    assert.fail(`expected ${state}: ${JSON.stringify(snapshot?.gallery?.everything)}`);
+    assert.fail(`expected ${state}: ${JSON.stringify(snapshot?.file_manager?.everything)}`);
   };
   const capture = async state => {
     const snapshot = await wait(state);
@@ -28,24 +28,24 @@ module.exports = async ({ call, payload, delay, profile, root, output }) => {
     const block = result.content.find(item => item.type === 'image');
     assert(block);
     fs.writeFileSync(path.join(output, `everything-${state}.png`), Buffer.from(block.data, 'base64'));
-    report.states.push(snapshot.gallery.everything);
+    report.states.push(snapshot.file_manager.everything);
     return snapshot;
   };
   await capture('missing');
   report.cases.push('missing executable shows Install Everything beside search');
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.copyFileSync(path.join(root, 'target/everything-14-version-fixture/Everything.exe'), target);
-  await invoke('control_gallery', { action: 'everything_recheck' });
+  await invoke('control_file_manager', { action: 'everything_recheck' });
   const old = await capture('incompatible');
-  assert.match(old.gallery.everything.version, /^1\.4\./);
+  assert.match(old.file_manager.everything.version, /^1\.4\./);
   report.cases.push('real Everything 1.4 version resource shows Install compatible Everything');
-  fs.copyFileSync(process.env.PHOTAG_EVERYTHING_GOOD_FIXTURE, target);
-  await invoke('control_gallery', { action: 'everything_recheck' });
+  fs.copyFileSync(process.env.FILEATLAS_EVERYTHING_GOOD_FIXTURE, target);
+  await invoke('control_file_manager', { action: 'everything_recheck' });
   const ready = await capture('ready');
-  assert.match(ready.gallery.everything.version, /^1\.5\./);
+  assert.match(ready.file_manager.everything.version, /^1\.5\./);
   await delay(1200);
   const quiet = await invoke('get_ui_state');
-  assert.equal(ready.gallery.snapshot_revision, quiet.gallery.snapshot_revision);
+  assert.equal(ready.file_manager.snapshot_revision, quiet.file_manager.snapshot_revision);
   report.cases.push('rechecking real Everything 1.5 removes install warning; quiet state stays unchanged');
   fs.writeFileSync(path.join(profile, 'everything-status-report.json'), JSON.stringify(report, null, 2));
 };

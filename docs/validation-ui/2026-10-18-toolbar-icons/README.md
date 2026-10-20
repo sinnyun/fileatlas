@@ -11,25 +11,25 @@ EXE SHA256：`97299DEDEB512ECF80773F80B9C345371BB2DC256D3C0CB722D95B2F01E78992`�
 
 ```powershell
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-plugin-gallery --lib -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-plugin-file-manager --lib -j 2
 node scripts/check-ui-theme.cjs
 node scripts/check-ui-refresh.cjs
 node scripts/check-architecture.cjs
 node scripts/check-layering.cjs
 node scripts/check-feature-ledger.cjs
 git diff --check
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-toolbar-icons-final --allow-mutations --scenario scripts/validate-toolbar-icons.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-toolbar-icons-final --allow-mutations --scenario scripts/validate-toolbar-icons.cjs
 ```
 
-构建、fmt、24项 Gallery 测试与治理守卫通过。首次构建结束时覆盖EXE遇到 Windows
-os error5（访问拒绝）；确认没有运行的 photag-shell 后重试构建成功。保留已有
+构建、fmt、24项 FileManager 测试与治理守卫通过。首次构建结束时覆盖EXE遇到 Windows
+os error5（访问拒绝）；确认没有运行的 fileatlas-shell 后重试构建成功。保留已有
 LNK4098 链接警告与历史孤立目录提示，未降低工具链或修改架构基线。
 
-运行全部通过同进程 PhoTag MCP 发送 GPUI 指针，无OS注入。测试生成的两个文本文件
+运行全部通过同进程 FileAtlas MCP 发送 GPUI 指针，无OS注入。测试生成的两个文本文件
 仅在隔离 profile 内。真实点击 relocated grid/list 确认布局状态；子文件夹开关令
 文件数1→2→1；真实滑块点击将Session保存尺寸150→269.2；当前目录/全机图标往返、
-范围弹窗、工具图标均实点验证。静置900ms Gallery snapshot revision保持9。
+范围弹窗、工具图标均实点验证。静置900ms FileManager snapshot revision保持9。
 [精简结果](../../../.local/validation/artifacts/2026-10-18-toolbar-icons/toolbar-summary.json)，复现入口为 scripts/validate-toolbar-icons.cjs。
 
 | 检查 | 实际结果 / 截图 |

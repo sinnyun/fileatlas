@@ -1,0 +1,47 @@
+[package]
+name = "fileatlas-plugin-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
+tracing.workspace = true
+base64 = "0.22"
+cordis.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+image = { version = "0.25", default-features = false, features = ["png"] }
+fileatlas-plugin-file-manager = { path = "../fileatlas-plugin-file-manager" }
+fileatlas-plugin-columns = { path = "../fileatlas-plugin-columns" }
+fileatlas-plugin-workspaces = { path = "../fileatlas-plugin-workspaces" }
+fileatlas-plugin-history = { path = "../fileatlas-plugin-history" }
+fileatlas-plugin-metadata-export = { path = "../fileatlas-plugin-metadata-export" }
+fileatlas-plugin-screenshot = { path = "../fileatlas-plugin-screenshot" }
+fileatlas-plugin-database = { path = "../fileatlas-plugin-database" }
+fileatlas-plugin-drag-drop = { path = "../fileatlas-plugin-drag-drop" }
+fileatlas-plugin-navigation = { path = "../fileatlas-plugin-navigation" }
+fileatlas-plugin-quicklook = { path = "../fileatlas-plugin-quicklook" }
+fileatlas-plugin-tagging = { path = "../fileatlas-plugin-tagging" }
+rmcp.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+thiserror = "2"
+
+fileatlas-plugin-i18n = { path = "../fileatlas-plugin-i18n" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_Xps",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+
+[lints]
+workspace = true

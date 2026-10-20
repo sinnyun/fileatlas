@@ -1,1 +1,1 @@
-PhoTag MCP functional test fixture. Safe to delete after validation.
+FileAtlas MCP functional test fixture. Safe to delete after validation.

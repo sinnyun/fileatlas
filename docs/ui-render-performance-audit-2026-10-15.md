@@ -7,7 +7,7 @@ redraws, not a logging-only issue. GPUI render functions and helpers were
 performing database reads for selected media, tags, and preview details. A
 virtualized card list can rebuild during selection, scrolling, animation, or
 window invalidation, so the same read ran repeatedly while the user did
-nothing. Preview also synchronously resolved every gallery ID for the
+nothing. Preview also synchronously resolved every file_manager ID for the
 filmstrip, checked each path, read image dimensions, and reopened the source to
 read EXIF orientation during rendering. These operations explain both log
 growth and delayed preview refresh.
@@ -22,19 +22,19 @@ service calls from `Render::render` and its render helpers.
 
 | Surface | Render-time work found | Result |
 | --- | --- | --- |
-| Gallery cards and right Inspector | Multi-selection path resolution, off-window Inspector media/tag lookup, and selection-detail filesystem metadata/open-count reads | Inspector loads once asynchronously by selected ID; drag paths are resolved once and cached by selected IDs. Selection-detail metadata and open count share a keyed background read. |
-| Gallery tag picker, bulk tag filter and media action dialog | Tag tree, selected row and assigned-tag queries; media action dialog re-read its row on every paint | Render helpers now consume the loaded snapshot/Inspector fallback; action dialog reuses the row loaded when opened. |
+| FileManager cards and right Inspector | Multi-selection path resolution, off-window Inspector media/tag lookup, and selection-detail filesystem metadata/open-count reads | Inspector loads once asynchronously by selected ID; drag paths are resolved once and cached by selected IDs. Selection-detail metadata and open count share a keyed background read. |
+| FileManager tag picker, bulk tag filter and media action dialog | Tag tree, selected row and assigned-tag queries; media action dialog re-read its row on every paint | Render helpers now consume the loaded snapshot/Inspector fallback; action dialog reuses the row loaded when opened. |
 | Preview image stage and information panel | Image dimensions, file metadata, EXIF fields, indexed media/tags/open count, video probe, and EXIF orientation could be read during render | Details load asynchronously and cache by path/media ID. Native asset decoding applies EXIF once; non-identity user transforms run in a keyed background task. |
 | Preview toolbar and tag picker | Assigned-tag count, tag tree, and assignment reads on each render | Toolbar uses the async indexed-info cache; popup loads tree and assignments together off-thread and caches by media ID. |
 | Media Playback tag panel | Tag tree and assigned IDs on each render | Reads once in a background task and caches until media identity or assignments change. |
 | Preview AI contribution | Every 150 ms poll unconditionally notified, even without analysis work | Poll now reports whether key/task/result changed; unchanged/empty-channel polls cause no redraw. |
 | Debug drawer and settled zoom | Accessibility logs drove the logger's own redraw; settled animation changed revision on every poll | Collection and presentation clocks are independent, and settled animations no longer change revision or write session. |
 | Settings Shortcuts/AI pages | Navigation snapshot queried from paint to flatten tag choices | Shared background choices keyed by tag revision, updated while open and on reopen; no paint-time query. |
-| Gallery statistics / bulk matching | Statistics/audio and matching queries ran during every paint; Debug's legitimate DB records closed a feedback loop | Shared keyed ReadModel snapshots on the model poller; index plus writer revision refresh data after mutations; execute retains fresh revalidation. |
+| FileManager statistics / bulk matching | Statistics/audio and matching queries ran during every paint; Debug's legitimate DB records closed a feedback loop | Shared keyed ReadModel snapshots on the model poller; index plus writer revision refresh data after mutations; execute retains fresh revalidation. |
 | Inspector expanded EXIF | Selected path was queried before testing the EXIF result cache on every paint | Keyed background EXIF/path read; loaded/fallback path reused, errors cached and stale selection results discarded. |
 | Preview mouse activity | Stage and root reset fade for repeated identical platform pointer observations | Coalesce coordinates; a stationary pointer and zero-distance pan do not reset activity or revision. Explicit moves/clicks/keys still wake controls. |
 | Settings update monitoring | Every pending-task poll repainted even without new data; disconnected channel could stay pending | Notify on progress/result only; disconnect becomes terminal error. Completed/error checks settle in MCP; download/install not exercised. |
-| Navigation tag associations, Gallery keyboard and file actions, Preview mutation handlers | Reads occur after explicit user actions (tag edit, shortcut, rename/delete/open), not during passive render | Kept as action-time operations; they are not redraw loops. |
+| Navigation tag associations, FileManager keyboard and file actions, Preview mutation handlers | Reads occur after explicit user actions (tag edit, shortcut, rename/delete/open), not during passive render | Kept as action-time operations; they are not redraw loops. |
 | Grouping and indexing | Filesystem metadata and database work occurs while constructing/querying the model, outside the paint function | No render loop found in those paths. |
 
 The search covered the active feature crates' `src/view` code and service
@@ -82,12 +82,12 @@ decode priority, progressive-cache lifetime, and stale paint generations.
 
 ## Preview open path
 
-Gallery now opens a double-clicked item from the already-loaded `MediaItem`,
+FileManager now opens a double-clicked item from the already-loaded `MediaItem`,
 immediately sets a filmstrip from the current 200-row media window, and
 resolves the complete filtered strip through `spawn_blocking`. A late result
 only replaces the strip if the same media is still open. The indexed strip
 setter skips synchronous per-path existence checks; opening a missing item is
-still checked by `PreviewService::open_media`. Gallery selection details resolve
+still checked by `PreviewService::open_media`. FileManager selection details resolve
 filesystem timestamps/permissions and open count once off-thread. Preview image
 dimensions, file metadata, EXIF/video details, and indexed info no longer block
 the paint function. The native GPUI asset loader applies EXIF orientation;
@@ -104,7 +104,7 @@ recorded in `docs/redesign-validation.md` after same-process MCP verification.
 The initial 3.84 ms `preview_media` span measured handler dispatch only. It did
 not establish image readiness. A 6000×4000 JPEG exposed a 9806 ms full paint in
 the unoptimized development decoder. The final standard executable paints its
-existing Gallery thumbnail at 31.95 ms and full image at 400.30 ms; reopening
+existing FileManager thumbnail at 31.95 ms and full image at 400.30 ms; reopening
 within that process takes 20.24 ms. A 3200×2400 TIFF paints thumbnail/full at
 26.18/74.58 ms. These are single local fixture runs, not codec-wide benchmarks.
 
@@ -120,10 +120,10 @@ checks are recorded in `validation-ui/2026-10-15-idle-audit/README.md`.
 
 ## Unified caller contract after the live audit
 
-All GPUI timer loops now use `photag_ui_bridge::refresh::poll`; shared
+All GPUI timer loops now use `fileatlas_ui_bridge::refresh::poll`; shared
 `ChangeGate` performs signature detection. Shared `ReadModel` replaces the
 remaining per-view passive metadata/tag/selection worker templates in Preview,
-Playback and Gallery. Render may declare a nonblocking demand, never executes
+Playback and FileManager. Render may declare a nonblocking demand, never executes
 IO; model pollers deliver completions. PollResult separates actual change from
 finite-operation liveness. This also fixes unchanged scan/developer progress
 redraws while preserving active transport/animation updates. The new architecture

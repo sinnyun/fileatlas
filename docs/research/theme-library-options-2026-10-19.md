@@ -1,4 +1,4 @@
-> 后续实施状态：用户已选择 GPUI Kit 原生主题 + Material JSON 生成插件。本文件保留选型时的现状与方案比较；当前契约以 docs/ui-theme.md、AGENTS.md 和 photag-plugin-material-theme/PORTS.md 为准。生成器最终固定 0.4.2 以符合工作区 MSRV，未采用调研时的最新版 0.5.0。
+> 后续实施状态：用户已选择 GPUI Kit 原生主题 + Material JSON 生成插件。本文件保留选型时的现状与方案比较；当前契约以 docs/ui-theme.md、AGENTS.md 和 fileatlas-plugin-material-theme/PORTS.md 为准。生成器最终固定 0.4.2 以符合工作区 MSRV，未采用调研时的最新版 0.5.0。
 
 # 主题配置开源方案调研（2026-10-19）
 
@@ -9,7 +9,7 @@
 现状是“现成 UI/主题框架 + 自定义配色层”。不是从零实现按钮和主题框架，但大部分颜色来源、亮暗解析、文字对比度和组件主题覆盖是项目手写的。
 
 - `Cargo.toml:56` 固定 `gpui-kit = "=0.7.1"`；当前 `Cargo.lock` 实际解析到 `gpui-component 0.7.2`。Kit 的 `component` 已导出组件库主题 API。
-- `crates/photag-ui-bridge/src/theme.rs` 定义大量 RGB/RGBA、模式访问器、强调色与选中底色；`theme/contrast.rs` 实现混色、对比度和内容徽标的配色。
+- `crates/fileatlas-ui-bridge/src/theme.rs` 定义大量 RGB/RGBA、模式访问器、强调色与选中底色；`theme/contrast.rs` 实现混色、对比度和内容徽标的配色。
 - `theme/components.rs::apply_components` 先调用框架 `Theme::change`，再逐项覆盖按钮、输入、菜单、表格、侧栏等颜色，因此实际采用的主要是项目 palette。
 - 项目代码没有使用 `ThemeRegistry`、`load_themes_from_str` 或 `Theme::apply_config` 加载现成主题。自绘视图读取项目的无 App 上下文颜色访问器；框架控件读取 `Theme`，形成需要手工保持一致的两套颜色表示。
 
@@ -30,9 +30,9 @@
 - `schema.rs`：`ThemeSet`、`ThemeConfig`、`ThemeConfigColors`；颜色/前景/hover/active 字段由框架解析并应用。
 - `mod.rs`：`Theme::change`、`Theme::update`、`apply_config`、`semantic_tokens`、`apply_semantic_config_str`；支持把当前主题同步到 Base 层。
 - `schema.rs::SemanticThemeConfig` 已有颜色、字号、间距、圆角、阴影的语义配置。
-- `default-theme.json` 随 crate 内嵌 Default Light / Default Dark，注明以 shadcn neutral 配色为来源。其它主题在上游 `themes/`，需要选择并随产品打包，不代表当前 PhoTag 已内置这些主题。
+- `default-theme.json` 随 crate 内嵌 Default Light / Default Dark，注明以 shadcn neutral 配色为来源。其它主题在上游 `themes/`，需要选择并随产品打包，不代表当前 FileAtlas 已内置这些主题。
 
-官方文档提供从注册表查找并应用主题的用法；仓库已有 Catppuccin 等主题 JSON。外观可以先比较框架默认中性色和 Catppuccin Latte/Mocha，具体是否符合低饱和度要求仍需在 PhoTag 的实际图片网格/标签中确认。目录热加载是可选能力；初次迁移可优先内嵌 JSON，不必增加文件监听生命周期。
+官方文档提供从注册表查找并应用主题的用法；仓库已有 Catppuccin 等主题 JSON。外观可以先比较框架默认中性色和 Catppuccin Latte/Mocha，具体是否符合低饱和度要求仍需在 FileAtlas 的实际图片网格/标签中确认。目录热加载是可选能力；初次迁移可优先内嵌 JSON，不必增加文件监听生命周期。
 
 来源：[官方 Theme 文档](https://gpui-kit.com/component/theme/)、[仓库主题集](https://github.com/longbridge/gpui-kit/tree/main/themes)、[Catppuccin JSON](https://raw.githubusercontent.com/longbridge/gpui-kit/main/themes/catppuccin.json)。
 

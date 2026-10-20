@@ -1,6 +1,6 @@
 # 声明式设置页公共契约
 
-设置页共用 `photag_ui_bridge::settings_page`，视觉源是
+设置页共用 `fileatlas_ui_bridge::settings_page`，视觉源是
 [十页完整概念](reference-ui/concepts/settings-complete-2026-10-18.md)。
 插件声明内容，不自行设计字号、颜色、分区或设置行。主题仍由既有 `theme` 所有。
 
@@ -10,7 +10,7 @@
 `register_views_for_plugin(&context, OWNER, [page])`。闭包捕获该插件的服务/弱引用。
 
 ```rust,ignore
-use photag_ui_bridge::settings_page::{
+use fileatlas_ui_bridge::settings_page::{
     self, SettingControl, SettingRow, SettingValue, SettingsPage, SettingsSection,
 };
 let read = service.clone();

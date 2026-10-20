@@ -1,0 +1,20 @@
+[package]
+name = "fileatlas-plugin-material-theme"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+gpui-kit.workspace = true
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+material-colors = "=0.4.2"
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

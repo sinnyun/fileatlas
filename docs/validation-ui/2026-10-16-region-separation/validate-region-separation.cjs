@@ -13,7 +13,7 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
   async function until(test, label) {
     let last;
     for (let i = 0; i < 150; i++) { last = await state(); if (test(last)) return last; await delay(100); }
-    throw Error(`state timed out: ${label}; last=${JSON.stringify({ groups: last.gallery?.groups, directory: last.gallery?.current_directory, matched: last.gallery?.matched_count, browsing: last.gallery?.browsing })}`);
+    throw Error(`state timed out: ${label}; last=${JSON.stringify({ groups: last.file_manager?.groups, directory: last.file_manager?.current_directory, matched: last.file_manager?.matched_count, browsing: last.file_manager?.browsing })}`);
   }
   async function sidebar(kind, args = {}) {
     await invoke('control_ui', { action: 'sidebar_request', request: { kind, ...args } });
@@ -38,7 +38,7 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
     await invoke('control_ui', { action: 'settings_close' });
     await delay(500);
     await capture(`sidebar-${tag}`);
-    await capture(`gallery-${tag}`);
+    await capture(`file_manager-${tag}`);
   }
 
   await delay(1500);
@@ -55,7 +55,7 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
   // Fixture: one browsed directory whose media sit in three different months.
   const root = path.join(profile, 'region-library');
   for (const dir of [root, path.join(root, 'evening'), path.join(root, 'scans')]) fs.mkdirSync(dir, { recursive: true });
-  const sources = ['test-data/photag-library/01-small/small.png', 'test-data/photag-library/01-small/tiny.jpg', 'test-data/photag-library/02-mixed-formats/medium.webp'];
+  const sources = ['test-data/fileatlas-fixtures/01-small/small.png', 'test-data/fileatlas-fixtures/01-small/tiny.jpg', 'test-data/fileatlas-fixtures/02-mixed-formats/medium.webp'];
   const months = [new Date('2024-06-11T09:00:00Z'), new Date('2025-01-19T09:00:00Z'), new Date('2026-03-03T09:00:00Z')];
   const placed = [];
   for (const [month, time] of months.entries()) {
@@ -69,11 +69,11 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
   report.fixture = root;
 
   // Month bands make the new header gap and the raised group band visible.
-  await invoke('control_gallery', { action: 'navigate', value: root });
-  await until(s => s.browser.filesystem && s.gallery?.current_directory?.replace(/\\/g, '/').endsWith('region-library'), 'directory open');
-  await invoke('control_gallery', { action: 'grouping', value: 'modified' });
-  await until(s => (s.gallery?.groups?.length ?? 0) >= 3, 'month groups');
-  report.groups = (await state()).gallery.groups;
+  await invoke('control_file_manager', { action: 'navigate', value: root });
+  await until(s => s.browser.filesystem && s.file_manager?.current_directory?.replace(/\\/g, '/').endsWith('region-library'), 'directory open');
+  await invoke('control_file_manager', { action: 'grouping', value: 'modified' });
+  await until(s => (s.file_manager?.groups?.length ?? 0) >= 3, 'month groups');
+  report.groups = (await state()).file_manager.groups;
   report.cases.push(`modified-month grouping produced ${report.groups.length} bands: ${JSON.stringify(report.groups)}`);
   await delay(1200);
 
@@ -135,6 +135,6 @@ module.exports = async ({ call, payload, delay, request, profile, output }) => {
   report.cases.push(`invalid region_separation value rejected: ${invalidText}`);
   await invoke('control_ui', { action: 'region_separation', value: 'border' });
   const final = await until(x => x.region_separation === 'border', 'final border');
-  report.final = { separation: final.region_separation, groups: final.gallery.groups, favorites: final.sidebar_folders.favorite_groups.map(g => ({ name: g.name, folders: g.folders.length, expanded: g.expanded })) };
+  report.final = { separation: final.region_separation, groups: final.file_manager.groups, favorites: final.sidebar_folders.favorite_groups.map(g => ({ name: g.name, folders: g.folders.length, expanded: g.expanded })) };
   save();
 };

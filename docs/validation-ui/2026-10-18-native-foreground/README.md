@@ -10,15 +10,15 @@ Windows 辅助函数只在最小化时用 SW_RESTORE，普通/最大化窗口使
 ## 命令与环境
 
 Windows / 150% DPI，Rust 1.97.1 MSVC；复用已有 target 增量构建默认 EXE。
-本轮构建前无运行中的工作区 PhoTag 进程，无需结束其他程序。
+本轮构建前无运行中的工作区 FileAtlas 进程，无需结束其他程序。
 
 ```powershell
 rustup toolchain list
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 check --locked -p photag-shell -j 2
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-native-foreground --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-foreground.cjs --allow-mutations
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-native-panels-foreground-regression --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-panels.cjs --allow-mutations
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-native-foreground --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-foreground.cjs --allow-mutations
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-native-panels-foreground-regression --plugins launcher,clipboard,screenshot,shortcuts,dev-test --scenario scripts/validate-native-panels.cjs --allow-mutations
 ```
 
 ## 证据与边界

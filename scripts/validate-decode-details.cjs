@@ -5,7 +5,7 @@ module.exports=async({call,payload,delay,profile,root,output,exe})=>{
  try {
   await delay(1500);await invoke('control_ui',{action:'accessibility_activate'});
   await invoke('control_debug',{action:'open'});
-  const fixtures=path.join(profile,'fixtures');fs.cpSync(path.join(root,'test-data/photag-library'),fixtures,{recursive:true});
+  const fixtures=path.join(profile,'fixtures');fs.cpSync(path.join(root,'test-data/fileatlas-fixtures'),fixtures,{recursive:true});
   fs.copyFileSync(path.join(root,'target/preview-latency-fixtures/cold-24mp.jpg'),path.join(fixtures,'large.jpg'));
   await invoke('add_folder',{path:fixtures,confirm:true});
   let media;for(let i=0;i<100;i++){media=await invoke('search_media',{limit:100});if(media.items.some(m=>m.filename==='large.jpg'))break;await delay(200);}
@@ -17,7 +17,7 @@ module.exports=async({call,payload,delay,profile,root,output,exe})=>{
    await delay(250);
   }
   assert(media.items.find(m=>m.filename==='large.jpg')?.thumb_path,'indexing must supply thumbnail before reuse test');
-  const open=async name=>{const m=media.items.find(m=>m.filename===name);assert(m);await invoke('control_gallery',{action:'preview',media_id:m.id});await delay(4000);};
+  const open=async name=>{const m=media.items.find(m=>m.filename===name);assert(m);await invoke('control_file_manager',{action:'preview',media_id:m.id});await delay(4000);};
   await open('large.jpg');report.first=await invoke('get_debug_info',{category:'preview',page_size:200});
   const complete=report.first.logs.records.filter(r=>r.message.includes('preview decode finished'));
   const fresh=complete.find(r=>r.message.includes('large.jpg')&&r.message.includes('max_dim=96'));
@@ -56,7 +56,7 @@ module.exports=async({call,payload,delay,profile,root,output,exe})=>{
   assert.equal(actionState('rotate_counter_clockwise').quarter_turns,0);
   assert.equal(actionState('fit').fit_to_window,true);
   for(let i=0;i<4;i++){
-   await invoke('control_gallery',{action:'preview',media_id:media.items.find(m=>m.filename==='large.jpg').id});await delay(180);
+   await invoke('control_file_manager',{action:'preview',media_id:media.items.find(m=>m.filename==='large.jpg').id});await delay(180);
    await invoke('control_preview',{action:'next'});await delay(180);
    await invoke('control_preview',{action:'close'});await delay(180);
   }

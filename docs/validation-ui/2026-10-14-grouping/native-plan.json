@@ -12,7 +12,7 @@
     "wait_ms": 500
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "popover",
       "value": "grouping"
@@ -38,7 +38,7 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.grouping_mode",
+      "field": "file_manager.grouping_mode",
       "equals": "modified"
     },
     "capture": "native-modified-click"
@@ -72,7 +72,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "subfolder"
@@ -97,7 +97,7 @@
     "capture": "narrow-closed"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "tools_open"
     },
@@ -126,20 +126,20 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.grouping_mode",
+      "field": "file_manager.grouping_mode",
       "equals": "file_type"
     },
     "capture": "native-tools-type-click"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "tools_close"
     },
     "wait_ms": 200
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "toggle_group",
       "value": "PDF"

@@ -44,7 +44,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "none"
@@ -52,7 +52,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "sort",
       "value": "name_asc"
@@ -60,7 +60,7 @@
     "wait_ms": 200
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "grid"
@@ -72,7 +72,7 @@
     "capture": "virtual-roots"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "open_directory",
       "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
@@ -82,7 +82,7 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.matched_count",
+      "field": "file_manager.matched_count",
       "equals": 2
     },
     "capture": "directory-grid"
@@ -127,7 +127,7 @@
     "tool": "get_ui_state",
     "capture": "double-click-hidden",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\.hidden"
     }
   },
@@ -151,7 +151,7 @@
     "tool": "get_ui_state",
     "capture": "native-up-to-root",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
     }
   },
@@ -191,7 +191,7 @@
     "tool": "get_ui_state",
     "capture": "double-click-photos",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos"
     }
   },
@@ -293,26 +293,26 @@
     "tool": "get_ui_state",
     "capture": "double-click-nested",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos\\nested"
     }
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "directory_up"
     },
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "directory_up"
     },
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "open_directory",
       "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\02-Empty"
@@ -323,7 +323,7 @@
     "tool": "get_ui_state",
     "capture": "empty-folder",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\02-Empty"
     }
   },
@@ -344,7 +344,7 @@
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "open_directory",
       "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\03-Many"
@@ -352,7 +352,7 @@
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"
@@ -360,7 +360,7 @@
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "scroll",
       "value": "240"
@@ -372,7 +372,7 @@
     "capture": "many-files-last-page"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "directory_up"
     },
@@ -383,7 +383,7 @@
     "capture": "folder-list"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "search",
       "value": "cover"
@@ -395,14 +395,14 @@
     "capture": "direct-file-search"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "clear_filters"
     },
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "subfolder"
@@ -414,7 +414,7 @@
     "capture": "recursive-grouping"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "grouping",
       "value": "none"
@@ -422,7 +422,7 @@
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "grid"
@@ -441,7 +441,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "search",
       "value": "photo.png"
@@ -453,7 +453,7 @@
     "capture": "global-search-preserved"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "clear_filters"
     },
@@ -464,14 +464,14 @@
     "capture": "virtual-roots-restored"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "directory_up"
     },
     "expect_error": "no parent"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "open_directory",
       "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library"
@@ -479,7 +479,7 @@
     "wait_ms": 300
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "open_directory",
       "value": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\01-Photos\\nested"
@@ -487,7 +487,7 @@
     "expect_error": "visible folder card"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "refresh"
     },
@@ -514,7 +514,7 @@
     "capture": "native-refresh-root"
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "list"
@@ -556,7 +556,7 @@
   {
     "tool": "get_ui_state",
     "until": {
-      "field": "gallery.current_directory",
+      "field": "file_manager.current_directory",
       "equals": "F:\\AI\\geren\\pho_cordis\\target\\mcp-folder-browser-fixture\\library\\.hidden"
     },
     "capture": "list-folder-double-click"
@@ -578,7 +578,7 @@
     "wait_ms": 350
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "layout",
       "value": "grid"

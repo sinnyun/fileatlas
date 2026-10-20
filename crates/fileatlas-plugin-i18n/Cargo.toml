@@ -1,0 +1,24 @@
+[package]
+name = "fileatlas-plugin-i18n"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+tracing.workspace = true
+cordis.workspace = true
+gpui-kit.workspace = true
+dirs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+fluent-bundle = "0.16"
+unic-langid = "0.9"
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

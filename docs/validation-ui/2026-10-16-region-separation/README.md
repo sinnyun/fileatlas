@@ -11,32 +11,32 @@
 
 ## 改了什么
 
-- `photag-ui-bridge/src/theme.rs`：新增表面阶梯 `SURFACE_RAIL` 0x171a1d → `SURFACE_SIDEBAR`
+- `fileatlas-ui-bridge/src/theme.rs`：新增表面阶梯 `SURFACE_RAIL` 0x171a1d → `SURFACE_SIDEBAR`
   0x1f2328 → `SURFACE_REGION` 0x1a1d21 → 内容列 → `SURFACE_CARD` 检视器；新增
   `REGION_EDGE`（0xffffff2e 亮色细线，`SEPARATOR` 比所有表面都暗，在深色主题上看不见）、
   几何令牌 `GROUP_HEADER_HEIGHT`/`GROUP_HEADER_GAP`(10)/`GROUP_TOP_GAP`(18)/`REGION_HEADER_HEIGHT`、
   `RegionDepth{Border,Shadow}` + `region_depth()/region_depth_name()/set_region_depth_name()`、
   唯一的区域边界原语 `separate_region(div, RegionEdge)`（边框模式画 1px 亮细线，阴影模式改用
   `region_shadows`：偏移 ±10/6、模糊 18、alpha 0.72）与分组配色 `GROUP_TINTS`/`group_tint(index)`。
-- `photag-shell/src/shell.rs`：标题带（下边）、logo 区（右边）、侧栏列（右边）、检视器（左边）、
+- `fileatlas-shell/src/shell.rs`：标题带（下边）、logo 区（右边）、侧栏列（右边）、检视器（左边）、
   状态栏（上边）、左下角设置入口（上边）全部改走 `separate_region`，侧栏/导轨改用新表面令牌。
-- `photag-plugin-navigation`：导轨 `SURFACE_RAIL` + 右边界；侧栏的驱动器、快速访问、
+- `fileatlas-plugin-navigation`：导轨 `SURFACE_RAIL` + 右边界；侧栏的驱动器、快速访问、
   “文件夹收藏 + 收藏分组”各自包进 `sidebar_region()`（`SURFACE_REGION` 内凹 + 四边边界 +
   `region_caption` 小标题），`render_favorite_groups()` 把自定义分组追加进同一个收藏区域，
   分组之间 `mt/pt 8px + border_t_1`，分组标题行按 `group_tint(index)` 上色（星形图标 + 15%/24% 透明底纹）。
-- `photag-plugin-gallery`：分组标题条改用 `SURFACE_GROUP_HEADER`/`_HOVER` + `separate_region(All)`；
-  标题与卡片之间 `mt(GROUP_HEADER_GAP)`，非首组再加 `GROUP_TOP_GAP`；`gallery_row_height` 与
+- `fileatlas-plugin-file-manager`：分组标题条改用 `SURFACE_GROUP_HEADER`/`_HOVER` + `separate_region(All)`；
+  标题与卡片之间 `mt(GROUP_HEADER_GAP)`，非首组再加 `GROUP_TOP_GAP`；`file_manager_row_height` 与
   橡皮筋命中测试（`view/behavior.rs`）同步这两个偏移，避免选中框与卡片错位。
-- `photag-plugin-settings`：JSON 模型新增 `region_separation`（默认 `border`，兼容旧文件），
+- `fileatlas-plugin-settings`：JSON 模型新增 `region_separation`（默认 `border`，兼容旧文件），
   Appearance 页新增“区域区分方式”小节（边框/阴影下拉）；`SettingsService::persist` 成为唯一写入口，
   成功后重发 `set_accent_name` + `set_region_depth_name`，视图侧只保留需要 `&mut App` 的
   `apply_accent_components(cx)` 并新增 `cx.refresh_windows()`（与语言切换同一全窗口重绘路径）。
-- `photag-plugin-i18n`：新增 6 个键（区域区分方式 / 边框 / 阴影 / 说明句 / 库文件夹 / 收藏分组），
+- `fileatlas-plugin-i18n`：新增 6 个键（区域区分方式 / 边框 / 阴影 / 说明句 / 库文件夹 / 收藏分组），
   `keys.json` 与 `en.ftl`、`zh-CN.ftl` 同步，界面全中文。
-- `photag-plugin-mcp`：只读 `get_ui_state.region_separation`（读实际生效的绘制令牌）与
+- `fileatlas-plugin-mcp`：只读 `get_ui_state.region_separation`（读实际生效的绘制令牌）与
   受 mutation 开关保护的 `control_ui {action:"region_separation", value:"border"|"shadow"}`，
   后者通过 Cordis 取 `SettingsService` 并走与视图完全相同的 `update` 路径。
-- 顺带修复：`photag-ui-bridge/Cargo.toml` 缺 `tokio` 的 `time` dev-dependency，导致
+- 顺带修复：`fileatlas-ui-bridge/Cargo.toml` 缺 `tokio` 的 `time` dev-dependency，导致
   `refresh.rs` 测试自 e0932a3 起无法编译（本次改动前既存）。
 
 ## 命令与环境
@@ -44,27 +44,27 @@
 ```
 cargo +1.97.1 fmt --all -- --check
 cargo +1.97.1 check --workspace --locked --offline -j 2
-cargo +1.97.1 test --locked -p photag-ui-bridge -p photag-plugin-settings \
-  -p photag-plugin-navigation -p photag-plugin-gallery -p photag-plugin-i18n -p photag-plugin-mcp -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-ui-bridge -p fileatlas-plugin-settings \
+  -p fileatlas-plugin-navigation -p fileatlas-plugin-file-manager -p fileatlas-plugin-i18n -p fileatlas-plugin-mcp -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
 node scripts/check-ui-refresh.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe \
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe \
   --profile target/mcp-region-sep --plugins dev-test --allow-mutations \
   --scenario scripts/validate-region-separation.cjs
-PHOTAG_POINTER_TAB=... PHOTAG_POINTER_CLICK=... PHOTAG_POINTER_ITEM=... \
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe \
+FILEATLAS_POINTER_TAB=... FILEATLAS_POINTER_CLICK=... FILEATLAS_POINTER_ITEM=... \
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe \
   --profile target/mcp-region-sep --plugins dev-test --allow-mutations \
   --scenario scripts/validate-region-pointer.cjs
 ```
 
-Windows 11 / 150% DPI（`scale_factor` 1.5），Rust 1.97.1 MSVC，locked `-j 2`。同进程 PhoTag MCP
-（`photag-shell --mcp` 子进程），隔离 dev-test profile `target/mcp-region-sep`（独立 DB、settings、
-session、缩略图缓存，未触碰 `%LOCALAPPDATA%\PhoTag`）。未使用 OS 鼠标键盘注入，未附加到另行启动的进程。
+Windows 11 / 150% DPI（`scale_factor` 1.5），Rust 1.97.1 MSVC，locked `-j 2`。同进程 FileAtlas MCP
+（`fileatlas-shell --mcp` 子进程），隔离 dev-test profile `target/mcp-region-sep`（独立 DB、settings、
+session、缩略图缓存，未触碰 `%LOCALAPPDATA%\FileAtlas`）。未使用 OS 鼠标键盘注入，未附加到另行启动的进程。
 坐标换算按 `window_status.geometry.screenshot_to_pointer`：`pointer = (screenshot_px - (11,45)) / 1.5`，
 先用“工具栏”页签点击校准（`settings_tab` 语义值确实变为 `toolbar`）后再点目标控件。
 
 静态与自动回归结果：fmt 通过、workspace check 通过、`UI timer ownership: passed`、
-49 项测试通过（navigation 20、ui-bridge 12、gallery 10、i18n 4、settings 3）。
+49 项测试通过（navigation 20、ui-bridge 12、file_manager 10、i18n 4、settings 3）。
 
 ## 结果
 

@@ -11,7 +11,7 @@
   颜色角色（包括表格、列表、accordion、状态按钮和图表），强调色变化同步全部状态。
 - 公共组件提供 section/card/nav/action/icon/heading，以及单行、搜索、多行输入。
   剪贴板不再保留私有颜色；启动台不再固定青色选中和字符类别图标。
-- Gallery 主窗/检查器/历史/统计/批量操作、Navigation、Settings、Launcher、Clipboard、
+- FileManager 主窗/检查器/历史/统计/批量操作、Navigation、Settings、Launcher、Clipboard、
   Debug、Shell 的自绘颜色使用公共语义 token，导出/更新等原生 Kit 控件继承同一主题。
   全部插件的 Input/Textarea 经公共构造器创建，保留原有 Entity、事件和行为。
 - 修正 Kit `input` 实为边框的映射，输入背景由公共构造器负责；保留原生焦点环。
@@ -24,34 +24,34 @@
 Microsoft Windows 11 专业版 10.0.26200，150% DPI，zh-CN。
 Rust `1.97.1 (8bab26f4f 2026-07-14)` Windows MSVC，Cargo 默认 dev incremental，`-j 2`。
 主窗物理截图 3286×1831；小窗由 MCP 请求 1510×1000，客户区为 992×629.33 逻辑像素。
-测试启动的是该次构建的 `target/debug/photag-shell.exe --mcp`，MCP 与 GPUI 窗口同进程，
-没有附加到其他 PhoTag、没有通用 UI 自动化或 OS 输入注入。
+测试启动的是该次构建的 `target/debug/fileatlas-shell.exe --mcp`，MCP 与 GPUI 窗口同进程，
+没有附加到其他 FileAtlas、没有通用 UI 自动化或 OS 输入注入。
 
 ```powershell
 rustup toolchain list
 rustc +1.97.1 --version
 cargo +1.97.1 fmt --all -- --check
-cargo +1.97.1 check --locked -p photag-shell -j 2
-cargo +1.97.1 build --locked -p photag-shell -j 2
-cargo +1.97.1 test --locked -p photag-ui-bridge -p photag-plugin-settings -p photag-plugin-i18n --lib -j 2
+cargo +1.97.1 check --locked -p fileatlas-shell -j 2
+cargo +1.97.1 build --locked -p fileatlas-shell -j 2
+cargo +1.97.1 test --locked -p fileatlas-ui-bridge -p fileatlas-plugin-settings -p fileatlas-plugin-i18n --lib -j 2
 node scripts/check-ui-theme.cjs --self-test
 node scripts/check-ui-theme.cjs
 node scripts/check-ui-refresh.cjs
 node scripts/check-architecture.cjs
 node scripts/check-layering.cjs
 node scripts/check-feature-ledger.cjs
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile target/mcp-unified-theme-verified --allow-mutations --scenario scripts/validate-ui-theme.cjs
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --profile target/mcp-unified-theme-verified --allow-mutations --scenario scripts/validate-ui-theme.cjs
 ```
 
 仅此隔离验证启用 mutation，客户端强制 `dev-test` 并指定隔离 DB/settings/session/cache；
 添加的剪贴板文本为场景内三条样例，启动台仅添加本次 EXE 用作图标 fixture，没有启动它。
-媒体测试只浏览已有 `test-data/photag-library/02-mixed-formats`，没有评分、标签或文件写操作。
+媒体测试只浏览已有 `test-data/fileatlas-fixtures/02-mixed-formats`，没有评分、标签或文件写操作。
 测试中点击设置色板蓝→灰青→蓝并检查真实 token，最后恢复工作台蓝。
 
 ## 结果与逐图对照
 
 最终截图及精简运行元数据保存在本目录；场景入口为 `scripts/validate-ui-theme.cjs`。
-初轮曾把统计和批量操作同时打开，已用 `gallery_dialogs_close` 修正场景隔离；
+初轮曾把统计和批量操作同时打开，已用 `file_manager_dialogs_close` 修正场景隔离；
 后续图还揭示输入边框映射和窄数字框问题，修正后重建再截，本目录不沿用早期截图。
 
 | 检查项 | 参考要求 | 实际表现及证据 |
@@ -66,7 +66,7 @@ node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell.exe --profile 
 | 设置 | 左导航、右横向设置行、分区线、固定页脚 | [外观](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-appearance.png)、[快捷键](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-shortcuts.png)、[标签](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-tags.png)、[AI](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-ai.png)、[更新](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-updates.png)、[软件](../../../.local/validation/artifacts/2026-10-18-unified-theme/settings-software.png)；默认 F1–F9 完整 |
 | 历史/辅助弹层 | 相同输入/状态/颜色角色，保留原分区 | [空历史](../../../.local/validation/artifacts/2026-10-18-unified-theme/history.png)、[统计](../../../.local/validation/artifacts/2026-10-18-unified-theme/statistics.png)、[批量操作](../../../.local/validation/artifacts/2026-10-18-unified-theme/bulk-actions.png)、[JSON导出待机](../../../.local/validation/artifacts/2026-10-18-unified-theme/export.png)；统计/批量读模型待 ready 后截图；没有执行删除或导出 |
 | 小窗口 | 正文可滚动，关键操作和页脚不被裁掉 | [小窗设置](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-settings.png)；[小窗剪贴板](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-clipboard.png)→[滚动到底](../../../.local/validation/artifacts/2026-10-18-unified-theme/compact-clipboard-scrolled.png)，“我的分组”可达、右侧保存/复制和捕获栏完整 |
-| quiet/真实变化 | 静置不重复绘制/查询，真实输入和设置变化更新 | Launcher 稳定后 `ui.render_count` 不变；Gallery `snapshot_revision`、Clipboard revision 静置不变；搜索和强调色实际操作有相应变化，场景有断言 |
+| quiet/真实变化 | 静置不重复绘制/查询，真实输入和设置变化更新 | Launcher 稳定后 `ui.render_count` 不变；FileManager `snapshot_revision`、Clipboard revision 静置不变；搜索和强调色实际操作有相应变化，场景有断言 |
 
 fmt、locked check/build、20 项测试（UI Bridge 13 / Settings 3 / i18n 4）通过；
 主题守卫正反探针及全部治理守卫通过，`git diff --check` 通过。

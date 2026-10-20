@@ -4,7 +4,7 @@
     "tool": "get_ui_state",
     "until": {
       "interval_ms": 200,
-      "field": "gallery.loaded_count",
+      "field": "file_manager.loaded_count",
       "attempts": 100,
       "at_least": 2
     }
@@ -24,7 +24,7 @@
     "wait_ms": 400
   },
   {
-    "tool": "control_gallery",
+    "tool": "control_file_manager",
     "arguments": {
       "action": "preview",
       "media_id": 1

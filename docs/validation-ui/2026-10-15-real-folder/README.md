@@ -29,12 +29,12 @@ EXE SHA-256：24724ca0b2a3f7119d77b7cc2e542ca1f79370ab7730d8a9c1923d09835ee4c1
 复现命令（使用全新的target档案目录）：
 
 ```powershell
-$env:PHOTAG_REAL_FOLDER = 'D:\桌面文件夹\测试 - 副本\sanli 0515'
-node scripts/photag-mcp-debug.cjs --exe target/debug/photag-shell-decode-details.exe --profile target/mcp-real-folder-empty-20261015 --scenario scripts/validate-real-folder.cjs --allow-mutations
+$env:FILEATLAS_REAL_FOLDER = 'D:\桌面文件夹\测试 - 副本\sanli 0515'
+node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell-decode-details.exe --profile target/mcp-real-folder-empty-20261015 --scenario scripts/validate-real-folder.cjs --allow-mutations
 ```
 
 先设置档案中的settings.json为auto_check_updates=false、show_filmstrip=true。
-脚本拒绝非空图片缓存；再次运行需使用新的空档案，不删除常用PhoTag缓存。
+脚本拒绝非空图片缓存；再次运行需使用新的空档案，不删除常用FileAtlas缓存。
 此前清理命令被自动审核拒绝，未执行删除，最终以新空档案完成测试。
 
 实测主要慢项：7200万像素PNG，progressive任务读取1.811ms、解码7681.496ms、

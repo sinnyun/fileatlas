@@ -1,4 +1,4 @@
-// Real GPUI interaction through same-process PhoTag MCP. Isolated dev-test only.
+// Real GPUI interaction through same-process FileAtlas MCP. Isolated dev-test only.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -91,7 +91,7 @@ module.exports = async ({step, delay, profile}) => {
   const quietBefore = await state();
   await delay(700);
   const quietAfter = await state();
-  assert.equal(quietBefore.gallery.snapshot_revision, quietAfter.gallery.snapshot_revision);
+  assert.equal(quietBefore.file_manager.snapshot_revision, quietAfter.file_manager.snapshot_revision);
   assert.deepEqual(quietBefore.settings_tag_choices, quietAfter.settings_tag_choices, 'settled tag ReadModel must stay stable');
   await shot('final');
   // Shrink the native window through the project plugin, without OS input injection.

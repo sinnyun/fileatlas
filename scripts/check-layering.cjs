@@ -1,4 +1,4 @@
-// Enforce PhoTag's compile-time crate layers and low-level dependency boundary.
+// Enforce FileAtlas's compile-time crate layers and low-level dependency boundary.
 // Keep the layer map and same-layer exceptions reviewable in this file.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,72 +7,72 @@ const root = path.resolve(__dirname, '..');
 const cratesDir = path.join(root, 'crates');
 
 const layers = [
-  ['photag-contracts', 'photag-plugin-database'],
+  ['fileatlas-contracts', 'fileatlas-plugin-database'],
   [
-    'photag-plugin-thumbnails',
-    'photag-plugin-quicklook',
-    'photag-plugin-drag-drop',
-    'photag-plugin-updater',
-    'photag-plugin-file-operations',
-    'photag-plugin-everything-search',
-    'photag-plugin-session',
-    'photag-plugin-version-info',
+    'fileatlas-plugin-thumbnails',
+    'fileatlas-plugin-quicklook',
+    'fileatlas-plugin-drag-drop',
+    'fileatlas-plugin-updater',
+    'fileatlas-plugin-file-operations',
+    'fileatlas-plugin-everything-search',
+    'fileatlas-plugin-session',
+    'fileatlas-plugin-version-info',
   ],
-  ['photag-plugin-indexing', 'photag-plugin-watcher'],
+  ['fileatlas-plugin-indexing', 'fileatlas-plugin-watcher'],
   [
-    'photag-ui-bridge',
-    'photag-plugin-columns',
-    'photag-plugin-workspaces',
-    'photag-plugin-tagging',
-    'photag-plugin-history',
-    'photag-plugin-grouping',
-    'photag-plugin-navigation',
-    'photag-plugin-debug',
-    'photag-plugin-dev-test',
-    'photag-plugin-metadata-export',
-    'photag-plugin-i18n',
-    'photag-plugin-shortcuts',
+    'fileatlas-ui-bridge',
+    'fileatlas-plugin-columns',
+    'fileatlas-plugin-workspaces',
+    'fileatlas-plugin-tagging',
+    'fileatlas-plugin-history',
+    'fileatlas-plugin-grouping',
+    'fileatlas-plugin-navigation',
+    'fileatlas-plugin-debug',
+    'fileatlas-plugin-dev-test',
+    'fileatlas-plugin-metadata-export',
+    'fileatlas-plugin-i18n',
+    'fileatlas-plugin-shortcuts',
   ],
   [
-    'photag-plugin-settings',
-    'photag-plugin-shell-controls',
-    'photag-plugin-screenshot',
-    'photag-plugin-launcher',
-    'photag-plugin-clipboard',
-    'photag-plugin-projects',
+    'fileatlas-plugin-settings',
+    'fileatlas-plugin-shell-controls',
+    'fileatlas-plugin-screenshot',
+    'fileatlas-plugin-launcher',
+    'fileatlas-plugin-clipboard',
+    'fileatlas-plugin-projects',
   ],
-  ['photag-plugin-versions', 'photag-plugin-material-theme'],
-  ['photag-plugin-ai'],
-  ['photag-plugin-gallery'],
-  ['photag-plugin-mcp', 'photag-shell'],
+  ['fileatlas-plugin-versions', 'fileatlas-plugin-material-theme'],
+  ['fileatlas-plugin-ai'],
+  ['fileatlas-plugin-file-manager'],
+  ['fileatlas-plugin-mcp', 'fileatlas-shell'],
 ];
 
 // Same-layer dependencies are intentional peers and must be reviewed here.
 const sameLayerEdges = new Set([
-  'photag-plugin-watcher -> photag-plugin-indexing',
-  'photag-plugin-quicklook -> photag-plugin-file-operations',
-  'photag-plugin-tagging -> photag-ui-bridge',
-  'photag-plugin-columns -> photag-ui-bridge',
-  'photag-plugin-columns -> photag-plugin-workspaces',
-  'photag-plugin-workspaces -> photag-ui-bridge',
-  'photag-plugin-history -> photag-plugin-tagging',
-  'photag-plugin-history -> photag-ui-bridge',
-  'photag-plugin-grouping -> photag-ui-bridge',
-  'photag-plugin-navigation -> photag-plugin-tagging',
-  'photag-plugin-navigation -> photag-ui-bridge',
-  'photag-plugin-debug -> photag-ui-bridge',
-  'photag-plugin-dev-test -> photag-ui-bridge',
-  'photag-plugin-metadata-export -> photag-ui-bridge',
-  'photag-plugin-i18n -> photag-ui-bridge',
-  'photag-plugin-launcher -> photag-ui-bridge',
-  'photag-plugin-shortcuts -> photag-ui-bridge',
-  'photag-plugin-clipboard -> photag-ui-bridge',
-  'photag-plugin-screenshot -> photag-plugin-settings',
-  'photag-plugin-launcher -> photag-plugin-settings',
-  'photag-plugin-clipboard -> photag-plugin-settings',
-  'photag-plugin-mcp -> photag-plugin-screenshot',
-  'photag-plugin-ai -> photag-plugin-settings',
-  'photag-shell -> photag-plugin-mcp',
+  'fileatlas-plugin-watcher -> fileatlas-plugin-indexing',
+  'fileatlas-plugin-quicklook -> fileatlas-plugin-file-operations',
+  'fileatlas-plugin-tagging -> fileatlas-ui-bridge',
+  'fileatlas-plugin-columns -> fileatlas-ui-bridge',
+  'fileatlas-plugin-columns -> fileatlas-plugin-workspaces',
+  'fileatlas-plugin-workspaces -> fileatlas-ui-bridge',
+  'fileatlas-plugin-history -> fileatlas-plugin-tagging',
+  'fileatlas-plugin-history -> fileatlas-ui-bridge',
+  'fileatlas-plugin-grouping -> fileatlas-ui-bridge',
+  'fileatlas-plugin-navigation -> fileatlas-plugin-tagging',
+  'fileatlas-plugin-navigation -> fileatlas-ui-bridge',
+  'fileatlas-plugin-debug -> fileatlas-ui-bridge',
+  'fileatlas-plugin-dev-test -> fileatlas-ui-bridge',
+  'fileatlas-plugin-metadata-export -> fileatlas-ui-bridge',
+  'fileatlas-plugin-i18n -> fileatlas-ui-bridge',
+  'fileatlas-plugin-launcher -> fileatlas-ui-bridge',
+  'fileatlas-plugin-shortcuts -> fileatlas-ui-bridge',
+  'fileatlas-plugin-clipboard -> fileatlas-ui-bridge',
+  'fileatlas-plugin-screenshot -> fileatlas-plugin-settings',
+  'fileatlas-plugin-launcher -> fileatlas-plugin-settings',
+  'fileatlas-plugin-clipboard -> fileatlas-plugin-settings',
+  'fileatlas-plugin-mcp -> fileatlas-plugin-screenshot',
+  'fileatlas-plugin-ai -> fileatlas-plugin-settings',
+  'fileatlas-shell -> fileatlas-plugin-mcp',
 ]);
 
 const uiPackages = new Set(['gpui', 'gpui-pre', 'gpui-kit', 'egui', 'eframe', 'winit']);
@@ -164,7 +164,7 @@ for (const member of memberDirs) {
       const entry = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(.*)$/);
       if (!entry) continue;
       const dependencyName = entry[2].match(/\bpackage\s*=\s*"([^"]+)"/)?.[1] ?? entry[1];
-      if (dependencyName === 'rusqlite' && packageName !== 'photag-plugin-database') {
+      if (dependencyName === 'rusqlite' && packageName !== 'fileatlas-plugin-database') {
         failures.push(`${packageName} must not depend on rusqlite at runtime`);
       }
     }
@@ -196,8 +196,8 @@ for (const [name, dir] of packageToDir) {
   for (const file of rustFiles(path.join(dir, 'src'))) {
     if (/(^|_)(tests?|test_utils)\.rs$/.test(path.basename(file))) continue;
     const source = stripInlineTestModule(stripTestOnly(fs.readFileSync(file, 'utf8')));
-    for (const match of source.matchAll(/photag_plugin_([a-z0-9_]+)::([a-z][a-z0-9_]*)::/g)) {
-      const dependency = `photag-plugin-${match[1].replaceAll('_', '-')}`;
+    for (const match of source.matchAll(/fileatlas_plugin_([a-z0-9_]+)::([a-z][a-z0-9_]*)::/g)) {
+      const dependency = `fileatlas-plugin-${match[1].replaceAll('_', '-')}`;
       if (dependency === name) continue;
       if (match[2] === 'queries') failures.push(`${name} reaches private Database query module in ${path.relative(root, file)}`);
     }
@@ -207,7 +207,7 @@ for (const [name, dir] of packageToDir) {
 // Raw SQLite callbacks belong to DatabaseService. Feature crates use its
 // typed operations; inline unit-test setup is excluded from this production guard.
 for (const [name, dir] of packageToDir) {
-  if (name === 'photag-plugin-database') continue;
+  if (name === 'fileatlas-plugin-database') continue;
   const src = path.join(dir, 'src');
   if (!fs.existsSync(src)) continue;
   for (const file of rustFiles(src)) {

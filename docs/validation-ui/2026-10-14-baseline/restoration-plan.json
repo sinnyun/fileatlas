@@ -28,7 +28,7 @@
       "action": "pointer_down",
       "value": "304,350"
     },
-    "expect_error": "PHOTAG_MCP_ALLOW_MUTATIONS"
+    "expect_error": "FILEATLAS_MCP_ALLOW_MUTATIONS"
   },
   {
     "tool": "get_ui_state",
