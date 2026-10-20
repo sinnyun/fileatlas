@@ -1,0 +1,29 @@
+[package]
+name = "fileatlas-plugin-workcrate-ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-workcrate-contracts = { path = "../fileatlas-workcrate-contracts" }
+fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
+fileatlas-plugin-workcrate-projects = { path = "../fileatlas-plugin-workcrate-projects" }
+fileatlas-plugin-workcrate-boards = { path = "../fileatlas-plugin-workcrate-boards" }
+fileatlas-plugin-workcrate-export = { path = "../fileatlas-plugin-workcrate-export" }
+fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
+fileatlas-plugin-file-operations = { path = "../fileatlas-plugin-file-operations" }
+fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
+gpui-kit.workspace = true
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+image = "0.25"
+rfd = { version = "0.15", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

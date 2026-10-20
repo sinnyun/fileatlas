@@ -123,6 +123,9 @@ pub struct FileManagerFileDragPayload {
     pub paths: Vec<String>,
     pub ids: Vec<i64>,
     pub allowed: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// Claim once when promoting this gesture to a native session. Shared by
+    /// every rendered card listener, including after the source view repaints.
+    pub native_handoff_started: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl FileManagerFileDragPayload {

@@ -38,6 +38,11 @@ members = [
     "crates/fileatlas-plugin-screenshot",
     "crates/fileatlas-plugin-projects",
     "crates/fileatlas-plugin-file-staging",
+    "crates/fileatlas-workcrate-contracts",
+    "crates/fileatlas-plugin-workcrate-projects",
+    "crates/fileatlas-plugin-workcrate-boards",
+    "crates/fileatlas-plugin-workcrate-export",
+    "crates/fileatlas-plugin-workcrate-ui",
 ]
 default-members = ["crates/fileatlas-shell"]
 
@@ -63,6 +68,8 @@ lore-vm = { git = "https://github.com/BiloxiStudios/loregui.git", rev = "35eaf6e
 
 [patch.crates-io]
 quinn-proto = { git = "https://github.com/EpicGames/lore.git", rev = "da73d9fbe793f8ff10db848c9920b83f63c346f2" }
+# DesignCraft's pinned PDF dependency expects this matching patched backend revision.
+krilla = { git = "https://github.com/storytold/craft-libs", rev = "c3487320b2d1de657b860b3c8abb44e1f2b32bd8", version = "=0.8.2" }
 
 [profile.dev]
 debug = 0

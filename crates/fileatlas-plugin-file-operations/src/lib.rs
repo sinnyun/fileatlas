@@ -458,6 +458,23 @@ impl FileOperationsService {
         Ok(())
     }
 
+    /// Open a feature-owned linked document through its Windows file association.
+    /// Unlike indexed media, a PSD source does not need a database row.
+    pub fn open_linked_file(&self, path: &Path) -> Result<(), FileOperationError> {
+        let path =
+            std::fs::canonicalize(path).map_err(|e| FileOperationError::Open(e.to_string()))?;
+        if !path.is_file() {
+            return Err(FileOperationError::Open(
+                "linked document is not a file".into(),
+            ));
+        }
+        let target = path_candidates(&path)
+            .into_iter()
+            .next()
+            .ok_or(FileOperationError::InvalidParent)?;
+        open::that(target).map_err(|error| FileOperationError::Open(error.to_string()))
+    }
+
     #[tracing::instrument(skip_all, err)]
     pub async fn reveal_in_file_manager(
         self: &Arc<Self>,

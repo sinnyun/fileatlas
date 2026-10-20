@@ -93,3 +93,9 @@ resolved native theme. FileManager supplies current UI Bridge/native roles. Fall
 icons no longer contain a private pixel palette or file-format color table. Real image
 preview pixels and OS behavior are unchanged; native OLE drag execution was not revalidated
 by the theme migration. No UI-stack dependency was added to this low-level service.
+
+2026-10-20 media-card correction: FileManager queues this service when an
+active media drag crosses the main-window viewport boundary, rather than at
+drag start. Internal feature-panel receivers get the normal typed GPUI payload
+first. The dispatcher and copy-only OLE implementation are unchanged; boundary
+mouse capture and external Explorer delivery remain unverified.

@@ -35,6 +35,10 @@ fn dev_plugin_config() -> String {
         "screenshot",
         "projects",
         "file-staging",
+        "workcrate-projects",
+        "workcrate-boards",
+        "workcrate-export",
+        "workcrate-ui",
     ];
     for plugin in config
         .split(',')
@@ -170,6 +174,22 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "file-staging");
+    let enable_workcrate_projects = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "workcrate-projects");
+    let enable_workcrate_boards = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "workcrate-boards");
+    let enable_workcrate_export = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "workcrate-export");
+    let enable_workcrate_ui = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "workcrate-ui");
     let enable_launcher = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -596,6 +616,182 @@ fn main() {
         projects_starter,
     )) {
         tracing::error!(%error, "could not register Projects plugin runtime control");
+    }
+    let enable_workcrate_boards =
+        enable_workcrate_boards || enable_workcrate_export || enable_workcrate_ui;
+    let enable_workcrate_projects = (enable_workcrate_projects || enable_workcrate_boards)
+        && plugin_preferences.plugin_is_enabled("fileatlas.workcrate-projects");
+    let workcrate_projects_config = fileatlas_plugin_workcrate_projects::WorkCrateProjectsConfig {
+        root: dev_test_dir.as_ref().map(|path| path.join("workcrate")),
+    };
+    let workcrate_projects_fiber = if enable_workcrate_projects {
+        let plugin = fileatlas_plugin_workcrate_projects::WorkCrateProjectsPlugin;
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            plugin,
+            workcrate_projects_config.clone(),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start WorkCrate projects service");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let workcrate_projects_context = cordis.clone();
+    let workcrate_projects_starter: fileatlas_plugin_settings::PluginStarter =
+        Arc::new(move || {
+            let context = workcrate_projects_context.clone();
+            let config = workcrate_projects_config.clone();
+            Box::pin(async move {
+                context
+                    .spawn(PreparedPlugin::from_input(
+                        fileatlas_plugin_workcrate_projects::WorkCrateProjectsPlugin,
+                        config,
+                    ))
+                    .await
+                    .map_err(|error| error.to_string())
+            })
+        });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "fileatlas.workcrate-projects",
+        "WorkCrate Projects",
+        "Manage project records and references to original files.",
+        vec![
+            fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        workcrate_projects_fiber,
+        workcrate_projects_starter,
+    )) {
+        tracing::error!(%error, "could not register WorkCrate Projects runtime control");
+    }
+    let enable_workcrate_boards = enable_workcrate_boards
+        && plugin_preferences.plugin_is_enabled("fileatlas.workcrate-boards");
+    let workcrate_boards_fiber = if enable_workcrate_boards {
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            fileatlas_plugin_workcrate_boards::WorkCrateBoardsPlugin,
+            (),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start WorkCrate boards service");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let workcrate_boards_context = cordis.clone();
+    let workcrate_boards_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = workcrate_boards_context.clone();
+        Box::pin(async move {
+            context
+                .spawn(PreparedPlugin::from_input(
+                    fileatlas_plugin_workcrate_boards::WorkCrateBoardsPlugin,
+                    (),
+                ))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "fileatlas.workcrate-boards",
+        "WorkCrate Boards",
+        "Create image-only DesignCraft boards for project references.",
+        vec![
+            fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        workcrate_boards_fiber,
+        workcrate_boards_starter,
+    )) {
+        tracing::error!(%error, "could not register WorkCrate Boards runtime control");
+    }
+    let enable_workcrate_export = enable_workcrate_export
+        && plugin_preferences.plugin_is_enabled("fileatlas.workcrate-export");
+    let workcrate_export_fiber = if enable_workcrate_export {
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            fileatlas_plugin_workcrate_export::WorkCrateExportPlugin,
+            (),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start WorkCrate export service");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let workcrate_export_context = cordis.clone();
+    let workcrate_export_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = workcrate_export_context.clone();
+        Box::pin(async move {
+            context
+                .spawn(PreparedPlugin::from_input(
+                    fileatlas_plugin_workcrate_export::WorkCrateExportPlugin,
+                    (),
+                ))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "fileatlas.workcrate-export",
+        "WorkCrate Export",
+        "Render source-resolution WorkCrate board pages to PDF.",
+        vec![
+            fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        workcrate_export_fiber,
+        workcrate_export_starter,
+    )) {
+        tracing::error!(%error, "could not register WorkCrate Export runtime control");
+    }
+    let enable_workcrate_ui =
+        enable_workcrate_ui && plugin_preferences.plugin_is_enabled("fileatlas.workcrate-ui");
+    let workcrate_ui_fiber = if enable_workcrate_ui {
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            fileatlas_plugin_workcrate_ui::WorkCrateUiPlugin,
+            (),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start WorkCrate UI plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let workcrate_ui_context = cordis.clone();
+    let workcrate_ui_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = workcrate_ui_context.clone();
+        Box::pin(async move {
+            context
+                .spawn(PreparedPlugin::from_input(
+                    fileatlas_plugin_workcrate_ui::WorkCrateUiPlugin,
+                    (),
+                ))
+                .await
+                .map_err(|error| error.to_string())
+        })
+    });
+    if let Err(error) = runtime.block_on(plugin_runtime.register(
+        "fileatlas.workcrate-ui",
+        "WorkCrate",
+        "Organize project references, image boards and print-ready exports.",
+        vec![
+            fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
+            fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
+        ],
+        workcrate_ui_fiber,
+        workcrate_ui_starter,
+    )) {
+        tracing::error!(%error, "could not register WorkCrate UI runtime control");
     }
     let launcher_fiber = if enable_launcher {
         let plugin = fileatlas_plugin_launcher::LauncherPlugin;

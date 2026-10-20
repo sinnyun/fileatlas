@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const cratesDir = path.join(root, 'crates');
 
 const layers = [
-  ['fileatlas-contracts', 'fileatlas-plugin-database'],
+  ['fileatlas-contracts', 'fileatlas-plugin-database', 'fileatlas-workcrate-contracts'],
   [
     'fileatlas-plugin-thumbnails',
     'fileatlas-plugin-quicklook',
@@ -32,6 +32,7 @@ const layers = [
     'fileatlas-plugin-metadata-export',
     'fileatlas-plugin-i18n',
     'fileatlas-plugin-shortcuts',
+    'fileatlas-plugin-workcrate-projects',
   ],
   [
     'fileatlas-plugin-settings',
@@ -41,10 +42,13 @@ const layers = [
     'fileatlas-plugin-clipboard',
     'fileatlas-plugin-projects',
   ],
+  ['fileatlas-plugin-workcrate-boards'],
+  ['fileatlas-plugin-workcrate-export'],
   ['fileatlas-plugin-versions', 'fileatlas-plugin-material-theme'],
   ['fileatlas-plugin-file-staging'],
   ['fileatlas-plugin-ai'],
   ['fileatlas-plugin-file-manager'],
+  ['fileatlas-plugin-workcrate-ui'],
   ['fileatlas-plugin-mcp', 'fileatlas-shell'],
 ];
 
@@ -52,6 +56,11 @@ const layers = [
 const sameLayerEdges = new Set([
   'fileatlas-plugin-watcher -> fileatlas-plugin-indexing',
   'fileatlas-plugin-quicklook -> fileatlas-plugin-file-operations',
+  'fileatlas-plugin-workcrate-projects -> fileatlas-workcrate-contracts',
+  'fileatlas-plugin-workcrate-projects -> fileatlas-ui-bridge',
+  'fileatlas-plugin-workcrate-boards -> fileatlas-plugin-workcrate-projects',
+  'fileatlas-plugin-workcrate-export -> fileatlas-plugin-workcrate-boards',
+  'fileatlas-plugin-workcrate-export -> fileatlas-plugin-workcrate-projects',
   'fileatlas-plugin-tagging -> fileatlas-ui-bridge',
   'fileatlas-plugin-columns -> fileatlas-ui-bridge',
   'fileatlas-plugin-columns -> fileatlas-plugin-workspaces',

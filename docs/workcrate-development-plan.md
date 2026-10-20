@@ -1,10 +1,20 @@
 # WorkCrate development plan
 
-Status: planned on 2026-10-20. This plan turns the user's chosen WorkCrate
+> 2026-10-20 最新用户澄清：页面固定 A3，只有页内信息条和下方图片排版区。
+> 页外尺寸字段是自由标记，不改变实际页面；图片仅移动、等比手柄缩放、可恢复裁剪。
+> 原图本地链接 + 独立 PSD 等扩展源文件链接；支持项目一键更新。
+> 此决定覆盖下文旧的通用画布、尺寸调整和整页平移描述。
+> 结构与行为见 `docs/reference-ui/concepts/workcrate-simple-layout-2026-10-20.md`。
+
+
+Status: active development on 2026-10-20. This plan turns the user's chosen WorkCrate
 scope and board reference into implementation stages. It deliberately maps
 canvas, image, master-page, PDF preview and PDF creation behavior to the pinned
-FigCraft, DesignCraft and PdfCraft source checkouts. No WorkCrate code is
-implemented yet.
+FigCraft, DesignCraft and PdfCraft source checkouts. Baseline clarification
+(2026-10-20): projects may reference
+any file type, but boards accept only supported image files (initially JPEG/JPG
+and PNG); preview and export render from source pixels without destructive
+downsampling or enlargement of a card thumbnail.
 
 ## Implementation rule
 
@@ -15,14 +25,56 @@ WorkCrate crate, retain upstream notices and name the upstream file/function in
 the source comment and PORTS.md. Do not copy any upstream UI. Do not introduce
 a second canvas renderer, a custom image-fitting formula or a new PDF writer.
 
+## Implementation progress — 2026-10-20
+
+Later user corrections supersede the initial slice below: the product has three
+levels (projects → pages → editor), with the inspected three-screen concepts in
+`docs/reference-ui/concepts/workcrate-three-level-2026-10-20.md`. Project cards
+show only title/cover, with create/rename/cover/duplicate/archive/restore/delete,
+search and sorting. Product page creation and default exports use A3 landscape
+420 × 297 mm; first image fills the filename and actual pixel dimensions, not
+physical page size. Global project name is inherited with per-page overrides.
+The editor has page thumbnails, canonical DesignCraft canvas, and information/
+content/images inspector. PNG/JPEG and ordered multi-page PDF now have service,
+UI and Full-access MCP routes. Native control and screenshot evidence is recorded
+separately from remaining handle/crop/master and native-dialog acceptance.
+The latest focused coverage has 13 passing tests. Native screenshots verified
+project menu/entry, page selection, global-name draft, persisted DesignCraft drag,
+small-window fit and the corrected GPUI BGRA image adapter. All UI modules are
+kept below 500 lines after separating canvas, inspector and image adaptation.
+
+- Source pins and three upstream core crate groups compile on Windows. The first
+  service slice is implemented: versioned project/reference JSON, DesignCraft
+  board placement/render, and single-page PDF export through PdfCraft. Nine
+  focused service/contract/UI tests pass. Upstream license aggregation and the
+  remaining transitive distribution notices still need review.
+- First UI slice is implemented as `fileatlas-plugin-workcrate-ui`: project
+  selection/creation, arbitrary file references, three-column board catalog,
+  JPEG/JPG/PNG placement, zoom controls, and one-page PDF export. Same-process
+  MCP opened the panel and visually confirmed project creation, empty states,
+  and a board card with dimensions. Project card/source preview selection is
+  not yet surfaced in the UI.
+- Canvas fit follows FigCraft `engine::ViewState::fit` (64pt margins, a 50pt
+  minimum usable axis, fit capped at 100%), using measured WorkCrate panel
+  content size and current GPUI device scale. Same-process MCP screenshots now
+  confirm the entire A4 page fits and displays a placed PNG and 1024×768 JPEG.
+  A confirmed Full-access MCP PDF export returned 175.54 DPI / 1451×2053 px;
+  Poppler reopened the one-page A4 PDF and its rendered page was inspected.
+  Native dialogs and camera-resolution sharpness remain unverified.
+- Still open: PDF first-page thumbnails through the existing Thumbnail service;
+  custom preview UI and PDF preview; board/master model and editor transforms;
+  PNG/JPEG export; ordered multi-board PDF; failure/relink handling; and full
+  lifecycle/restart/MCP acceptance. Single-page PDF backend does not close the
+  ordered multi-board delivery stage.
+
 At the source-integration spike, verify each dependency graph and Windows build
 compatibility. Prefer this ownership:
 
 | Need | Primary upstream implementation | How WorkCrate uses it |
 |---|---|---|
 | Board/page geometry and presentation masters | DesignCraft `designcraft-doc` (`crates/doc/src/page.rs`, `build.rs`) | Reuse its page/spread and `ParentInfo::based_on` inheritance shape, including base-first parent resolution, cycle checks and per-page visibility/override behavior. Keep WorkCrate's stable file-reference IDs in its own manifest. |
-| Board interaction and image fit/crop behavior | DesignCraft `designcraft-tools` and `designcraft-render`; compare FigCraft `figcraft-engine` (`crates/engine/src/tools.rs`, `cmd/create.rs`) and `figcraft-render` (`crates/render/src/paint.rs`, `images.rs`) | Drive pointer/key edits through the engine command boundary. Reuse the source's transforms, fit/crop modes, decode limits, failed-image handling and bounded decoded-pixel cache. Adapt only the GPUI view adapter. |
-| Board overview and page raster | DesignCraft `designcraft-render` (`crates/render/src/lib.rs`, `images.rs`) | Render one resolved page model to a requested viewport or output density. Same page model feeds previews and export. No image IO or decode runs from GPUI render. |
+| Board interaction and image fit/crop behavior | DesignCraft `designcraft-tools` and `designcraft-render`; compare FigCraft `figcraft-engine` (`crates/engine/src/tools.rs`, `cmd/create.rs`) and `figcraft-render` (`crates/render/src/paint.rs`, `images.rs`) | Drive pointer/key edits through the engine command boundary. Reuse source transforms, fit/crop modes, decode limits, failed-image handling, mip/image sampling and bounded decoded-pixel caches. Board items link only supported image files or selected image previews. Adapt only the GPUI view adapter. |
+| Board overview and page raster | DesignCraft `designcraft-render` (`crates/render/src/lib.rs`, `images.rs`) | Render one resolved page model to a requested viewport or output density. Same page model feeds previews and export; display sampling follows zoom/device-pixel scale and export starts from original source pixels. No image IO or decode runs from GPUI render. |
 | Existing PDF thumbnail / first-page preview | PdfCraft `pdfcraft-render` (`crates/render/src/raster.rs` and render request/tile types) | Expose first-page thumbnail generation through the existing Thumbnail service, using PdfCraft's request scheduler, output sizing, tile behavior and render cache. Do not create a PDF parser in WorkCrate. |
 | PNG/JPEG canvas images and multi-page PDF from those images | PdfCraft `pdfcraft-create` (`crates/create/src/lib.rs::from_images_with_resolution`) | Encode selected boards' rendered full-resolution pixels as PNG/JPEG bytes and feed them in the user's chosen order; each input becomes one PDF page at embedded or specified DPI. Use `pdfcraft-organize::combine_selected` only if a later requirement combines existing PDFs or selects pages from source PDFs. |
 
@@ -93,6 +145,30 @@ crate license/NOTICE files, and a tiny rendered board image plus PDF page using
 the pinned APIs. If this spike cannot build without egui, isolate and port the
 specific core module under its original license before moving on.
 
+**Progress (2026-10-20):** `cargo +1.97.1 tree --locked -p <crate> -i egui`
+confirmed there is no `egui` package in the normal dependency graph for
+DesignCraft `designcraft-tools`/`designcraft-render`, FigCraft
+`figcraft-engine`/`figcraft-render`, or PdfCraft `pdfcraft-render`,
+`pdfcraft-create`, and `pdfcraft-organize`. Locked Windows `cargo check -j 2`
+passed for all three selected crate groups. The FigCraft build emits its
+upstream warning that optional `craft-fonts` resources are absent from the
+adjacent checkout; the selected Rust crates still compile. The tiny output
+The WorkCrate boards service now uses DesignCraft document placement and
+rendering and PdfCraft page creation/writing. Its focused tests exercise
+source-image rendering, PDF output, and replacement of an existing destination.
+The GPUI pixel-buffer adapter and same-process MCP UI/export checks are recorded
+in the WorkCrate validation report. Stage 0 remains open for upstream license
+aggregation and broader UI/source coverage. DesignCraft `DisplayQuality::High` and its `images::mip` choose
+the closest cached source mip still above the on-screen device-pixel demand;
+PdfCraft `ImageResolution::Dpi` sets PDF page size from the supplied image pixel
+dimensions and does not resample those pixels. A first WorkCrate vertical slice
+now persists arbitrary file references, enforces real JPEG/PNG decoding at board
+placement, renders DesignCraft pages at requested pixels-per-point, and exports
+through the separate PdfCraft service. Focused board/project/export tests pass;
+the board UI and single-board PDF flow are verified through same-process MCP.
+PDF preview integration, image save flow, masters, transforms, and multipage
+export remain open.
+
 ## Stage 1 — project registry and durable file references
 
 Implement `fileatlas-workcrate-contracts` and the projects plugin. Store a
@@ -104,7 +180,10 @@ at their existing paths; WorkCrate stores the path and last-known metadata.
 
 Add references from FileManager selection and an arbitrary-files picker. Every
 reference supports a user-chosen display title, file number/order, optional
-custom preview file and quick open/reveal. Source availability/path changes
+custom preview file and quick open/reveal. The reference itself may be any file
+type, while board placement accepts supported raster images only (initially
+JPEG/JPG and PNG). Other file types can be represented on a board through an
+attached image preview. Source availability/path changes
 surface a missing/relink state while preserving board links. A custom preview
 is copied into a feature-owned preview directory because its source may be
 external and mutable; record its relative path, hash and dimensions. Removing
@@ -134,7 +213,9 @@ then resolves to the chosen image source at render time.
 
 **Exit:** image, PDF, custom preview, unavailable/corrupt PDF, missing custom
 preview and generic non-image references all display consistently in project
-overview and board canvas; FileManager thumbnails retain existing behavior.
+overview. Board placement accepts JPEG/JPG and PNG, and non-image references
+appear on a board only through a chosen image preview. FileManager thumbnails
+retain existing behavior.
 
 ## Stage 3 — board document and source-aligned canvas behavior
 
@@ -146,9 +227,12 @@ these fields through the source `based_on` chain; local overrides are stored
 separately and survive template edits. Reuse DesignCraft's cycle/missing-parent
 validation and base-first draw order.
 
-Represent placed previews as image items with stable item IDs and `AssetId`
-links. Reuse the pinned source fit/crop transforms and image-scale semantics;
-keep the original file reference separate from the selected preview image.
+Represent placed images as items with stable item IDs and `AssetId` links.
+Validate that a direct placement is a supported raster image (initially
+JPEG/JPG or PNG); a non-image reference may be placed only through an attached
+image preview. Reuse the pinned source fit/crop transforms and image-scale
+semantics; keep the original file reference separate from the selected preview
+image.
 Text/label items carry only the WorkCrate fields required by the board design.
 Do not recreate a full vector editor, masks or PSD layer model.
 
@@ -169,27 +253,35 @@ boundary.
 **Exit:** create/duplicate/reorder/delete boards; set physical dimensions;
 assign a master; edit an inherited field and observe all inheriting boards
 update; override one board; add several different file types; crop/fit/position
-each preview; reopen the project and retain all geometry and order. Check empty,
+each supported image or chosen preview; reject direct placement of non-image
+files; reopen the project and retain all geometry and order. Check empty,
 selected, hover/focus, missing asset, long title and narrow-window states against
 the reference image through same-process MCP screenshots.
 
 ## Stage 4 — one resolved board renderer for preview and image output
 
 Provide `render_board(board_id, scale_or_dpi, region)` as the shared board
-render service. Resolve master fields and asset previews into an immutable
+render service. Resolve master fields and image assets into an immutable
 snapshot, then hand that snapshot to the selected upstream renderer away from
 GPUI render. Use DesignCraft's source renderer for page/item traversal, image
 decode, clip/compositing and cache behavior; use the FigCraft pinned image
 transform/canvas viewport behavior where the source audit chooses those exact
-algorithms. Add only a GPUI adapter for displaying returned pixels and
-pointer-to-page coordinate conversion.
+algorithms. Editor sampling follows the visible zoom and device-pixel scale,
+selecting sufficient source resolution for sharp visible detail while keeping
+the stored original untouched. Add only a GPUI adapter for displaying returned
+pixels and pointer-to-page coordinate conversion.
 
 Project overview cards request a small cached viewport. An open board requests
 the visible viewport and replaces stale preview pixels when a newer model
-revision finishes. PNG/JPEG export requests the board's physical size and
-chosen DPI, validates the allocation limits first, and must not upscale the
-small overview thumbnail. Report unsupported/corrupt image source paths with
-the asset ID and retry/relink action.
+revision finishes. Keep DesignCraft's High display quality; use its mip choice
+for the current viewport so the selected source level is not below visible
+device-pixel demand. PNG/JPEG export re-renders from original source pixels and
+board transforms, never enlarging the small overview thumbnail. Derive the
+default export pixel dimensions from the board size and the actual placed
+images' effective source resolution, bounded by PdfCraft's page/pixel limits;
+allow an explicit DPI override only with a clear warning when it exceeds the
+source images' effective resolution. Report unsupported/corrupt image source
+paths with the asset ID and retry/relink action.
 
 **Exit:** the same resolved board produces matching content/order/crop in the
 overview, editor and full-size PNG/JPEG output. Compare generated pixels to
@@ -210,7 +302,9 @@ the PDF path. A later request to combine existing PDFs can use
 flow.
 
 Write output to a same-directory temporary file and atomically replace only
-after render, PDF creation and file flush all succeed. Keep originals intact,
+after render, PDF creation and file flush all succeed. The first PDF service
+slice now follows this handoff and tests replacement of an existing destination.
+Keep originals intact,
 surface any missing input before export where possible, and report render/PDF/
 save failures with a retry path. Long batches support cancel between pages and
 discard the incomplete temporary output.

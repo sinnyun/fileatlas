@@ -607,3 +607,19 @@ suggestions resolve through UI Bridge's native GPUI ThemeColor role projection. 
 no FileManager palette or per-mode RGB path. Drag-out supplies current native paints through
 DragImageStyle to the platform adapter. Media pixels and persisted user tag colors remain
 content; label surfaces/foregrounds are native roles. See the native-theme validation record.
+
+## Internal feature drag before native handoff (2026-10-20 correction)
+
+Media cards now keep their shared GPUI drag inside the main window in every
+grouping mode. Starting OLE immediately at drag start prevented plugin drop
+receivers from seeing ordinary gestures. `card.rs` uses GPUI `on_drag_move` to
+queue the existing DragDropService only after the pointer leaves the viewport,
+only for the originating pane (shared allowed-flag identity), and once per
+gesture through the payload-owned `native_handoff_started` atomic flag. Native
+paths come from that active payload rather than an arbitrary repainted card. Selection, modifiers, copy-only native payload and service lifecycle
+remain unchanged. Existing Subfolder/debug native suppression still applies.
+Pinned GPUI's Windows platform does not implement external-drag promotion, so
+we retain the existing Windows adapter rather than relying on its unsupported
+`external_drag_payload` path. Actual same-window FileManager-to-WorkCrate drag
+is checked with `debug_internal_file_drag=false`; Explorer handoff after the
+boundary change still needs native desktop coverage.

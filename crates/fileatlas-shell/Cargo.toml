@@ -46,6 +46,10 @@ fileatlas-plugin-material-theme = { path = "../fileatlas-plugin-material-theme" 
 fileatlas-plugin-shell-controls = { path = "../fileatlas-plugin-shell-controls" }
 fileatlas-plugin-projects = { path = "../fileatlas-plugin-projects" }
 fileatlas-plugin-file-staging = { path = "../fileatlas-plugin-file-staging" }
+fileatlas-plugin-workcrate-projects = { path = "../fileatlas-plugin-workcrate-projects" }
+fileatlas-plugin-workcrate-boards = { path = "../fileatlas-plugin-workcrate-boards" }
+fileatlas-plugin-workcrate-export = { path = "../fileatlas-plugin-workcrate-export" }
+fileatlas-plugin-workcrate-ui = { path = "../fileatlas-plugin-workcrate-ui" }
 gpui-kit.workspace = true
 raw-window-handle = "0.6.2"
 

@@ -111,3 +111,12 @@ schemas live in this crate's `src/mcp.rs`; all four operations require explicit
 confirmation, and batch operations validate 1–100 positive media IDs. Results
 preserve per-item success/error outcomes. Former unnamespaced MCP names remain
 as compatibility aliases during the migration.
+
+## Feature-owned source document links
+
+`open_linked_file(&self, path: &Path) -> Result<(), FileOperationError>` canonicalizes
+and validates an existing file, then uses the same `open::that` platform handoff
+as indexed `open_external`. It does not create media rows or modify the file.
+WorkCrate calls it on a worker for the separately linked PSD/source document.
+Missing files and Windows association errors remain visible to the feature UI.
+Actual Photoshop editing/export is owned by the external editor and user.

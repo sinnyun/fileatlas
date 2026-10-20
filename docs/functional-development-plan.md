@@ -299,3 +299,12 @@ F1/F2：顶部原简略位置文本改为完整可点击面包屑＋可编辑地
 2026-10-18 用户纠正“仅浮窗”：插件需独立原生窗口，不能通过隐藏主工作区留下空白大窗。
 沿用 PanelCatalog/Cordis 生命周期，快捷键仅唤起目标工具；工作区+浮窗保持原有行为。
 同进程运行、关闭/重开/模式切换及边界见[独立窗口验证](validation-ui/2026-10-18-native-panels/README.md)。
+
+## WorkCrate fixed A3 image layout baseline (2026-10-20)
+
+The accepted feature has project management, page management and a fixed A3
+editor (information header plus image area). Size labels never resize the paper.
+Images support linked originals, independent PSD/source links, uniform corner
+resize, reversible crop and project-wide refresh. Source behavior and actual
+same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
+[fixed A3 validation](validation-ui/2026-10-20-workcrate-simple-layout/README.md).

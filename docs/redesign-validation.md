@@ -1012,3 +1012,12 @@ MCP 同步增加 `move_files_to_subfolder` 控制入口用于隔离进程实测�
 ## 2026-10-20 项目树层级与项目切换
 
 项目页仅展开当前项目根目录的子树，根行点击切换当前项目并导航，箭头单独收起/展开；新增根目录后立即选中并展开。子目录通过 GPUI Kit Theme 分隔色点状竖线/横线表达层级。统一 Windows 路径比较以去掉 canonical path 的 `\\?\` 前缀，修复新增根目录无法与 Navigation 当前目录匹配的问题。同进程 MCP 用两个隔离项目实测添加、自动展开、切换和收起，并检查项目根与深层目录截图。格式、锁定 Shell 构建与治理检查通过；超大树性能和窄窗未覆盖。详见[项目树验证记录](validation-ui/2026-10-20-project-tree-switch/README.md)。
+
+## WorkCrate fixed A3 image layout baseline (2026-10-20)
+
+The accepted feature has project management, page management and a fixed A3
+editor (information header plus image area). Size labels never resize the paper.
+Images support linked originals, independent PSD/source links, uniform corner
+resize, reversible crop and project-wide refresh. Source behavior and actual
+same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
+[fixed A3 validation](validation-ui/2026-10-20-workcrate-simple-layout/README.md).

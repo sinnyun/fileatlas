@@ -47,9 +47,9 @@ pub(super) fn render_media_card(
             .collect(),
         ids: drag_ids,
         allowed: drag_allowed.clone(),
+        native_handoff_started: Arc::new(AtomicBool::new(false)),
     };
-    let native_drag_service = drag_drop;
-    let native_drag_paths = drag_paths;
+    let source_allowed = Arc::clone(&payload.allowed);
     let media_type = media.media_type.as_str();
     let micro_image = micro_thumb.and_then(micro_render_image);
     let mut frame = div()
@@ -354,11 +354,20 @@ pub(super) fn render_media_card(
                 this.preview_media(media_id, cx);
             }
         }))
-        .on_drag(payload, move |payload, _, window, cx| {
-            if native_drag && payload.allows_drop() {
-                if let Err(error) = native_drag_service.start_file_drag(
+        .on_drag(payload, move |_, _, _, cx| cx.new(|_| FileDragGhost))
+        .on_drag_move::<FileManagerFileDragPayload>(move |event, window, cx| {
+            let payload = event.drag(cx);
+            let viewport = gpui::Bounds::new(gpui::Point::default(), window.viewport_size());
+            if native_drag
+                && payload.allows_drop()
+                && Arc::ptr_eq(&payload.allowed, &source_allowed)
+                && !viewport.contains(&event.event.position)
+                && !payload.native_handoff_started.swap(true, Ordering::AcqRel)
+            {
+                let paths = payload.paths.iter().map(PathBuf::from).collect::<Vec<_>>();
+                if let Err(error) = drag_drop.start_file_drag(
                     window,
-                    &native_drag_paths,
+                    &paths,
                     fileatlas_plugin_drag_drop::DragImageStyle {
                         background: theme::channels(theme::surface_card()),
                         foreground: theme::channels(theme::text_primary()),
@@ -369,7 +378,6 @@ pub(super) fn render_media_card(
                     tracing::warn!(%error, "could not start native file drag");
                 }
             }
-            cx.new(|_| FileDragGhost)
         })
         .child(image_area)
         .child(caption)

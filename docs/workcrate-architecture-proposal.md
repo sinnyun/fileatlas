@@ -4,7 +4,9 @@ Status: requirements and source study recorded from the user's request and the
 shared `项目管理插件设计` conversation. This is a proposal for implementation
 boundaries, not a claim that the feature is implemented or accepted in every
 detail. The attached board overview image is the active layout reference for
-the first WorkCrate screen.
+the first WorkCrate screen. On 2026-10-20, the user clarified that project
+references may point to any file type, while canvas placement is image-only;
+canvas rendering and export must preserve quality from original image pixels.
 
 ## Product boundary
 
@@ -105,9 +107,13 @@ page number) are inherited; a board can override permitted fields without
 destroying its template relationship. This is a presentation master, not a
 Photoshop/PPT layer synchronization system.
 
-PNG/JPEG and PDF export consume the same resolved board snapshot. Export at the
-requested physical size/resolution, not by enlarging a low-resolution browser
-thumbnail. PDF assembly preserves chosen order and page dimensions, reports a
+PNG/JPEG and PDF export consume the same resolved board snapshot. Render canvas
+placements from original image pixels using the same non-destructive transforms
+as the editor. For screen display, choose source sampling/mip level from the
+actual zoom and device-pixel scale so visible detail stays sharp; never mutate
+or down-res the stored source image to create a canvas placement. Export
+re-renders from source pixels at the requested output dimensions/resolution,
+not by enlarging an overview thumbnail. PDF assembly preserves chosen order and page dimensions, reports a
 missing asset before or during rendering, writes to a temporary file and
 atomically replaces only after successful completion. Keep PNG/JPEG output and
 PDF page composition as separate user choices over the same renderer.
