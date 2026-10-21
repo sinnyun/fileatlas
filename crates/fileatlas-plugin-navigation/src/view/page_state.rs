@@ -3,7 +3,7 @@ pub(super) enum NavigationPage {
     #[default]
     Folders,
     Tags,
-    Projects,
+    ProjectTree,
     Extensions,
 }
 
@@ -12,7 +12,7 @@ impl NavigationPage {
         match value.trim().to_ascii_lowercase().as_str() {
             "folders" => Some(Self::Folders),
             "tags" => Some(Self::Tags),
-            "projects" => Some(Self::Projects),
+            "project-tree" | "projects" => Some(Self::ProjectTree),
             "extensions" => Some(Self::Extensions),
             _ => None,
         }
@@ -22,7 +22,7 @@ impl NavigationPage {
         match self {
             Self::Folders => "folders",
             Self::Tags => "tags",
-            Self::Projects => "projects",
+            Self::ProjectTree => "project-tree",
             Self::Extensions => "extensions",
         }
     }

@@ -4,6 +4,13 @@
 
 # 界面重构验证记录
 
+## 2026-10-20：WorkCrate 项目/画板首个 UI 纵切
+
+此节为首个两层纵切的历史记录，当前三层界面、A3 默认值和修正后的验证见
+[WorkCrate 三层记录](validation-ui/2026-10-20-workcrate-three-level/README.md)。
+
+新增生命周期面板和侧栏入口，完成项目创建、任意文件引用、三列响应式画板目录、JPG/JPEG/PNG 放置入口、缩放预览和 PDF 导出入口。画板数据/导出仍由分开的 WorkCrate 服务插件提供。WorkCrate 五个 crate 的 7 项测试、Shell locked offline check/build、fmt 和 UI theme/refresh、architecture、feature-ledger 检查通过。同进程 MCP 确认命令注册并打开面板，使用原生 UI 创建项目和画板；目录截图确认空白画板预览与 595×842 pt 元数据。首次查看发现编辑器页面被视口裁切，已按物理比例缩放并提高预览栅格密度，但修正后的编辑器截图尚未验证：该次 MCP pointer 输入没有激活画板卡片。图片对话框、放大清晰度与 PDF 输出的运行时验证也仍待完成。环境、命令、参考对照和截图位置见 [WorkCrate UI 验证记录](validation-ui/2026-10-20-workcrate-ui/README.md)。
+
 ## 2026-10-20：文件视图快捷复制与主目录拖放
 
 FileManager 焦点下新增 Ctrl+C/ Ctrl+V：按栏保存选择，Ctrl+V 根据鼠标命中子文件夹框架或空白主网格，调用现有 FileOperations 复制服务。子文件夹分组下卡片拖动交给应用内 GPUI 路由，未命中分组框架时落到当前主目录；父目录悬停使用主题 selection 状态。活动概念图及布局清单见多栏工作区参考说明。
@@ -12,9 +19,13 @@ Rust 1.97.1 MSVC、150% DPI、隔离 dev-test profile，通过 `scripts/fileatla
 
 ## 2026-10-19：项目文件夹侧栏页签
 
-更正早先浮动面板方案：独立 `fileatlas-plugin-projects` 现通过生命周期视图贡献注册为 Navigation“项目”页签，与文件夹/标签共用同一 rail 和侧栏内容列；点项目树目录会导航主窗活动栏并保持项目页打开。Rust 1.97.1 locked offline Shell 构建通过。同进程 MCP 已从隔离 profile 添加测试根目录，验证 `docs/notes`、`src/deep` 完整展开、点击 `deep` 导航及版本 1 JSON 保存。窗口截图已检查；窄窗口、移除后重启、不可读目录和大树性能尚未验收。详情及重现命令见[项目页验证记录](validation-ui/2026-10-19-project-folders/README.md)。
+更正早先浮动面板方案：独立 `fileatlas-plugin-project-tree` 现通过生命周期视图贡献注册为 Navigation“项目”页签，与文件夹/标签共用同一 rail 和侧栏内容列；点项目树目录会导航主窗活动栏并保持项目页打开。Rust 1.97.1 locked offline Shell 构建通过。同进程 MCP 已从隔离 profile 添加测试根目录，验证 `docs/notes`、`src/deep` 完整展开、点击 `deep` 导航及版本 1 JSON 保存。窗口截图已检查；窄窗口、移除后重启、不可读目录和大树性能尚未验收。详情及重现命令见[项目页验证记录](validation-ui/2026-10-19-project-folders/README.md)。
 
 此前只清理过时用户文案的“文件管理窗口/媒体库”语义清理现由完整命名迁移取代：主内容 crate、Cordis 身份、Rust 类型、MCP 控制工具、状态键、UI contribution/slot 及开发文档已统一为 `fileatlas-plugin-file-manager` / `FileManager` / `file_manager`。媒体实体仍按数据库领域模型称为 media。Preview 与 Media Playback 的空目录清理及默认路径数据库 API/共享 DB 架构决定保持不变。
+
+## 2026-10-20：项目树内部命名统一
+
+原 Navigation“项目”页统一命名为“项目树”，只承担项目根目录与递归目录导航；新项目管理面板是独立功能。内部 crate、Cordis 插件/服务 ID、Navigation 状态 key、UI slot 和 view ID 均采用 `project-tree`。旧 `projects` 设置项、Sidebar 状态 key、JSON 存储位置和 `projects` 字段可读兼容；清单迁移后写入 `%LOCALAPPDATA%\\FileAtlas\\project-tree\\project-tree.json`，保留旧文件。
 
 ## 2026-10-20：主文件管理窗口命名统一
 
@@ -1012,15 +1023,33 @@ MCP 同步增加 `move_files_to_subfolder` 控制入口用于隔离进程实测�
 ## 2026-10-20 项目树层级与项目切换
 
 项目页仅展开当前项目根目录的子树，根行点击切换当前项目并导航，箭头单独收起/展开；新增根目录后立即选中并展开。子目录通过 GPUI Kit Theme 分隔色点状竖线/横线表达层级。统一 Windows 路径比较以去掉 canonical path 的 `\\?\` 前缀，修复新增根目录无法与 Navigation 当前目录匹配的问题。同进程 MCP 用两个隔离项目实测添加、自动展开、切换和收起，并检查项目根与深层目录截图。格式、锁定 Shell 构建与治理检查通过；超大树性能和窄窗未覆盖。详见[项目树验证记录](validation-ui/2026-10-20-project-tree-switch/README.md)。
+# WorkCrate three-level correction — 2026-10-20
 
-## WorkCrate fixed A3 image layout baseline (2026-10-20)
+The latest user-selected three-level layout and A3 defaults supersede the first
+WorkCrate slice. Three inspected concepts were saved before implementation.
+Project cards now show only title/main image; page management and the page editor
+are separate screens. Real same-process MCP pointer actions cover project entry,
+page selection and saved DesignCraft drag; ordered PDF/PNG/JPEG flows and project
+management mutations were exercised. See the focused
+[three-level record](validation-ui/2026-10-20-workcrate-three-level/README.md)
+for screenshots, commands, corrections and unverified states.
 
-The accepted feature has project management, page management and a fixed A3
-editor (information header plus image area). Size labels never resize the paper.
-Images support linked originals, independent PSD/source links, uniform corner
-resize, reversible crop and project-wide refresh. Source behavior and actual
-same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
-[fixed A3 validation](validation-ui/2026-10-20-workcrate-simple-layout/README.md).
+## 2026-10-20 WorkCrate 用户反馈后的纠正
+
+上一轮三层页面及后台放图证据不能证明概念还原和可见添加/拖拽已通过。
+本轮按原三张概念恢复卡片比例、信息同行、编辑区工具带/侧栏和画布占比；
+修复 Windows 路径比较、缺少画布接收器、FileManager 过早切入 OLE、装载过程解码误报。
+实际指针添加与正常模式文件拖入的复现、截图位置和未验路径见
+[WorkCrate 布局与图片入口纠正](validation-ui/2026-10-20-workcrate-input-layout/README.md)。
+
+## 2026-10-20 固定 A3 简化排版（覆盖旧通用画布语义）
+
+用户已澄清页面只有页内信息条和下方图片区，页外尺寸只是标记。
+本轮撤销整页平移和尺寸修改，接入原图图层实时预览、四角等比缩放、可恢复裁剪、
+项目一键刷新及独立 PSD 源链接。主界面正常模式拖入、拖动中不写清单、跨两页刷新、
+A3 PDF/PNG 和静止状态均经同进程 MCP 实际操作；Photoshop 外部编辑仍未验。
+最新记录：[固定 A3 图片排版](validation-ui/2026-10-20-workcrate-simple-layout/README.md)。
+
 
 ## WorkCrate 性能优化（2026-10-20）
 
@@ -1028,3 +1057,25 @@ same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
 本机三页合成大图项目：打开中位数 2451→125 ms，单页 PNG 12180→950 ms，
 三页 PDF 26242→4449 ms，PNG 原始 RGBA 完全一致。
 [实测记录与范围](validation-ui/2026-10-20-workcrate-performance/README.md)。
+
+## WorkCrate 画布直接输入与文本局部刷新（2026-10-21）
+
+新增文本直接在 A3 内输入，双击已有文本可继续；四角框尺寸/上沿移动和右侧字号实时生效。
+文本保存不走整页 reload，实际 MCP 检查确认 load_generation、背景和照片 GPU 图像 ID 均不变。
+原生输入默认 rem 行高导致大字行重叠的问题已修正为随字号变化。
+[同进程 MCP 截图、命令及覆盖范围](validation-ui/2026-10-21-workcrate-inline-text/README.md)。
+
+## WorkCrate 拖选、原生文本设置与默认信息同步（2026-10-21）
+
+修正双击后拖选与底层对象拖动冲突；已通过真实鼠标拖选、选区替换、选区下划线、
+段落对齐、文本框分栏、属性搜索和字距设置。更多文本设置提供字符/段落/框/字体OpenType
+入口；原生目录254项，属性数据覆盖不代表每个字体/枚举组合的UI测试。
+默认信息有效修改自动保存，回编辑页可选择；连续添加期间保留编辑/添加/删除可用。
+[同进程MCP记录、边界与复现命令](validation-ui/2026-10-21-workcrate-typography/README.md)。
+# 2026-10-21 WorkCrate inspector and refresh correction
+
+The right inspector now has explicit section dividers and the current preset snapshot
+is read when a menu opens. Page-local writes no longer reload the entire board catalog;
+repeated same-page external navigation also returns without a reload. Same-process
+MCP, screenshots, commands, result boundaries and the refresh-site audit are recorded
+in [WorkCrate inspector validation](validation-ui/2026-10-21-workcrate-inspector-refresh/README.md).

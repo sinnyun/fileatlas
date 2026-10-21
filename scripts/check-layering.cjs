@@ -40,7 +40,7 @@ const layers = [
     'fileatlas-plugin-screenshot',
     'fileatlas-plugin-launcher',
     'fileatlas-plugin-clipboard',
-    'fileatlas-plugin-projects',
+    'fileatlas-plugin-project-tree',
   ],
   ['fileatlas-plugin-workcrate-boards'],
   ['fileatlas-plugin-workcrate-export'],

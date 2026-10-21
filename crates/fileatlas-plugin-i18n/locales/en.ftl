@@ -1160,6 +1160,7 @@ msg-workspaces-set-default = Set default
 msg-workspaces-new = New workspace
 
 msg-projects = Projects
+msg-project-tree = Project tree
 msg-project-folder-path = Project folder path
 msg-project-add-folder = Add folder
 msg-project-loading-folders = Loading project folders…

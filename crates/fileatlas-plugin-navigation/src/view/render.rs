@@ -198,9 +198,9 @@ impl Render for SidebarView {
                 .child(rail)
                 .child(pages::render_extensions(self));
         }
-        if self.active_page == NavigationPage::Projects {
+        if self.active_page == NavigationPage::ProjectTree {
             let content = self
-                .project_views
+                .project_tree_views
                 .iter()
                 .map(|(_, _, view)| view.clone())
                 .collect::<Vec<_>>();
@@ -470,9 +470,9 @@ impl SidebarView {
                     && entry.generation == *generation
             })
         });
-        self.project_views.retain(|(id, generation, _)| {
+        self.project_tree_views.retain(|(id, generation, _)| {
             entries.iter().any(|entry| {
-                entry.contribution.slot == "navigation.sidebar-projects"
+                entry.contribution.slot == "navigation.sidebar-project-tree"
                     && entry.contribution.id == *id
                     && entry.generation == *generation
             })
@@ -514,15 +514,14 @@ impl SidebarView {
                         (entry.contribution.factory)(window, cx),
                     ));
                 }
-                "navigation.sidebar-projects"
-                    if !self
-                        .project_views
-                        .iter()
-                        .any(|(current_id, current_generation, _)| {
+                "navigation.sidebar-project-tree"
+                    if !self.project_tree_views.iter().any(
+                        |(current_id, current_generation, _)| {
                             current_id == &id && *current_generation == generation
-                        }) =>
+                        },
+                    ) =>
                 {
-                    self.project_views.push((
+                    self.project_tree_views.push((
                         id,
                         generation,
                         (entry.contribution.factory)(window, cx),
@@ -532,7 +531,7 @@ impl SidebarView {
             }
         }
         self.registered_sidebar_view_ids = live_ids;
-        if self.active_page == NavigationPage::Projects && self.project_views.is_empty() {
+        if self.active_page == NavigationPage::ProjectTree && self.project_tree_views.is_empty() {
             self.set_navigation_page(NavigationPage::Folders);
         }
     }

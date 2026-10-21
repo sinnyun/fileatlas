@@ -33,7 +33,7 @@ fn dev_plugin_config() -> String {
         "mcp",
         "dev-test",
         "screenshot",
-        "projects",
+        "project-tree",
         "file-staging",
         "workcrate-projects",
         "workcrate-boards",
@@ -166,10 +166,10 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "screenshot");
-    let enable_projects = plugin_config == "core"
+    let enable_project_tree = plugin_config == "core"
         || enable_all
         || enable_mcp
-        || dev_plugin_enabled(&plugin_config, "projects");
+        || dev_plugin_enabled(&plugin_config, "project-tree");
     let enable_file_staging = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -214,7 +214,7 @@ fn main() {
         || dev_plugin_enabled(&plugin_config, "navigation")
         || enable_clipboard
         || enable_screenshot
-        || enable_projects;
+        || enable_project_tree;
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -531,18 +531,18 @@ fn main() {
         enable_clipboard && plugin_preferences.plugin_is_enabled("fileatlas.clipboard");
     let enable_screenshot =
         enable_screenshot && plugin_preferences.plugin_is_enabled("fileatlas.screenshot");
-    let enable_projects =
-        enable_projects && plugin_preferences.plugin_is_enabled("fileatlas.projects");
-    let projects_fiber = if enable_projects {
-        let plugin = fileatlas_plugin_projects::ProjectsPlugin;
-        let input = match plugin.prepare(fileatlas_plugin_projects::ProjectsConfig) {
+    let enable_project_tree =
+        enable_project_tree && plugin_preferences.plugin_is_enabled("fileatlas.project-tree");
+    let project_tree_fiber = if enable_project_tree {
+        let plugin = fileatlas_plugin_project_tree::ProjectTreePlugin;
+        let input = match plugin.prepare(fileatlas_plugin_project_tree::ProjectTreeConfig) {
             Ok(input) => input,
             Err(never) => match never {},
         };
         match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input))) {
             Ok(fiber) => Some(fiber),
             Err(error) => {
-                tracing::error!(%error, "could not start projects plugin");
+                tracing::error!(%error, "could not start project tree plugin");
                 None
             }
         }
@@ -589,12 +589,12 @@ fn main() {
     )) {
         tracing::error!(%error, "could not register File Staging Basket runtime control");
     }
-    let projects_context = cordis.clone();
-    let projects_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
-        let context = projects_context.clone();
+    let project_tree_context = cordis.clone();
+    let project_tree_starter: fileatlas_plugin_settings::PluginStarter = Arc::new(move || {
+        let context = project_tree_context.clone();
         Box::pin(async move {
-            let plugin = fileatlas_plugin_projects::ProjectsPlugin;
-            let input = match plugin.prepare(fileatlas_plugin_projects::ProjectsConfig) {
+            let plugin = fileatlas_plugin_project_tree::ProjectTreePlugin;
+            let input = match plugin.prepare(fileatlas_plugin_project_tree::ProjectTreeConfig) {
                 Ok(input) => input,
                 Err(never) => match never {},
             };
@@ -605,17 +605,17 @@ fn main() {
         })
     });
     if let Err(error) = runtime.block_on(plugin_runtime.register(
-        "fileatlas.projects",
-        "Projects",
+        "fileatlas.project-tree",
+        "Project tree",
         "Browse project folders and their complete directory trees.",
         vec![
             fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
             fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
         ],
-        projects_fiber,
-        projects_starter,
+        project_tree_fiber,
+        project_tree_starter,
     )) {
-        tracing::error!(%error, "could not register Projects plugin runtime control");
+        tracing::error!(%error, "could not register Project tree plugin runtime control");
     }
     let enable_workcrate_boards =
         enable_workcrate_boards || enable_workcrate_export || enable_workcrate_ui;

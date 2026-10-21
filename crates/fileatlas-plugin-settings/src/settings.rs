@@ -463,12 +463,25 @@ pub fn default_settings_path() -> PathBuf {
 
 impl Settings {
     pub fn plugin_is_enabled(&self, plugin_id: &str) -> bool {
-        self.plugin_enabled.get(plugin_id).copied().unwrap_or(true)
+        self.plugin_enabled
+            .get(plugin_id)
+            .or_else(|| {
+                (plugin_id == "fileatlas.project-tree")
+                    .then(|| self.plugin_enabled.get("fileatlas.projects"))
+                    .flatten()
+            })
+            .copied()
+            .unwrap_or(true)
     }
 
     pub fn plugin_launch_mode(&self, plugin_id: &str) -> PluginLaunchMode {
         self.plugin_launch_modes
             .get(plugin_id)
+            .or_else(|| {
+                (plugin_id == "fileatlas.project-tree")
+                    .then(|| self.plugin_launch_modes.get("fileatlas.projects"))
+                    .flatten()
+            })
             .copied()
             .unwrap_or_else(|| {
                 if plugin_id == "fileatlas.screenshot" {

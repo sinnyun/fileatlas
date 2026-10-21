@@ -12,7 +12,7 @@ use gpui_kit::gpui::InteractiveElement as _;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
-use crate::{ProjectFolder, ProjectsService, same_path};
+use crate::{ProjectTreeRoot, ProjectTreeService, same_path};
 
 #[derive(Clone, Debug)]
 struct ProjectNode {
@@ -24,7 +24,7 @@ struct ProjectNode {
     has_next_sibling: bool,
 }
 
-fn scan_projects(projects: &[ProjectFolder]) -> Result<Vec<ProjectNode>, String> {
+fn scan_project_tree(projects: &[ProjectTreeRoot]) -> Result<Vec<ProjectNode>, String> {
     fn walk(
         path: &Path,
         depth: usize,
@@ -96,18 +96,18 @@ fn scan_projects(projects: &[ProjectFolder]) -> Result<Vec<ProjectNode>, String>
 }
 
 pub(super) fn sidebar_page(
-    service: Arc<ProjectsService>,
+    service: Arc<ProjectTreeService>,
     navigation: Arc<NavigationService>,
 ) -> UiViewContribution {
     UiViewContribution::new(
-        "projects/sidebar-page-view",
-        "navigation.sidebar-projects",
+        "project-tree/sidebar-page-view",
+        "navigation.sidebar-project-tree",
         0,
         move |window, app| page(Arc::clone(&service), Arc::clone(&navigation), window, app),
     )
 }
 fn page(
-    service: Arc<ProjectsService>,
+    service: Arc<ProjectTreeService>,
     navigation: Arc<NavigationService>,
     _window: &mut Window,
     app: &mut App,
@@ -135,11 +135,12 @@ fn page(
                     .map(|project| project.path.clone())
             })
             .or_else(|| projects.first().map(|project| project.path.clone()));
-        tree.request(paths, move || scan_projects(&projects));
-        let task = fileatlas_ui_bridge::refresh::listen(cx, wake, |view: &mut ProjectsPage, _| {
-            view.tree.poll()
-        });
-        ProjectsPage {
+        tree.request(paths, move || scan_project_tree(&projects));
+        let task =
+            fileatlas_ui_bridge::refresh::listen(cx, wake, |view: &mut ProjectTreePage, _| {
+                view.tree.poll()
+            });
+        ProjectTreePage {
             _task: task,
             service,
             navigation,
@@ -168,9 +169,9 @@ fn path_is_within(root: &str, candidate: &str) -> bool {
             .is_some_and(|suffix| suffix.starts_with('\\'))
 }
 
-struct ProjectsPage {
+struct ProjectTreePage {
     _task: Task<()>,
-    service: Arc<ProjectsService>,
+    service: Arc<ProjectTreeService>,
     navigation: Arc<NavigationService>,
     selected_path: Option<String>,
     expanded_project: Option<String>,
@@ -178,11 +179,12 @@ struct ProjectsPage {
     error: Option<String>,
 }
 
-impl ProjectsPage {
+impl ProjectTreePage {
     fn reload(&mut self) {
         let projects = self.service.snapshot();
         let paths = projects.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
-        self.tree.request(paths, move || scan_projects(&projects));
+        self.tree
+            .request(paths, move || scan_project_tree(&projects));
     }
     fn add_current_folder(&mut self, cx: &mut Context<Self>) {
         let path = self.navigation.sidebar_state().and_then(|state| {
@@ -225,7 +227,7 @@ impl ProjectsPage {
     }
 }
 
-impl Render for ProjectsPage {
+impl Render for ProjectTreePage {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let current_folder = self.navigation.sidebar_state().and_then(|state| {
             state
@@ -250,7 +252,7 @@ impl Render for ProjectsPage {
                     div()
                         .text_sm()
                         .font_semibold()
-                        .child(fileatlas_ui_bridge::i18n::tr("Projects")),
+                        .child(fileatlas_ui_bridge::i18n::tr("Project tree")),
                 )
                 .child(theme::small_icon(IconName::Folder)),
         );
@@ -262,7 +264,7 @@ impl Render for ProjectsPage {
                 .px(px(8.))
                 .py(px(5.))
                 .child(
-                    Button::new("projects-add")
+                    Button::new("project-tree-add")
                         .ghost()
                         .icon(theme::small_icon(IconName::Plus))
                         .tooltip(fileatlas_ui_bridge::i18n::tr("Add folder"))
@@ -293,7 +295,7 @@ impl Render for ProjectsPage {
             let toggle_path = project.path.clone();
             let remove_path = project.path.clone();
             let root_row = div()
-                .id(format!("project-root-{index}"))
+                .id(format!("project-tree-root-{index}"))
                 .h_flex()
                 .items_center()
                 .justify_between()
@@ -326,7 +328,7 @@ impl Render for ProjectsPage {
                         .min_w_0()
                         .gap(px(8.))
                         .child(
-                            Button::new(format!("project-expand-{index}"))
+                            Button::new(format!("project-tree-expand-{index}"))
                                 .ghost()
                                 .icon(theme::small_icon(if expanded {
                                     IconName::ChevronDown
@@ -351,7 +353,7 @@ impl Render for ProjectsPage {
                         .child(project.name),
                 )
                 .child(
-                    Button::new(format!("remove-project-{index}"))
+                    Button::new(format!("remove-project-tree-root-{index}"))
                         .ghost()
                         .icon(theme::small_icon(IconName::X))
                         .accessibility_label(fileatlas_ui_bridge::i18n::tr("Remove project"))
@@ -424,7 +426,7 @@ impl Render for ProjectsPage {
 fn project_tree_row(
     node: &ProjectNode,
     selected_path: Option<&str>,
-    cx: &mut Context<ProjectsPage>,
+    cx: &mut Context<ProjectTreePage>,
 ) -> AnyElement {
     const ROW_HEIGHT: f32 = 24.;
     const DOT_STEP: f32 = 5.;
@@ -475,7 +477,7 @@ fn project_tree_row(
         x += DOT_STEP;
     }
     div()
-        .id(format!("project-node-{}", node.path))
+        .id(format!("project-tree-node-{}", node.path))
         .relative()
         .h_flex()
         .items_center()

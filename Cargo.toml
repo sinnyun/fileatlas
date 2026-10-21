@@ -36,7 +36,7 @@ members = [
     "crates/fileatlas-plugin-shell-controls",
     "crates/fileatlas-plugin-material-theme",
     "crates/fileatlas-plugin-screenshot",
-    "crates/fileatlas-plugin-projects",
+    "crates/fileatlas-plugin-project-tree",
     "crates/fileatlas-plugin-file-staging",
     "crates/fileatlas-workcrate-contracts",
     "crates/fileatlas-plugin-workcrate-projects",

@@ -3217,7 +3217,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fileatlas-plugin-projects"
+name = "fileatlas-plugin-project-tree"
 version = "0.1.0"
 dependencies = [
  "cordis-rs",
@@ -3540,7 +3540,7 @@ dependencies = [
  "fileatlas-plugin-mcp",
  "fileatlas-plugin-metadata-export",
  "fileatlas-plugin-navigation",
- "fileatlas-plugin-projects",
+ "fileatlas-plugin-project-tree",
  "fileatlas-plugin-quicklook",
  "fileatlas-plugin-screenshot",
  "fileatlas-plugin-session",

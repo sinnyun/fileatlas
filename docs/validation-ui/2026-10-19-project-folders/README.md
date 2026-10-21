@@ -4,7 +4,7 @@
 
 ## 实现
 
-- 新增独立 Cordis 插件 `fileatlas-plugin-projects`，通过 Settings 插件运行时支持启停。
+- 新增独立 Cordis 插件 `fileatlas-plugin-project-tree`，通过 Settings 插件运行时支持启停。
 - Navigation 左 rail 的“项目”页签与文件夹/标签使用同一侧栏内容列。插件停用时由 Cordis 注销项目视图，导航 rail 同步隐藏该页签。
 - 页面顶部加号会把导航地址栏当前打开的目录直接添加为项目根目录；无需手动填写地址。项目根目录可移除；目录清单使用插件拥有的版本 1 JSON，并通过临时文件和备份替换保存。
 - 项目树递归读取放在 UI Bridge `ReadModel` worker，根目录以下的全部子目录按层级缩进展示。文件夹点击发出 Navigation 公共 `SelectPathPreservingPage` 请求，主窗活动栏跳转而项目页保持打开。
@@ -13,7 +13,7 @@
 ## 静态检查
 
 - `cargo +1.97.1 fmt --all -- --check`：通过。
-- `cargo +1.97.1 check --locked --offline -p fileatlas-plugin-projects -p fileatlas-shell -j 2`：通过。
+- `cargo +1.97.1 check --locked --offline -p fileatlas-plugin-project-tree -p fileatlas-shell -j 2`：通过。
 - `node scripts/check-architecture.cjs`、`node scripts/check-ui-theme.cjs`、`node scripts/check-ui-refresh.cjs`、`node scripts/check-feature-ledger.cjs`、`node scripts/check-layering.cjs`：通过。架构基线包含当时工作区中已存在的 Material Theme 与 Shell Controls 插件改动。
 
 ## 同进程 MCP 功能验证
@@ -33,5 +33,5 @@
 ## 待运行验证与限制
 
 - 未通过 FileAtlas MCP 点击项目按钮、添加真实隔离目录、确认递归展开/跨栏目录跳转、移除与重启恢复，也未检查窄窗口和截图；这些状态不能标记为视觉或功能验收通过。
-- 目录选择使用 Navigation 的文件系统浏览路由，生产 Shell 以浏览模式启动；已有 Navigation 逻辑允许任意存在的目录，并交给当前活动栏。静态代码路径已核对，实际点击仍待 FileAtlas MCP 验证。完整说明见 [`fileatlas-plugin-projects/PORTS.md`](../../../crates/fileatlas-plugin-projects/PORTS.md)。
+- 目录选择使用 Navigation 的文件系统浏览路由，生产 Shell 以浏览模式启动；已有 Navigation 逻辑允许任意存在的目录，并交给当前活动栏。静态代码路径已核对，实际点击仍待 FileAtlas MCP 验证。完整说明见 [`fileatlas-plugin-project-tree/PORTS.md`](../../../crates/fileatlas-plugin-project-tree/PORTS.md)。
 - 所有子目录一次性枚举，目录符号链接不跟随；超大树的耗时和内存尚未实测。

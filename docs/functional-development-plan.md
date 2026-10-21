@@ -1,5 +1,12 @@
 # 当前主题配置管线（2026-10-19 用户要求）
 
+> 2026-10-20 最新用户澄清：页面固定 A3，只有页内信息条和下方图片排版区。
+> 页外尺寸字段是自由标记，不改变实际页面；图片仅移动、等比手柄缩放、可恢复裁剪。
+> 原图本地链接 + 独立 PSD 等扩展源文件链接；支持项目一键更新。
+> 此决定覆盖下文旧的通用画布、尺寸调整和整页平移描述。
+> 结构与行为见 `docs/reference-ui/concepts/workcrate-simple-layout-2026-10-20.md`。
+
+
 所有框架控件和自绘视图采用 GPUI Kit ThemeRegistry/ThemeConfig/Theme 唯一颜色来源。
 Material 新增为独立编译期 Cordis 功能插件：生成器输入种子、风格、对比度，生成亮暗
 ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色表和组件覆盖表已移除。
@@ -15,11 +22,13 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 # 下一阶段：功能操作优化与功能扩展
 
-2026-10-20 用户指定 WorkCrate：在 FileAtlas 增加项目与客户交付工作流，选择方案 A（项目总览 + 独立 PhotoCraft 文件编辑），支持任意格式文件引用、每引用可选自定义预览、可编辑画布/展示母版、单画布图片导出及按顺序合并 PDF。源码映射、分插件职责和迭代验收已细化到[WorkCrate 开发计划](workcrate-development-plan.md)；原始源码快照与总体架构见[WorkCrate 架构提案](workcrate-architecture-proposal.md)，画布目录视觉参考见[参考入口](reference-ui/README.md)。优先复用 pinned FigCraft/DesignCraft/PdfCraft 的 core crates/算法，不引入其 egui UI；现有 FileManager/File Operations/Thumbnails/QuickLook/UI Bridge 提供通用能力，WorkCrate 项目引用、画布/模板、导出由新增编译期 Cordis 插件负责。此项处于需求与架构设计阶段，尚未实现或验证。
+2026-10-20 WorkCrate 后续纠正：用户要求先制作三张概念，再按图实现项目管理 → 页面管理 → 页面编辑三个层级。项目卡片只显示标题和主图；项目管理提供新建、搜索/排序、重命名、主图、复制、归档/恢复与删除。新页面和默认导出采用 A3 横向（420 × 297 mm），首图仅填写名称与真实像素信息，物理尺寸可修改。页面项目名继承全局或局部覆盖。PNG/JPEG 与多页 PDF 已接入；旧首个纵切记录中这些“未实现”项现已被本次实现覆盖。概念、剩余功能与验收差异见[三层布局](reference-ui/concepts/workcrate-three-level-2026-10-20.md)和新的运行验证记录。
+
+2026-10-20 用户指定 WorkCrate：在 FileAtlas 增加项目与客户交付工作流，选择方案 A（项目总览 + 独立 PhotoCraft 文件编辑），支持任意格式文件引用、每引用可选自定义预览、可编辑画布/展示母版、单画布图片导出及按顺序合并 PDF。首个服务与 UI 纵切已实现：版本化项目/引用记录、DesignCraft 画板及图片放置/渲染、PdfCraft 单页 PDF、项目画板目录和图片放置/导出入口；9 项服务/契约/UI 测试通过。同进程 MCP 验证了项目/画板 UI、整页适配、PNG/JPEG 原图放置，以及带确认的源分辨率 PDF 输出；修正后的截图和 PDF 页面均已检查，现有目标 PDF 的原子替换也经 MCP 重跑验证。原生图片/保存对话框、相机级高清验证尚未覆盖；母版、图片/预览编辑、PNG/JPEG 输出、多画板合并 PDF 仍未实现。实施状态、源码行为映射、分插件职责和逐阶段验收见[WorkCrate 开发计划](workcrate-development-plan.md)；源码快照与总体架构见[WorkCrate 架构提案](workcrate-architecture-proposal.md)，画布目录视觉参考见[参考入口](reference-ui/README.md)。不引入上游 egui UI；继续复用现有 FileManager/File Operations/Thumbnails/QuickLook/UI Bridge，并将新能力拆为编译期 Cordis 插件。
 
 2026-10-20：实现首版 `fileatlas-plugin-file-staging` 文件暂存篮（版本化 JSON 路径清单、原生多文件选择、FileManager 选区加入、逐项复制/移动结果、Sidebar 面板入口和生命周期清理）；复制/移动委托既有 File Operations。同进程 MCP 已验证真实隔离文件复制/移动、冲突保护、路径失效处理、重启恢复和面板截图；Windows 原生选择器点击、网络/权限路径和大批次性能仍待覆盖。设计、证据与剩余工作见[功能完整性计划](file-workbench-completeness-plan.md)、[插件 PORTS](../crates/fileatlas-plugin-file-staging/PORTS.md)及[运行记录](validation-ui/2026-10-20-file-staging/README.md)。
 
-2026-10-19 用户要求新增“项目”侧栏入口，允许管理项目根目录并递归展开所有子目录以便在项目中切换。按后续澄清，这作为独立 `fileatlas-plugin-projects` Cordis 功能插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树面板，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。当前限制与数据格式见 [插件 PORTS](../crates/fileatlas-plugin-projects/PORTS.md)；同进程交互验证待执行。
+2026-10-19 用户要求新增“项目树”侧栏入口，保存项目根目录并递归展开子目录，便于在目录间切换。该功能由 `fileatlas-plugin-project-tree` Cordis 插件实现：版本化 JSON 保存路径清单，rail 按钮打开项目树页，目录扫描通过 ReadModel 后台完成，选择通过 Navigation 公共请求路由。它只提供目录树导航，不是新规划的项目管理面板；两者是独立功能。当前限制与数据格式见 [插件 PORTS](../crates/fileatlas-plugin-project-tree/PORTS.md)；交互验证见相应运行记录。
 
 2026-10-19 用户要求增加暗/亮主题模式与左侧主题切换入口，并将 Shell 直接绘制的功能按钮迁移到插件托槽。
 主题设置复用 `fileatlas-plugin-settings` 和现有 Settings JSON；颜色由 UI Bridge 语义访问器解析。
@@ -300,14 +309,6 @@ F1/F2：顶部原简略位置文本改为完整可点击面包屑＋可编辑地
 沿用 PanelCatalog/Cordis 生命周期，快捷键仅唤起目标工具；工作区+浮窗保持原有行为。
 同进程运行、关闭/重开/模式切换及边界见[独立窗口验证](validation-ui/2026-10-18-native-panels/README.md)。
 
-## WorkCrate fixed A3 image layout baseline (2026-10-20)
-
-The accepted feature has project management, page management and a fixed A3
-editor (information header plus image area). Size labels never resize the paper.
-Images support linked originals, independent PSD/source links, uniform corner
-resize, reversible crop and project-wide refresh. Source behavior and actual
-same-process MCP coverage: [WorkCrate plan](workcrate-development-plan.md) and
-[fixed A3 validation](validation-ui/2026-10-20-workcrate-simple-layout/README.md).
 
 ## WorkCrate 性能优化（2026-10-20）
 

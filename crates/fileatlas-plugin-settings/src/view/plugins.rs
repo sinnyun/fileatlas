@@ -14,7 +14,7 @@ impl SettingsView {
                 "fileatlas.launcher" => gpui_kit::assets::IconName::LayoutGrid,
                 "fileatlas.clipboard" => gpui_kit::assets::IconName::Clipboard,
                 "fileatlas.screenshot" => gpui_kit::assets::IconName::Aperture,
-                "fileatlas.projects" => gpui_kit::assets::IconName::Folder,
+                "fileatlas.project-tree" => gpui_kit::assets::IconName::Folder,
                 _ => gpui_kit::assets::IconName::Puzzle,
             };
             let enabled = plugin.enabled;
@@ -289,10 +289,10 @@ impl SettingsView {
                 "打开插件面板",
                 "截图保存和软件路径在管理器中调整。",
             ),
-            "fileatlas.projects" => (
-                "projects/open",
-                "打开项目文件夹",
-                "管理项目目录并展开其全部子文件夹。",
+            "fileatlas.project-tree" => (
+                "project-tree/open",
+                "打开项目树",
+                "浏览已保存的项目根目录及其完整子目录树。",
             ),
             _ => ("", "Open plugin panel", ""),
         };

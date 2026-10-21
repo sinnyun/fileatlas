@@ -28,14 +28,14 @@ Status: the Cordis navigation service, folder tree actions and GPUI sidebar are 
 - Requires `DatabaseService`, `IndexingService`, and `SessionService`; attaches `WatcherService` when available.
 - GPUI view contribution: `navigation/sidebar-view` in `workspace.sidebar`.
 - The sidebar mounts the live `navigation.extensions` and
-  `navigation.launcher-shortcuts` and `navigation.sidebar-projects` UiBridge slots. It reconciles each mounted
+  `navigation.launcher-shortcuts` and `navigation.sidebar-project-tree` UiBridge slots. It reconciles each mounted
   view against the catalog's `(id, generation)` on render: Cordis unregister
   drops the view, and a later registration creates a fresh view. Shell wakes
   the navigation poller when plugin-owned view registrations change. Do not
   retain plugin button entities past their registration generation.
-- The `Projects` rail tab is rendered only while a view contributes to
-  `navigation.sidebar-projects`; Navigation falls back to Folders if the
-  contributor is removed while Projects is active. The project feature owns
+- The `Project tree` rail tab is rendered only while a view contributes to
+  `navigation.sidebar-project-tree`; Navigation falls back to Folders if the
+  contributor is removed while Project tree is active. The project-tree feature owns
   its path list/tree UI and registers this content slot through Cordis.
 - Sidebar rail extension slot: `navigation.launcher-shortcuts`; the program
   launcher contributes the Apps button here, and Navigation mounts it beside

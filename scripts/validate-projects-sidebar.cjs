@@ -17,7 +17,7 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   if (initial.navigation_tab !== 'folders') throw new Error(`Unexpected initial sidebar tab: ${initial.navigation_tab}`);
   await click(22, 206);
   let state = await invoke('get_ui_state');
-  if (state.navigation_tab !== 'projects') throw new Error(`Projects tab did not activate: ${state.navigation_tab}`);
+  if (state.navigation_tab !== 'projects') throw new Error(`Project tree tab did not activate: ${state.navigation_tab}`);
   let shot = await call('screenshot_window');
   let image = shot.content.find(item => item.type === 'image');
   fs.writeFileSync(path.join(output, 'projects-sidebar-restored.png'), Buffer.from(image.data, 'base64'));
@@ -31,15 +31,15 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
   if (normalize(state.file_manager.current_directory ?? '') !== normalize(tree)) throw new Error(`Fixture folder did not open: ${state.file_manager.current_directory}`);
   await click(22, 206);
   state = await invoke('get_ui_state');
-  if (state.navigation_tab !== 'projects') throw new Error('Projects tab did not activate after opening a folder.');
+  if (state.navigation_tab !== 'projects') throw new Error('Project tree tab did not activate after opening a folder.');
   await click(245, 110);
   await delay(1000);
   shot = await call('screenshot_window');
   image = shot.content.find(item => item.type === 'image');
   fs.writeFileSync(path.join(output, 'projects-sidebar-added.png'), Buffer.from(image.data, 'base64'));
   state = await invoke('get_ui_state');
-  if (state.navigation_tab !== 'projects') throw new Error('Sidebar left the Projects tab unexpectedly.');
-  const manifest = JSON.parse(fs.readFileSync(path.join(profile, 'projects', 'projects.json'), 'utf8'));
+  if (state.navigation_tab !== 'projects') throw new Error('Sidebar left the Project tree tab unexpectedly.');
+  const manifest = JSON.parse(fs.readFileSync(path.join(profile, 'project-tree', 'project-tree.json'), 'utf8'));
   if (manifest.version !== 1 || !manifest.projects.some(project => normalize(project.path) === normalize(tree))) {
     throw new Error(`Project path was not persisted: ${JSON.stringify(manifest)}`);
   }

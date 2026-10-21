@@ -1,5 +1,27 @@
 # MCP plugin ports / MCP 对接
 
+## WorkCrate — 2026-10-20
+
+Three-level revision adds Standard-gated `workcrate-ui.navigate`,
+`manage_project` (create/rename/cover/duplicate/archive/restore), `create_page`
+(A3 landscape), and `update_page` (name, physical dimensions and content).
+`state.ui` publishes the actually mounted screen, busy state and selections from
+the shared UI surface. `delete_project` and `export_pages` require Full plus
+per-call confirmation; deletion retains feature data in trash. Ordered PDF and
+PNG/JPEG exports use original-image DesignCraft renders. See WorkCrate UI PORTS
+for exact payloads and remaining limits.
+
+`workcrate-ui.state` returns project names, reference counts and board metadata
+from JSON manifests. It does not read linked image bytes. `workcrate-ui.open_board`
+opens an existing board in the current FileAtlas UI; `workcrate-ui.place_image`
+adds a path as a project reference, validates and places the actual JPEG/JPG/PNG
+bytes, then opens that board. Both mutations require Standard MCP access and
+change only WorkCrate records/board files; they do not write to source images.
+`workcrate-ui.export_pdf` writes a PDF to the requested path and requires Full
+access plus `confirm=true`. The UI plugin owns and unregisters these tools. The
+schemas and error handling are maintained in
+`fileatlas-plugin-workcrate-ui/PORTS.md`.
+
 ## FileManager group-frame pointer diagnostics (2026-10-20)
 
 `get_ui_state.file_manager.group_frames` reports primary-pane painted frame segments:

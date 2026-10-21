@@ -1,6 +1,7 @@
 {
   "Default favorite group": "msg-sidebar-default-favorite-group",
   "Projects": "msg-projects",
+  "Project tree": "msg-project-tree",
   "Project folder path": "msg-project-folder-path",
   "Add folder": "msg-project-add-folder",
   "Loading project folders…": "msg-project-loading-folders",

@@ -1159,6 +1159,7 @@ msg-workspaces-set-default = 设为默认
 msg-workspaces-new = 新工作区
 
 msg-projects = 项目
+msg-project-tree = 项目树
 msg-project-folder-path = 项目文件夹路径
 msg-project-add-folder = 添加文件夹
 msg-project-loading-folders = 正在加载项目文件夹…

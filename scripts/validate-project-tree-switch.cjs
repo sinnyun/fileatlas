@@ -47,35 +47,35 @@ module.exports = async ({ call, payload, delay, profile, output }) => {
     let state = await invoke('get_ui_state');
     if (state.navigation_tab !== 'folders') throw Error(`Unexpected initial tab: ${state.navigation_tab}`);
     await click(22, 206);
-    state = await waitFor(value => value.navigation_tab === 'projects');
+    state = await waitFor(value => value.navigation_tab === 'project-tree');
 
     for (const project of [alpha, beta]) {
       await invoke('control_file_manager', { action: 'navigate', value: project });
       state = await waitFor(value => normalize(value.file_manager?.current_directory ?? '') === normalize(project));
       await click(22, 206);
-      state = await waitFor(value => value.navigation_tab === 'projects');
+      state = await waitFor(value => value.navigation_tab === 'project-tree');
       await saveShot(`before-add-${report.projects.length}`);
       await click(85, 110);
       await delay(900);
       await saveShot(`after-add-${report.projects.length}`);
       state = await invoke('get_ui_state');
       report.latest = state;
-      const manifestPath = path.join(profile, 'projects', 'projects.json');
+      const manifestPath = path.join(profile, 'project-tree', 'project-tree.json');
       if (!fs.existsSync(manifestPath)) {
         await saveShot(`add-failed-${report.projects.length}`);
         throw Error(`Project plus did not persist a root. UI state: ${JSON.stringify(state)}`);
       }
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      assert(manifest.projects.some(item => normalize(item.path) === normalize(project)), `Project was not added: ${project}`);
+      assert(manifest.roots.some(item => normalize(item.path) === normalize(project)), `Project tree root was not added: ${project}`);
       report.projects.push(project);
     }
     state = await invoke('get_ui_state');
-    assert.equal(state.navigation_tab, 'projects');
+    assert.equal(state.navigation_tab, 'project-tree');
     await saveShot('project-beta-expanded');
 
     await click(120, 180);
     state = await waitFor(value => normalize(value.file_manager?.current_directory ?? '') === normalize(alpha));
-    assert.equal(state.navigation_tab, 'projects', 'Switching the project root must preserve the Projects tab');
+    assert.equal(state.navigation_tab, 'project-tree', 'Switching the project root must preserve the Project tree tab');
     await delay(400);
     await saveShot('project-alpha-expanded');
 
