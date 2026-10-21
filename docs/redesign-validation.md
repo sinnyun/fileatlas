@@ -1,3 +1,7 @@
+## 2026-10-21：WorkCrate 改为官方 VectorCraft 程序工作台
+
+三层原生布局、真实画板预览、可编辑中文物料栏、官方窗口跳转及 PNG/JPEG/多画板 PDF 已完成。14 项服务/契约/UI 测试与 1 项官方程序集成测试通过，完整构建、格式及五项守卫通过；同进程窗口操作和输出内容已验收。旧自建编辑器记录为历史实现。准确命令、截图本地位置、LNK4098 链接警告及未覆盖范围见[本次验收](validation-ui/2026-10-21-workcrate-vectorcraft/README.md)。
+
 ## 2026-10-18 本地收藏取代置顶
 
 已实现持久收藏、普通删除/清理/淘汰保护、编辑去重保留收藏、旧 pinned 数据兼容，以及独立确认删除收藏。12 项数据库测试、shell check、独立 exe 编译、三次独立进程 MCP 收藏/重启/取消/删除验证及原面板 91 步回归通过。标准 exe 正在运行被锁定，未替换用户窗口；使用 `target/debug/fileatlas-clipboard-favorites.exe` 完成验证。截图、准确命令、进程证据和限制见 [收藏验证](validation-ui/2026-10-18-clipboard-favorites/README.md)。

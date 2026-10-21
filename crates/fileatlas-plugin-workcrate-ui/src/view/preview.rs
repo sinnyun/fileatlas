@@ -1,8 +1,7 @@
 use super::*;
 
 pub(super) fn page_preview(card: &BoardCard, width: f32) -> gpui::AnyElement {
-    let height = width
-        * (card.board.source.settings.page_height / card.board.source.settings.page_width) as f32;
+    let height = width * (card.board.height_pt / card.board.width_pt) as f32;
     card.image
         .clone()
         .map(|image| {
@@ -20,7 +19,11 @@ pub(super) fn page_preview(card: &BoardCard, width: f32) -> gpui::AnyElement {
                 .flex()
                 .items_center()
                 .justify_center()
-                .child("页面预览")
+                .child(
+                    card.error
+                        .clone()
+                        .unwrap_or_else(|| "正在生成官方预览…".into()),
+                )
                 .into_any_element()
         })
 }
@@ -39,8 +42,5 @@ pub(super) fn pixel_label(board: &WorkCrateBoard) -> String {
         .info
         .pixel_size
         .map(|[w, h]| format!("{w} × {h} px"))
-        .unwrap_or_else(|| "等待首张图片".into())
-}
-pub(super) fn figcraft_fit_scale(w: f64, h: f64, pw: f64, ph: f64) -> f64 {
-    (((w - 128.).max(50.) / pw.max(1e-6)).min((h - 128.).max(50.) / ph.max(1e-6))).clamp(0.02, 1.0)
+        .unwrap_or_else(|| "未记录图片像素".into())
 }

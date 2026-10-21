@@ -1,7 +1,7 @@
 use super::*;
 
 /// GPUI 0.3.8 RenderImage's device contract is BGRA, matching its built-in
-/// image loader in gpui-pre/src/elements/img.rs. DesignCraft/PNG remains RGBA.
+/// image loader in gpui-pre/src/elements/img.rs. Decoded official PNG pixels remain RGBA.
 pub(super) fn render_image(mut pixels: image::RgbaImage) -> Arc<RenderImage> {
     for pixel in pixels.chunks_exact_mut(4) {
         pixel.swap(0, 2);

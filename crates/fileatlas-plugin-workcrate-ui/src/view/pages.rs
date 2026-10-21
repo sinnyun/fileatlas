@@ -1,4 +1,4 @@
-use super::render::{page_preview, physical_label, pixel_label};
+use super::preview::{page_preview, physical_label, pixel_label};
 use super::*;
 impl WorkCratePanel {
     pub(super) fn render_pages(&mut self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
@@ -17,7 +17,7 @@ impl WorkCratePanel {
             grid = grid.child(
                 div()
                     .text_color(rgb(theme::text_muted()))
-                    .child("此项目还没有页面。新增页面后可添加 JPG / PNG 图片。"),
+                    .child("关联已有 VectorCraft 工程，或新增 A3 页面。"),
             );
         }
         let width = ((self.panel_content_size().0 - 96.) / 3.).max(210.) as f32;

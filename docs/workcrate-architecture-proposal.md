@@ -1,5 +1,7 @@
 # WorkCrate project board and delivery architecture (2026-10-20)
 
+> 2026-10-21：本文的库级 DesignCraft/PdfCraft 集成方案已被用户明确替代。当前直接调用官方 VectorCraft 编译程序，保留 FileAtlas 的 GPUI/Cordis 架构；旧数据无需迁移。以 [当前重构要求](workcrate-vectorcraft-refactor.md) 为准。
+
 Status: requirements and source study recorded from the user's request and the
 shared `项目管理插件设计` conversation. This is a proposal for implementation
 boundaries, not a claim that the feature is implemented or accepted in every

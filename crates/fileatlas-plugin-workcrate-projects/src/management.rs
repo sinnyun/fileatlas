@@ -54,6 +54,12 @@ impl WorkCrateProjectsService {
         copy_directory(&source.join("previews"), &target.join("previews"))?;
         let mut document = self.read_project(id)?;
         document.project_id = created.id.clone();
+        document.native_binding = Uuid::new_v4().to_string();
+        if let Some(source) = document.native_document.as_ref() {
+            let destination = target.join("document.vectorcraft");
+            std::fs::copy(source, &destination)?;
+            document.native_document = Some(destination);
+        }
         self.write_project(&document)?;
         self.update_index(|index| {
             let project = index
@@ -123,6 +129,33 @@ mod tests {
         assert!(trash.join("project.json").is_file());
         assert_eq!(std::fs::read(source)?, b"original");
         assert_eq!(service.projects(true)?.len(), 1);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod native_tests {
+    use super::*;
+    #[test]
+    fn duplicate_native_document_is_owned_and_original_survives()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let t = tempfile::tempdir()?;
+        let source = t.path().join("external.vectorcraft");
+        std::fs::write(&source, b"native")?;
+        let service = WorkCrateProjectsService::open_at(t.path().join("data"))?;
+        let p = service.create_project("A")?;
+        service.set_document_path(&p.id, &source)?;
+        let binding = service.document_binding(&p.id)?;
+        let reopened = WorkCrateProjectsService::open_at(t.path().join("data"))?;
+        assert_eq!(reopened.document_binding(&p.id)?, binding);
+        service.set_document_path(&p.id, &source)?;
+        assert_ne!(service.document_binding(&p.id)?, binding);
+        let q = service.duplicate_project(&p.id, "B")?;
+        let copied = service.document_path(&q.id)?.ok_or("native path missing")?;
+        assert_ne!(copied, source);
+        assert!(copied.starts_with(service.project_directory(&q.id)?));
+        service.delete_project(&q.id)?;
+        assert_eq!(std::fs::read(source)?, b"native");
         Ok(())
     }
 }
