@@ -1083,3 +1083,29 @@ is read when a menu opens. Page-local writes no longer reload the entire board c
 repeated same-page external navigation also returns without a reload. Same-process
 MCP, screenshots, commands, result boundaries and the refresh-site audit are recorded
 in [WorkCrate inspector validation](validation-ui/2026-10-21-workcrate-inspector-refresh/README.md).
+
+## WorkCrate 离线浏览与官方 headless CLI 全链路复验（2026-10-21）
+
+离线场景首轮与关闭 FileAtlas 后的复浏览轮均通过，7 项断言成立，运行前后官方 GUI/CLI 进程计数为 0。
+复验暴露并修复三处缺陷：headless PDF 导出仍发送官方 `export` 工具拒绝的 `useArtboards`
+（离线重构后每次 PDF 导出都失败）、重新关联原生文件仍依赖 GUI TCP 通道、
+`official_native_round_trip` 用例与现流程不符。导出参数键已固定为常量并由非忽略单元测试守卫，
+原生往返用例改为全程无 GUI。命令、产物尺寸、证据目录与未覆盖项见
+[WorkCrate 离线 headless CLI 复验](validation-ui/2026-10-21-workcrate-offline-cli/README.md)。
+
+## WorkCrate 可切换画布编辑（官方语义转发，2026-10-22）
+
+页面编辑区中部新增预览/编辑两态。编辑态只做四件事：采集指针、把窗口像素映射为文档点、
+显示官方 `selectionBounds` 界框与 8 个句柄、指针按下期间移动该框做视觉预测；
+选择、命中、移动、缩放、图片放置/链接/更新/替换、文本新建/改字、撤销/重做与数值框
+一律由官方 VectorCraft 执行，FileAtlas 不本地绘制、不排版、不自建历史。
+控制端口可达走实时 GUI 会话，不可达走静默 headless 会话，每次编辑一旦官方报告 `dirty`
+就写回同一个 `.vectorcraft`；GUI 在跑不再是拒绝编辑的理由，编辑也不要求用户先关或先开任何窗口。
+同进程 MCP 九阶段场景通过（真实点击进编辑、面板外官方改动被同步、4 段采样拖拽 = 官方 `Move`、
+跨文件夹链接放置扩权、`links update`/`relink`、`set_text`/`undo`/`redo`、工具栏缩放、
+退出与切页都提交并关闭会话、离线目录读到编辑后的 2 页、空闲无重绘），
+编辑后原生文件 218,377 B 内含两个 A3 横向画板与已重新链接的图片节点。
+复验暴露并修复 5 处缺陷：探针基线导致反向同步失效、过期帧把已关闭会话装回、
+切页泄漏上一页会话、选中框 alpha 丢失遮挡画布、界面泄漏 `\\?\` 路径前缀。
+命令、截图、概念图差异与未覆盖项（前台 `open_editor` 路由、原生文件选择器、面板内键盘输入）见
+[WorkCrate 画布编辑复验](validation-ui/2026-10-21-workcrate-canvas-editing/README.md)。

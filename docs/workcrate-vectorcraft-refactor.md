@@ -1,6 +1,6 @@
 # WorkCrate 官方 VectorCraft 程序重构
 
-> 2026-10-21 用户进一步纠正：程序路径改在“设置 → 插件 → WorkCrate”持久化；新项目先选择文件夹保存原生工程。项目关联、主图、页面目录和预览缓存由 FileAtlas 保存，浏览不启动或连接官方程序。新建、物料栏和导出允许后台官方 CLI；只有画布内容编辑启动 GUI。当前修正计划见[离线浏览计划](superpowers/plans/2026-10-21-workcrate-offline-browser.md)，下文首轮 TCP 工作台验收为历史阶段。
+> 2026-10-21 用户进一步纠正：程序路径改在“设置 → 插件 → WorkCrate”持久化；新项目先选择文件夹保存原生工程。项目关联、主图、页面目录和预览缓存由 FileAtlas 保存，浏览不启动或连接官方程序。新建走后台官方 CLI；同步、物料栏、置入与画布编辑走同一条被路由的官方会话（GUI 端口可达就用它，否则静默 headless），只有“在 VectorCraft 中编辑”启动 GUI 窗口。当前修正计划见[离线浏览计划](superpowers/plans/2026-10-21-workcrate-offline-browser.md)与[画布编辑计划](superpowers/plans/2026-10-21-workcrate-canvas-editing.md)，下文首轮 TCP 工作台验收为历史阶段。
 
 
 2026-10-21 用户明确要求：在本项目内拉取 FileAtlas，在 FileAtlas 仓库中开发并最终推送至 sinnyun/fileatlas。WorkCrate 仍在开发中，旧历史数据无需保留，不实现旧 DesignCraft 画板 JSON 迁移。日常 FileAtlas 其他插件数据不属于本次重置范围。
@@ -8,12 +8,12 @@
 ## 实施边界
 
 - FileAtlas 保留 Rust / GPUI Kit / Cordis 插件架构、主题与公共 UI Bridge，不引入 React、Tauri 或 egui。
-- WorkCrate 是文档管理、真实画板预览和通用物料栏工作台。完整画布内容编辑交给已编译的官方 VectorCraft.exe。
+- WorkCrate 是文档管理、真实画板预览和通用物料栏工作台。画布内容的编辑语义（选择、命中、移动、缩放、图片链接、文本排版）一律由官方 VectorCraft 执行；页面编辑区的画布编辑态只做输入采集、坐标映射、官方位图显示与官方界框显示。
 - 一个项目关联一份真实 `.vectorcraft` 工程，页面来自其中的原生 Artboard。新建和复制项目都先选择原生工程保存目录。
 - 项目关联、主图、画板目录与 PNG 预览缓存保存在 FileAtlas 数据目录；普通项目/页面/预览浏览只读取本地数据，不启动 GUI/CLI，也不连接本机端口。编辑器外保存后由用户显式同步缓存。
-- 官方程序路径在“设置 → 插件 → WorkCrate”保存；后台默认发现同目录的 `vectorcraft-cli.exe`。新建、同步、物料栏更新、置入文件与导出使用官方 CLI headless 模式。只有打开画布内容编辑时才启动或聚焦 VectorCraft GUI。
-- WorkCrate 不链接或修改 VectorCraft 源码。GUI 编辑使用官方 TCP 控制通道；后台工作使用官方 MCP stdio 接口。
-- 管理器显示真实画板预览与物料表单，点击画布编辑打开/聚焦官方窗口；不承诺外部窗口嵌入。
+- 官方程序路径在“设置 → 插件 → WorkCrate”保存；后台默认发现同目录的 `vectorcraft-cli.exe`。新建原生文档使用官方 headless 会话（绝不占用用户已打开的 GUI 窗口）；同步、物料栏更新、置入文件与导出使用被路由的官方会话。
+- WorkCrate 不链接或修改 VectorCraft 源码。编辑会话用同一个官方 MCP 工具面，两条传输：官方 GUI 在配置端口可达时走 `mcp --connect`（前台所见即所改），否则走 `mcp --headless`（静默完成）。GUI 在跑不是编辑的前置条件，也不是拒绝编辑的理由；编辑同样不要求用户先关闭 GUI。
+- 管理器显示真实画板预览与物料表单；“在 VectorCraft 中编辑”启动或聚焦官方窗口；不承诺外部窗口嵌入。
 - 字段值以原生文字为准；对象备注标识物料栏与字段。画板身份由项目、关联绑定和原生 ID 共同构成。
 - 旧 WorkCrate 数据无需迁移，不递归删除用户应用目录。隔离数据与运行证据位于 `.local/validation/`。
 
@@ -22,10 +22,10 @@
 ## 模块安排
 
 1. `workcrate-projects`：沿用项目 CRUD、文件引用、字段预设与原子持久化，新增原生工程关联。
-2. `workcrate-boards`：替换 DesignCraft 模型与渲染，改为官方程序配置、离线画板/预览缓存、CLI headless 原生物料栏命令与 TCP 编辑器交接。
+2. `workcrate-boards`：替换 DesignCraft 模型与渲染，改为官方程序配置、离线画板/预览缓存、官方 headless 与实时会话两条传输的编辑通道，以及选择/移动/缩放/图片/文本的官方命令转发。
 3. `workcrate-export`：替换 PdfCraft 图像转 PDF，调用官方 PNG/JPEG 与多画板 PDF；保留任务进度和错误。
-4. `workcrate-ui`：沿用 Cordis/UI Bridge 的入口、面板、设置和原生组件；项目管理 → 页面矩阵 → 预览与物料栏。去掉自建图片手柄、裁切、全文编辑等第二套编辑器逻辑，提供官方编辑入口。
-5. MCP：保留 FileAtlas 现有权限门槛，提供项目/画板/字段/配置/导出工具；浏览不触发官方程序，只有编辑动作启动 GUI。
+4. `workcrate-ui`：沿用 Cordis/UI Bridge 的入口、面板、设置和原生组件；项目管理 → 页面矩阵 → 画布编辑与物料栏。不自建绘制、命中测试、变换计算、裁切或正文排版，也不维护第二套撤销历史；画布编辑态只叠加官方位图、官方界框与输入转发。
+5. MCP：保留 FileAtlas 现有权限门槛，提供项目/画板/字段/配置/导出与画布编辑工具；浏览不触发官方程序，编辑走与界面同一条官方会话。
 
 ## 验收与执行顺序
 

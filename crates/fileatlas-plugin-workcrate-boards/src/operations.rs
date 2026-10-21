@@ -6,11 +6,10 @@ impl WorkCrateBoardsService {
         let path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        self.refuse_if_gui_has_document(project, true)?;
         let binding = self.projects.document_binding(project)?;
         let mut c =
-            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
-        c.open_file(&path)?;
+            self.official_session(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_document(&path)?;
         let w = 420. * 72. / 25.4;
         let h = 297. * 72. / 25.4;
         c.execute(
@@ -38,7 +37,6 @@ impl WorkCrateBoardsService {
         let path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        self.refuse_if_gui_has_document(project, true)?;
         let binding = self.projects.document_binding(project)?;
         if id.split(':').nth(1) != Some(binding.as_str()) {
             return Err(BoardsError::Invalid(
@@ -46,8 +44,8 @@ impl WorkCrateBoardsService {
             ));
         }
         let mut c =
-            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
-        c.open_file(&path)?;
+            self.official_session(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_document(&path)?;
         let b = native::catalog(&mut c, project, &binding)?
             .into_iter()
             .find(|b| b.id == id)
@@ -224,11 +222,10 @@ impl WorkCrateBoardsService {
         let path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        self.refuse_if_gui_has_document(project, true)?;
         let binding = self.projects.document_binding(project)?;
         let mut c =
-            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
-        c.open_file(&path)?;
+            self.official_session(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_document(&path)?;
         c.save_file(&path)?;
         self.refresh_cache_from_client(&mut c, project, binding)?;
         Ok(())
@@ -323,7 +320,6 @@ impl WorkCrateBoardsService {
         let native_path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        self.refuse_if_gui_has_document(project, true)?;
         let binding = self.projects.document_binding(project)?;
         if id.split(':').nth(1) != Some(binding.as_str()) {
             return Err(BoardsError::Invalid(
@@ -332,8 +328,8 @@ impl WorkCrateBoardsService {
         }
         let source = std::fs::canonicalize(path)?;
         let reads = vec![native_path.clone(), source.clone()];
-        let mut c = self.headless_client(&reads, std::slice::from_ref(&native_path))?;
-        c.open_file(&native_path)?;
+        let mut c = self.official_session(&reads, std::slice::from_ref(&native_path))?;
+        c.open_document(&native_path)?;
         let b = native::catalog(&mut c, project, &binding)?
             .into_iter()
             .find(|b| b.id == id)
@@ -365,16 +361,15 @@ impl WorkCrateBoardsService {
             .first()
             .ok_or_else(|| BoardsError::Invalid("empty selection".into()))?;
         let (project, _) = native::split_id(first)?;
-        self.refuse_if_gui_has_document(project, false)?;
         let native_path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
         let binding = self.projects.document_binding(project)?;
-        let mut c = self.headless_client(
+        let mut c = self.official_session(
             std::slice::from_ref(&native_path),
             &[path.parent().unwrap_or(Path::new(".")).to_owned()],
         )?;
-        c.open_file(&native_path)?;
+        c.open_document(&native_path)?;
         let b = native::catalog(&mut c, project, &binding)?
             .into_iter()
             .find(|b| b.id == *first)
@@ -407,12 +402,12 @@ impl WorkCrateBoardsService {
             .tempfile_in(parent)?;
         let official_path = temporary.path();
         let params = if format == "pdf" {
-            json!({"path":official_path,"format":"pdf","useArtboards":true,"range":indices.iter().map(usize::to_string).collect::<Vec<_>>().join(",")})
+            pdf_export_params(official_path, &indices)
         } else {
             if ids.len() != 1 {
                 return Err(BoardsError::Invalid("one raster page required".into()));
             }
-            json!({"path":official_path,"format":format,"artboard":b.index,"scale":300./72.})
+            raster_export_params(official_path, format, b.index)
         };
         let result = c.request("app.export", params)?;
         let start = std::time::Instant::now();
@@ -426,5 +421,48 @@ impl WorkCrateBoardsService {
         }
         temporary.persist(path).map_err(|e| e.error)?;
         Ok(result)
+    }
+}
+
+/// VectorCraft 0.14.0 `vectorcraft-cli.exe mcp --headless` lists the `export` tool with
+/// `additionalProperties:false`, so any key outside this set fails the whole export.
+#[cfg(test)]
+const OFFICIAL_EXPORT_ARGS: [&str; 8] = [
+    "artboard",
+    "format",
+    "options",
+    "outlineText",
+    "path",
+    "range",
+    "scale",
+    "selection",
+];
+/// One PDF page per chosen artboard; the official `range` is 1-based.
+fn pdf_export_params(path: &Path, indices: &[usize]) -> Value {
+    json!({"path":path,"format":"pdf","range":indices.iter().map(usize::to_string).collect::<Vec<_>>().join(",")})
+}
+/// A 300 dpi raster of one artboard, selected by native index.
+fn raster_export_params(path: &Path, format: &str, artboard: usize) -> Value {
+    json!({"path":path,"format":format,"artboard":artboard,"scale":300./72.})
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn export_params_only_use_official_tool_arguments() {
+        let pdf = pdf_export_params(Path::new("pages.pdf"), &[1, 3]);
+        let raster = raster_export_params(Path::new("page.png"), "png", 0);
+        for params in [&pdf, &raster] {
+            for key in params.as_object().expect("object payload").keys() {
+                assert!(
+                    OFFICIAL_EXPORT_ARGS.contains(&key.as_str()),
+                    "official headless export rejects unknown argument `{key}`"
+                );
+            }
+        }
+        assert_eq!(pdf["range"], "1,3");
+        assert_eq!(raster["artboard"], 0);
+        assert_eq!(raster["scale"], 300. / 72.);
     }
 }

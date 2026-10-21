@@ -1,7 +1,9 @@
 use super::PANEL;
 use ::gpui::{AnyView, App, Context as ViewContext, RenderImage, Task, Window, px};
 use cordis::Service;
-use fileatlas_plugin_workcrate_boards::{WorkCrateBoard, WorkCrateBoardsService};
+use fileatlas_plugin_workcrate_boards::{
+    CanvasGeometry, CanvasObject, CanvasSnapshot, WorkCrateBoard, WorkCrateBoardsService,
+};
 use fileatlas_plugin_workcrate_export::WorkCrateExportService;
 use fileatlas_plugin_workcrate_projects::WorkCrateProjectsService;
 use fileatlas_ui_bridge::{components::WorkbenchStyle as _, read_model::ReadModel, refresh, theme};
@@ -16,6 +18,8 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+mod canvas;
+mod canvas_surface;
 mod state;
 pub(super) use state::WorkCrateUiState;
 mod images;
@@ -24,6 +28,7 @@ mod actions;
 mod fields;
 mod inspector;
 mod management;
+mod object;
 mod pages;
 mod preview;
 mod projects;
@@ -67,6 +72,18 @@ struct WorkCratePanel {
     edit_input: Entity<gpui_kit::component::input::InputState>,
     search_input: Entity<gpui_kit::component::input::InputState>,
     query: String,
+    canvas_mode: bool,
+    canvas_zoom: f32,
+    canvas: Option<CanvasSnapshot>,
+    canvas_image: Option<Arc<RenderImage>>,
+    canvas_object: Option<CanvasObject>,
+    canvas_numbers: [Entity<gpui_kit::component::input::InputState>; 4],
+    canvas_text_input: Entity<gpui_kit::component::input::InputState>,
+    canvas_drag: Option<canvas::CanvasDrag>,
+    canvas_busy: bool,
+    canvas_read: ReadModel<u64, Option<CanvasSnapshot>>,
+    canvas_probe_tick: u64,
+    canvas_poll: u64,
     config: fileatlas_plugin_workcrate_boards::VectorCraftConfig,
     document: Option<PathBuf>,
     busy: bool,
@@ -93,17 +110,29 @@ pub(super) fn panel(
     app: &mut App,
 ) -> AnyView {
     let edit_input = app.new(|cx| gpui_kit::component::input::InputState::new(window, cx));
+    let canvas_numbers: [_; 4] = std::array::from_fn(|_| {
+        app.new(|cx| gpui_kit::component::input::InputState::new(window, cx))
+    });
+    let canvas_text_input = app.new(|cx| {
+        gpui_kit::component::input::InputState::new(window, cx).placeholder("输入文字内容")
+    });
     let search_input = app
         .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("搜索项目"));
     app.new(|cx| {
         let wake = refresh::Wake::default();
         let preview_wake = refresh::Wake::default();
+        let canvas_wake = refresh::Wake::default();
         let mut model = ReadModel::default();
         model.set_wake(wake.clone());
         let mut preview_model = ReadModel::default();
         preview_model.set_wake(preview_wake.clone());
+        let mut canvas_read = ReadModel::default();
+        canvas_read.set_wake(canvas_wake.clone());
         let tasks = vec![
             refresh::listen(cx, wake, |v: &mut WorkCratePanel, _| v.deliver()),
+            refresh::listen(cx, canvas_wake, |v: &mut WorkCratePanel, cx| {
+                v.deliver_canvas_probe(cx)
+            }),
             refresh::listen(cx, preview_wake, |v: &mut WorkCratePanel, _| {
                 v.deliver_preview()
             }),
@@ -120,6 +149,11 @@ pub(super) fn panel(
                 if selection != (v.selected_project.clone(), v.selected_board.clone())
                     || revision != (v.board_refresh_revision, v.catalog_refresh_revision)
                 {
+                    if v.canvas_mode && selection.1 != v.selected_board {
+                        // The session belongs to the page being left, so commit and close it
+                        // while that page is still the selected one.
+                        v.leave_canvas(cx);
+                    }
                     v.selected_project = selection.0;
                     v.selected_board = selection.1;
                     v.board_refresh_revision = revision.0;
@@ -158,6 +192,18 @@ pub(super) fn panel(
             edit_input,
             search_input,
             query: String::new(),
+            canvas_mode: false,
+            canvas_zoom: 1.,
+            canvas: None,
+            canvas_image: None,
+            canvas_object: None,
+            canvas_numbers,
+            canvas_text_input,
+            canvas_drag: None,
+            canvas_busy: false,
+            canvas_read,
+            canvas_probe_tick: 0,
+            canvas_poll: 0,
             config: Default::default(),
             document: None,
             busy: false,
@@ -326,6 +372,9 @@ impl WorkCratePanel {
         true
     }
     fn open_page(&mut self, id: &str, cx: &mut ViewContext<Self>) {
+        if self.canvas_mode {
+            self.leave_canvas(cx);
+        }
         self.selected_board = Some(id.into());
         self.editing = None;
         let _ = self
@@ -356,5 +405,12 @@ impl WorkCratePanel {
 impl Drop for WorkCratePanel {
     fn drop(&mut self) {
         let _ = self.surfaces.set_value("workcrate.ui", "null");
+        if self.canvas_mode {
+            let boards = self.boards.clone();
+            std::thread::spawn(move || {
+                let _ = boards.canvas_commit();
+                let _ = boards.canvas_close();
+            });
+        }
     }
 }

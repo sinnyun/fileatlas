@@ -1,6 +1,6 @@
 # 当前界面参考入口
 
-> 2026-10-21 WorkCrate：项目卡片、页面矩阵和三栏信息布局继续参考下列已有概念；中间区域改为官方画板的只读预览，提供“在 VectorCraft 中编辑”。移除自建拖拽、裁切和正文编辑器，右侧只调整通用物料栏。行为以 [当前重构要求](../workcrate-vectorcraft-refactor.md) 为准；原图里的画布编辑手柄不再是 FileAtlas 要实现的控件。
+> 2026-10-22 WorkCrate：项目管理、页面矩阵与装配工作台三层以本表登记的 2026-10-21 用户稿为活动参考。装配工作台中间区域分预览与编辑两态：预览态显示官方画板位图；编辑态把选择、拖拽、缩放、图片与文本改动一律转发给官方 VectorCraft 执行，FileAtlas 只采集输入、映射坐标并显示官方界框，不自建绘制、裁切或正文排版。行为以 [当前重构要求](../workcrate-vectorcraft-refactor.md) 与 [画布编辑交接文档](../superpowers/plans/2026-10-21-workcrate-canvas-editing.md) 为准。
 
 界面实现先读 [按图实现与验收流程](../ui-reference-workflow.md)，再打开本表指向的图片及说明。
 此表记录当前选用稿；`concepts/` 中未被选用的图片不因日期较新就自动成为规范。
@@ -20,9 +20,10 @@
 | 截图快捷启动管理 | 轻量管理面板；设置 → 软件显示安装状态 | [Shotoshot 集成清单](concepts/shotoshot-launcher-2026-10-18.md)：FileAtlas 启动时只检测一次；缺失时用户自行安装。截图选区、编辑、标注均由上游提供，最终图像保存到 FileAtlas 专用目录 |
 | 主工作区多栏与程序工作区 | [多栏概念图](concepts/multi-column-workspaces-2026-10-19.png)及[最新用户标注与清单](concepts/multi-column-workspaces-2026-10-19.md) | 沿用现有控件样式；网格/列表旁增加分栏按钮，选择单栏/双栏/四栏；操作带分为筛选/视图区与搜索/功能区；Everything 配置迁入设置 |
 | 文件暂存篮 | [网格卡片与拖放概念](concepts/file-staging-grid-drag-2026-10-20.png) | [面板清单](concepts/file-staging-basket-2026-10-20.md)、[插件端口与限制](../../crates/fileatlas-plugin-file-staging/PORTS.md)：图片缩略图与标题为主；拖到文件夹按默认行为移动，复制通过显式操作 |
-| WorkCrate 项目管理 | [项目管理概念](concepts/workcrate-projects-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：项目卡片只显示标题与主图，提供项目完整管理操作。 |
-| WorkCrate 页面管理 | [页面管理概念](concepts/workcrate-pages-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：项目内三列页面、选中页图片导出、全部页 PDF，默认 A3 横向。 |
-| WorkCrate 页面编辑 | [页面编辑概念](concepts/workcrate-editor-concept-2026-10-20.png)；右侧面板细化见[检查器概念](concepts/workcrate-inspector-2026-10-21.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：左侧页面缩略图、中部固定 A3（信息条 + 图片区）、右侧页面信息/内容/链接图片；[简化排版语义](concepts/workcrate-simple-layout-2026-10-20.md)覆盖旧尺寸调整/整页平移，尺寸仅作标记；[用户原稿](concepts/workcrate-editor-user-2026-10-20.png)决定业务结构，框线只作区域说明；[文本与字段扩展](concepts/workcrate-editing-tools-2026-10-20.md)及[配套概念](concepts/workcrate-editing-tools-2026-10-20.png)补充多行文本、预设和多选。2026-10-21 按用户要求加入画布直接输入/拖选、自动局部保存、原生文本属性、即时预设菜单，并使右侧字段/图片/文本操作保留当前页与图片纹理。 |
+| WorkCrate 项目管理 | [2026-10-21 用户稿](concepts/workcrate-projects-user-2026-10-21.png)；生成概念见[项目管理概念](concepts/workcrate-projects-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：顶部三层入口带；卡片为标题＋画布数/时间＋页内信息条＋主图预览区＋底部 `.vc` 关联工程与进入页面矩阵；右上新建工程，底部创建新物料工程。图内画布数量、名称与日期均为示例内容。 |
+| WorkCrate 页面管理 | [2026-10-21 用户稿](concepts/workcrate-pages-user-2026-10-21.png)；生成概念见[页面管理概念](concepts/workcrate-pages-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：返回＋项目名＋页数/选中统计；三列画布卡片带勾选框、信息条、预览区、物料图层数与编辑入口；底部为导出选中页图片、导出 `.vectorcraft` 工程、导出全部 PDF。默认 A3 横向；勾选状态驱动导出范围。 |
+| WorkCrate 装配工作台 | [2026-10-21 用户稿](concepts/workcrate-studio-user-2026-10-21.png)；右侧面板细化见[检查器概念](concepts/workcrate-inspector-2026-10-21.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：左侧页面缩略图列表＋新建页，中央大画布，右侧依次为页面信息·画布规格、页面内容·统一物料栏、页面图片·链接设计资产。中部画布的只读预览态由官方渲染位图填充；[简化排版语义](concepts/workcrate-simple-layout-2026-10-20.md)规定物料尺寸仅作标记；[文本与字段扩展](concepts/workcrate-editing-tools-2026-10-20.md)保留物料字段与预设能力。 |
+| WorkCrate 画布编辑态 | [2026-10-22 概念图](concepts/workcrate-canvas-edit-concept-2026-10-22.png) | 顶部预览/编辑切换 + 缩放 + 添加图片/链接图片/更新图片/替换图片 + 撤销/重做 + 在 VectorCraft 中编辑；中央官方位图上叠加选中界框与 8 个句柄，拖拽期间显示半透明预测框与位移提示；右侧选中对象（名称/类型/X/Y/宽/高）、文本内容（编辑后应用文字）、链接图片（更新链接/替换文件）。界框坐标与所有编辑结果都来自官方返回，FileAtlas 不本地计算变换。图内页面名、尺寸与图片内容均为示例。 |
 
 这是活动参考导航，不是功能完成清单。实际实现、截图和验证边界记录于
 [redesign-validation.md](../redesign-validation.md) 与其中链接的 `validation-ui/` 证据。

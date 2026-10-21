@@ -152,6 +152,37 @@ written.
 - `fileatlas-plugin-versions` and `fileatlas-plugin-version-info` provide Lore-backed
   per-file version history and persisted version metadata through the shared
   database service. This is distinct from global undo/redo.
+- WorkCrate (`fileatlas-workcrate-contracts` plus the `workcrate-projects`,
+  `workcrate-boards`, `workcrate-export` and `workcrate-ui` plugins) is a document
+  manager for the official VectorCraft program. One project associates one native
+  `.vectorcraft` document saved in the user's chosen folder; its pages are that
+  document's real artboards. Projects keeps the association, references, main image
+  and field presets as versioned JSON; Boards keeps the official executable/port
+  configuration, the durable artboard catalogue and the PNG preview cache; Export
+  runs official CLI PNG/JPEG/PDF output with atomic handoff; UI keeps project
+  management, the page matrix and the material-bar forms on the current design.
+- WorkCrate browsing never touches the official program: project, page and cached
+  preview reads stay local to FileAtlas data and open no process or port, showing a
+  placeholder instead. Create, sync, material-bar edits, file placement, canvas edits
+  and export run through the official automation session; only `open_editor` starts
+  the official GUI window. The official launcher takes exactly one read folder and one
+  write folder, so a session's inputs collapse into the single deepest folder holding
+  them. A canvas session is granted the document's own folder up front and is
+  relaunched with a wider collapsed root only when the user points at a file elsewhere;
+  a live GUI keeps the roots its owner launched it with, so a refused path there stays
+  a visible error instead of silently restarting the user's program.
+- WorkCrate canvas editing forwards every editing semantic to the official program.
+  The page editor's edit mode only captures input, maps overlay pixels to document
+  points, displays the official `selectionBounds` box, and moves that box as a visual
+  prediction while the pointer is down. Selection, hit testing, moving, scaling,
+  image place/link/update/relink and text editing all run as official pointer
+  gestures or official commands. FileAtlas paints no artwork of its own, implements
+  no crop, transform arithmetic, hit test or text layout, keeps no separate undo
+  history, and does not link or patch VectorCraft sources.
+- One automation surface serves both states: an editing session uses the live control
+  port when the official GUI is reachable there, and otherwise runs the official
+  headless session silently. A running GUI is never a reason to refuse an edit, and
+  editing must never require the user to close the GUI or keep it running first.
 - `fileatlas-plugin-dev-test` is opt-in development tooling, not product behavior.
   It scans `test-data/fileatlas-fixtures` through the production Indexing service
   and seeds up to 100,000 virtual rows in an isolated DB. Its profile must keep

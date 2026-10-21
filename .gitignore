@@ -1,6 +1,9 @@
 /target/
 /upstream/
-/.local/validation/
+# All generated validation state, profiles, reports and scratch helpers
+/.local/
+# In-session handoff drop for native sample documents
+/开发中间会话传递/
 
 # Local shallow source checkouts used only for WorkCrate research
 /vendor/workcrate-references/

@@ -17,7 +17,7 @@ pub(crate) fn split_id(id: &str) -> Result<(&str, u64), BoardsError> {
             .map_err(|_| BoardsError::Invalid("invalid native ID".into()))?,
     ))
 }
-fn same_path(a: &str, b: &Path) -> bool {
+pub(crate) fn same_path(a: &str, b: &Path) -> bool {
     let normalized = |s: &str| {
         s.trim_start_matches(r"\\?\")
             .replace('\\', "/")
@@ -25,13 +25,20 @@ fn same_path(a: &str, b: &Path) -> bool {
     };
     normalized(a) == normalized(&b.to_string_lossy())
 }
-pub(crate) fn assert_path(c: &mut Client, path: &Path) -> Result<Value, BoardsError> {
+pub(crate) fn inspect_matches(
+    c: &mut impl NativeProtocol,
+    path: &Path,
+) -> Result<Value, BoardsError> {
     let inspect = c.request("document.inspect", json!({"depth":0}))?;
     if !inspect["path"].as_str().is_some_and(|p| same_path(p, path)) {
         return Err(BoardsError::Invalid(
             "active native document changed".into(),
         ));
     }
+    Ok(inspect)
+}
+pub(crate) fn assert_path(c: &mut Client, path: &Path) -> Result<Value, BoardsError> {
+    let inspect = inspect_matches(c, path)?;
     c.bound_path = Some(path.to_owned());
     Ok(inspect)
 }
@@ -47,27 +54,20 @@ pub(crate) fn inspect_optional(c: &mut Client) -> Result<Option<Value>, BoardsEr
         Err(error) => Err(error),
     }
 }
+/// Open in the editor GUI unless this exact path has unresolved resource diagnostics on record.
 pub(crate) fn open_safely(c: &mut Client, path: &Path) -> Result<(), BoardsError> {
-    open_document(c, path, false)
-}
-pub(crate) fn revalidate_open(c: &mut Client, path: &Path) -> Result<(), BoardsError> {
-    open_document(c, path, true)
-}
-fn open_document(c: &mut Client, path: &Path, force: bool) -> Result<(), BoardsError> {
-    if !force {
-        if let Some(diagnostics) = c
-            .diagnostics
-            .lock()
-            .map_err(|_| BoardsError::Poisoned)?
-            .get(path)
-        {
-            return Err(BoardsError::Invalid(format!(
-                "native resource diagnostics require explicit reattach/revalidation: {diagnostics}"
-            )));
-        }
+    if let Some(diagnostics) = c
+        .diagnostics
+        .lock()
+        .map_err(|_| BoardsError::Poisoned)?
+        .get(path)
+    {
+        return Err(BoardsError::Invalid(format!(
+            "native resource diagnostics require explicit reattach/revalidation: {diagnostics}"
+        )));
     }
     if let Some(i) = inspect_optional(c)? {
-        if !force && i["path"].as_str().is_some_and(|p| same_path(p, path)) {
+        if i["path"].as_str().is_some_and(|p| same_path(p, path)) {
             c.bound_path = Some(path.to_owned());
             return Ok(());
         }
@@ -81,24 +81,67 @@ fn open_document(c: &mut Client, path: &Path, force: bool) -> Result<(), BoardsE
             "official open pending user dialog".into(),
         ));
     }
-    if ["warnings", "missingLinks", "modifiedLinks"]
-        .iter()
-        .any(|key| opened[*key].as_array().is_some_and(|a| !a.is_empty()))
-    {
-        c.diagnostics
-            .lock()
-            .map_err(|_| BoardsError::Poisoned)?
-            .insert(path.into(), opened.clone());
-        return Err(BoardsError::Invalid(format!(
-            "native document opened with resource diagnostics: {opened}"
-        )));
-    }
-    c.diagnostics
-        .lock()
-        .map_err(|_| BoardsError::Poisoned)?
-        .remove(path);
+    apply_open_report(&opened, path, &c.diagnostics, false)?;
     assert_path(c, path)?;
     Ok(())
+}
+/// Re-associate an existing native document through the official headless CLI, so
+/// attachment never needs the editor GUI.
+pub(crate) fn revalidate_open_headless(
+    c: &mut mcp::McpSession,
+    path: &Path,
+    diagnostics: &Mutex<BTreeMap<PathBuf, Value>>,
+) -> Result<(), BoardsError> {
+    let opened = c.open_file(path)?;
+    apply_open_report(&opened, path, diagnostics, true)?;
+    inspect_matches(c, path)?;
+    Ok(())
+}
+/// A linked resource reported missing by the headless session is a sandbox artifact when
+/// the file is actually present: its automation read root is the native document's folder,
+/// so links stored elsewhere cannot resolve even though nothing is broken.
+fn open_report_blocking(opened: &Value, sandboxed: bool) -> bool {
+    let non_empty = |key: &str| {
+        opened[key]
+            .as_array()
+            .is_some_and(|entries| !entries.is_empty())
+    };
+    if ["warnings", "modifiedLinks"]
+        .iter()
+        .any(|key| non_empty(key))
+    {
+        return true;
+    }
+    if !non_empty("missingLinks") {
+        return false;
+    }
+    !sandboxed
+        || opened["missingLinks"].as_array().is_some_and(|links| {
+            links.iter().any(|link| {
+                link["path"]
+                    .as_str()
+                    .is_none_or(|raw| !Path::new(raw.trim_start_matches(r"\\?\")).is_file())
+            })
+        })
+}
+fn apply_open_report(
+    opened: &Value,
+    path: &Path,
+    diagnostics: &Mutex<BTreeMap<PathBuf, Value>>,
+    sandboxed: bool,
+) -> Result<(), BoardsError> {
+    if !open_report_blocking(opened, sandboxed) {
+        diagnostics
+            .lock()
+            .map_err(|_| BoardsError::Poisoned)?
+            .remove(path);
+        return Ok(());
+    }
+    let mut diagnostics = diagnostics.lock().map_err(|_| BoardsError::Poisoned)?;
+    diagnostics.insert(path.into(), opened.clone());
+    Err(BoardsError::Invalid(format!(
+        "native document opened with resource diagnostics: {opened}"
+    )))
 }
 pub(crate) fn catalog(
     c: &mut impl NativeProtocol,

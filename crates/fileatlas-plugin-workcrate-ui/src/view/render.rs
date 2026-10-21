@@ -1,7 +1,7 @@
 use super::*;
 impl Render for WorkCratePanel {
     fn render(&mut self, _: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
-        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"error":c.error})).collect::<Vec<_>>(),"message":self.message,"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select}).to_string();
+        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"error":c.error})).collect::<Vec<_>>(),"message":self.message,"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select,"canvas":{"mode":if self.canvas_mode{"edit"}else{"preview"},"busy":self.canvas_busy,"zoom":self.canvas_zoom,"state":self.canvas,"object":self.canvas_object,"drag":self.canvas_drag.as_ref().map(|drag|serde_json::json!({"kind":match drag.kind{super::canvas::CanvasDragKind::Body=>"move".to_owned(),super::canvas::CanvasDragKind::Handle(index)=>format!("handle{index}")},"origin":drag.origin,"start":[drag.start.0,drag.start.1],"current":[drag.current.0,drag.current.1]}))}}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
         }
@@ -194,72 +194,85 @@ impl WorkCratePanel {
             .min_w_0()
             .h_full()
             .v_flex()
-            .gap_3()
-            .p_3()
             .bg(rgb(theme::surface_faint()))
+            .child(self.canvas_toolbar(cx))
             .child(
                 div()
-                    .h_flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .child(self.action(
-                        "open-official-editor",
-                        "在 VectorCraft 中编辑",
-                        |v, cx| v.open_editor(cx),
-                        cx,
-                    ))
-                    .child(self.action(
-                        "place-design-file",
-                        "放置设计文件",
-                        |v, cx| v.place_file(cx),
-                        cx,
-                    ))
-                    .child(self.action(
-                        "export-current-image",
-                        "导出本页图片",
-                        |v, cx| {
-                            v.selected_pages = v.selected_board.iter().cloned().collect();
-                            v.export_catalog(true, cx);
-                        },
-                        cx,
-                    )),
-            )
-            .child(div().text_xs().child(format!(
-                "{} · {:.1} × {:.1} pt",
-                card.board.title, card.board.width_pt, card.board.height_pt
-            )))
-            .child(
-                tracking::control(
-                    "artboard",
-                    div()
-                        .flex_1()
-                        .size_full()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(
-                            card.image
-                                .clone()
-                                .map(|i| {
-                                    img(i)
-                                        .size_full()
-                                        .object_fit(ObjectFit::Contain)
-                                        .into_any_element()
-                                })
-                                .unwrap_or_else(|| {
-                                    div()
-                                        .child(if card.preview_checked {
-                                            "暂无本地预览，请同步工程"
-                                        } else {
-                                            "正在读取本地预览…"
+                    .flex_1()
+                    .min_h_0()
+                    .v_flex()
+                    .gap_3()
+                    .p_3()
+                    .when(!self.canvas_mode, |column| {
+                        column.child(
+                            div()
+                                .h_flex()
+                                .flex_wrap()
+                                .gap_2()
+                                .child(self.action(
+                                    "open-official-editor",
+                                    "在 VectorCraft 中编辑",
+                                    |v, cx| v.open_editor(cx),
+                                    cx,
+                                ))
+                                .child(self.action(
+                                    "place-design-file",
+                                    "放置设计文件",
+                                    |v, cx| v.place_file(cx),
+                                    cx,
+                                ))
+                                .child(self.action(
+                                    "export-current-image",
+                                    "导出本页图片",
+                                    |v, cx| {
+                                        v.selected_pages =
+                                            v.selected_board.iter().cloned().collect();
+                                        v.export_catalog(true, cx);
+                                    },
+                                    cx,
+                                )),
+                        )
+                    })
+                    .child(div().text_xs().child(format!(
+                        "{} · {:.1} × {:.1} pt",
+                        card.board.title, card.board.width_pt, card.board.height_pt
+                    )))
+                    .child(if self.canvas_mode {
+                        self.canvas_area(cx)
+                    } else {
+                        tracking::control(
+                            "artboard",
+                            div()
+                                .flex_1()
+                                .size_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(
+                                    card.image
+                                        .clone()
+                                        .map(|i| {
+                                            img(i)
+                                                .size_full()
+                                                .object_fit(ObjectFit::Contain)
+                                                .into_any_element()
                                         })
-                                        .into_any_element()
-                                }),
-                        ),
-                    &self.surfaces,
-                )
-                .flex_1()
-                .min_h_0(),
+                                        .unwrap_or_else(|| {
+                                            div()
+                                                .child(if card.preview_checked {
+                                                    "暂无本地预览，请同步工程"
+                                                } else {
+                                                    "正在读取本地预览…"
+                                                })
+                                                .into_any_element()
+                                        }),
+                                ),
+                            &self.surfaces,
+                        )
+                        .flex_1()
+                        .min_h_0()
+                        .into_any_element()
+                    }),
             );
         div()
             .flex_1()
@@ -267,7 +280,11 @@ impl WorkCratePanel {
             .h_flex()
             .child(rail)
             .child(center)
-            .child(self.inspector(card, cx))
+            .child(if self.canvas_mode {
+                self.canvas_object_panel(cx)
+            } else {
+                self.inspector(card, cx)
+            })
             .into_any_element()
     }
 }

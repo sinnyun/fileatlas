@@ -22,7 +22,7 @@
 - [x] Backend：缓存目录/预览与缓存读取；官方 CLI headless；新增 create_project_document(project, folder)、refresh_project(project)，保留关联绑定及原生画板ID。
 - [x] Native UI：插件设置保存程序路径；项目新建/复制先选文件夹；浏览读取本地缓存；显式同步调用后台，打开编辑动作启动 GUI。
 - [x] MCP：目录读取/打开预览离线；创建/复制项目需要 directory；显式 refresh 工具；配置只持久化，编辑才启动 GUI。
-- [ ] Full runtime：官方 CLI 创建/画板/物料栏/预览/导出及退出后重启 FileAtlas 浏览仍待确认。
-- [x] Code review/docs are complete; commit, feature-branch push, and merge/push to `main` are in progress on `codex/workcrate-vectorcraft`; no force push.
+- [x] Full runtime：官方 CLI 创建/画板/物料栏/预览/导出及退出后重启 FileAtlas 浏览已复验通过。
+- [x] 离线分支已合并进 `main`（`341e744`）；本轮复验产生的修复与文档尚未提交，等待用户授权提交。
 
-验证边界：Cargo 锁定模式相关 crate 测试在最后一次 CLI 单根目录修正前通过（17 项通过，1 项按条件忽略）；架构/分层/UI/功能守卫和格式检查通过。实际 CLI 流程先暴露官方 CLI 每类权限只允许一个根目录，代码已按此修正。按用户要求，此后不再运行测试或场景，因此这次根目录修正后的原生运行流程尚未复验。
+验证边界：同进程 MCP 离线场景 `scripts/validate-workcrate-offline.cjs` 首轮与重启复浏览轮均通过（7 项断言），运行前后官方 GUI/CLI 进程计数为 0；官方 headless 往返用例 `official_native_round_trip` 已改为无 GUI 并通过。复验暴露并修复三处缺陷：headless PDF 导出参数被官方 CLI 拒绝、重新关联原生文件仍依赖 GUI TCP 通道、原生往返用例长期失效。精确命令、实测产物尺寸、证据目录与未覆盖项见 `docs/validation-ui/2026-10-21-workcrate-offline-cli/README.md`；`open_editor` 的 GUI 跳转与画布内编辑、官方版本差异、原生弹窗与跨进程竞态仍不在该轮覆盖内。

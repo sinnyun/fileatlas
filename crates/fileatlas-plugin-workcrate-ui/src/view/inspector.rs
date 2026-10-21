@@ -290,7 +290,7 @@ impl WorkCratePanel {
         inspector.into_any_element()
     }
 }
-fn section(label: &str) -> gpui::Div {
+pub(super) fn section(label: &str) -> gpui::Div {
     div()
         .h_flex()
         .items_center()
