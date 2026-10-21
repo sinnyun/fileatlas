@@ -353,3 +353,40 @@ metadata and dependable image/PDF output.
 页面缩略图增量保存到项目 cache-v1，启动先读缩略图，缺失逐页后台补齐；
 无需在退出时重新加载全部原图。详细缓存格式、失效与恢复见 Boards PORTS。
 性能、重启缓存和导出进度证据见本次性能验证记录。
+
+## 2026-10-21 文本直接编辑与局部刷新
+
+本次用户纠正：文本不能只在右侧输入、点击保存后整页重载。实现改为新增直接聚焦画布、
+双击已有文本继续输入；原生多行输入与右侧表单共享状态，字号/颜色/宽高实时保存。
+四角只改变文本框，按原生排版换行；拖动输入框上沿移动，保持字形比例。
+
+| 上游/已有入口 | 对应实现 |
+|---|---|
+| DesignCraft engine frame.create、text.select/text.insert、type.char、swatch.create | Boards text.rs 保持原生故事/字号/颜色和真实文本框，固定 Microsoft YaHei |
+| DesignCraft engine object.fit/fittingOptions + links.relink | 替换/刷新均中心 fillProportionally，原有框/裁剪不变 |
+| DesignCraft render Renderer::render(paper=false) | 单文本透明图层，保存仅替换该层；A3 模板和照片纹理复用 |
+| GPUI Kit TextareaState + InputEvent::Change | 原生光标、选区、多行输入；画布/检查器仅一个实体参与渲染 |
+| UI Bridge refresh::poll + ReadModel | 单后台写入队列合并草稿、600ms 安静后缩略图更新，空闲停止；照片缓存键排除文本变化 |
+
+FieldPresets 和批量选页继续复用已有 Projects/Settings/UI 服务，未新增基础设施。
+来源归属、持久化兼容及限制见各 WorkCrate PORTS；[实际窗口记录](validation-ui/2026-10-21-workcrate-inline-text/README.md)。
+
+## 2026-10-21 选区、完整原生属性目录、默认信息自动同步
+
+本轮保留三栏/A3，只在原检查器内增加常用格式和可折叠的“更多文本设置”。
+输入态去掉底层框的鼠标命中，原生输入负责拖选与替换，上沿/手柄保留对象操作。
+
+| 参考源码入口 | 原生复用与本轮结果 |
+|---|---|
+| DesignCraft doc/attrs.rs、doc/item.rs | 自动读取110字符、117段落、27文本框属性；补出serde默认省略的7个可选框字段 |
+| DesignCraft ui-egui/panels/properties.rs、typography.rs | 常用格式/对齐、字体样式/行距/字距/缩进/分栏；四组属性搜索与字体实际提供的OpenType特性/样式集 |
+| DesignCraft engine/cmd/text.rs | type.selectionAttrs/type.char/type.para/type.feature、原生bold/italic；有效UTF-8选区可独立格式化 |
+| DesignCraft engine/cmd/object.rs | object.textFrameOptions保留原生几何副作用，补充选项仍由原生TextFrameOptions承载 |
+| DesignCraft doc/story.rs | 输入只替换变化字节区间，保留未改动字符run/段落格式；不再全量重建故事 |
+| FigCraft ui-egui/style_picker.rs、font_preview.rs | 核对字体/样式/字号、行距/字距和文本装饰；由DesignCraft原生属性覆盖 |
+| PdfCraft ui-egui/bulk_fields.rs、comment_props.rs | 核对PDF文本外观；PDF特有表单/批注编辑未引入A3排版页 |
+| FileAtlas SettingsPage + Projects FieldPresets | 字段/默认信息有效修改自动保存，空白编辑行不入库；编辑菜单读服务内存快照，连续添加/删除不受后台保存禁用 |
+
+更多设置支持原生复合值JSON，快访问字号/颜色继续按整框应用；复杂发布排版由DesignCraft呈现，
+输入态不声称复制全部多栏/CJK排版细节。属性覆盖与逐项交互覆盖分开记录。
+[本轮实际窗口及完整原生属性验证](validation-ui/2026-10-21-workcrate-typography/README.md)。

@@ -8,6 +8,7 @@ use fileatlas_ui_bridge::panel_catalog::PanelCatalog;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
+mod editing;
 mod operations;
 
 pub(super) fn register(
@@ -34,10 +35,11 @@ pub(super) fn register(
         name: "workcrate-ui.state".into(),
         title: "Read WorkCrate project and board catalog".into(),
         description: "Read project names, board counts and board metadata from WorkCrate. Does not include image bytes or file contents.".into(),
-        input_schema: json!({"type":"object","properties":{},"additionalProperties":false}).as_object().cloned().unwrap_or_default(),
+        input_schema: json!({"type":"object","properties":{"control_ids":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}).as_object().cloned().unwrap_or_default(),
         mutating: false,
         confirmation_required: false,
-        handler: Arc::new(move |_| {
+        handler: Arc::new(move |arguments| {
+            let requested=arguments["control_ids"].as_array().map(|a|a.iter().filter_map(|v|v.as_str().map(str::to_owned)).collect::<Vec<_>>()).unwrap_or_default();
             let projects = Arc::clone(&state_projects);
             let boards = Arc::clone(&state_boards);
             let exports = Arc::clone(&state_exports);
@@ -58,13 +60,13 @@ pub(super) fn register(
                             "width_pt": board.source.settings.page_width,
                             "height_pt": board.source.settings.page_height,
                             "image_count": board.placements.len(),
-                            "info":board.info,
+                            "info":board.info,"texts":board.texts,
                         })).collect::<Vec<_>>(),
                     }));
                 }
                 let ui=surfaces.value("workcrate.ui").and_then(|v|serde_json::from_str::<serde_json::Value>(&v).ok());
-                let controls=["artboard","canvas-crop-mode","canvas-restore-crop","canvas-refresh-project","canvas-add-image","canvas-confirm-images"].into_iter().filter_map(|id| surfaces.value(&format!("workcrate.control.{id}")).map(|v|(id,v))).collect::<std::collections::BTreeMap<_,_>>();
-                Ok(json!({"projects": values,"ui":ui,"controls":controls,"export_progress":exports.progress()}))
+                let controls=["artboard","canvas-crop-mode","canvas-restore-crop","canvas-refresh-project","canvas-add-image","canvas-confirm-images","canvas-add-text","text-body","text-size","text-width","text-height","text-color","text-save","text-delete","pages-multi-select","pages-select-all","pages-clear-selection","pages-exit-multi-select","preset-local","preset-material","preset-size","preset-quantity","settings-preset-name","settings-preset-add-field","settings-preset-save"].into_iter().map(str::to_owned).chain(requested).filter_map(|id| surfaces.value(&format!("workcrate.control.{id}")).map(|v|(id,v))).collect::<std::collections::BTreeMap<_,_>>();
+                Ok(json!({"projects": values,"ui":ui,"controls":controls,"export_progress":exports.progress(),"field_presets":projects.field_presets().map_err(|e|e.to_string())?}))
             })
         }),
     };
@@ -186,6 +188,7 @@ pub(super) fn register(
     definitions.extend(operations::tools(
         context, projects, boards, exports, panels, ui_state,
     )?);
+    definitions.extend(editing::tools(projects, boards, ui_state));
     let registration = registry
         .register("fileatlas.workcrate-ui", definitions)
         .map_err(|error| error.to_string())?;

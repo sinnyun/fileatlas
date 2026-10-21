@@ -32,22 +32,85 @@ pub(super) fn panel(
     let service = Arc::clone(&projects);
     let wake = projects.wake();
     let selection_wake = ui_state.wake();
+    let initial_board_refresh = ui_state.board_refresh_revision();
+    let initial_catalog_refresh = ui_state.catalog_refresh_revision();
     app.new(|cx| {
         let task =
             fileatlas_ui_bridge::refresh::listen(cx, wake, |view: &mut WorkCratePanel, cx| {
                 let next = view.projects.projects(true).unwrap_or_default();
-                if next == view.items {
+                let presets = view.projects.field_presets().unwrap_or_default();
+                if next == view.items && presets == view.preset_fields {
                     return false;
                 }
+                let projects_changed = next != view.items;
+                let selected_project = view.selected_project.clone();
+                let old_name = selected_project.as_ref().and_then(|id| {
+                    view.items
+                        .iter()
+                        .find(|item| &item.id == id)
+                        .map(|item| item.name.clone())
+                });
+                let covers_changed = view.items.iter().any(|old| {
+                    next.iter()
+                        .find(|item| item.id == old.id)
+                        .is_some_and(|new| new.main_image != old.main_image)
+                });
+                let changed_cover_ids = view
+                    .items
+                    .iter()
+                    .filter_map(|old| {
+                        next.iter()
+                            .find(|item| item.id == old.id)
+                            .is_some_and(|new| new.main_image != old.main_image)
+                            .then(|| old.id.clone())
+                    })
+                    .collect::<std::collections::HashSet<_>>();
+                view.preset_fields = presets;
                 view.items = next;
+                let live_projects = view
+                    .items
+                    .iter()
+                    .map(|item| item.id.as_str())
+                    .collect::<std::collections::HashSet<_>>();
+                view.project_covers
+                    .retain(|id, _| live_projects.contains(id.as_str()));
+                for id in &changed_cover_ids {
+                    view.project_covers.remove(id);
+                }
+                if !projects_changed {
+                    return true;
+                }
                 if view
                     .selected_project
                     .as_ref()
                     .is_some_and(|id| !view.items.iter().any(|item| &item.id == id))
                 {
                     view.selected_project = None;
+                    view.selected_board = None;
+                    view.reload(cx);
+                    return true;
                 }
-                view.reload(cx);
+                let new_name = selected_project.as_ref().and_then(|id| {
+                    view.items
+                        .iter()
+                        .find(|item| &item.id == id)
+                        .map(|item| item.name.clone())
+                });
+                if old_name != new_name {
+                    if let Some(board) = view
+                        .boards_view
+                        .iter()
+                        .find(|card| Some(&card.board.id) == view.selected_board.as_ref())
+                        .map(|card| card.board.clone())
+                    {
+                        let id = board.id.clone();
+                        view.render_canvas(board, cx);
+                        view.refresh_page_preview(id, cx);
+                    }
+                }
+                if (covers_changed || old_name != new_name) && view.selected_project.is_none() {
+                    view.load_project_covers(cx);
+                }
                 true
             });
         let selection_task = fileatlas_ui_bridge::refresh::listen(
@@ -80,15 +143,61 @@ pub(super) fn panel(
                         },
                         cx,
                     );
-                    return true;
                 }
                 let Some((project_id, board_id)) = view.ui_state.selected_board() else {
                     return false;
                 };
                 let project = (!project_id.is_empty()).then_some(project_id);
                 let board = (!board_id.is_empty()).then_some(board_id);
+                if view.selected_project == project && view.selected_board == board {
+                    let board_refresh = view.ui_state.board_refresh_revision();
+                    let catalog_refresh = view.ui_state.catalog_refresh_revision();
+                    if catalog_refresh != view.catalog_refresh_revision {
+                        view.catalog_refresh_revision = catalog_refresh;
+                        view.board_refresh_revision = board_refresh;
+                        view.reload(cx);
+                        return true;
+                    }
+                    if board_refresh != view.board_refresh_revision {
+                        view.board_refresh_revision = board_refresh;
+                        if let Some(id) = board {
+                            let boards = Arc::clone(&view.boards);
+                            cx.spawn(async move |this, cx| {
+                                let result = cx
+                                    .background_executor()
+                                    .spawn(
+                                        async move { boards.board(&id).map_err(|e| e.to_string()) },
+                                    )
+                                    .await;
+                                let _ = this.update(cx, |view, cx| match result {
+                                    Ok(board)
+                                        if view.selected_board.as_deref() == Some(&board.id) =>
+                                    {
+                                        view.apply_board_update(board, cx);
+                                        cx.notify();
+                                    }
+                                    Ok(_) => {}
+                                    Err(error) => {
+                                        view.message = Some(error);
+                                        cx.notify();
+                                    }
+                                });
+                            })
+                            .detach();
+                        }
+                    }
+                    return false;
+                }
+                if view.selected_board != board {
+                    view.selected_text = None;
+                    view.text_editor = None;
+                    view.text_gesture = None;
+                    view.text_images.clear();
+                }
                 view.selected_project = project;
                 view.selected_board = board;
+                view.board_refresh_revision = view.ui_state.board_refresh_revision();
+                view.catalog_refresh_revision = view.ui_state.catalog_refresh_revision();
                 view.reload(cx);
                 true
             },
@@ -106,18 +215,31 @@ pub(super) fn panel(
             .map(|(project_id, _)| project_id.clone())
             .filter(|project_id| initial.iter().any(|project| &project.id == project_id));
         let mut view = WorkCratePanel {
-            projects: service,
+            projects: service.clone(),
             boards,
             exports,
             surfaces,
             ui_state,
             thumbnails,
             file_operations,
+            preset_fields: service.field_presets().unwrap_or_default(),
             items: initial,
             selected_project,
             boards_view: Vec::new(),
             project_covers: Default::default(),
             selected_pages: Default::default(),
+            multi_select: false,
+            selected_text: None,
+            text_editor: None,
+            text_inline: false,
+            text_options: None,
+            text_format_busy: false,
+            text_write_active: false,
+            text_commit_active: false,
+            pending_text: Default::default(),
+            text_revision: 0,
+            text_gesture: None,
+            text_images: Default::default(),
             show_archived: false,
             sort_by_name: false,
             image_export_jpeg: false,
@@ -135,6 +257,8 @@ pub(super) fn panel(
                 .as_ref()
                 .map(|(_, board_id)| board_id.clone())
                 .filter(|id| !id.is_empty()),
+            board_refresh_revision: initial_board_refresh,
+            catalog_refresh_revision: initial_catalog_refresh,
             canvas: None,
             zoom: 1.0,
             fit_scale: 0.75,
@@ -176,10 +300,23 @@ struct WorkCratePanel {
     thumbnails: Arc<fileatlas_plugin_thumbnails::ThumbnailService>,
     file_operations: Arc<fileatlas_plugin_file_operations::FileOperationsService>,
     items: Vec<fileatlas_workcrate_contracts::WorkCrateProject>,
+    preset_fields: fileatlas_plugin_workcrate_projects::FieldPresets,
     selected_project: Option<String>,
     boards_view: Vec<BoardCard>,
     project_covers: std::collections::BTreeMap<String, Arc<RenderImage>>,
     selected_pages: std::collections::BTreeSet<String>,
+    multi_select: bool,
+    selected_text: Option<String>,
+    text_editor: Option<text_editor::TextEditor>,
+    text_inline: bool,
+    text_options: Option<text_options::TextOptionsEditor>,
+    text_format_busy: bool,
+    text_write_active: bool,
+    text_commit_active: bool,
+    pending_text: std::collections::BTreeMap<(String, String), live_text::Draft>,
+    text_revision: u64,
+    text_gesture: Option<text_canvas::TextGesture>,
+    text_images: std::collections::BTreeMap<String, Arc<RenderImage>>,
     show_archived: bool,
     sort_by_name: bool,
     image_export_jpeg: bool,
@@ -194,6 +331,8 @@ struct WorkCratePanel {
     edit_saving: bool,
     state_gate: fileatlas_ui_bridge::refresh::ChangeGate<String>,
     selected_board: Option<String>,
+    board_refresh_revision: u64,
+    catalog_refresh_revision: u64,
     canvas: Option<Arc<RenderImage>>,
     zoom: f64,
     fit_scale: f64,
@@ -218,6 +357,8 @@ pub(super) struct WorkCrateUiState {
     selected_board: std::sync::RwLock<Option<(String, String)>>,
     export_request: std::sync::Mutex<Option<(Vec<String>, PathBuf, bool)>>,
     wake: fileatlas_ui_bridge::refresh::Wake,
+    board_refresh_revision: std::sync::atomic::AtomicU64,
+    catalog_refresh_revision: std::sync::atomic::AtomicU64,
 }
 
 impl Service for WorkCrateUiState {
@@ -263,6 +404,28 @@ impl WorkCrateUiState {
         self.wake.clone()
     }
 
+    pub fn request_board_refresh(&self) {
+        self.board_refresh_revision
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        self.wake.trigger();
+    }
+
+    pub fn request_catalog_refresh(&self) {
+        self.catalog_refresh_revision
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        self.wake.trigger();
+    }
+
+    fn board_refresh_revision(&self) -> u64 {
+        self.board_refresh_revision
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    fn catalog_refresh_revision(&self) -> u64 {
+        self.catalog_refresh_revision
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
     pub fn navigate(&self, project: Option<String>, board: Option<String>) -> Result<(), String> {
         self.select_board(project.unwrap_or_default(), board.unwrap_or_default())
     }
@@ -273,6 +436,8 @@ impl WorkCratePanel {
         let boards = Arc::clone(&self.boards);
         let zoom = self.fit_scale * self.zoom * self.device_scale;
         let requested_id = board.id.clone();
+        let generation = self.load_generation;
+        let text_revision = self.text_revision;
         self.rendered_scale = zoom;
         cx.spawn(async move |this, cx| {
             let result = cx
@@ -281,19 +446,38 @@ impl WorkCratePanel {
                     let page = boards
                         .render_template(&board.id, zoom)
                         .map_err(|error| error.to_string())?;
-                    image::RgbaImage::from_raw(page.width, page.height, page.to_straight())
-                        .map(render_image)
-                        .ok_or_else(|| "页面像素无效".to_string())
+                    let background =
+                        image::RgbaImage::from_raw(page.width, page.height, page.to_straight())
+                            .map(render_image)
+                            .ok_or_else(|| "页面像素无效".to_string())?;
+                    let mut texts = std::collections::BTreeMap::new();
+                    for id in board.texts.keys() {
+                        let page = boards
+                            .render_text(&board.id, id, zoom)
+                            .map_err(|e| e.to_string())?;
+                        let image =
+                            image::RgbaImage::from_raw(page.width, page.height, page.to_straight())
+                                .map(render_image)
+                                .ok_or_else(|| "文本像素无效".to_string())?;
+                        texts.insert(id.clone(), image);
+                    }
+                    Ok::<_, String>((background, texts))
                 })
                 .await;
             let _ = this.update(cx, |view, cx| {
-                if view.selected_board.as_ref() != Some(&requested_id)
+                if view.load_generation != generation
+                    || view.selected_board.as_ref() != Some(&requested_id)
                     || (view.rendered_scale - zoom).abs() > 0.005
                 {
                     return;
                 }
                 match result {
-                    Ok(image) => view.canvas = Some(image),
+                    Ok((image, texts)) => {
+                        view.canvas = Some(image);
+                        if view.text_revision == text_revision {
+                            view.text_images = texts;
+                        }
+                    }
                     Err(error) => view.message = Some(error),
                 };
                 cx.notify();
@@ -410,9 +594,17 @@ impl WorkCratePanel {
 
 mod canvas;
 mod exporting;
+mod fields;
 mod images;
 mod inspector;
+mod live_text;
 mod loading;
+mod pages;
+mod text_canvas;
+mod text_editor;
+mod text_option_labels;
+mod text_options;
+mod text_options_view;
 use images::render_image;
 
 impl Drop for WorkCratePanel {
@@ -430,4 +622,4 @@ mod preview;
 
 mod image_edit;
 mod linked_images;
-mod tracking;
+pub(crate) mod tracking;

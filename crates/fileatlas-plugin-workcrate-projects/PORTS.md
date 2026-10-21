@@ -87,3 +87,21 @@ acceptance, source-byte hydration, viewport render, and PDF output behavior.
   eligibility contracts.
 - Runtime validation of native picker and custom-preview UI remains pending;
   project/reference services are connected to the WorkCrate UI and MCP state.
+
+## Field presets (2026-10-21)
+
+FieldPreset { key,label,values } and FieldPresets { version,fields } use a modest
+whole-document JSON under the existing WorkCrate root: field-presets.json, version1.
+field_presets returns the cached snapshot; save_field_presets validates and writes
+with existing atomic JSON/recovery helpers, then emits the existing Projects wake.
+Built-ins local/material/size/quantity remain present; custom keys use extra:<label>.
+Multiple unique presets per field are supported (64 fields, 128 values/field;
+nonempty labels <=60 characters and values <=500). Unknown schema versions or
+invalid/duplicate records fail explicitly. Missing file uses default built-ins;
+existing backup reading/recovery behavior is reused. Large image assets remain
+separate feature-owned files. Preset edits/removals never rewrite stored page values.
+
+2026-10-21 UI synchronization: the existing FieldPresets storage/service signatures
+are unchanged. The Settings contribution now auto-saves valid field/value edits,
+filtering unfinished blank value rows. Existing wake/revision and cached reads
+supply editor menus; adding choices does not replace a page's saved content.

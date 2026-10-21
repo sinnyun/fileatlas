@@ -232,7 +232,8 @@ fn source_dpi(board: &fileatlas_plugin_workcrate_boards::WorkCrateBoard) -> f64 
         })
         .reduce(f64::max)
         .unwrap_or(72.0)
-        .clamp(72.0, 1200.0)
+        // Raster text needs print density even when a linked image is small.
+        .clamp(if board.texts.is_empty() { 72.0 } else { 300.0 }, 1200.0)
 }
 
 /// Fast compression is still lossless; physical dimensions use the actual raster size.

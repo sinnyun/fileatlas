@@ -139,3 +139,106 @@ Viewport proxy reads use the shared `ReadModel<(generation,revision+tiers,coarse
 with lifecycle-owned Wake/listen. It coalesces rapid resize requests, caches
 failures and discards stale results; fine resolution starts only after the small
 preview completes. An existing larger texture is never replaced by a coarse one.
+
+## Editing additions and inline correction (2026-10-21)
+
+`view/text_editor`, `text_canvas` and `live_text` own native multiline text editing.
+Add Text focuses the canvas immediately; double-click resumes an existing frame.
+One TextareaState is rendered either on the canvas or in the inspector. Microsoft
+YaHei, content color and point size are input data; selection/caret/control chrome
+remain native theme roles. Four corner handles change the frame and reflow text;
+the small move strip separates dragging from character selection. No glyph transform
+is applied. Right-side text, size/color and dimensions subscribe to native Change.
+
+A per-(board,text) pending map coalesces drafts. A finite shared refresh::poll
+starts at 100ms, serializes background update_text/render_text work, and stops
+when drained. Existing input entities/carets remain alive. Only the edited text
+texture/card document is replaced. Save Text uses this same path, never perform
+or reload. The existing A3 background and photo texture IDs remain unchanged.
+Previews update after a 600ms pause. Stale full-canvas text layers are rejected;
+photo ReadModel keys now depend on placements and resolution tiers, not text edits.
+Deletion is disabled while text writes are pending. Invalid temporary numeric input
+is not committed; explicit Save reports invalid font size/frame dimensions.
+
+Page content retains manual inputs plus native preset menus. Settings contribution
+uses the existing SettingsPage contract and Projects FieldPresets service. Page
+management has multi-select, select-all, clear and exit (exit clears selection).
+MCP adds `text` (add/update/delete/read), `replace_image`, `field_presets`; see the
+Rust schemas in mcp/editing.rs for payloads. `state.control_ids` requests measured
+controls, including canvas-text-input/select-text-<id>. UI state exposes text_inline,
+text_write_active, load_generation, canvas_image_id and display_image_ids for real
+interaction/refresh diagnostics. These are observations, not replacement UI handlers.
+
+Live coverage: scripts/validate-workcrate-inline-text.cjs, isolated same-process
+profile `.local/validation/profiles/workcrate-inline-final-2026-10-21`.
+Chinese text injection is covered; physical IME candidate/composition behavior and
+extreme font/box dimensions require separate interactive coverage.
+
+## Selection, native typography browser and preset auto-save (2026-10-21)
+
+Inline mode removes the lower draggable text sprite's mouse target; the native
+Textarea handles press/drag selection and its wrapper stops bubbling into image
+or object movement. Only the move strip/handles start frame gestures. A gated
+observer publishes actual selected UTF-8 byte ranges without notifying on caret
+blinks. It permits drag selection/replacement while preserving the frame.
+
+text_options/text_options_view/text_option_labels extend the existing inspector:
+compact native bold/italic/underline/strike and alignment actions, plus More Text
+Settings with chars/para/frame/OpenType groups, searchable full attribute catalogue,
+current values, primitive/enum inputs and native structured JSON values. Labels
+are presentation only; keys/types/defaults come from the actual pinned dependency.
+Applying formats uses one bounded background action, updates only that text sprite,
+and retains background/photo textures. Nonempty selections can receive character
+formats independently; frame options always affect the whole frame. The original
+size/color quick fields retain whole-frame semantics; advanced size/fill can target
+a selection. Default font stays Microsoft YaHei; the advanced fontFamily/fontStyle
+attributes allow other fonts. Common font/decorations/leading/alignment also project
+into native input appearance. Complex typography, multicolumn/CJK/justified layout
+uses DesignCraft when finishing/applying; ordinary input is not a replacement rich
+publishing renderer. Reads/changes to advanced current values refresh on opening
+More Settings or applying a setting. No egui frontend or parallel text engine added.
+
+Preset Settings observes actual value changes and structural edits. Valid drafts
+save automatically via the Projects service; blank unfinished value rows are
+excluded and no page values are overwritten. A finite shared refresh::poll drains
+coalesced changes and stops after success/error. Manual Save remains available.
+The editor's render also reads the existing in-memory preset snapshot, ensuring
+menus are current after returning from Settings. No IO is introduced in render.
+MCP adds text_options read/update, with project ownership checks and native schemas;
+UI state adds text_options/text_format_busy and actual text_draft.selection.
+
+Reproducible flows: validate-workcrate-typography.cjs and
+validate-workcrate-field-presets-auto.cjs. Current snapshot has 254 native attribute
+entries plus font-provided OpenType features/sets; representative real controls are
+verified, not every possible attribute/font/enum combination.
+
+## Inspector refresh and preset menu correction (2026-10-21)
+
+Page-local writes through the shared `perform` path now fetch only the changed board,
+replace that board model in the existing catalog, re-render its A3 information/header,
+and refresh its disposable page preview. Metadata/text-only writes retain linked-image
+texture identities and all other page-card models while replacing the A3 header layer.
+If an image source changed, its decoded cache entry is discarded and the selected
+page's visible image tiers are requested again. Text deletion also clears
+the deleted selection/editor. Page/project navigation, project creation, and page
+creation still reload the catalog because they change selection or its membership.
+Project-manager rename/archive/delete/duplicate/cover actions update the visible list
+directly; only new or changed covers are decoded, deleted cover entries are discarded,
+and unrelated cards keep their cached cover textures.
+Project-wide linked-image refresh retains its explicit full-catalog refresh because
+the command changes sources across pages.
+
+The UI selection wake now compares both project and board IDs before reloading; repeated
+navigation to the same page is a no-op. MCP mutations publish an explicit board-refresh
+revision, so an external write to the already selected page fetches and updates that
+board in place. Project-wide MCP image refresh uses an explicit catalog-refresh revision.
+Preset popup items read `FieldPresets` from the existing Projects service when opened,
+so a menu closure created before Settings changes does not retain an old values vector.
+
+Same-process coverage: `validate-workcrate-field-presets-auto.cjs` changes Settings while
+the editor remains mounted, opens the new field's popup, applies an item, and asserts the
+page load generation and linked-image texture IDs stay unchanged while the A3 header
+texture updates to show the selected field value. It then exercises same-board MCP
+`update_page` and verifies the current page changes without a catalog reload.
+`validate-workcrate-inline-text.cjs` rechecks local text save and retained image textures.
+Detailed refresh-site audit and limits: `docs/validation-ui/2026-10-21-workcrate-inspector-refresh/README.md`.

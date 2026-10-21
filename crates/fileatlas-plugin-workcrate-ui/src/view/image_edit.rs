@@ -32,6 +32,9 @@ impl WorkCratePanel {
         let Ok(layout) = card.board.image_layout(&asset) else {
             return;
         };
+        self.selected_text = None;
+        self.text_editor = None;
+        self.text_gesture = None;
         self.selected_image = Some(asset.clone());
         self.gesture = Some(ImageGesture {
             asset,

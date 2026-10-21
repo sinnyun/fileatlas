@@ -79,3 +79,10 @@ already optimized. Output files retain the temporary-write/sync/atomic replace p
 The unified flate2 backend is zlib-rs, so its dev profile is optimized too, along
 with PdfCraft create/cos/organize/filters. No upstream source or compression
 quality is patched; these are build-profile settings for CPU hot paths.
+
+## User text raster density (2026-10-21)
+
+Pages with native user text use a minimum 300 DPI within the existing 1200 DPI cap,
+so a low-resolution linked photograph does not force newly typed text to 72 DPI.
+Original linked images and the native document still drive export; editor proxies
+and GPUI input chrome are excluded. Photo-only effective-PPI behavior is unchanged.

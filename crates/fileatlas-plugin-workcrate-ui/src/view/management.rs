@@ -82,29 +82,138 @@ impl WorkCratePanel {
     ) {
         self.message = None;
         self.busy = true;
+        let page_id = self.selected_board.clone();
+        let boards = Arc::clone(&self.boards);
         cx.notify();
         cx.spawn(async move |this, cx| {
-            let result = cx.background_executor().spawn(async move { job() }).await;
-            let _ = this.update(cx, |view, cx| {
-                view.busy = false;
-                match result {
-                    Ok(()) => {
-                        view.items = view.projects.projects(true).unwrap_or_default();
-                        view.editing = None;
-                        view.reload(cx);
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    job()?;
+                    page_id
+                        .map(|id| boards.board(&id).map(Some).map_err(|e| e.to_string()))
+                        .unwrap_or(Ok(None))
+                })
+                .await;
+            let _ =
+                this.update(cx, |view, cx| {
+                    view.busy = false;
+                    match result {
+                        Ok(board) => {
+                            let previous = std::mem::replace(
+                                &mut view.items,
+                                view.projects.projects(true).unwrap_or_default(),
+                            );
+                            let membership_changed = previous.len() != view.items.len()
+                                || previous
+                                    .iter()
+                                    .any(|old| !view.items.iter().any(|new| new.id == old.id));
+                            let changed_covers = previous
+                                .iter()
+                                .filter_map(|old| {
+                                    view.items
+                                        .iter()
+                                        .find(|new| new.id == old.id)
+                                        .is_some_and(|new| new.main_image != old.main_image)
+                                        .then(|| old.id.clone())
+                                })
+                                .collect::<std::collections::HashSet<_>>();
+                            let live_projects = view
+                                .items
+                                .iter()
+                                .map(|item| item.id.as_str())
+                                .collect::<std::collections::HashSet<_>>();
+                            view.project_covers
+                                .retain(|id, _| live_projects.contains(id.as_str()));
+                            for id in &changed_covers {
+                                view.project_covers.remove(id);
+                            }
+                            view.editing = None;
+                            if let Some(board) = board.filter(|board| {
+                                view.selected_board.as_deref() == Some(board.id.as_str())
+                            }) {
+                                view.apply_board_update(board, cx);
+                            } else if view.selected_project.as_ref().is_some_and(|id| {
+                                !view.items.iter().any(|project| &project.id == id)
+                            }) {
+                                view.selected_project = None;
+                                view.selected_board = None;
+                                view.reload(cx);
+                            } else if (membership_changed || !changed_covers.is_empty())
+                                && view.selected_project.is_none()
+                            {
+                                view.load_project_covers(cx);
+                            }
+                        }
+                        Err(error) => view.message = Some(error),
                     }
-                    Err(error) => view.message = Some(error),
-                }
-                cx.notify();
-            });
+                    cx.notify();
+                });
         })
         .detach();
+    }
+
+    pub(super) fn apply_board_update(&mut self, board: WorkCrateBoard, cx: &mut ViewContext<Self>) {
+        let id = board.id.clone();
+        let mut placements_changed = false;
+        if let Some(card) = self.boards_view.iter_mut().find(|card| card.board.id == id) {
+            for (asset, old) in &card.board.placements {
+                let changed = board.placements.get(asset).is_none_or(|new| {
+                    old.path != new.path
+                        || old.sha256 != new.sha256
+                        || old.reference_id != new.reference_id
+                        || old.uses_preview != new.uses_preview
+                });
+                if changed {
+                    card.originals.remove(asset);
+                    card.sources.remove(asset);
+                    placements_changed = true;
+                }
+            }
+            placements_changed |= card.board.placements.len() != board.placements.len();
+            card.board = board.clone();
+        }
+        if self
+            .selected_text
+            .as_ref()
+            .is_some_and(|selected| !board.texts.contains_key(selected))
+        {
+            self.selected_text = None;
+            self.text_editor = None;
+            self.text_options = None;
+            self.text_images.clear();
+        }
+        if self.selected_board.as_deref() == Some(id.as_str()) {
+            if placements_changed
+                && self
+                    .items
+                    .iter()
+                    .find(|project| project.id == board.project_id)
+                    .is_some_and(|project| project.main_image.is_none())
+            {
+                self.project_covers.remove(&board.project_id);
+            }
+            self.render_canvas(board, cx);
+            if placements_changed {
+                self.proxy_request = None;
+                self.load_editor_images(cx);
+            }
+        }
+        self.refresh_page_preview(id, cx);
     }
 
     pub(super) fn load_project_covers(&mut self, cx: &mut ViewContext<Self>) {
         let projects = Arc::clone(&self.projects);
         let boards = Arc::clone(&self.boards);
-        let items = self.items.clone();
+        let items = self
+            .items
+            .iter()
+            .filter(|project| !self.project_covers.contains_key(&project.id))
+            .cloned()
+            .collect::<Vec<_>>();
+        if items.is_empty() {
+            return;
+        }
         cx.spawn(async move |this, cx| {
             let covers = cx
                 .background_executor()

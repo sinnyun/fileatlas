@@ -144,3 +144,62 @@ clamps at native dimensions, uses an existing larger tier when available, and
 verifies source SHA-256 on a cold miss. The first cold PNG/JPEG decode still has
 to read the original; subsequent opens use proxy files. `prepare_export(id)`
 rehydrates and verifies original bytes at action time; export never uses proxies.
+
+## Linked-image fitting and native text frames (2026-10-21)
+
+refresh_image always relinks and uses centered native fillProportionally with zero
+additional crop, including same-aspect different-resolution updates. The existing
+item/frame geometry remains unchanged; source pixel dimensions/digest update and
+extended source_document links survive. Project refresh reuses this path.
+
+WorkCrateBoard adds serde-default texts: BTreeMap<String,BoardText>, keyed by padded
+native item ID; BoardText holds item_id, story_id, text, size_pt and #RRGGBB color.
+The DesignCraft source owns real story/character formatting and frame geometry.
+Public add_text/update_text/move_text_frame/delete_text return the saved board;
+text_frame reads bounds. Font is Microsoft YaHei Regular; update validates 1–720pt,
+100k UTF-8 bytes, RGB color and finite frame >=4pt. Frame changes reset only frame
+transform/path, never scale glyphs. text_fonts executes real native font.list.
+render_text returns a transparent Rendered layer for one frame, with native bounded
+raster dimensions. render_template excludes image and user text items. Text stays
+above image items in the saved document and screen composition.
+
+Reuse map: DesignCraft engine frame.create/text.select/text.insert/type.char/
+swatch.create/edit.clear; designcraft_doc native frames/stories; designcraft_render
+Renderer::render with paper=false for sprites. No PhoTag browser/data semantics
+change is involved. Existing document JSON opens with empty texts; native text and
+metadata are atomically saved with the existing board file/recovery path.
+
+## Native typography settings and rich-run preservation (2026-10-21)
+
+text_options(board,id,Option<[UTF8_start,UTF8_end]>) returns native type.selectionAttrs,
+font-offered type.openTypeFeatures and all native defaults: 110 CharProps,117
+ParaProps,27 TextFrameOptions. The frame catalogue explicitly restores seven
+serde-skipped optional/default fields so baseline grids, paths and auto-size limits
+are reachable. No font/layout implementation is copied or substituted.
+
+set_text_options(board,id,range,scope,attrs) edits chars/para/frame/openType; action
+scope accepts only native type.bold/type.italic. Character and paragraph commands
+are native type.char/type.para. Frame values merge into native TextFrameOptions,
+deserialize/validate, run object.textFrameOptions for geometry side effects, and
+persist the typed options. OpenType includes font-offered stylistic sets; standard
+liga uses native ligatures semantics. Empty selection means the whole text frame;
+nonempty ranges are checked UTF-8 boundaries. Native engine owns paragraph-range
+and font-shaping semantics. #RRGGBB colors create native swatches; whole-frame fill
+and size changes update quick metadata. Size range now follows the reference UI,
+0.1–1296pt (supersedes earlier 1–720pt limit).
+
+update_text now computes a minimal UTF-8 replacement and invokes text.insert only
+for changed bytes. Unchanged source runs/paragraph settings survive further typing;
+size/fill are only reformatted when those explicit quick values change. Existing
+native document JSON already carries every style option; no new storage format,
+DB migration or original-asset rewrite is required. text_appearance resolves a
+caret's native CharProps/ParaProps strictly in memory for input chrome. At a run
+boundary it follows native preceding-caret style, unlike range-selected attributes.
+
+Source mapping: designcraft crates/doc/src/{attrs,story,item,styles}.rs,
+engine/src/cmd/{text,object}.rs and ui-egui/src/panels/{properties,typography}.rs
+at the existing pinned revision. FigCraft style_picker/font_preview were reviewed
+for font/style/leading/spacing; PdfCraft text appearances remain PDF-specific.
+Tests cover selected UTF-8 formatting, later typing/reload preservation, all
+catalogue groups, native paragraph/frame values, invalid ranges/frame values,
+ligatures, and quick fill restoration after an advanced hex fill.

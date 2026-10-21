@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+module.exports=async({call,payload,step,delay})=>{
+ const invoke=async(tool,args={})=>payload(await call(tool,args));
+ const state=()=>invoke('workcrate-ui.state');
+ const until=async(test)=>{for(let i=0;i<150;i++){const current=await state();if(test(current))return current;await delay(100);}await step({tool:'workcrate-ui.state',capture:'project-manager-refresh-timeout'});throw Error('Project manager refresh did not settle');};
+ const project=(await invoke('workcrate-ui.manage_project',{action:'create',name:`局部刷新验证 ${Date.now()}`})).project;
+ await invoke('workcrate-ui.navigate',{});
+ let current=await until(s=>s.ui?.screen==='projects'&&s.projects.some(item=>item.id===project.id)&&!s.ui.busy);
+ const generation=current.ui.load_generation;
+ await invoke('workcrate-ui.manage_project',{action:'rename',project_id:project.id,name:'项目名称已更新'});
+ current=await until(s=>s.projects.some(item=>item.id===project.id&&item.name==='项目名称已更新')&&!s.ui.busy);
+ assert.equal(current.ui.load_generation,generation,'renaming a project row must not reload the catalog');
+ await invoke('workcrate-ui.manage_project',{action:'archive',project_id:project.id});
+ current=await until(s=>s.projects.some(item=>item.id===project.id&&item.archived)&&!s.ui.busy);
+ assert.equal(current.ui.load_generation,generation,'archiving a project row must not reload the catalog');
+ await invoke('workcrate-ui.manage_project',{action:'restore',project_id:project.id});
+ current=await until(s=>s.projects.some(item=>item.id===project.id&&!item.archived)&&!s.ui.busy);
+ assert.equal(current.ui.load_generation,generation,'restoring a project row must not reload the catalog');
+ await step({tool:'workcrate-ui.state',capture:'project-manager-local-update'});
+ const stable=current.ui;await delay(700);assert.deepEqual((await state()).ui,stable,'project list should settle without repeated refresh');
+};

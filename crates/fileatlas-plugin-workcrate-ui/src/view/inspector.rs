@@ -1,12 +1,21 @@
 use super::render::pixel_label;
 use super::*;
+use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 impl WorkCratePanel {
     pub(super) fn edit_row(&self, cx: &mut ViewContext<Self>) -> gpui::Div {
         div()
             .h_flex()
             .gap_1()
-            .child(fileatlas_ui_bridge::components::text_input(&self.edit_input).flex_1())
+            .child(
+                super::tracking::control(
+                    "field-edit-input",
+                    fileatlas_ui_bridge::components::text_input(&self.edit_input).w_full(),
+                    &self.surfaces,
+                )
+                .flex_1()
+                .min_w_0(),
+            )
             .child(
                 Button::new("workcrate-edit-save")
                     .primary()
@@ -57,7 +66,11 @@ impl WorkCratePanel {
                 .text_color(rgb(theme::text_muted()))
                 .child(label.to_owned()),
         );
-        row.child(
+        // Resolve choices when the menu opens. Settings may have changed while this
+        // editor stayed mounted, so the popup must not keep a render-time snapshot.
+        let projects = Arc::clone(&self.projects);
+        let selected = value.clone();
+        let mut row = row.child(
             Button::new(format!("field-{id}-{key}"))
                 .outline()
                 .compact()
@@ -67,7 +80,62 @@ impl WorkCratePanel {
                 .on_click(cx.listener(move |view, _, window, cx| {
                     view.begin_edit(target.clone(), &field_key, &value, window, cx)
                 })),
-        )
+        );
+        if matches!(key, "local" | "material" | "size" | "quantity") || key.starts_with("extra:") {
+            let target = id.to_owned();
+            let key = key.to_owned();
+            let weak = cx.entity().downgrade();
+            row = row.child(super::tracking::control(
+                &format!("preset-{key}"),
+                Button::new(format!("preset-{id}-{key}"))
+                    .outline()
+                    .compact()
+                    .w(px(32.))
+                    .label("⌄")
+                    .disabled(self.busy)
+                    .dropdown_menu(move |mut menu, _, _| {
+                        let options = projects
+                            .field_presets()
+                            .ok()
+                            .and_then(|presets| {
+                                presets.fields.into_iter().find(|field| field.key == key)
+                            })
+                            .map(|field| field.values)
+                            .unwrap_or_default();
+                        if options.is_empty() {
+                            menu = menu.item(
+                                PopupMenuItem::new("暂无预设，请在插件设置中添加").disabled(true),
+                            );
+                        }
+                        for value in &options {
+                            let next = value.clone();
+                            let weak = weak.clone();
+                            let target = target.clone();
+                            let key = key.clone();
+                            menu = menu.item(
+                                PopupMenuItem::new(value.clone())
+                                    .checked(value == &selected)
+                                    .on_click(move |_, _, cx| {
+                                        let _ = weak.update(cx, |view, cx| {
+                                            view.set_field_value(
+                                                target.clone(),
+                                                key.clone(),
+                                                next.clone(),
+                                                cx,
+                                            )
+                                        });
+                                    }),
+                            );
+                        }
+                        menu
+                    }),
+                &self.surfaces,
+            ));
+        }
+        row.relative().child(super::tracking::measure(
+            &format!("field-{key}"),
+            self.surfaces.clone(),
+        ))
     }
 
     pub(super) fn inspector(
@@ -79,12 +147,14 @@ impl WorkCratePanel {
         let id = &board.id;
         let mut inspector = div()
             .id("workcrate-inspector")
+            .relative()
+            .child(super::tracking::measure("inspector", self.surfaces.clone()))
             .h_full()
             .w(px(310.))
             .flex_shrink_0()
             .min_h_0()
             .v_flex()
-            .gap_2()
+            .gap_3()
             .p_3()
             .border_l_1()
             .border_color(rgb(theme::separator()))
@@ -190,6 +260,17 @@ impl WorkCratePanel {
             inspector =
                 inspector.child(self.field(id, &format!("extra:{key}"), key, value.clone(), cx));
         }
+        for field in self
+            .preset_fields
+            .fields
+            .iter()
+            .filter(|f| f.key.starts_with("extra:"))
+        {
+            if !board.info.extra.contains_key(&field.label) {
+                inspector =
+                    inspector.child(self.field(id, &field.key, &field.label, String::new(), cx));
+            }
+        }
         let target = id.clone();
         inspector = inspector.child(
             Button::new("page-add-field")
@@ -203,7 +284,9 @@ impl WorkCratePanel {
         if self.editing.as_ref() == Some(&(id.clone(), "new".into())) {
             inspector = inspector.child(self.edit_row(cx));
         }
-        inspector = inspector.child(section("页面图片"));
+        inspector = inspector
+            .child(self.text_inspector(card, cx))
+            .child(section("页面图片"));
         for (asset, placement) in &board.placements {
             let selection = asset.clone();
             let entry = div()
@@ -287,7 +370,18 @@ impl WorkCratePanel {
 }
 
 fn section(label: &str) -> gpui::Div {
-    div().pt_2().font_semibold().child(label.to_owned())
+    div()
+        .h_flex()
+        .items_center()
+        .gap_2()
+        .pt_2()
+        .child(
+            div()
+                .text_size(px(13.))
+                .font_semibold()
+                .child(label.to_owned()),
+        )
+        .child(div().flex_1().h(px(1.)).bg(rgb(theme::separator())))
 }
 fn file_name(path: &str) -> String {
     std::path::Path::new(path)

@@ -22,7 +22,10 @@ use uuid::Uuid;
 const BOARD_VERSION: u32 = 1;
 mod cache;
 mod presentation;
+mod text;
+mod text_options;
 pub use presentation::PageInfo;
+pub use text::BoardText;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WorkCrateBoard {
@@ -35,6 +38,8 @@ pub struct WorkCrateBoard {
     pub source: Document,
     /// Maps DesignCraft asset IDs to stable project reference IDs and source/preview choice.
     pub placements: BTreeMap<String, BoardPlacement>,
+    #[serde(default)]
+    pub texts: BTreeMap<String, BoardText>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -94,6 +99,7 @@ impl WorkCrateBoardsService {
             info: PageInfo::default(),
             source: Document::new(&nd),
             placements: BTreeMap::new(),
+            texts: BTreeMap::new(),
         };
         write_board(&project_dir, &board)?;
         self.boards
@@ -184,6 +190,11 @@ impl WorkCrateBoardsService {
             board.info.first_image = Some(asset_key.clone());
         }
         let sha256 = format!("{:x}", Sha256::digest(&bytes));
+        for spread in &mut document.spreads {
+            Arc::make_mut(spread)
+                .items
+                .sort_by_key(|item| board.texts.values().any(|t| t.item_id == item.id.0));
+        }
         board.source = document;
         board.placements.insert(
             asset_key,
@@ -570,3 +581,5 @@ mod tests {
 
 mod editing;
 pub use editing::{ImageLayout, RefreshProjectImagesReport};
+#[cfg(test)]
+mod editing_enhancements_tests;

@@ -16,6 +16,8 @@ impl WorkCratePanel {
         let Some(project) = self.selected_project.clone() else {
             self.busy = false;
             self.boards_view.clear();
+            self.selected_pages.clear();
+            self.multi_select = false;
             self.load_project_covers(cx);
             cx.notify();
             return;
@@ -58,6 +60,8 @@ impl WorkCratePanel {
                             .filter(|c| c.image.is_none())
                             .map(|c| c.board.clone())
                             .collect();
+                        view.selected_pages
+                            .retain(|id| cards.iter().any(|c| &c.board.id == id));
                         view.boards_view = cards;
                         if let Some(board) = view
                             .boards_view
@@ -156,7 +160,7 @@ impl WorkCratePanel {
             .collect::<Vec<_>>();
         let key = format!(
             "{}:{targets:?}",
-            self.boards.preview_revision(&board).unwrap_or_default()
+            serde_json::to_string(&board.placements).unwrap_or_default()
         );
         if self.proxy_request.as_ref() == Some(&key) {
             return;

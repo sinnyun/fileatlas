@@ -19,6 +19,8 @@ use uuid::Uuid;
 
 const FORMAT_VERSION: u32 = 1;
 mod management;
+mod presets;
+pub use presets::{FieldPreset, FieldPresets};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 struct ProjectIndex {
@@ -66,6 +68,7 @@ pub struct WorkCrateProjectsService {
     write_gate: RwLock<()>,
     revision: AtomicU64,
     wake: fileatlas_ui_bridge::refresh::Wake,
+    presets: RwLock<FieldPresets>,
 }
 
 impl Service for WorkCrateProjectsService {
@@ -88,6 +91,7 @@ impl WorkCrateProjectsService {
             return Err(WorkCrateProjectsError::UnsupportedVersion(index.version));
         }
         validate_index(&index)?;
+        let presets = presets::read(&root)?;
         index
             .projects
             .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
@@ -97,6 +101,7 @@ impl WorkCrateProjectsService {
             write_gate: RwLock::new(()),
             revision: AtomicU64::new(0),
             wake: Default::default(),
+            presets: RwLock::new(presets),
         })
     }
 

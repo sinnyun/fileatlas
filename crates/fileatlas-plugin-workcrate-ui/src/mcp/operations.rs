@@ -142,6 +142,7 @@ pub(super) fn tools(
                 .update_info(&board.id, &board.title, board.info)
                 .map_err(|e| e.to_string())?;
             ui.select_board(saved.project_id.clone(), saved.id.clone())?;
+            ui.request_board_refresh();
             Ok(json!({"updated":true,"title":saved.title,"info":saved.info}))
         },
     );
@@ -230,7 +231,12 @@ pub(super) fn tools(
             };
             if let Some((selected, board)) = ui.selected_board() {
                 if selected == project {
-                    ui.navigate(Some(selected), (!board.is_empty()).then_some(board))?;
+                    if required(&v, "action")? == "refresh_project" {
+                        ui.request_catalog_refresh();
+                    } else {
+                        ui.select_board(selected, board)?;
+                        ui.request_board_refresh();
+                    }
                 }
             }
             Ok(result)
@@ -247,7 +253,7 @@ pub(super) fn tools(
     ])
 }
 
-fn required<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, String> {
+pub(super) fn required<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, String> {
     value
         .get(key)
         .and_then(|v| v.as_str())
@@ -255,7 +261,7 @@ fn required<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, Stri
         .ok_or_else(|| format!("{key} is required"))
 }
 
-fn tool(
+pub(super) fn tool(
     name: &str,
     title: &str,
     properties: serde_json::Value,

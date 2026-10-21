@@ -145,10 +145,11 @@ impl WorkCrateBoardsService {
         let mut document = self.presentation_document(&board)?;
         for spread in &mut document.spreads {
             Arc::make_mut(spread).items.retain(|item| {
-                !board
-                    .placements
-                    .values()
-                    .any(|p| p.item_id == Some(item.id.0))
+                !board.texts.values().any(|t| t.item_id == item.id.0)
+                    && !board
+                        .placements
+                        .values()
+                        .any(|p| p.item_id == Some(item.id.0))
             });
         }
         designcraft_render::Renderer::new()

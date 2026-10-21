@@ -3,6 +3,11 @@ use super::*;
 
 impl Render for WorkCratePanel {
     fn render(&mut self, window: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
+        // Cached service snapshot only; a settings page close must not leave stale menu builders.
+        if let Ok(presets) = self.projects.field_presets() {
+            self.preset_fields = presets;
+        }
+        self.sync_text_editor(window, cx);
         self.device_scale = f64::from(window.scale_factor());
         let layouts = self
             .boards_view
@@ -15,7 +20,7 @@ impl Render for WorkCratePanel {
                     .filter_map(|id| c.board.image_layout(id).ok().map(|l| (id.clone(), l)))
                     .collect::<std::collections::BTreeMap<_, _>>()
             });
-        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"busy":self.busy,"preview_cache_hits":self.preview_hits,"previews_ready":self.boards_view.iter().filter(|c| c.image.is_some()).count(),"display_images":self.boards_view.iter().map(|c| c.originals.len()).sum::<usize>(),"display_rgba_bytes":self.boards_view.iter().flat_map(|c| c.originals.values()).map(|i| i.as_bytes(0).map_or(0,|b| b.len())).sum::<usize>(),"export_status":self.export_status,"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"selected_pages":self.selected_pages,"selected_image":self.selected_image,"layouts":layouts,"crop_mode":self.crop_mode,"edit_saving":self.edit_saving,"gesture":self.gesture.as_ref().map(|g| serde_json::json!({"asset":g.asset,"frame":g.current.frame,"content":g.current.content})),"editing":self.editing,"message":self.message}).to_string();
+        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"busy":self.busy,"preview_cache_hits":self.preview_hits,"previews_ready":self.boards_view.iter().filter(|c| c.image.is_some()).count(),"display_images":self.boards_view.iter().map(|c| c.originals.len()).sum::<usize>(),"display_rgba_bytes":self.boards_view.iter().flat_map(|c| c.originals.values()).map(|i| i.as_bytes(0).map_or(0,|b| b.len())).sum::<usize>(),"export_status":self.export_status,"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"selected_pages":self.selected_pages,"multi_select":self.multi_select,"selected_text":self.selected_text,"text_draft":self.text_draft(cx),"text_inline":self.text_inline,"text_options":self.options_diagnostics(),"text_format_busy":self.text_format_busy,"text_write_active":self.text_write_active,"load_generation":self.load_generation,"canvas_image_id":self.canvas.as_ref().map(|i|format!("{:?}",i.id)),"display_image_ids":self.boards_view.iter().flat_map(|c|c.originals.iter()).map(|(id,i)|(id.clone(),format!("{:?}",i.id))).collect::<std::collections::BTreeMap<_,_>>(),"text_count":self.boards_view.iter().find(|c|Some(&c.board.id)==self.selected_board.as_ref()).map(|c|c.board.texts.len()),"text_frames":self.boards_view.iter().find(|c|Some(&c.board.id)==self.selected_board.as_ref()).map(|c|c.board.texts.keys().filter_map(|id|c.board.text_frame(id).ok().map(|f|(id.clone(),f))).collect::<std::collections::BTreeMap<_,_>>()),"selected_image":self.selected_image,"layouts":layouts,"crop_mode":self.crop_mode,"edit_saving":self.edit_saving,"gesture":self.gesture.as_ref().map(|g| serde_json::json!({"asset":g.asset,"frame":g.current.frame,"content":g.current.content})),"editing":self.editing,"message":self.message}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
         }
@@ -212,7 +217,8 @@ impl WorkCratePanel {
                                 })),
                         )
                         .child(div().flex_1())
-                        .child(
+                        .child(super::tracking::control(
+                            &format!("project-menu-{menu_id}"),
                             Button::new(format!("project-menu-{menu_id}"))
                                 .ghost()
                                 .icon(theme::small_icon(gpui_kit::assets::IconName::Ellipsis))
@@ -225,7 +231,8 @@ impl WorkCratePanel {
                                     };
                                     cx.notify();
                                 })),
-                        ),
+                            &self.surfaces,
+                        )),
                 );
             let id = project.id.clone();
             card = card.child(
@@ -274,14 +281,16 @@ impl WorkCratePanel {
                     .gap_1()
                     .workbench_section()
                     .p_2()
-                    .child(
+                    .child(super::tracking::control(
+                        &format!("project-rename-{target}"),
                         Button::new(format!("project-rename-{target}"))
                             .ghost()
                             .label("重命名")
                             .on_click(cx.listener(move |view, _, window, cx| {
                                 view.begin_edit(target.clone(), "project", &value, window, cx)
                             })),
-                    );
+                        &self.surfaces,
+                    ));
                 for (action, label) in [
                     ("cover", "更换主图"),
                     ("duplicate", "复制项目"),
@@ -297,15 +306,18 @@ impl WorkCratePanel {
                 ] {
                     let target = project.id.clone();
                     let action = action.to_owned();
-                    menu = menu.child(
-                        Button::new(format!("project-{action}-{target}"))
+                    let control_id = format!("project-{action}-{target}");
+                    menu = menu.child(super::tracking::control(
+                        &control_id,
+                        Button::new(control_id.clone())
                             .ghost()
                             .label(label)
                             .disabled(self.busy)
                             .on_click(cx.listener(move |view, _, _, cx| {
                                 view.project_action(target.clone(), &action, cx)
                             })),
-                    );
+                        &self.surfaces,
+                    ));
                 }
                 card = card.child(menu);
             }
@@ -329,141 +341,6 @@ impl WorkCratePanel {
         .into_any_element()
     }
 
-    fn render_pages(&mut self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
-        let mut grid = div()
-            .id("workcrate-page-grid")
-            .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
-            .h_flex()
-            .flex_wrap()
-            .content_start()
-            .items_start()
-            .gap(px(24.))
-            .p(px(24.));
-        if self.boards_view.is_empty() {
-            grid = grid.child(
-                div()
-                    .text_color(rgb(theme::text_muted()))
-                    .child("此项目还没有页面。新增页面后可添加 JPG / PNG 图片。"),
-            );
-        }
-        let width = ((self.panel_content_size().0 - 96.) / 3.).max(210.) as f32;
-        for card in self.boards_view.clone() {
-            let id = card.board.id.clone();
-            let selected = self.selected_pages.contains(&id);
-            let select_id = id.clone();
-            grid = grid.child(
-                div()
-                    .id(format!("page-card-{id}"))
-                    .v_flex()
-                    .w(px(width))
-                    .workbench_card(selected)
-                    .p_2()
-                    .gap_2()
-                    .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                Button::new(format!("select-page-{id}"))
-                                    .when(selected, |b| b.primary())
-                                    .ghost()
-                                    .compact()
-                                    .icon(theme::small_icon(if selected {
-                                        gpui_kit::assets::IconName::SquareCheck
-                                    } else {
-                                        gpui_kit::assets::IconName::Square
-                                    }))
-                                    .on_click(cx.listener(move |view, _, _, cx| {
-                                        if !view.selected_pages.remove(&select_id) {
-                                            view.selected_pages.insert(select_id.clone());
-                                        }
-                                        cx.notify();
-                                    })),
-                            )
-                            .child(div().flex_1().truncate().child(card.board.title.clone()))
-                            .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                                format!(
-                                    "{} · {}",
-                                    physical_label(&card.board),
-                                    pixel_label(&card.board)
-                                ),
-                            ))
-                            .child(
-                                Button::new(format!("open-page-{id}"))
-                                    .ghost()
-                                    .compact()
-                                    .label("编辑")
-                                    .on_click(
-                                        cx.listener(move |view, _, _, cx| view.open_page(&id, cx)),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .id(format!("page-open-preview-{}", card.board.id))
-                            .border_1()
-                            .border_color(rgb(if selected {
-                                theme::accent()
-                            } else {
-                                theme::separator()
-                            }))
-                            .child(page_preview(&card, width - 18.))
-                            .on_click(cx.listener({
-                                let id = card.board.id.clone();
-                                move |view, _, _, cx| view.open_page(&id, cx)
-                            })),
-                    ),
-            );
-        }
-        div()
-            .flex_1()
-            .min_h_0()
-            .v_flex()
-            .child(grid)
-            .child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .gap_3()
-                    .p_3()
-                    .border_t_1()
-                    .border_color(rgb(theme::separator()))
-                    .child(format!("已选 {} 页", self.selected_pages.len()))
-                    .child(div().flex_1())
-                    .child(
-                        Button::new("export-image-format")
-                            .ghost()
-                            .label(if self.image_export_jpeg {
-                                "JPEG"
-                            } else {
-                                "PNG"
-                            })
-                            .on_click(cx.listener(|view, _, _, cx| {
-                                view.image_export_jpeg = !view.image_export_jpeg;
-                                cx.notify();
-                            })),
-                    )
-                    .child(
-                        Button::new("export-selected-images")
-                            .outline()
-                            .label("导出选中页为图片")
-                            .disabled(self.busy || self.selected_pages.is_empty())
-                            .on_click(cx.listener(|view, _, _, cx| view.export_catalog(true, cx))),
-                    )
-                    .child(
-                        Button::new("export-all-pages")
-                            .primary()
-                            .label("导出全部为 PDF")
-                            .disabled(self.busy || self.boards_view.is_empty())
-                            .on_click(cx.listener(|view, _, _, cx| view.export_catalog(false, cx))),
-                    ),
-            )
-            .into_any_element()
-    }
-
     pub(super) fn open_page(&mut self, id: &str, cx: &mut ViewContext<Self>) {
         for card in &mut self.boards_view {
             if card.board.id != id {
@@ -471,6 +348,10 @@ impl WorkCratePanel {
                 card.sources.clear();
             }
         }
+        self.selected_text = None;
+        self.text_editor = None;
+        self.text_gesture = None;
+        self.text_images.clear();
         self.selected_board = Some(id.into());
         self.gesture = None;
         self.crop_mode = false;

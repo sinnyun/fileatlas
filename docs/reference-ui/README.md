@@ -20,7 +20,7 @@
 | 文件暂存篮 | [网格卡片与拖放概念](concepts/file-staging-grid-drag-2026-10-20.png) | [面板清单](concepts/file-staging-basket-2026-10-20.md)、[插件端口与限制](../../crates/fileatlas-plugin-file-staging/PORTS.md)：图片缩略图与标题为主；拖到文件夹按默认行为移动，复制通过显式操作 |
 | WorkCrate 项目管理 | [项目管理概念](concepts/workcrate-projects-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：项目卡片只显示标题与主图，提供项目完整管理操作。 |
 | WorkCrate 页面管理 | [页面管理概念](concepts/workcrate-pages-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：项目内三列页面、选中页图片导出、全部页 PDF，默认 A3 横向。 |
-| WorkCrate 页面编辑 | [页面编辑概念](concepts/workcrate-editor-concept-2026-10-20.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：左侧页面缩略图、中部固定 A3（信息条 + 图片区）、右侧页面信息/内容/链接图片；[简化排版语义](concepts/workcrate-simple-layout-2026-10-20.md)覆盖旧尺寸调整/整页平移，尺寸仅作标记；[用户原稿](concepts/workcrate-editor-user-2026-10-20.png)决定业务结构，框线只作区域说明。 |
+| WorkCrate 页面编辑 | [页面编辑概念](concepts/workcrate-editor-concept-2026-10-20.png)；右侧面板细化见[检查器概念](concepts/workcrate-inspector-2026-10-21.png) | [三层清单](concepts/workcrate-three-level-2026-10-20.md)：左侧页面缩略图、中部固定 A3（信息条 + 图片区）、右侧页面信息/内容/链接图片；[简化排版语义](concepts/workcrate-simple-layout-2026-10-20.md)覆盖旧尺寸调整/整页平移，尺寸仅作标记；[用户原稿](concepts/workcrate-editor-user-2026-10-20.png)决定业务结构，框线只作区域说明；[文本与字段扩展](concepts/workcrate-editing-tools-2026-10-20.md)及[配套概念](concepts/workcrate-editing-tools-2026-10-20.png)补充多行文本、预设和多选。2026-10-21 按用户要求加入画布直接输入/拖选、自动局部保存、原生文本属性、即时预设菜单，并使右侧字段/图片/文本操作保留当前页与图片纹理。 |
 
 这是活动参考导航，不是功能完成清单。实际实现、截图和验证边界记录于
 [redesign-validation.md](../redesign-validation.md) 与其中链接的 `validation-ui/` 证据。

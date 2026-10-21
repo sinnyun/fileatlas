@@ -136,8 +136,15 @@ impl Plugin for WorkCrateUiPlugin {
             },
         )
         .map_err(plugin_error)?;
-        fileatlas_ui_bridge::register_views_for_plugin(&context, OWNER, [sidebar_button(panels)])
-            .map_err(plugin_error)?;
+        fileatlas_ui_bridge::register_views_for_plugin(
+            &context,
+            OWNER,
+            [
+                sidebar_button(panels),
+                settings::contribution(projects, bridge.surfaces.clone()),
+            ],
+        )
+        .map_err(plugin_error)?;
         Ok(())
     }
 }
@@ -196,4 +203,5 @@ impl Render for WorkCrateSidebarButton {
 }
 
 mod mcp;
+mod settings;
 mod view;

@@ -131,6 +131,16 @@ impl WorkCratePanel {
                 &self.surfaces,
             ))
             .child(super::tracking::control(
+                "canvas-add-text",
+                Button::new("canvas-add-text")
+                    .outline()
+                    .compact()
+                    .label("添加文本")
+                    .disabled(self.busy)
+                    .on_click(cx.listener(|view, _, _, cx| view.add_canvas_text(cx))),
+                &self.surfaces,
+            ))
+            .child(super::tracking::control(
                 "canvas-add-image",
                 Button::new("canvas-add-image")
                     .primary()
@@ -200,6 +210,16 @@ impl WorkCratePanel {
                 pictures =
                     pictures.child(self.image_frame(&card, asset, &layout, fit, header, false, cx));
             }
+        }
+        for id in board.texts.keys() {
+            pictures = pictures.child(self.text_layer(board, id, fit, header, false, cx));
+        }
+        if let Some(id) = self
+            .selected_text
+            .as_ref()
+            .filter(|id| board.texts.contains_key(*id))
+        {
+            pictures = pictures.child(self.text_layer(board, id, fit, header, true, cx));
         }
         if let Some(asset) = self.selected_image.as_ref() {
             if let Ok(layout) = board.image_layout(asset) {
@@ -368,15 +388,22 @@ impl WorkCratePanel {
             .on_mouse_move(cx.listener(|view, event: &gpui::MouseMoveEvent, _, cx| {
                 if event.dragging() {
                     view.move_image_gesture(event.position, cx);
+                    view.move_text_gesture(event.position, cx);
                 }
             }))
             .on_mouse_up(
                 gpui::MouseButton::Left,
-                cx.listener(|view, _, _, cx| view.end_image_gesture(cx)),
+                cx.listener(|view, _, window, cx| {
+                    view.end_image_gesture(cx);
+                    view.end_text_gesture(window, cx);
+                }),
             )
             .on_mouse_up_out(
                 gpui::MouseButton::Left,
-                cx.listener(|view, _, _, cx| view.end_image_gesture(cx)),
+                cx.listener(|view, _, window, cx| {
+                    view.end_image_gesture(cx);
+                    view.end_text_gesture(window, cx);
+                }),
             )
             .into_any_element()
     }

@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) fn measure(
+pub(crate) fn measure(
     id: &str,
     surfaces: Arc<fileatlas_ui_bridge::UiSurfaceState>,
 ) -> impl IntoElement {
@@ -26,7 +26,7 @@ pub(super) fn measure(
     .size_full()
 }
 
-pub(super) fn control(
+pub(crate) fn control(
     id: &str,
     element: impl IntoElement,
     surfaces: &Arc<fileatlas_ui_bridge::UiSurfaceState>,

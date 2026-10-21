@@ -127,6 +127,10 @@ impl WorkCrateBoardsService {
             let mut session = Session::new();
             session.add_document(DocState::new(board.source.clone(), None));
             session.execute("selection.set", &json!({"ids":[item]}))?;
+            session.execute(
+                "object.fittingOptions",
+                &json!({"ids":[item],"align":4,"crop":0}),
+            )?;
             session.execute("transform.move", &json!({"ids":[item],"dx":dx,"dy":dy}))?;
             session.execute(
                 "transform.scale",
@@ -192,30 +196,27 @@ impl WorkCrateBoardsService {
                 "links.relink",
                 &json!({"asset":key.0,"path":path.to_string_lossy()}),
             )?;
-            if (w as f64 / h as f64 - placement.pixel_width as f64 / placement.pixel_height as f64)
-                .abs()
-                > 1e-6
-            {
-                let mut doc = session
-                    .active()
-                    .ok_or(BoardsError::NoDocument)?
-                    .doc
-                    .as_ref()
-                    .clone();
-                let item = placement.item_id.ok_or(BoardsError::PlacedAssetMissing)?;
-                if let Some(item) = doc.item_mut(designcraft_doc::ItemId(item)) {
-                    if let designcraft_doc::Content::Graphic(graphic) = &mut item.content {
-                        graphic.size = (w as f64, h as f64);
-                    }
+            // Always set the new natural pixel size, then let DesignCraft cover the
+            // unchanged frame proportionally, including previously cropped frames.
+            let mut doc = session
+                .active()
+                .ok_or(BoardsError::NoDocument)?
+                .doc
+                .as_ref()
+                .clone();
+            let item = placement.item_id.ok_or(BoardsError::PlacedAssetMissing)?;
+            if let Some(item) = doc.item_mut(designcraft_doc::ItemId(item)) {
+                if let designcraft_doc::Content::Graphic(graphic) = &mut item.content {
+                    graphic.size = (w as f64, h as f64);
                 }
-                session = Session::new();
-                session.add_document(DocState::new(doc, None));
-                session.execute("selection.set", &json!({"ids":[item]}))?;
-                session.execute(
-                    "object.fit",
-                    &json!({"ids":[item],"mode":"fillProportionally"}),
-                )?;
             }
+            session = Session::new();
+            session.add_document(DocState::new(doc, None));
+            session.execute("selection.set", &json!({"ids":[item]}))?;
+            session.execute(
+                "object.fit",
+                &json!({"ids":[item],"mode":"fillProportionally"}),
+            )?;
             board.source = session
                 .active()
                 .ok_or(BoardsError::NoDocument)?
