@@ -1,5 +1,6 @@
 //! WorkCrate preferences use shared SettingsPage forms and project-owned JSON.
 use crate::view::tracking::control;
+use fileatlas_plugin_workcrate_boards::WorkCrateBoardsService;
 use fileatlas_plugin_workcrate_projects::{FieldPreset, FieldPresets, WorkCrateProjectsService};
 use fileatlas_ui_bridge::{
     UiSurfaceState, UiViewContribution, components, settings_page::*, theme,
@@ -21,18 +22,26 @@ struct DraftField {
 }
 struct PresetSettings {
     service: Arc<WorkCrateProjectsService>,
+    boards: Arc<WorkCrateBoardsService>,
     surfaces: Arc<UiSurfaceState>,
     fields: Vec<DraftField>,
     name: Entity<InputState>,
+    executable: Entity<InputState>,
+    port: Entity<InputState>,
+    config_busy: bool,
+    config_saved: bool,
+    config_error: Option<String>,
     busy: bool,
     error: Option<String>,
     saved: bool,
     auto_pending: bool,
     _subscriptions: Vec<Subscription>,
+    _config_subscriptions: Vec<Subscription>,
 }
 
 pub(super) fn contribution(
     service: Arc<WorkCrateProjectsService>,
+    boards: Arc<WorkCrateBoardsService>,
     surfaces: Arc<UiSurfaceState>,
 ) -> UiViewContribution {
     UiViewContribution::new(
@@ -41,7 +50,12 @@ pub(super) fn contribution(
         0,
         move |window, app| {
             let stored = service.field_presets().unwrap_or_default();
+            let config_result = boards.configuration();
+            let config_error = config_result.as_ref().err().map(ToString::to_string);
+            let config = config_result.unwrap_or_default();
             let name = app.new(|cx| InputState::new(window, cx).placeholder("例如：制作工艺"));
+            let executable = input(config.executable, window, app);
+            let port = input(config.port.to_string(), window, app);
             let fields = stored
                 .fields
                 .into_iter()
@@ -58,25 +72,30 @@ pub(super) fn contribution(
             app.new(|cx| {
                 let mut view = PresetSettings {
                     service: service.clone(),
+                    boards: boards.clone(),
                     surfaces: surfaces.clone(),
                     fields,
                     name,
+                    executable,
+                    port,
+                    config_busy: false,
+                    config_saved: config_error.is_none(),
+                    config_error,
                     busy: false,
                     error: None,
                     saved: false,
                     auto_pending: false,
                     _subscriptions: vec![],
+                    _config_subscriptions: vec![],
                 };
                 view.subscribe_values(cx);
+                view.subscribe_config(cx);
                 view
             })
             .into()
         },
     )
-    .with_settings_page(
-        "WorkCrate 字段预设",
-        "配置页面内容字段及每个字段的多项默认信息。",
-    )
+    .with_settings_page("WorkCrate", "配置官方 VectorCraft 程序与页面字段预设。")
 }
 fn input(value: String, window: &mut Window, app: &mut App) -> Entity<InputState> {
     app.new(|cx| {
@@ -86,6 +105,38 @@ fn input(value: String, window: &mut Window, app: &mut App) -> Entity<InputState
     })
 }
 impl PresetSettings {
+    fn program_action(
+        &self,
+        id: &'static str,
+        label: &str,
+        primary: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        let measure = match id {
+            "browse" => "settings-vectorcraft-browse",
+            _ => "settings-vectorcraft-save",
+        };
+        let mut button = Button::new(format!("settings-vectorcraft-{id}"))
+            .label(label.to_owned())
+            .disabled(self.config_busy);
+        button = if primary {
+            button.primary()
+        } else {
+            button.ghost()
+        };
+        control(
+            measure,
+            button.on_click(cx.listener(move |view, _, window, cx| {
+                if id == "browse" {
+                    view.browse_executable(window, cx);
+                } else {
+                    view.save_config(cx);
+                }
+            })),
+            &self.surfaces,
+        )
+        .into_any_element()
+    }
     fn action(
         &self,
         id: String,
@@ -161,6 +212,78 @@ impl PresetSettings {
             }
         }
     }
+    fn subscribe_config(&mut self, cx: &mut Context<Self>) {
+        self._config_subscriptions = [self.executable.clone(), self.port.clone()]
+            .into_iter()
+            .map(|input| {
+                cx.subscribe(&input, |view, _, event, cx| {
+                    if matches!(event, InputEvent::Change) {
+                        view.config_error = None;
+                        view.config_saved = false;
+                        cx.notify();
+                    }
+                })
+            })
+            .collect();
+    }
+    fn save_config(&mut self, cx: &mut Context<Self>) {
+        let executable = self.executable.read(cx).value().trim().to_owned();
+        let Ok(port) = self.port.read(cx).value().trim().parse::<u16>() else {
+            self.config_error = Some("端口应为 1–65535".into());
+            self.config_saved = false;
+            cx.notify();
+            return;
+        };
+        if port == 0 {
+            self.config_error = Some("端口应为 1–65535".into());
+            self.config_saved = false;
+            cx.notify();
+            return;
+        }
+        let boards = self.boards.clone();
+        self.config_busy = true;
+        self.config_error = None;
+        self.config_saved = false;
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let mut config = boards.configuration().map_err(|e| e.to_string())?;
+                    config.executable = executable;
+                    config.port = port;
+                    boards.configure(config).map_err(|e| e.to_string())
+                })
+                .await;
+            let _ = this.update(cx, |view, cx| {
+                view.config_busy = false;
+                view.config_saved = result.is_ok();
+                view.config_error = result.err();
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+    fn browse_executable(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        cx.spawn_in(window, async move |this, cx| {
+            let picked = rfd::AsyncFileDialog::new()
+                .add_filter("VectorCraft 程序", &["exe"])
+                .pick_file()
+                .await;
+            if let Some(file) = picked {
+                let path = file.path().to_string_lossy().into_owned();
+                let _ = cx.update(|window, app| {
+                    let _ = this.update(app, |view, cx| {
+                        view.executable
+                            .update(cx, |input, cx| input.set_value(path, window, cx));
+                        view.config_error = None;
+                        view.config_saved = false;
+                        cx.notify();
+                    });
+                });
+            }
+        })
+        .detach();
+    }
     fn snapshot(&self, cx: &Context<Self>) -> FieldPresets {
         FieldPresets {
             version: 1,
@@ -235,7 +358,57 @@ impl PresetSettings {
 }
 impl Render for PresetSettings {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let mut sections = Vec::new();
+        let executable = div()
+            .h_flex()
+            .items_center()
+            .gap_2()
+            .child(
+                control(
+                    "settings-vectorcraft-executable",
+                    components::text_input(&self.executable).w_full(),
+                    &self.surfaces,
+                )
+                .flex_1()
+                .min_w_0(),
+            )
+            .child(self.program_action("browse", "浏览…", false, cx));
+        let mut sections = vec![SettingsSection::new(
+            "VectorCraft 程序",
+            vec![
+                SettingRow::new(
+                    "vectorcraft-executable",
+                    "程序路径",
+                    SettingControl::Custom(executable.into_any_element()),
+                )
+                .description(
+                    "后台任务默认使用同目录的 vectorcraft-cli.exe；保存路径不会启动程序。",
+                ),
+                SettingRow::new(
+                    "vectorcraft-port",
+                    "本机控制端口",
+                    SettingControl::Custom(
+                        control(
+                            "settings-vectorcraft-port",
+                            components::text_input(&self.port).w(px(180.)),
+                            &self.surfaces,
+                        )
+                        .into_any_element(),
+                    ),
+                )
+                .description("配置仅保存；浏览和保存设置不会连接端口或启动 VectorCraft。"),
+                SettingRow::new(
+                    "vectorcraft-save",
+                    "保存并应用",
+                    SettingControl::Custom(self.program_action("save", "保存程序设置", true, cx)),
+                )
+                .description(if self.config_saved {
+                    "程序设置已加载；保存后的配置会立即供后续后台任务使用。"
+                } else {
+                    "输入 1–65535 范围内的端口后保存。"
+                })
+                .error(self.config_error.clone()),
+            ],
+        )];
         for field in &self.fields {
             let mut choices = div().v_flex().w(px(320.)).max_w_full().gap_2();
             if field.values.is_empty() {

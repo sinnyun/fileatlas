@@ -1,5 +1,7 @@
 # FileAtlas Rust 版
 
+> WorkCrate 正按 2026-10-21 用户要求重构为官方 VectorCraft 编译程序的管理工作台：FileAtlas 提供项目文件关联、原生画板预览和通用物料栏表单；完整编辑、保存、渲染及图片/PDF 输出交给外部官方程序。架构、验证状态与当前限制见 [重构记录](docs/workcrate-vectorcraft-refactor.md)。
+
 本仓库是 FileAtlas 0.2 项目的 Rust 实现，运行在 Windows 桌面，由 Cordis 管理功能插件、GPUI Kit 提供原生界面。**FileAtlas 是个人文件浏览器与工作台管理器**：主工作区支持单栏、双栏、四栏，每栏可独立浏览目录和文件、筛选/搜索、排列、选择并滚动；程序工作区保存各栏启动状态。媒体索引、缩略图、标签和信息检查器是浏览器内的文件能力，QuickLook 负责普通文件预览。用户可按需扩展用途独立的工作台插件。后端数据语义继续沿用 `vendor/photag-source/` 中仍适用的实现；项目基线版本不等同于已发布应用版本，Cargo workspace 版本仍独立管理。
 
 ## FileAtlas 0.2 开发基线与下一阶段
@@ -87,3 +89,5 @@
 本机默认 `stable` 是 Rust 1.94.1，但已安装 1.96.0 和 1.97.1；项目要求 Rust ≥1.95。执行 Cargo 时请显式使用已安装的 `cargo +1.97.1 ...`，避免旧默认版本提前拦截。无需重复安装 Rust 或修改全局默认版本。具体命令见[本地工具链说明](docs/rust-toolchain.md)。
 
 迁移阶段的格式检查、锁定模式编译与自动化测试结论见[迁移期验证报告](docs/validation-report.md)，界面改动结论见[界面重构验证记录](docs/redesign-validation.md)。界面重构阶段的每轮改动仍需实际启动 Windows 应用验证；Windows 原生对话框、拖放、Shell 集成、编解码与系统级行为在完成实测前记为未验证。
+
+WorkCrate 后续调整：程序安装路径位于插件设置，项目文件使用选择的文件夹；项目和页面浏览使用本地缓存，后台官方 CLI 处理创建及导出，仅画布内容编辑启动官方 GUI。详见 [离线浏览计划](docs/superpowers/plans/2026-10-21-workcrate-offline-browser.md)。

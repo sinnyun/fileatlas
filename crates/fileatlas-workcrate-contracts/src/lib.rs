@@ -43,7 +43,8 @@ pub enum CanvasImageFormat {
     Png,
 }
 
-/// The first board baseline only places JPEG/JPG and PNG source images.
+/// Image formats accepted for user-selected covers and custom preview copies.
+/// Native document placement is delegated to VectorCraft's supported formats.
 pub fn canvas_image_format(path: &std::path::Path) -> Option<CanvasImageFormat> {
     match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
         "jpg" | "jpeg" => Some(CanvasImageFormat::Jpeg),
@@ -88,7 +89,7 @@ mod tests {
     use std::path::Path;
 
     #[test]
-    fn board_accepts_only_jpeg_and_png_extensions_case_insensitively() {
+    fn custom_previews_accept_jpeg_and_png_extensions_case_insensitively() {
         assert_eq!(
             canvas_image_format(Path::new("sample.jpg")),
             Some(CanvasImageFormat::Jpeg)

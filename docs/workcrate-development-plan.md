@@ -1,5 +1,7 @@
 # WorkCrate development plan
 
+> 2026-10-21：本文件记录旧实现历史，不再作为新的后端开发要求。当前工作是 [官方 VectorCraft 程序重构](workcrate-vectorcraft-refactor.md)：原生工程与其 Artboard 为唯一设计数据，FileAtlas 提供管理、预览和物料栏表单，不保留旧 DesignCraft/PdfCraft 实现或旧数据迁移。
+
 > 2026-10-20 最新用户澄清：页面固定 A3，只有页内信息条和下方图片排版区。
 > 页外尺寸字段是自由标记，不改变实际页面；图片仅移动、等比手柄缩放、可恢复裁剪。
 > 原图本地链接 + 独立 PSD 等扩展源文件链接；支持项目一键更新。

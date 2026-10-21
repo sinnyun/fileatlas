@@ -1,4 +1,4 @@
-use super::render::pixel_label;
+use super::preview::pixel_label;
 use super::*;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
@@ -16,14 +16,16 @@ impl WorkCratePanel {
                 .flex_1()
                 .min_w_0(),
             )
-            .child(
+            .child(super::tracking::control(
+                "field-edit-save",
                 Button::new("workcrate-edit-save")
                     .primary()
                     .compact()
                     .label("保存")
                     .disabled(self.busy)
                     .on_click(cx.listener(|view, _, _, cx| view.save_edit(cx))),
-            )
+                &self.surfaces,
+            ))
             .child(
                 Button::new("workcrate-edit-cancel")
                     .ghost()
@@ -168,11 +170,12 @@ impl WorkCratePanel {
                 super::preview::physical_label(board),
                 cx,
             ))
-            .child(
-                div()
-                    .text_xs()
-                    .child(format!("实际像素：{}", pixel_label(board))),
-            )
+            .child(div().text_xs().child(format!(
+                "画板尺寸：{:.1} × {:.1} pt · {}",
+                board.width_pt,
+                board.height_pt,
+                pixel_label(board)
+            )))
             .child(section("页面内容"));
         if let Some(error) = &card.error {
             inspector = inspector.child(
@@ -284,91 +287,9 @@ impl WorkCratePanel {
         if self.editing.as_ref() == Some(&(id.clone(), "new".into())) {
             inspector = inspector.child(self.edit_row(cx));
         }
-        inspector = inspector
-            .child(self.text_inspector(card, cx))
-            .child(section("页面图片"));
-        for (asset, placement) in &board.placements {
-            let selection = asset.clone();
-            let entry = div()
-                .id(format!("inspector-image-{asset}"))
-                .v_flex()
-                .gap_2()
-                .border_b_1()
-                .border_color(rgb(theme::separator()))
-                .py_3()
-                .child(
-                    div()
-                        .h_flex()
-                        .items_start()
-                        .gap_2()
-                        .child(
-                            card.sources
-                                .get(asset)
-                                .cloned()
-                                .map(|image| {
-                                    img(image)
-                                        .w(px(64.))
-                                        .h(px(76.))
-                                        .object_fit(ObjectFit::Contain)
-                                        .into_any_element()
-                                })
-                                .unwrap_or_else(|| {
-                                    div().w(px(64.)).child("预览不可用").into_any_element()
-                                }),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .v_flex()
-                                .gap_1()
-                                .child(div().truncate().child(file_name(&placement.path)))
-                                .child(div().text_xs().child(format!(
-                                    "{} × {} px",
-                                    placement.pixel_width, placement.pixel_height
-                                )))
-                                .child(
-                                    div().text_xs().truncate().child(
-                                        placement
-                                            .source_document
-                                            .as_ref()
-                                            .map(|p| file_name(p))
-                                            .unwrap_or_else(|| "未设置扩展源文件".into()),
-                                    ),
-                                ),
-                        ),
-                )
-                .on_click(cx.listener(move |view, _, _, cx| {
-                    view.selected_image = Some(selection.clone());
-                    cx.notify();
-                }));
-            let mut actions = div().h_flex().gap_1();
-            for (action, label) in [
-                ("refresh", "更新"),
-                ("replace", "替换图片"),
-                ("link", "扩展链接"),
-                ("edit-source", "编辑源文件"),
-            ] {
-                let asset = asset.clone();
-                let action = action.to_owned();
-                actions = actions.child(
-                    Button::new(format!("image-{action}-{asset}"))
-                        .ghost()
-                        .compact()
-                        .label(label)
-                        .disabled(self.busy)
-                        .on_click(cx.listener(move |view, _, _, cx| {
-                            view.image_action(asset.clone(), &action, cx)
-                        })),
-                );
-            }
-            let entry = entry.child(actions);
-            inspector = inspector.child(entry);
-        }
         inspector.into_any_element()
     }
 }
-
 fn section(label: &str) -> gpui::Div {
     div()
         .h_flex()
@@ -382,11 +303,4 @@ fn section(label: &str) -> gpui::Div {
                 .child(label.to_owned()),
         )
         .child(div().flex_1().h(px(1.)).bg(rgb(theme::separator())))
-}
-fn file_name(path: &str) -> String {
-    std::path::Path::new(path)
-        .file_name()
-        .unwrap_or_default()
-        .to_string_lossy()
-        .into_owned()
 }

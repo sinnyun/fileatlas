@@ -9,13 +9,8 @@ license.workspace = true
 cordis.workspace = true
 fileatlas-plugin-workcrate-boards = { path = "../fileatlas-plugin-workcrate-boards" }
 fileatlas-plugin-workcrate-projects = { path = "../fileatlas-plugin-workcrate-projects" }
-pdfcraft-create = { git = "https://github.com/storytold/pdfcraft", rev = "ec0a965074f376a5bf610435948e4e5184bf3299" }
-pdfcraft-cos = { git = "https://github.com/storytold/pdfcraft", rev = "ec0a965074f376a5bf610435948e4e5184bf3299" }
 thiserror.workspace = true
 tempfile = "3"
-png = "0.18"
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
-pdfcraft-organize = { git = "https://github.com/storytold/pdfcraft", rev = "ec0a965074f376a5bf610435948e4e5184bf3299" }
 
 [lints]
 workspace = true

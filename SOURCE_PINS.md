@@ -1,5 +1,7 @@
 # 源码基准版本
 
+> 2026-10-21：WorkCrate 不再使用 DesignCraft/PdfCraft 源库作为运行依赖。它通过本地控制协议调用用户配置的官方 VectorCraft 程序，本轮集成验证使用官方 Windows portable 0.14.0 并核对官方 SHA256。以下既有源码固定记录保留用于历史溯源，不应重新加入 WorkCrate 的 Cargo 依赖。
+
 以下上游提交共同构成本仓库的迁移基线。选定的 PhoTag 源码完整镜像位于 `vendor/photag-source/`。
 
 | 项目 | 地址 | 提交 | 用途 |

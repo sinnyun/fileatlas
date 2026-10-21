@@ -9,23 +9,14 @@ license.workspace = true
 cordis.workspace = true
 fileatlas-plugin-workcrate-projects = { path = "../fileatlas-plugin-workcrate-projects" }
 fileatlas-workcrate-contracts = { path = "../fileatlas-workcrate-contracts" }
-designcraft-engine = { git = "https://github.com/storytold/designcraft", rev = "443ea4640ca368fcf0241b04813bd3817acd5df8", default-features = false }
-designcraft-doc = { git = "https://github.com/storytold/designcraft", rev = "443ea4640ca368fcf0241b04813bd3817acd5df8" }
-designcraft-render = { git = "https://github.com/storytold/designcraft", rev = "443ea4640ca368fcf0241b04813bd3817acd5df8" }
-designcraft-compose = { git = "https://github.com/storytold/designcraft", rev = "443ea4640ca368fcf0241b04813bd3817acd5df8" }
-designcraft-geom = { git = "https://github.com/storytold/designcraft", rev = "443ea4640ca368fcf0241b04813bd3817acd5df8" }
 base64 = "0.22"
 serde.workspace = true
 serde_json.workspace = true
-sha2 = "0.10"
 thiserror.workspace = true
-uuid = { version = "1", features = ["v4"] }
-image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 tempfile = "3"
 
 [lints]
 workspace = true
 
 [dev-dependencies]
-image = { version = "0.25", default-features = false, features = ["png"] }
 tempfile = "3"

@@ -699,7 +699,7 @@ fn main() {
     if let Err(error) = runtime.block_on(plugin_runtime.register(
         "fileatlas.workcrate-boards",
         "WorkCrate Boards",
-        "Create image-only DesignCraft boards for project references.",
+        "Manage native VectorCraft documents and artboards through the official application.",
         vec![
             fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
             fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,
@@ -741,7 +741,7 @@ fn main() {
     if let Err(error) = runtime.block_on(plugin_runtime.register(
         "fileatlas.workcrate-export",
         "WorkCrate Export",
-        "Render source-resolution WorkCrate board pages to PDF.",
+        "Export native VectorCraft artboards as images and multi-page PDF through the official application.",
         vec![
             fileatlas_plugin_settings::PluginLaunchMode::WorkspaceAndPanel,
             fileatlas_plugin_settings::PluginLaunchMode::PanelOnly,

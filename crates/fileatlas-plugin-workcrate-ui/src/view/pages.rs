@@ -1,4 +1,4 @@
-use super::render::{page_preview, physical_label, pixel_label};
+use super::preview::{page_preview, physical_label, pixel_label};
 use super::*;
 impl WorkCratePanel {
     pub(super) fn render_pages(&mut self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
@@ -13,12 +13,21 @@ impl WorkCratePanel {
             .items_start()
             .gap(px(24.))
             .p(px(24.));
+        grid = grid.child(
+            div()
+                .w_full()
+                .text_xs()
+                .text_color(rgb(theme::text_muted()))
+                .child("本地预览 · 外部编辑保存后请同步"),
+        );
         if self.boards_view.is_empty() {
-            grid = grid.child(
-                div()
-                    .text_color(rgb(theme::text_muted()))
-                    .child("此项目还没有页面。新增页面后可添加 JPG / PNG 图片。"),
-            );
+            grid = grid.child(div().text_color(rgb(theme::text_muted())).child(
+                if self.document.is_some() {
+                    "本地没有画板目录。点击“同步工程与预览”读取，或新增 A3 页面。"
+                } else {
+                    "项目尚未关联 VectorCraft 工程。可关联已有工程，或新增 A3 页面。"
+                },
+            ));
         }
         let width = ((self.panel_content_size().0 - 96.) / 3.).max(210.) as f32;
         for card in self.boards_view.clone() {

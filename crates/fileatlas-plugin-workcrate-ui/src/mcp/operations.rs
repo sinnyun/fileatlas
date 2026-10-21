@@ -40,23 +40,34 @@ pub(super) fn tools(
         },
     );
     let p = Arc::clone(projects);
-    let b = Arc::clone(boards);
     let thumbnails = context
         .try_service::<fileatlas_plugin_thumbnails::ThumbnailService>()
         .map_err(|e| e.to_string())?;
+    let project_boards = Arc::clone(boards);
     let manage = tool(
         "manage_project",
         "Create, rename, duplicate, archive, restore or choose a project cover",
-        json!({"action":{"enum":["create","rename","duplicate","archive","restore","cover"]},"project_id":{"type":"string"},"name":{"type":"string"},"path":{"type":"string"}}),
+        json!({"action":{"enum":["create","rename","duplicate","archive","restore","cover"]},"project_id":{"type":"string"},"name":{"type":"string"},"path":{"type":"string"},"directory":{"type":"string"}}),
         vec!["action"],
         false,
         move |v| {
             let action = required(&v, "action")?;
             if action == "create" {
+                let directory = std::path::Path::new(required(&v, "directory")?);
+                if !directory.is_dir() {
+                    return Err("project directory does not exist".into());
+                }
                 let project = p
                     .create_project(required(&v, "name")?)
                     .map_err(|e| e.to_string())?;
-                return Ok(json!({"project":project}));
+                let catalog = match project_boards.create_project_document(&project.id, directory) {
+                    Ok(catalog) => catalog,
+                    Err(error) => {
+                        let _ = p.delete_project(&project.id);
+                        return Err(error.to_string());
+                    }
+                };
+                return Ok(json!({"project":project,"boards":catalog}));
             }
             let id = required(&v, "project_id")?;
             match action {
@@ -73,12 +84,19 @@ pub(super) fn tools(
                         .map_err(|e| e.to_string())?;
                 }
                 "duplicate" => {
+                    let directory = std::path::Path::new(required(&v, "directory")?);
+                    if !directory.is_dir() {
+                        return Err("project directory does not exist".into());
+                    }
                     let copy = p
-                        .duplicate_project(id, required(&v, "name")?)
+                        .duplicate_project_document(id, required(&v, "name")?, directory)
                         .map_err(|e| e.to_string())?;
-                    b.duplicate_project_pages(id, &copy.id)
-                        .map_err(|e| e.to_string())?;
-                    return Ok(json!({"project":copy}));
+                    let catalog = project_boards.refresh_project(&copy.id).map_err(|e| {
+                        format!(
+                            "project copied, but its native page cache could not be refreshed: {e}"
+                        )
+                    })?;
+                    return Ok(json!({"project":copy,"boards":catalog}));
                 }
                 _ => return Err("unsupported action".into()),
             }
@@ -100,6 +118,7 @@ pub(super) fn tools(
         },
     );
     let b = Arc::clone(boards);
+    let ui = Arc::clone(state);
     let create_page = tool(
         "create_page",
         "Create an A3 landscape page",
@@ -110,8 +129,9 @@ pub(super) fn tools(
             let board = b
                 .create_page(required(&v, "project_id")?)
                 .map_err(|e| e.to_string())?;
+            ui.request_catalog_refresh();
             Ok(
-                json!({"board_id":board.id,"info":board.info,"width_pt":board.source.settings.page_width,"height_pt":board.source.settings.page_height}),
+                json!({"board_id":board.id,"info":board.info,"width_pt":board.width_pt,"height_pt":board.height_pt}),
             )
         },
     );
@@ -138,9 +158,9 @@ pub(super) fn tools(
                 }
                 board.info = serde_json::from_value(value).map_err(|e| e.to_string())?;
             }
-            let saved = b
-                .update_info(&board.id, &board.title, board.info)
+            b.update_info(&board.id, &board.title, board.info.clone())
                 .map_err(|e| e.to_string())?;
+            let saved = board;
             ui.select_board(saved.project_id.clone(), saved.id.clone())?;
             ui.request_board_refresh();
             Ok(json!({"updated":true,"title":saved.title,"info":saved.info}))
@@ -148,12 +168,10 @@ pub(super) fn tools(
     );
     let b = Arc::clone(boards);
     let e = Arc::clone(exports);
-    let batch_ui = Arc::clone(state);
-    let batch_panels = Arc::clone(panels);
     let batch = tool(
         "export_pages",
         "Export ordered project pages to one PDF or an individual page to a PNG/JPEG",
-        json!({"project_id":{"type":"string"},"board_ids":{"type":"array","items":{"type":"string"}},"path":{"type":"string"},"format":{"enum":["pdf","image"]},"background":{"type":"boolean","default":false}}),
+        json!({"project_id":{"type":"string"},"board_ids":{"type":"array","items":{"type":"string"}},"path":{"type":"string"},"format":{"enum":["pdf","image"]}}),
         vec!["project_id", "board_ids", "path", "format"],
         true,
         move |v| {
@@ -174,15 +192,6 @@ pub(super) fn tools(
                 return Err("invalid page selection".into());
             }
             let path = std::path::Path::new(required(&v, "path")?);
-            if v["background"].as_bool().unwrap_or(false) {
-                batch_panels.open(PANEL).map_err(|e| e.to_string())?;
-                batch_ui.queue_export(
-                    ids,
-                    path.to_path_buf(),
-                    required(&v, "format")? == "image",
-                )?;
-                return Ok(json!({"queued":true}));
-            }
             if required(&v, "format")? == "pdf" {
                 let count = e.export_pages_pdf(&ids, path).map_err(|e| e.to_string())?;
                 Ok(json!({"exported":true,"page_count":count}))
@@ -197,60 +206,7 @@ pub(super) fn tools(
             }
         },
     );
-    let b = Arc::clone(boards);
-    let ui = Arc::clone(state);
-    let links = tool(
-        "image_links",
-        "Set an extended source-file link or refresh all linked images in a project",
-        json!({"action":{"enum":["link_source","refresh_project"]},"project_id":{"type":"string"},"board_id":{"type":"string"},"asset":{"type":"string"},"path":{"type":"string"}}),
-        vec!["action", "project_id"],
-        false,
-        move |v| {
-            let project = required(&v, "project_id")?;
-            let result = if required(&v, "action")? == "refresh_project" {
-                serde_json::to_value(
-                    b.refresh_project_images(project)
-                        .map_err(|e| e.to_string())?,
-                )
-                .map_err(|e| e.to_string())?
-            } else {
-                let board = required(&v, "board_id")?;
-                b.load_board(project, board).map_err(|e| e.to_string())?;
-                let path =
-                    std::fs::canonicalize(required(&v, "path")?).map_err(|e| e.to_string())?;
-                if !path.is_file() {
-                    return Err("source link must be a file".into());
-                }
-                b.link_source(
-                    board,
-                    required(&v, "asset")?,
-                    Some(path.to_string_lossy().into_owned()),
-                )
-                .map_err(|e| e.to_string())?;
-                json!({"linked":true})
-            };
-            if let Some((selected, board)) = ui.selected_board() {
-                if selected == project {
-                    if required(&v, "action")? == "refresh_project" {
-                        ui.request_catalog_refresh();
-                    } else {
-                        ui.select_board(selected, board)?;
-                        ui.request_board_refresh();
-                    }
-                }
-            }
-            Ok(result)
-        },
-    );
-    Ok(vec![
-        navigate,
-        manage,
-        delete,
-        create_page,
-        update,
-        batch,
-        links,
-    ])
+    Ok(vec![navigate, manage, delete, create_page, update, batch])
 }
 
 pub(super) fn required<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, String> {
@@ -270,5 +226,5 @@ pub(super) fn tool(
     handler: impl Fn(serde_json::Value) -> Result<serde_json::Value, String> + Send + Sync + 'static,
 ) -> McpToolDefinition {
     let handler = Arc::new(handler);
-    McpToolDefinition{name:format!("workcrate-ui.{name}"),title:title.into(),description:title.into(),input_schema:json!({"type":"object","properties":properties,"required":required,"additionalProperties":false}).as_object().cloned().unwrap_or_default(),mutating:true,confirmation_required:confirmation,handler:Arc::new(move|v|{let handler=Arc::clone(&handler);Box::pin(async move{handler(v)})})}
+    McpToolDefinition{name:format!("workcrate-ui.{name}"),title:title.into(),description:title.into(),input_schema:json!({"type":"object","properties":properties,"required":required,"additionalProperties":false}).as_object().cloned().unwrap_or_default(),mutating:true,confirmation_required:confirmation,handler:Arc::new(move|v|{let handler=Arc::clone(&handler);Box::pin(async move{tokio::task::spawn_blocking(move || handler(v)).await.map_err(|e|e.to_string())?})})}
 }

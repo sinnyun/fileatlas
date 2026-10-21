@@ -50,6 +50,10 @@ struct ProjectDocument {
     project_id: String,
     #[serde(default)]
     references: Vec<WorkCrateFileReference>,
+    #[serde(default)]
+    native_document: Option<PathBuf>,
+    #[serde(default)]
+    native_binding: String,
 }
 
 impl ProjectDocument {
@@ -58,6 +62,8 @@ impl ProjectDocument {
             version: FORMAT_VERSION,
             project_id,
             references: Vec::new(),
+            native_document: None,
+            native_binding: String::new(),
         }
     }
 }
@@ -121,6 +127,77 @@ impl WorkCrateProjectsService {
     pub fn project_directory(&self, project_id: &str) -> Result<PathBuf, WorkCrateProjectsError> {
         self.ensure_project(project_id)?;
         self.project_dir(project_id)
+    }
+    pub fn document_path(
+        &self,
+        project_id: &str,
+    ) -> Result<Option<PathBuf>, WorkCrateProjectsError> {
+        self.ensure_project(project_id)?;
+        Ok(self.read_project(project_id)?.native_document)
+    }
+    /// Persisted identity of one explicit native-document association.
+    pub fn document_binding(&self, project_id: &str) -> Result<String, WorkCrateProjectsError> {
+        let _gate = self
+            .write_gate
+            .write()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?;
+        self.ensure_project(project_id)?;
+        let mut document = self.read_project(project_id)?;
+        if document.native_document.is_none() {
+            return Err(WorkCrateProjectsError::Invalid(
+                "native document not associated",
+            ));
+        }
+        if document.native_binding.is_empty() {
+            document.native_binding = Uuid::new_v4().to_string();
+            self.write_project(&document)?;
+        }
+        Ok(document.native_binding)
+    }
+    pub fn set_document_path(
+        &self,
+        project_id: &str,
+        path: &Path,
+    ) -> Result<(), WorkCrateProjectsError> {
+        let canonical = std::fs::canonicalize(path)?;
+        if !canonical.is_file() {
+            return Err(WorkCrateProjectsError::NotAFile(canonical));
+        }
+        let _gate = self
+            .write_gate
+            .write()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?;
+        self.ensure_project(project_id)?;
+        let mut document = self.read_project(project_id)?;
+        document.native_document = Some(canonical);
+        document.native_binding = Uuid::new_v4().to_string();
+        self.write_project(&document)?;
+        self.changed();
+        Ok(())
+    }
+
+    /// Clear an association only when it still points to the document created by
+    /// the caller, so a failed create flow cannot undo a later user rebind.
+    pub fn clear_document_path_if_matches(
+        &self,
+        project_id: &str,
+        expected: &Path,
+    ) -> Result<(), WorkCrateProjectsError> {
+        let expected = std::fs::canonicalize(expected)?;
+        let _gate = self
+            .write_gate
+            .write()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?;
+        self.ensure_project(project_id)?;
+        let mut document = self.read_project(project_id)?;
+        if document.native_document.as_ref() != Some(&expected) {
+            return Ok(());
+        }
+        document.native_document = None;
+        document.native_binding.clear();
+        self.write_project(&document)?;
+        self.changed();
+        Ok(())
     }
     pub fn revision(&self) -> u64 {
         self.revision.load(Ordering::Acquire)

@@ -7,15 +7,7 @@ impl WorkCratePanel {
         value: String,
         cx: &mut ViewContext<Self>,
     ) {
-        let boards = self.boards.clone();
-        self.perform(
-            move || {
-                boards
-                    .update_content_field(&id, &key, &value)
-                    .map(|_| ())
-                    .map_err(|e| e.to_string())
-            },
-            cx,
-        );
+        self.editing = Some((id, key));
+        self.save_value(value, cx);
     }
 }
