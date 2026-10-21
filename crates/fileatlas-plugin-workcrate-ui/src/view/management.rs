@@ -78,24 +78,47 @@ impl WorkCratePanel {
                 },
                 cx,
             ),
-            "duplicate" => self.perform(
-                move || {
-                    let original = item.ok_or("项目不存在")?;
-                    let names = projects.projects(true).map_err(|e| e.to_string())?;
-                    let mut name = format!("{} 副本", original.name);
-                    let mut suffix = 2;
-                    while names.iter().any(|p| p.name == name) {
-                        name = format!("{} 副本 {suffix}", original.name);
-                        suffix += 1;
-                    }
-                    let copy = projects
-                        .duplicate_project(&id, &name)
-                        .map_err(|e| e.to_string())?;
-                    let _ = copy;
-                    Ok(())
-                },
-                cx,
-            ),
+            "duplicate" => {
+                let Some(original) = item else {
+                    self.message = Some("项目不存在".into());
+                    cx.notify();
+                    return;
+                };
+                let project_name = original.name;
+                let boards = self.boards.clone();
+                cx.spawn(async move |this, cx| {
+                    let Some(folder) = rfd::AsyncFileDialog::new().pick_folder().await else {
+                        return;
+                    };
+                    let directory = folder.path().to_path_buf();
+                    let _ = this.update(cx, |view, cx| {
+                        let projects = projects.clone();
+                        let boards = boards.clone();
+                        view.perform(
+                            move || {
+                                let names = projects.projects(true).map_err(|e| e.to_string())?;
+                                let mut name = format!("{project_name} 副本");
+                                let mut suffix = 2;
+                                while names.iter().any(|project| project.name == name) {
+                                    name = format!("{project_name} 副本 {suffix}");
+                                    suffix += 1;
+                                }
+                                let copy = projects
+                                    .duplicate_project_document(&id, &name, &directory)
+                                    .map_err(|e| e.to_string())?;
+                                boards
+                                    .refresh_project(&copy.id)
+                                    .map(|_| ())
+                                    .map_err(|error| {
+                                        format!("副本已创建，但同步画板与预览失败：{error}")
+                                    })
+                            },
+                            cx,
+                        )
+                    });
+                })
+                .detach();
+            }
             "cover" => {
                 let thumbnails = Arc::clone(&self.thumbnails);
                 cx.spawn(async move |this, cx| {

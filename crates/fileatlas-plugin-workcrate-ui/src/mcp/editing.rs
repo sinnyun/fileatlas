@@ -25,7 +25,7 @@ pub(super) fn tools(
     let configure = tool(
         "configure_vectorcraft",
         "Configure official VectorCraft executable and local control port",
-        json!({"executable":{"type":"string"},"port":{"type":"integer","minimum":1,"maximum":65535}}),
+        json!({"executable":{"type":"string"},"cli_executable":{"type":"string"},"port":{"type":"integer","minimum":1,"maximum":65535}}),
         vec!["executable", "port"],
         false,
         move |v| {
@@ -36,18 +36,19 @@ pub(super) fn tools(
         },
     );
     let b = boards.clone();
-    let connect_ui = state.clone();
-    let connect = tool(
-        "connect_vectorcraft",
-        "Connect to or launch official VectorCraft",
-        json!({}),
-        vec![],
+    let refresh_ui = state.clone();
+    let refresh = tool(
+        "refresh_project",
+        "Synchronize saved native document and local previews without opening the editor",
+        json!({"project_id":{"type":"string"}}),
+        vec!["project_id"],
         false,
-        move |_| {
-            let result = b.connect().map_err(|e| e.to_string());
-            connect_ui.set_connection(result.is_ok());
-            connect_ui.request_catalog_refresh();
-            result
+        move |v| {
+            let catalog = b
+                .refresh_project(required(&v, "project_id")?)
+                .map_err(|e| e.to_string())?;
+            refresh_ui.request_catalog_refresh();
+            Ok(json!({"refreshed":true,"boards":catalog}))
         },
     );
     let b = boards.clone();
@@ -83,20 +84,5 @@ pub(super) fn tools(
             Ok(json!({"opened":true}))
         },
     );
-    let b = boards.clone();
-    let save_ui = state.clone();
-    let save = tool(
-        "save_project",
-        "Save the associated native VectorCraft document",
-        json!({"project_id":{"type":"string"}}),
-        vec!["project_id"],
-        true,
-        move |v| {
-            b.save_project(required(&v, "project_id")?)
-                .map_err(|e| e.to_string())?;
-            save_ui.request_board_refresh();
-            Ok(json!({"saved":true}))
-        },
-    );
-    vec![presets, configure, connect, attach, editor, save]
+    vec![presets, configure, refresh, attach, editor]
 }

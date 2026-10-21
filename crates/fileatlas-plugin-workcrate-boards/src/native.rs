@@ -1,4 +1,5 @@
 use super::*;
+use crate::protocol::NativeProtocol;
 pub(crate) fn split_id(id: &str) -> Result<(&str, u64), BoardsError> {
     let (project, remainder) = id
         .split_once(':')
@@ -100,7 +101,7 @@ fn open_document(c: &mut Client, path: &Path, force: bool) -> Result<(), BoardsE
     Ok(())
 }
 pub(crate) fn catalog(
-    c: &mut Client,
+    c: &mut impl NativeProtocol,
     project: &str,
     binding: &str,
 ) -> Result<Vec<WorkCrateBoard>, BoardsError> {
@@ -164,7 +165,7 @@ pub(crate) fn catalog(
     Ok(out)
 }
 pub(crate) type Fields = BTreeMap<u64, BTreeMap<String, (u64, String)>>;
-pub(crate) fn header_fields(c: &mut Client) -> Result<Fields, BoardsError> {
+pub(crate) fn header_fields(c: &mut impl NativeProtocol) -> Result<Fields, BoardsError> {
     extract_fields(&c.execute("document.json", json!({}))?)
 }
 pub(crate) fn extract_fields(document: &Value) -> Result<Fields, BoardsError> {

@@ -1,41 +1,24 @@
 use super::*;
+use crate::protocol::NativeProtocol;
 impl WorkCrateBoardsService {
     pub fn create_page(&self, project: &str) -> Result<WorkCrateBoard, BoardsError> {
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
-        let mut c = self.client()?;
+        let path = self
+            .document_path(project)?
+            .ok_or(BoardsError::NoDocument)?;
+        self.refuse_if_gui_has_document(project, true)?;
+        let binding = self.projects.document_binding(project)?;
+        let mut c =
+            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_file(&path)?;
         let w = 420. * 72. / 25.4;
         let h = 297. * 72. / 25.4;
-        if let Some(path) = self.document_path(project)? {
-            native::open_safely(&mut c, &path)?;
-            native::assert_path(&mut c, &path)?;
-            c.execute(
-                "artboard.new",
-                json!({"width":w,"height":h,"name":"未命名页面"}),
-            )?;
-        } else {
-            let directory = self.projects.project_directory(project)?;
-            let inspect = native::inspect_optional(&mut c)?;
-            if inspect.as_ref().is_some_and(|i| i["dirty"] == true) {
-                return Err(BoardsError::DirtyDocument);
-            }
-            c.execute(
-                "file.new",
-                json!({"name":"WorkCrate","width":w,"height":h,"units":"Points","artboards":1,"backgroundContents":"white"}),
-            )?;
-            let path = directory.join("document.vectorcraft");
-            c.request("app.save", json!({"path":path}))?;
-            wait_output(&mut c, &path)?;
-            self.projects.set_document_path(project, &path)?;
-        }
-        native::assert_path(
-            &mut c,
-            &self
-                .document_path(project)?
-                .ok_or(BoardsError::NoDocument)?,
+        c.execute(
+            "artboard.new",
+            json!({"width":w,"height":h,"name":"未命名页面"}),
         )?;
-        let board = native::catalog(&mut c, project, &self.projects.document_binding(project)?)?
-            .pop()
-            .ok_or(BoardsError::NoDocument)?;
+        let mut boards = native::catalog(&mut c, project, &binding)?;
+        let board = boards.pop().ok_or(BoardsError::NoDocument)?;
         self.write_info(
             &mut c,
             &board,
@@ -45,28 +28,38 @@ impl WorkCrateBoardsService {
                 ..Default::default()
             },
         )?;
-        let path = self
-            .document_path(project)?
-            .ok_or(BoardsError::NoDocument)?;
-        c.request("app.save", json!({"path":path}))?;
-        wait_output(&mut c, &path)?;
+        c.save_file(&path)?;
+        let _ = self.refresh_cache_from_client(&mut c, project, binding)?;
         Ok(board)
     }
     pub fn update_info(&self, id: &str, title: &str, info: PageInfo) -> Result<(), BoardsError> {
+        let (project, _) = native::split_id(id)?;
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
-        let mut c = self.client()?;
-        let b = self.target(&mut c, id)?;
-        self.write_info(&mut c, &b, title, info)?;
         let path = self
-            .document_path(&b.project_id)?
+            .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        native::assert_path(&mut c, &path)?;
-        c.request("app.save", json!({"path":path}))?;
-        wait_output(&mut c, &path)
+        self.refuse_if_gui_has_document(project, true)?;
+        let binding = self.projects.document_binding(project)?;
+        if id.split(':').nth(1) != Some(binding.as_str()) {
+            return Err(BoardsError::Invalid(
+                "native document association changed; refresh pages".into(),
+            ));
+        }
+        let mut c =
+            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_file(&path)?;
+        let b = native::catalog(&mut c, project, &binding)?
+            .into_iter()
+            .find(|b| b.id == id)
+            .ok_or_else(|| BoardsError::BoardNotFound(id.into()))?;
+        self.write_info(&mut c, &b, title, info)?;
+        c.save_file(&path)?;
+        self.refresh_cache_from_client(&mut c, project, binding)?;
+        Ok(())
     }
-    fn write_info(
+    pub(crate) fn write_info(
         &self,
-        c: &mut Client,
+        c: &mut impl NativeProtocol,
         b: &WorkCrateBoard,
         title: &str,
         info: PageInfo,
@@ -231,12 +224,17 @@ impl WorkCrateBoardsService {
         let path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
-        let mut c = self.client()?;
-        native::assert_path(&mut c, &path)?;
-        c.request("app.save", json!({"path":path}))?;
-        wait_output(&mut c, &path)
+        self.refuse_if_gui_has_document(project, true)?;
+        let binding = self.projects.document_binding(project)?;
+        let mut c =
+            self.headless_client(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
+        c.open_file(&path)?;
+        c.save_file(&path)?;
+        self.refresh_cache_from_client(&mut c, project, binding)?;
+        Ok(())
     }
     pub fn open_editor(&self, id: &str) -> Result<(), BoardsError> {
+        self.connect()?;
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
         let mut c = self.client()?;
         let b = self.target(&mut c, id)?;
@@ -245,42 +243,37 @@ impl WorkCrateBoardsService {
         Ok(())
     }
     pub fn render_preview(&self, id: &str, max_width: u32) -> Result<PathBuf, BoardsError> {
-        let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
-        let mut c = self.client()?;
-        let b = self.target(&mut c, id)?;
-        let inspect = c.request("document.inspect", json!({"depth":0}))?;
-        let rev = inspect["revision"]
-            .as_u64()
-            .ok_or_else(|| BoardsError::Protocol("revision missing".into()))?;
-        let pixels = max_width.clamp(64, 2048);
-        let scale = (pixels as f64 / b.width_pt).min(2048. / b.height_pt);
-        let dir = self
-            .projects
-            .project_directory(&b.project_id)?
-            .join("native-previews");
-        std::fs::create_dir_all(&dir)?;
-        use std::hash::{Hash, Hasher};
-        let source = self
-            .document_path(&b.project_id)?
-            .ok_or(BoardsError::NoDocument)?;
-        let metadata = std::fs::metadata(&source)?;
-        let mut hash = std::collections::hash_map::DefaultHasher::new();
-        source.hash(&mut hash);
-        metadata.len().hash(&mut hash);
-        metadata.modified()?.hash(&mut hash);
-        let path = dir.join(format!(
-            "{}-{}-{rev}-{pixels}.png",
-            b.native_id,
-            hash.finish()
-        ));
-        if !path.is_file() {
-            c.request(
-                "ui.render",
-                json!({"artboard":b.index,"scale":scale,"path":path}),
-            )?;
-            wait_output(&mut c, &path)?;
+        let (project, _) = native::split_id(id)?;
+        let cache = self
+            .read_cache(project)?
+            .ok_or_else(|| BoardsError::PreviewUnavailable(id.into()))?;
+        let candidates = cache
+            .previews
+            .iter()
+            .filter_map(|(key, relative)| {
+                let (board_id, width) = key.rsplit_once('@')?;
+                if board_id != id {
+                    return None;
+                }
+                width.parse::<u32>().ok().map(|width| (width, relative))
+            })
+            .collect::<Vec<_>>();
+        let requested = max_width.clamp(64, 2048);
+        let (_, relative) = candidates
+            .iter()
+            .filter(|(width, _)| *width >= requested)
+            .min_by_key(|(width, _)| *width)
+            .or_else(|| candidates.iter().max_by_key(|(width, _)| *width))
+            .ok_or_else(|| BoardsError::PreviewUnavailable(id.into()))?;
+        let root = self.projects.project_directory(project)?;
+        let root_canonical = std::fs::canonicalize(&root)?;
+        let preview = std::fs::canonicalize(root.join(relative))?;
+        if !preview.starts_with(root_canonical) {
+            return Err(BoardsError::Invalid(
+                "cached preview outside project".into(),
+            ));
         }
-        Ok(path)
+        Ok(preview)
     }
     pub fn place_reference(
         &self,
@@ -326,8 +319,25 @@ impl WorkCrateBoardsService {
         placement: Option<(f64, f64, f64)>,
     ) -> Result<(), BoardsError> {
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
-        let mut c = self.client()?;
-        let b = self.target(&mut c, id)?;
+        let (project, _) = native::split_id(id)?;
+        let native_path = self
+            .document_path(project)?
+            .ok_or(BoardsError::NoDocument)?;
+        self.refuse_if_gui_has_document(project, true)?;
+        let binding = self.projects.document_binding(project)?;
+        if id.split(':').nth(1) != Some(binding.as_str()) {
+            return Err(BoardsError::Invalid(
+                "native document association changed; refresh pages".into(),
+            ));
+        }
+        let source = std::fs::canonicalize(path)?;
+        let reads = vec![native_path.clone(), source.clone()];
+        let mut c = self.headless_client(&reads, std::slice::from_ref(&native_path))?;
+        c.open_file(&native_path)?;
+        let b = native::catalog(&mut c, project, &binding)?
+            .into_iter()
+            .find(|b| b.id == id)
+            .ok_or_else(|| BoardsError::BoardNotFound(id.into()))?;
         let i = c.request("document.inspect", json!({"depth":0}))?;
         let r = &i["artboards"][b.index];
         let x = r["x"].as_f64().unwrap_or(0.);
@@ -335,17 +345,14 @@ impl WorkCrateBoardsService {
         let (px, py, w) = placement.unwrap_or((24., 128., b.width_pt - 48.));
         let result = c.execute(
             "file.place",
-            json!({"path":path,"rect":[x+px,y+py,w,(b.height_pt-py-24.).max(1.)]}),
+            json!({"path":source,"rect":[x+px,y+py,w,(b.height_pt-py-24.).max(1.)]}),
         )?;
         if result.is_null() {
             return Err(BoardsError::Invalid("placement pending dialog".into()));
         }
-        let path = self
-            .document_path(&b.project_id)?
-            .ok_or(BoardsError::NoDocument)?;
-        native::assert_path(&mut c, &path)?;
-        c.request("app.save", json!({"path":path}))?;
-        wait_output(&mut c, &path)
+        c.save_file(&native_path)?;
+        self.refresh_cache_from_client(&mut c, project, binding)?;
+        Ok(())
     }
     pub fn export_native(
         &self,
@@ -357,11 +364,33 @@ impl WorkCrateBoardsService {
         let first = ids
             .first()
             .ok_or_else(|| BoardsError::Invalid("empty selection".into()))?;
-        let mut c = self.client()?;
-        let b = self.target(&mut c, first)?;
+        let (project, _) = native::split_id(first)?;
+        self.refuse_if_gui_has_document(project, false)?;
+        let native_path = self
+            .document_path(project)?
+            .ok_or(BoardsError::NoDocument)?;
+        let binding = self.projects.document_binding(project)?;
+        let mut c = self.headless_client(
+            std::slice::from_ref(&native_path),
+            &[path.parent().unwrap_or(Path::new(".")).to_owned()],
+        )?;
+        c.open_file(&native_path)?;
+        let b = native::catalog(&mut c, project, &binding)?
+            .into_iter()
+            .find(|b| b.id == *first)
+            .ok_or_else(|| BoardsError::BoardNotFound(first.clone()))?;
         let mut indices = Vec::new();
         for id in ids {
-            let target = self.target(&mut c, id)?;
+            let (other_project, _) = native::split_id(id)?;
+            if other_project != project || id.split(':').nth(1) != Some(binding.as_str()) {
+                return Err(BoardsError::Invalid(
+                    "PDF pages must belong to one associated native document".into(),
+                ));
+            }
+            let target = native::catalog(&mut c, project, &binding)?
+                .into_iter()
+                .find(|board| board.id == *id)
+                .ok_or_else(|| BoardsError::BoardNotFound(id.clone()))?;
             if target.project_id != b.project_id {
                 return Err(BoardsError::Invalid(
                     "PDF pages must belong to one native document".into(),
@@ -386,50 +415,16 @@ impl WorkCrateBoardsService {
             json!({"path":official_path,"format":format,"artboard":b.index,"scale":300./72.})
         };
         let result = c.request("app.export", params)?;
-        wait_output(&mut c, official_path)?;
+        let start = std::time::Instant::now();
+        while !std::fs::metadata(official_path).is_ok_and(|m| m.is_file() && m.len() > 0) {
+            if start.elapsed() > std::time::Duration::from_secs(65) {
+                return Err(BoardsError::Protocol(
+                    "official export produced no output".into(),
+                ));
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
         temporary.persist(path).map_err(|e| e.error)?;
         Ok(result)
-    }
-}
-pub(crate) fn wait_output(c: &mut Client, path: &Path) -> Result<(), BoardsError> {
-    let start = std::time::Instant::now();
-    loop {
-        let ui = c.request("ui.inspect", json!({}))?;
-        let busy = ui.get("background").is_some_and(|v| {
-            !v.is_null() && v != &json!([]) && v != &json!({}) && v != &json!(false)
-        });
-        if !busy {
-            let status = ui["ui"]["status"]
-                .as_str()
-                .or_else(|| ui["status"].as_str())
-                .unwrap_or("");
-            let lower = status.to_lowercase();
-            if lower.contains("failed") || lower.contains("error") {
-                return Err(BoardsError::Remote(status.into()));
-            }
-            if path
-                .extension()
-                .is_some_and(|s| s.eq_ignore_ascii_case("vectorcraft"))
-            {
-                let state = native::assert_path(c, path)?;
-                if state["dirty"] == true {
-                    return Err(BoardsError::Invalid(
-                        "official save did not settle document changes".into(),
-                    ));
-                }
-            }
-
-            if std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() > 0) {
-                return Ok(());
-            }
-            return Err(BoardsError::Invalid(format!(
-                "official operation produced no output: {}",
-                path.display()
-            )));
-        }
-        if start.elapsed().as_secs() > 65 {
-            return Err(BoardsError::Protocol("background outcome uncertain".into()));
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 }

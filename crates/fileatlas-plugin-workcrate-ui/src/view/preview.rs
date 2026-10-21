@@ -19,11 +19,11 @@ pub(super) fn page_preview(card: &BoardCard, width: f32) -> gpui::AnyElement {
                 .flex()
                 .items_center()
                 .justify_center()
-                .child(
-                    card.error
-                        .clone()
-                        .unwrap_or_else(|| "正在生成官方预览…".into()),
-                )
+                .child(if card.preview_checked {
+                    "暂无本地预览，请同步工程"
+                } else {
+                    "正在读取本地预览…"
+                })
                 .into_any_element()
         })
 }

@@ -89,3 +89,5 @@
 本机默认 `stable` 是 Rust 1.94.1，但已安装 1.96.0 和 1.97.1；项目要求 Rust ≥1.95。执行 Cargo 时请显式使用已安装的 `cargo +1.97.1 ...`，避免旧默认版本提前拦截。无需重复安装 Rust 或修改全局默认版本。具体命令见[本地工具链说明](docs/rust-toolchain.md)。
 
 迁移阶段的格式检查、锁定模式编译与自动化测试结论见[迁移期验证报告](docs/validation-report.md)，界面改动结论见[界面重构验证记录](docs/redesign-validation.md)。界面重构阶段的每轮改动仍需实际启动 Windows 应用验证；Windows 原生对话框、拖放、Shell 集成、编解码与系统级行为在完成实测前记为未验证。
+
+WorkCrate 后续调整：程序安装路径位于插件设置，项目文件使用选择的文件夹；项目和页面浏览使用本地缓存，后台官方 CLI 处理创建及导出，仅画布内容编辑启动官方 GUI。详见 [离线浏览计划](docs/superpowers/plans/2026-10-21-workcrate-offline-browser.md)。

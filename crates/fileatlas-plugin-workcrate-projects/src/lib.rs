@@ -175,6 +175,30 @@ impl WorkCrateProjectsService {
         self.changed();
         Ok(())
     }
+
+    /// Clear an association only when it still points to the document created by
+    /// the caller, so a failed create flow cannot undo a later user rebind.
+    pub fn clear_document_path_if_matches(
+        &self,
+        project_id: &str,
+        expected: &Path,
+    ) -> Result<(), WorkCrateProjectsError> {
+        let expected = std::fs::canonicalize(expected)?;
+        let _gate = self
+            .write_gate
+            .write()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?;
+        self.ensure_project(project_id)?;
+        let mut document = self.read_project(project_id)?;
+        if document.native_document.as_ref() != Some(&expected) {
+            return Ok(());
+        }
+        document.native_document = None;
+        document.native_binding.clear();
+        self.write_project(&document)?;
+        self.changed();
+        Ok(())
+    }
     pub fn revision(&self) -> u64 {
         self.revision.load(Ordering::Acquire)
     }

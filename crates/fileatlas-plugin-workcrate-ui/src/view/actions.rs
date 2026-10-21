@@ -36,24 +36,42 @@ impl WorkCratePanel {
         self.perform(job, cx);
     }
     pub(super) fn create_project(&mut self, cx: &mut ViewContext<Self>) {
-        let p = self.projects.clone();
-        self.perform(
-            move || {
-                let names = p.projects(true).map_err(|e| e.to_string())?;
-                let mut i = 1;
-                let name = loop {
-                    let s = format!("新建项目 {i}");
-                    if !names.iter().any(|p| p.name == s) {
-                        break s;
-                    }
-                    i += 1;
-                };
-                p.create_project(&name)
-                    .map(|_| ())
-                    .map_err(|e| e.to_string())
-            },
-            cx,
-        );
+        let picked = cx.spawn(async move |this, cx| {
+            let Some(folder) = rfd::AsyncFileDialog::new().pick_folder().await else {
+                return;
+            };
+            let directory = folder.path().to_path_buf();
+            let _ = this.update(cx, |view, cx| {
+                let projects = view.projects.clone();
+                let boards = view.boards.clone();
+                view.perform(
+                    move || {
+                        let names = projects.projects(true).map_err(|e| e.to_string())?;
+                        let mut i = 1;
+                        let name = loop {
+                            let candidate = format!("新建项目 {i}");
+                            if !names.iter().any(|project| project.name == candidate) {
+                                break candidate;
+                            }
+                            i += 1;
+                        };
+                        let project = projects.create_project(&name).map_err(|e| e.to_string())?;
+                        if let Err(error) = boards.create_project_document(&project.id, &directory)
+                        {
+                            return match projects.delete_project(&project.id) {
+                                Ok(_) => Err(error.to_string()),
+                                Err(cleanup) => {
+                                    Err(format!("{error}; 清理未完成创建的项目记录失败：{cleanup}"))
+                                }
+                            };
+                        }
+                        Ok(())
+                    },
+                    cx,
+                )
+            });
+        });
+        picked.detach();
     }
     pub(super) fn create_board(&mut self, cx: &mut ViewContext<Self>) {
         let Some(id) = self.selected_project.clone() else {
@@ -64,53 +82,6 @@ impl WorkCratePanel {
             move || b.create_page(&id).map(|_| ()).map_err(|e| e.to_string()),
             cx,
         );
-    }
-    pub(super) fn connect(&mut self, cx: &mut ViewContext<Self>) {
-        let b = self.boards.clone();
-        let s = self.ui_state.clone();
-        let port = self.port_input.read(cx).value().parse::<u16>();
-        let Ok(port) = port else {
-            self.message = Some("端口应为 1–65535".into());
-            cx.notify();
-            return;
-        };
-        let mut config = self.config.clone();
-        config.port = port;
-        self.perform(
-            move || {
-                b.configure(config).map_err(|e| e.to_string())?;
-                let result = b.connect();
-                s.set_connection(result.is_ok());
-                result.map(|_| ()).map_err(|e| e.to_string())
-            },
-            cx,
-        );
-    }
-    pub(super) fn pick_executable(&mut self, cx: &mut ViewContext<Self>) {
-        let b = self.boards.clone();
-        let config = self.config.clone();
-        let state = self.ui_state.clone();
-        cx.spawn(async move |this, cx| {
-            if let Some(file) = rfd::AsyncFileDialog::new()
-                .add_filter("VectorCraft 程序", &["exe"])
-                .pick_file()
-                .await
-            {
-                let mut config = config;
-                config.executable = file.path().to_string_lossy().into_owned();
-                let _ = this.update(cx, |v, cx| {
-                    v.perform(
-                        move || {
-                            b.configure(config).map_err(|e| e.to_string())?;
-                            state.set_connection(false);
-                            Ok(())
-                        },
-                        cx,
-                    )
-                });
-            }
-        })
-        .detach();
     }
     pub(super) fn pick_document(&mut self, cx: &mut ViewContext<Self>) {
         let Some(id) = self.selected_project.clone() else {
@@ -152,12 +123,19 @@ impl WorkCratePanel {
         })
         .detach();
     }
-    pub(super) fn save_project(&mut self, cx: &mut ViewContext<Self>) {
+    pub(super) fn sync_project(&mut self, cx: &mut ViewContext<Self>) {
         let Some(id) = self.selected_project.clone() else {
             return;
         };
         let b = self.boards.clone();
-        self.perform(move || b.save_project(&id).map_err(|e| e.to_string()), cx);
+        self.perform(
+            move || {
+                b.refresh_project(&id)
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            },
+            cx,
+        );
     }
     pub(super) fn open_editor(&mut self, cx: &mut ViewContext<Self>) {
         let Some(id) = self.selected_board.clone() else {

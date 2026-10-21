@@ -1,12 +1,6 @@
 use super::*;
 impl Render for WorkCratePanel {
-    fn render(&mut self, window: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
-        if self.port_synced != Some(self.config.port) {
-            self.port_input.update(cx, |input, cx| {
-                input.set_value(self.config.port.to_string(), window, cx)
-            });
-            self.port_synced = Some(self.config.port);
-        }
+    fn render(&mut self, _: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
         let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"error":c.error})).collect::<Vec<_>>(),"message":self.message,"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
@@ -109,41 +103,13 @@ impl Render for WorkCratePanel {
                     |v, cx| v.create_board(cx),
                     cx,
                 ))
-                .child(self.action("refresh-native", "刷新官方工程", |v, cx| v.reload(cx), cx))
-                .child(self.action("save-native", "保存工程", |v, cx| v.save_project(cx), cx));
+                .child(self.action(
+                    "refresh-native",
+                    "同步工程与预览",
+                    |v, cx| v.sync_project(cx),
+                    cx,
+                ));
         }
-        let connection = div()
-            .h_flex()
-            .flex_wrap()
-            .items_center()
-            .gap_2()
-            .px_3()
-            .py_2()
-            .border_b_1()
-            .border_color(rgb(theme::separator()))
-            .child(div().text_xs().child(if self.config.executable.is_empty() {
-                "选择官方 VectorCraft.exe，然后连接。项目管理可独立使用。".into()
-            } else {
-                self.config.executable.clone()
-            }))
-            .child(div().flex_1())
-            .child(self.action(
-                "configure-vectorcraft",
-                "选择程序",
-                |v, cx| v.pick_executable(cx),
-                cx,
-            ))
-            .child(fileatlas_ui_bridge::components::text_input(&self.port_input).w(px(85.)))
-            .child(self.action(
-                "connect-vectorcraft",
-                if self.ui_state.connection() {
-                    "重新连接"
-                } else {
-                    "连接"
-                },
-                |v, cx| v.connect(cx),
-                cx,
-            ));
         let content = if self.selected_project.is_none() {
             self.render_projects(cx)
         } else if self.selected_board.is_none() {
@@ -158,7 +124,6 @@ impl Render for WorkCratePanel {
             .bg(rgb(theme::surface_base()))
             .text_color(rgb(theme::text_primary()))
             .child(toolbar)
-            .child(connection)
             .child(content)
             .when(self.busy, |e| {
                 e.child(div().px_3().pb_2().text_xs().child("正在处理…"))
@@ -219,7 +184,10 @@ impl WorkCratePanel {
             .iter()
             .find(|c| Some(&c.board.id) == self.selected_board.as_ref())
         else {
-            return div().flex_1().child("正在读取官方画板…").into_any_element();
+            return div()
+                .flex_1()
+                .child("本地没有这块画板目录，请同步工程与预览。")
+                .into_any_element();
         };
         let center = div()
             .flex_1()
@@ -280,11 +248,11 @@ impl WorkCratePanel {
                                 })
                                 .unwrap_or_else(|| {
                                     div()
-                                        .child(
-                                            card.error
-                                                .clone()
-                                                .unwrap_or_else(|| "正在生成官方预览…".into()),
-                                        )
+                                        .child(if card.preview_checked {
+                                            "暂无本地预览，请同步工程"
+                                        } else {
+                                            "正在读取本地预览…"
+                                        })
                                         .into_any_element()
                                 }),
                         ),

@@ -10,6 +10,18 @@ pub(crate) struct Client {
     poisoned: bool,
     pub diagnostics: Arc<Mutex<BTreeMap<PathBuf, Value>>>,
 }
+pub(crate) trait NativeProtocol {
+    fn request(&mut self, method: &str, params: Value) -> Result<Value, BoardsError>;
+    fn execute(&mut self, command: &str, params: Value) -> Result<Value, BoardsError>;
+}
+impl NativeProtocol for Client {
+    fn request(&mut self, method: &str, params: Value) -> Result<Value, BoardsError> {
+        Client::request(self, method, params)
+    }
+    fn execute(&mut self, command: &str, params: Value) -> Result<Value, BoardsError> {
+        Client::execute(self, command, params)
+    }
+}
 impl Client {
     pub fn connect(port: u16) -> Result<Self, BoardsError> {
         let address = SocketAddr::from(([127, 0, 0, 1], port));

@@ -34,6 +34,7 @@ struct BoardCard {
     board: WorkCrateBoard,
     image: Option<Arc<RenderImage>>,
     error: Option<String>,
+    preview_checked: bool,
 }
 struct Snapshot {
     items: Vec<fileatlas_workcrate_contracts::WorkCrateProject>,
@@ -65,12 +66,9 @@ struct WorkCratePanel {
     editing: Option<(String, String)>,
     edit_input: Entity<gpui_kit::component::input::InputState>,
     search_input: Entity<gpui_kit::component::input::InputState>,
-    port_input: Entity<gpui_kit::component::input::InputState>,
     query: String,
-    port_synced: Option<u16>,
     config: fileatlas_plugin_workcrate_boards::VectorCraftConfig,
     document: Option<PathBuf>,
-    connection_seen: bool,
     busy: bool,
     message: Option<String>,
     load_generation: u64,
@@ -97,11 +95,6 @@ pub(super) fn panel(
     let edit_input = app.new(|cx| gpui_kit::component::input::InputState::new(window, cx));
     let search_input = app
         .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("搜索项目"));
-    let port_input = app.new(|cx| {
-        let mut v = gpui_kit::component::input::InputState::new(window, cx);
-        v.set_value("17979", window, cx);
-        v
-    });
     app.new(|cx| {
         let wake = refresh::Wake::default();
         let preview_wake = refresh::Wake::default();
@@ -134,11 +127,6 @@ pub(super) fn panel(
                     v.reload(cx);
                     return true;
                 }
-                let connected = v.ui_state.connection();
-                if connected != v.connection_seen {
-                    v.connection_seen = connected;
-                    return true;
-                }
                 false
             }),
             refresh::listen(cx, projects.wake(), |v: &mut WorkCratePanel, cx| {
@@ -169,12 +157,9 @@ pub(super) fn panel(
             editing: None,
             edit_input,
             search_input,
-            port_input,
             query: String::new(),
-            port_synced: None,
             config: Default::default(),
             document: None,
-            connection_seen: false,
             busy: false,
             message: None,
             load_generation: 0,
@@ -265,6 +250,7 @@ impl WorkCratePanel {
                             board,
                             image: None,
                             error: None,
+                            preview_checked: false,
                         })
                         .collect();
                     self.selected_pages
@@ -323,8 +309,14 @@ impl WorkCratePanel {
             if let Some(id) = self.preview_current.take() {
                 if let Some(c) = self.boards_view.iter_mut().find(|c| c.board.id == id) {
                     match self.preview_model.value() {
-                        Some(Ok(i)) => c.image = Some(i.clone()),
-                        Some(Err(e)) => c.error = Some(e.clone()),
+                        Some(Ok(i)) => {
+                            c.image = Some(i.clone());
+                            c.preview_checked = true;
+                        }
+                        Some(Err(e)) => {
+                            c.error = Some(e.clone());
+                            c.preview_checked = true;
+                        }
                         _ => {}
                     }
                 }

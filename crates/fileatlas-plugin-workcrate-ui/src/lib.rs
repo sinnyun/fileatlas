@@ -141,7 +141,7 @@ impl Plugin for WorkCrateUiPlugin {
             OWNER,
             [
                 sidebar_button(panels),
-                settings::contribution(projects, bridge.surfaces.clone()),
+                settings::contribution(projects, boards, bridge.surfaces.clone()),
             ],
         )
         .map_err(plugin_error)?;

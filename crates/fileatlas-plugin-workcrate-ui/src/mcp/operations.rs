@@ -43,19 +43,31 @@ pub(super) fn tools(
     let thumbnails = context
         .try_service::<fileatlas_plugin_thumbnails::ThumbnailService>()
         .map_err(|e| e.to_string())?;
+    let project_boards = Arc::clone(boards);
     let manage = tool(
         "manage_project",
         "Create, rename, duplicate, archive, restore or choose a project cover",
-        json!({"action":{"enum":["create","rename","duplicate","archive","restore","cover"]},"project_id":{"type":"string"},"name":{"type":"string"},"path":{"type":"string"}}),
+        json!({"action":{"enum":["create","rename","duplicate","archive","restore","cover"]},"project_id":{"type":"string"},"name":{"type":"string"},"path":{"type":"string"},"directory":{"type":"string"}}),
         vec!["action"],
         false,
         move |v| {
             let action = required(&v, "action")?;
             if action == "create" {
+                let directory = std::path::Path::new(required(&v, "directory")?);
+                if !directory.is_dir() {
+                    return Err("project directory does not exist".into());
+                }
                 let project = p
                     .create_project(required(&v, "name")?)
                     .map_err(|e| e.to_string())?;
-                return Ok(json!({"project":project}));
+                let catalog = match project_boards.create_project_document(&project.id, directory) {
+                    Ok(catalog) => catalog,
+                    Err(error) => {
+                        let _ = p.delete_project(&project.id);
+                        return Err(error.to_string());
+                    }
+                };
+                return Ok(json!({"project":project,"boards":catalog}));
             }
             let id = required(&v, "project_id")?;
             match action {
@@ -72,10 +84,19 @@ pub(super) fn tools(
                         .map_err(|e| e.to_string())?;
                 }
                 "duplicate" => {
+                    let directory = std::path::Path::new(required(&v, "directory")?);
+                    if !directory.is_dir() {
+                        return Err("project directory does not exist".into());
+                    }
                     let copy = p
-                        .duplicate_project(id, required(&v, "name")?)
+                        .duplicate_project_document(id, required(&v, "name")?, directory)
                         .map_err(|e| e.to_string())?;
-                    return Ok(json!({"project":copy}));
+                    let catalog = project_boards.refresh_project(&copy.id).map_err(|e| {
+                        format!(
+                            "project copied, but its native page cache could not be refreshed: {e}"
+                        )
+                    })?;
+                    return Ok(json!({"project":copy,"boards":catalog}));
                 }
                 _ => return Err("unsupported action".into()),
             }
@@ -97,6 +118,7 @@ pub(super) fn tools(
         },
     );
     let b = Arc::clone(boards);
+    let ui = Arc::clone(state);
     let create_page = tool(
         "create_page",
         "Create an A3 landscape page",
@@ -107,6 +129,7 @@ pub(super) fn tools(
             let board = b
                 .create_page(required(&v, "project_id")?)
                 .map_err(|e| e.to_string())?;
+            ui.request_catalog_refresh();
             Ok(
                 json!({"board_id":board.id,"info":board.info,"width_pt":board.width_pt,"height_pt":board.height_pt}),
             )
