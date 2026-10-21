@@ -7,3 +7,8 @@
 
 # Local shallow source checkouts used only for WorkCrate research
 /vendor/workcrate-references/
+
+# Tool-local links and scratch: the canonical skill copy is .agents/skills/
+/.qoder/skills/
+# Raw image-generator drops; the accepted concept copy lives in docs/reference-ui/concepts/
+/vibe_images/
