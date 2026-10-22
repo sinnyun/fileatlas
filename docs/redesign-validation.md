@@ -1444,7 +1444,8 @@ reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和
 ## 2026-10-23 全面板截图巡检（3200×1800）
 
 用 `scripts/capture-panel-atlas.cjs` 分段驱动同进程 MCP，为每个面板与对话框各留一张带真实
-内容的截图（fixtures 扫描 + 显示子文件夹 + 标签/剪贴板/暂存/WorkCrate 播种），共 60 张，副本
-存于 [validation-ui/2026-10-23-panel-atlas](validation-ui/2026-10-23-panel-atlas/README.md)。
+内容的截图（fixtures 扫描 + 显示子文件夹 + 标签/剪贴板/暂存/WorkCrate 播种），共 60 张，说明与
+清单见 [validation-ui/2026-10-23-panel-atlas](validation-ui/2026-10-23-panel-atlas/README.md)；
+PNG、`INDEX.md` 与 `manifest.json` 只留在 `.local/validation/profiles/panel-atlas-final/`，不入库。
 本轮实测暴露两个缺陷：打开"编辑标签"对话框触发 GPUI a11y 重复节点 id panic 使进程退出；
 搜索范围浮层的 `search_scopes_open` 状态为真但画面未渲染。面板注册表 8 个定义已全部有图。

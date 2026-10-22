@@ -50,7 +50,8 @@ WorkCrate 的建页/刷新/放图/预览走官方自动化会话；本次运行�
 | `800`–`805` | WorkCrate 三层：工程管理、页面矩阵 + 物料栏、缓存预览、页面编辑器、已放置图片、项目默认信息 |
 | `900`–`910` | 调试抽屉、两个浮动面板叠加主界面 |
 
-`INDEX.md` 是按拍摄顺序生成的缩略图索引，`manifest.json` 记录每一步的调用结果。
+`INDEX.md` 是按拍摄顺序生成的缩略图索引，`manifest.json` 记录每一步的调用结果；两者与 PNG
+一起留在本地 profile，见文末"证据位置"。
 
 ## 已发现缺陷（截图为证）
 
@@ -79,5 +80,14 @@ WorkCrate 的建页/刷新/放图/预览走官方自动化会话；本次运行�
 - 播放/预览依赖外部 QuickLook、真实相机 EXIF、Windows 拖放与资源管理器集成等，
   本套截图只证明界面渲染与状态，不构成这些平台行为的验证结论。
 
-原始 profile（数据库、日志、会话）仍留在
-`.local/validation/profiles/panel-atlas-final/`，本目录只保存截图与索引副本。
+## 证据位置
+
+生成物一律不入库（`.local/` 已在 `.gitignore`），本目录只保存这份说明。同进程 MCP 场景脚本把
+截图直接写进 `--profile` 的 `screenshots/` 子目录，因此原始运行目录就是证据目录：
+
+- 60 张 PNG、`INDEX.md` 缩略图索引、`screenshots.zip` 打包副本：
+  `.local/validation/profiles/panel-atlas-final/screenshots/`
+- 每一步调用结果（含两处报错原文）：`.local/validation/profiles/panel-atlas-final/manifest.json`
+- 数据库、settings、日志等原始隔离 profile：`.local/validation/profiles/panel-atlas-final/`
+
+重跑某一阶段会原地更新这些文件；仓库内不再保留截图副本。
