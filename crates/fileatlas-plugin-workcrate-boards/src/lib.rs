@@ -17,6 +17,7 @@ mod mcp;
 mod native;
 mod operations;
 mod page_order;
+mod portable;
 pub use page_order::{PageOrderSave, page_title};
 mod protocol;
 pub use autosync::{AutoSync, DocumentStamp, PreviewState};
@@ -373,10 +374,13 @@ impl WorkCrateBoardsService {
         if cache.binding != binding || cache.boards.iter().any(|b| b.project_id != project) {
             return Ok(None);
         }
+        self.resolve_cache_paths(project, &mut cache)?;
         Ok(Some(cache))
     }
 
     fn write_cache(&self, project: &str, cache: &BoardCache) -> Result<(), BoardsError> {
+        let mut stored = cache.clone();
+        self.store_cache_paths(project, &mut stored)?;
         let path = self.cache_path(project)?;
         let project_dir = self.projects.project_directory(project)?;
         let old_paths = std::fs::read(&path)
@@ -392,7 +396,7 @@ impl WorkCrateBoardsService {
                     BoardsError::Invalid("native board cache has no parent".into())
                 })?)?;
             use std::io::Write;
-            file.write_all(&serde_json::to_vec_pretty(cache)?)?;
+            file.write_all(&serde_json::to_vec_pretty(&stored)?)?;
             file.as_file().sync_all()?;
             file.persist(path).map_err(|e| e.error)?;
             Ok::<_, BoardsError>(())
@@ -559,6 +563,7 @@ impl WorkCrateBoardsService {
             )?;
             client.save_file(&path)?;
             boards = native::catalog(&mut client, project, &binding)?;
+            self.projects.relocate_project_data(project)?;
             let previews = self.make_previews(&mut client, &boards)?;
             self.write_cache(
                 project,

@@ -1,0 +1,22 @@
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+module.exports=async({step,call,payload,delay,profile})=>{
+  const data=JSON.parse(fs.readFileSync(path.join(profile,'legacy-fixture.json')));
+  const digest=file=>crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  const before=digest(data.native),invoke=async(tool,args={},extra={})=>(await step({tool,arguments:args,wait_ms:150,...extra})).result;
+  const until=async(test,ids=[])=>{for(let i=0;i<120;i++){const s=payload(await call('workcrate-ui.state',{control_ids:ids}));if(s?.ui&&test(s))return s;await delay(150);}throw Error('legacy migration did not settle');};
+  const click=async id=>{const s=await until(s=>s.controls[id],[id]);const[x,y,w,h]=s.controls[id].split(',').map(Number);for(const action of ['pointer_down','pointer_up'])await invoke('control_ui',{action,value:`${x+w/2},${y+h/2}`});};
+  const oldData=path.join(profile,'workcrate/projects',data.id);assert.ok(fs.existsSync(path.join(oldData,'project.json')));
+  assert.ok(!fs.existsSync(path.join(data.folder,'.workcrate',data.id)));
+  await invoke('workcrate-ui.navigate',{});await until(s=>s.ui.screen==='projects'&&!s.ui.busy);
+  await click(`project-menu-${data.id}`);await invoke('workcrate-ui.state',{}, {capture:'legacy-migration-menu'});
+  await click(`project-relocate-${data.id}`);await until(s=>!s.ui.busy);
+  const newData=path.join(data.folder,'.workcrate',data.id),doc=JSON.parse(fs.readFileSync(path.join(newData,'project.json')));
+  assert.equal(doc.portable,true);assert.equal(doc.references[0].path,'images/源图.png');assert.ok(!path.isAbsolute(doc.native_document));
+  assert.ok(fs.existsSync(path.join(newData,'boards-cache.json')));assert.ok(fs.existsSync(path.join(oldData,'project.json')),'legacy data retained for recovery');
+  assert.equal(digest(data.native),before,'metadata-only migration leaves native bytes untouched');
+  const moved=path.join(profile,'documents','legacy-renamed');fs.renameSync(data.folder,moved);
+  const recovered=await invoke('workcrate-ui.project_folder',{action:'open',folder:moved});assert.equal(recovered.projects[0].id,data.id);
+  await invoke('workcrate-ui.navigate',{project_id:data.id});await until(s=>s.ui.page_count===2&&s.ui.previews_ready===2&&!s.ui.busy);
+  await invoke('workcrate-ui.state',{}, {capture:'legacy-migration-recovered'});
+  fs.writeFileSync(path.join(profile,'legacy-summary.json'),JSON.stringify({passed:true,checks:['real legacy version-1 fixture','actual GPUI migration menu click','no configured CLI','complete dataset copied beside native','original native bytes unchanged','legacy recovery dataset retained','folder rename and cached pages restored']},null,2));
+};

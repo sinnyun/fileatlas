@@ -16,6 +16,8 @@ impl WorkCrateProjectsService {
             .find(|project| project.id == id)
             .ok_or_else(|| WorkCrateProjectsError::ProjectNotFound(id.into()))?;
         let mut document = self.read_project(id)?;
+        document.portable = false;
+        document.project = None;
         let source_native =
             document
                 .native_document
@@ -76,7 +78,9 @@ impl WorkCrateProjectsService {
             let _ = std::fs::remove_file(&destination);
             let _ = self.delete_project(&created.id);
         }
-        result
+        let project = result?;
+        self.relocate_project_data(&project.id)?;
+        Ok(project)
     }
 
     pub fn set_main_image(
@@ -131,6 +135,8 @@ impl WorkCrateProjectsService {
         let target = self.project_directory(&created.id)?;
         copy_directory(&source.join("previews"), &target.join("previews"))?;
         let mut document = self.read_project(id)?;
+        document.portable = false;
+        document.project = None;
         document.project_id = created.id.clone();
         document.native_binding = Uuid::new_v4().to_string();
         if let Some(source) = document.native_document.as_ref() {
@@ -157,15 +163,27 @@ impl WorkCrateProjectsService {
         let trash = self.root.join("trash");
         std::fs::create_dir_all(&trash)?;
         let destination = trash.join(format!("{id}-{}", Uuid::new_v4()));
-        std::fs::rename(&source, &destination)?;
+        let portable = self.portable_folder(id)?.is_some();
+        if portable {
+            copy_directory(&source, &destination)?;
+        } else {
+            std::fs::rename(&source, &destination)?;
+        }
         let result = self.update_index(|index| {
             index.projects.retain(|p| p.id != id);
+            index.locations.remove(id);
             Ok(())
         });
         if let Err(error) = result {
-            let _ = std::fs::rename(&destination, &source);
+            if !portable {
+                let _ = std::fs::rename(&destination, &source);
+            }
             return Err(error);
         }
+        self.locations
+            .write()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?
+            .remove(id);
         Ok(destination)
     }
 }
@@ -198,7 +216,7 @@ fn native_file_stem(name: &str) -> String {
     }
 }
 
-fn copy_directory(source: &Path, target: &Path) -> Result<(), WorkCrateProjectsError> {
+pub(super) fn copy_directory(source: &Path, target: &Path) -> Result<(), WorkCrateProjectsError> {
     if !source.is_dir() {
         return Ok(());
     }

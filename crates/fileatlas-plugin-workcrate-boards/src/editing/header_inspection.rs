@@ -17,7 +17,8 @@ impl WorkCrateBoardsService {
             for (role, id) in [("band",owned.band),("chip",owned.chip),("page_group",owned.page_group),("master",layout.header_root)] {
                 if let Some(id) = id { furniture.insert(role, state.session.execute("document.node",json!({"id":id,"summary":true,"depth":0}))?); }
             }
-            Ok(json!({"board_id":state.board_id,"artboards":inspect["artboards"],"layout":owned.layout_version,"nodes":nodes,"furniture":furniture}))
+            let links = state.session.execute("links.list", json!({}))?;
+            Ok(json!({"board_id":state.board_id,"artboards":inspect["artboards"],"layout":owned.layout_version,"nodes":nodes,"furniture":furniture,"links":links}))
         })?;
         snapshot["last_write"] = self
             .header_report

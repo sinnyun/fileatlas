@@ -1420,3 +1420,15 @@ reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和
 
 
 2026-10-23：WorkCrate 右侧删除页面信息卡片并将页面内容置顶，错误提示保留于内容卡片。静态检查、物料保存、剩余缩放及底栏信息的同进程验证见[记录](validation-ui/2026-10-23-workcrate-content-first/README.md)。
+
+
+## 2026-10-23 插件数据存储位置
+
+设置中心的插件设置页新增只读“数据存储位置”区块；当前登记了启动台、剪贴板、截图、项目树、文件暂存篮、工作区、Material、WorkCrate、共享媒体数据库、Session 与 Settings 的主要路径。路径以 SettingsService 配置文件父目录为根，截图输出目录读取已保存设置。未登记项显示“该插件尚无路径声明”。
+
+验证：`cargo +1.97.1 check --locked -p fileatlas-plugin-settings` 通过；`rustfmt +1.97.1 --edition 2024 --check crates/fileatlas-plugin-settings/src/view/plugins.rs` 通过；UI theme、UI refresh、architecture、feature-ledger 守卫通过。此会话没有配置 FileAtlas MCP 工具/客户端，故插件设置页截图与交互尚未完成同进程验证；不能据此声明 UI 验收通过。
+
+
+## 2026-10-23 WorkCrate 项目数据随文件夹保存
+
+新建自动相邻数据、旧项目显式迁移、移动文件夹重新打开和原生图片更新验证见 [运行记录](validation-ui/2026-10-23-workcrate-portable/README.md)。沿用活动项目管理用户稿，局部增加打开项目文件夹与菜单迁移入口。

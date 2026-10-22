@@ -584,3 +584,8 @@ text.setText → 官方保存和现有缓存重建。排序不移动画板或独
 
 
 2026-10-23 WorkCrate 默认字体属于官方文档创建行为，无 PhoTag 对应模块。canvas_create_text 与 header text.create 共用 Microsoft YaHei 默认值；通过官方 text.getRange 读取字体，并以官方 bounds 变换继续实现画布缩放。
+
+2026-10-23 WorkCrate PDF 导出配置无 PhoTag 对应模块。Export export_pages_pdf / export_page_pdf → Boards export_native → operations::pdf_export_params → 官方 export；options 从内置 VectorCraft Default 开始，关闭 preserveEditing，并按用户后续要求使用彩色/灰度 JPEG high、超过300PPI双三次缩减至300PPI、文字压缩。未实现自有 PDF 编码器或修改官方源码。
+
+
+2026-10-23 WorkCrate 项目数据随原生文件保存（无 PhoTag 对应行为）：Boards::create_project_document / Projects::duplicate_project_document → Projects::relocate_project_data → .workcrate/<UUID>/project.json + 原有预览/缓存；UI 项目菜单迁移旧数据、打开文件夹 → Boards::relocate_project / open_project_folder → Projects locators 与原始身份恢复。引用注册表内部路径相对保存、API 解析绝对路径，原生图片链接继续由 VectorCraft 负责；不复制或改写原图/原生文件。

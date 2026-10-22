@@ -184,6 +184,14 @@ impl WorkCratePanel {
                         &self.surfaces,
                     ))
                     .child(self.screen_action(
+                        "workcrate-open-project-folder",
+                        None,
+                        "打开项目文件夹",
+                        false,
+                        |v, cx| v.open_project_folder(cx),
+                        cx,
+                    ))
+                    .child(self.screen_action(
                         "workcrate-new-project",
                         Some(IconName::Plus),
                         "新建工程",
@@ -392,16 +400,45 @@ impl WorkCratePanel {
                 .child(theme::small_icon(IconName::FileBox))
                 .child(
                     div()
+                        .id(format!("project-path-{id}"))
+                        .relative()
                         .flex_1()
                         .min_w_0()
-                        .truncate()
-                        .text_size(px(theme::FONT_SIZE_TINY))
-                        .text_color(rgb(theme::text_muted()))
-                        .child(if summary.pages > 0 {
-                            ".vc 关联工程"
-                        } else {
-                            "未关联工程"
-                        }),
+                        .child({
+                            let path = summary
+                                .document
+                                .clone()
+                                .unwrap_or_else(|| "未关联工程".into());
+                            let copy = summary.document.clone();
+                            Button::new(format!("project-copy-path-{id}"))
+                                .ghost()
+                                .compact()
+                                .w_full()
+                                .min_w_0()
+                                .justify_start()
+                                .px_0()
+                                .tooltip(path.clone())
+                                .child(
+                                    div()
+                                        .min_w_0()
+                                        .flex_1()
+                                        .truncate()
+                                        .text_size(px(theme::FONT_SIZE_TINY))
+                                        .text_color(rgb(theme::text_muted()))
+                                        .child(path),
+                                )
+                                .on_click(move |_, _, cx| {
+                                    if let Some(path) = &copy {
+                                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(
+                                            path.clone(),
+                                        ));
+                                    }
+                                })
+                        })
+                        .child(super::tracking::measure(
+                            &format!("project-path-{id}"),
+                            self.surfaces.clone(),
+                        )),
                 )
                 .child(super::tracking::control(
                     &format!("project-open-{id}"),
@@ -447,6 +484,19 @@ impl WorkCratePanel {
                         })),
                     &self.surfaces,
                 ));
+            let target = project.id.clone();
+            menu = menu.child(super::tracking::control(
+                &format!("project-relocate-{target}"),
+                Button::new(format!("project-relocate-{target}"))
+                    .ghost()
+                    .label("迁移项目数据")
+                    .tooltip("将项目数据保存到原生工程文件旁")
+                    .disabled(self.busy)
+                    .on_click(cx.listener(move |view, _, _, cx| {
+                        view.relocate_project(target.clone(), cx);
+                    })),
+                &self.surfaces,
+            ));
             let target = project.id.clone();
             menu = menu.child(super::tracking::control(
                 &format!("project-archive-{target}"),

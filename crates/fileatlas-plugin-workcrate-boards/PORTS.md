@@ -1,5 +1,16 @@
 # WorkCrate Boards ports
 
+2026-10-23: `create_project_document` creates adjacent `.workcrate/<project UUID>` data before
+writing initial previews/cache. Subsequent cache and canvas preferences use the existing
+Projects.project_directory. `relocate_project(&str) -> Result<PathBuf, BoardsError>` migrates
+only FileAtlas metadata/cache; `open_project_folder(&Path) -> Result<Vec<WorkCrateProject>,
+BoardsError>` restores moved datasets. Cold migration/recovery starts no process and leaves
+native/image bytes untouched. An existing canvas is released, saving only dirty content when
+its old file still exists; recovery never saves to a vanished old folder. Native image links
+and updates remain VectorCraft-owned. Cached first-image metadata uses root-relative paths
+for in-folder files. Existing-session canvas_header_state also returns official links.list
+under links, for same-process validation after folder moves.
+
 Cordis plugin `fileatlas.workcrate-boards` publishes `fileatlas/workcrate-boards` and depends on Projects. `VectorCraftConfig { executable, cli_executable, port }` remains in `vectorcraft.json`; both executable fields are optional strings and `port` defaults to 17979. A blank CLI path is resolved as `vectorcraft-cli.exe` beside the configured GUI executable. The legacy loopback transport is used only by `connect()` and `open_editor()`; only an explicit editor action starts the GUI.
 
 `board_catalog`, `load_board`, `board`, `boards_for_project` and `render_preview` read FileAtlas-owned `projects/<uuid>/boards-cache.json` and `native-previews/` only. They never start or contact VectorCraft. A missing catalogue is empty; a missing cached preview returns `PreviewUnavailable`. Cache entries are bound to the persisted native-document association UUID, so `attach_document` clears old cache and any binding rotation makes old board IDs unavailable.
@@ -18,7 +29,7 @@ The official launcher accepts exactly one `--automation-read-root` and one `--au
 
 `attach_document(project, path)` validates the existing `.vectorcraft` with a read-only headless session (`open_file` plus `doc_inspect` path check) and never contacts the GUI; `native::revalidate_open_headless` shares the open-report policy with the GUI opener. VectorCraft 0.14.0 lists the headless `export` tool with `additionalProperties:false` and only accepts `artboard`, `format`, `options`, `outlineText`, `path`, `range`, `scale`, `selection`; PDF uses `range` (never `useArtboards`, which exists only in the GUI command catalogue) and rasters use a single `artboard` plus `scale`. `operations.rs::OFFICIAL_EXPORT_ARGS` pins that list and the non-ignored `export_params_only_use_official_tool_arguments` test guards it. A headless `open_file` `missingLinks` entry is treated as a sandbox artifact only when the linked file still exists on disk outside the native document's folder (the read root cannot cover it); warnings, modified links, and genuinely absent links are blocking and are recorded in the diagnostics map until a successful revalidation.
 
-Page identity remains project UUID + persisted association UUID + native numeric artboard ID. Header content is real native text tagged with versioned `fileatlas.workcrate` notes; edits are undo grouped. Raster/PDF exports are official CLI exports and are atomically placed at the requested output path. Inspect failures through returned BoardsError values and the WorkCrate UI/MCP operation message. No upstream source or renderer dependency is embedded.
+Page identity remains project UUID + persisted association UUID + native numeric artboard ID. Header content is real native text tagged with versioned `fileatlas.workcrate` notes; edits are undo grouped. Raster/PDF exports are official CLI exports and are atomically placed at the requested output path. PDF `options` starts with `VectorCraft Default`, disables `preserveEditing`, and uses color/gray JPEG `high` compression with bicubic downsampling to 300 PPI above 300 PPI and `compressText: true`. Other PDF settings retain official defaults. Official JPEG compression requires opaque images; text/vectors remain native PDF content. Inspect failures through returned BoardsError values and the WorkCrate UI/MCP operation message. No upstream source or renderer dependency is embedded.
 
 ## 2026-10-22 preview publication and text formatting
 

@@ -1,0 +1,27 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+module.exports=async({step,call,payload,delay,profile,root})=>{
+  const data=JSON.parse(fs.readFileSync(path.join(root,'.local/validation/profiles/wc-portable-2026-10-23-final/portable-summary.json')));
+  const folder=path.join(profile,'项目路径显示验证','文件夹与原生工程保存在一起');fs.mkdirSync(path.dirname(folder),{recursive:true});fs.cpSync(data.folder,folder,{recursive:true});
+  const doc=JSON.parse(fs.readFileSync(path.join(folder,'.workcrate',data.project_id,'project.json')));
+  const invoke=async(tool,args={},extra={})=>(await step({tool,arguments:args,wait_ms:150,...extra})).result;
+  const id=`project-path-${data.project_id}`,open=`project-open-${data.project_id}`;
+  const until=async test=>{for(let i=0;i<120;i++){const s=payload(await call('workcrate-ui.state',{control_ids:[id,open]}));if(s.ui&&test(s))return s;await delay(150);}throw Error('project path snapshot did not settle');};
+  await invoke('workcrate-ui.project_folder',{action:'open',folder});await invoke('workcrate-ui.navigate',{});
+  const expected=path.join(folder,doc.native_document);
+  let s=await until(s=>s.ui.project_documents[data.project_id]===expected&&s.controls[id]&&!s.ui.busy);
+  await invoke('workcrate-ui.state',{}, {capture:'project-path-overview'});
+  const[x,y,w,h]=s.controls[id].split(',').map(Number);assert.ok(w>10);assert.ok(h>0);
+  await invoke('control_ui',{action:'pointer_move',value:`${x+w/2},${y+h/2}`});await delay(1100);
+  await invoke('workcrate-ui.state',{}, {capture:'project-path-tooltip'});
+  const moved=path.join(profile,'项目路径显示验证','移动后项目');fs.renameSync(folder,moved);
+  await invoke('workcrate-ui.project_folder',{action:'open',folder:moved});await invoke('workcrate-ui.navigate',{});
+  s=await until(s=>s.ui.project_documents[data.project_id]===path.join(moved,doc.native_document)&&!s.ui.busy);
+  await invoke('material-theme.generate',{seed:'#7c3aed',variant:'tonal-spot',contrast:0,apply:true});
+  await invoke('resize_window',{width:1600,height:1100});
+  s=await until(s=>s.controls[id]&&s.controls[open]);
+  const[a,b,c,d]=s.controls[id].split(',').map(Number);const[e,f]=s.controls[open].split(',').map(Number);assert.ok(a+c<=e+1,'path and enter button must not overlap');
+  await invoke('control_ui',{action:'pointer_move',value:`${a+c/2},${b+d/2}`});await delay(1100);
+  await invoke('workcrate-ui.state',{}, {capture:'project-path-small-accent'});
+  const quiet=await until(s=>!s.ui.busy);await delay(3500);const after=payload(await call('workcrate-ui.state',{}));assert.equal(after.ui.reloads,quiet.ui.reloads);
+  fs.writeFileSync(path.join(profile,'project-path-summary.json'),JSON.stringify({passed:true,original:expected,moved:path.join(moved,doc.native_document),checks:['native file address from background snapshot','full path native tooltip','folder move updates display','path does not overlap enter button','native changed accent and small window','quiet state without configured VectorCraft']},null,2));
+};

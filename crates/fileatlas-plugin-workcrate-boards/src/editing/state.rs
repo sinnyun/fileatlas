@@ -1,6 +1,20 @@
 use super::*;
 
 impl CanvasState {
+    pub(crate) fn prepare_relocation(
+        &mut self,
+        project: Option<&str>,
+    ) -> Result<bool, BoardsError> {
+        if project.is_some_and(|id| id != self.project_id) {
+            return Ok(false);
+        }
+        // A moved folder must not be recreated by saving to the stale old path.
+        if self.document.is_file() && self.session.inspect_bound()?["dirty"].as_bool() == Some(true)
+        {
+            self.session.save_file(&self.document)?;
+        }
+        Ok(true)
+    }
     pub(super) fn new(
         session: mcp::McpSession,
         live: bool,

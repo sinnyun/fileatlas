@@ -284,3 +284,7 @@ at `docs/validation-ui/2026-10-19-mcp-settings-toggle/` is historical.
 ## 2026-10-23 WorkCrate defaults
 
 Shared Settings JSON gains serde-default `workcrate: WorkCrateSettings { sort_by_name: bool, image_export_jpeg: bool }`. Missing legacy values preserve recently-created ordering and PNG defaults (both false). WorkCrate UI edits these through SettingsService.update; the settings plugin adds no WorkCrate behavior. Existing paths, failure behavior and other settings remain unchanged.
+
+## Plugin data locations — 2026-10-23
+
+Plugin settings pages now include a read-only “数据存储位置” section. Known data paths are rooted beside `SettingsService.path()` so isolated profiles resolve to their profile directory. Screenshot output uses its saved output directory, falling back to `<data-root>/Screenshots`. Shared media features point to `fileatlas.db`; WorkCrate and other entries point to their registered feature files/directories. Entries without a registered path say so rather than fabricate one. This is display-only and performs no filesystem reads or writes during rendering. Live same-process MCP/UI verification is pending; static crate compilation and governance checks pass.

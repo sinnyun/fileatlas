@@ -228,3 +228,11 @@ Keep the original three concepts as targets; do not replace them.
 - Canvas accepts shared FileManagerFileDragPayload, FileStagingDragPayload and
   GPUI ExternalPaths. Actual FileManager-card pointer drag must persist a new
   DesignCraft placement; a backend place_image call is not this proof.
+
+
+## 2026-10-23 adjacent project data checklist
+
+Inspected active `workcrate-projects-user-2026-10-21.png`; this is a small local extension requested by the user, not a redesign. Preserve the three-level top strip, hero/search/sort/archive/new-project row, three-column cards, title/count/cover/footer hierarchy and bottom add tile. Add “打开项目文件夹” next to “新建工程”, using the existing secondary action. Add “迁移项目数据” to the existing card more menu, with native disabled/hover/focus states. Keep the label fully visible at the existing menu width. Picker cancellation leaves the project untouched; errors stay in the existing status footer. Reuse the existing scroll region on small windows; keep recovery/new-project actions visible. Creation requires no extra migration action: its dataset is adjacent immediately. Verify original identity, presets, covers, page previews and native image updates after folder moves, fresh-profile recovery, quiet state, actual legacy menu clicks and small-window geometry through same-process MCP.
+
+
+2026-10-23 项目卡片路径局部清单：按用户要求将底部“.vc 关联工程”改为该项目实际原生文件路径。保留文件图标、水平底栏和右侧进入页面矩阵按钮；长路径单行省略，悬停原生工具提示显示完整地址；无关联显示“未关联工程”。后台快照读取路径，渲染不执行IO、不连接官方程序。移动文件夹恢复后更新地址，保持原生主题和小窗布局。

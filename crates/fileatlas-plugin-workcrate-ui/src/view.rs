@@ -33,6 +33,7 @@ mod management;
 mod object;
 mod page_order;
 mod pages;
+mod portable;
 mod preview;
 mod projects;
 mod render;
@@ -58,6 +59,7 @@ pub(crate) struct PageSummary {
 pub(crate) struct ProjectSummary {
     pages: usize,
     first: Option<PageSummary>,
+    document: Option<String>,
 }
 struct Snapshot {
     items: Vec<fileatlas_workcrate_contracts::WorkCrateProject>,
@@ -376,6 +378,11 @@ impl WorkCratePanel {
                         p.id.clone(),
                         ProjectSummary {
                             pages: catalog.len(),
+                            document: boards.document_path(&p.id).ok().flatten().map(|path| {
+                                path.to_string_lossy()
+                                    .trim_start_matches(r"\\?\")
+                                    .to_owned()
+                            }),
                             first: catalog.iter().min_by_key(|b| b.index).map(|b| PageSummary {
                                 title: b.title.clone(),
                                 material: b.info.material.clone(),

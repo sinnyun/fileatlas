@@ -9,6 +9,7 @@ use serde_json::json;
 use std::sync::Arc;
 mod editing;
 mod operations;
+mod portable;
 
 pub(super) fn register(
     context: &Context,
@@ -105,6 +106,7 @@ pub(super) fn register(
         context, projects, boards, exports, panels, ui_state,
     )?);
     definitions.extend(editing::tools(projects, boards, ui_state));
+    definitions.extend(portable::tools(projects, boards, ui_state));
     let registration = registry
         .register("fileatlas.workcrate-ui", definitions)
         .map_err(|e| e.to_string())?;

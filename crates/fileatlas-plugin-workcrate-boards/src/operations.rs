@@ -388,8 +388,23 @@ const OFFICIAL_EXPORT_ARGS: [&str; 8] = [
     "selection",
 ];
 /// One PDF page per chosen artboard; the official `range` is 1-based.
+/// JPEG-compress color/gray images at print resolution, retaining native text/vectors.
+/// The official PDF exporter requires opaque images for JPEG compression.
 fn pdf_export_params(path: &Path, indices: &[usize]) -> Value {
-    json!({"path":path,"format":"pdf","range":indices.iter().map(usize::to_string).collect::<Vec<_>>().join(",")})
+    let image_compression = json!({
+        "downsample":"bicubic","ppi":300,"abovePpi":300,
+        "compression":"jpeg","quality":"high"
+    });
+    json!({
+        "path":path,"format":"pdf",
+        "range":indices.iter().map(usize::to_string).collect::<Vec<_>>().join(","),
+        "options":{
+            "preset":"VectorCraft Default","preserveEditing":false,
+            "compression":{
+                "color":image_compression,"gray":image_compression,"compressText":true
+            }
+        }
+    })
 }
 /// A 300 dpi raster of one artboard, selected by native index.
 fn raster_export_params(path: &Path, format: &str, artboard: usize) -> Value {
@@ -412,6 +427,17 @@ mod tests {
             }
         }
         assert_eq!(pdf["range"], "1,3");
+        assert_eq!(pdf["options"]["preset"], "VectorCraft Default");
+        assert_eq!(pdf["options"]["preserveEditing"], false);
+        for kind in ["color", "gray"] {
+            let compression = &pdf["options"]["compression"][kind];
+            assert_eq!(compression["compression"], "jpeg");
+            assert_eq!(compression["quality"], "high");
+            assert_eq!(compression["ppi"], 300);
+            assert_eq!(compression["abovePpi"], 300);
+            assert_eq!(compression["downsample"], "bicubic");
+        }
+        assert_eq!(pdf["options"]["compression"]["compressText"], true);
         assert_eq!(raster["artboard"], 0);
         assert_eq!(raster["scale"], 300. / 72.);
     }

@@ -1208,3 +1208,23 @@ indices; material numbers remain numeric. The official default new-artboard plac
 list-last and can overlap after reordering; explicit rightmost placement fixes that without
 moving existing artwork. Compatibility, commands and evidence are in
 validation-ui/2026-10-23-workcrate-page-order/README.md and Boards/UI PORTS.
+
+## 2026-10-23 WorkCrate PDF defaults
+
+All PDF exports now select the official built-in VectorCraft Default preset and override only
+preserveEditing=false. Same-process MCP single-page and two-page output passed PDF catalogue
+inspection: no embedded native attachment, default PDF 1.7, correct page count and text retained.
+See validation-ui/2026-10-23-workcrate-pdf-defaults/README.md for commands and local evidence.
+
+Follow-up: the user requested JPEG-like output compression. Color/gray images now use official
+JPEG high compression and bicubic downsampling above 300 PPI to 300 PPI; text compression is on.
+Same-process before/after exports of the same deterministic opaque PNG changed PDF image streams
+from FlateDecode to DCTDecode; single-page size fell from 2,740,123 to 319,448 bytes (88.34%).
+Text-only and multi-page regressions passed; native attachments remain absent. See
+validation-ui/2026-10-23-workcrate-pdf-jpeg/README.md. The prior default-only configuration above
+records the earlier request, not the current complete PDF options.
+
+
+## 2026-10-23 WorkCrate portable project metadata
+
+Project metadata now lives beside each new native document; legacy datasets migrate explicitly. Version-1 compatibility, retained recovery data, original IDs/bindings, project presets/cover, independent projects sharing a folder and atomic rejection of invalid import are covered by Projects tests. Same-process MCP verifies actual creation, legacy migration menu clicks, moving/renaming folders, fresh-profile recovery and continued official image update. Native documents/images are not rewritten by cold metadata migration/recovery. Commands and evidence: validation-ui/2026-10-23-workcrate-portable/README.md. No PhoTag counterpart or new native-link implementation.

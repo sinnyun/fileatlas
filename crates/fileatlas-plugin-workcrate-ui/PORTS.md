@@ -1,5 +1,13 @@
 # WorkCrate UI plugin ports
 
+2026-10-23: New/duplicate projects use adjacent metadata automatically. The project-card
+more menu adds “迁移项目数据”; the overview adds “打开项目文件夹” to recover moved projects
+or import into a fresh profile. Reuses native folder picker and existing background/reload
+and Cordis cleanup. MCP `workcrate-ui.project_folder` accepts action relocate (project_id),
+open (folder), inspect (project_id); returns folder/ID, recovered projects, or resolved
+storage/document/reference paths. It is a Standard mutation tool on the same UI service paths.
+Official links diagnostics are available in header_state; no custom relinking subsystem.
+
 ## Cordis integration
 
 Plugin `fileatlas.workcrate-ui` retains command `workcrate/open`, panel

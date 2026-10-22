@@ -19,6 +19,9 @@ use uuid::Uuid;
 
 const FORMAT_VERSION: u32 = 1;
 mod management;
+mod portable;
+mod storage;
+use storage::*;
 mod presets;
 mod project_presets;
 pub use presets::{FieldPreset, FieldPresets};
@@ -29,6 +32,8 @@ struct ProjectIndex {
     version: u32,
     #[serde(default)]
     projects: Vec<WorkCrateProject>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    locations: std::collections::BTreeMap<String, PathBuf>,
 }
 
 impl Default for ProjectIndex {
@@ -36,6 +41,7 @@ impl Default for ProjectIndex {
         Self {
             version: FORMAT_VERSION,
             projects: Vec::new(),
+            locations: Default::default(),
         }
     }
 }
@@ -57,6 +63,10 @@ struct ProjectDocument {
     native_binding: String,
     #[serde(default)]
     field_presets: Option<FieldPresets>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    portable: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    project: Option<WorkCrateProject>,
 }
 
 impl ProjectDocument {
@@ -68,6 +78,8 @@ impl ProjectDocument {
             native_document: None,
             native_binding: String::new(),
             field_presets: None,
+            portable: false,
+            project: None,
         }
     }
 }
@@ -80,6 +92,7 @@ pub struct WorkCrateProjectsService {
     wake: fileatlas_ui_bridge::refresh::Wake,
     presets: RwLock<FieldPresets>,
     project_presets: RwLock<std::collections::BTreeMap<String, FieldPresets>>,
+    locations: RwLock<std::collections::BTreeMap<String, PathBuf>>,
 }
 
 impl Service for WorkCrateProjectsService {
@@ -106,6 +119,7 @@ impl WorkCrateProjectsService {
         index
             .projects
             .sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        let locations = index.locations.clone();
         let service = Self {
             root,
             index: RwLock::new(index),
@@ -114,9 +128,19 @@ impl WorkCrateProjectsService {
             wake: Default::default(),
             presets: RwLock::new(presets),
             project_presets: RwLock::new(Default::default()),
+            locations: RwLock::new(locations),
         };
         for project in service.projects(true)? {
-            if let Some(presets) = service.read_project(&project.id)?.field_presets {
+            let document = match service.read_project(&project.id) {
+                Ok(document) => document,
+                Err(WorkCrateProjectsError::Io(error))
+                    if error.kind() == std::io::ErrorKind::NotFound =>
+                {
+                    continue;
+                }
+                Err(error) => return Err(error),
+            };
+            if let Some(presets) = document.field_presets {
                 presets::validate(&presets)?;
                 service
                     .project_presets
@@ -186,9 +210,16 @@ impl WorkCrateProjectsService {
             .map_err(|_| WorkCrateProjectsError::Poisoned)?;
         self.ensure_project(project_id)?;
         let mut document = self.read_project(project_id)?;
+        let relocate = self
+            .portable_folder(project_id)?
+            .is_some_and(|folder| !canonical.starts_with(folder));
         document.native_document = Some(canonical);
         document.native_binding = Uuid::new_v4().to_string();
-        self.write_project(&document)?;
+        if relocate {
+            self.publish_relocation(document)?;
+        } else {
+            self.write_project(&document)?;
+        }
         self.changed();
         Ok(())
     }
@@ -508,6 +539,7 @@ impl WorkCrateProjectsService {
         if next == *current {
             return Ok(result);
         }
+        self.sync_portable_project_labels(&current, &next)?;
         atomic_write_json(&self.index_path(), &next)?;
         *current = next;
         self.changed();
@@ -530,7 +562,7 @@ impl WorkCrateProjectsService {
     }
     fn read_project(&self, id: &str) -> Result<ProjectDocument, WorkCrateProjectsError> {
         let path = self.project_dir(id)?.join("project.json");
-        let (document, _recovered_from_backup): (ProjectDocument, bool) =
+        let (mut document, _recovered_from_backup): (ProjectDocument, bool) =
             read_json_with_backup(&path)?;
         if document.version != FORMAT_VERSION {
             return Err(WorkCrateProjectsError::UnsupportedVersion(document.version));
@@ -540,12 +572,32 @@ impl WorkCrateProjectsService {
                 "project id does not match its directory",
             ));
         }
+        if document.portable {
+            portable::resolve_paths(
+                &mut document,
+                path.parent()
+                    .and_then(Path::parent)
+                    .and_then(Path::parent)
+                    .ok_or(WorkCrateProjectsError::Invalid(
+                        "portable project has no folder",
+                    ))?,
+            )?;
+        }
         Ok(document)
     }
     fn write_project(&self, document: &ProjectDocument) -> Result<(), WorkCrateProjectsError> {
+        let mut stored = document.clone();
+        if stored.portable {
+            portable::store_paths(
+                &mut stored,
+                &self
+                    .portable_folder(&document.project_id)?
+                    .ok_or(WorkCrateProjectsError::Invalid("portable location missing"))?,
+            )?;
+        }
         atomic_write_json(
             &self.project_dir(&document.project_id)?.join("project.json"),
-            document,
+            &stored,
         )?;
         if let Some(presets) = &document.field_presets {
             self.project_presets
@@ -559,6 +611,14 @@ impl WorkCrateProjectsService {
         if Uuid::parse_str(id).is_err() {
             return Err(WorkCrateProjectsError::Invalid("project id is not a UUID"));
         }
+        if let Some(path) = self
+            .locations
+            .read()
+            .map_err(|_| WorkCrateProjectsError::Poisoned)?
+            .get(id)
+        {
+            return Ok(path.join(".workcrate").join(id));
+        }
         Ok(self.root.join("projects").join(id))
     }
     fn index_path(&self) -> PathBuf {
@@ -568,130 +628,6 @@ impl WorkCrateProjectsService {
         self.revision.fetch_add(1, Ordering::Release);
         self.wake.trigger();
     }
-}
-
-fn validate_index(index: &ProjectIndex) -> Result<(), WorkCrateProjectsError> {
-    let mut ids = std::collections::HashSet::new();
-    for project in &index.projects {
-        if Uuid::parse_str(&project.id).is_err()
-            || !ids.insert(project.id.as_str())
-            || project.name.trim().is_empty()
-        {
-            return Err(WorkCrateProjectsError::Invalid(
-                "project index contains an invalid or duplicate entry",
-            ));
-        }
-    }
-    Ok(())
-}
-fn validate_name(name: &str) -> Result<String, WorkCrateProjectsError> {
-    let name = name.trim();
-    if name.is_empty()
-        || name.chars().count() > 120
-        || name.chars().any(|c| matches!(c, '\\' | '/' | '\0'))
-    {
-        return Err(WorkCrateProjectsError::Invalid(
-            "project name must be 1–120 characters and cannot contain a path separator",
-        ));
-    }
-    Ok(name.to_owned())
-}
-fn ensure_unique_name(
-    index: &ProjectIndex,
-    name: &str,
-    except: Option<&str>,
-) -> Result<(), WorkCrateProjectsError> {
-    if index.projects.iter().any(|project| {
-        Some(project.id.as_str()) != except && project.name.eq_ignore_ascii_case(name)
-    }) {
-        return Err(WorkCrateProjectsError::DuplicateName(name.to_owned()));
-    }
-    Ok(())
-}
-fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T, WorkCrateProjectsError> {
-    Ok(serde_json::from_slice(&std::fs::read(path)?)?)
-}
-
-fn read_json_with_backup<T: for<'de> Deserialize<'de>>(
-    path: &Path,
-) -> Result<(T, bool), WorkCrateProjectsError> {
-    let backup = path.with_extension("json.bak");
-    match read_json(path) {
-        Ok(value) => Ok((value, false)),
-        Err(_primary) if backup.is_file() => Ok((read_json(&backup)?, true)),
-        Err(error) => Err(error),
-    }
-}
-
-fn copy_hash_atomic(source: &Path, target: &Path) -> Result<String, WorkCrateProjectsError> {
-    let parent = target.parent().ok_or(WorkCrateProjectsError::Invalid(
-        "preview file has no parent directory",
-    ))?;
-    let mut input = std::fs::File::open(source)?;
-    let mut temp = tempfile::NamedTempFile::new_in(parent)?;
-    let mut hash = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
-    loop {
-        let count = input.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        temp.write_all(&buffer[..count])?;
-        hash.update(&buffer[..count]);
-    }
-    temp.as_file().sync_all()?;
-    temp.persist(target)
-        .map_err(|error| WorkCrateProjectsError::Io(error.error))?;
-    Ok(format!("{:x}", hash.finalize()))
-}
-fn atomic_write_json(path: &Path, value: &impl Serialize) -> Result<(), WorkCrateProjectsError> {
-    let parent = path.parent().ok_or(WorkCrateProjectsError::Invalid(
-        "data file has no parent directory",
-    ))?;
-    std::fs::create_dir_all(parent)?;
-    let bytes = serde_json::to_vec_pretty(value)?;
-    let mut temp = tempfile::NamedTempFile::new_in(parent)?;
-    temp.write_all(&bytes)?;
-    temp.as_file().sync_all()?;
-    if !path.exists() {
-        temp.persist(path)
-            .map_err(|error| WorkCrateProjectsError::Io(error.error))?;
-        return Ok(());
-    }
-    let backup = path.with_extension("json.bak");
-    if backup.exists() {
-        std::fs::remove_file(&backup)?;
-    }
-    std::fs::rename(path, &backup)?;
-    match temp.persist(path) {
-        Ok(_) => {
-            let _ = std::fs::remove_file(backup);
-            Ok(())
-        }
-        Err(error) => {
-            let _ = std::fs::rename(&backup, path);
-            Err(error.error.into())
-        }
-    }
-}
-fn same_path(a: &str, b: &str) -> bool {
-    a.replace('/', "\\")
-        .trim_end_matches('\\')
-        .eq_ignore_ascii_case(b.replace('/', "\\").trim_end_matches('\\'))
-}
-fn now() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|v| v.as_secs())
-        .unwrap_or_default()
-}
-fn modified_at(metadata: &std::fs::Metadata) -> Option<u64> {
-    metadata
-        .modified()
-        .ok()?
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()
-        .map(|v| v.as_secs())
 }
 
 #[derive(Debug, Error)]
@@ -784,5 +720,7 @@ impl Plugin for WorkCrateProjectsPlugin {
     }
 }
 
+#[cfg(test)]
+mod portable_tests;
 #[cfg(test)]
 mod tests;

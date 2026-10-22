@@ -2,6 +2,133 @@ use super::*;
 use gpui_kit::base::Disableable;
 
 impl SettingsView {
+    fn render_plugin_storage_locations(&self, id: &str) -> Div {
+        let root = self
+            .service
+            .path()
+            .parent()
+            .unwrap_or_else(|| std::path::Path::new("."));
+        let locations: Vec<(&str, String)> = match id {
+            "fileatlas.launcher" => vec![
+                (
+                    "启动台配置",
+                    root.join("launcher")
+                        .join("launcher.json")
+                        .display()
+                        .to_string(),
+                ),
+                (
+                    "程序图标",
+                    root.join("launcher").join("icons").display().to_string(),
+                ),
+            ],
+            "fileatlas.clipboard" => vec![(
+                "剪贴板记录与图片",
+                root.join("clipboard")
+                    .join("clipboard.json")
+                    .display()
+                    .to_string(),
+            )],
+            "fileatlas.screenshot" => vec![
+                ("插件设置", self.service.path().display().to_string()),
+                (
+                    "截图文件",
+                    self.service
+                        .snapshot()
+                        .ok()
+                        .and_then(|settings| settings.screenshot_tool.save_directory)
+                        .unwrap_or_else(|| root.join("Screenshots"))
+                        .display()
+                        .to_string(),
+                ),
+            ],
+            "fileatlas.project-tree" => vec![(
+                "项目根目录清单",
+                root.join("project-tree")
+                    .join("project-tree.json")
+                    .display()
+                    .to_string(),
+            )],
+            "fileatlas.workspaces" => vec![(
+                "工作区清单",
+                root.join("workspaces")
+                    .join("workspaces.json")
+                    .display()
+                    .to_string(),
+            )],
+            "fileatlas.material-theme" => vec![
+                (
+                    "主题参数",
+                    root.join("themes")
+                        .join("material-settings.json")
+                        .display()
+                        .to_string(),
+                ),
+                (
+                    "生成的主题",
+                    root.join("themes")
+                        .join("material.json")
+                        .display()
+                        .to_string(),
+                ),
+            ],
+            "fileatlas.file-staging" => vec![(
+                "暂存清单",
+                root.join("file-staging")
+                    .join("staging.json")
+                    .display()
+                    .to_string(),
+            )],
+            "fileatlas.workcrate-projects" | "fileatlas.workcrate-ui" => vec![(
+                "WorkCrate 项目数据",
+                root.join("workcrate")
+                    .join("projects.json")
+                    .display()
+                    .to_string(),
+            )],
+            "fileatlas.workcrate-boards" => vec![
+                (
+                    "VectorCraft 配置",
+                    root.join("workcrate")
+                        .join("vectorcraft.json")
+                        .display()
+                        .to_string(),
+                ),
+                (
+                    "画板目录与预览缓存",
+                    root.join("workcrate").display().to_string(),
+                ),
+            ],
+            "fileatlas.database"
+            | "fileatlas.tagging"
+            | "fileatlas.versions"
+            | "fileatlas.version-info"
+            | "fileatlas.file-manager" => vec![(
+                "共享媒体数据库",
+                root.join("fileatlas.db").display().to_string(),
+            )],
+            "fileatlas.session" => vec![(
+                "窗口与视图状态",
+                root.join("session.json").display().to_string(),
+            )],
+            "fileatlas.settings" => vec![("程序设置", self.service.path().display().to_string())],
+            _ => vec![("存储路径", "该插件尚无路径声明".to_owned())],
+        };
+        let rows = locations.into_iter().map(|(label, path)| {
+            design::row().child(design::label(label, "")).child(
+                div()
+                    .text_sm()
+                    .text_color(rgb(theme::text_secondary()))
+                    .child(path),
+            )
+        });
+        div()
+            .v_flex()
+            .gap(px(theme::SPACE_2))
+            .child(self.section("数据存储位置"))
+            .children(rows)
+    }
+
     pub(super) fn render_plugin_cards(&self, _s: &Settings, cx: &mut Context<Self>) -> Div {
         let runtime = self.service.plugin_runtime();
         let statuses = runtime.snapshot_now();
@@ -161,6 +288,7 @@ impl SettingsView {
             return div()
                 .v_flex()
                 .child(self.render_plugin_shortcuts(id, s, cx))
+                .child(self.render_plugin_storage_locations(id))
                 .children(
                     self.plugin_settings_views
                         .iter()
@@ -273,6 +401,7 @@ impl SettingsView {
                 .filter(|v| v.0 == id)
                 .map(|v| v.5.clone()),
         );
+        body = body.child(self.render_plugin_storage_locations(id));
         let (command_id, entry_label, entry_note) = match id {
             "fileatlas.launcher" => (
                 "program-launcher/open",
