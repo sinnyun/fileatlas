@@ -250,8 +250,22 @@ fn canvas_tools(
             Ok(json!({"closed": true, "boards": catalog}))
         },
     );
+    let b = boards.clone();
+    let style = tool(
+        "canvas_text_style",
+        "Apply official text font, point size or paragraph alignment",
+        json!({"id":{"type":"integer"},"font":{"type":"string"},"size":{"type":"number","exclusiveMinimum":0},"justify":{"enum":["left","center","right","justifyAll"]}}),
+        vec!["id"],
+        true,
+        move |v| {
+            let id = v["id"].as_u64().ok_or("id must be a positive integer")?;
+            Ok(
+                json!({"canvas": b.canvas_text_style(id, v["font"].as_str(), v["size"].as_f64(), v["justify"].as_str()).map_err(|e| e.to_string())?}),
+            )
+        },
+    );
     vec![
-        open, state_read, gesture, bounds, text, create, place, links, step, close,
+        open, state_read, gesture, bounds, text, create, place, links, step, close, style,
     ]
 }
 

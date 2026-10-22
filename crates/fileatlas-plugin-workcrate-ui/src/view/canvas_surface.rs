@@ -9,6 +9,9 @@ use ::gpui::{
 
 impl WorkCratePanel {
     fn canvas_down(&mut self, event: &MouseDownEvent, cx: &mut ViewContext<Self>) {
+        if self.busy || self.canvas_busy || !self.canvas_mode {
+            return;
+        }
         let (Some(map), Some(snapshot)) = (self.canvas_window_map(), self.canvas.clone()) else {
             return;
         };
@@ -204,6 +207,10 @@ impl WorkCratePanel {
                 .on_mouse_up(
                     MouseButton::Left,
                     cx.listener(|view, event: &MouseUpEvent, _, cx| view.canvas_up(event, cx)),
+                )
+                .on_mouse_up_out(
+                    MouseButton::Left,
+                    cx.listener(|view, event: &MouseUpEvent, _, cx| view.canvas_up(event, cx)),
                 ),
         )
         .into_any_element()
@@ -228,8 +235,14 @@ impl WorkCratePanel {
             } else {
                 button.outline()
             }
-            .disabled(self.busy)
-            .on_click(cx.listener(move |view, _, _, cx| view.toggle_canvas_mode(editing, cx))),
+            .on_click(cx.listener(move |view, _, _, cx| {
+                if view.busy || view.canvas_busy {
+                    view.message = Some("画布操作进行中，请稍候…".into());
+                    cx.notify();
+                    return;
+                }
+                view.toggle_canvas_mode(editing, cx);
+            })),
             &self.surfaces,
         )
     }

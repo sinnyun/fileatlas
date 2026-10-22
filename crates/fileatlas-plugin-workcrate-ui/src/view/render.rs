@@ -1,7 +1,8 @@
 use super::*;
 impl Render for WorkCratePanel {
     fn render(&mut self, _: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
-        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"error":c.error})).collect::<Vec<_>>(),"message":self.message,"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select,"canvas":{"mode":if self.canvas_mode{"edit"}else{"preview"},"busy":self.canvas_busy,"zoom":self.canvas_zoom,"state":self.canvas,"object":self.canvas_object,"drag":self.canvas_drag.as_ref().map(|drag|serde_json::json!({"kind":match drag.kind{super::canvas::CanvasDragKind::Body=>"move".to_owned(),super::canvas::CanvasDragKind::Handle(index)=>format!("handle{index}")},"origin":drag.origin,"start":[drag.start.0,drag.start.1],"current":[drag.current.0,drag.current.1]}))}}).to_string();
+        self.renders += 1;
+        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"canvas_revision":c.canvas_revision,"error":c.error})).collect::<Vec<_>>(),"message":self.message,"editing":self.editing.as_ref().map(|(id,key)|format!("{id}#{key}")),"field_saves":self.field_saves.iter().map(|(id,key)|format!("{id}#{key}")).collect::<Vec<_>>(),"reloads":self.reloads,"renders":self.renders,"auto_sync":{"syncs":self.auto_syncs,"pending":self.auto_sync,"error":self.auto_sync_error},"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select,"canvas":{"mode":if self.canvas_mode{"edit"}else{"preview"},"busy":self.canvas_busy,"zoom":self.canvas_zoom,"state":self.canvas,"object":self.canvas_object,"drag":self.canvas_drag.as_ref().map(|drag|serde_json::json!({"kind":match drag.kind{super::canvas::CanvasDragKind::Body=>"move".to_owned(),super::canvas::CanvasDragKind::Handle(index)=>format!("handle{index}")},"origin":drag.origin,"start":[drag.start.0,drag.start.1],"current":[drag.current.0,drag.current.1]}))}}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
         }
@@ -17,6 +18,9 @@ impl Render for WorkCratePanel {
                 "workcrate-projects-home",
                 "项目管理",
                 |v, cx| {
+                    if v.canvas.is_some() {
+                        v.leave_canvas(cx);
+                    }
                     v.selected_project = None;
                     v.selected_board = None;
                     v.editing = None;
@@ -34,6 +38,9 @@ impl Render for WorkCratePanel {
                 "workcrate-pages-home",
                 &p.name.clone(),
                 |v, cx| {
+                    if v.canvas.is_some() {
+                        v.leave_canvas(cx);
+                    }
                     v.selected_board = None;
                     v.editing = None;
                     let _ = v.ui_state.navigate(v.selected_project.clone(), None);
@@ -117,6 +124,17 @@ impl Render for WorkCratePanel {
         } else {
             self.render_editor(cx)
         };
+        // One fixed-height status line: showing a save message must not shrink the editor
+        // and make the whole page jump on every field save.
+        let status = if self.busy {
+            "正在处理…".to_owned()
+        } else if !self.field_saves.is_empty() {
+            "正在保存页面内容…".to_owned()
+        } else if self.auto_sync {
+            "正在获取 VectorCraft 的更改…".to_owned()
+        } else {
+            self.message.clone().unwrap_or_default()
+        };
         div()
             .id("workcrate-panel")
             .size_full()
@@ -125,12 +143,17 @@ impl Render for WorkCratePanel {
             .text_color(rgb(theme::text_primary()))
             .child(toolbar)
             .child(content)
-            .when(self.busy, |e| {
-                e.child(div().px_3().pb_2().text_xs().child("正在处理…"))
-            })
-            .when_some(self.message.clone(), |e, s| {
-                e.child(div().px_3().pb_2().text_xs().child(s))
-            })
+            .child(
+                div()
+                    .h(px(24.))
+                    .flex_shrink_0()
+                    .px_3()
+                    .h_flex()
+                    .items_center()
+                    .text_size(px(11.))
+                    .text_color(rgb(theme::text_muted()))
+                    .child(status),
+            )
     }
 }
 impl WorkCratePanel {
@@ -147,8 +170,23 @@ impl WorkCratePanel {
                 .outline()
                 .compact()
                 .label(label.to_owned())
+                // Busy states must not grey out the whole toolbar; every handler already
+                // refuses while a save or canvas job is in flight, so the button only
+                // hints on click.
                 .disabled(self.busy)
-                .on_click(cx.listener(move |v, _, _, cx| run(v, cx))),
+                .on_click(cx.listener(move |v, _, _, cx| {
+                    if !v.field_saves.is_empty() {
+                        v.message = Some("正在保存页面内容，请稍候…".into());
+                        cx.notify();
+                        return;
+                    }
+                    if v.canvas_busy {
+                        v.message = Some("画布操作进行中，请稍候…".into());
+                        cx.notify();
+                        return;
+                    }
+                    run(v, cx);
+                })),
             &self.surfaces,
         )
     }
@@ -167,7 +205,8 @@ impl WorkCratePanel {
             .child("页面 · 物料列表");
         for c in &self.boards_view {
             let id = c.board.id.clone();
-            rail = rail.child(
+            rail = rail.child(tracking::control(
+                &format!("rail-{id}"),
                 div()
                     .id(format!("rail-{id}"))
                     .v_flex()
@@ -177,7 +216,8 @@ impl WorkCratePanel {
                     .child(c.board.title.clone())
                     .child(preview::page_preview(c, 150.))
                     .on_click(cx.listener(move |v, _, _, cx| v.open_page(&id, cx))),
-            );
+                &self.surfaces,
+            ));
         }
         let Some(card) = self
             .boards_view

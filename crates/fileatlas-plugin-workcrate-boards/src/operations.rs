@@ -31,29 +31,94 @@ impl WorkCrateBoardsService {
         let _ = self.refresh_cache_from_client(&mut c, project, binding)?;
         Ok(board)
     }
-    pub fn update_info(&self, id: &str, title: &str, info: PageInfo) -> Result<(), BoardsError> {
+    /// Save one page's name and material fields. An explicitly opened canvas session that
+    /// already holds this page is reused, so the overlay keeps its tool, selection, rail and
+    /// scroll instead of being rebuilt; only this page is re-rendered either way.
+    pub fn update_info(
+        &self,
+        id: &str,
+        title: &str,
+        info: PageInfo,
+    ) -> Result<InfoSave, BoardsError> {
         let (project, _) = native::split_id(id)?;
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
+        let current = self
+            .board_catalog(project)?
+            .into_iter()
+            .find(|board| board.id == id);
         let path = self
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
         let binding = self.projects.document_binding(project)?;
         if id.split(':').nth(1) != Some(binding.as_str()) {
             return Err(BoardsError::Invalid(
-                "native document association changed; refresh pages".into(),
+                "本页所属原生工程的关联已变化，请先同步工程与预览后再保存".into(),
             ));
+        }
+        if let Some(board) = current
+            // Nothing to write and nothing to re-render: the stored frame already shows it.
+            && board.title == title
+            && board.info == info
+        {
+            return Ok(InfoSave {
+                board,
+                frame: None,
+                changed: false,
+            });
+        }
+        if self.canvas_is_open() && self.canvas_holds(id)? {
+            let (board, frame) = self.canvas_write_info(id, title, info, &binding)?;
+            return Ok(InfoSave {
+                board,
+                frame: Some(frame),
+                changed: true,
+            });
         }
         let mut c =
             self.official_session(std::slice::from_ref(&path), std::slice::from_ref(&path))?;
         c.open_document(&path)?;
-        let b = native::catalog(&mut c, project, &binding)?
+        let mut board = native::catalog(&mut c, project, &binding)?
             .into_iter()
             .find(|b| b.id == id)
             .ok_or_else(|| BoardsError::BoardNotFound(id.into()))?;
-        self.write_info(&mut c, &b, title, info)?;
+        self.write_info(&mut c, &board, title, info.clone())?;
         c.save_file(&path)?;
-        self.refresh_cache_from_client(&mut c, project, binding)?;
-        Ok(())
+        board.title = title.into();
+        board.info = info;
+        self.store_page(&mut c, project, binding, &board)?;
+        Ok(InfoSave {
+            board,
+            frame: None,
+            changed: true,
+        })
+    }
+
+    /// Patch one page's record and bitmap into the durable catalogue. Every other page keeps
+    /// its own identity and preview file, so a field save never redraws another card. A
+    /// project with no usable catalogue still needs the whole page list, so it rebuilds.
+    fn store_page(
+        &self,
+        c: &mut mcp::McpSession,
+        project: &str,
+        binding: String,
+        board: &WorkCrateBoard,
+    ) -> Result<(), BoardsError> {
+        let Some(mut cache) = self.read_cache(project)? else {
+            self.refresh_cache_from_client(c, project, binding)?;
+            return Ok(());
+        };
+        if !cache.boards.iter().any(|b| b.id == board.id) {
+            self.refresh_cache_from_client(c, project, binding)?;
+            return Ok(());
+        }
+        for (key, relative) in self.make_previews(c, std::slice::from_ref(board))? {
+            cache.previews.insert(key, relative);
+        }
+        if let Some(entry) = cache.boards.iter_mut().find(|b| b.id == board.id) {
+            *entry = board.clone();
+        }
+        cache.source = self.source_stamp(project);
+        self.write_cache(project, &cache)
     }
     pub(crate) fn write_info(
         &self,
@@ -62,160 +127,8 @@ impl WorkCrateBoardsService {
         title: &str,
         info: PageInfo,
     ) -> Result<(), BoardsError> {
-        if title.is_empty()
-            || title.chars().count() > 512
-            || serde_json::to_vec(&info)?.len() > 16384
-            || info.extra.len() > 24
-        {
-            return Err(BoardsError::Invalid("header exceeds bounds".into()));
-        }
-        let fields = native::header_fields(c)?
-            .remove(&b.native_id)
-            .unwrap_or_default();
-        let project_name = info.project_name_override.clone().unwrap_or(
-            self.projects
-                .projects(true)?
-                .into_iter()
-                .find(|p| p.id == b.project_id)
-                .ok_or_else(|| BoardsError::Invalid("project missing".into()))?
-                .name,
-        );
-        let mut values = BTreeMap::from([
-            ("project_name".to_owned(), project_name),
-            ("material".to_owned(), info.material),
-            ("size".to_owned(), info.size),
-            ("quantity".to_owned(), info.quantity),
-            ("size_label".to_owned(), info.size_label),
-        ]);
-        for (key, value) in info.extra {
-            values.insert(format!("extra:{key}"), value);
-        }
-        let field_order = values.keys().cloned().collect::<Vec<_>>();
-        for role in &field_order {
-            let label = match role.as_str() {
-                "project_name" => "项目",
-                "material" => "物料",
-                "size" => "尺寸",
-                "quantity" => "数量",
-                "size_label" => "规格",
-                other => other.strip_prefix("extra:").unwrap_or(other),
-            };
-            values.insert(format!("label:{role}"), label.to_owned());
-        }
-        let inspect = c.request("document.inspect", json!({"depth":0}))?;
-        if !inspect["isolation"].is_null() {
-            return Err(BoardsError::Invalid(
-                "leave native isolation mode before editing the header".into(),
-            ));
-        }
-        let rect = &inspect["artboards"][b.index];
-        let x = rect["x"].as_f64().unwrap_or(0.);
-        let y = rect["y"].as_f64().unwrap_or(0.);
-        if b.width_pt < 200. || b.height_pt < 100. {
-            return Err(BoardsError::Invalid("board too small for header".into()));
-        }
-        c.execute(
-            "edit.undoGroup.begin",
-            json!({"label":"WorkCrate material header"}),
-        )?;
-        let result = (|| {
-            c.execute("artboard.setProps", json!({"index":b.index,"name":title}))?;
-            let mut layer = None;
-            let mut created_ids = Vec::new();
-            for (role, (id, _)) in &fields {
-                if !values.contains_key(role) {
-                    c.execute("edit.clear", json!({"ids":[id]}))?;
-                }
-            }
-            if fields.is_empty() {
-                let new_layer = c.execute(
-                    "layer.new",
-                    json!({"name":"WorkCrate header","top":true,"locked":false,"visible":true}),
-                )?;
-                let layer_id = new_layer["id"]
-                    .as_u64()
-                    .ok_or_else(|| BoardsError::Protocol("layer ID missing".into()))?;
-                c.execute("layer.setCurrent", json!({"id":layer_id}))?;
-                layer = Some(layer_id);
-                let background=c.execute("shape.rectangle",json!({"x":x+6.,"y":y+6.,"width":b.width_pt-12.,"height":(b.height_pt-12.).min(110.)}))?;
-                let id = background["id"]
-                    .as_u64()
-                    .ok_or_else(|| BoardsError::Protocol("background ID missing".into()))?;
-                c.execute("paint.setFill", json!({"id":id,"color":"#eef2f6"}))?;
-                c.execute("paint.setStroke", json!({"id":id,"none":true}))?;
-                created_ids.push(id);
-            }
-
-            for (role, value) in &values {
-                let base_role = role.strip_prefix("label:").unwrap_or(role);
-                let i = field_order
-                    .iter()
-                    .position(|r| r == base_role)
-                    .ok_or_else(|| BoardsError::Invalid("unknown header role".into()))?;
-                let label = role.starts_with("label:");
-                let text = value.clone();
-                if text.chars().count() > 1024 {
-                    return Err(BoardsError::Invalid("field too long".into()));
-                }
-                let row = i % 8;
-                let column = i / 8;
-                let target_x = x
-                    + 12.
-                    + column as f64 * (b.width_pt / 4.)
-                    + if label { 0. } else { b.width_pt / 10. };
-                let target_y = y + 18. + row as f64 * ((b.height_pt - 24.).min(96.) / 8.);
-                if let Some((id, _)) = fields.get(role) {
-                    let node = c.execute("document.node", json!({"id":id}))?;
-                    let transform = &node["kind"]["xf"];
-                    let current_x = transform[4].as_f64().ok_or_else(|| {
-                        BoardsError::Protocol("native text origin missing".into())
-                    })?;
-                    let current_y = transform[5].as_f64().ok_or_else(|| {
-                        BoardsError::Protocol("native text origin missing".into())
-                    })?;
-                    c.execute("object.transform",json!({"ids":[id],"matrix":[1,0,0,1,target_x-current_x,target_y-current_y]}))?;
-                    c.execute("text.setText", json!({"id":id,"text":text}))?;
-                } else {
-                    if layer.is_none() {
-                        let l=c.execute("layer.new",json!({"name":"WorkCrate header","top":true,"locked":false,"visible":true}))?;
-                        let id = l["id"]
-                            .as_u64()
-                            .ok_or_else(|| BoardsError::Protocol("layer ID absent".into()))?;
-                        c.execute("layer.setCurrent", json!({"id":id}))?;
-                        layer = Some(id);
-                    }
-                    let created=c.execute("text.create",json!({"x":target_x,"y":target_y,"text":text,"size":8,"font":"Microsoft YaHei","area":{"width":if label{b.width_pt/10.-4.}else{b.width_pt*0.15-16.},"height":10.,"fit":"shrinkText","fitMinPercent":30},"color":"#18212f"}))?;
-                    let id = created["id"]
-                        .as_u64()
-                        .ok_or_else(|| BoardsError::Protocol("text ID absent".into()))?;
-                    let note=json!({"namespace":"fileatlas.workcrate","version":1,"board":b.native_id,"role":role}).to_string();
-                    c.execute("attributes.set", json!({"id":id,"note":note}))?;
-                    created_ids.push(id);
-                }
-            }
-            if fields.is_empty() && !created_ids.is_empty() {
-                let grouped = c.execute("object.group", json!({"ids":created_ids}))?;
-                let id = grouped["id"]
-                    .as_u64()
-                    .ok_or_else(|| BoardsError::Protocol("header group ID missing".into()))?;
-                c.execute(
-                    "layer.setProps",
-                    json!({"id":id,"name":"WorkCrate material header"}),
-                )?;
-                c.execute("attributes.set",json!({"id":id,"note":json!({"namespace":"fileatlas.workcrate","version":1,"board":b.native_id,"role":"header"}).to_string()}))?;
-            }
-            Ok(())
-        })();
-        match result {
-            Ok(()) => {
-                c.execute("edit.undoGroup.end", json!({}))?;
-                Ok(())
-            }
-            Err(e) => {
-                let _ = c.execute("edit.undoGroup.end", json!({"cancel":true}));
-                Err(e)
-            }
-        }
+        let project_name = self.project_name(b)?;
+        header::write(c, b, title, &info, &project_name)
     }
     pub fn save_project(&self, project: &str) -> Result<(), BoardsError> {
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
@@ -323,7 +236,7 @@ impl WorkCrateBoardsService {
         let binding = self.projects.document_binding(project)?;
         if id.split(':').nth(1) != Some(binding.as_str()) {
             return Err(BoardsError::Invalid(
-                "native document association changed; refresh pages".into(),
+                "本页所属原生工程的关联已变化，请先同步工程与预览后再保存".into(),
             ));
         }
         let source = std::fs::canonicalize(path)?;

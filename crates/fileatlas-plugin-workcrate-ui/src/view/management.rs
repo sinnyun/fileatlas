@@ -8,8 +8,10 @@ impl WorkCratePanel {
         window: &mut Window,
         cx: &mut ViewContext<Self>,
     ) {
-        self.edit_input
-            .update(cx, |input, cx| input.set_value(value, window, cx));
+        self.edit_input.update(cx, |input, cx| {
+            input.set_value(value, window, cx);
+            input.focus(window, cx);
+        });
         self.editing = Some((target, key.into()));
         cx.notify();
     }
@@ -22,47 +24,53 @@ impl WorkCratePanel {
         let Some((target, key)) = self.editing.clone() else {
             return;
         };
+        if key == "project" {
+            self.save_project_name(target, value, cx);
+            return;
+        }
+        let label = match key.strip_prefix("extra:") {
+            Some(name) => name.to_owned(),
+            None if key == "new" => format!("字段 {value}"),
+            None => field_label(&key).to_owned(),
+        };
+        self.save_field(target, key, value, label, cx);
+    }
+
+    /// A global project rename writes only the project index. The page document, its
+    /// cards and the warm official session are unaffected, so it must not run the
+    /// create/sync path that closes the canvas and reloads the whole catalogue.
+    fn save_project_name(&mut self, id: String, name: String, cx: &mut ViewContext<Self>) {
+        if self.busy || self.canvas_busy {
+            return;
+        }
+        self.editing = None;
+        self.message = Some("正在保存项目名称…".into());
+        cx.notify();
         let projects = Arc::clone(&self.projects);
-        let boards = Arc::clone(&self.boards);
-        self.perform(
-            move || {
-                if key == "project" {
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
                     projects
-                        .rename_project(&target, &value)
-                        .map_err(|e| e.to_string())?;
-                    return Ok(());
-                }
-                let mut board = boards.board(&target).map_err(|e| e.to_string())?;
-                match key.as_str() {
-                    "title" => {
-                        board.title = value;
-                        board.info.auto_from_first = false;
-                    }
-                    "physical" => board.info.size_label = value,
-                    "local" => {
-                        board.info.project_name_override = (!value.is_empty()).then_some(value)
-                    }
-                    "material" => board.info.material = value,
-                    "size" => board.info.size = value,
-                    "quantity" => board.info.quantity = value,
-                    "new" => {
-                        if value.is_empty() {
-                            return Err("字段名称不能为空".into());
+                        .rename_project(&id, &name)
+                        .map_err(|e| e.to_string())
+                })
+                .await;
+            let _ = this.update(cx, |view: &mut WorkCratePanel, cx| {
+                match result {
+                    Ok(project) => {
+                        if let Some(item) = view.items.iter_mut().find(|item| item.id == project.id)
+                        {
+                            *item = project;
                         }
-                        board.info.extra.insert(value, String::new());
+                        view.message = Some("已保存：项目名称".into());
                     }
-                    key if key.starts_with("extra:") => {
-                        board.info.extra.insert(key[6..].into(), value);
-                    }
-                    _ => return Err("未知页面字段".into()),
+                    Err(error) => view.message = Some(format!("保存失败：{error}")),
                 }
-                boards
-                    .update_info(&target, &board.title, board.info)
-                    .map_err(|e| e.to_string())?;
-                Ok(())
-            },
-            cx,
-        );
+                cx.notify();
+            });
+        })
+        .detach();
     }
 
     pub(super) fn project_action(&mut self, id: String, action: &str, cx: &mut ViewContext<Self>) {
@@ -241,5 +249,114 @@ impl WorkCratePanel {
             }
         })
         .detach();
+    }
+}
+
+/// Apply one inspector field draft to a freshly read page record.
+pub(super) fn apply_field(
+    board: &mut WorkCrateBoard,
+    key: &str,
+    value: String,
+) -> Result<(), String> {
+    match key {
+        "title" => {
+            board.title = value;
+            board.info.auto_from_first = false;
+        }
+        "physical" => board.info.size_label = value,
+        "local" => board.info.project_name_override = (!value.is_empty()).then_some(value),
+        "material" => board.info.material = value,
+        "size" => board.info.size = value,
+        "quantity" => board.info.quantity = value,
+        "new" => {
+            if value.is_empty() {
+                return Err("字段名称不能为空".into());
+            }
+            board.info.extra.insert(value, String::new());
+        }
+        key if key.starts_with("extra:") => {
+            board.info.extra.insert(key[6..].to_owned(), value);
+        }
+        _ => return Err("未知页面字段".into()),
+    }
+    Ok(())
+}
+
+/// The Chinese field name shown in the save feedback for one inspector key.
+pub(super) fn field_label(key: &str) -> &'static str {
+    match key {
+        "title" => "页面名称",
+        "physical" => "尺寸标记",
+        "local" | "project" => "项目名称",
+        "material" => "物料名称",
+        "size" => "尺寸",
+        "quantity" => "数量",
+        _ => "页面字段",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_field;
+    use fileatlas_plugin_workcrate_boards::{PageInfo, WorkCrateBoard};
+
+    fn board() -> WorkCrateBoard {
+        WorkCrateBoard {
+            id: "p:binding:1".into(),
+            project_id: "p".into(),
+            native_id: 1,
+            index: 0,
+            title: "页面".into(),
+            width_pt: 420. * 72. / 25.4,
+            height_pt: 297. * 72. / 25.4,
+            info: PageInfo::default(),
+        }
+    }
+
+    #[test]
+    fn a_local_name_is_stored_and_reset_to_inherit_by_an_empty_draft() {
+        let mut named = board();
+        assert_eq!(apply_field(&mut named, "local", "本页名称".into()), Ok(()));
+        assert_eq!(
+            named.info.project_name_override.as_deref(),
+            Some("本页名称")
+        );
+        let mut inherited = named;
+        assert_eq!(apply_field(&mut inherited, "local", String::new()), Ok(()));
+        assert_eq!(inherited.info.project_name_override, None);
+    }
+
+    #[test]
+    fn a_new_field_starts_empty_and_a_blank_name_is_refused() {
+        let mut added = board();
+        assert_eq!(apply_field(&mut added, "new", "工艺".into()), Ok(()));
+        assert_eq!(added.info.extra["工艺"], "");
+        assert!(apply_field(&mut board(), "new", "  ".trim().to_owned()).is_err());
+    }
+
+    #[test]
+    fn an_extra_edit_keeps_the_other_fields_and_the_page_name() {
+        let mut edited = board();
+        assert_eq!(apply_field(&mut edited, "title", "新页面名".into()), Ok(()));
+        assert_eq!(apply_field(&mut edited, "material", "纸板".into()), Ok(()));
+        assert_eq!(
+            apply_field(&mut edited, "extra:工艺", "切割".into()),
+            Ok(())
+        );
+        assert_eq!(edited.title, "新页面名");
+        assert_eq!(edited.info.material, "纸板");
+        assert!(
+            !edited.info.auto_from_first,
+            "a named page stops following the first image"
+        );
+        assert_eq!(edited.info.extra["工艺"], "切割");
+    }
+
+    #[test]
+    fn an_unknown_field_is_refused_rather_than_saved() {
+        assert_eq!(
+            apply_field(&mut board(), "mystery", "x".into()).unwrap_err(),
+            "未知页面字段"
+        );
     }
 }

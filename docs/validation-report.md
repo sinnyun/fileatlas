@@ -1147,3 +1147,34 @@ UI Bridge 提供工作台蓝，已保存 System/旧预设保留。UI-only 变更
 服务 payload、事件顺序、标签颜色或媒体文件。映射见 `docs/source-feature-audit.md`。
 当前界面验收见 `docs/validation-ui/2026-10-18-unified-theme/README.md`，不以旧 egui
 视觉为验收标准，不把静态主题守卫当作全部运行状态的证明。
+
+## 2026-10-22 WorkCrate 官方行为映射（非 PhoTag 迁移项）
+
+WorkCrate 编辑不来自 vendor/photag-source；本轮源行为以已安装 VectorCraft 0.14.0
+命令目录和现有官方适配器为准。`vc.cjs params text.setStyle` 核对 font/size/justify；
+UI typography → Boards.canvas_text_style → 官方 text.setStyle，预览出版 → 官方
+render_preview → 现有 BoardCache 原子写入。没有改变 PhoTag 数据表或媒体行为。
+缓存 PNG 与画布 PNG 一致、文字/链接/撤销重做/持久重读测试通过；
+[具体范围](validation-ui/2026-10-22-workcrate-refresh/README.md)。
+
+## 2026-10-22 WorkCrate 信息条几何与单页写入（官方行为，非 PhoTag 迁移项）
+
+同样不涉及 `vendor/photag-source`：源行为以安装的 VectorCraft 0.14.0 无头会话为准。
+信息条每个文字框的宽高一律来自官方 `document.node` 报告，`header_layout` 只做纯几何
+换算，落位走官方 `object.transform` 增量；归属用官方 `attributes.set` 版本化备注写入
+原生文本，回读遍历官方 `document.json`。两处官方行为经实测确认并据此改写测试：指针
+拖拽受智能参考线吸附（≈2.4 pt），`text.create` 会把过长文字折行到画板宽度。
+写入路径 `update_info → InfoSave{board, frame, changed}`：未变草稿不写官方、复用该页
+会话时带回官方渲染帧、否则只 `store_page` 该页，其余页缓存文件身份不变。PhoTag 数据表
+与媒体行为未改动。命令与断言见
+[本轮验证](validation-ui/2026-10-22-workcrate-header/README.md)。
+
+## 2026-10-22 WorkCrate 切页复用官方会话（官方行为，非 PhoTag 迁移项）
+
+画布会话从“一页一会话”改为“一份原生文档一会话”。切页不再提交/关闭/重连，而是对
+同一官方 MCP 会话执行 `select.none` 并改渲染画板；`CanvasSnapshot.session_id` 只在
+真正重启进程时变化。官方 0.14.0 没有“设置活动画板”的命令，因此由 FileAtlas 记录
+当前 `artboard` 索引并向 `render_preview` 显式传索引。切页不写文件；退出编辑区仍走
+既有 `canvas_commit`/`canvas_close`。PhoTag 数据表与媒体行为未改动。官方门控用例
+`page_switches_reuse_the_same_official_session` 与同进程 UI 场景通过，命令与范围见
+[本轮验证](validation-ui/2026-10-22-workcrate-page-switch/README.md)。

@@ -25,15 +25,15 @@ pub(crate) fn same_path(a: &str, b: &Path) -> bool {
     };
     normalized(a) == normalized(&b.to_string_lossy())
 }
+pub(crate) const ACTIVE_DOCUMENT_CHANGED: &str =
+    "官方程序当前打开的文档已变化，请回到 WorkCrate 重新关联该工程后再操作";
 pub(crate) fn inspect_matches(
     c: &mut impl NativeProtocol,
     path: &Path,
 ) -> Result<Value, BoardsError> {
     let inspect = c.request("document.inspect", json!({"depth":0}))?;
     if !inspect["path"].as_str().is_some_and(|p| same_path(p, path)) {
-        return Err(BoardsError::Invalid(
-            "active native document changed".into(),
-        ));
+        return Err(BoardsError::Invalid(ACTIVE_DOCUMENT_CHANGED.into()));
     }
     Ok(inspect)
 }
@@ -62,8 +62,9 @@ pub(crate) fn open_safely(c: &mut Client, path: &Path) -> Result<(), BoardsError
         .map_err(|_| BoardsError::Poisoned)?
         .get(path)
     {
-        return Err(BoardsError::Invalid(format!(
-            "native resource diagnostics require explicit reattach/revalidation: {diagnostics}"
+        return Err(BoardsError::Invalid(describe_open_report(
+            diagnostics,
+            false,
         )));
     }
     if let Some(i) = inspect_optional(c)? {
@@ -78,7 +79,7 @@ pub(crate) fn open_safely(c: &mut Client, path: &Path) -> Result<(), BoardsError
     let opened = c.request("app.open", json!({"path":path}))?;
     if opened.is_null() {
         return Err(BoardsError::Invalid(
-            "official open pending user dialog".into(),
+            "官方程序正在等待窗口中的确认，请完成该对话框后再重试".into(),
         ));
     }
     apply_open_report(&opened, path, &c.diagnostics, false)?;
@@ -97,32 +98,88 @@ pub(crate) fn revalidate_open_headless(
     inspect_matches(c, path)?;
     Ok(())
 }
+fn report_links<'a>(report: &'a Value, key: &str) -> &'a [Value] {
+    report[key].as_array().map(Vec::as_slice).unwrap_or(&[])
+}
+fn link_absent(link: &Value) -> bool {
+    link["path"]
+        .as_str()
+        .is_none_or(|raw| !Path::new(raw.trim_start_matches(r"\\?\")).is_file())
+}
+/// Missing links the user can actually act on: a sandboxed headless session also reports
+/// links outside its read root, so a path that exists on disk is not shown as missing.
+fn missing_links(report: &Value, sandboxed: bool) -> Vec<&Value> {
+    report_links(report, "missingLinks")
+        .iter()
+        .filter(|link| !sandboxed || link_absent(link))
+        .collect()
+}
+/// The official report names internal link ids and is unreadable on its own. The panel only
+/// shows which files failed and the one action that revalidates them.
+fn describe_open_report(report: &Value, sandboxed: bool) -> String {
+    fn link_label(link: &Value) -> Option<String> {
+        if let Some(name) = link["name"]
+            .as_str()
+            .map(str::trim)
+            .filter(|name| !name.is_empty())
+        {
+            return Some(name.to_owned());
+        }
+        let raw = link["path"].as_str()?;
+        Path::new(raw.trim_start_matches(r"\\?\"))
+            .file_name()?
+            .to_str()
+            .map(str::to_owned)
+    }
+    let mut issues = Vec::new();
+    let missing = missing_links(report, sandboxed);
+    if !missing.is_empty() {
+        let names = missing
+            .iter()
+            .filter_map(|link| link_label(link))
+            .take(3)
+            .collect::<Vec<_>>();
+        let count = missing.len();
+        if names.is_empty() {
+            issues.push(format!("有 {count} 个资源文件缺失"));
+        } else if count > names.len() {
+            issues.push(format!("资源文件缺失：{} 等 {count} 个", names.join("、")));
+        } else {
+            issues.push(format!("资源文件缺失：{}", names.join("、")));
+        }
+    }
+    let modified = report_links(report, "modifiedLinks");
+    if !modified.is_empty() {
+        issues.push(format!(
+            "官方程序改写了 {} 处资源链接，需要确认",
+            modified.len()
+        ));
+    }
+    let warnings = report_links(report, "warnings");
+    if !warnings.is_empty() {
+        issues.push(format!("官方程序报告了 {} 条资源警告", warnings.len()));
+    }
+    if issues.is_empty() {
+        issues.push("官方程序报告资源异常".into());
+    }
+    let repair = if missing.is_empty() {
+        "请先在 VectorCraft 中确认并保存该文档，然后回到 WorkCrate 点击“关联工程”重新选择该文档以重新校验；修复前该文档无法打开或重新关联。"
+    } else {
+        "请先在 VectorCraft 中恢复或重新链接这些资源并保存文档，然后回到 WorkCrate 点击“关联工程”重新选择该文档以重新校验；修复前该文档无法打开或重新关联。"
+    };
+    format!("{}。{repair}", issues.join("；"))
+}
 /// A linked resource reported missing by the headless session is a sandbox artifact when
 /// the file is actually present: its automation read root is the native document's folder,
 /// so links stored elsewhere cannot resolve even though nothing is broken.
 fn open_report_blocking(opened: &Value, sandboxed: bool) -> bool {
-    let non_empty = |key: &str| {
-        opened[key]
-            .as_array()
-            .is_some_and(|entries| !entries.is_empty())
-    };
     if ["warnings", "modifiedLinks"]
         .iter()
-        .any(|key| non_empty(key))
+        .any(|key| !report_links(opened, key).is_empty())
     {
         return true;
     }
-    if !non_empty("missingLinks") {
-        return false;
-    }
-    !sandboxed
-        || opened["missingLinks"].as_array().is_some_and(|links| {
-            links.iter().any(|link| {
-                link["path"]
-                    .as_str()
-                    .is_none_or(|raw| !Path::new(raw.trim_start_matches(r"\\?\")).is_file())
-            })
-        })
+    !missing_links(opened, sandboxed).is_empty()
 }
 fn apply_open_report(
     opened: &Value,
@@ -137,11 +194,19 @@ fn apply_open_report(
             .remove(path);
         return Ok(());
     }
+    let message = describe_open_report(opened, sandboxed);
+    let mut stored = opened.clone();
+    if sandboxed {
+        stored["missingLinks"] = Value::Array(
+            missing_links(opened, true)
+                .into_iter()
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+    }
     let mut diagnostics = diagnostics.lock().map_err(|_| BoardsError::Poisoned)?;
-    diagnostics.insert(path.into(), opened.clone());
-    Err(BoardsError::Invalid(format!(
-        "native document opened with resource diagnostics: {opened}"
-    )))
+    diagnostics.insert(path.into(), stored);
+    Err(BoardsError::Invalid(message))
 }
 pub(crate) fn catalog(
     c: &mut impl NativeProtocol,
@@ -180,15 +245,19 @@ pub(crate) fn catalog(
             ..Default::default()
         };
         if let Some(values) = fields.get(&native_id) {
-            for (role, (_, text)) in values {
+            for (role, node) in values {
                 match role.as_str() {
-                    "material" => info.material = text.clone(),
-                    "size" => info.size = text.clone(),
-                    "quantity" => info.quantity = text.clone(),
-                    "size_label" => info.size_label = text.clone(),
-                    "project_name" => info.project_name_override = Some(text.clone()),
+                    "material" => info.material = node.text.clone(),
+                    "size" => info.size = node.text.clone(),
+                    "quantity" => info.quantity = node.text.clone(),
+                    "size_label" => info.size_label = node.text.clone(),
+                    "project_name" => {
+                        if !node.inherited {
+                            info.project_name_override = Some(node.text.clone())
+                        }
+                    }
                     key if key.starts_with("extra:") => {
-                        info.extra.insert(key[6..].into(), text.clone());
+                        info.extra.insert(key[6..].into(), node.text.clone());
                     }
                     _ => {}
                 }
@@ -207,14 +276,45 @@ pub(crate) fn catalog(
     }
     Ok(out)
 }
-pub(crate) type Fields = BTreeMap<u64, BTreeMap<String, (u64, String)>>;
-pub(crate) fn header_fields(c: &mut impl NativeProtocol) -> Result<Fields, BoardsError> {
-    extract_fields(&c.execute("document.json", json!({}))?)
+/// One owned node of a page header: its official id, its current text and, for the printed
+/// project name, whether that text came from the project rather than this page.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct HeaderNode {
+    pub id: u64,
+    pub text: String,
+    pub inherited: bool,
 }
-pub(crate) fn extract_fields(document: &Value) -> Result<Fields, BoardsError> {
+pub(crate) type Fields = BTreeMap<u64, BTreeMap<String, HeaderNode>>;
+/// Everything FileAtlas owns on one artboard: the text fields plus the band rectangle and,
+/// in documents written before the compact band, the single group that wrapped the block.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct OwnedNodes {
+    pub fields: BTreeMap<String, HeaderNode>,
+    pub band: Option<u64>,
+    pub chip: Option<u64>,
+    pub legacy_group: Option<u64>,
+}
+pub(crate) fn header_fields(c: &mut impl NativeProtocol) -> Result<Fields, BoardsError> {
+    Ok(owned_by_board(c)?
+        .into_iter()
+        .map(|(board, owned)| (board, owned.fields))
+        .collect())
+}
+pub(crate) fn owned(c: &mut impl NativeProtocol, board: u64) -> Result<OwnedNodes, BoardsError> {
+    Ok(owned_by_board(c)?.remove(&board).unwrap_or_default())
+}
+fn owned_by_board(c: &mut impl NativeProtocol) -> Result<BTreeMap<u64, OwnedNodes>, BoardsError> {
+    extract_owned(&c.execute("document.json", json!({}))?)
+}
+fn note_of(node: &Value) -> Option<Value> {
+    let note = node["attrs"]["note"].as_str()?;
+    let parsed = serde_json::from_str::<Value>(note).ok()?;
+    (parsed["namespace"] == "fileatlas.workcrate" && parsed["version"] == 1).then_some(parsed)
+}
+fn extract_owned(document: &Value) -> Result<BTreeMap<u64, OwnedNodes>, BoardsError> {
     fn visit(
         node: &Value,
-        out: &mut Fields,
+        out: &mut BTreeMap<u64, OwnedNodes>,
         count: &mut usize,
         depth: usize,
     ) -> Result<(), BoardsError> {
@@ -224,35 +324,45 @@ pub(crate) fn extract_fields(document: &Value) -> Result<Fields, BoardsError> {
                 "native model exceeds traversal bounds".into(),
             ));
         }
-        if let Some(note) = node["attrs"]["note"]
-            .as_str()
-            .and_then(|s| serde_json::from_str::<Value>(s).ok())
-        {
-            if note["namespace"] == "fileatlas.workcrate"
-                && note["version"] == 1
-                && node["kind"]["type"] == "text"
+        if let Some(note) = note_of(node) {
+            let board = note["board"]
+                .as_u64()
+                .or_else(|| note["artboardId"].as_u64());
+            let kind = node["kind"]["type"].as_str().unwrap_or_default();
+            if let (Some(board), Some(role), Some(id)) =
+                (board, note["role"].as_str(), node["id"].as_u64())
             {
-                let board = note["board"]
-                    .as_u64()
-                    .or_else(|| note["artboardId"].as_u64());
-                if let (Some(board), Some(role), Some(id)) =
-                    (board, note["role"].as_str(), node["id"].as_u64())
-                {
-                    let runs = node["kind"]["runs"]
-                        .as_array()
-                        .ok_or_else(|| BoardsError::Protocol("text runs missing".into()))?;
-                    let text = runs
-                        .iter()
-                        .filter_map(|r| r["text"].as_str())
-                        .collect::<String>();
-                    if out
-                        .entry(board)
-                        .or_default()
-                        .insert(role.into(), (id, text))
-                        .is_some()
-                    {
-                        return Err(BoardsError::Invalid("duplicate owned header field".into()));
+                let owned = out.entry(board).or_default();
+                match kind {
+                    "text" => {
+                        let runs = node["kind"]["runs"]
+                            .as_array()
+                            .ok_or_else(|| BoardsError::Protocol("text runs missing".into()))?;
+                        let text = runs
+                            .iter()
+                            .filter_map(|r| r["text"].as_str())
+                            .collect::<String>();
+                        if owned
+                            .fields
+                            .insert(
+                                role.into(),
+                                HeaderNode {
+                                    id,
+                                    text,
+                                    inherited: note["inherited"].as_bool().unwrap_or(false),
+                                },
+                            )
+                            .is_some()
+                        {
+                            return Err(BoardsError::Invalid(
+                                "duplicate owned header field".into(),
+                            ));
+                        }
                     }
+                    "path" if role == "band" => owned.band = Some(id),
+                    "path" if role == "page_number_chip" => owned.chip = Some(id),
+                    "group" if role == "header" => owned.legacy_group = Some(id),
+                    _ => {}
                 }
             }
         }
@@ -263,30 +373,177 @@ pub(crate) fn extract_fields(document: &Value) -> Result<Fields, BoardsError> {
         }
         Ok(())
     }
-    let mut fields = Fields::new();
+    let mut owned = BTreeMap::new();
     let mut count = 0;
     for layer in document["layers"]
         .as_array()
         .ok_or_else(|| BoardsError::Protocol("native layers missing".into()))?
     {
-        visit(layer, &mut fields, &mut count, 0)?
+        visit(layer, &mut owned, &mut count, 0)?
     }
-    Ok(fields)
+    Ok(owned)
+}
+/// The topmost official layer reserved for header nodes, created when a document has none.
+pub(crate) fn header_layer(c: &mut impl NativeProtocol) -> Result<u64, BoardsError> {
+    const NAME: &str = "WorkCrate header";
+    let document = c.execute("document.json", json!({}))?;
+    let existing = document["layers"]
+        .as_array()
+        .ok_or_else(|| BoardsError::Protocol("native layers missing".into()))?
+        .iter()
+        .filter(|layer| layer["name"].as_str() == Some(NAME))
+        .filter_map(|layer| layer["id"].as_u64())
+        .next_back();
+    if let Some(id) = existing {
+        c.execute("layer.setCurrent", json!({"id":id}))?;
+        return Ok(id);
+    }
+    let created = c.execute(
+        "layer.new",
+        json!({"name":NAME,"top":true,"locked":false,"visible":true}),
+    )?;
+    let id = created["id"]
+        .as_u64()
+        .ok_or_else(|| BoardsError::Protocol("header layer ID missing".into()))?;
+    c.execute("layer.setCurrent", json!({"id":id}))?;
+    Ok(id)
 }
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn node(id: u64, version: u64, text: &str) -> Value {
-        json!({"id":id,"attrs":{"note":json!({"namespace":"fileatlas.workcrate","version":version,"board":7,"role":"material"}).to_string()},"kind":{"type":"text","runs":[{"text":text}]}})
+    fn tagged(id: u64, kind: &str, note: Value, text: Option<&str>) -> Value {
+        let mut node = json!({"id":id,"attrs":{"note":note.to_string()},"kind":{"type":kind}});
+        if let Some(text) = text {
+            node["kind"]["runs"] = json!([{"text":text}]);
+        }
+        node
     }
     #[test]
-    fn actual_text_and_unknown_versions() -> Result<(), BoardsError> {
-        let value = json!({"layers":[node(1,1,"中文123"),node(2,2,"ignored")]});
-        assert_eq!(extract_fields(&value)?[&7]["material"].1, "中文123");
+    fn actual_text_unknown_versions_and_inheritance() -> Result<(), BoardsError> {
+        let value = json!({"layers":[
+            tagged(1,"text",json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"material"}),Some("中文123")),
+            tagged(2,"text",json!({"namespace":"fileatlas.workcrate","version":2,"board":7,"role":"material"}),Some("ignored")),
+            tagged(3,"text",json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"project_name","inherited":true}),Some("全局名")),
+        ]});
+        let owned = extract_owned(&value)?;
+        assert_eq!(owned[&7].fields["material"].text, "中文123");
+        assert_eq!(owned[&7].fields["material"].inherited, false);
+        assert_eq!(owned[&7].fields["project_name"].text, "全局名");
+        assert_eq!(owned[&7].fields["project_name"].inherited, true);
+        assert_eq!(owned[&7].band, None);
+        Ok(())
+    }
+    #[test]
+    fn band_chip_and_legacy_group_are_reported_separately() -> Result<(), BoardsError> {
+        let band = tagged(
+            4,
+            "path",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"band"}),
+            None,
+        );
+        let chip = tagged(
+            6,
+            "path",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"page_number_chip"}),
+            None,
+        );
+        let legacy = tagged(
+            5,
+            "group",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"header"}),
+            None,
+        );
+        let owned = extract_owned(&json!({"layers":[band,chip,legacy]}))?;
+        assert_eq!(owned[&7].band, Some(4));
+        assert_eq!(owned[&7].chip, Some(6));
+        assert_eq!(owned[&7].legacy_group, Some(5));
+        assert!(owned[&7].fields.is_empty());
+        Ok(())
+    }
+    #[test]
+    fn legacy_group_children_stay_readable() -> Result<(), BoardsError> {
+        let text = tagged(
+            3,
+            "text",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"size"}),
+            Some("80 * 180cm"),
+        );
+        let group = json!({"id":9,"kind":{"type":"group","children":[text]}});
+        let owned = extract_owned(&json!({"layers":[group]}))?;
+        assert_eq!(owned[&7].fields["size"].id, 3);
         Ok(())
     }
     #[test]
     fn duplicate_roles_refuse_ambiguous_mutation() {
-        assert!(extract_fields(&json!({"layers":[node(1,1,"A"),node(2,1,"B")]})).is_err());
+        let node = |id: u64| {
+            tagged(
+                id,
+                "text",
+                json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"material"}),
+                Some("A"),
+            )
+        };
+        assert!(extract_owned(&json!({"layers":[node(1),node(2)]})).is_err());
+    }
+    #[test]
+    fn resource_diagnostics_summarize_missing_files_and_repair_steps() {
+        let report = json!({
+            "title":"新建项目 1.vectorcraft",
+            "missingLinks":[
+                {"ids":[28],"name":"2026-10-21 20-46-04.png","path":r"\\?\F:\AI\geren\pho_cordis\docs\2026-10-21 20-46-04.png"},
+                {"path":r"\\?\F:\素材\cover.jpg"},
+            ],
+            "modifiedLinks":[],
+            "warnings":[],
+        });
+        let message = describe_open_report(&report, false);
+        assert!(
+            message.contains("资源文件缺失：2026-10-21 20-46-04.png、cover.jpg"),
+            "{message}"
+        );
+        assert!(message.contains("关联工程"), "{message}");
+        assert!(
+            !message.contains("missingLinks"),
+            "raw report leaked: {message}"
+        );
+        assert!(
+            !message.contains(r"\\?\"),
+            "internal path form leaked: {message}"
+        );
+    }
+    #[test]
+    fn sandboxed_diagnostics_hide_links_that_exist_on_disk() {
+        let existing = concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml");
+        let report = json!({
+            "missingLinks":[
+                {"name":"present.png","path":existing},
+                {"name":"gone.png","path":r"\\?\F:\absent\gone.png"},
+            ],
+            "modifiedLinks":[],
+            "warnings":[],
+        });
+        let message = describe_open_report(&report, true);
+        assert!(message.contains("资源文件缺失：gone.png"), "{message}");
+        assert!(
+            !message.contains("present.png"),
+            "a sandbox artifact must not be shown as missing: {message}"
+        );
+        let live = describe_open_report(&report, false);
+        assert!(
+            live.contains("present.png"),
+            "a live report keeps every entry: {live}"
+        );
+    }
+    #[test]
+    fn resource_diagnostics_count_link_changes_and_warnings() {
+        let report = json!({
+            "missingLinks":[],
+            "modifiedLinks":[{"path":"a.png"}],
+            "warnings":["one","two"],
+        });
+        let message = describe_open_report(&report, false);
+        assert!(message.contains("改写了 1 处资源链接"), "{message}");
+        assert!(message.contains("2 条资源警告"), "{message}");
+        assert!(message.contains("关联工程"), "{message}");
     }
 }

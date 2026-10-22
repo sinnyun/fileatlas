@@ -7,6 +7,9 @@ use serde::Serialize;
 /// the official program reports back.
 pub(crate) struct CanvasState {
     session: mcp::McpSession,
+    /// The official process behind this session. Switching pages of one document keeps
+    /// it, so the editor never reconnects while the user browses the document's pages.
+    session_id: u64,
     live: bool,
     document: PathBuf,
     project_id: String,
@@ -33,6 +36,9 @@ pub struct CanvasGeometry {
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct CanvasSnapshot {
     pub board_id: String,
+    /// Changes only when the official process behind the session changes, so a caller can
+    /// prove that a page switch reused the same connection.
+    pub session_id: u64,
     pub live: bool,
     pub tool: String,
     pub revision: u64,
@@ -83,10 +89,25 @@ fn png_size(path: &Path) -> Option<[u32; 2]> {
 }
 
 impl WorkCrateBoardsService {
-    /// Start (or replace) the canvas session for one page. Uses the live GUI whenever its
-    /// control port answers, otherwise the silent headless session; a running GUI is never
-    /// a reason to refuse editing.
+    /// Show one page in the canvas editor. A session that already holds this document is
+    /// kept and only its artboard moves, so switching pages inside the editor never opens
+    /// another official process; leaving the editor is what closes the session.
     pub fn canvas_open(&self, board_id: &str) -> Result<CanvasSnapshot, BoardsError> {
+        self.canvas_open_inner(board_id, true)
+    }
+
+    /// Warm the session for a field save without rendering a throwaway frame: the save
+    /// itself writes the header and renders the page once through this same session.
+    pub fn canvas_open_quiet(&self, board_id: &str) -> Result<CanvasSnapshot, BoardsError> {
+        self.canvas_open_inner(board_id, false)
+    }
+
+    fn canvas_open_inner(
+        &self,
+        board_id: &str,
+        render: bool,
+    ) -> Result<CanvasSnapshot, BoardsError> {
+        let _gate = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
         let board = self.board(board_id)?;
         let project = board.project_id.clone();
         let document = self
@@ -96,20 +117,39 @@ impl WorkCrateBoardsService {
         let preview_dir = directory.join("canvas");
         std::fs::create_dir_all(&preview_dir)?;
         let preview = preview_dir.join(format!("{}.png", board.native_id));
+
+        let mut slot = self.canvas.lock().map_err(|_| BoardsError::Poisoned)?;
+        let mut warm = slot.take();
+        if let Some(state) = warm.as_mut() {
+            if state.project_id == project && state.holds_document(&document) {
+                let outcome = state.switch_to(&board, preview, render);
+                *slot = warm;
+                return outcome;
+            }
+            // The session no longer shows this document (the user's GUI moved on, or the
+            // process is gone). Its edits were saved page by page, so start over.
+            drop(warm.take());
+        }
+
         let mut reads = vec![document.clone()];
         reads.extend(self.local_links(&project, &document)?);
         let (session, live) =
             self.canvas_session(&reads, &document, &directory.join("cli-config"))?;
-        let mut state = CanvasState::new(session, live, &document, reads);
+        let mut state =
+            CanvasState::new(session, live, &document, reads, self.next_canvas_session());
         state.preview = preview;
         state.board_id = board.id.clone();
         state.project_id = project;
         state.native_id = board.native_id;
         state.artboard = board.index;
-        let snapshot = state.snapshot_after(true)?;
-        let mut slot = self.canvas.lock().map_err(|_| BoardsError::Poisoned)?;
+        let snapshot = state.snapshot_after(render)?;
         *slot = Some(state);
         Ok(snapshot)
+    }
+
+    fn next_canvas_session(&self) -> u64 {
+        self.canvas_sessions
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Native documents link their placed files in place, so a session that cannot read a
@@ -131,7 +171,9 @@ impl WorkCrateBoardsService {
 
     /// One official canvas session: the user's running GUI when its control port answers,
     /// otherwise the silent headless session confined to the one folder holding `reads`
-    /// and writing only the document's folder.
+    /// and writing only the document's folder. A reachable GUI that cannot make this
+    /// document editable (no document open, a blocking dialog) must not keep the
+    /// background editor closed; that case opens the saved document silently instead.
     fn canvas_session(
         &self,
         reads: &[PathBuf],
@@ -139,16 +181,23 @@ impl WorkCrateBoardsService {
         config_dir: &Path,
     ) -> Result<(mcp::McpSession, bool), BoardsError> {
         let config = self.configuration()?;
-        let live = mcp::port_is_listening(config.port);
-        let mut session = if live {
-            mcp::McpSession::live(&self.cli_executable(&config)?, config.port)?
-        } else {
-            let writes = [document.to_path_buf()];
-            self.headless_client_in(reads, &writes, config_dir)?
-        };
+        let writes = [document.to_path_buf()];
+        if mcp::port_is_listening(config.port) {
+            let mut session = mcp::McpSession::live(&self.cli_executable(&config)?, config.port)?;
+            if session.open_document(document).is_ok() {
+                session.select_tool("selection")?;
+                return Ok((session, true));
+            }
+            drop(session);
+            let mut silent = self.headless_client_in(reads, &writes, config_dir)?;
+            silent.open_document(document)?;
+            silent.select_tool("selection")?;
+            return Ok((silent, false));
+        }
+        let mut session = self.headless_client_in(reads, &writes, config_dir)?;
         session.open_document(document)?;
         session.select_tool("selection")?;
-        Ok((session, live))
+        Ok((session, false))
     }
 
     /// Reopen the silent session with one more folder granted. A live GUI keeps the roots
@@ -186,7 +235,13 @@ impl WorkCrateBoardsService {
             .project_directory(&resume.project_id)?
             .join("cli-config");
         let (session, live) = self.canvas_session(&reads, &resume.document, &config_dir)?;
-        let mut replacement = CanvasState::new(session, live, &resume.document, reads);
+        let mut replacement = CanvasState::new(
+            session,
+            live,
+            &resume.document,
+            reads,
+            self.next_canvas_session(),
+        );
         replacement.project_id = resume.project_id;
         replacement.board_id = resume.board_id;
         replacement.native_id = resume.native_id;
@@ -206,6 +261,12 @@ impl WorkCrateBoardsService {
         self.canvas.lock().is_ok_and(|slot| slot.is_some())
     }
 
+    /// True when the open session already holds this exact page, so a field save reuses it
+    /// instead of launching another official session and rebuilding the overlay.
+    pub fn canvas_holds(&self, board_id: &str) -> Result<bool, BoardsError> {
+        self.canvas_call(|state| Ok(state.board_id == board_id))
+    }
+
     /// Cheap change probe for a UI observer: no render, no file write.
     ///
     /// `known` is the revision that observer last displayed, because an edit made through
@@ -216,7 +277,13 @@ impl WorkCrateBoardsService {
         let Some(state) = slot.as_mut() else {
             return Ok(None);
         };
-        let inspect = state.session.inspect()?;
+        let inspect = state.session.inspect_bound()?;
+        if !inspect["path"]
+            .as_str()
+            .is_some_and(|p| native::same_path(p, &state.document))
+        {
+            return Err(BoardsError::Invalid(native::ACTIVE_DOCUMENT_CHANGED.into()));
+        }
         let revision = inspect["revision"].as_u64().unwrap_or(0);
         if revision == known {
             return Ok(None);
@@ -242,7 +309,10 @@ impl WorkCrateBoardsService {
     /// Re-read and re-render the page after an official change FileAtlas did not cause.
     /// No save: the document already holds whatever the official program reports.
     pub fn canvas_refresh(&self) -> Result<CanvasSnapshot, BoardsError> {
-        self.canvas_call(|state| state.snapshot_after(true))
+        let _gate = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
+        let snapshot = self.canvas_call(|state| state.snapshot_after(true))?;
+        self.publish_canvas_preview(&snapshot)?;
+        Ok(snapshot)
     }
 
     /// Run one official editing command, then immediately write the native document and
@@ -252,14 +322,84 @@ impl WorkCrateBoardsService {
         &self,
         run: impl FnOnce(&mut CanvasState) -> Result<(), BoardsError>,
     ) -> Result<CanvasSnapshot, BoardsError> {
-        self.canvas_call(|state| {
+        let _gate = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
+        let snapshot = self.canvas_call(|state| {
             run(state)?;
             if state.snapshot_after(false)?.dirty {
                 let document = state.document.clone();
                 state.session.save_file(&document)?;
             }
             state.snapshot_after(true)
-        })
+        })?;
+        self.publish_canvas_preview(&snapshot)?;
+        Ok(snapshot)
+    }
+
+    /// Publish the official bitmap into the existing durable preview catalogue.
+    /// No second render: cards, preview mode and a later offline reopen share it.
+    fn publish_canvas_preview(&self, snapshot: &CanvasSnapshot) -> Result<(), BoardsError> {
+        self.publish_canvas_frame(snapshot, None)
+    }
+
+    /// Publish one page's official frame, and — when a field save produced a new card
+    /// record — patch that record in the same cache write. Every other page keeps its own
+    /// record and preview file, so one field save never redraws another card.
+    fn publish_canvas_frame(
+        &self,
+        snapshot: &CanvasSnapshot,
+        board: Option<&WorkCrateBoard>,
+    ) -> Result<(), BoardsError> {
+        let Some(source) = snapshot.preview.as_deref() else {
+            return Ok(());
+        };
+        let (project, _) = native::split_id(&snapshot.board_id)?;
+        let Some(mut cache) = self.read_cache(project)? else {
+            return Ok(());
+        };
+        if !cache.boards.iter().any(|b| b.id == snapshot.board_id) {
+            return Ok(());
+        }
+        let directory = self.projects.project_directory(project)?;
+        let relative = format!("native-previews/{}.png", unique_token());
+        std::fs::create_dir_all(directory.join("native-previews"))?;
+        std::fs::copy(source, directory.join(&relative))?;
+        cache
+            .previews
+            .insert(format!("{}@1600", snapshot.board_id), relative);
+        if let Some(board) = board {
+            if let Some(entry) = cache.boards.iter_mut().find(|b| b.id == board.id) {
+                *entry = board.clone();
+            }
+        }
+        cache.source = self.source_stamp(project);
+        self.write_cache(project, &cache)
+    }
+
+    /// Save one page's name and material fields through the session the editor already
+    /// holds. The official document, tool, selection and page all stay as they are; only
+    /// this page re-renders, and its card plus frame are patched in one cache write.
+    /// The caller already holds the service gate.
+    pub(crate) fn canvas_write_info(
+        &self,
+        board_id: &str,
+        title: &str,
+        info: PageInfo,
+        binding: &str,
+    ) -> Result<(WorkCrateBoard, CanvasSnapshot), BoardsError> {
+        let (board, snapshot) = self.canvas_call(|state| {
+            let mut board = native::catalog(&mut state.session, &state.project_id, binding)?
+                .into_iter()
+                .find(|b| b.id == board_id)
+                .ok_or_else(|| BoardsError::BoardNotFound(board_id.into()))?;
+            self.write_info(&mut state.session, &board, title, info.clone())?;
+            let document = state.document.clone();
+            state.session.save_file(&document)?;
+            board.title = title.into();
+            board.info = info;
+            Ok((board, state.snapshot_after(true)?))
+        })?;
+        self.publish_canvas_frame(&snapshot, Some(&board))?;
+        Ok((board, snapshot))
     }
 
     /// Forward a pointer gesture; the official tool performs hit testing and the edit.
@@ -296,6 +436,17 @@ impl WorkCrateBoardsService {
         ids: &[u64],
         bounds: &CanvasGeometry,
     ) -> Result<CanvasSnapshot, BoardsError> {
+        if ids.is_empty()
+            || ![bounds.x, bounds.y, bounds.width, bounds.height]
+                .iter()
+                .all(|n| n.is_finite())
+            || bounds.width <= 0.
+            || bounds.height <= 0.
+        {
+            return Err(BoardsError::Invalid(
+                "select objects and supply finite coordinates with positive dimensions".into(),
+            ));
+        }
         self.canvas_edit(|state| {
             // `reference: 0` makes x/y the box's top-left; the official default is the
             // centre, which shifts the object by half its size.
@@ -316,6 +467,37 @@ impl WorkCrateBoardsService {
             state
                 .session
                 .execute("text.setText", json!({"id":id,"text":text}))?;
+            Ok(())
+        })
+    }
+
+    /// Apply native character/paragraph attributes; no local typography model.
+    pub fn canvas_text_style(
+        &self,
+        id: u64,
+        font: Option<&str>,
+        size: Option<f64>,
+        justify: Option<&str>,
+    ) -> Result<CanvasSnapshot, BoardsError> {
+        if size.is_some_and(|s| !s.is_finite() || s <= 0.)
+            || justify.is_some_and(|j| !["left", "center", "right", "justifyAll"].contains(&j))
+        {
+            return Err(BoardsError::Invalid(
+                "invalid text size or alignment".into(),
+            ));
+        }
+        let mut params = json!({"id":id});
+        if let Some(font) = font.filter(|f| !f.trim().is_empty()) {
+            params["font"] = json!(font);
+        }
+        if let Some(size) = size {
+            params["size"] = json!(size);
+        }
+        if let Some(justify) = justify {
+            params["justify"] = json!(justify);
+        }
+        self.canvas_edit(|state| {
+            state.session.execute("text.setStyle", params)?;
             Ok(())
         })
     }
@@ -434,9 +616,16 @@ struct CanvasResume {
 }
 
 impl CanvasState {
-    fn new(session: mcp::McpSession, live: bool, document: &Path, reads: Vec<PathBuf>) -> Self {
+    fn new(
+        session: mcp::McpSession,
+        live: bool,
+        document: &Path,
+        reads: Vec<PathBuf>,
+        session_id: u64,
+    ) -> Self {
         Self {
             session,
+            session_id,
             live,
             document: document.to_path_buf(),
             project_id: String::new(),
@@ -447,6 +636,35 @@ impl CanvasState {
             revision: u64::MAX,
             reads,
         }
+    }
+
+    /// Whether the official session still shows this session's own document.
+    fn holds_document(&mut self, document: &Path) -> bool {
+        self.session.inspect_bound().is_ok_and(|inspect| {
+            inspect["path"]
+                .as_str()
+                .is_some_and(|p| native::same_path(p, document))
+        })
+    }
+
+    /// Point the same official session at another page of its document. The session, its
+    /// process and its history stay; only the artboard the overlay renders moves. The old
+    /// page's selection is cleared because those objects do not exist on this one. Nothing
+    /// is written here: the document is saved when the editor closes, as before.
+    fn switch_to(
+        &mut self,
+        board: &WorkCrateBoard,
+        preview: PathBuf,
+        render: bool,
+    ) -> Result<CanvasSnapshot, BoardsError> {
+        if self.board_id != board.id {
+            self.session.execute("select.none", json!({}))?;
+            self.board_id = board.id.clone();
+            self.native_id = board.native_id;
+            self.artboard = board.index;
+            self.preview = preview;
+        }
+        self.snapshot_after(render)
     }
 
     /// Whether the session already reads the folder that would be granted for `path` too.
@@ -462,7 +680,7 @@ impl CanvasState {
     }
 
     fn snapshot_after(&mut self, render: bool) -> Result<CanvasSnapshot, BoardsError> {
-        let inspect = self.session.inspect()?;
+        let inspect = self.session.inspect_bound()?;
         self.snapshot_with(&inspect, render)
     }
 
@@ -494,6 +712,7 @@ impl CanvasState {
         self.revision = inspect["revision"].as_u64().unwrap_or(0);
         Ok(CanvasSnapshot {
             board_id: self.board_id.clone(),
+            session_id: self.session_id,
             live: self.live,
             tool: inspect["tool"].as_str().unwrap_or_default().to_owned(),
             revision: self.revision,

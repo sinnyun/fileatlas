@@ -87,7 +87,11 @@ impl WorkCratePanel {
                             .map(|image| {
                                 img(image)
                                     .size_full()
-                                    .object_fit(ObjectFit::Cover)
+                                    .object_fit(if project.main_image.is_some() {
+                                        ObjectFit::Cover
+                                    } else {
+                                        ObjectFit::Contain
+                                    })
                                     .into_any_element()
                             })
                             .unwrap_or_else(|| {

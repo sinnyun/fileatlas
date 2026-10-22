@@ -65,6 +65,7 @@ fn cached_catalogue_and_preview_survive_restart_without_editor()
                 format!("{}@1600", board.id),
                 "native-previews/cached.png".into(),
             )]),
+            source: None,
         },
     )?;
     drop(service);
@@ -92,6 +93,47 @@ fn cached_catalogue_and_preview_survive_restart_without_editor()
     Ok(())
 }
 
+#[test]
+fn preview_state_tracks_external_saves_without_an_official_session()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let projects = Arc::new(WorkCrateProjectsService::open_at(root.path().join("data"))?);
+    let project = projects.create_project("External saves")?;
+    let native = root.path().join("document.vectorcraft");
+    std::fs::write(&native, b"first")?;
+    projects.set_document_path(&project.id, &native)?;
+    let binding = projects.document_binding(&project.id)?;
+    let service = WorkCrateBoardsService::new(projects);
+    let stamp = crate::autosync::stamp_of(&native).ok_or("written document has no stamp")?;
+    let cache = |source| BoardCache {
+        version: 1,
+        binding: binding.clone(),
+        boards: vec![],
+        previews: BTreeMap::new(),
+        source,
+    };
+    service.write_cache(&project.id, &cache(Some(stamp)))?;
+    assert!(!service.preview_state(&project.id)?.stale());
+
+    std::fs::write(&native, b"a longer externally saved document")?;
+    let changed = service.preview_state(&project.id)?;
+    assert!(changed.stale());
+    assert_ne!(changed.stamp, changed.cache_stamp);
+
+    service.write_cache(&project.id, &cache(None))?;
+    assert!(
+        service.preview_state(&project.id)?.stale(),
+        "a cache without a source stamp is refreshed once"
+    );
+
+    std::fs::remove_file(&native)?;
+    assert!(
+        !service.preview_state(&project.id)?.stale(),
+        "a missing document has nothing to sample"
+    );
+    Ok(())
+}
+
 fn unused_local_port() -> u16 {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     listener.local_addr().unwrap().port()
@@ -108,6 +150,13 @@ fn official_native_round_trip() -> Result<(), Box<dyn std::error::Error>> {
             .as_millis()
     ))?;
     let service = WorkCrateBoardsService::new(projects.clone());
+    // Never hand the test document to whatever official GUI the user happens to be running:
+    // an unlisted port keeps this round trip on the silent headless session it verifies.
+    service.configure(VectorCraftConfig {
+        executable: std::env::var("FILEATLAS_VECTORCRAFT_EXE").unwrap_or_default(),
+        cli_executable: String::new(),
+        port: unused_local_port(),
+    })?;
     let b = service
         .create_project_document(&p.id, &root.join("documents"))?
         .into_iter()
@@ -132,21 +181,66 @@ fn official_native_round_trip() -> Result<(), Box<dyn std::error::Error>> {
         Ok(c)
     };
     let fields = native::header_fields(&mut native_session()?)?;
-    let material = fields[&b.native_id]["material"].0;
+    let material = fields[&b.native_id]["material"].id;
     let before = native_session()?.execute("document.node", json!({"id":material}))?;
+    let owned = native::owned(&mut native_session()?, b.native_id)?;
+    assert!(
+        owned.band.is_some(),
+        "the compact band is one native rectangle behind its text"
+    );
+    assert!(
+        owned.chip.is_some(),
+        "the page number is printed on its own tagged chip"
+    );
+    assert!(
+        owned.legacy_group.is_none(),
+        "the header is plain tagged nodes, not a wrapped group"
+    );
+    for role in [
+        "page_number",
+        "project_name",
+        "material",
+        "quantity",
+        "label:extra:工艺",
+    ] {
+        assert!(
+            owned.fields.contains_key(role),
+            "header role `{role}` missing"
+        );
+    }
     let mut edited = read.info;
     edited.extra.insert("AAA".into(), "added".into());
     service.update_info(&b.id, "真实页面", edited)?;
     let after = native_session()?.execute("document.node", json!({"id":material}))?;
-    assert_ne!(
+    assert_eq!(
         before["kind"]["xf"], after["kind"]["xf"],
-        "adding earlier extra must reflow existing material"
+        "a detail row added below must never move the primary row"
     );
+    let grown = native::owned(&mut native_session()?, b.native_id)?;
+    for role in ["label:extra:AAA", "extra:AAA"] {
+        assert!(
+            grown.fields.contains_key(role),
+            "the new field must print as its own detail row, `{role}` missing"
+        );
+    }
     let mut edited = service.board(&b.id)?.info;
     edited.extra.remove("AAA");
     service.update_info(&b.id, "真实页面", edited)?;
-    let restored = native_session()?.execute("document.node", json!({"id":material}))?;
-    assert_eq!(before["kind"]["xf"], restored["kind"]["xf"]);
+    let restored = native::owned(&mut native_session()?, b.native_id)?;
+    for role in ["label:extra:AAA", "extra:AAA"] {
+        assert!(
+            !restored.fields.contains_key(role),
+            "a removed field leaves a stale `{role}` header node"
+        );
+    }
+    assert_eq!(
+        before["kind"]["xf"],
+        native_session()?.execute(
+            "document.node",
+            json!({"id": restored.fields["material"].id})
+        )?["kind"]["xf"],
+        "removing a detail row must leave the primary row where it was"
+    );
     let second = service.create_page(&p.id)?;
     assert_ne!(second.native_id, b.native_id);
     assert_eq!(service.board_catalog(&p.id)?.len(), 2);
@@ -228,6 +322,75 @@ fn command_error_keeps_the_headless_session_usable() -> Result<(), Box<dyn std::
 
 #[test]
 #[ignore = "requires the official VectorCraft CLI and WORKCRATE_NATIVE_TEST_ROOT"]
+fn page_switches_reuse_the_same_official_session() -> Result<(), Box<dyn std::error::Error>> {
+    let root = PathBuf::from(std::env::var("WORKCRATE_NATIVE_TEST_ROOT")?);
+    let documents = root.join("page-switch-documents");
+    std::fs::create_dir_all(&documents)?;
+    let projects = Arc::new(WorkCrateProjectsService::open_at(root.clone())?);
+    let project = projects.create_project(&format!(
+        "Pages {}",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_millis()
+    ))?;
+    let service = WorkCrateBoardsService::new(projects.clone());
+    service.configure(VectorCraftConfig {
+        executable: std::env::var("FILEATLAS_VECTORCRAFT_EXE").unwrap_or_default(),
+        cli_executable: String::new(),
+        port: unused_local_port(),
+    })?;
+    let first = service
+        .create_project_document(&project.id, &documents)?
+        .into_iter()
+        .next()
+        .ok_or("created native document has no artboard")?;
+    let second = service.create_page(&project.id)?;
+
+    let opened = service.canvas_open(&first.id)?;
+    assert_eq!(opened.board_id, first.id);
+    let session = opened.session_id;
+    assert!(session > 0, "every canvas process needs an identity");
+    let first_preview = opened.preview.clone();
+
+    let switched = service.canvas_open(&second.id)?;
+    assert_eq!(
+        switched.session_id, session,
+        "a page switch inside one document must keep the official connection"
+    );
+    assert_eq!(switched.board_id, second.id);
+    assert_ne!(
+        switched.preview, first_preview,
+        "each page renders its own frame"
+    );
+    assert!(
+        switched.selection.is_empty(),
+        "the page being left must not keep its selection"
+    );
+
+    let centre = [
+        switched.artboard.x + switched.artboard.width / 2.,
+        switched.artboard.y + switched.artboard.height / 2.,
+    ];
+    let created = service.canvas_create_text(centre[0], centre[1], "第二页文字", 24.)?;
+    assert_eq!(created.session_id, session, "edits run in the same session");
+    assert_eq!(created.board_id, second.id);
+
+    let back = service.canvas_open(&first.id)?;
+    assert_eq!(back.session_id, session, "switching back also reuses it");
+    service.canvas_commit()?;
+    service.canvas_close()?;
+
+    let reopened = service.canvas_open(&first.id)?;
+    assert_ne!(
+        reopened.session_id, session,
+        "leaving the editor releases the process, so a later open starts a new one"
+    );
+    service.canvas_close()?;
+    Ok(())
+}
+
+#[test]
+#[ignore = "requires the official VectorCraft CLI and WORKCRATE_NATIVE_TEST_ROOT"]
 fn canvas_edits_land_in_the_native_document() -> Result<(), Box<dyn std::error::Error>> {
     use std::io::Write;
     let root = PathBuf::from(std::env::var("WORKCRATE_NATIVE_TEST_ROOT")?);
@@ -284,6 +447,11 @@ fn canvas_edits_land_in_the_native_document() -> Result<(), Box<dyn std::error::
         "an official edit must advance the revision the poller watches"
     );
     assert!(!created.dirty, "an edit must persist before it returns");
+    assert_eq!(
+        std::fs::read(service.render_preview(&board.id, 1600)?)?,
+        std::fs::read(created.preview.as_ref().ok_or("canvas preview missing")?)?,
+        "passive cached preview must match the editing frame without a project refresh"
+    );
     let text = *created
         .selection
         .first()
@@ -291,11 +459,14 @@ fn canvas_edits_land_in_the_native_document() -> Result<(), Box<dyn std::error::
     assert_eq!(service.canvas_object(text)?.kind, "type");
     assert_eq!(service.canvas_object(text)?.text, "画布文字");
 
+    // The official program applies smart guides to a pointer move, so the drag target is
+    // placed in the middle of the page: every edge and centre of that box stays further from
+    // the header band and the artboard guides than the snap distance.
     service.canvas_set_bounds(
         &[text],
         &CanvasGeometry {
-            x: 40.,
-            y: 60.,
+            x: 600.,
+            y: 300.,
             width: 200.,
             height: 50.,
         },
@@ -305,7 +476,7 @@ fn canvas_edits_land_in_the_native_document() -> Result<(), Box<dyn std::error::
         .bounds
         .ok_or("official bounds missing")?;
     assert!(
-        (placed_box.x - 40.).abs() < 1. && (placed_box.y - 60.).abs() < 1.,
+        (placed_box.x - 600.).abs() < 1. && (placed_box.y - 300.).abs() < 1.,
         "reference 0 must put the box top-left where the overlay drew it, got {placed_box:?}"
     );
 

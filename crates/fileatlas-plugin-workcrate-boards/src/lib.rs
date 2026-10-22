@@ -6,17 +6,32 @@ use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, atomic::AtomicU64},
 };
 use thiserror::Error;
+mod autosync;
 mod editing;
+mod header;
+mod header_layout;
 mod mcp;
 mod native;
 mod operations;
 mod protocol;
+pub use autosync::{AutoSync, DocumentStamp, PreviewState};
 pub use editing::{CanvasGeometry, CanvasObject, CanvasSnapshot};
 use protocol::Client;
 use protocol::NativeProtocol;
+/// The outcome of saving one page's fields: the new card record, plus the official frame the
+/// editor's own session already rendered. A reused canvas session hands its frame straight to
+/// the overlay, so the page is not rendered a second time by the change probe.
+#[derive(Clone, Debug)]
+pub struct InfoSave {
+    pub board: WorkCrateBoard,
+    pub frame: Option<CanvasSnapshot>,
+    /// False when the draft equalled the stored page, so nothing was written and no frame needs
+    /// re-reading.
+    pub changed: bool,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct VectorCraftConfig {
@@ -99,6 +114,9 @@ pub struct WorkCrateBoardsService {
     status: Mutex<Value>,
     diagnostics: Arc<Mutex<BTreeMap<PathBuf, Value>>>,
     canvas: Mutex<Option<editing::CanvasState>>,
+    /// Identity of every official canvas process this service has started. A page switch
+    /// inside one document keeps its id; only a new process gets a new one.
+    canvas_sessions: AtomicU64,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct BoardCache {
@@ -106,6 +124,10 @@ struct BoardCache {
     binding: String,
     boards: Vec<WorkCrateBoard>,
     previews: BTreeMap<String, String>,
+    /// Saved-document stamp this catalogue was built from. Caches written before this field
+    /// existed have no source and are refreshed once.
+    #[serde(default)]
+    source: Option<DocumentStamp>,
 }
 impl Service for WorkCrateBoardsService {
     const NAME: &'static str = "fileatlas/workcrate-boards";
@@ -118,6 +140,7 @@ impl WorkCrateBoardsService {
             status: Mutex::new(Value::Null),
             diagnostics: Arc::new(Mutex::new(BTreeMap::new())),
             canvas: Mutex::new(None),
+            canvas_sessions: AtomicU64::new(1),
         }
     }
     pub fn configuration(&self) -> Result<VectorCraftConfig, BoardsError> {
@@ -210,6 +233,10 @@ impl WorkCrateBoardsService {
         read_roots: &[PathBuf],
         write_roots: &[PathBuf],
     ) -> Result<mcp::McpSession, BoardsError> {
+        if self.canvas_is_open() {
+            self.canvas_commit()?;
+            self.canvas_close()?;
+        }
         let config = self.configuration()?;
         if mcp::port_is_listening(config.port) {
             return mcp::McpSession::live(&self.cli_executable(&config)?, config.port);
@@ -387,18 +414,11 @@ impl WorkCrateBoardsService {
             .document_path(project)?
             .ok_or(BoardsError::NoDocument)?;
         let binding = self.projects.document_binding(project)?;
-        let mut client = self.official_session(std::slice::from_ref(&path), &[])?;
-        client.open_document(&path)?;
-        let boards = native::catalog(&mut client, project, &binding)?;
-        let previews = self.make_previews(&mut client, &boards)?;
-        let cache = BoardCache {
-            version: 1,
-            binding,
-            boards: boards.clone(),
-            previews,
-        };
-        self.write_cache(project, &cache)?;
-        Ok(boards)
+        // `official_session` may commit a warm canvas session first, so sample the saved
+        // document only after that write.
+        let client = self.official_session(std::slice::from_ref(&path), &[])?;
+        let source = autosync::stamp_of(&path);
+        self.rebuild_cache(project, &path, binding, source, client)
     }
 
     fn make_previews(
@@ -456,6 +476,7 @@ impl WorkCrateBoardsService {
                 binding,
                 boards: boards.clone(),
                 previews,
+                source: self.source_stamp(project),
             },
         )?;
         Ok(boards)
@@ -514,6 +535,7 @@ impl WorkCrateBoardsService {
                     binding,
                     boards: boards.clone(),
                     previews,
+                    source: autosync::stamp_of(&path),
                 },
             )?;
             Ok::<_, BoardsError>(boards)
@@ -547,7 +569,7 @@ impl WorkCrateBoardsService {
         let binding = self.projects.document_binding(project)?;
         if id.split(':').nth(1) != Some(binding.as_str()) {
             return Err(BoardsError::Invalid(
-                "native document association changed; refresh pages".into(),
+                "本页所属原生工程的关联已变化，请先同步工程与预览后再保存".into(),
             ));
         }
         let path = self
@@ -668,7 +690,7 @@ pub enum BoardsError {
     Poisoned,
     #[error("plugin: {0}")]
     Plugin(String),
-    #[error("different active document has unsaved changes; save or switch it explicitly")]
+    #[error("官方程序中另一个文档有未保存的修改，请先保存或关闭它后再重试")]
     DirtyDocument,
 }
 pub struct WorkCrateBoardsPlugin;

@@ -52,30 +52,52 @@ impl CanvasDrag {
     }
 
     /// Record a drag sample. Sub-half-point moves change nothing and repaint nothing.
+    /// Corner samples are steered onto the proportional path through the opposite
+    /// corner: the official gesture transport ignores key modifiers, so the sampled
+    /// points are the only way to hand it a shift-style constrained scale.
     pub(super) fn drag_to(&mut self, point: (f64, f64)) -> bool {
+        let point = self.constrain(point);
         if (point.0 - self.current.0).abs() < 0.5 && (point.1 - self.current.1).abs() < 0.5 {
             return false;
         }
         self.current = point;
         if self.events.len() < MAX_GESTURE_EVENTS {
             self.events.push(gesture_event("drag", point));
+        } else if let Some(last) = self.events.last_mut() {
+            *last = gesture_event("drag", point);
         }
         true
     }
 
     /// Close the sequence with the release point; the whole gesture runs officially.
     pub(super) fn finish(mut self, up: (f64, f64)) -> Vec<serde_json::Value> {
+        let up = self.constrain(up);
+        if self.events.len() > 1 {
+            // The official engine moves on drag, not up. Keep the release position
+            // even when pointer sampling was capped or the last move was coalesced.
+            if let Some(last) = self.events.last_mut() {
+                *last = gesture_event("drag", up);
+            }
+        }
         self.events.push(gesture_event("up", up));
         self.events
     }
+
+    fn constrain(&self, point: (f64, f64)) -> (f64, f64) {
+        match self.kind {
+            CanvasDragKind::Handle(handle) => constrain_corner(handle, &self.origin, point),
+            CanvasDragKind::Body => point,
+        }
+    }
 }
 
-/// One official frame: the truth about the document plus the decoded bitmap and the
-/// detail of a single selected object.
+/// One official frame: the truth about the document plus the decoded bitmap, the
+/// detail of a single selected object and the page record the frame belongs to.
 pub(super) struct CanvasFrame {
     pub snapshot: CanvasSnapshot,
     pub image: Option<Arc<RenderImage>>,
     pub object: Option<CanvasObject>,
+    pub board: Option<WorkCrateBoard>,
 }
 
 pub(super) fn canvas_frame(
@@ -92,6 +114,7 @@ pub(super) fn canvas_frame(
             [id] => boards.canvas_object(*id).ok(),
             _ => None,
         },
+        board: boards.board(&snapshot.board_id).ok(),
         snapshot,
     }
 }
@@ -161,6 +184,28 @@ pub(super) fn handle_point(geometry: &CanvasGeometry, handle: u8) -> (f64, f64) 
         6 => (middle_x, bottom),
         _ => (right, bottom),
     }
+}
+
+/// Corner drags keep the box ratio through the fixed opposite corner. Negative extents
+/// flip the box through the anchor, matching the official shift-scale behavior.
+fn constrain_corner(handle: u8, origin: &CanvasGeometry, point: (f64, f64)) -> (f64, f64) {
+    let (w0, h0) = (origin.width, origin.height);
+    if !matches!(handle, 0 | 2 | 5 | 7) || !(w0.is_finite() && h0.is_finite() && w0 > 0. && h0 > 0.)
+    {
+        return point;
+    }
+    let (left, top) = (origin.x, origin.y);
+    let (right, bottom) = (origin.x + w0, origin.y + h0);
+    let (anchor, sign) = match handle {
+        0 => ((right, bottom), (-1., -1.)),
+        2 => ((left, bottom), (1., -1.)),
+        5 => ((right, top), (-1., 1.)),
+        _ => ((left, top), (1., 1.)),
+    };
+    let extent_x = sign.0 * (point.0 - anchor.0);
+    let extent_y = sign.1 * (point.1 - anchor.1);
+    let s = (extent_x / w0).max(extent_y / h0);
+    (anchor.0 + sign.0 * s * w0, anchor.1 + sign.1 * s * h0)
 }
 
 /// The visual-only box shown while the pointer is down. The released gesture is executed by
@@ -249,7 +294,7 @@ impl WorkCratePanel {
         )
     }
 
-    fn clear_canvas_state(&mut self) {
+    pub(super) fn clear_canvas_state(&mut self) {
         self.canvas_mode = false;
         self.canvas = None;
         self.canvas_image = None;
@@ -261,7 +306,7 @@ impl WorkCratePanel {
     /// Sample the official session on a timer while the canvas is open. The timer is only
     /// a sampling opportunity: an unchanged probe neither wakes nor repaints, and leaving
     /// the canvas stops the loop by invalidating its generation.
-    fn start_canvas_poller(&mut self, cx: &mut ViewContext<Self>) {
+    pub(super) fn start_canvas_poller(&mut self, cx: &mut ViewContext<Self>) {
         self.canvas_poll += 1;
         let generation = self.canvas_poll;
         refresh::poll(cx, std::time::Duration::from_millis(800), move |view, _| {
@@ -273,7 +318,7 @@ impl WorkCratePanel {
     }
 
     pub(super) fn request_canvas_probe(&mut self) -> refresh::PollResult {
-        if !self.canvas_mode {
+        if self.canvas.is_none() && !self.canvas_mode && !self.canvas_busy {
             return refresh::PollResult::until(false, false);
         }
         // The open snapshot arrives through canvas_job; probing before it exists would
@@ -282,14 +327,15 @@ impl WorkCratePanel {
             return refresh::PollResult::until(false, true);
         };
         if self.canvas_busy || self.canvas_drag.is_some() || self.canvas_read.is_pending() {
-            return refresh::PollResult::until(self.canvas_read.poll(), true);
+            return refresh::PollResult::until(false, true);
         }
         self.canvas_probe_tick += 1;
         let boards = self.boards.clone();
-        self.canvas_read.request(self.canvas_probe_tick, move || {
-            boards.canvas_probe(known).map_err(|e| e.to_string())
-        });
-        refresh::PollResult::until(self.canvas_read.poll(), true)
+        self.canvas_read.request(
+            (self.canvas_poll, known, self.canvas_probe_tick),
+            move || boards.canvas_probe(known).map_err(|e| e.to_string()),
+        );
+        refresh::PollResult::until(false, true)
     }
 
     /// An official revision FileAtlas did not cause: show it at once, then ask the
@@ -298,12 +344,22 @@ impl WorkCratePanel {
         if !self.canvas_read.poll() {
             return false;
         }
-        if !self.canvas_mode {
+        if self.canvas.is_none() || self.canvas_busy || self.canvas_drag.is_some() {
+            return false;
+        }
+        if self.canvas_read.key().is_none_or(|(generation, known, _)| {
+            *generation != self.canvas_poll
+                || self.canvas.as_ref().is_none_or(|s| s.revision != *known)
+        }) {
             return false;
         }
         match self.canvas_read.value().cloned() {
             Some(Ok(Some(snapshot))) => {
-                self.canvas = Some(snapshot);
+                if self.canvas.as_ref().is_none_or(|current| {
+                    current.board_id != snapshot.board_id || current.revision == snapshot.revision
+                }) {
+                    return false;
+                }
                 self.canvas_job(
                     |boards| boards.canvas_refresh().map_err(|e| e.to_string()),
                     cx,
@@ -311,8 +367,15 @@ impl WorkCratePanel {
                 true
             }
             Some(Err(error)) => {
-                self.message = Some(error);
-                self.leave_canvas(cx);
+                self.clear_canvas_state();
+                let boards = self.boards.clone();
+                self.perform(
+                    move || {
+                        boards.canvas_close().map_err(|e| e.to_string())?;
+                        Err(error)
+                    },
+                    cx,
+                );
                 true
             }
             _ => false,
@@ -320,11 +383,23 @@ impl WorkCratePanel {
     }
 
     pub(super) fn toggle_canvas_mode(&mut self, editing: bool, cx: &mut ViewContext<Self>) {
-        if editing == self.canvas_mode {
+        if editing == self.canvas_mode
+            || self.busy
+            || self.canvas_busy
+            || !self.field_saves.is_empty()
+        {
             return;
         }
-        self.clear_canvas_state();
         self.canvas_mode = editing;
+        if self.canvas.is_some() {
+            // Preview hides editing affordances, not the live official frame.
+            self.canvas_drag = None;
+            if editing {
+                self.switch_canvas_page(cx);
+            }
+            cx.notify();
+            return;
+        }
         if editing {
             let Some(id) = self.selected_board.clone() else {
                 return;
@@ -336,12 +411,56 @@ impl WorkCratePanel {
             );
             return;
         }
-        self.leave_canvas(cx);
+        cx.notify();
+    }
+
+    /// Show another page of the same document in the already open editor. The official
+    /// session keeps its process, history and access folders; only the artboard it renders
+    /// moves. A switch requested while another frame is in flight converges when that
+    /// frame lands (see `apply_canvas_frame`).
+    pub(super) fn switch_canvas_page(&mut self, cx: &mut ViewContext<Self>) {
+        let Some(id) = self.selected_board.clone() else {
+            return;
+        };
+        if self.canvas.is_none()
+            || self
+                .canvas
+                .as_ref()
+                .is_some_and(|state| state.board_id == id)
+        {
+            return;
+        }
+        if self.busy || self.canvas_busy || !self.field_saves.is_empty() {
+            return;
+        }
+        self.canvas_drag = None;
+        self.start_canvas_poller(cx);
+        self.canvas_job(
+            move |boards| boards.canvas_open(&id).map_err(|e| e.to_string()),
+            cx,
+        );
+    }
+
+    /// Another client re-read the visible page. Reuse or reopen the session and repaint
+    /// that one card; the catalogue, the other cards and their previews stay untouched.
+    pub(super) fn refresh_visible_board(&mut self, cx: &mut ViewContext<Self>) {
+        let Some(id) = self.selected_board.clone() else {
+            return;
+        };
+        self.canvas_job(
+            move |boards| boards.canvas_open(&id).map_err(|e| e.to_string()),
+            cx,
+        );
     }
 
     /// Close the official session and refresh the cached catalogue, so the page matrix shows
     /// the same document the edits just wrote.
     pub(super) fn leave_canvas(&mut self, cx: &mut ViewContext<Self>) {
+        // A field save owns the official session until it returns; closing it here would
+        // hand the UI a frame from a session that no longer exists.
+        if !self.field_saves.is_empty() {
+            return;
+        }
         self.clear_canvas_state();
         let Some(project) = self.selected_project.clone() else {
             return;
@@ -349,8 +468,10 @@ impl WorkCratePanel {
         let boards = self.boards.clone();
         self.perform(
             move || {
-                let _ = boards.canvas_commit();
-                let _ = boards.canvas_close();
+                if boards.canvas_is_open() {
+                    boards.canvas_commit().map_err(|e| e.to_string())?;
+                    boards.canvas_close().map_err(|e| e.to_string())?;
+                }
                 boards
                     .refresh_project(&project)
                     .map(|_| ())
@@ -363,22 +484,19 @@ impl WorkCratePanel {
     /// Hand the document to the official GUI: the canvas session is committed and closed
     /// first so only one program holds the file.
     pub(super) fn canvas_handoff_editor(&mut self, cx: &mut ViewContext<Self>) {
-        let (Some(board), Some(project)) =
-            (self.selected_board.clone(), self.selected_project.clone())
-        else {
+        let Some(board) = self.selected_board.clone() else {
             return;
         };
-        let boards = self.boards.clone();
         self.clear_canvas_state();
-        self.perform(
-            move || {
-                let _ = boards.canvas_commit();
-                let _ = boards.canvas_close();
+        self.start_canvas_poller(cx);
+        self.canvas_job(
+            move |boards| {
+                if boards.canvas_is_open() {
+                    boards.canvas_commit().map_err(|e| e.to_string())?;
+                    boards.canvas_close().map_err(|e| e.to_string())?;
+                }
                 boards.open_editor(&board).map_err(|e| e.to_string())?;
-                boards
-                    .refresh_project(&project)
-                    .map(|_| ())
-                    .map_err(|e| e.to_string())
+                boards.canvas_open(&board).map_err(|e| e.to_string())
             },
             cx,
         );
@@ -392,7 +510,7 @@ impl WorkCratePanel {
         + 'static,
         cx: &mut ViewContext<Self>,
     ) {
-        if self.canvas_busy {
+        if self.canvas_busy || self.busy || !self.field_saves.is_empty() {
             return;
         }
         self.canvas_busy = true;
@@ -426,7 +544,7 @@ impl WorkCratePanel {
         .detach();
     }
 
-    fn apply_canvas_frame(
+    pub(super) fn apply_canvas_frame(
         &mut self,
         frame: CanvasFrame,
         window: &mut Window,
@@ -436,10 +554,30 @@ impl WorkCratePanel {
             snapshot,
             image,
             object,
+            board,
         } = frame;
+        let stale_page = self.selected_board.as_deref() != Some(snapshot.board_id.as_str());
+        if let Some(card) = self
+            .boards_view
+            .iter_mut()
+            .find(|c| c.board.id == snapshot.board_id)
+        {
+            if let Some(board) = board {
+                card.board = board;
+            }
+            card.image = image.clone();
+            card.preview_checked = true;
+            card.error = None;
+            card.canvas_revision = Some(snapshot.revision);
+        }
         self.canvas = Some(snapshot);
         self.canvas_image = image;
         self.on_canvas_object(object, window, cx);
+        if stale_page {
+            // The user picked another page while this frame was rendering; the session
+            // already holds the document, so move it to the selected page now.
+            self.switch_canvas_page(cx);
+        }
     }
 
     /// Hook for the object panel: keeps its fields in step with the official selection.
@@ -449,13 +587,22 @@ impl WorkCratePanel {
         window: &mut Window,
         cx: &mut ViewContext<Self>,
     ) {
+        let changed_selection =
+            self.canvas_object.as_ref().map(|o| o.id) != object.as_ref().map(|o| o.id);
         self.canvas_object = object;
-        self.sync_canvas_inputs(window, cx);
+        if changed_selection {
+            for input in &self.canvas_numbers {
+                input.update(cx, |state, cx| state.set_value("", window, cx));
+            }
+            self.canvas_text_input
+                .update(cx, |state, cx| state.set_value("", window, cx));
+        }
+        self.sync_canvas_inputs(changed_selection, window, cx);
     }
 
     /// Push the official bounds and text into the panel fields. A field the user is
     /// typing into keeps its content; the next selection change refreshes it.
-    fn sync_canvas_inputs(&mut self, window: &mut Window, cx: &mut ViewContext<Self>) {
+    fn sync_canvas_inputs(&mut self, force: bool, window: &mut Window, cx: &mut ViewContext<Self>) {
         let bounds = self
             .canvas_object
             .as_ref()
@@ -477,28 +624,37 @@ impl WorkCratePanel {
         let inputs = self.canvas_numbers.clone();
         for (index, input) in inputs.iter().enumerate() {
             let value = numbers[index].map(|number| format!("{number:.1}"));
-            self.sync_input(input, value, window, cx);
+            self.sync_input(input, value, force, window, cx);
         }
         let text = self
             .canvas_object
             .as_ref()
             .filter(|object| object.kind.eq_ignore_ascii_case("type"))
             .map(|object| object.text.clone());
-        let text_input = self.canvas_text_input.clone();
-        self.sync_input(&text_input, text, window, cx);
+        if let Some(text) = text {
+            let input = &self.canvas_text_input;
+            if (force || !input.read(cx).focus_handle(cx).is_focused(window))
+                && input.read(cx).value() != text
+            {
+                input.update(cx, |state, cx| state.set_value(text, window, cx));
+            }
+        }
     }
 
     fn sync_input(
         &mut self,
         input: &Entity<gpui_kit::component::input::InputState>,
         value: Option<String>,
+        force: bool,
         window: &mut Window,
         cx: &mut ViewContext<Self>,
     ) {
         let Some(value) = value else {
             return;
         };
-        if input.read(cx).focus_handle(cx).is_focused(window) || input.read(cx).value() == value {
+        if (!force && input.read(cx).focus_handle(cx).is_focused(window))
+            || input.read(cx).value() == value
+        {
             return;
         }
         input.update(cx, |state, cx| state.set_value(value, window, cx));
@@ -660,5 +816,50 @@ mod tests {
         assert_eq!(sample(0)["kind"], "down");
         assert_eq!(sample(events.len() - 1)["kind"], "up");
         assert_eq!(sample(events.len() - 1)["x"], 100.);
+        assert_eq!(sample(events.len() - 2)["kind"], "drag");
+        assert_eq!(sample(events.len() - 2)["x"], 100.);
+        assert_eq!(sample(events.len() - 2)["y"], 100.);
+    }
+
+    #[test]
+    fn corner_drags_sample_the_proportional_path_and_side_handles_stay_free() {
+        let origin = CanvasGeometry {
+            x: 10.,
+            y: 10.,
+            width: 100.,
+            height: 50.,
+        };
+        let mut corner = CanvasDrag::begin(
+            CanvasDragKind::Handle(7),
+            origin.clone(),
+            (110., 60.),
+            (110., 60.),
+        );
+        corner.drag_to((130., 40.));
+        let shown = predict(&corner, corner.current);
+        assert_eq!(
+            (shown.width, shown.height),
+            (120., 60.),
+            "the 2:1 box ratio survives the dominant axis"
+        );
+        let events = corner.finish((150., 30.));
+        let Some(last) = events.last() else {
+            panic!("finish always appends the release");
+        };
+        // s = max(140/100, 20/50) = 1.4 -> the release point is steered onto the diagonal.
+        assert_eq!(
+            (last["x"].as_f64(), last["y"].as_f64()),
+            (Some(150.), Some(80.))
+        );
+
+        let mut side =
+            CanvasDrag::begin(CanvasDragKind::Handle(4), origin, (110., 35.), (110., 35.));
+        side.drag_to((130., 70.));
+        let freed = predict(&side, side.current);
+        assert_eq!(
+            (freed.width, freed.height),
+            (120., 50.),
+            "edge handles resize one axis only"
+        );
     }
 }

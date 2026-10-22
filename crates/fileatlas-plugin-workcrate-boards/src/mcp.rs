@@ -282,25 +282,29 @@ impl McpSession {
     }
 
     /// Make `path` the session's active document. A live GUI may already hold it open with
-    /// unsaved edits, so an existing window is activated instead of re-read from disk.
+    /// unsaved edits, so an existing window is activated instead of re-read from disk. A
+    /// session with no document open is not an error: opening `path` is the next step.
     pub(crate) fn open_document(&mut self, path: &Path) -> Result<(), BoardsError> {
-        if self
-            .active_path()?
-            .is_some_and(|p| native::same_path(&p, path))
-        {
+        let active = self.inspect_optional()?;
+        if active.as_ref().is_some_and(|inspect| {
+            inspect["path"]
+                .as_str()
+                .is_some_and(|p| native::same_path(p, path))
+        }) {
             self.bind(path);
             return Ok(());
         }
-        if self.live {
-            if let Some(index) = self.document_index_by_title(path)? {
-                self.execute("document.activate", json!({"index":index}))?;
-                if self
-                    .active_path()?
-                    .is_some_and(|p| native::same_path(&p, path))
-                {
-                    self.bind(path);
-                    return Ok(());
-                }
+        if self.live
+            && active.is_some()
+            && let Some(index) = self.document_index_by_title(path)?
+        {
+            self.execute("document.activate", json!({"index":index}))?;
+            if self
+                .active_path()?
+                .is_some_and(|p| native::same_path(&p, path))
+            {
+                self.bind(path);
+                return Ok(());
             }
         }
         self.open_file(path)?;
@@ -308,16 +312,42 @@ impl McpSession {
             .active_path()?
             .is_some_and(|p| native::same_path(&p, path))
         {
-            return Err(BoardsError::Invalid(format!(
-                "official program did not open the native document: {}",
-                path.display()
-            )));
+            return Err(BoardsError::Invalid(
+                "官方程序未能打开该原生文档；请确认文件仍在关联文件夹中且未被占用".into(),
+            ));
         }
         Ok(())
     }
 
+    /// The active document, or `None` when the official program has no document open.
+    /// Opening a document is how that state is repaired, so it is not an error here.
     fn active_path(&mut self) -> Result<Option<String>, BoardsError> {
-        Ok(self.inspect()?["path"].as_str().map(str::to_owned))
+        Ok(self
+            .inspect_optional()?
+            .and_then(|inspect| inspect["path"].as_str().map(str::to_owned)))
+    }
+
+    /// A snapshot of the bound document. A live GUI can close it while FileAtlas still shows
+    /// the page editor, so reopen the bound file before reporting failure.
+    pub(crate) fn inspect_bound(&mut self) -> Result<Value, BoardsError> {
+        if let Some(inspect) = self.inspect_optional()? {
+            return Ok(inspect);
+        }
+        let Some(path) = self.bound_path.clone() else {
+            return Err(BoardsError::Invalid(
+                "官方程序中没有打开文档；请在 WorkCrate 中重新打开该页面编辑".into(),
+            ));
+        };
+        self.open_file(&path)?;
+        self.inspect()
+    }
+
+    fn inspect_optional(&mut self) -> Result<Option<Value>, BoardsError> {
+        match self.inspect() {
+            Ok(inspect) => Ok(Some(inspect)),
+            Err(error) if no_document_open(&error) => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     fn document_index_by_title(&mut self, path: &Path) -> Result<Option<u64>, BoardsError> {
@@ -458,6 +488,15 @@ fn same_native_path(raw: &str, path: &Path) -> bool {
     native::same_path(raw, path)
 }
 
+/// The official program answers a document query with this error while no document is open.
+fn no_document_open(error: &BoardsError) -> bool {
+    matches!(
+        error,
+        BoardsError::Remote(message)
+            if message.contains("document.inspect") && message.contains("no document open")
+    )
+}
+
 /// The live transport is only possible while the official GUI answers on its control port.
 pub(crate) fn port_is_listening(port: u16) -> bool {
     use std::{
@@ -546,6 +585,23 @@ mod tests {
         assert!(!session("command_run", Some("file.place")));
         assert!(!session("save_file", None));
         assert!(!session("pointer_gesture", None));
+    }
+
+    #[test]
+    fn an_official_session_without_a_document_is_an_empty_state() {
+        assert!(no_document_open(&BoardsError::Remote(
+            "command `document.inspect` is not available right now: no document open".into()
+        )));
+        assert!(no_document_open(&BoardsError::Remote(
+            "doc_inspect: command `document.inspect` is not available right now: no document open"
+                .into()
+        )));
+        assert!(!no_document_open(&BoardsError::Remote(
+            "command `document.inspect` is not available right now: another dialog is open".into()
+        )));
+        assert!(!no_document_open(&BoardsError::Invalid(
+            "no document open".into()
+        )));
     }
 
     #[test]

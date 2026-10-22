@@ -158,9 +158,10 @@ pub(super) fn tools(
                 }
                 board.info = serde_json::from_value(value).map_err(|e| e.to_string())?;
             }
-            b.update_info(&board.id, &board.title, board.info.clone())
-                .map_err(|e| e.to_string())?;
-            let saved = board;
+            let saved = b
+                .update_info(&board.id, &board.title, board.info.clone())
+                .map_err(|e| e.to_string())?
+                .board;
             ui.select_board(saved.project_id.clone(), saved.id.clone())?;
             ui.request_board_refresh();
             Ok(json!({"updated":true,"title":saved.title,"info":saved.info}))

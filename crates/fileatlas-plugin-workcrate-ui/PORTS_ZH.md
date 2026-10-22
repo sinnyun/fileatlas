@@ -67,7 +67,7 @@ Snapshot 包含 screen（`projects`、`pages`、`editor`）、project_id、board
 busy、page_count、boards（id/native_id/index/title/dimensions/info/preview_ready/
 error）、previews_ready、preview_pending、selection、connection、executable、port、
 document 与 message，外加 `canvas`：mode（`preview`/`edit`）、busy、zoom、`state`
-（官方 `CanvasSnapshot`：live/tool/revision/dirty/selection/selection_bounds/
+（官方 `CanvasSnapshot`：session_id/live/tool/revision/dirty/selection/selection_bounds/
 artboard/preview/preview_size/last_step，预览态为 null）、`object`
 （官方节点详情：id/kind/name/bounds/text/linked/status/link_path）
 以及指针手势进行中的 `drag`（kind 为 `move` 或 `handle<N>`、origin、start、current）。
@@ -83,7 +83,8 @@ artboard/preview/preview_size/last_step，预览态为 null）、`object`
 `canvas-width`、`canvas-height`、`workcrate-canvas-apply-bounds`、
 `canvas-text-input`、`workcrate-canvas-set-text`、`workcrate-canvas-create-text`、
 `workcrate-canvas-links-update`、`workcrate-canvas-links-relink`、
-`workcrate-canvas-place-link`（链接图片）与 `workcrate-canvas-place-embed`（添加图片）。
+`workcrate-canvas-place-link`（链接图片）、`workcrate-canvas-place-embed`（添加图片），
+以及编辑态页面栏每一页的 `rail-<board_id>`。
 
 ## MCP
 
@@ -121,3 +122,120 @@ artboard/preview/preview_size/last_step，预览态为 null）、`object`
 原生对话框与布局验收需要同进程 FileAtlas MCP 验证；编译并非
 运行时证据。本轮实测覆盖与未覆盖项见
 `docs/validation-ui/2026-10-21-workcrate-canvas-editing/README.md`。
+
+## 2026-10-22 预览与编辑优化
+
+编辑结果发布到现有版本 1 预览缓存，无存储迁移。显式打开编辑后，预览/编辑
+切换复用官方会话，左侧缩略图同步当前帧；离开页面/项目提交关闭。初次浏览
+仍只读本地。项目无自选主图时显示首个缓存页面；同项目后台加载不清空旧图。
+右侧支持多行文字、字体/字号、左/中/右对齐，全部转发官方 text.setStyle。
+新增 Full + confirm 的 canvas_text_style（id、可选 font/size/justify）；格式输入
+为空表示保留属性，不代表混合字体的当前值。几何拒绝非有限数，异步选择文件
+后复核页面/选区。公开签名、控件与限制以同目录 PORTS.md 最新节为准。
+
+## 2026-10-22 单字段保存
+
+检查器保存走 `save_field(id, key, value, label)`，它刻意不复用 `perform`：不置
+`busy`、不重载工程、也不清空左侧页面栏。每条在途草稿记录在 `field_saves` 的
+`(页面 ID, 字段键)` 里，只渲染成该行自己的“保存中”标记。保存被串行化：只要
+`field_saves` 非空，新的保存、切页、画布模式切换与画布任务都会被拒绝。面板状态把
+它导出为 `field_saves: ["<boardId>#<key>"]`，与 `editing: "<boardId>#<key>"` 并
+列——所有编辑行共用 `field-edit-input`、`field-edit-save`、`field-edit-cancel`
+三块几何，因此只有这两个键能证明当前打开的是哪一行。
+
+任务从 Boards 重读该页记录，用 `management::apply_field` 改一个字段后调用
+`update_info`。在此之前先复用该页已持有的官方会话（`canvas_holds`），没有会话时
+用 `canvas_open_quiet` 静默预热，所以首次保存自己打开静默 headless 会话、后续保存
+继续复用，页面始终停留在预览态。官方保存帧的解码与选中对象查询都在同一条后台线程
+完成（`canvas_frame`），UI 线程不再打开 PNG。`apply_field_save` 只补这一张卡片：
+带回的官方帧直接进覆盖层（此时 `boards[].canvas_revision` 等于会话 revision），
+否则只把该页放进预览队列。内容未变（`changed:false`）什么都不排队，并只关闭本任务
+自己预热的会话。被拒绝的写入保留草稿行并显示 `保存失败：…`，文案取自 Boards 的中
+文提示，内部角色名不会出现在提示里；`已保存：<字段>` 的字段名由
+`management::field_label` 提供。预热保存应用帧后会启动画布探针，官方程序侧之后的
+改动仍能回到该页。
+
+## 2026-10-22 检查器卡片与稳定行高
+
+检查器分为两个 `section_card`：「页面信息 · 画板规格」与「页面内容 · 同步物料栏」。
+每个字段行固定 32 px；草稿只把该行的值替换为共享 `field-edit-input` 加“保存/取消”，
+因此打开、提交或取消草稿都不会推动下方字段或改变面板高度。`begin_edit` 会聚焦输入
+框，其 `PressEnter` 订阅负责提交。面板页脚固定 24 px 状态行（忙碌/保存中/最近消
+息），保存反馈不再改变内容高度。新增参数动作是整行的 `page-add-field`，文案为
+“＋ 新增物料参数行”。
+
+## 2026-10-22 预览自动获取
+
+`view/autosync.rs` 维持一个空闲观察器（`refresh::poll`，1500 ms）：只有在面板不
+忙、没有画布会话（也不在进入画布）、没有字段保存在途且没有未完成的状态读取时，
+才向 Boards 查询 `preview_state`。戳未变化时既不发布状态也不启动进程。戳过期时
+在后台执行器启动一次 `auto_refresh_project`；失败保留已有缓存预览，记录
+`auto_sync.error`，只显示一次“自动同步失败：…”，30 秒后重试。成功后只补丁
+`boards_view`，不整项目重载：已解码图像继续作为占位，`load_generation` 使旧解码
+失效，选中页优先排队，页面仍存在时保留选择与编辑态，不打开官方编辑会话，底部
+显示“已自动同步 VectorCraft 的更改”。状态 JSON 新增
+`auto_sync { syncs, pending, error }`。画布会话打开期间观察器保持空闲，因为该页
+由既有画布探针负责；离开画布时再刷新目录。这条路径绝不驱动、聚焦或激活用户的
+GUI，并且只读取已保存文件。
+
+## 2026-10-22 编辑区内切页
+
+页面编辑区持有官方会话时，切换页面不再重开连接：`switch_canvas_page` 对选中页调用
+`canvas_open`，由 Boards 把同一个官方进程移到该画板；`session_id` 不变，编辑/预览
+模式保持，落地的帧只补丁该页卡片（`boards[].canvas_revision`）。左侧页面栏与
+`workcrate-ui.open_board` 都走这条路径。只有选择另一个工程、返回页面列表/工程列表
+或关闭面板才提交并关闭。若切页请求到达时渲染或字段保存正占用会话，会在其结束时补
+做（`apply_canvas_frame`、字段保存完成回调）；进入编辑模式也会向当前选中页收敛。
+新增原生页面仍属于目录事务，会先保存并关闭预览会话，再由编辑器重新打开。页面栏条
+目导出 `workcrate.control.rail-<board_id>` 几何供指针实测。证据见
+`scripts/validate-workcrate-page-switch.cjs` 与
+`docs/validation-ui/2026-10-22-workcrate-page-switch/README.md`。
+
+## 2026-10-22 编辑页局部刷新
+
+编辑区打开时，普通动作不再整目录重载。状态监听器比较
+`(selected_project, selected_board)` 与两个刷新修订：持有会话时的页面选择走
+`switch_canvas_page`，目录修订清空画布，仅页面修订变化时调用
+`refresh_visible_board`（复用或移动同一会话，只重绘该页卡片），只有选择或目录
+变化才 `reload`。`projects.wake` 由 `deliver_project_change` 处理：重读
+`projects(true)` 与 `field_presets()`，无变化返回 `false` 不发布，有变化只补丁
+`items`/`preset_fields`，不碰卡片、预览与会话；所以画布内放置引用与重新链接不再
+触发重载。`CanvasFrame` 自带页面记录（`board: Option<WorkCrateBoard>`），
+`apply_canvas_frame` 直接补对应卡片，不再为取页面记录多读一次目录。项目改名原地
+更新该行；导出只提交/关闭必须关闭的画布，不重载；放置只重读被放置页。
+`perform` 只保留给确实改变目录或必须关闭会话的动作：新建工程/页面、关联文档、
+同步、工程归档/复制/封面/删除、离开画布与画布错误。
+
+`ui.reloads` 统计整目录重载次数，MCP 可断言局部动作前后计数、`session_id` 与
+页面 ID 列表不变。`WorkCratePanel` 仍是单个 GPUI 视图，任何 notify 都会重建元素
+树；本轮去掉的是目录数据重载及其重新解码/排队，不是元素级增量绘制。自动同步仍是
+整目录换卡片（保留已解码图像、计数不变），因为原生文档没有逐页内容修订号。
+证据见 `scripts/validate-workcrate-local-refresh.cjs` 与
+`docs/validation-ui/2026-10-22-workcrate-local-refresh/README.md`。
+
+## 2026-10-22 字段保存期间不再整体置灰按钮
+
+`WorkCratePanel::action` 的 disabled 不再包含 `field_saves`；保存进行中点击
+按钮只设置提示"正在保存页面内容，请稍候…"并拒绝执行。所有动作处理器本就在
+`field_saves` 非空时拒绝新动作，未新增门控。`workcrate-ui.state` 中的
+`renders` 计数统计整视图渲染次数；截图逐行对比显示打字仅改约 58/1831 像素行，
+修复后保存中一帧约 74/1831 行（修复前 840/1831——所有按钮同时置灰）。把输入框
+包进子视图宿主无法限制 GPUI 的 dirty 向祖先传播，该尝试已回退。
+
+## 2026-10-22 画布命令执行期间不再整体置灰
+
+`canvas_action`、预览/编辑切换按钮与位置/尺寸数字输入框不再因 `canvas_busy`
+禁用。结构性禁用条件保留（无画布、"更改文字"需要文字对象、"链接图片"需要已
+链接对象）；`busy || canvas_busy` 时点击提示"画布操作进行中，请稍候…"。
+`WorkCratePanel::action`（画布工具栏缩放/撤销/重做与顶部工具栏）同样去掉
+`canvas_busy` 禁用并使用相同点击提示。数值草稿由应用按钮的拒绝逻辑兜底，
+不再靠输入框禁用。
+
+## 2026-10-22 画布角点拖拽等比缩放
+
+`CanvasDrag` 把角点手柄（0/2/5/7）的采样点引导到过对角锚点的等比路径上
+（`constrain_corner`：主导轴决定伸缩比，双轴同时越过锚点整体翻转；边中点手柄
+保持单轴自由）。官方引擎仍执行命中测试与缩放——只有采样点被改变。之所以在
+本侧实现：安装的 vectorcraft-cli 0.14.0 在 headless 会话中忽略
+`pointer_gesture` 的 `mods` 参数（四种写法实测均为自由缩放）。视觉预测与转发
+手势共用同一约束点。

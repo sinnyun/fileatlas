@@ -6,6 +6,60 @@
 
 # WorkCrate three-level reference
 
+## 2026-10-22 interaction optimization checklist
+
+### Material header / page fields follow-up
+
+The inspected October 21 studio user sketch is the material-header target:
+compact pale horizontal band, left page number and prominent project name,
+right material / dimensions / quantity on the same baseline. Additional fields
+flow into subordinate value + label rows below the primary row. The
+inspector concept confirms horizontal field labels and values with aligned inputs.
+Size annotation remains page metadata, independent of the actual artboard size.
+Existing artwork and dimensions stay in place when the owned header is upgraded.
+
+Page-field saves reuse this page's warm native session; browsing still opens no
+official process, and a cold save silently warms the session itself, keeping the
+page in preview. Render only the changed page, decode the official frame off the
+UI thread, patch only its card/frame, retain the inspector/rail/scroll and allow
+the next field draft while saving. Keep failure drafts and actionable save
+feedback. No whole-project reload, placeholder frame or field-row reflow after
+each save.
+
+The right inspector groups fields into two cards matching the sketch: 页面信息 ·
+画板规格 and 页面内容 · 同步物料栏, with fixed-height value rows, an inline draft
+row, a fixed status footer and a full-width 新增物料参数行 action. Validate
+consecutive edits, native persistence, inheritance/reset, extras, no-op edits,
+unaffected page cache identity, stable row geometry and quiet-state using
+same-process MCP.
+
+**Status 2026-10-22: implemented and validated.** The band sites every text box
+from the official `document.node` metrics, field saves warm/reuse that page's
+session, touch only that page's card, frame and cache file, and decode the frame
+before the UI applies it; the inspector keeps its rows in place with Chinese save
+feedback. The 11-stage header run, the inspector-layout scenarios, the two-pass
+geometry contract and the remaining uncovered states are in
+[the header validation record](../../validation-ui/2026-10-22-workcrate-header/README.md)
+and [the inspector-layout record](../../validation-ui/2026-10-22-workcrate-inspector-layout/README.md).
+
+Inspected the active October 21 projects/pages/studio images, inspector image and
+October 22 canvas concept. Preserve the three-level layout, horizontal toolbar,
+left page rail, flexible official bitmap and independently scrolling right panel.
+This is a local interaction correction, not a new visual design.
+
+- Preview/edit share the latest official frame after an explicit editing session;
+  update the rail and durable cached page preview after edits. Passive initial
+  browsing still opens no official process. Close sessions on page/project exit.
+- Keep existing page images visible during background reload, prioritize the
+  selected page, and avoid decoding every project cover on each canvas operation.
+- Preserve the final position of long gestures; gate edits while an operation is
+  pending and discard stale probe/dialog results after navigation.
+- Right inspector: multiline text, contextual enabled states, finite numeric
+  bounds, selection-aware field reset, readable linked/embedded status. Preserve
+  paired X/Y and width/height rows, real error messages and scroll access.
+- Validate edit → preview → edit, rail/matrix refresh, text/image edits, undo/redo,
+  navigation, quiet-state and small-window behavior through same-process MCP.
+
 The latest user sketches supersede the earlier two-level WorkCrate slice.
 Authoritative references: `workcrate-projects-user-2026-10-20.png`,
 `workcrate-pages-user-2026-10-20.png`, `workcrate-editor-user-2026-10-20.png`.

@@ -233,9 +233,17 @@ module.exports = async ({ call, payload, step, delay, profile }) => {
     undone.result.canvas.revision > renamed.result.canvas.revision,
     "undo must be another official step",
   );
-  await step({ tool: "workcrate-ui.canvas_step", arguments: { action: "redo", confirm: true } });
+  const redone = await step({ tool: "workcrate-ui.canvas_step", arguments: { action: "redo", confirm: true } });
 
   // 7. Toolbar zoom button, then leave the edit screen (commit + close).
+  // The panel adopts official steps on its own timer; a toolbar click that lands
+  // while that refresh owns the session is deliberately ignored, so wait for the
+  // redone revision to reach the panel and stay there for one poll interval.
+  await untilView(
+    v => !v.ui?.canvas?.busy && !v.ui?.busy && v.ui?.canvas?.state?.revision === redone.result.canvas.revision,
+    "the panel to adopt the redone revision",
+  );
+  await delay(900);
   const zoomIn = await readBox("workcrate-canvas-zoom-in");
   const beforeZoom = zoomIn.view.ui.canvas.zoom;
   await click(zoomIn.box);
@@ -247,33 +255,96 @@ module.exports = async ({ call, payload, step, delay, profile }) => {
   await click(zoomPreview.box);
   const left = await step({ tool: "workcrate-ui.state", arguments: {}, wait_ms: 1500, capture: "canvas-back-to-preview" });
   assert.equal(left.result.ui.canvas.mode, "preview", "预览 must leave the edit screen");
-  assert.equal(left.result.ui.canvas.state, null, "leaving the edit screen closes the official session");
+  assert.ok(left.result.ui.canvas.state, "preview retains the explicit editing session");
+  const previewEdit = await step({ tool: "workcrate-ui.canvas_set_text", arguments: { id: textId, text: "预览实时同步\n第二行文字", confirm: true } });
+  const previewSynced = await untilView(v => !v.ui?.canvas?.busy && v.ui?.canvas?.state?.revision === previewEdit.result.canvas.revision, "preview reverse sync", [], 40);
+  assert.equal(previewSynced.ui.canvas.mode, "preview");
+  assert.equal(previewSynced.ui.boards.find(b => b.id === board.id).canvas_revision, previewEdit.result.canvas.revision, "rail and preview share the edited revision");
+  await step({ tool: "workcrate-ui.state", arguments: {}, capture: "preview-live-update" });
+  await click((await readBox("workcrate-canvas-edit")).box);
+  const resumed = await untilCanvas();
+  assert.equal(resumed.ui.canvas.state.revision, previewEdit.result.canvas.revision, "mode switch must preserve the official session and history");
+  const styled = await step({ tool: "workcrate-ui.canvas_text_style", arguments: { id: textId, size: 32, justify: "center", confirm: true } });
+  assert.ok(styled.result.canvas.revision > previewEdit.result.canvas.revision);
+  await untilView(v => !v.ui?.canvas?.busy && v.ui?.canvas?.state?.revision === styled.result.canvas.revision, "text style sync", [], 40);
+  await click((await readBox("workcrate-canvas-preview")).box);
 
-  // 7b. Editing another page must commit and close the page being left.
+  // 7b. Switching pages inside the editor keeps the edit screen and the official session.
+  // Creating a native page is a catalogue operation, so it saves and closes the preview
+  // session first; re-enter the editor and then switch pages without leaving it.
   const extraPage = await step({ tool: "workcrate-ui.create_page", arguments: { project_id: project.id } });
+  await untilView(
+    (v) => v.ui?.canvas?.state === null && !v.ui?.busy && !v.ui?.canvas?.busy,
+    "the closed preview session after the catalogue change",
+    [],
+    40,
+  );
+  await click((await readBox("workcrate-canvas-edit")).box);
+  const editorAgain = await untilCanvas();
+  assert.equal(editorAgain.ui.canvas.state.board_id, board.id);
+  const session = editorAgain.ui.canvas.state.session_id;
+  assert.ok(session > 0, "the official process must be identifiable");
+
   await step({
     tool: "workcrate-ui.open_board",
     arguments: { project_id: project.id, board_id: extraPage.result.board_id },
   });
-  await click((await readBox("workcrate-canvas-edit")).box);
-  const pageTwo = await untilCanvas();
-  assert.equal(
-    pageTwo.ui.canvas.state.board_id,
-    extraPage.result.board_id,
-    "the official session must belong to the newly opened page",
+  const pageTwo = await untilView(
+    (v) =>
+      v.ui?.canvas?.mode === "edit" &&
+      v.ui?.canvas?.state?.board_id === extraPage.result.board_id &&
+      !v.ui.canvas.busy &&
+      v.ui.preview_pending === 0,
+    "the editor to show the new page over the same connection",
+    [],
+    40,
   );
+  assert.equal(pageTwo.ui.screen, "editor", "a page switch must stay in the page editor");
+  assert.equal(
+    pageTwo.ui.canvas.state.session_id,
+    session,
+    "a page switch must keep the official connection",
+  );
+  const textOnTwo = await step({
+    tool: "workcrate-ui.canvas_create_text",
+    arguments: {
+      x: pageTwo.ui.canvas.state.artboard.x + 120,
+      y: pageTwo.ui.canvas.state.artboard.y + 90,
+      text: "第二页文字",
+      size: 22,
+      confirm: true,
+    },
+  });
+  assert.equal(textOnTwo.result.canvas.board_id, extraPage.result.board_id);
   await step({
     tool: "workcrate-ui.open_board",
     arguments: { project_id: project.id, board_id: board.id },
   });
+  const switchedView = await untilView(
+    (v) => v.ui?.canvas?.state?.board_id === board.id && !v.ui.canvas.busy,
+    "the session to switch back to the first page",
+    [],
+    40,
+  );
   const switched = await step({
     tool: "workcrate-ui.state",
     arguments: {},
-    wait_ms: 1500,
     capture: "canvas-page-switch",
   });
-  assert.equal(switched.result.ui.canvas.mode, "preview", "leaving the edited page must exit the edit screen");
-  assert.equal(switched.result.ui.canvas.state, null, "the page being left must close its official session");
+  const switchedCanvas = switched.result.ui.canvas;
+  assert.equal(switched.result.ui.screen, "editor");
+  assert.equal(switchedCanvas.mode, "edit", "a page switch inside the editor must keep the edit screen");
+  assert.equal(switchedView.ui.canvas.state.board_id, board.id, "the overlay must show the page just opened");
+  assert.equal(
+    switchedCanvas.state.session_id,
+    session,
+    "both pages must be served by the same official connection",
+  );
+  assert.equal(
+    switched.result.ui.boards.find((b) => b.id === board.id).canvas_revision,
+    switchedCanvas.state.revision,
+    "the page card must show the frame of the page now open",
+  );
 
   // 8. The native document is the single truth: the offline catalogue re-reads the edited page.
   const refreshed = await step({ tool: "workcrate-ui.refresh_project", arguments: { project_id: project.id } });

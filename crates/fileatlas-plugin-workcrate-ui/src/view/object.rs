@@ -56,7 +56,7 @@ fn value_row(label: &str, value: String) -> gpui::Div {
 }
 
 impl WorkCratePanel {
-    fn canvas_action(
+    pub(super) fn canvas_action(
         &self,
         id: &str,
         label: &str,
@@ -69,8 +69,24 @@ impl WorkCratePanel {
                 .outline()
                 .compact()
                 .label(label.to_owned())
-                .disabled(self.busy || self.canvas_busy)
-                .on_click(cx.listener(move |view, _, _, cx| run(view, cx))),
+                .disabled(
+                    self.canvas.is_none()
+                        || (id == "workcrate-canvas-set-text"
+                            && !self
+                                .canvas_object
+                                .as_ref()
+                                .is_some_and(|o| o.kind == "type"))
+                        || (id == "workcrate-canvas-links-update"
+                            && !self.canvas_object.as_ref().is_some_and(|o| o.linked)),
+                )
+                .on_click(cx.listener(move |view, _, _, cx| {
+                    if view.busy || view.canvas_busy {
+                        view.message = Some("画布操作进行中，请稍候…".into());
+                        cx.notify();
+                        return;
+                    }
+                    run(view, cx);
+                })),
             &self.surfaces,
         )
     }
@@ -89,8 +105,7 @@ impl WorkCratePanel {
                 id,
                 NumberInput::new(&self.canvas_numbers[index])
                     .small()
-                    .w_full()
-                    .disabled(self.busy || self.canvas_busy),
+                    .w_full(),
                 &self.surfaces,
             ))
             .flex_1()
@@ -112,7 +127,7 @@ impl WorkCratePanel {
                 .flex_shrink_0()
                 .min_h_0()
                 .v_flex()
-                .gap_3()
+                .gap_2()
                 .p_3()
                 .border_l_1()
                 .border_color(rgb(theme::separator()))
@@ -151,7 +166,7 @@ impl WorkCratePanel {
                     div()
                         .text_xs()
                         .text_color(rgb(theme::text_muted()))
-                        .child("单位为 pt，坐标取自画板左上角。"),
+                        .child("单位为 pt，X/Y 为文档坐标，取对象左上角。"),
                 )
                 .child(self.canvas_action(
                     "workcrate-canvas-apply-bounds",
@@ -167,7 +182,9 @@ impl WorkCratePanel {
             .child(section(if is_text { "文字内容" } else { "文字" }))
             .child(super::tracking::control(
                 "canvas-text-input",
-                fileatlas_ui_bridge::components::text_input(&self.canvas_text_input).w_full(),
+                fileatlas_ui_bridge::components::textarea(&self.canvas_text_input)
+                    .w_full()
+                    .h(px(120.)),
                 &self.surfaces,
             ))
             .child(
@@ -228,6 +245,9 @@ impl WorkCratePanel {
                     )),
             );
         }
+        if is_text {
+            panel = panel.child(self.canvas_typography(cx));
+        }
         panel = panel
             .child(section("画板"))
             .child(
@@ -277,8 +297,8 @@ impl WorkCratePanel {
             cx.notify();
             return;
         };
-        if width <= 0. || height <= 0. {
-            self.message = Some("宽高必须大于 0 pt。".into());
+        if ![x, y, width, height].iter().all(|n| n.is_finite()) || width <= 0. || height <= 0. {
+            self.message = Some("位置必须是有限数字，宽高必须大于 0 pt。".into());
             cx.notify();
             return;
         }
@@ -359,6 +379,7 @@ impl WorkCratePanel {
             return;
         };
         let artboard = snapshot.artboard.clone();
+        let target = snapshot.board_id;
         cx.spawn(async move |this, cx| {
             let Some(file) = rfd::AsyncFileDialog::new()
                 .set_title(if link {
@@ -378,6 +399,9 @@ impl WorkCratePanel {
                 artboard.y + artboard.height / 2.,
             ];
             let _ = this.update(cx, |view: &mut WorkCratePanel, cx| {
+                if !view.canvas_mode || view.selected_board.as_ref() != Some(&target) {
+                    return;
+                }
                 view.canvas_job(
                     move |boards| {
                         boards
@@ -404,6 +428,7 @@ impl WorkCratePanel {
 
     pub(super) fn canvas_relink(&mut self, cx: &mut ViewContext<Self>) {
         let (ids, _) = self.canvas_selection();
+        let target = self.selected_board.clone();
         if ids.is_empty() {
             return;
         }
@@ -418,6 +443,12 @@ impl WorkCratePanel {
             };
             let path = file.path().to_path_buf();
             let _ = this.update(cx, |view: &mut WorkCratePanel, cx| {
+                if !view.canvas_mode
+                    || view.selected_board != target
+                    || view.canvas_selection().0 != ids
+                {
+                    return;
+                }
                 view.canvas_job(
                     move |boards| {
                         boards

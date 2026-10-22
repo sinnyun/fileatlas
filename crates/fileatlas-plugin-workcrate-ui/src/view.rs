@@ -2,7 +2,8 @@ use super::PANEL;
 use ::gpui::{AnyView, App, Context as ViewContext, RenderImage, Task, Window, px};
 use cordis::Service;
 use fileatlas_plugin_workcrate_boards::{
-    CanvasGeometry, CanvasObject, CanvasSnapshot, WorkCrateBoard, WorkCrateBoardsService,
+    AutoSync, CanvasGeometry, CanvasObject, CanvasSnapshot, PreviewState, WorkCrateBoard,
+    WorkCrateBoardsService,
 };
 use fileatlas_plugin_workcrate_export::WorkCrateExportService;
 use fileatlas_plugin_workcrate_projects::WorkCrateProjectsService;
@@ -18,6 +19,7 @@ use std::{
     path::PathBuf,
     sync::Arc,
 };
+mod autosync;
 mod canvas;
 mod canvas_surface;
 mod state;
@@ -34,12 +36,14 @@ mod preview;
 mod projects;
 mod render;
 pub(crate) mod tracking;
+mod typography;
 #[derive(Clone)]
 struct BoardCard {
     board: WorkCrateBoard,
     image: Option<Arc<RenderImage>>,
     error: Option<String>,
     preview_checked: bool,
+    canvas_revision: Option<u64>,
 }
 struct Snapshot {
     items: Vec<fileatlas_workcrate_contracts::WorkCrateProject>,
@@ -78,16 +82,29 @@ struct WorkCratePanel {
     canvas_image: Option<Arc<RenderImage>>,
     canvas_object: Option<CanvasObject>,
     canvas_numbers: [Entity<gpui_kit::component::input::InputState>; 4],
-    canvas_text_input: Entity<gpui_kit::component::input::InputState>,
+    canvas_text_input: Entity<gpui_kit::component::input::TextareaState>,
+    canvas_font_input: Entity<gpui_kit::component::input::InputState>,
+    canvas_size_input: Entity<gpui_kit::component::input::InputState>,
     canvas_drag: Option<canvas::CanvasDrag>,
     canvas_busy: bool,
-    canvas_read: ReadModel<u64, Option<CanvasSnapshot>>,
+    canvas_read: ReadModel<(u64, u64, u64), Option<CanvasSnapshot>>,
     canvas_probe_tick: u64,
     canvas_poll: u64,
     config: fileatlas_plugin_workcrate_boards::VectorCraftConfig,
     document: Option<PathBuf>,
     busy: bool,
+    field_saves: BTreeSet<(String, String)>,
     message: Option<String>,
+    preview_state_read: ReadModel<u64, PreviewState>,
+    preview_state_tick: u64,
+    auto_sync: bool,
+    auto_syncs: u64,
+    /// Whole-catalogue reloads. Localized updates must never move this counter.
+    reloads: u64,
+    /// Whole-view renders. Used to prove an interaction did not repaint the panel.
+    renders: u64,
+    auto_sync_error: Option<String>,
+    auto_sync_retry_at: Option<std::time::Instant>,
     load_generation: u64,
     board_refresh_revision: u64,
     catalog_refresh_revision: u64,
@@ -97,6 +114,7 @@ struct WorkCratePanel {
     preview_current: Option<String>,
     state_gate: refresh::ChangeGate<String>,
     _tasks: Vec<Task<()>>,
+    _subscriptions: Vec<::gpui::Subscription>,
 }
 pub(super) fn panel(
     projects: Arc<WorkCrateProjectsService>,
@@ -114,20 +132,51 @@ pub(super) fn panel(
         app.new(|cx| gpui_kit::component::input::InputState::new(window, cx))
     });
     let canvas_text_input = app.new(|cx| {
-        gpui_kit::component::input::InputState::new(window, cx).placeholder("输入文字内容")
+        gpui_kit::component::input::TextareaState::new(window, cx)
+            .placeholder("输入文字内容，支持换行")
     });
     let search_input = app
         .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("搜索项目"));
+    let canvas_font_input = app.new(|cx| {
+        gpui_kit::component::input::InputState::new(window, cx).placeholder("字体名称（留空保留）")
+    });
+    let canvas_size_input = app
+        .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("字号 pt"));
     app.new(|cx| {
+        let search_subscription =
+            cx.subscribe(&search_input, |v: &mut WorkCratePanel, input, event, cx| {
+                if matches!(event, gpui_kit::component::input::InputEvent::Change) {
+                    let query = input.read(cx).value().trim().to_lowercase();
+                    if v.query != query {
+                        v.query = query;
+                        cx.notify();
+                    }
+                }
+            });
+        // Enter commits the field draft without moving focus to the save button.
+        let edit_subscription =
+            cx.subscribe(&edit_input, |v: &mut WorkCratePanel, _, event, cx| {
+                if matches!(
+                    event,
+                    gpui_kit::component::input::InputEvent::PressEnter { .. }
+                ) && v.editing.is_some()
+                    && v.field_saves.is_empty()
+                {
+                    v.save_edit(cx);
+                }
+            });
         let wake = refresh::Wake::default();
         let preview_wake = refresh::Wake::default();
         let canvas_wake = refresh::Wake::default();
+        let preview_state_wake = refresh::Wake::default();
         let mut model = ReadModel::default();
         model.set_wake(wake.clone());
         let mut preview_model = ReadModel::default();
         preview_model.set_wake(preview_wake.clone());
         let mut canvas_read = ReadModel::default();
         canvas_read.set_wake(canvas_wake.clone());
+        let mut preview_state_read = ReadModel::default();
+        preview_state_read.set_wake(preview_state_wake.clone());
         let tasks = vec![
             refresh::listen(cx, wake, |v: &mut WorkCratePanel, _| v.deliver()),
             refresh::listen(cx, canvas_wake, |v: &mut WorkCratePanel, cx| {
@@ -135,6 +184,9 @@ pub(super) fn panel(
             }),
             refresh::listen(cx, preview_wake, |v: &mut WorkCratePanel, _| {
                 v.deliver_preview()
+            }),
+            refresh::listen(cx, preview_state_wake, |v: &mut WorkCratePanel, cx| {
+                v.deliver_preview_state(cx)
             }),
             refresh::listen(cx, ui_state.wake(), |v: &mut WorkCratePanel, cx| {
                 let selection = v
@@ -149,23 +201,55 @@ pub(super) fn panel(
                 if selection != (v.selected_project.clone(), v.selected_board.clone())
                     || revision != (v.board_refresh_revision, v.catalog_refresh_revision)
                 {
-                    if v.canvas_mode && selection.1 != v.selected_board {
-                        // The session belongs to the page being left, so commit and close it
-                        // while that page is still the selected one.
+                    let selection_changed =
+                        selection != (v.selected_project.clone(), v.selected_board.clone());
+                    let catalog_changed = revision.1 != v.catalog_refresh_revision;
+                    // One official session holds the whole document, so a page change
+                    // inside the editor only moves its artboard: the connection and the
+                    // current edit/preview mode stay, and no catalogue reload runs.
+                    let page_switch = v.canvas.is_some()
+                        && selection.0 == v.selected_project
+                        && selection.0.is_some()
+                        && selection.1.is_some()
+                        && selection.1 != v.selected_board;
+                    if page_switch {
+                        v.selected_project = selection.0;
+                        v.selected_board = selection.1;
+                        v.editing = None;
+                        v.board_refresh_revision = revision.0;
+                        v.catalog_refresh_revision = revision.1;
+                        v.switch_canvas_page(cx);
+                        return true;
+                    }
+                    if v.canvas.is_some() && selection.1 != v.selected_board {
+                        // Leaving the page editor for the page list or another project:
+                        // only that exit closes the session.
                         v.leave_canvas(cx);
+                    } else if v.canvas.is_some() && catalog_changed {
+                        // Native catalogue operations close the editing session before
+                        // opening their transaction. Do not reuse that stale frame.
+                        v.clear_canvas_state();
                     }
                     v.selected_project = selection.0;
                     v.selected_board = selection.1;
                     v.board_refresh_revision = revision.0;
                     v.catalog_refresh_revision = revision.1;
+                    if !selection_changed
+                        && !catalog_changed
+                        && (v.canvas.is_some() || v.canvas_mode)
+                    {
+                        // Another client re-read one page. The catalogue and every other
+                        // card are unchanged, so only the visible page moves; no reload.
+                        v.refresh_visible_board(cx);
+                        return true;
+                    }
                     v.reload(cx);
                     return true;
                 }
                 false
             }),
             refresh::listen(cx, projects.wake(), |v: &mut WorkCratePanel, cx| {
-                v.reload(cx);
-                true
+                v.deliver_project_change(cx)
             }),
         ];
         let selection = ui_state.selected_board().unwrap_or_default();
@@ -199,6 +283,8 @@ pub(super) fn panel(
             canvas_object: None,
             canvas_numbers,
             canvas_text_input,
+            canvas_font_input,
+            canvas_size_input,
             canvas_drag: None,
             canvas_busy: false,
             canvas_read,
@@ -207,7 +293,16 @@ pub(super) fn panel(
             config: Default::default(),
             document: None,
             busy: false,
+            field_saves: Default::default(),
             message: None,
+            preview_state_read,
+            preview_state_tick: 0,
+            auto_sync: false,
+            auto_syncs: 0,
+            reloads: 0,
+            renders: 0,
+            auto_sync_error: None,
+            auto_sync_retry_at: None,
             load_generation: 0,
             board_refresh_revision: 0,
             catalog_refresh_revision: 0,
@@ -217,8 +312,10 @@ pub(super) fn panel(
             preview_current: None,
             state_gate: Default::default(),
             _tasks: tasks,
+            _subscriptions: vec![search_subscription, edit_subscription],
         };
         v.reload(cx);
+        v.start_preview_watcher(cx);
         v
     })
     .into()
@@ -226,22 +323,42 @@ pub(super) fn panel(
 impl WorkCratePanel {
     fn reload(&mut self, cx: &mut ViewContext<Self>) {
         self.load_generation += 1;
-        self.boards_view.clear();
+        self.reloads += 1;
+        self.boards_view
+            .retain(|c| Some(&c.board.project_id) == self.selected_project.as_ref());
         self.preview_queue.clear();
         self.preview_current = None;
         let projects = self.projects.clone();
         let boards = self.boards.clone();
         let selected = self.selected_project.clone();
+        let existing_covers = self.project_covers.clone();
         self.busy = true;
         self.model.request(self.load_generation, move || {
             let items = projects.projects(true).map_err(|e| e.to_string())?;
             let presets = projects.field_presets().map_err(|e| e.to_string())?;
             let config = boards.configuration().map_err(|e| e.to_string())?;
-            let mut covers = BTreeMap::new();
-            for p in &items {
-                if let Some(cover) = &p.main_image {
-                    if let Ok(dir) = projects.project_directory(&p.id) {
-                        if let Ok(image) = image::open(dir.join(&cover.path)) {
+            let mut covers = existing_covers;
+            if selected.is_none() {
+                covers.clear();
+                for p in &items {
+                    let path = p
+                        .main_image
+                        .as_ref()
+                        .and_then(|cover| {
+                            projects
+                                .project_directory(&p.id)
+                                .ok()
+                                .map(|dir| dir.join(&cover.path))
+                        })
+                        .or_else(|| {
+                            boards
+                                .board_catalog(&p.id)
+                                .ok()?
+                                .first()
+                                .and_then(|board| boards.render_preview(&board.id, 1600).ok())
+                        });
+                    if let Some(path) = path {
+                        if let Ok(image) = image::open(path) {
                             covers.insert(
                                 p.id.clone(),
                                 render_image(image.thumbnail(720, 480).into_rgba8()),
@@ -275,6 +392,38 @@ impl WorkCratePanel {
         });
         cx.notify();
     }
+    /// Project-index changes (rename, cover, reference, archive) never alter the page
+    /// catalogue. Patch the index in place so an open editor keeps its official session,
+    /// cards and decoded previews; only the project screen reloads its covers.
+    fn deliver_project_change(&mut self, cx: &mut ViewContext<Self>) -> bool {
+        if self.selected_project.is_none() {
+            self.reload(cx);
+            return true;
+        }
+        let Ok(items) = self.projects.projects(true) else {
+            return false;
+        };
+        if self
+            .selected_project
+            .as_ref()
+            .is_some_and(|id| !items.iter().any(|p| &p.id == id))
+        {
+            // The open project disappeared; leaving it is a real screen change.
+            self.selected_project = None;
+            self.selected_board = None;
+            self.reload(cx);
+            return true;
+        }
+        let Ok(presets) = self.projects.field_presets() else {
+            return false;
+        };
+        if items == self.items && presets == self.preset_fields {
+            return false;
+        }
+        self.items = items;
+        self.preset_fields = presets;
+        true
+    }
     fn deliver(&mut self) -> bool {
         if !self.model.poll() {
             return false;
@@ -288,15 +437,20 @@ impl WorkCratePanel {
                     self.project_covers = s.covers.clone();
                     self.config = s.config.clone();
                     self.document = s.document.clone();
+                    let previous = std::mem::take(&mut self.boards_view);
                     self.boards_view = s
                         .boards
                         .iter()
                         .cloned()
                         .map(|board| BoardCard {
+                            image: previous
+                                .iter()
+                                .find(|c| c.board.id == board.id)
+                                .and_then(|c| c.image.clone()),
                             board,
-                            image: None,
                             error: None,
                             preview_checked: false,
+                            canvas_revision: None,
                         })
                         .collect();
                     self.selected_pages
@@ -321,6 +475,10 @@ impl WorkCratePanel {
                         .iter()
                         .map(|c| c.board.id.clone())
                         .collect();
+                    if let Some(selected) = &self.selected_board {
+                        self.preview_queue.retain(|id| id != selected);
+                        self.preview_queue.push_front(selected.clone());
+                    }
                     self.start_preview();
                 }
                 Err(e) => {
@@ -354,6 +512,10 @@ impl WorkCratePanel {
         {
             if let Some(id) = self.preview_current.take() {
                 if let Some(c) = self.boards_view.iter_mut().find(|c| c.board.id == id) {
+                    if c.canvas_revision.is_some() {
+                        self.start_preview();
+                        return true;
+                    }
                     match self.preview_model.value() {
                         Some(Ok(i)) => {
                             c.image = Some(i.clone());
@@ -372,14 +534,21 @@ impl WorkCratePanel {
         true
     }
     fn open_page(&mut self, id: &str, cx: &mut ViewContext<Self>) {
-        if self.canvas_mode {
-            self.leave_canvas(cx);
+        if self.busy
+            || self.canvas_busy
+            || !self.field_saves.is_empty()
+            || self.selected_board.as_deref() == Some(id)
+        {
+            return;
         }
         self.selected_board = Some(id.into());
         self.editing = None;
         let _ = self
             .ui_state
             .navigate(self.selected_project.clone(), self.selected_board.clone());
+        // A page change inside the page editor keeps the official session; only its
+        // artboard moves, so the edit mode and the preview follow at once.
+        self.switch_canvas_page(cx);
         cx.notify();
     }
     fn panel_content_size(&self) -> (f64, f64) {
@@ -405,7 +574,7 @@ impl WorkCratePanel {
 impl Drop for WorkCratePanel {
     fn drop(&mut self) {
         let _ = self.surfaces.set_value("workcrate.ui", "null");
-        if self.canvas_mode {
+        if self.canvas.is_some() {
             let boards = self.boards.clone();
             std::thread::spawn(move || {
                 let _ = boards.canvas_commit();
