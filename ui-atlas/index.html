@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN" data-fa-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FileAtlas 界面图谱 · SVG 组件拆解</title>
+    <link rel="stylesheet" href="app/tokens.css" />
+    <link rel="stylesheet" href="app/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <strong>FileAtlas 界面图谱</strong>
+        <span class="chip" id="revision"></span>
+        <span class="chip" id="mode">可保存</span>
+      </div>
+      <input class="field" id="search" type="search" placeholder="搜索名称、组件标识或所属插件" />
+      <div id="status" class="toolbar">
+        <button data-status="全部" class="on">全部</button>
+        <button data-status="已描摹">已描摹</button>
+        <button data-status="待描摹">待描摹</button>
+        <button data-status="文件缺失">缺失</button>
+      </div>
+      <button id="theme">切换明暗</button>
+    </header>
+    <div class="layout">
+      <nav class="tree" id="tree"></nav>
+      <main id="main"></main>
+      <aside class="detail" id="detail" hidden></aside>
+    </div>
+    <script src="catalog/data.js"></script>
+    <script src="catalog/sources.js"></script>
+    <script src="app/gallery.js"></script>
+  </body>
+</html>

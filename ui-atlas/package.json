@@ -1,0 +1,17 @@
+{
+  "name": "fileatlas-ui-atlas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FileAtlas 界面的 SVG 拆解图谱：逐组件描摹、分类展示、网页内编辑并自动升版本。",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "tokens": "node tools/tokens.mjs",
+    "build": "node tools/build.mjs",
+    "check": "node tools/build.mjs --check",
+    "serve": "node tools/serve.mjs",
+    "capture": "node tools/capture.mjs"
+  }
+}
