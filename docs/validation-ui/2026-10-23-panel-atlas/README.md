@@ -87,7 +87,7 @@ WorkCrate 的建页/刷新/放图/预览走官方自动化会话；本次运行�
 
 - 60 张 PNG、`INDEX.md` 缩略图索引、`screenshots.zip` 打包副本：
   `.local/validation/profiles/panel-atlas-final/screenshots/`
-- 每一步调用结果（含两处报错原文）：`.local/validation/profiles/panel-atlas-final/manifest.json`
+- 每一步调用结果与报错原文：`.local/validation/profiles/panel-atlas-final/manifest.json`
 - 数据库、settings、日志等原始隔离 profile：`.local/validation/profiles/panel-atlas-final/`
 
 重跑某一阶段会原地更新这些文件；仓库内不再保留截图副本。
