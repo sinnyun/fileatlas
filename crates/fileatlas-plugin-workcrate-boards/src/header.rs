@@ -1,41 +1,41 @@
-//! Write the WorkCrate-owned material header band through official VectorCraft commands.
-//!
-//! The official program owns every text metric, so this module creates or restyles each
-//! field, reads the box the program reports, asks [`crate::header_layout`] where that box
-//! belongs, and then moves the node there. Nothing here measures text locally, and no
-//! non-header object is created, moved, resized or deleted.
+//! Persistent three-text material bar. Official point text owns right alignment and metrics.
 use super::*;
-use crate::header_layout as geometry;
-use crate::protocol::NativeProtocol;
-use std::collections::BTreeSet;
+use crate::{header_layout as g, protocol::NativeProtocol};
+mod payload;
+pub(crate) use payload::Details;
+use payload::single_line;
+const LAYOUT: u32 = 2;
 
-const FONT: &str = "Microsoft YaHei";
-
-/// One header field the page wants printed: its role, text, and the label a detail row uses.
-#[derive(Clone)]
-struct Requested {
-    role: String,
-    label: String,
-    text: String,
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct WriteReport {
+    initialized: bool,
+    commands: Vec<Value>,
 }
-
-/// Where a node is after the official program created or restyled it.
-struct Sited {
-    id: u64,
-    left: f64,
-    top: f64,
-    width: f64,
-    height: f64,
+impl WriteReport {
+    pub(crate) fn changed(&self) -> bool {
+        !self.commands.is_empty()
+    }
+    pub(crate) fn installed(&self) -> bool {
+        self.initialized
+    }
 }
-
-/// The header nodes of one page plus the boxes the official program reported for them.
-struct Header {
-    board: u64,
-    origin: (f64, f64),
-    owned: native::OwnedNodes,
-    sited: BTreeMap<String, Sited>,
-    /// The group that wraps this page's whole material band inside the locked master.
-    subgroup: Option<u64>,
+struct Tracked<'a, C> {
+    inner: &'a mut C,
+    report: WriteReport,
+}
+impl<C: NativeProtocol> NativeProtocol for Tracked<'_, C> {
+    fn request(&mut self, method: &str, params: Value) -> Result<Value, BoardsError> {
+        self.inner.request(method, params)
+    }
+    fn execute(&mut self, command: &str, params: Value) -> Result<Value, BoardsError> {
+        let result = self.inner.execute(command, params.clone())?;
+        if !command.starts_with("document.") {
+            self.report
+                .commands
+                .push(json!({"command":command,"id":params.get("id"),"ids":params.get("ids")}));
+        }
+        Ok(result)
+    }
 }
 
 pub(crate) fn write(
@@ -43,9 +43,95 @@ pub(crate) fn write(
     b: &WorkCrateBoard,
     title: &str,
     info: &PageInfo,
-    project_name: &str,
-) -> Result<(), BoardsError> {
-    check_request(b, title, info, project_name)?;
+    category: &str,
+) -> Result<WriteReport, BoardsError> {
+    write_impl(c, b, title, info, category, true, None)
+}
+
+/// The caller owns the surrounding native undo group (page order transaction).
+pub(crate) fn write_in_group(
+    c: &mut impl NativeProtocol,
+    b: &WorkCrateBoard,
+    title: &str,
+    info: &PageInfo,
+    layout: &native::OwnedLayout,
+) -> Result<WriteReport, BoardsError> {
+    write_impl(
+        c,
+        b,
+        title,
+        info,
+        &info.material_category,
+        false,
+        Some(layout),
+    )
+}
+
+fn write_impl(
+    c: &mut impl NativeProtocol,
+    b: &WorkCrateBoard,
+    title: &str,
+    info: &PageInfo,
+    category: &str,
+    transaction: bool,
+    layout: Option<&native::OwnedLayout>,
+) -> Result<WriteReport, BoardsError> {
+    validate(b, title, info)?;
+    let loaded;
+    let layout = match layout {
+        Some(layout) => layout,
+        None => {
+            loaded = native::owned_layout(c)?;
+            &loaded
+        }
+    };
+    let owned = layout.boards.get(&b.native_id).cloned().unwrap_or_default();
+    let details = Details::from_info(info);
+    let note = note(b.native_id, g::ROLE_DETAILS, json!({"details":details}));
+    let category_note = note_value(b.native_id, category);
+    let initialized = owned.layout_version == LAYOUT
+        && owned.page_group.is_some()
+        && layout.header_root.is_some()
+        && owned.band.is_some()
+        && owned.chip.is_some()
+        && [g::ROLE_PAGE_NUMBER, g::ROLE_PROJECT_NAME, g::ROLE_DETAILS]
+            .iter()
+            .all(|key| owned.fields.contains_key(*key));
+    let number = format!("{:02}", b.index + 1);
+    let mut recolor = Vec::new();
+    if initialized {
+        for role in [g::ROLE_PAGE_NUMBER, g::ROLE_PROJECT_NAME, g::ROLE_DETAILS] {
+            let id = owned.fields[role].id;
+            let summary = c.execute("document.node", json!({"id":id,"summary":true}))?;
+            if summary["fill"].as_str() != Some(g::COLOR_TEXT) {
+                recolor.push(id);
+            }
+        }
+    }
+    let category_text = visible(category);
+    let detail_text = visible(&details.text());
+    let changed = !initialized
+        || !recolor.is_empty()
+        || b.title != title
+        || [
+            (g::ROLE_PAGE_NUMBER, number.as_str(), None),
+            (
+                g::ROLE_PROJECT_NAME,
+                category_text.as_str(),
+                Some(&category_note),
+            ),
+            (g::ROLE_DETAILS, detail_text.as_str(), Some(&note)),
+        ]
+        .into_iter()
+        .any(|(role, text, note)| {
+            owned
+                .fields
+                .get(role)
+                .is_none_or(|node| node.text != text || note.is_some_and(|note| note != &node.note))
+        });
+    if !changed {
+        return Ok(WriteReport::default());
+    }
     let inspect = c.request("document.inspect", json!({"depth":0}))?;
     if !inspect["isolation"].is_null() {
         return Err(BoardsError::Invalid(
@@ -53,501 +139,351 @@ pub(crate) fn write(
         ));
     }
     let rect = &inspect["artboards"][b.index];
-    let origin = (
-        rect["x"].as_f64().unwrap_or(0.),
-        rect["y"].as_f64().unwrap_or(0.),
-    );
-    if !origin.0.is_finite() || !origin.1.is_finite() {
-        return Err(BoardsError::Protocol(
-            "官方程序未返回页面位置，请重新同步页面".into(),
-        ));
+    let geometry = g::Geometry {
+        x: finite(rect, "x")?,
+        y: finite(rect, "y")?,
+        width: b.width_pt,
+    };
+    let mut c = Tracked {
+        inner: c,
+        report: WriteReport {
+            initialized: !initialized,
+            commands: vec![],
+        },
+    };
+    if transaction {
+        c.execute(
+            "edit.undoGroup.begin",
+            json!({"label":"WorkCrate material header"}),
+        )?;
     }
-    c.execute(
-        "edit.undoGroup.begin",
-        json!({"label":"WorkCrate material header"}),
-    )?;
-    let outcome = apply(c, b, title, info, project_name, origin);
-    match outcome {
+    let result = (|| {
+        if b.title != title {
+            c.execute("artboard.setProps", json!({"index":b.index,"name":title}))?;
+        }
+        if initialized {
+            // Existing documents adopt the requested ink without replacing text nodes.
+            if !recolor.is_empty() {
+                c.execute("text.setStyle", json!({"ids":recolor,"fill":g::COLOR_TEXT}))?;
+            }
+            patch(&mut c, &owned, g::ROLE_PAGE_NUMBER, &number, None, geometry)?;
+            patch(
+                &mut c,
+                &owned,
+                g::ROLE_PROJECT_NAME,
+                &category_text,
+                Some(category_note),
+                geometry,
+            )?;
+            patch(
+                &mut c,
+                &owned,
+                g::ROLE_DETAILS,
+                &detail_text,
+                Some(note),
+                geometry,
+            )?;
+        } else {
+            install(
+                &mut c,
+                b,
+                &owned,
+                layout.header_root,
+                geometry,
+                &number,
+                &category_text,
+                &detail_text,
+                category_note,
+                note,
+            )?;
+        }
+        Ok::<_, BoardsError>(())
+    })();
+    match result {
         Ok(()) => {
-            c.execute("edit.undoGroup.end", json!({}))?;
-            Ok(())
+            if transaction {
+                c.execute("edit.undoGroup.end", json!({}))?;
+            }
+            Ok(c.report)
         }
         Err(error) => {
-            let _ = c.execute("edit.undoGroup.end", json!({"cancel":true}));
+            if transaction {
+                c.execute("edit.undoGroup.end", json!({"cancel":true}))?;
+            }
             Err(error)
         }
     }
 }
 
-fn check_request(
-    b: &WorkCrateBoard,
-    title: &str,
-    info: &PageInfo,
-    project_name: &str,
-) -> Result<(), BoardsError> {
-    if title.is_empty() {
-        return Err(BoardsError::Invalid(
-            "页面名称不能为空，请填写后再保存".into(),
+fn visible(text: &str) -> String {
+    let value = single_line(text);
+    // A space keeps an empty point-text object and its anchor alive without printing a value.
+    if value.is_empty() { " ".into() } else { value }
+}
+fn note(board: u64, role: &str, extras: Value) -> Value {
+    let mut note = json!({"namespace":"fileatlas.workcrate","version":1,"layout":LAYOUT,"board":board,"role":role});
+    if let Some(extras) = extras.as_object() {
+        for (key, value) in extras {
+            note[key] = value.clone();
+        }
+    }
+    note
+}
+fn note_value(board: u64, value: &str) -> Value {
+    note(board, g::ROLE_PROJECT_NAME, json!({"value":value}))
+}
+fn tag(c: &mut impl NativeProtocol, id: u64, note: Value) -> Result<(), BoardsError> {
+    let result = c.execute("attributes.set", json!({"id":id,"note":note.to_string()}))?;
+    if result["changed"].as_u64() != Some(1) {
+        return Err(BoardsError::Protocol(
+            "官方程序未能记录物料栏字段，请重新同步后再保存".into(),
         ));
     }
-    if title.chars().count() > 512 {
-        return Err(BoardsError::Invalid("页面名称过长，请缩短后再保存".into()));
+    Ok(())
+}
+fn patch(
+    c: &mut impl NativeProtocol,
+    owned: &native::OwnedNodes,
+    role: &str,
+    text: &str,
+    note: Option<Value>,
+    geometry: g::Geometry,
+) -> Result<(), BoardsError> {
+    let node = &owned.fields[role];
+    if node.text != text {
+        c.execute("text.setText", json!({"id":node.id,"text":text}))?;
+        check_bounds(c, node.id, role, geometry)?;
+    }
+    if let Some(note) = note
+        && note != node.note
+    {
+        tag(c, node.id, note)?;
+    }
+    Ok(())
+}
+fn text(
+    c: &mut impl NativeProtocol,
+    role: &str,
+    value: &str,
+    note: Value,
+    geometry: g::Geometry,
+) -> Result<u64, BoardsError> {
+    let (x, size, color, justify, style) = match role {
+        g::ROLE_PAGE_NUMBER => (
+            geometry.x + 36.,
+            g::PAGE_NUMBER_SIZE,
+            g::COLOR_TEXT,
+            "center",
+            "bold",
+        ),
+        g::ROLE_PROJECT_NAME => (
+            geometry.category_x(),
+            g::PROJECT_NAME_SIZE,
+            g::COLOR_TEXT,
+            "left",
+            "bold",
+        ),
+        _ => (
+            geometry.right(),
+            g::GROUP_SIZE,
+            g::COLOR_TEXT,
+            "right",
+            "regular",
+        ),
+    };
+    let created = c.execute("text.create", json!({"x":x,"y":geometry.centre_y(),"text":value,"size":size,"font":g::TEXT_FONT,"style":style,"color":color,"justify":justify}))?;
+    let id = created["id"]
+        .as_u64()
+        .ok_or_else(|| BoardsError::Protocol("官方程序未创建物料栏文字，请重试".into()))?;
+    // Official metrics are used once to vertically centre each independent text object.
+    let bounds = bounds(c, id)?;
+    let delta = geometry.centre_y() - finite(&bounds, "y")? - finite(&bounds, "height")? / 2.;
+    if delta.abs() > 0.01 {
+        c.execute(
+            "object.transform",
+            json!({"ids":[id],"matrix":[1,0,0,1,0,delta]}),
+        )?;
+    }
+    check_bounds(c, id, role, geometry)?;
+    tag(c, id, note)?;
+    Ok(id)
+}
+fn rectangle(
+    c: &mut impl NativeProtocol,
+    board: u64,
+    role: &str,
+    rect: Value,
+    fill: &str,
+    stroke: Option<&str>,
+) -> Result<u64, BoardsError> {
+    let result = c.execute("shape.rectangle", rect)?;
+    let id = result["id"]
+        .as_u64()
+        .ok_or_else(|| BoardsError::Protocol("官方程序未创建物料栏底色，请重试".into()))?;
+    c.execute("paint.setFill", json!({"id":id,"color":fill}))?;
+    c.execute(
+        "paint.setStroke",
+        stroke.map_or_else(
+            || json!({"id":id,"none":true}),
+            |color| json!({"id":id,"color":color}),
+        ),
+    )?;
+    tag(c, id, note(board, role, json!({})))?;
+    Ok(id)
+}
+#[allow(clippy::too_many_arguments)]
+fn install(
+    c: &mut impl NativeProtocol,
+    b: &WorkCrateBoard,
+    old: &native::OwnedNodes,
+    root: Option<u64>,
+    geometry: g::Geometry,
+    number: &str,
+    category: &str,
+    details: &str,
+    category_note: Value,
+    detail_note: Value,
+) -> Result<(), BoardsError> {
+    if let Some(root) = root {
+        c.execute("object.setProps", json!({"id":root,"locked":false}))?;
+    }
+    native::header_layer(c)?;
+    let band = rectangle(
+        c,
+        b.native_id,
+        "band",
+        json!({"x":geometry.x+8.,"y":geometry.y+8.,"width":b.width_pt-16.,"height":52.,"radius":g::BAND_RADIUS}),
+        g::COLOR_BAND,
+        None,
+    )?;
+    let chip = rectangle(
+        c,
+        b.native_id,
+        "page_number_chip",
+        json!({"x":geometry.x+16.,"y":geometry.y+22.,"width":40.,"height":24.,"radius":g::CHIP_RADIUS}),
+        g::COLOR_CHIP,
+        Some(g::COLOR_CHIP_EDGE),
+    )?;
+    let page = text(
+        c,
+        g::ROLE_PAGE_NUMBER,
+        number,
+        note(b.native_id, g::ROLE_PAGE_NUMBER, json!({})),
+        geometry,
+    )?;
+    let category = text(c, g::ROLE_PROJECT_NAME, category, category_note, geometry)?;
+    let details = text(c, g::ROLE_DETAILS, details, detail_note, geometry)?;
+    let order = [band, chip, page, category, details];
+    let grouped = c.execute("object.group", json!({"ids":order}))?;
+    let group = grouped["id"]
+        .as_u64()
+        .ok_or_else(|| BoardsError::Protocol("官方程序未创建物料栏分组".into()))?;
+    tag(c, group, note(b.native_id, "header_page", json!({})))?;
+    for (index, id) in order.into_iter().enumerate() {
+        c.execute("node.move", json!({"id":id,"parent":group,"index":index}))?;
+    }
+    let root = match root {
+        Some(root) => {
+            c.execute("node.move", json!({"id":group,"parent":root}))?;
+            root
+        }
+        None => {
+            let grouped = c.execute("object.group", json!({"ids":[group]}))?;
+            let id = grouped["id"]
+                .as_u64()
+                .ok_or_else(|| BoardsError::Protocol("官方程序未创建物料栏主组".into()))?;
+            native::tag_node(c, id, "header_root", None, false)?;
+            id
+        }
+    };
+    // Install first, then retire the old subtree, so its shared root never becomes empty.
+    if let Some(id) = old.page_group.or(old.legacy_group) {
+        c.execute("edit.clear", json!({"ids":[id]}))?;
+    } else {
+        let ids = old
+            .fields
+            .values()
+            .map(|n| n.id)
+            .chain(old.band)
+            .chain(old.chip)
+            .collect::<Vec<_>>();
+        if !ids.is_empty() {
+            c.execute("edit.clear", json!({"ids":ids}))?;
+        }
+    }
+    c.execute("object.setProps", json!({"id":root,"locked":true}))?;
+    Ok(())
+}
+fn bounds(c: &mut impl NativeProtocol, id: u64) -> Result<Value, BoardsError> {
+    Ok(c.execute("document.node", json!({"id":id,"summary":true}))?["bounds"].clone())
+}
+fn check_bounds(
+    c: &mut impl NativeProtocol,
+    id: u64,
+    role: &str,
+    geometry: g::Geometry,
+) -> Result<(), BoardsError> {
+    let bounds = bounds(c, id)?;
+    let left = finite(&bounds, "x")?;
+    let right = left + finite(&bounds, "width")?;
+    let fits = match role {
+        g::ROLE_DETAILS => left >= geometry.split() && right <= geometry.right() + 0.1,
+        g::ROLE_PROJECT_NAME => {
+            left >= geometry.category_x() - 0.1 && right <= geometry.split() - 12.
+        }
+        _ => left >= geometry.x + 16. && right <= geometry.x + 56.,
+    };
+    if !fits {
+        return Err(BoardsError::Invalid(
+            if role == g::ROLE_DETAILS {
+                "物料信息过长，右侧单行放不下，请缩短内容后重试"
+            } else {
+                "编号或物料类别过长，左侧单行放不下，请缩短后重试"
+            }
+            .into(),
+        ));
+    }
+    Ok(())
+}
+fn finite(value: &Value, key: &str) -> Result<f64, BoardsError> {
+    value[key]
+        .as_f64()
+        .filter(|v| v.is_finite())
+        .ok_or_else(|| {
+            BoardsError::Protocol("官方程序未返回物料栏文字边界，请重新同步后重试".into())
+        })
+}
+fn validate(b: &WorkCrateBoard, title: &str, info: &PageInfo) -> Result<(), BoardsError> {
+    if title.trim().is_empty() || title.chars().count() > 512 {
+        return Err(BoardsError::Invalid("页面名称不能为空或过长".into()));
+    }
+    if b.width_pt < 200. || b.height_pt < 100. {
+        return Err(BoardsError::Invalid("页面尺寸太小，放不下物料栏".into()));
     }
     if serde_json::to_vec(info)?.len() > 16384 || info.extra.len() > 24 {
         return Err(BoardsError::Invalid(
             "页面内容过多，请减少字段或缩短内容后再保存".into(),
         ));
     }
-    if b.width_pt < 200. || b.height_pt < 100. {
-        return Err(BoardsError::Invalid(
-            "页面尺寸太小，放不下物料信息条".into(),
-        ));
-    }
-    for text in [project_name, &info.material, &info.size, &info.quantity]
-        .into_iter()
-        .chain(info.extra.values().map(String::as_str))
+    for text in [
+        &info.material_category,
+        &info.material,
+        &info.size,
+        &info.quantity,
+    ]
+    .into_iter()
+    .chain(info.extra.keys())
+    .chain(info.extra.values())
     {
         if text.chars().count() > 1024
             || text
                 .chars()
-                .any(|ch| (ch as u32) < 32 && !matches!(ch, '\n' | '\r' | '\t'))
+                .any(|ch| ch.is_control() && !matches!(ch, '\n' | '\r' | '\t'))
         {
             return Err(BoardsError::Invalid(
-                "字段内容过长或含有控制字符，请缩短后重试".into(),
+                "字段内容过长或含控制字符，请缩短后重试".into(),
             ));
         }
     }
     Ok(())
-}
-
-/// The layout's reason names an internal role id, so it is replaced here: the panel only ever
-/// shows which page field failed and what the user should do.
-fn describe(error: geometry::HeaderLayoutError) -> BoardsError {
-    BoardsError::Invalid(match error {
-        geometry::HeaderLayoutError::Unmeasured(_) => {
-            "官方程序未返回该字段的排版尺寸，请重新同步页面后再保存".into()
-        }
-        geometry::HeaderLayoutError::TooWide(_) => {
-            "字段内容过宽，这一页放不下物料信息条，请缩短后重试".into()
-        }
-        geometry::HeaderLayoutError::TooManyRows(rows) => {
-            format!("附加字段过多，物料信息条最多容纳 {rows} 行")
-        }
-    })
-}
-
-fn apply(
-    c: &mut impl NativeProtocol,
-    b: &WorkCrateBoard,
-    title: &str,
-    info: &PageInfo,
-    project_name: &str,
-    origin: (f64, f64),
-) -> Result<(), BoardsError> {
-    c.execute("artboard.setProps", json!({"index":b.index,"name":title}))?;
-    let mut owned = native::owned(c, b.native_id)?;
-    if let Some(group) = owned.legacy_group {
-        // Documents written before the compact band wrapped the whole block in one group.
-        // Releasing it deletes only FileAtlas-owned nodes, never the page artwork.
-        c.execute("edit.clear", json!({"ids":[group]}))?;
-        owned = native::OwnedNodes::default();
-    }
-    native::header_layer(c)?;
-    // The master group locks the whole material band against edits made inside the official
-    // GUI; headless commands still reach its children, so the panel keeps writing freely.
-    let master = native::header_root(c)?;
-    if let Some(id) = master {
-        c.execute("object.setProps", json!({"id":id,"locked":false}))?;
-    }
-    let mut header = Header {
-        board: b.native_id,
-        origin,
-        subgroup: owned.page_group,
-        owned,
-        sited: BTreeMap::new(),
-    };
-
-    let page_number = format!("{:02}", b.index + 1);
-    let group = [
-        requested("material", "物料", &info.material),
-        requested("size", "尺寸", &info.size),
-        requested("quantity", "数量", &info.quantity),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>();
-    let mut rows: Vec<Requested> = Vec::new();
-    for (key, value) in &info.extra {
-        if let Some(field) = requested(&format!("extra:{key}"), key, value) {
-            rows.push(field);
-        }
-    }
-
-    // Pass one: the primary row and the separators it would need, so the official metrics
-    // decide whether the material run still shares that row.
-    header.row(
-        c,
-        geometry::ROLE_PAGE_NUMBER,
-        &page_number,
-        geometry::PAGE_NUMBER_SIZE,
-        geometry::COLOR_ACCENT,
-        true,
-        false,
-    )?;
-    header.row(
-        c,
-        geometry::ROLE_PROJECT_NAME,
-        project_name,
-        geometry::PROJECT_NAME_SIZE,
-        geometry::COLOR_PRIMARY,
-        true,
-        info.project_name_override.is_none(),
-    )?;
-    for field in &group {
-        header.row(
-            c,
-            &field.role,
-            &field.text,
-            geometry::GROUP_SIZE,
-            geometry::COLOR_ACCENT,
-            false,
-            false,
-        )?;
-    }
-    for index in 0..group.len().saturating_sub(1) {
-        header.row(
-            c,
-            &geometry::separator_role(index),
-            "·",
-            geometry::GROUP_SIZE,
-            geometry::COLOR_MUTED,
-            false,
-            false,
-        )?;
-    }
-    let measured = metrics(&header.sited);
-    let group_fields = fields(&group);
-    let group_in_primary = geometry::group_fits(
-        origin.0,
-        b.width_pt,
-        &page_number,
-        project_name,
-        &group_fields,
-        &measured,
-    )
-    .map_err(describe)?;
-
-    // Pass two: the rows below the primary one. Demoted fields are restyled to detail size,
-    // so every metric handed to the layout describes the size that text prints at. Each
-    // detail row needs both its value and its label measured by the official program.
-    if !group_in_primary {
-        rows.extend(group.iter().cloned());
-    }
-    for field in &rows {
-        header.row(
-            c,
-            &field.role,
-            &field.text,
-            geometry::SUB_SIZE,
-            geometry::COLOR_PRIMARY,
-            false,
-            false,
-        )?;
-        header.row(
-            c,
-            &geometry::label_role(&field.role),
-            &field.label,
-            geometry::SUB_SIZE,
-            geometry::COLOR_MUTED,
-            false,
-            false,
-        )?;
-    }
-    let row_fields = fields(&rows);
-    let layout = geometry::build(
-        origin.0,
-        origin.1,
-        b.width_pt,
-        &page_number,
-        project_name,
-        &group_fields,
-        &row_fields,
-        group_in_primary,
-        &metrics(&header.sited),
-    )
-    .map_err(describe)?;
-
-    for placement in &layout.rows {
-        let site = header.sited.get(placement.role.as_str()).ok_or_else(|| {
-            BoardsError::Protocol("官方程序未返回该字段的排版位置，请重新同步页面".into())
-        })?;
-        let (dx, dy) = (placement.left - site.left, placement.top - site.top);
-        if dx.abs() > 0.01 || dy.abs() > 0.01 {
-            c.execute(
-                "object.transform",
-                json!({"ids":[site.id],"matrix":[1,0,0,1,dx,dy]}),
-            )?;
-        }
-    }
-
-    let wanted = layout
-        .rows
-        .iter()
-        .map(|placement| placement.role.as_str())
-        .collect::<BTreeSet<_>>();
-    let stale = header
-        .owned
-        .fields
-        .iter()
-        .filter(|(role, _)| !wanted.contains(role.as_str()))
-        .map(|(_, node)| node.id)
-        .collect::<Vec<_>>();
-    for id in stale {
-        c.execute("edit.clear", json!({"ids":[id]}))?;
-    }
-
-    // The band is page furniture behind its own text: rebuilt at the measured height with
-    // the rounded corners from the sketch. The page-number chip is created after it and
-    // both are ordered behind the text, never resized through the selection.
-    if let Some(id) = header.owned.band {
-        c.execute("edit.clear", json!({"ids":[id]}))?;
-    }
-    if let Some(id) = header.owned.chip {
-        c.execute("edit.clear", json!({"ids":[id]}))?;
-    }
-    let rectangle = c.execute(
-        "shape.rectangle",
-        json!({"x":layout.band.x,"y":layout.band.y,"width":layout.band.width,"height":layout.band.height,"radius":geometry::BAND_RADIUS}),
-    )?;
-    let band = rectangle["id"].as_u64().ok_or_else(|| {
-        BoardsError::Protocol("官方程序未创建信息条底色，请重新同步页面后再保存".into())
-    })?;
-    c.execute(
-        "paint.setFill",
-        json!({"id":band,"color":geometry::COLOR_BAND}),
-    )?;
-    c.execute("paint.setStroke", json!({"id":band,"none":true}))?;
-    tag(c, band, geometry::ROLE_BAND, b.native_id, false)?;
-    let mut chip_id = None;
-    if let Some(chip) = &layout.chip {
-        let rectangle = c.execute(
-            "shape.rectangle",
-            json!({"x":chip.x,"y":chip.y,"width":chip.width,"height":chip.height,"radius":chip.radius}),
-        )?;
-        let id = rectangle["id"].as_u64().ok_or_else(|| {
-            BoardsError::Protocol("官方程序未创建页码底色，请重新同步页面后再保存".into())
-        })?;
-        c.execute(
-            "paint.setFill",
-            json!({"id":id,"color":geometry::COLOR_CHIP}),
-        )?;
-        c.execute(
-            "paint.setStroke",
-            json!({"id":id,"color":geometry::COLOR_CHIP_EDGE}),
-        )?;
-        tag(c, id, geometry::ROLE_PAGE_CHIP, b.native_id, false)?;
-        chip_id = Some(id);
-    }
-    // Every node this page owns is now created: band first, then chip, then text, so the
-    // explicit group indexes keep the band behind its own text without selection calls.
-    let mut order = vec![band];
-    if let Some(id) = chip_id {
-        order.push(id);
-    }
-    order.extend(header.sited.values().map(|site| site.id));
-    assemble_groups(c, b.native_id, order, header.subgroup, master)?;
-    Ok(())
-}
-
-/// Place this page's band nodes into the page subgroup and the subgroup into the locked
-/// master. The subgroup is created as a single-child group when the page had none; the
-/// master likewise when the document had none. Re-locking the master is the last write, so
-/// the official GUI can never select or move a material-bar node between saves.
-fn assemble_groups(
-    c: &mut impl NativeProtocol,
-    board: u64,
-    order: Vec<u64>,
-    subgroup: Option<u64>,
-    master: Option<u64>,
-) -> Result<(), BoardsError> {
-    let subgroup = match subgroup {
-        Some(group) => {
-            for (index, node) in order.iter().enumerate() {
-                c.execute("node.move", json!({"id":node,"parent":group,"index":index}))?;
-            }
-            group
-        }
-        None => {
-            let created = c.execute("object.group", json!({"ids":order}))?;
-            let id = created["id"].as_u64().ok_or_else(|| {
-                BoardsError::Protocol("官方程序未创建物料栏子组，请重新同步页面后再保存".into())
-            })?;
-            native::tag_node(c, id, "header_page", Some(board), false)?;
-            for (index, node) in order.iter().enumerate() {
-                c.execute("node.move", json!({"id":node,"parent":id,"index":index}))?;
-            }
-            id
-        }
-    };
-    let master = match master {
-        Some(id) => {
-            // A freshly created subgroup lands beside the master; moving it in is
-            // idempotent, so an existing subgroup also heals back into the master.
-            c.execute("node.move", json!({"id":subgroup,"parent":id}))?;
-            id
-        }
-        None => {
-            let created = c.execute("object.group", json!({"ids":[subgroup]}))?;
-            let id = created["id"].as_u64().ok_or_else(|| {
-                BoardsError::Protocol("官方程序未创建物料栏主组，请重新同步页面后再保存".into())
-            })?;
-            native::tag_node(c, id, "header_root", None, false)?;
-            id
-        }
-    };
-    c.execute("object.setProps", json!({"id":master,"locked":true}))?;
-    Ok(())
-}
-
-fn requested(role: &str, label: &str, text: &str) -> Option<Requested> {
-    (!text.is_empty()).then(|| Requested {
-        role: role.into(),
-        label: label.into(),
-        text: text.into(),
-    })
-}
-
-fn fields(rows: &[Requested]) -> Vec<geometry::Field<'_>> {
-    rows.iter()
-        .map(|row| geometry::Field {
-            role: &row.role,
-            label: &row.label,
-            text: &row.text,
-        })
-        .collect()
-}
-
-fn metrics(sited: &BTreeMap<String, Sited>) -> BTreeMap<String, geometry::Measured> {
-    sited
-        .iter()
-        .map(|(role, site)| {
-            (
-                role.clone(),
-                geometry::Measured {
-                    width: site.width,
-                    height: site.height,
-                },
-            )
-        })
-        .collect()
-}
-
-impl Header {
-    /// Make one owned text node hold `text` at `size` and remember the box the official
-    /// program reports for it.
-    fn row(
-        &mut self,
-        c: &mut impl NativeProtocol,
-        role: &str,
-        text: &str,
-        size: f64,
-        color: &'static str,
-        bold: bool,
-        inherited: bool,
-    ) -> Result<(), BoardsError> {
-        let style = if bold { "bold" } else { "regular" };
-        let existing = self
-            .owned
-            .fields
-            .get(role)
-            .map(|node| (node.id, node.text.clone(), node.inherited));
-        let site = match existing {
-            Some((id, current, current_inherited)) => {
-                if current != text {
-                    c.execute("text.setText", json!({"id":id,"text":text}))?;
-                }
-                c.execute(
-                    "text.setStyle",
-                    json!({"id":id,"size":size,"fill":color,"style":style}),
-                )?;
-                if current_inherited != inherited {
-                    tag(c, id, role, self.board, inherited)?;
-                }
-                let (left, top, width, height) = measured_box(c, id)?;
-                Sited {
-                    id,
-                    left,
-                    top,
-                    width,
-                    height,
-                }
-            }
-            None => {
-                let created = c.execute(
-                    "text.create",
-                    json!({"x":self.origin.0 + geometry::TEXT_INSET,"y":self.origin.1 + geometry::PRIMARY_CENTER,"text":text,"size":size,"font":FONT,"style":style,"color":color}),
-                )?;
-                let id = created["id"].as_u64().ok_or_else(|| {
-                    BoardsError::Protocol("官方程序未创建信息条文字，请重新同步页面后再保存".into())
-                })?;
-                tag(c, id, role, self.board, inherited)?;
-                if let Some(group) = self.subgroup {
-                    c.execute("node.move", json!({"id":id,"parent":group}))?;
-                }
-                let bounds = &created["bounds"];
-                let site = Sited {
-                    id,
-                    left: finite(bounds, "x")?,
-                    top: finite(bounds, "y")?,
-                    width: finite(bounds, "width")?,
-                    height: finite(bounds, "height")?,
-                };
-                self.owned.fields.insert(
-                    role.into(),
-                    native::HeaderNode {
-                        id,
-                        text: text.into(),
-                        inherited,
-                    },
-                );
-                site
-            }
-        };
-        if let Some(node) = self.owned.fields.get_mut(role) {
-            node.text = text.into();
-            node.inherited = inherited;
-        }
-        self.sited.insert(role.into(), site);
-        Ok(())
-    }
-}
-
-fn tag(
-    c: &mut impl NativeProtocol,
-    id: u64,
-    role: &str,
-    board: u64,
-    inherited: bool,
-) -> Result<(), BoardsError> {
-    native::tag_node(c, id, role, Some(board), inherited)
-}
-
-fn measured_box(c: &mut impl NativeProtocol, id: u64) -> Result<(f64, f64, f64, f64), BoardsError> {
-    let node = c.execute("document.node", json!({"id":id,"summary":true}))?;
-    let bounds = &node["bounds"];
-    Ok((
-        finite(bounds, "x")?,
-        finite(bounds, "y")?,
-        finite(bounds, "width")?,
-        finite(bounds, "height")?,
-    ))
-}
-
-fn finite(value: &Value, key: &str) -> Result<f64, BoardsError> {
-    value[key]
-        .as_f64()
-        .filter(|n| n.is_finite())
-        .ok_or_else(|| {
-            BoardsError::Protocol("官方程序未返回文字排版尺寸，请重新同步页面后再保存".into())
-        })
 }

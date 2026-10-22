@@ -12,9 +12,31 @@ impl WorkCrateBoardsService {
         c.open_document(&path)?;
         let w = 420. * 72. / 25.4;
         let h = 297. * 72. / 25.4;
+        let count = native::catalog(&mut c, project, &binding)?.len();
+        // Official default placement follows the last *ordered* board, which can
+        // overlap another board after reordering. Create to the right of all boards.
+        let inspect = c.request("document.inspect", json!({"depth":0}))?;
+        let artboards = inspect["artboards"]
+            .as_array()
+            .ok_or_else(|| BoardsError::Protocol("native artboards missing".into()))?;
+        let mut right = f64::NEG_INFINITY;
+        let mut top = f64::INFINITY;
+        for rect in artboards {
+            let number = |key: &str| {
+                rect[key]
+                    .as_f64()
+                    .filter(|n| n.is_finite())
+                    .ok_or_else(|| BoardsError::Protocol("native artboard geometry missing".into()))
+            };
+            right = right.max(number("x")? + number("width")?);
+            top = top.min(number("y")?);
+        }
+        if !right.is_finite() || !top.is_finite() {
+            return Err(BoardsError::NoDocument);
+        }
         c.execute(
             "artboard.new",
-            json!({"width":w,"height":h,"name":"未命名页面"}),
+            json!({"x":right+20.,"y":top,"width":w,"height":h,"name":page_title(count)}),
         )?;
         let mut boards = native::catalog(&mut c, project, &binding)?;
         let board = boards.pop().ok_or(BoardsError::NoDocument)?;
@@ -40,6 +62,11 @@ impl WorkCrateBoardsService {
         title: &str,
         info: PageInfo,
     ) -> Result<InfoSave, BoardsError> {
+        if title != page_title(self.board(id)?.index) {
+            return Err(BoardsError::Invalid(
+                "页面标题由顺序自动生成，不支持手动修改".into(),
+            ));
+        }
         let (project, _) = native::split_id(id)?;
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;
         let current = self
@@ -127,8 +154,13 @@ impl WorkCrateBoardsService {
         title: &str,
         info: PageInfo,
     ) -> Result<(), BoardsError> {
-        let project_name = self.project_name(b)?;
-        header::write(c, b, title, &info, &project_name)
+        let project_name = info.material_category.clone();
+        let report = header::write(c, b, title, &info, &project_name)?;
+        *self
+            .header_report
+            .lock()
+            .map_err(|_| BoardsError::Poisoned)? = json!({"board_id":b.id,"report":report});
+        Ok(())
     }
     pub fn save_project(&self, project: &str) -> Result<(), BoardsError> {
         let _g = self.gate.lock().map_err(|_| BoardsError::Poisoned)?;

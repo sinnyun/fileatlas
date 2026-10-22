@@ -740,3 +740,16 @@ black, white, purple, blue and yellow in both selection states). `selection_text
 thumbnail roles. This projection performs no IO and adds no timers or mutation
 permissions. `scripts/validate-thumbnail-contrast.cjs` uses these roles plus real
 isolated local files, assigned tags, rating, and captured same-process windows.
+
+
+## 2026-10-23 WorkCrate defaults tools
+
+Lifecycle-owned WorkCrate tools extend `field_presets` with optional `project_id`, add Standard `promote_project_field { project_id, key }`, and extend read-only `state` with optional project_id plus project/effective presets and the real settings draft snapshot. Per-column promotion is additive and refuses empty/unknown columns. `update_page.info.material_category` is independent of project title; the legacy override member is compatibility-only. Exact schemas and controls remain owned/documented by WorkCrate UI PORTS. No MCP access-level bypass was introduced.
+
+Read-only `workcrate-ui.header_state {}` inspects the existing official canvas session only. It exposes material-bar layout, native ids/text/notes/models, background/group summaries and the last successful bounded write report. It opens no document or process, uses no timer and returns the normal session error when no canvas is open. See Boards/UI PORTS and the 2026-10-23 single-line validation record.
+
+
+2026-10-23: WorkCrate adds Standard `reorder_pages { project_id, board_ids }`, a complete native
+page permutation with automatic titles and numeric material labels. update_page no longer accepts
+a title and only patches material fields. Existing read-only header_state now includes native
+artboards geometry for identity/order/overlap validation. Ownership and details remain in UI/Boards PORTS.

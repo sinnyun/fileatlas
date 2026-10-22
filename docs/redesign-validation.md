@@ -1377,3 +1377,46 @@ GPUI Kit 主题与 `components` 公共组件，无本地配色。
 导出按钮带数量、hero 标题旁补 "页面管理 (Tier 2)" 徽标；复测
 wc-pages-redesign-20261022b/c 全部断言通过。参考稿中无后端支撑的元素
 （图层数计数、页级复制/删除、导出 .vectorcraft 工程）未虚构。
+
+
+## 2026-10-23 WorkCrate 插件设置与项目默认信息
+
+本轮按用户要求集中 WorkCrate 基础配置，补齐默认排序/图片格式、GUI/CLI/端口和基本/自定义
+字段多值设置；复用公共 SettingsPage 表单和 PanelCatalog 模态编辑器。页面首行改为独立
+物料类别，取消标题继承；项目默认信息独立保存、实时进入本项目下拉，支持单列合并到程序。
+原生保存/清空重读、项目隔离、单列提升、真实设置输入/错误及小窗滚动均有同进程 MCP 场景。
+具体静态/运行结果、截图对照和剩余边界见 [本轮验证](validation-ui/2026-10-23-workcrate-defaults/README.md)。
+
+
+## 2026-10-23 WorkCrate 物料栏单行文本与差异写入
+
+用户明确覆盖旧逐字段/多行纸内信息条设计：编号与类别各保留独立官方文本，右侧全部内容
+聚合为一个右对齐、不自动换行的官方点文本对象，使用 | 分隔。普通保存保留原生节点 ID、
+底色/页码框/分组及未修改文字，不重新逐项测宽排版。旧对象首次成功保存迁移一次。
+本轮检查器三栏/字段行不重排，视觉依据仍是原图加本轮明确需求；编码清单在
+reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和剩余边界见
+[验证记录](validation-ui/2026-10-23-workcrate-single-line-header/README.md)。
+
+
+2026-10-23 物料栏字体按用户要求全部改为黑色。新建与已有单行文档原位换色已通过同进程 MCP；详见[补测记录](validation-ui/2026-10-23-workcrate-single-line-header/README.md#黑色字体补测)。
+
+
+## 2026-10-23 WorkCrate 页面排序、自动标题与只读页面信息
+
+页面矩阵/编辑侧栏均支持按钮及真实 GPUI 拖动换序；官方 artboard.reorder 持久化顺序，
+自动更新页面01…标题和01…物料编号，保留页面身份和原有内容。页面信息仅保留只读标题。
+换序后新页显式放在全部现有画板右侧，避免官方默认列表末项位置造成重叠。
+同进程交互、原生重开、对象/内容保持与截图对照见
+[验证记录](validation-ui/2026-10-23-workcrate-page-order/README.md)。
+
+
+2026-10-23：按用户要求删除 WorkCrate 编辑右侧位置与尺寸卡片并清理专用输入状态；选中对象后不再显示该区块，其余文字编辑保留。静态检查和同进程实测见[本轮记录](validation-ui/2026-10-23-workcrate-no-bounds/README.md)。
+
+
+2026-10-23：WorkCrate 删除文字格式编辑卡片，新建文字显式使用微软雅黑，保留画布缩放。官方字体值、真实角点拖动放大和画布缩放按钮已在同进程验证，见[记录](validation-ui/2026-10-23-workcrate-plain-text/README.md)。
+
+
+2026-10-23：WorkCrate 画布对象信息移至固定底栏右侧，原右侧卡片删除，左侧状态反馈保留。选中/空选区、小窗、主题与剩余编辑功能见[本轮验证](validation-ui/2026-10-23-workcrate-object-footer/README.md)。
+
+
+2026-10-23：WorkCrate 右侧删除页面信息卡片并将页面内容置顶，错误提示保留于内容卡片。静态检查、物料保存、剩余缩放及底栏信息的同进程验证见[记录](validation-ui/2026-10-23-workcrate-content-first/README.md)。

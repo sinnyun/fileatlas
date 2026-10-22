@@ -16,6 +16,8 @@ mod header_layout;
 mod mcp;
 mod native;
 mod operations;
+mod page_order;
+pub use page_order::{PageOrderSave, page_title};
 mod protocol;
 pub use autosync::{AutoSync, DocumentStamp, PreviewState};
 pub use editing::{CanvasGeometry, CanvasObject, CanvasSnapshot};
@@ -92,6 +94,7 @@ pub struct PageInfo {
     pub physical_size_cm: Option<[f64; 2]>,
     pub size_label: String,
     pub project_name_override: Option<String>,
+    pub material_category: String,
     pub material: String,
     pub size: String,
     pub quantity: String,
@@ -117,6 +120,7 @@ pub struct WorkCrateBoardsService {
     /// Identity of every official canvas process this service has started. A page switch
     /// inside one document keeps its id; only a new process gets a new one.
     canvas_sessions: AtomicU64,
+    header_report: Mutex<Value>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct BoardCache {
@@ -141,6 +145,7 @@ impl WorkCrateBoardsService {
             diagnostics: Arc::new(Mutex::new(BTreeMap::new())),
             canvas: Mutex::new(None),
             canvas_sessions: AtomicU64::new(1),
+            header_report: Mutex::new(Value::Null),
         }
     }
     pub fn configuration(&self) -> Result<VectorCraftConfig, BoardsError> {
@@ -347,7 +352,15 @@ impl WorkCrateBoardsService {
         if !path.is_file() {
             return Ok(None);
         }
-        let cache: BoardCache = serde_json::from_slice(&std::fs::read(path)?)?;
+        let mut cache: BoardCache = serde_json::from_slice(&std::fs::read(path)?)?;
+        for board in &mut cache.boards {
+            board.title = page_title(board.index);
+            if board.info.material_category.is_empty() {
+                if let Some(value) = board.info.project_name_override.take() {
+                    board.info.material_category = value;
+                }
+            }
+        }
         if cache.version != 1 {
             return Err(BoardsError::Invalid(
                 "unsupported native board cache version".into(),
@@ -538,7 +551,12 @@ impl WorkCrateBoardsService {
             let binding = self.projects.document_binding(project)?;
             let mut boards = native::catalog(&mut client, project, &binding)?;
             let board = boards.first().cloned().ok_or(BoardsError::NoDocument)?;
-            self.write_info(&mut client, &board, &board.title, PageInfo::default())?;
+            self.write_info(
+                &mut client,
+                &board,
+                &page_title(board.index),
+                PageInfo::default(),
+            )?;
             client.save_file(&path)?;
             boards = native::catalog(&mut client, project, &binding)?;
             let previews = self.make_previews(&mut client, &boards)?;
@@ -568,16 +586,9 @@ impl WorkCrateBoardsService {
         self.board_catalog(project)
     }
     pub fn project_name(&self, board: &WorkCrateBoard) -> Result<String, BoardsError> {
-        if let Some(n) = &board.info.project_name_override {
-            return Ok(n.clone());
-        }
-        self.projects
-            .projects(true)?
-            .into_iter()
-            .find(|p| p.id == board.project_id)
-            .map(|p| p.name)
-            .ok_or_else(|| BoardsError::Invalid("project missing".into()))
+        Ok(board.info.material_category.clone())
     }
+
     fn target(&self, c: &mut Client, id: &str) -> Result<WorkCrateBoard, BoardsError> {
         let (project, _) = native::split_id(id)?;
         let binding = self.projects.document_binding(project)?;

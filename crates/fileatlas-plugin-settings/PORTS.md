@@ -279,3 +279,8 @@ confirmation requirements; high-impact calls still require per-call
 same-process Windows evidence is at
 `docs/validation-ui/2026-10-19-mcp-access-stages/`; the earlier two-state record
 at `docs/validation-ui/2026-10-19-mcp-settings-toggle/` is historical.
+
+
+## 2026-10-23 WorkCrate defaults
+
+Shared Settings JSON gains serde-default `workcrate: WorkCrateSettings { sort_by_name: bool, image_export_jpeg: bool }`. Missing legacy values preserve recently-created ordering and PNG defaults (both false). WorkCrate UI edits these through SettingsService.update; the settings plugin adds no WorkCrate behavior. Existing paths, failure behavior and other settings remain unchanged.

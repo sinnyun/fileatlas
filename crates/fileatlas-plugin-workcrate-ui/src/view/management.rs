@@ -259,12 +259,10 @@ pub(super) fn apply_field(
     value: String,
 ) -> Result<(), String> {
     match key {
-        "title" => {
-            board.title = value;
-            board.info.auto_from_first = false;
+        "local" => {
+            board.info.material_category = value;
+            board.info.project_name_override = None;
         }
-        "physical" => board.info.size_label = value,
-        "local" => board.info.project_name_override = (!value.is_empty()).then_some(value),
         "material" => board.info.material = value,
         "size" => board.info.size = value,
         "quantity" => board.info.quantity = value,
@@ -285,9 +283,8 @@ pub(super) fn apply_field(
 /// The Chinese field name shown in the save feedback for one inspector key.
 pub(super) fn field_label(key: &str) -> &'static str {
     match key {
-        "title" => "页面名称",
-        "physical" => "尺寸标记",
-        "local" | "project" => "项目名称",
+        "local" => "物料类别",
+        "project" => "项目名称",
         "material" => "物料名称",
         "size" => "尺寸",
         "quantity" => "数量",
@@ -314,15 +311,13 @@ mod tests {
     }
 
     #[test]
-    fn a_local_name_is_stored_and_reset_to_inherit_by_an_empty_draft() {
+    fn material_category_is_independent_and_can_be_cleared() {
         let mut named = board();
         assert_eq!(apply_field(&mut named, "local", "本页名称".into()), Ok(()));
-        assert_eq!(
-            named.info.project_name_override.as_deref(),
-            Some("本页名称")
-        );
+        assert_eq!(named.info.material_category.as_str(), "本页名称");
         let mut inherited = named;
         assert_eq!(apply_field(&mut inherited, "local", String::new()), Ok(()));
+        assert_eq!(inherited.info.material_category, "");
         assert_eq!(inherited.info.project_name_override, None);
     }
 
@@ -337,18 +332,16 @@ mod tests {
     #[test]
     fn an_extra_edit_keeps_the_other_fields_and_the_page_name() {
         let mut edited = board();
-        assert_eq!(apply_field(&mut edited, "title", "新页面名".into()), Ok(()));
+        edited.title = "页面01".into();
+        assert!(apply_field(&mut edited, "title", "手写标题".into()).is_err());
+        assert!(apply_field(&mut edited, "physical", "A3".into()).is_err());
         assert_eq!(apply_field(&mut edited, "material", "纸板".into()), Ok(()));
         assert_eq!(
             apply_field(&mut edited, "extra:工艺", "切割".into()),
             Ok(())
         );
-        assert_eq!(edited.title, "新页面名");
+        assert_eq!(edited.title, "页面01");
         assert_eq!(edited.info.material, "纸板");
-        assert!(
-            !edited.info.auto_from_first,
-            "a named page stops following the first image"
-        );
         assert_eq!(edited.info.extra["工艺"], "切割");
     }
 

@@ -1,0 +1,34 @@
+// Same-process native-theme verification. Caller restores theme keys offline after the child exits.
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+module.exports=async({call,payload,step,delay,profile})=>{
+  const invoke=async(tool,args={},extra={})=>(await step({tool,arguments:args,wait_ms:220,...extra})).result;
+  const ui=(action,value)=>invoke('control_ui',{action,...(value===undefined?{}:{value})});
+  const read=async()=>payload(await call('get_ui_state',{}));
+  const click=async(x,y)=>{await ui('pointer_down',`${x},${y}`);await ui('pointer_up',`${x},${y}`);};
+  const close=async()=>{const h=await read();const id=h.open_panel_ids.find(id=>id.startsWith('workcrate/project-defaults@'));if(id)await ui('panel_close',id);};
+  const original=JSON.parse(fs.readFileSync(path.join(profile,'settings.json'),'utf8'));
+  fs.writeFileSync(path.join(profile,'theme-restore.json'),JSON.stringify({theme_file:original.theme_file??null,color_mode:original.color_mode??'dark'},null,2));
+  const saved=JSON.parse(fs.readFileSync(path.join(profile,'defaults-summary.json'),'utf8'));
+  await delay(1200);
+  await invoke('workcrate-ui.navigate',{project_id:saved.project,board_id:saved.board});
+  await delay(1000);
+  await invoke('material-theme.generate',{seed:'#7c3aed',variant:'tonal-spot',contrast:0,apply:true});
+  await delay(500);
+  const before=await read();assert.match(before.theme.id,/Material/);
+  await ui('panel_open','workcrate/project-defaults');
+  await invoke('workcrate-ui.state',{}, {capture:'defaults-purple-dark'});
+  await close();
+  const host=await read();await click(16,host.window_status.geometry.client_size.height-116);
+  await delay(400);assert.equal((await read()).theme.mode,'light');
+  await ui('panel_open','workcrate/project-defaults');
+  await invoke('workcrate-ui.state',{}, {capture:'defaults-purple-light'});
+  await close();
+  await ui('settings_open');await ui('settings_tab','appearance');
+  await invoke('get_ui_state',{}, {capture:'settings-native-light'});
+  await ui('settings_close');
+  const light=await read();await click(16,light.window_status.geometry.client_size.height-116);
+  await delay(400);assert.equal((await read()).theme.mode,'dark');
+  fs.writeFileSync(path.join(profile,'theme-summary.json'),JSON.stringify({passed:true,checks:['changed native accent','dark and light scoped defaults','native settings light','restored dark mode']},null,2));
+};

@@ -415,7 +415,11 @@ impl WorkCratePanel {
         let Some(known) = self.canvas.as_ref().map(|snapshot| snapshot.revision) else {
             return refresh::PollResult::until(false, true);
         };
-        if self.canvas_busy || self.canvas_drag.is_some() || self.canvas_read.is_pending() {
+        if self.busy
+            || self.canvas_busy
+            || self.canvas_drag.is_some()
+            || self.canvas_read.is_pending()
+        {
             return refresh::PollResult::until(false, true);
         }
         self.canvas_probe_tick += 1;
@@ -588,7 +592,7 @@ impl WorkCratePanel {
             return;
         }
         self.canvas_busy = true;
-        self.message = None;
+        // Passive canvas refreshes must retain action/save errors and their drafts.
         cx.notify();
         let generation = self.canvas_poll;
         let boards = self.boards.clone();
@@ -665,41 +669,15 @@ impl WorkCratePanel {
             self.canvas_object.as_ref().map(|o| o.id) != object.as_ref().map(|o| o.id);
         self.canvas_object = object;
         if changed_selection {
-            for input in &self.canvas_numbers {
-                input.update(cx, |state, cx| state.set_value("", window, cx));
-            }
             self.canvas_text_input
                 .update(cx, |state, cx| state.set_value("", window, cx));
         }
         self.sync_canvas_inputs(changed_selection, window, cx);
     }
 
-    /// Push the official bounds and text into the panel fields. A field the user is
+    /// Push the official text into the panel field. A field the user is
     /// typing into keeps its content; the next selection change refreshes it.
     fn sync_canvas_inputs(&mut self, force: bool, window: &mut Window, cx: &mut ViewContext<Self>) {
-        let bounds = self
-            .canvas_object
-            .as_ref()
-            .and_then(|object| object.bounds.clone())
-            .or_else(|| {
-                self.canvas
-                    .as_ref()
-                    .and_then(|snapshot| snapshot.selection_bounds.clone())
-            });
-        let numbers = match bounds {
-            Some(bounds) => [
-                Some(bounds.x),
-                Some(bounds.y),
-                Some(bounds.width),
-                Some(bounds.height),
-            ],
-            None => [None; 4],
-        };
-        let inputs = self.canvas_numbers.clone();
-        for (index, input) in inputs.iter().enumerate() {
-            let value = numbers[index].map(|number| format!("{number:.1}"));
-            self.sync_input(input, value, force, window, cx);
-        }
         let text = self
             .canvas_object
             .as_ref()
@@ -713,25 +691,6 @@ impl WorkCratePanel {
                 input.update(cx, |state, cx| state.set_value(text, window, cx));
             }
         }
-    }
-
-    fn sync_input(
-        &mut self,
-        input: &Entity<gpui_kit::component::input::InputState>,
-        value: Option<String>,
-        force: bool,
-        window: &mut Window,
-        cx: &mut ViewContext<Self>,
-    ) {
-        let Some(value) = value else {
-            return;
-        };
-        if (!force && input.read(cx).focus_handle(cx).is_focused(window))
-            || input.read(cx).value() == value
-        {
-            return;
-        }
-        input.update(cx, |state, cx| state.set_value(value, window, cx));
     }
 
     pub(super) fn set_canvas_zoom(&mut self, factor: f32, cx: &mut ViewContext<Self>) {

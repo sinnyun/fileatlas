@@ -47,7 +47,10 @@ fn cached_catalogue_and_preview_survive_restart_without_editor()
         title: "Cached page".into(),
         width_pt: 420.,
         height_pt: 297.,
-        info: PageInfo::default(),
+        info: PageInfo {
+            project_name_override: Some("旧的明确局部名称".into()),
+            ..Default::default()
+        },
     };
     let preview_dir = projects
         .project_directory(&project.id)?
@@ -76,7 +79,14 @@ fn cached_catalogue_and_preview_survive_restart_without_editor()
     let cached = offline.board_catalog(&project.id)?;
     assert_eq!(cached.len(), 1);
     assert_eq!(cached[0].id, board.id);
-    assert_eq!(cached[0].title, board.title);
+    assert_eq!(cached[0].title, "页面01");
+    assert_eq!(cached[0].info.material_category, "旧的明确局部名称");
+    assert_eq!(cached[0].info.project_name_override, None);
+    reopened.rename_project(&project.id, "Title changed")?;
+    assert_eq!(offline.project_name(&cached[0])?, "旧的明确局部名称");
+    let mut empty = cached[0].clone();
+    empty.info.material_category.clear();
+    assert_eq!(offline.project_name(&empty)?, "");
     assert_eq!(
         offline.render_preview(&board.id, 1600)?,
         std::fs::canonicalize(preview_path)?
@@ -165,12 +175,14 @@ fn official_native_round_trip() -> Result<(), Box<dyn std::error::Error>> {
     assert_eq!(service.board_catalog(&p.id)?.len(), 1);
     let mut info = b.info.clone();
     info.material = "中文材料123".into();
+    info.material_category = "独立类别".into();
     info.quantity = "20套".into();
     info.extra.insert("工艺".into(), "切割".into());
-    service.update_info(&b.id, "真实页面", info)?;
+    service.update_info(&b.id, "页面01", info)?;
     let read = service.board(&b.id)?;
-    assert_eq!(read.title, "真实页面");
+    assert_eq!(read.title, "页面01");
     assert_eq!(read.info.material, "中文材料123");
+    assert_eq!(read.info.material_category, "独立类别");
     assert_eq!(read.info.extra["工艺"], "切割");
     let doc = service
         .document_path(&p.id)?
@@ -181,65 +193,44 @@ fn official_native_round_trip() -> Result<(), Box<dyn std::error::Error>> {
         Ok(c)
     };
     let fields = native::header_fields(&mut native_session()?)?;
-    let material = fields[&b.native_id]["material"].id;
-    let before = native_session()?.execute("document.node", json!({"id":material}))?;
+    let aggregate = fields[&b.native_id]["details"].id;
+    let category = fields[&b.native_id]["project_name"].id;
+    let before = native_session()?.execute("document.node", json!({"id":aggregate}))?;
+    let category_before = native_session()?.execute("document.node", json!({"id":category}))?;
     let owned = native::owned(&mut native_session()?, b.native_id)?;
-    assert!(
-        owned.band.is_some(),
-        "the compact band is one native rectangle behind its text"
-    );
-    assert!(
-        owned.chip.is_some(),
-        "the page number is printed on its own tagged chip"
-    );
-    assert!(
-        owned.legacy_group.is_none(),
-        "the header is plain tagged nodes, not a wrapped group"
-    );
-    for role in [
-        "page_number",
-        "project_name",
-        "material",
-        "quantity",
-        "label:extra:工艺",
-    ] {
-        assert!(
-            owned.fields.contains_key(role),
-            "header role `{role}` missing"
-        );
-    }
+    assert_eq!(owned.layout_version, 2);
+    assert_eq!(owned.fields.len(), 3);
+    assert!(owned.band.is_some() && owned.chip.is_some());
     let mut edited = read.info;
     edited.extra.insert("AAA".into(), "added".into());
-    service.update_info(&b.id, "真实页面", edited)?;
-    let after = native_session()?.execute("document.node", json!({"id":material}))?;
+    service.update_info(&b.id, "页面01", edited)?;
+    let after = native_session()?.execute("document.node", json!({"id":aggregate}))?;
     assert_eq!(
         before["kind"]["xf"], after["kind"]["xf"],
-        "a detail row added below must never move the primary row"
+        "the right point-text anchor stays fixed"
+    );
+    assert_eq!(
+        category_before,
+        native_session()?.execute("document.node", json!({"id":category}))?
     );
     let grown = native::owned(&mut native_session()?, b.native_id)?;
-    for role in ["label:extra:AAA", "extra:AAA"] {
-        assert!(
-            grown.fields.contains_key(role),
-            "the new field must print as its own detail row, `{role}` missing"
-        );
-    }
+    assert_eq!(grown.fields.len(), 3);
+    assert_eq!(grown.band, owned.band);
+    assert_eq!(grown.chip, owned.chip);
+    assert_eq!(grown.page_group, owned.page_group);
+    assert_eq!(
+        grown.fields["details"].note["details"]["extra"]["AAA"],
+        "added"
+    );
     let mut edited = service.board(&b.id)?.info;
     edited.extra.remove("AAA");
-    service.update_info(&b.id, "真实页面", edited)?;
+    service.update_info(&b.id, "页面01", edited)?;
     let restored = native::owned(&mut native_session()?, b.native_id)?;
-    for role in ["label:extra:AAA", "extra:AAA"] {
-        assert!(
-            !restored.fields.contains_key(role),
-            "a removed field leaves a stale `{role}` header node"
-        );
-    }
-    assert_eq!(
-        before["kind"]["xf"],
-        native_session()?.execute(
-            "document.node",
-            json!({"id": restored.fields["material"].id})
-        )?["kind"]["xf"],
-        "removing a detail row must leave the primary row where it was"
+    assert_eq!(restored.fields["details"].id, aggregate);
+    assert!(
+        restored.fields["details"].note["details"]["extra"]
+            .get("AAA")
+            .is_none()
     );
     let second = service.create_page(&p.id)?;
     assert_ne!(second.native_id, b.native_id);

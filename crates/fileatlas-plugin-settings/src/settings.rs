@@ -310,6 +310,9 @@ pub struct Settings {
     /// Screenshot tool paths owned by the screenshot launcher feature.
     #[serde(default)]
     pub screenshot_tool: ScreenshotToolSettings,
+    /// WorkCrate browsing and image-export defaults; existing settings own persistence.
+    #[serde(default)]
+    pub workcrate: WorkCrateSettings,
     /// Shortcut presentation preferences keyed by stable feature plugin ID.
     #[serde(default)]
     pub plugin_launch_modes: BTreeMap<String, PluginLaunchMode>,
@@ -401,6 +404,7 @@ impl Default for Settings {
             auto_check_updates: default_auto_check_updates(),
             sidebar_folders: fileatlas_contracts::SidebarFoldersConfig::default(),
             screenshot_tool: ScreenshotToolSettings::default(),
+            workcrate: WorkCrateSettings::default(),
             plugin_launch_modes: BTreeMap::new(),
             plugin_enabled: BTreeMap::new(),
             mcp_access_level: McpAccessLevel::Off,
@@ -507,5 +511,29 @@ impl Settings {
         if let Ok(s) = serde_json::to_string_pretty(self) {
             std::fs::write(&path, s).ok();
         }
+    }
+}
+
+/// Defaults applied to a new WorkCrate panel; current browsing controls stay local.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WorkCrateSettings {
+    pub sort_by_name: bool,
+    pub image_export_jpeg: bool,
+}
+
+#[cfg(test)]
+mod workcrate_tests {
+    use super::*;
+    #[test]
+    fn old_settings_get_workcrate_defaults_and_new_choices_round_trip()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let mut settings: Settings = serde_json::from_str("{}")?;
+        assert_eq!(settings.workcrate, WorkCrateSettings::default());
+        settings.workcrate.sort_by_name = true;
+        settings.workcrate.image_export_jpeg = true;
+        let reopened: Settings = serde_json::from_str(&serde_json::to_string(&settings)?)?;
+        assert_eq!(reopened.workcrate, settings.workcrate);
+        Ok(())
     }
 }

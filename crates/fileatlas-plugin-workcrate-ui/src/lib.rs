@@ -104,10 +104,50 @@ impl Plugin for WorkCrateUiPlugin {
             ],
         )
         .map_err(plugin_error)?;
+        let preferences = context
+            .try_service::<fileatlas_plugin_settings::SettingsService>()
+            .map_err(plugin_error)?;
+        let defaults_preferences = preferences.clone();
+        let defaults_projects = projects.clone();
+        let defaults_boards = boards.clone();
+        let defaults_surfaces = bridge.surfaces.clone();
+        let defaults_state = ui_state.clone();
+        fileatlas_ui_bridge::panel_catalog::register_panel_for_plugin(
+            &context,
+            OWNER,
+            PanelDefinition {
+                options: fileatlas_ui_bridge::panels::PanelOptions {
+                    id: "workcrate/project-defaults".into(),
+                    title: "WorkCrate 默认信息".into(),
+                    modal: true,
+                    default_size: (960., 800.),
+                    min_size: (700., 480.),
+                },
+                multiplicity: PanelMultiplicity::Single,
+                factory: Arc::new(move |window, app| {
+                    let project = defaults_state
+                        .selected_board()
+                        .map(|(id, _)| id)
+                        .filter(|id| !id.is_empty());
+                    settings::editor(
+                        defaults_projects.clone(),
+                        defaults_boards.clone(),
+                        defaults_surfaces.clone(),
+                        project,
+                        defaults_preferences.clone(),
+                        window,
+                        app,
+                    )
+                }),
+            },
+        )
+        .map_err(plugin_error)?;
         let p = Arc::clone(&projects);
         let b = Arc::clone(&boards);
         let e = Arc::clone(&exports);
         let surfaces = Arc::clone(&bridge.surfaces);
+        let default_panels = panels.clone();
+        let panel_preferences = preferences.clone();
         fileatlas_ui_bridge::panel_catalog::register_panel_for_plugin(
             &context,
             OWNER,
@@ -129,6 +169,8 @@ impl Plugin for WorkCrateUiPlugin {
                         Arc::clone(&ui_state),
                         Arc::clone(&thumbnails),
                         Arc::clone(&file_operations),
+                        Arc::clone(&default_panels),
+                        panel_preferences.clone(),
                         window,
                         app,
                     )
@@ -141,7 +183,7 @@ impl Plugin for WorkCrateUiPlugin {
             OWNER,
             [
                 sidebar_button(panels),
-                settings::contribution(projects, boards, bridge.surfaces.clone()),
+                settings::contribution(projects, boards, bridge.surfaces.clone(), preferences),
             ],
         )
         .map_err(plugin_error)?;

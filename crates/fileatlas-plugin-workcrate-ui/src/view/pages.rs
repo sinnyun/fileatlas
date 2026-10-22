@@ -1,11 +1,11 @@
-use super::preview::{page_preview, physical_label, pixel_label};
+use super::preview::page_preview;
 use super::*;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Selectable as _;
 
 impl WorkCratePanel {
     pub(super) fn render_pages(&mut self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
-        let width = ((self.panel_content_size().0 - 96.) / 3.).max(210.) as f32;
+        let width = ((self.panel_content_size().0 - 128.) / 3.).max(210.) as f32;
         let mut grid = div()
             .id("workcrate-page-grid")
             .flex_1()
@@ -217,6 +217,13 @@ impl WorkCratePanel {
         .join("  ");
         div()
             .id(format!("page-card-{id}"))
+            .drag_over::<super::page_order::PageDrag>(|style, _, _, _| {
+                style.border_color(rgb(theme::accent_hover()))
+            })
+            .on_drop::<super::page_order::PageDrag>(cx.listener({
+                let id = id.clone();
+                move |view, payload, _, cx| view.drop_page(payload, &id, cx)
+            }))
             .v_flex()
             .w(px(width))
             .workbench_card(selected)
@@ -257,17 +264,7 @@ impl WorkCratePanel {
                             .text_size(px(theme::FONT_SIZE_TITLE))
                             .child(card.board.title.clone()),
                     )
-                    .child(
-                        div()
-                            .flex_shrink_0()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
-                            .child(format!(
-                                "{} · {}",
-                                physical_label(&card.board),
-                                pixel_label(&card.board)
-                            )),
-                    ),
+                    .child(self.page_order_controls(&id, index, cx)),
             )
             .child({
                 let mut band = div()

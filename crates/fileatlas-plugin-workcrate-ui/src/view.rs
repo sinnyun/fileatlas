@@ -31,12 +31,12 @@ mod fields;
 mod inspector;
 mod management;
 mod object;
+mod page_order;
 mod pages;
 mod preview;
 mod projects;
 mod render;
 pub(crate) mod tracking;
-mod typography;
 #[derive(Clone)]
 struct BoardCard {
     board: WorkCrateBoard,
@@ -69,6 +69,7 @@ struct Snapshot {
     document: Option<PathBuf>,
 }
 struct WorkCratePanel {
+    panels: Arc<fileatlas_ui_bridge::panel_catalog::PanelCatalog>,
     projects: Arc<WorkCrateProjectsService>,
     boards: Arc<WorkCrateBoardsService>,
     exports: Arc<WorkCrateExportService>,
@@ -96,10 +97,7 @@ struct WorkCratePanel {
     canvas: Option<CanvasSnapshot>,
     canvas_image: Option<Arc<RenderImage>>,
     canvas_object: Option<CanvasObject>,
-    canvas_numbers: [Entity<gpui_kit::component::input::InputState>; 4],
     canvas_text_input: Entity<gpui_kit::component::input::TextareaState>,
-    canvas_font_input: Entity<gpui_kit::component::input::InputState>,
-    canvas_size_input: Entity<gpui_kit::component::input::InputState>,
     canvas_drag: Option<canvas::CanvasDrag>,
     canvas_busy: bool,
     canvas_read: ReadModel<(u64, u64, u64), Option<CanvasSnapshot>>,
@@ -123,6 +121,7 @@ struct WorkCratePanel {
     auto_sync_error: Option<String>,
     auto_sync_retry_at: Option<std::time::Instant>,
     load_generation: u64,
+    order_generation: u64,
     board_refresh_revision: u64,
     catalog_refresh_revision: u64,
     model: ReadModel<u64, Snapshot>,
@@ -141,24 +140,22 @@ pub(super) fn panel(
     ui_state: Arc<WorkCrateUiState>,
     thumbnails: Arc<fileatlas_plugin_thumbnails::ThumbnailService>,
     _file_operations: Arc<fileatlas_plugin_file_operations::FileOperationsService>,
+    panels: Arc<fileatlas_ui_bridge::panel_catalog::PanelCatalog>,
+    preferences: Arc<fileatlas_plugin_settings::SettingsService>,
     window: &mut Window,
     app: &mut App,
 ) -> AnyView {
     let edit_input = app.new(|cx| gpui_kit::component::input::InputState::new(window, cx));
-    let canvas_numbers: [_; 4] = std::array::from_fn(|_| {
-        app.new(|cx| gpui_kit::component::input::InputState::new(window, cx))
-    });
     let canvas_text_input = app.new(|cx| {
         gpui_kit::component::input::TextareaState::new(window, cx)
             .placeholder("输入文字内容，支持换行")
     });
     let search_input = app
         .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("搜索项目"));
-    let canvas_font_input = app.new(|cx| {
-        gpui_kit::component::input::InputState::new(window, cx).placeholder("字体名称（留空保留）")
-    });
-    let canvas_size_input = app
-        .new(|cx| gpui_kit::component::input::InputState::new(window, cx).placeholder("字号 pt"));
+    let defaults = preferences
+        .snapshot()
+        .map(|s| s.workcrate)
+        .unwrap_or_default();
     app.new(|cx| {
         let search_subscription =
             cx.subscribe(&search_input, |v: &mut WorkCratePanel, input, event, cx| {
@@ -214,6 +211,10 @@ pub(super) fn panel(
                 v.deliver_preview_state(cx)
             }),
             refresh::listen(cx, ui_state.wake(), |v: &mut WorkCratePanel, cx| {
+                if let Some(save) = v.ui_state.take_order_refresh() {
+                    v.receive_order_save(save, cx);
+                    return true;
+                }
                 let selection = v
                     .ui_state
                     .selected_board()
@@ -276,6 +277,7 @@ pub(super) fn panel(
         ];
         let selection = ui_state.selected_board().unwrap_or_default();
         let mut v = WorkCratePanel {
+            panels,
             projects,
             boards,
             exports,
@@ -292,8 +294,8 @@ pub(super) fn panel(
             selected_pages: Default::default(),
             multi_select: false,
             show_archived: false,
-            sort_by_name: false,
-            image_export_jpeg: false,
+            sort_by_name: defaults.sort_by_name,
+            image_export_jpeg: defaults.image_export_jpeg,
             manage_id: None,
             editing: None,
             edit_input,
@@ -303,10 +305,7 @@ pub(super) fn panel(
             canvas: None,
             canvas_image: None,
             canvas_object: None,
-            canvas_numbers,
             canvas_text_input,
-            canvas_font_input,
-            canvas_size_input,
             canvas_drag: None,
             canvas_busy: false,
             canvas_read,
@@ -327,6 +326,7 @@ pub(super) fn panel(
             auto_sync_error: None,
             auto_sync_retry_at: None,
             load_generation: 0,
+            order_generation: 0,
             board_refresh_revision: 0,
             catalog_refresh_revision: 0,
             model,
@@ -359,7 +359,11 @@ impl WorkCratePanel {
         self.busy = true;
         self.model.request(self.load_generation, move || {
             let items = projects.projects(true).map_err(|e| e.to_string())?;
-            let presets = projects.field_presets().map_err(|e| e.to_string())?;
+            let presets = match &selected {
+                Some(id) => projects.effective_field_presets(id),
+                None => projects.field_presets(),
+            }
+            .map_err(|e| e.to_string())?;
             let config = boards.configuration().map_err(|e| e.to_string())?;
             let mut covers = existing_covers;
             let mut summaries = existing_summaries;
@@ -454,7 +458,10 @@ impl WorkCratePanel {
             self.reload(cx);
             return true;
         }
-        let Ok(presets) = self.projects.field_presets() else {
+        let Ok(presets) = self.selected_project.as_ref().map_or_else(
+            || self.projects.field_presets(),
+            |id| self.projects.effective_field_presets(id),
+        ) else {
             return false;
         };
         if items == self.items && presets == self.preset_fields {
@@ -466,6 +473,9 @@ impl WorkCratePanel {
     }
     fn deliver(&mut self) -> bool {
         if !self.model.poll() {
+            return false;
+        }
+        if self.model.key() != Some(&self.load_generation) {
             return false;
         }
         if let Some(result) = self.model.value() {

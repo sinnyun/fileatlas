@@ -213,3 +213,71 @@ hit test even when the target is already selected, `document.inspect` reports
 `depth:16`, and headless marquee gestures select nothing (a live GUI keeps its
 own official marquee). The ignored official test
 `click_drill_picks_the_topmost_child_under_the_pointer` covers the tree walk.
+
+
+## 2026-10-23 independent material category
+
+`PageInfo.material_category: String` is the independent material category, default empty; no project-title fallback remains. `project_name_override: Option<String>` is retained for old cache compatibility only. On cache read an explicit old override moves into category; native catalogue reads old `project_name` text only when its ownership note is not inherited. Legacy inherited title text is not adopted. Header writes retain the stable native `project_name` role but always mark it non-inherited and use the incoming PageInfo category (not the pre-save board). The next successful save removes a stale inherited/cleared name node. No document rewrite occurs just from opening a project. Empty header text skips creation/measurement/group order and existing empty roles are handled by stale cleanup. This avoids grouping deleted empty text ids when creating or clearing a page category. Native artboards/other artwork and SQLite remain unchanged.
+
+
+## 2026-10-23 single-line material bar (supersedes per-field layout above)
+
+`header::write` now installs layout 2 once, then patches three persistent official point-text objects: `page_number`, `project_name` (independent category) and `details`. The right object is native `text.create { justify: "right" }` with no area/wrapping frame; its right anchor is fixed at the page inset. Only non-empty field values aggregate, without field names, joined by ` | `, including all future extra fields. Display folds whitespace to one line. Only the changed complete text is sent as one `text.setText`; no per-field widths, separator nodes, repeated text styles, transforms, grouping or background recreation occur on normal saves. The official whole-object bounds of a changed text are checked against fixed left/right regions; overflow cancels the undo group and returns a Chinese error. It never wraps, truncates or silently shrinks the text. The initial vertical alignment uses official metrics only once per text.
+
+The native `details` text's existing namespace note (`version:1`, `layout:2`) contains `details { version:1, material, size, quantity, extra }`; category's note contains its original `value`. Native catalogue reads structured values, never splits the visible | text. Literal pipes/newlines/empty extras survive reopening. A single space keeps an empty text object's anchor/ID alive; metadata retains an actually empty value. Namespace notes with unknown/corrupt details versions are refused. Other PageInfo/cache/project JSON models are unchanged. Existing separate field/label/separator nodes migrate only on the first successful field save; native undo grouping rolls back failed migration. Background, chip and grouping are created once for a new layout, retained on all ordinary changes. Title/annotation-only updates cause no header text writes. Header root remains locked during normal child text patches; only initial install/migration unlocks and relocks it.
+
+`WorkCrateBoardsService::canvas_header_state() -> Result<Value, BoardsError>` explicitly inspects only the already-open official session; it opens no file/process/port. Response includes board_id, layout, owned text ids/text/notes/official summaries+models, furniture summaries and `last_write { board_id, report { initialized, commands:[{ command,id,ids }] } }`. `initialized:true` means this write performed the one-time installation. Report is bounded in-memory diagnostics on the last successful write, not persistence or a polling/event stream. Normal writes contain undo-group begin/end, one changed text set and its structured note; it does not record payload text. Errors remain in existing Boards/UI error paths. MCP UI exposes this as read-only `header_state {}`. Official saved metadata is authoritative; manually unlocking and editing only the derived right-side text in VectorCraft does not reverse-map values into the individual fields.
+
+New code is split into header/payload, editing/header_inspection, editing/state and native/tests to keep touched Rust modules below 800 lines. The retired field-width geometry implementation/tests are removed and replaced with fixed-anchor/aggregate roundtrip tests and same-process native-id/command assertions. Current evidence: docs/validation-ui/2026-10-23-workcrate-single-line-header/README.md.
+
+
+### Material-bar black ink (2026-10-23)
+
+All three native text roles use #000000. On action-time save, existing layout-2 text summaries are inspected; any non-black ids receive one text.setStyle { ids, fill: "#000000" } within the same undo group before content patching. Unchanged black text receives no style mutation. Existing node ids, geometry and furniture remain intact; offline browsing never rewrites documents. This is document ink, independent of UI Theme.
+
+
+## 2026-10-23 native page order and generated titles
+
+`page_title(index: usize) -> String` yields 页面01, 页面02… (minimum two digits).
+`reorder_pages(project: &str, order: &[String]) -> Result<PageOrderSave, BoardsError>`
+requires one complete permutation of current bound board ids, rejecting duplicates, missing or foreign ids
+both against the local cache and the fresh native catalogue. It reuses a held canvas session for this project (otherwise the existing session router),
+then executes official artboard.reorder { index, to } and repairs changed generated
+artboard names and numeric material-header text in one undo group. Header::write_in_group shares the
+transaction without nested groups. An edit error cancels the group; no cache publication occurs.
+Successful save patches records and changed previews atomically; file/cache errors use existing BoardsError paths.
+This changes list order only, preserving stable artboard ids, coordinates, artwork and layout-2 text ids.
+No-op UI moves return early. Reordering an old layout performs its existing one-time header migration.
+
+First and added pages use generated native names. artboard.new gets an explicit position 20pt right of
+the rightmost existing official bounds, at the topmost board y, because its default follows list-last
+and overlaps existing boards after a permutation. This does not move any existing board or artwork.
+The read-only existing-session canvas_header_state diagnostics now include official artboards geometry.
+
+Cache reads project old names to the automatic title without rewriting disk or launching a process;
+new creation and explicit reorder persist native names. update_info retains its public title parameter
+for callers but rejects a manually supplied name differing from the generated name. Removed page-info
+metadata members remain serde-compatible, with existing size_label merge/recovery intact. No new schema,
+sequence file, database, event system or plugin lifecycle is introduced.
+
+Current evidence: docs/validation-ui/2026-10-23-workcrate-page-order/README.md.
+
+
+### Order updates keep the native session (2026-10-23 follow-up)
+
+PageOrderSave { boards: Vec<WorkCrateBoard>, changed: Vec<String>, frame: Option<CanvasSnapshot> }
+separates the ordered records from changed images and the selected canvas frame. Same-project
+canvas_reorder_pages holds the existing session, keeps session_id/native page/tool/selection,
+updates only its preview index by native id, and saves once. No viewport/navigation command
+is sent (view.goToArtboard is unavailable headlessly and must not move the live GUI viewport).
+The selected changed page renders once, its returned frame is reused for the cache and UI;
+other changed pages render in the same background operation; unmoved pages retain their PNG paths.
+A shared OwnedLayout scan serves the batch, refreshed only after a legacy header installation.
+Unmoved automatic-name pages skip header updates entirely. No per-page process launch, canvas
+reopen, or whole-cache preview rebuild occurs in this path. header_state.previews exposes
+existing cached paths solely for explicit diagnostics.
+
+header_state.last_write remains the last update_info header write report; reorder diagnostics use PageOrderSave.changed instead. It is not a unified history ledger.
+
+
+2026-10-23: Newly created body text explicitly sends text.create font=Microsoft YaHei, sharing header_layout::TEXT_FONT with material headers. canvas_create_text still accepts its positive size and the existing bounds/gesture services remain intact. CanvasObject.font_family is a read-only projection of the official text.getRange first run style, used to verify the actual font; it does not add a font editor or rewrite existing artwork.

@@ -393,3 +393,66 @@ All previous control ids are preserved (`pages-multi-select`, `pages-select-all`
 scripts keep working. Validation:
 `docs/validation-ui/2026-10-22-workcrate-pages-studio-redesign/README.md`
 (scenario `scripts/validate-workcrate-pages-redesign.cjs`).
+
+
+## 2026-10-23 settings and scoped defaults (supersedes name inheritance above)
+
+Settings → Plugins → WorkCrate uses shared SettingsPage schema for default project sorting, image format, official GUI executable, optional separate CLI executable, control port, all builtin/custom default-information columns and their values. Program configuration remains Boards `vectorcraft.json`; sort/image-format defaults use shared SettingsService `Settings.workcrate { sort_by_name, image_export_jpeg }` (serde-default compatible, applied when opening a new panel). Existing per-panel sort/export controls remain temporary choices. Startup mode/enabled controls remain owned by the settings host. No configuration action starts VectorCraft.
+
+The tier bar offers 项目默认信息 (or 程序默认信息 outside a project), opening the Cordis-owned generic panel `workcrate/project-defaults` (960×800, minimum 700×480). The same form has a scope selector for program or an existing project. Project values auto-save through Projects, can be added/edited/deleted, custom fields can be added/removed. Each project column has 合并到程序默认信息, a non-destructive deduplicating union that preserves unrelated columns. Busy/pending/invalid drafts block scope switches and promotions. External project preset changes refresh a clean mounted form from memory via existing Wake; unchanged snapshots do not notify. Page dropdowns query effective presets when opening; custom project fields also appear in the inspector. 页面内容 now starts with independent 物料类别; inheritance/global-name/reset controls are removed. Title renaming remains project management behavior.
+
+MCP `field_presets` accepts optional `project_id` to select project storage; absent selects program. New Standard tool `promote_project_field { project_id, key }` performs the same per-column action. `state` accepts optional `project_id` and returns `project_presets`, `effective_presets`, plus `defaults_form` (scope, draft columns, save/error/notice, program-path drafts) from the shared view snapshot. New control ids include project-defaults, settings-preset-scope, settings-vectorcraft-cli, settings-promote-<key>; existing settings value/add/delete controls stay stable. Errors surface in the form; failed writes retain previous saved data. Evidence and remaining interaction boundaries: docs/validation-ui/2026-10-23-workcrate-defaults/README.md.
+
+
+## 2026-10-23 native single-line field writes
+
+The inspector still edits individual values through the same `save_field` pipeline; Boards now aggregates the right material/size/quantity/extra values into one native right-aligned point-text object. Category is its own native text. This supersedes the old native per-field layout while preserving the existing per-page card/frame patch and warm session. Overflow returns 保存失败 with a Chinese single-line capacity message, keeps the UI draft and leaves all native nodes/previous values intact. There is no new UI input scheme or user persistence file.
+
+New read-only MCP `workcrate-ui.header_state {}` calls public `canvas_header_state`; it requires an existing session and neither starts nor refreshes one. Its IDs, official models/bounds and last successful header command report let live debugging distinguish per-page preview repaint from native object mutation. It registers and cleans up with existing WorkCrate MCP registration. See Boards PORTS for payload/limits and scripts/validate-workcrate-single-line-header.cjs for native IDs, rollback, legacy migration and roundtrip assertions.
+
+
+## 2026-10-23 page order and read-only page information
+
+Both the Tier-2 matrix and Tier-3 page rail expose native themed up/down buttons (first/last disabled)
+and a GPUI typed PageDrag grip. Drop uses the target page's current position, in either direction;
+project and captured id-order validation reject stale/cross-project payloads. A draft, field save,
+canvas job or catalogue job disables ordering. Ordering runs a background order_job and patches the existing cards once, preserving the
+selected page id, multi-selection, canvas session/frame and unaffected decoded images.
+No custom pointer injector, drawing implementation or independent drag manager was added.
+
+The 页面信息 card now contains only a read-only generated title; title/physical edit controls and
+physical/pixel/point-size placeholders in the matrix, rail and canvas context have been removed.
+Material size is still editable in 页面内容. Old title and physical inspector keys are refused.
+
+Standard MCP `workcrate-ui.reorder_pages { project_id, board_ids:[string] }` returns `{ boards, changed, session_id }`
+and publishes a coalesced order result through the existing UI-state Wake (no catalogue reload). update_page now permits material-category/material/size/
+quantity/extra patches only; the title parameter is removed and legacy page-info edits are rejected.
+MCP registrations and cleanup still belong to the UI Cordis plugin.
+
+
+OrderFrame decodes only changed previews off the UI thread and merges records by stable page id
+in one delivery. Pending order jobs have a generation so an older completion cannot replace a
+newer result. The existing read-model probe generation is invalidated while retaining the
+visible canvas; busy ordering pauses probes, and delivery restarts them on the same session.
+Passive canvas jobs retain action errors instead of clearing them on a later probe. MCP and
+manual ordering share this patch path. No new polling/connection manager or separate page store.
+
+
+## 2026-10-23 remove position/size inspector
+
+The right canvas inspector no longer renders the position/size section, canvas-x/y/width/height controls or workcrate-canvas-apply-bounds. Its private NumberInput entities, synchronization, parser and apply handler are removed. Text editing/typography, image links, generated page title and material fields remain. Native selection geometry, drag/scale gestures and the public Boards/MCP bounds APIs remain unchanged. No persistence or service schema change. Evidence: docs/validation-ui/2026-10-23-workcrate-no-bounds/README.md.
+
+
+## 2026-10-23 plain text controls
+
+The typography card, font/size input entities and font/size/alignment handlers are removed. Content editing remains, as do native object drag/scale handles, canvas zoom and official transformations. No document-wide reformatting is performed. Updated no-bounds scenario now expects the font input to be absent; current full evidence is docs/validation-ui/2026-10-23-workcrate-plain-text/README.md.
+
+
+## 2026-10-23 object info at the footer
+
+The right canvas object information card is removed. Editing now projects the existing official selection count, single object name/type, or empty-selection text onto the right of the existing fixed-height status footer. Status/errors remain on the left. The right text is one truncated right-aligned line capped at 60%/600 logical px; no IO or polling is added. Read-only workcrate-ui.state UI snapshot includes object_status, and control canvas-object-status exposes geometry. Editing controls, default font and object/viewport scaling remain unchanged. Evidence: docs/validation-ui/2026-10-23-workcrate-object-footer/README.md.
+
+
+## 2026-10-23 material content first
+
+The right-side page information/automatic-title card is removed, and inspector(card) is composed before canvas_object_panel. The rail starts with 页面内容, followed by existing text/image controls. Automatic titles still appear in page lists and editor context. Preview/read errors formerly in the removed card now remain visible inside the material content card. No backend, persistence, session or edit semantics changed. Evidence: docs/validation-ui/2026-10-23-workcrate-content-first/README.md.

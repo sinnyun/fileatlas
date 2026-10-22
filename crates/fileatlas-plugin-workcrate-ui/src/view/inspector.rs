@@ -1,4 +1,3 @@
-use super::preview::pixel_label;
 use super::*;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
@@ -117,6 +116,7 @@ impl WorkCratePanel {
         // Resolve choices when the menu opens. Settings may have changed while this
         // editor stayed mounted, so the popup must not keep a render-time snapshot.
         let projects = Arc::clone(&self.projects);
+        let project_id = self.selected_project.clone();
         let selected = value.clone();
         let mut row = row.child(
             Button::new(format!("field-{id}-{key}"))
@@ -144,7 +144,7 @@ impl WorkCratePanel {
                     .disabled(self.busy || saving)
                     .dropdown_menu(move |mut menu, _, _| {
                         let options = projects
-                            .field_presets()
+                            .effective_field_presets(project_id.as_deref().unwrap_or(""))
                             .ok()
                             .and_then(|presets| {
                                 presets.fields.into_iter().find(|field| field.key == key)
@@ -194,128 +194,22 @@ impl WorkCratePanel {
     ) -> gpui::AnyElement {
         let board = &card.board;
         let id = &board.id;
-        let global = self
-            .items
-            .iter()
-            .find(|p| p.id == board.project_id)
-            .map(|p| p.name.clone())
-            .unwrap_or_default();
-        let mut info_body = div()
-            .v_flex()
-            .gap_1()
-            .child(self.field(id, "title", "页面名称", board.title.clone(), cx))
-            .child(self.field(
-                id,
-                "physical",
-                "尺寸标记",
-                super::preview::physical_label(board),
-                cx,
-            ))
-            .child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .gap_2()
-                    .px(px(8.))
-                    .h(px(26.))
-                    .rounded(px(6.))
-                    .bg(rgb(theme::surface_faint()))
-                    .text_size(px(11.))
-                    .text_color(rgb(theme::text_muted()))
-                    .child(format!(
-                        "画板 {:.1} × {:.1} pt",
-                        board.width_pt, board.height_pt
-                    ))
-                    .child(div().flex_1())
-                    .child(pixel_label(board)),
-            );
-        if let Some(error) = &card.error {
-            info_body = info_body.child(
-                div()
-                    .text_size(px(11.))
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone()),
-            );
-        }
-
-        let project_id = board.project_id.clone();
-        let global_name = global.clone();
-        let reset_board = board.clone();
-        let inherited = board.info.project_name_override.is_none();
         let mut content_body = div()
             .v_flex()
             .gap_1()
-            .child(
-                self.field(
-                    id,
-                    "local",
-                    "项目名称",
-                    board
-                        .info
-                        .project_name_override
-                        .clone()
-                        .unwrap_or(global.clone()),
-                    cx,
-                ),
-            )
-            .child(
+            .children(card.error.as_ref().map(|error| {
                 div()
-                    .h_flex()
-                    .items_center()
-                    .gap_1()
-                    .h(px(24.))
                     .text_size(px(11.))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .text_color(rgb(theme::text_muted()))
-                            .child(if inherited {
-                                "继承项目名称"
-                            } else {
-                                "本页使用局部名称"
-                            }),
-                    )
-                    .child(
-                        Button::new("edit-global-project-name")
-                            .ghost()
-                            .compact()
-                            .label("全局设置")
-                            .on_click(cx.listener(move |view, _, window, cx| {
-                                view.begin_edit(
-                                    project_id.clone(),
-                                    "project",
-                                    &global_name,
-                                    window,
-                                    cx,
-                                )
-                            })),
-                    )
-                    .child(super::tracking::control(
-                        "reset-project-name",
-                        Button::new("reset-project-name")
-                            .ghost()
-                            .compact()
-                            .label("恢复继承")
-                            .disabled(board.info.project_name_override.is_none())
-                            .on_click(cx.listener(move |view, _, _, cx| {
-                                view.save_field(
-                                    reset_board.id.clone(),
-                                    "local".into(),
-                                    String::new(),
-                                    super::management::field_label("local").to_owned(),
-                                    cx,
-                                );
-                            })),
-                        &self.surfaces,
-                    )),
-            )
-            .when(
-                self.editing
-                    .as_ref()
-                    .is_some_and(|(target, key)| target == &board.project_id && key == "project"),
-                |el| el.child(self.edit_row(cx)),
-            )
+                    .text_color(rgb(theme::danger_text()))
+                    .child(error.clone())
+            }))
+            .child(self.field(
+                id,
+                "local",
+                "物料类别",
+                board.info.material_category.clone(),
+                cx,
+            ))
             .child(self.field(id, "material", "物料名称", board.info.material.clone(), cx))
             .child(self.field(id, "size", "尺寸", board.info.size.clone(), cx))
             .child(self.field(id, "quantity", "数量", board.info.quantity.clone(), cx));
@@ -372,7 +266,6 @@ impl WorkCratePanel {
             .flex_shrink_0()
             .gap_3()
             .p_3()
-            .child(section_card("页面信息", "画板规格", info_body))
             .child(section_card("页面内容", "同步物料栏", content_body))
             .into_any_element()
     }

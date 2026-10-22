@@ -19,7 +19,7 @@ impl Default for FieldPresets {
         Self {
             version: 1,
             fields: [
-                ("local", "项目名称", vec![]),
+                ("local", "物料类别", vec![]),
                 (
                     "material",
                     "物料名称",
@@ -41,16 +41,19 @@ impl Default for FieldPresets {
 
 pub(super) fn read(root: &Path) -> Result<FieldPresets, WorkCrateProjectsError> {
     let path = root.join("field-presets.json");
-    let result = if path.exists() || path.with_extension("json.bak").exists() {
+    let mut result: FieldPresets = if path.exists() || path.with_extension("json.bak").exists() {
         read_json_with_backup(&path)?.0
     } else {
         FieldPresets::default()
     };
+    if let Some(field) = result.fields.iter_mut().find(|f| f.key == "local") {
+        field.label = "物料类别".into();
+    }
     validate(&result)?;
     Ok(result)
 }
 
-fn validate(presets: &FieldPresets) -> Result<(), WorkCrateProjectsError> {
+pub(super) fn validate(presets: &FieldPresets) -> Result<(), WorkCrateProjectsError> {
     if presets.version != 1 {
         return Err(WorkCrateProjectsError::UnsupportedVersion(presets.version));
     }

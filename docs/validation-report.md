@@ -1178,3 +1178,33 @@ render_preview → 现有 BoardCache 原子写入。没有改变 PhoTag 数据�
 既有 `canvas_commit`/`canvas_close`。PhoTag 数据表与媒体行为未改动。官方门控用例
 `page_switches_reuse_the_same_official_session` 与同进程 UI 场景通过，命令与范围见
 [本轮验证](validation-ui/2026-10-22-workcrate-page-switch/README.md)。
+
+
+## 2026-10-23 WorkCrate 独立类别与默认信息分层（用户扩展，非 PhoTag 迁移项）
+
+Projects 继续使用原子版本化 JSON：project.json v1 可选 field_presets，读旧清单缺省为空列；
+内存快照按项目和程序合并去重，单列提升在原 write_gate 下只合并指定字段。SettingsService
+增加可兼容缺省的 WorkCrate 排序/导出默认值；Boards 继续写官方原生信息条，物料类别
+独立于项目标题，旧明确局部名可读，旧继承名不会复制。修正空字段创建后被清理却仍被分组
+引用的问题。没有更换媒体数据语义、SQLite 查询或原生绘图流程。
+已验/未验边界及复现见 [默认信息验证](validation-ui/2026-10-23-workcrate-defaults/README.md)。
+
+
+## 2026-10-23 WorkCrate 原生单行聚合更新（用户扩展）
+
+此前“单字段保存”优化只保证更新当前页与缓存，不代表原生物料栏内部只改一个对象。
+本轮按用户方案替换原逐字段布局：类别/编号独立，右侧信息在一个官方右对齐点文本内聚合，
+不再测量各字段或重建底色/页码框/分组。字段值保存在原生归属备注的版本化结构中，包含
+分隔符与换行的值亦可完整恢复；超出固定区域时由官方整段边界校验拒绝并取消撤销组。
+项目/SQLite 数据语义保持，旧原生物料栏仅在成功保存时迁移。详见
+[实测与边界](validation-ui/2026-10-23-workcrate-single-line-header/README.md)。
+
+
+## 2026-10-23 WorkCrate page-order behavior
+
+This is WorkCrate/official VectorCraft behavior with no PhoTag backend counterpart. Page order is
+persisted by official artboard.reorder, not a parallel UI-only sequence. Titles follow native
+indices; material numbers remain numeric. The official default new-artboard placement follows
+list-last and can overlap after reordering; explicit rightmost placement fixes that without
+moving existing artwork. Compatibility, commands and evidence are in
+validation-ui/2026-10-23-workcrate-page-order/README.md and Boards/UI PORTS.

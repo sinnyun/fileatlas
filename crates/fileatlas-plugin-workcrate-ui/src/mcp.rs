@@ -33,7 +33,7 @@ pub(super) fn register(
     let state = McpToolDefinition {
         name:"workcrate-ui.state".into(),title:"Read cached WorkCrate state".into(),
         description:"Read projects and the current native-artboard UI snapshot without opening documents.".into(),
-        input_schema:json!({"type":"object","properties":{"control_ids":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}).as_object().cloned().unwrap_or_default(),
+        input_schema:json!({"type":"object","properties":{"project_id":{"type":"string"},"control_ids":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}).as_object().cloned().unwrap_or_default(),
         mutating:false, confirmation_required:false,
         handler:Arc::new(move |v| {
             let p=p.clone(); let e=e.clone(); let surfaces=surfaces.clone();
@@ -41,7 +41,7 @@ pub(super) fn register(
                 let projects = p.projects(true).map_err(|e|e.to_string())?;
                 let ui = surfaces.value("workcrate.ui").and_then(|v|serde_json::from_str::<serde_json::Value>(&v).ok());
                 let controls = v["control_ids"].as_array().into_iter().flatten().filter_map(|v|v.as_str()).filter_map(|id|surfaces.value(&format!("workcrate.control.{id}")).map(|value|(id.to_owned(),value))).collect::<std::collections::BTreeMap<_,_>>();
-                Ok(json!({"projects":projects,"ui":ui,"controls":controls,"export_progress":e.progress(),"field_presets":p.field_presets().map_err(|e|e.to_string())?}))
+                Ok(json!({"projects":projects,"ui":ui,"defaults_form":surfaces.value("workcrate.settings").and_then(|v|serde_json::from_str::<serde_json::Value>(&v).ok()),"controls":controls,"export_progress":e.progress(),"field_presets":p.field_presets().map_err(|e|e.to_string())?,"project_presets":v["project_id"].as_str().map(|id| p.project_field_presets(id).map_err(|e| e.to_string())).transpose()?,"effective_presets":v["project_id"].as_str().map(|id| p.effective_field_presets(id).map_err(|e| e.to_string())).transpose()?}))
             })
         })
     };

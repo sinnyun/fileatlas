@@ -11,14 +11,31 @@ pub(super) fn tools(
     let presets = tool(
         "field_presets",
         "Save material field presets",
-        json!({"presets":{"type":"object"}}),
+        json!({"presets":{"type":"object"},"project_id":{"type":"string"}}),
         vec!["presets"],
         false,
         move |v| {
             let presets =
                 serde_json::from_value(v["presets"].clone()).map_err(|e| e.to_string())?;
-            p.save_field_presets(presets).map_err(|e| e.to_string())?;
+            match v.get("project_id").and_then(|v| v.as_str()) {
+                Some(id) => p.save_project_field_presets(id, presets),
+                None => p.save_field_presets(presets),
+            }
+            .map_err(|e| e.to_string())?;
             Ok(json!({"saved":true}))
+        },
+    );
+    let p = projects.clone();
+    let promote = tool(
+        "promote_project_field",
+        "Merge one project default column into program defaults",
+        json!({"project_id":{"type":"string"},"key":{"type":"string"}}),
+        vec!["project_id", "key"],
+        false,
+        move |v| {
+            p.promote_project_field(required(&v, "project_id")?, required(&v, "key")?)
+                .map_err(|e| e.to_string())?;
+            Ok(json!({"promoted":true}))
         },
     );
     let b = boards.clone();
@@ -85,7 +102,17 @@ pub(super) fn tools(
             Ok(json!({"opened":true}))
         },
     );
-    let mut tools = vec![presets, configure, refresh, attach, editor];
+    let b = boards.clone();
+    let mut header = tool(
+        "header_state",
+        "Inspect material-bar objects and the last write in the existing official session",
+        json!({}),
+        vec![],
+        false,
+        move |_| b.canvas_header_state().map_err(|e| e.to_string()),
+    );
+    header.mutating = false;
+    let mut tools = vec![presets, promote, configure, refresh, attach, editor, header];
     tools.extend(canvas_tools(boards, state));
     tools
 }

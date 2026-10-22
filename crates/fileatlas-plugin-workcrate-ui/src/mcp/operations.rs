@@ -137,26 +137,56 @@ pub(super) fn tools(
     );
     let b = Arc::clone(boards);
     let ui = Arc::clone(state);
+    let reorder = tool(
+        "reorder_pages",
+        "Persist a complete page permutation and regenerate titles and numeric material labels",
+        json!({"project_id":{"type":"string"},"board_ids":{"type":"array","items":{"type":"string"}}}),
+        vec!["project_id", "board_ids"],
+        false,
+        move |v| {
+            let order = v["board_ids"]
+                .as_array()
+                .ok_or("board_ids must be an array")?
+                .iter()
+                .map(|id| id.as_str().map(str::to_owned).ok_or("invalid board id"))
+                .collect::<Result<Vec<_>, _>>()?;
+            let saved = b
+                .reorder_pages(required(&v, "project_id")?, &order)
+                .map_err(|e| e.to_string())?;
+            let response = json!({"boards":saved.boards,"changed":saved.changed,"session_id":saved.frame.as_ref().map(|f|f.session_id)});
+            ui.publish_order(saved)?;
+            Ok(response)
+        },
+    );
+    let b = Arc::clone(boards);
+    let ui = Arc::clone(state);
     let update = tool(
         "update_page",
-        "Edit a page name, physical size, project-name override and content fields",
-        json!({"project_id":{"type":"string"},"board_id":{"type":"string"},"title":{"type":"string"},"info":{"type":"object"}}),
+        "Edit independent material category and material content; page title follows its order",
+        json!({"project_id":{"type":"string"},"board_id":{"type":"string"},"info":{"type":"object"}}),
         vec!["project_id", "board_id"],
         false,
         move |v| {
             let mut board = b
                 .load_board(required(&v, "project_id")?, required(&v, "board_id")?)
                 .map_err(|e| e.to_string())?;
-            if let Some(title) = v.get("title").and_then(|v| v.as_str()) {
-                board.title = title.into();
-                board.info.auto_from_first = false;
-            }
             if let Some(patch) = v.get("info").and_then(|v| v.as_object()) {
+                if patch.keys().any(|key| {
+                    !matches!(
+                        key.as_str(),
+                        "material_category" | "material" | "size" | "quantity" | "extra"
+                    )
+                }) {
+                    return Err("仅支持修改物料内容；页面标题与序号自动生成".into());
+                }
                 let mut value = serde_json::to_value(&board.info).map_err(|e| e.to_string())?;
                 for (key, val) in patch {
                     value[key] = val.clone();
                 }
                 board.info = serde_json::from_value(value).map_err(|e| e.to_string())?;
+                if patch.contains_key("material_category") {
+                    board.info.project_name_override = None;
+                }
             }
             let saved = b
                 .update_info(&board.id, &board.title, board.info.clone())
@@ -207,7 +237,15 @@ pub(super) fn tools(
             }
         },
     );
-    Ok(vec![navigate, manage, delete, create_page, update, batch])
+    Ok(vec![
+        navigate,
+        manage,
+        delete,
+        create_page,
+        reorder,
+        update,
+        batch,
+    ])
 }
 
 pub(super) fn required<'a>(value: &'a serde_json::Value, key: &str) -> Result<&'a str, String> {

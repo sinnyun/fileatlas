@@ -1,7 +1,6 @@
 //! The canvas editing panel. Every control here calls one official VectorCraft command;
 //! FileAtlas stores no artwork of its own, so the panel is a form over the official truth.
 use super::*;
-use gpui_kit::component::{Sizable as _, input::NumberInput};
 
 const TEXT_SIZE: f64 = 18.;
 pub(super) const IMAGE_FILTERS: [&str; 12] = [
@@ -89,97 +88,50 @@ impl WorkCratePanel {
         )
     }
 
-    fn number_field(&self, id: &str, label: &str, index: usize) -> gpui::Div {
-        div()
-            .v_flex()
-            .gap_1()
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
-                    .child(label.to_owned()),
-            )
-            .child(super::tracking::control(
-                id,
-                NumberInput::new(&self.canvas_numbers[index])
-                    .small()
-                    .w_full(),
-                &self.surfaces,
-            ))
-            .flex_1()
-            .min_w_0()
-    }
-
-    pub(super) fn canvas_object_panel(&self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
+    pub(super) fn canvas_object_status(&self) -> String {
         let selected = self
             .canvas
             .as_ref()
-            .map(|snapshot| snapshot.selection.len())
+            .map(|s| s.selection.len())
             .unwrap_or_default();
-        let object = self.canvas_object.as_ref();
-        let mut object_body = div().v_flex().gap_1().child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::text_muted()))
-                .child(if selected == 0 {
-                    "在画布上单击或框选对象后即可编辑。".to_owned()
-                } else {
-                    format!("已选中 {selected} 个对象。")
-                }),
-        );
-        if let Some(object) = object {
-            object_body = object_body
-                .child(value_row("名称", object.name.clone()))
-                .child(value_row("类型", kind_label(&object.kind)));
+        if selected == 0 {
+            return "未选中对象".into();
         }
+        let mut text = format!("已选中 {selected} 个对象");
+        if let Some(object) = &self.canvas_object {
+            let name = object.name.split_whitespace().collect::<Vec<_>>().join(" ");
+            text.push_str(&format!(
+                " | 名称：{name} | 类型：{}",
+                kind_label(&object.kind)
+            ));
+        }
+        text
+    }
+
+    pub(super) fn canvas_object_footer(&self) -> gpui::Div {
+        div()
+            .relative()
+            .w(gpui::relative(0.6))
+            .max_w(px(600.))
+            .min_w_0()
+            .flex_shrink_0()
+            .text_right()
+            .truncate()
+            .child(self.canvas_object_status())
+            .child(super::tracking::measure(
+                "canvas-object-status",
+                self.surfaces.clone(),
+            ))
+    }
+
+    pub(super) fn canvas_object_panel(&self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
+        let object = self.canvas_object.as_ref();
         let mut panel = div()
             .id("workcrate-canvas-object")
             .v_flex()
             .flex_shrink_0()
             .gap_3()
-            .p_3()
-            .child(super::inspector::section_card(
-                "画布对象",
-                "官方选区",
-                object_body,
-            ));
-        if selected > 0 {
-            panel = panel.child(super::inspector::section_card(
-                "位置与尺寸",
-                "官方 bounds",
-                div()
-                    .v_flex()
-                    .gap_1()
-                    .child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .child(self.number_field("canvas-x", "X 位置", 0))
-                            .child(self.number_field("canvas-y", "Y 位置", 1)),
-                    )
-                    .child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .child(self.number_field("canvas-width", "宽度", 2))
-                            .child(self.number_field("canvas-height", "高度", 3)),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_muted()))
-                            .child("单位为 pt，X/Y 为文档坐标，取对象左上角。"),
-                    )
-                    .child(self.canvas_action(
-                        "workcrate-canvas-apply-bounds",
-                        "应用位置与尺寸",
-                        |v, cx| {
-                            v.canvas_apply_bounds(cx);
-                        },
-                        cx,
-                    )),
-            ));
-        }
+            .p_3();
         let is_text = object.is_some_and(|o| o.kind.eq_ignore_ascii_case("type"));
         panel = panel.child(super::inspector::section_card(
             if is_text { "文字内容" } else { "文字" },
@@ -256,13 +208,6 @@ impl WorkCratePanel {
                 links_body,
             ));
         }
-        if is_text {
-            panel = panel.child(super::inspector::section_card(
-                "文字格式",
-                "字体与字号",
-                self.canvas_typography(cx),
-            ));
-        }
         panel = panel.child(super::inspector::section_card(
             "画板",
             "添加图片",
@@ -300,48 +245,6 @@ impl WorkCratePanel {
     fn canvas_selection(&self) -> (Vec<u64>, CanvasGeometry) {
         let snapshot = self.canvas.clone().unwrap_or_default();
         (snapshot.selection.clone(), snapshot.artboard.clone())
-    }
-
-    fn canvas_number_values(&self, cx: &mut ViewContext<Self>) -> Option<[f64; 4]> {
-        let values: Vec<f64> = self
-            .canvas_numbers
-            .iter()
-            .filter_map(|input| input.read(cx).value().trim().parse::<f64>().ok())
-            .collect();
-        <[f64; 4]>::try_from(values).ok()
-    }
-
-    pub(super) fn canvas_apply_bounds(&mut self, cx: &mut ViewContext<Self>) {
-        let Some([x, y, width, height]) = self.canvas_number_values(cx) else {
-            self.message = Some("位置与尺寸需要填写 4 个数字。".into());
-            cx.notify();
-            return;
-        };
-        if ![x, y, width, height].iter().all(|n| n.is_finite()) || width <= 0. || height <= 0. {
-            self.message = Some("位置必须是有限数字，宽高必须大于 0 pt。".into());
-            cx.notify();
-            return;
-        }
-        let (ids, _) = self.canvas_selection();
-        if ids.is_empty() {
-            self.message = Some("请先选择要调整的对象。".into());
-            cx.notify();
-            return;
-        }
-        let bounds = CanvasGeometry {
-            x,
-            y,
-            width,
-            height,
-        };
-        self.canvas_job(
-            move |boards| {
-                boards
-                    .canvas_set_bounds(&ids, &bounds)
-                    .map_err(|e| e.to_string())
-            },
-            cx,
-        );
     }
 
     pub(super) fn canvas_apply_text(&mut self, cx: &mut ViewContext<Self>) {

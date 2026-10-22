@@ -7,7 +7,7 @@ enum TierTarget {
 impl Render for WorkCratePanel {
     fn render(&mut self, _: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
         self.renders += 1;
-        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"canvas_revision":c.canvas_revision,"error":c.error})).collect::<Vec<_>>(),"message":self.message,"editing":self.editing.as_ref().map(|(id,key)|format!("{id}#{key}")),"field_saves":self.field_saves.iter().map(|(id,key)|format!("{id}#{key}")).collect::<Vec<_>>(),"reloads":self.reloads,"renders":self.renders,"drops":self.drops,"auto_sync":{"syncs":self.auto_syncs,"pending":self.auto_sync,"error":self.auto_sync_error},"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select,"sort_by_name":self.sort_by_name,"show_archived":self.show_archived,"canvas":{"busy":self.canvas_busy,"zoom":self.canvas_zoom,"state":self.canvas,"object":self.canvas_object,"drag":self.canvas_drag.as_ref().map(|drag|serde_json::json!({"kind":match drag.kind{super::canvas::CanvasDragKind::Body=>"move".to_owned(),super::canvas::CanvasDragKind::Handle(index)=>format!("handle{index}")},"origin":drag.origin,"start":[drag.start.0,drag.start.1],"current":[drag.current.0,drag.current.1]}))}}).to_string();
+        let state=serde_json::json!({"screen":if self.selected_project.is_none(){"projects"}else if self.selected_board.is_none(){"pages"}else{"editor"},"project_id":self.selected_project,"board_id":self.selected_board,"page_count":self.boards_view.len(),"busy":self.busy,"preview_pending":self.preview_queue.len()+usize::from(self.preview_current.is_some()),"previews_ready":self.boards_view.iter().filter(|c|c.image.is_some()).count(),"boards":self.boards_view.iter().map(|c|serde_json::json!({"id":c.board.id,"native_id":c.board.native_id,"index":c.board.index,"title":c.board.title,"width_pt":c.board.width_pt,"height_pt":c.board.height_pt,"info":c.board.info,"preview_ready":c.image.is_some(),"canvas_revision":c.canvas_revision,"error":c.error})).collect::<Vec<_>>(),"message":self.message,"editing":self.editing.as_ref().map(|(id,key)|format!("{id}#{key}")),"field_saves":self.field_saves.iter().map(|(id,key)|format!("{id}#{key}")).collect::<Vec<_>>(),"reloads":self.reloads,"renders":self.renders,"drops":self.drops,"auto_sync":{"syncs":self.auto_syncs,"pending":self.auto_sync,"error":self.auto_sync_error},"connection":if self.ui_state.connection(){"connected"}else{"not_connected"},"executable":self.config.executable,"port":self.config.port,"document":self.document,"selected_pages":self.selected_pages,"multi_select":self.multi_select,"sort_by_name":self.sort_by_name,"show_archived":self.show_archived,"object_status":self.selected_board.as_ref().map(|_|self.canvas_object_status()),"canvas":{"busy":self.canvas_busy,"zoom":self.canvas_zoom,"state":self.canvas,"object":self.canvas_object,"drag":self.canvas_drag.as_ref().map(|drag|serde_json::json!({"kind":match drag.kind{super::canvas::CanvasDragKind::Body=>"move".to_owned(),super::canvas::CanvasDragKind::Handle(index)=>format!("handle{index}")},"origin":drag.origin,"start":[drag.start.0,drag.start.1],"current":[drag.current.0,drag.current.1]}))}}).to_string();
         if self.state_gate.changed(state.clone()) {
             let _ = self.surfaces.set_value("workcrate.ui", &state);
         }
@@ -50,7 +50,11 @@ impl Render for WorkCratePanel {
                 .items_center()
                 .text_size(px(11.))
                 .text_color(rgb(theme::text_muted()))
-                .child(status),
+                .gap_3()
+                .child(div().flex_1().min_w_0().truncate().child(status))
+                .when(self.selected_board.is_some(), |el| {
+                    el.child(self.canvas_object_footer())
+                }),
         )
     }
 }
@@ -117,6 +121,24 @@ impl WorkCratePanel {
                     None,
                     cx,
                 ),
+                &self.surfaces,
+            ))
+            .child(tracking::control(
+                "project-defaults",
+                Button::new("workcrate-project-defaults")
+                    .outline()
+                    .compact()
+                    .label(if in_project {
+                        "项目默认信息"
+                    } else {
+                        "程序默认信息"
+                    })
+                    .on_click(cx.listener(|view, _, _, cx| {
+                        if let Err(error) = view.panels.open("workcrate/project-defaults") {
+                            view.message = Some(error.to_string());
+                            cx.notify();
+                        }
+                    })),
                 &self.surfaces,
             ))
     }
@@ -311,7 +333,6 @@ impl WorkCratePanel {
         )
     }
     pub(super) fn render_editor(&self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
-        use gpui_kit::assets::IconName;
         let mut rail = div()
             .id("page-rail")
             .w(px(190.))
@@ -365,12 +386,14 @@ impl WorkCratePanel {
                                     .child(c.board.title.clone()),
                             ),
                     )
-                    .child(
-                        div()
-                            .text_size(px(10.))
-                            .text_color(rgb(theme::text_muted()))
-                            .child(preview::physical_label(&c.board)),
-                    )
+                    .child(self.page_order_controls(&id, index, cx))
+                    .drag_over::<super::page_order::PageDrag>(|style, _, _, _| {
+                        style.border_color(rgb(theme::accent_hover()))
+                    })
+                    .on_drop::<super::page_order::PageDrag>(cx.listener({
+                        let id = id.clone();
+                        move |view, payload, _, cx| view.drop_page(payload, &id, cx)
+                    }))
                     .on_click(cx.listener(move |v, _, _, cx| v.open_page(&id, cx))),
                 &self.surfaces,
             ));
@@ -400,30 +423,12 @@ impl WorkCratePanel {
                     .gap_3()
                     .p_3()
                     .child(
-                        div()
-                            .h_flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .text_size(px(theme::FONT_SIZE_TINY))
-                                    .text_color(rgb(theme::text_muted()))
-                                    .child(format!(
-                                        "{} · {} · {} × {} pt",
-                                        card.board.title,
-                                        preview::physical_label(&card.board),
-                                        card.board.width_pt,
-                                        card.board.height_pt
-                                    )),
-                            )
-                            .child(div().flex_1())
-                            .child(theme::small_icon(IconName::Frame))
-                            .child(
-                                div()
-                                    .text_size(px(theme::FONT_SIZE_TINY))
-                                    .text_color(rgb(theme::text_muted()))
-                                    .child(preview::pixel_label(&card.board)),
-                            ),
+                        div().h_flex().items_center().gap_2().child(
+                            div()
+                                .text_size(px(theme::FONT_SIZE_TINY))
+                                .text_color(rgb(theme::text_muted()))
+                                .child(card.board.title.clone()),
+                        ),
                     )
                     .child(self.canvas_area(cx)),
             );
@@ -444,8 +449,8 @@ impl WorkCratePanel {
                     .border_l_1()
                     .border_color(rgb(theme::separator()))
                     .overflow_y_scroll()
-                    .child(self.canvas_object_panel(cx))
-                    .child(self.inspector(card, cx)),
+                    .child(self.inspector(card, cx))
+                    .child(self.canvas_object_panel(cx)),
             )
             .into_any_element()
     }

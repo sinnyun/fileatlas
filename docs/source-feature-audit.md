@@ -558,3 +558,29 @@ its PSD/extended source link through this service. Existing canonical/Windows
 verbatim path candidates supply a Shell-compatible path. Original files, media
 rows and association settings are unchanged. Photoshop-specific handoff/save
 interaction remains separately unverified.
+
+
+## 2026-10-23 WorkCrate scoped defaults mapping
+
+| Source / user request | Public integration | Compatibility |
+|---|---|---|
+| `vendor/photag-source/src` has no WorkCrate project/artboard/default-information registry (literal/symbol search found no FieldPresets or WorkCrate). This is a user-requested extension, not a source behavior replacement. | Projects owns optional project.json field_presets, memory snapshots/union/single-column promotion; UI consumes SettingsPage; shared SettingsService owns browsing/export defaults; Boards owns independent category and official native header writes. | Existing preset key local and native role project_name remain stable. Old explicit overrides are retained as category; inherited titles are not copied. No media query, SQLite or source attribution changes. |
+
+
+## 2026-10-23 single-line WorkCrate header mapping
+
+| Source / user behavior | Public integration | Compatibility |
+|---|---|---|
+| User replaces per-field material-header layout with independent number/category plus one right-aligned single line joined by a vertical bar. PhoTag has no native WorkCrate header; its file/tag/database behavior remains untouched. | Boards composes a single official right-justified point-text string and patches only the changed object; UI continues its existing save_field flow. | Native namespace notes add layout:2 and versioned structured details, so values are never split from display delimiters. Legacy per-field nodes migrate once on successful save; an overflowing edit cancels the native undo group. No SQLite/settings/project-format change. |
+
+
+2026-10-23 物料栏黑色字体是 WorkCrate 原生文档输出行为（无 PhoTag 对应实现）：header_layout::COLOR_TEXT 与 header::write 的 action-time summary 检查、text.setStyle fill 更新；沿用官方命令，不修改第三方源码或 UI 主题。
+
+
+2026-10-23 WorkCrate 页面排序无 PhoTag 对应功能。映射：UI page_order::{move_page,drop_page}
+→ Boards reorder_pages → 官方 artboard.reorder/index-to + artboard.setProps/name + 原位物料编号
+text.setText → 官方保存和现有缓存重建。排序不移动画板或独立绘制作品；原生画板 ID 为身份。
+页面标题来自 page_order::page_title(index)，覆盖旧手写标题与尺寸标记编辑行为。
+
+
+2026-10-23 WorkCrate 默认字体属于官方文档创建行为，无 PhoTag 对应模块。canvas_create_text 与 header text.create 共用 Microsoft YaHei 默认值；通过官方 text.getRange 读取字体，并以官方 bounds 变换继续实现画布缩放。

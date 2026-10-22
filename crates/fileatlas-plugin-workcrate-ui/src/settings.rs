@@ -21,12 +21,15 @@ struct DraftField {
     values: Vec<Entity<InputState>>,
 }
 struct PresetSettings {
+    preferences: Arc<fileatlas_plugin_settings::SettingsService>,
     service: Arc<WorkCrateProjectsService>,
     boards: Arc<WorkCrateBoardsService>,
     surfaces: Arc<UiSurfaceState>,
     fields: Vec<DraftField>,
+    project_id: Option<String>,
     name: Entity<InputState>,
     executable: Entity<InputState>,
+    cli: Entity<InputState>,
     port: Entity<InputState>,
     config_busy: bool,
     config_saved: bool,
@@ -35,6 +38,9 @@ struct PresetSettings {
     error: Option<String>,
     saved: bool,
     auto_pending: bool,
+    notice: Option<String>,
+    _tasks: Vec<Task<()>>,
+    refresh_requested: bool,
     _subscriptions: Vec<Subscription>,
     _config_subscriptions: Vec<Subscription>,
 }
@@ -43,59 +49,105 @@ pub(super) fn contribution(
     service: Arc<WorkCrateProjectsService>,
     boards: Arc<WorkCrateBoardsService>,
     surfaces: Arc<UiSurfaceState>,
+    preferences: Arc<fileatlas_plugin_settings::SettingsService>,
 ) -> UiViewContribution {
     UiViewContribution::new(
         "workcrate/settings",
         "settings.pages",
         0,
         move |window, app| {
-            let stored = service.field_presets().unwrap_or_default();
-            let config_result = boards.configuration();
-            let config_error = config_result.as_ref().err().map(ToString::to_string);
-            let config = config_result.unwrap_or_default();
-            let name = app.new(|cx| InputState::new(window, cx).placeholder("例如：制作工艺"));
-            let executable = input(config.executable, window, app);
-            let port = input(config.port.to_string(), window, app);
-            let fields = stored
-                .fields
-                .into_iter()
-                .map(|f| DraftField {
-                    key: f.key,
-                    label: f.label,
-                    values: f
-                        .values
-                        .into_iter()
-                        .map(|v| input(v, window, app))
-                        .collect(),
-                })
-                .collect();
-            app.new(|cx| {
-                let mut view = PresetSettings {
-                    service: service.clone(),
-                    boards: boards.clone(),
-                    surfaces: surfaces.clone(),
-                    fields,
-                    name,
-                    executable,
-                    port,
-                    config_busy: false,
-                    config_saved: config_error.is_none(),
-                    config_error,
-                    busy: false,
-                    error: None,
-                    saved: false,
-                    auto_pending: false,
-                    _subscriptions: vec![],
-                    _config_subscriptions: vec![],
-                };
-                view.subscribe_values(cx);
-                view.subscribe_config(cx);
-                view
-            })
-            .into()
+            editor(
+                service.clone(),
+                boards.clone(),
+                surfaces.clone(),
+                None,
+                preferences.clone(),
+                window,
+                app,
+            )
         },
     )
     .with_settings_page("WorkCrate", "配置官方 VectorCraft 程序与页面字段预设。")
+}
+pub(super) fn editor(
+    service: Arc<WorkCrateProjectsService>,
+    boards: Arc<WorkCrateBoardsService>,
+    surfaces: Arc<UiSurfaceState>,
+    project_id: Option<String>,
+    preferences: Arc<fileatlas_plugin_settings::SettingsService>,
+    window: &mut Window,
+    app: &mut App,
+) -> AnyView {
+    let stored_result = match &project_id {
+        Some(id) => service.project_field_presets(id),
+        None => service.field_presets(),
+    };
+    let preset_error = stored_result.as_ref().err().map(ToString::to_string);
+    let stored = stored_result.unwrap_or_default();
+    let config_result = boards.configuration();
+    let config_error = config_result.as_ref().err().map(ToString::to_string);
+    let config = config_result.unwrap_or_default();
+    let name = app.new(|cx| InputState::new(window, cx).placeholder("例如：制作工艺"));
+    let executable = input(config.executable, window, app);
+    let cli = input(config.cli_executable, window, app);
+    let port = input(config.port.to_string(), window, app);
+    let fields = stored
+        .fields
+        .into_iter()
+        .map(|f| DraftField {
+            key: f.key,
+            label: f.label,
+            values: f
+                .values
+                .into_iter()
+                .map(|v| input(v, window, app))
+                .collect(),
+        })
+        .collect();
+    app.new(|cx| {
+        let mut view = PresetSettings {
+            preferences,
+            service: service.clone(),
+            boards: boards.clone(),
+            surfaces: surfaces.clone(),
+            fields,
+            project_id,
+            name,
+            executable,
+            cli,
+            port,
+            config_busy: false,
+            config_saved: config_error.is_none(),
+            config_error,
+            busy: false,
+            error: preset_error,
+            saved: false,
+            auto_pending: false,
+            notice: None,
+            _tasks: vec![],
+            refresh_requested: false,
+            _subscriptions: vec![],
+            _config_subscriptions: vec![],
+        };
+        view.subscribe_values(cx);
+        view.subscribe_config(cx);
+        view._tasks.push(fileatlas_ui_bridge::refresh::listen(
+            cx,
+            service.wake(),
+            |view: &mut PresetSettings, cx| {
+                if view.busy || view.auto_pending || view.error.is_some() {
+                    return false;
+                }
+                if view.stored().ok().as_ref() == Some(&view.snapshot(cx)) {
+                    return false;
+                }
+                view.refresh_requested = true;
+                true
+            },
+        ));
+        view
+    })
+    .into()
 }
 fn input(value: String, window: &mut Window, app: &mut App) -> Entity<InputState> {
     app.new(|cx| {
@@ -167,8 +219,51 @@ impl PresetSettings {
             .into_any_element(),
         )
     }
+    fn preference(&mut self, id: &str, value: SettingValue, cx: &mut Context<Self>) {
+        let choice = match value {
+            SettingValue::Choice(value) => value,
+            _ => return,
+        };
+        let sort = match (id, choice.as_str()) {
+            ("default-sort", "name") => Some(true),
+            ("default-sort", "created") => Some(false),
+            _ => None,
+        };
+        let jpeg = match (id, choice.as_str()) {
+            ("default-export", "jpeg") => Some(true),
+            ("default-export", "png") => Some(false),
+            _ => None,
+        };
+        if sort.is_none() && jpeg.is_none() {
+            return;
+        }
+        let preferences = self.preferences.clone();
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    preferences
+                        .update(|s| {
+                            if let Some(value) = sort {
+                                s.workcrate.sort_by_name = value;
+                            }
+                            if let Some(value) = jpeg {
+                                s.workcrate.image_export_jpeg = value;
+                            }
+                        })
+                        .map_err(|e| e.to_string())
+                })
+                .await;
+            let _ = this.update(cx, |view, cx| {
+                view.config_error = result.err();
+                cx.notify();
+            });
+        })
+        .detach();
+    }
     fn apply(&mut self, id: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.error = None;
+        self.notice = None;
         self.saved = false;
         if let Some(key) = id.strip_prefix("add:") {
             let entry = input(String::new(), window, cx);
@@ -205,6 +300,7 @@ impl PresetSettings {
                     .push(cx.subscribe(value, |view, _, event, cx| {
                         if matches!(event, InputEvent::Change) {
                             view.error = None;
+                            view.notice = None;
                             view.saved = false;
                             view.queue_save(cx);
                         }
@@ -213,7 +309,7 @@ impl PresetSettings {
         }
     }
     fn subscribe_config(&mut self, cx: &mut Context<Self>) {
-        self._config_subscriptions = [self.executable.clone(), self.port.clone()]
+        self._config_subscriptions = [self.executable.clone(), self.cli.clone(), self.port.clone()]
             .into_iter()
             .map(|input| {
                 cx.subscribe(&input, |view, _, event, cx| {
@@ -228,6 +324,7 @@ impl PresetSettings {
     }
     fn save_config(&mut self, cx: &mut Context<Self>) {
         let executable = self.executable.read(cx).value().trim().to_owned();
+        let cli = self.cli.read(cx).value().trim().to_owned();
         let Ok(port) = self.port.read(cx).value().trim().parse::<u16>() else {
             self.config_error = Some("端口应为 1–65535".into());
             self.config_saved = false;
@@ -250,6 +347,7 @@ impl PresetSettings {
                 .spawn(async move {
                     let mut config = boards.configuration().map_err(|e| e.to_string())?;
                     config.executable = executable;
+                    config.cli_executable = cli;
                     config.port = port;
                     boards.configure(config).map_err(|e| e.to_string())
                 })
@@ -284,6 +382,75 @@ impl PresetSettings {
         })
         .detach();
     }
+    fn stored(
+        &self,
+    ) -> Result<FieldPresets, fileatlas_plugin_workcrate_projects::WorkCrateProjectsError> {
+        match &self.project_id {
+            Some(id) => self.service.project_field_presets(id),
+            None => self.service.field_presets(),
+        }
+    }
+    fn change_scope(
+        &mut self,
+        project: Option<String>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.busy || self.auto_pending || self.error.is_some() {
+            return;
+        }
+        let result = match &project {
+            Some(id) => self.service.project_field_presets(id),
+            None => self.service.field_presets(),
+        };
+        match result {
+            Ok(value) => {
+                self.fields = value
+                    .fields
+                    .into_iter()
+                    .map(|f| DraftField {
+                        key: f.key,
+                        label: f.label,
+                        values: f.values.into_iter().map(|v| input(v, window, cx)).collect(),
+                    })
+                    .collect();
+                self.project_id = project;
+                self.notice = None;
+                self.saved = true;
+                self.subscribe_values(cx);
+            }
+            Err(error) => self.error = Some(error.to_string()),
+        }
+        cx.notify();
+    }
+    fn promote(&mut self, key: String, cx: &mut Context<Self>) {
+        if self.busy || self.auto_pending || self.error.is_some() {
+            return;
+        }
+        let Some(id) = self.project_id.clone() else {
+            return;
+        };
+        let service = self.service.clone();
+        self.busy = true;
+        cx.spawn(async move |this, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    service
+                        .promote_project_field(&id, &key)
+                        .map_err(|e| e.to_string())
+                })
+                .await;
+            let _ = this.update(cx, |view, cx| {
+                view.busy = false;
+                view.error = result.err();
+                view.saved = view.error.is_none();
+                view.notice = view.saved.then(|| "此列已合并到程序默认信息".into());
+                cx.notify();
+            });
+        })
+        .detach();
+    }
     fn snapshot(&self, cx: &Context<Self>) -> FieldPresets {
         FieldPresets {
             version: 1,
@@ -310,7 +477,7 @@ impl PresetSettings {
         self.auto_pending = true;
         if !self.busy
             && self.error.is_none()
-            && self.service.field_presets().ok().as_ref() != Some(&self.snapshot(cx))
+            && self.stored().ok().as_ref() != Some(&self.snapshot(cx))
         {
             self.save(cx);
         }
@@ -322,7 +489,7 @@ impl PresetSettings {
                 if view.busy {
                     return PollResult::until(false, true);
                 }
-                if view.service.field_presets().ok().as_ref() == Some(&view.snapshot(cx)) {
+                if view.stored().ok().as_ref() == Some(&view.snapshot(cx)) {
                     view.auto_pending = false;
                     view.saved = true;
                     return PollResult::until(true, false);
@@ -338,17 +505,27 @@ impl PresetSettings {
     }
     fn save(&mut self, cx: &mut Context<Self>) {
         let value = self.snapshot(cx);
+        if self.busy {
+            return;
+        }
         let service = self.service.clone();
+        let project = self.project_id.clone();
         self.busy = true;
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
-                .spawn(async move { service.save_field_presets(value).map_err(|e| e.to_string()) })
+                .spawn(async move {
+                    match project {
+                        Some(id) => service.save_project_field_presets(&id, value),
+                        None => service.save_field_presets(value),
+                    }
+                    .map_err(|e| e.to_string())
+                })
                 .await;
             let _ = this.update(cx, |view, cx| {
                 view.busy = false;
-                view.saved = result.is_ok()
-                    && view.service.field_presets().ok().as_ref() == Some(&view.snapshot(cx));
+                view.saved =
+                    result.is_ok() && view.stored().ok().as_ref() == Some(&view.snapshot(cx));
                 view.error = result.err();
                 cx.notify();
             });
@@ -356,165 +533,4 @@ impl PresetSettings {
         .detach();
     }
 }
-impl Render for PresetSettings {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let executable = div()
-            .h_flex()
-            .items_center()
-            .gap_2()
-            .child(
-                control(
-                    "settings-vectorcraft-executable",
-                    components::text_input(&self.executable).w_full(),
-                    &self.surfaces,
-                )
-                .flex_1()
-                .min_w_0(),
-            )
-            .child(self.program_action("browse", "浏览…", false, cx));
-        let mut sections = vec![SettingsSection::new(
-            "VectorCraft 程序",
-            vec![
-                SettingRow::new(
-                    "vectorcraft-executable",
-                    "程序路径",
-                    SettingControl::Custom(executable.into_any_element()),
-                )
-                .description(
-                    "后台任务默认使用同目录的 vectorcraft-cli.exe；保存路径不会启动程序。",
-                ),
-                SettingRow::new(
-                    "vectorcraft-port",
-                    "本机控制端口",
-                    SettingControl::Custom(
-                        control(
-                            "settings-vectorcraft-port",
-                            components::text_input(&self.port).w(px(180.)),
-                            &self.surfaces,
-                        )
-                        .into_any_element(),
-                    ),
-                )
-                .description("配置仅保存；浏览和保存设置不会连接端口或启动 VectorCraft。"),
-                SettingRow::new(
-                    "vectorcraft-save",
-                    "保存并应用",
-                    SettingControl::Custom(self.program_action("save", "保存程序设置", true, cx)),
-                )
-                .description(if self.config_saved {
-                    "程序设置已加载；保存后的配置会立即供后续后台任务使用。"
-                } else {
-                    "输入 1–65535 范围内的端口后保存。"
-                })
-                .error(self.config_error.clone()),
-            ],
-        )];
-        for field in &self.fields {
-            let mut choices = div().v_flex().w(px(320.)).max_w_full().gap_2();
-            if field.values.is_empty() {
-                choices = choices.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_muted()))
-                        .child("暂无默认信息"),
-                );
-            }
-            for (index, value) in field.values.iter().enumerate() {
-                let key = field.key.clone();
-                choices = choices.child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .gap_2()
-                        .child(
-                            control(
-                                &format!("settings-value-{key}-{index}"),
-                                components::text_input(value).w_full(),
-                                &self.surfaces,
-                            )
-                            .flex_1()
-                            .min_w_0(),
-                        )
-                        .child(
-                            Button::new(format!("preset-remove-value-{key}-{index}"))
-                                .ghost()
-                                .label("删除")
-                                .on_click(cx.listener(move |view, _, _, cx| {
-                                    if let Some(f) = view.fields.iter_mut().find(|f| f.key == key) {
-                                        if index < f.values.len() {
-                                            f.values.remove(index);
-                                        }
-                                    }
-                                    view.saved = false;
-                                    view.subscribe_values(cx);
-                                    view.queue_save(cx);
-                                    cx.notify();
-                                })),
-                        ),
-                );
-            }
-            let mut rows = vec![
-                SettingRow::new(
-                    format!("values:{}", field.key),
-                    "默认信息",
-                    SettingControl::Custom(choices.into_any_element()),
-                )
-                .description("每项信息可在页面内容的下拉菜单中选择。"),
-                SettingRow::new(
-                    format!("add:{}", field.key),
-                    "添加默认信息",
-                    self.action(format!("add:{}", field.key), "＋ 添加选项", false, cx),
-                ),
-            ];
-            if field.key.starts_with("extra:") {
-                rows.push(SettingRow::new(
-                    format!("remove:{}", field.key),
-                    "移除自定义字段",
-                    self.action(format!("remove:{}", field.key), "删除字段预设", false, cx),
-                ));
-            }
-            sections.push(SettingsSection::new(field.label.clone(), rows));
-        }
-        sections.push(SettingsSection::new(
-            "管理字段",
-            vec![
-                SettingRow::new(
-                    "new-name",
-                    "新字段名称",
-                    SettingControl::Custom(
-                        control(
-                            "settings-preset-name",
-                            components::text_input(&self.name).w(px(240.)),
-                            &self.surfaces,
-                        )
-                        .into_any_element(),
-                    ),
-                ),
-                SettingRow::new(
-                    "create",
-                    "新建自定义字段",
-                    self.action("create".into(), "＋ 添加字段", false, cx),
-                ),
-                SettingRow::new(
-                    "save",
-                    "保存字段与默认信息",
-                    self.action("save".into(), "保存预设", true, cx),
-                )
-                .description(if self.saved {
-                    "预设已保存"
-                } else {
-                    "有效修改自动保存，并同步到编辑页下拉菜单；不会覆盖页面已填写的值。"
-                })
-                .error(self.error.clone()),
-            ],
-        ));
-        let weak = cx.entity().downgrade();
-        SettingsPage::new("WorkCrate 字段预设", "", sections)
-            .render_body(Rc::new(move |id, value, window, cx| {
-                if matches!(value, SettingValue::Invoke) {
-                    let _ = weak.update(cx, |view, cx| view.apply(id, window, cx));
-                }
-            }))
-            .text_color(rgb(theme::text_primary()))
-    }
-}
+mod render;
