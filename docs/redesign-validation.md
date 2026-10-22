@@ -1439,3 +1439,12 @@ reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和
 `canvas/` 渲染镜像已取消：官方渲染直写 `native-previews/page<画板号>-<关联>-1600.png`，文件名只由
 页面与文档关联决定，重复渲染原地覆盖自己的文件；被替换的帧与旧版 `canvas/` 镜像由 `write_cache`
 统一回收，迁移复制不再带走镜像。原因、实测与剩余缺陷见[本轮记录](validation-ui/2026-10-23-workcrate-preview-dedup/README.md)。
+
+
+## 2026-10-23 全面板截图巡检（3200×1800）
+
+用 `scripts/capture-panel-atlas.cjs` 分段驱动同进程 MCP，为每个面板与对话框各留一张带真实
+内容的截图（fixtures 扫描 + 显示子文件夹 + 标签/剪贴板/暂存/WorkCrate 播种），共 60 张，副本
+存于 [validation-ui/2026-10-23-panel-atlas](validation-ui/2026-10-23-panel-atlas/README.md)。
+本轮实测暴露两个缺陷：打开"编辑标签"对话框触发 GPUI a11y 重复节点 id panic 使进程退出；
+搜索范围浮层的 `search_scopes_open` 状态为真但画面未渲染。面板注册表 8 个定义已全部有图。

@@ -12,3 +12,7 @@
 /.qoder/skills/
 # Raw image-generator drops; the accepted concept copy lives in docs/reference-ui/concepts/
 /vibe_images/
+# Panel-atlas evidence: PNG screenshots and the per-step MCP run dump stay local,
+# while README/INDEX records under docs/validation-ui remain tracked.
+docs/validation-ui/**/*.png
+docs/validation-ui/**/manifest.json
