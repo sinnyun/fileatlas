@@ -1,6 +1,28 @@
 use super::*;
 use serde::Serialize;
 
+/// The document points of one gesture batch: where it pressed, and where it released
+/// when the pointer moved. Only plain `down`/`drag`/`up` batches are understood; anything
+/// else (a raw move stream, a double click) is forwarded to the official engine as is.
+fn gesture_points(events: &Value) -> Option<((f64, f64), Option<(f64, f64)>)> {
+    let events = events.as_array()?;
+    let mut down = None;
+    let mut up = None;
+    let mut moved = false;
+    for event in events {
+        let kind = event["kind"].as_str()?;
+        let position = event["x"].as_f64().zip(event["y"].as_f64())?;
+        match kind {
+            "down" => down = down.or(Some(position)),
+            "up" => up = Some(position),
+            "drag" | "move" => moved = true,
+            _ => return None,
+        }
+    }
+    let down = down?;
+    Some((down, moved.then_some(up.unwrap_or(down))))
+}
+
 /// The page editor's canvas editing session. One long-lived official MCP session holds
 /// the native document; every editing semantic (hit test, selection, move, scale, image
 /// link, text) runs inside VectorCraft. FileAtlas only forwards input and displays what
@@ -86,6 +108,35 @@ fn png_size(path: &Path) -> Option<[u32; 2]> {
     let width = u32::from_be_bytes([header[16], header[17], header[18], header[19]]);
     let height = u32::from_be_bytes([header[20], header[21], header[22], header[23]]);
     Some([width, height])
+}
+
+/// FNV-1a over the bytes: identifies a material copy's content without dependencies.
+fn material_stamp(bytes: &[u8]) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in bytes {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{hash:08x}")
+}
+
+/// Choose the material copy's path: keep the source name when it is free or already
+/// holds identical content, otherwise disambiguate with the content stamp.
+fn material_target(materials: &Path, source: &Path, stamp: &str) -> PathBuf {
+    let direct = materials.join(source.file_name().unwrap_or_default());
+    let same = std::fs::read(&direct).is_ok_and(|bytes| material_stamp(&bytes) == stamp);
+    if same || !direct.exists() {
+        return direct;
+    }
+    let stem = source
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .unwrap_or("material");
+    let extension = source
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or("bin");
+    materials.join(format!("{stem}-{stamp}.{extension}"))
 }
 
 impl WorkCrateBoardsService {
@@ -264,7 +315,10 @@ impl WorkCrateBoardsService {
     /// True when the open session already holds this exact page, so a field save reuses it
     /// instead of launching another official session and rebuilding the overlay.
     pub fn canvas_holds(&self, board_id: &str) -> Result<bool, BoardsError> {
-        self.canvas_call(|state| Ok(state.board_id == board_id))
+        let slot = self.canvas.lock().map_err(|_| BoardsError::Poisoned)?;
+        Ok(slot
+            .as_ref()
+            .is_some_and(|state| state.board_id == board_id))
     }
 
     /// Cheap change probe for a UI observer: no render, no file write.
@@ -403,9 +457,33 @@ impl WorkCrateBoardsService {
     }
 
     /// Forward a pointer gesture; the official tool performs hit testing and the edit.
+    /// A still down-up pair is a click, and the official hit test reports the outermost
+    /// group for it — so the child layer under the pointer is selected instead. A drag is
+    /// planned through `native::run_drag`, because the official press re-grabs that whole
+    /// group for any move; only marquees and shown groups stay official gestures.
     pub fn canvas_gesture(&self, events: Value) -> Result<CanvasSnapshot, BoardsError> {
         self.canvas_edit(|state| {
-            state.session.pointer_gesture(events)?;
+            match gesture_points(&events) {
+                // Unrecognized shape: hand the batch to the official engine unchanged.
+                None => {
+                    state.session.pointer_gesture(events)?;
+                }
+                Some((down, None)) => {
+                    state.session.pointer_gesture(json!([
+                        {"kind":"down","x":down.0,"y":down.1},
+                        {"kind":"up","x":down.0,"y":down.1},
+                    ]))?;
+                    native::drill_click(&mut state.session, down)?;
+                }
+                Some((down, Some(up))) => {
+                    native::run_drag(
+                        &mut state.session,
+                        down,
+                        (up.0 - down.0, up.1 - down.1),
+                        &events,
+                    )?;
+                }
+            }
             Ok(())
         })
     }
@@ -520,11 +598,62 @@ impl WorkCrateBoardsService {
                 .add_references(&project, std::slice::from_ref(&path))?;
         }
         self.canvas_edit(|state| {
-            state
+            let placed = state
                 .session
                 .execute("file.place", json!({"path":&path,"link":link,"at":centre}))?;
+            let ids = placed["ids"]
+                .as_array()
+                .map(|items| items.iter().filter_map(Value::as_u64).collect::<Vec<_>>())
+                .unwrap_or_default();
+            native::group_content(&mut state.session, state.native_id, &ids)?;
             Ok(())
         })
+    }
+
+    /// Drag-and-drop placement. The official launcher grants one read folder, so a source
+    /// the session can never legally read (another volume, or folders that only meet at a
+    /// drive root) is copied into `<document folder>/materials` and the copy is what gets
+    /// placed and linked; the failed grant has already closed the session, so it reopens.
+    /// Sources the official program can link in place keep their original behaviour.
+    pub fn canvas_place_dropped(
+        &self,
+        board_id: &str,
+        source: &Path,
+        centre: [f64; 2],
+    ) -> Result<CanvasSnapshot, BoardsError> {
+        let source = std::fs::canonicalize(source)?;
+        match self.canvas_place(&source, centre, true) {
+            Ok(snapshot) => Ok(snapshot),
+            Err(BoardsError::Invalid(message)) if message.starts_with("CLI inputs") => {
+                let copy = self.material_copy(board_id, &source)?;
+                if !self.canvas_holds(board_id)? {
+                    self.canvas_open_quiet(board_id)?;
+                }
+                self.canvas_place(&copy, centre, true)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    /// Content-addressed copy of a dropped source beside the document: identical drops
+    /// reuse one file, name collisions disambiguate with the content stamp.
+    fn material_copy(&self, board_id: &str, source: &Path) -> Result<PathBuf, BoardsError> {
+        let project = self.board(board_id)?.project_id;
+        let document = self
+            .document_path(&project)?
+            .ok_or(BoardsError::NoDocument)?;
+        let materials = document
+            .parent()
+            .ok_or_else(|| BoardsError::Invalid("the document has no containing folder".into()))?
+            .join("materials");
+        std::fs::create_dir_all(&materials)?;
+        let bytes = std::fs::read(source)?;
+        let stamp = material_stamp(&bytes);
+        let target = material_target(&materials, source, &stamp);
+        if !target.exists() {
+            std::fs::write(&target, &bytes)?;
+        }
+        Ok(target)
     }
 
     /// Re-read every selected link from disk, granting the folders the official session has
@@ -586,7 +715,8 @@ impl WorkCrateBoardsService {
         })
     }
 
-    /// Add a native text object at one document point.
+    /// Add a native text object at one document point. New content joins the page's own
+    /// content group, so user artwork stays separable from the material band.
     pub fn canvas_create_text(
         &self,
         x: f64,
@@ -595,9 +725,12 @@ impl WorkCrateBoardsService {
         size: f64,
     ) -> Result<CanvasSnapshot, BoardsError> {
         self.canvas_edit(|state| {
-            state
+            let created = state
                 .session
                 .execute("text.create", json!({"x":x,"y":y,"text":text,"size":size}))?;
+            if let Some(id) = created["id"].as_u64() {
+                native::group_content(&mut state.session, state.native_id, &[id])?;
+            }
             Ok(())
         })
     }
@@ -765,5 +898,50 @@ impl CanvasState {
             }
         }
         Ok(object)
+    }
+}
+
+#[cfg(test)]
+mod drop_material_tests {
+    use super::*;
+
+    fn write(path: &Path, bytes: &[u8]) {
+        if std::fs::write(path, bytes).is_err() {
+            panic!("write {}", path.display());
+        }
+    }
+
+    #[test]
+    fn material_target_reuses_a_free_name_or_identical_content() {
+        let Ok(root) = tempfile::tempdir() else {
+            panic!("temporary directory");
+        };
+        let materials = root.path().join("materials");
+        if std::fs::create_dir_all(&materials).is_err() {
+            panic!("create materials");
+        }
+        let source = root.path().join("photo.png");
+        let first_bytes = b"first";
+        let first_stamp = material_stamp(first_bytes);
+        write(&source, first_bytes);
+
+        let first = material_target(&materials, &source, &first_stamp);
+        assert_eq!(first, materials.join("photo.png"));
+        write(&first, first_bytes);
+
+        // Same name, different content: the content stamp disambiguates.
+        let second_stamp = material_stamp(b"second");
+        let second = material_target(&materials, &source, &second_stamp);
+        assert_eq!(second, materials.join(format!("photo-{second_stamp}.png")));
+
+        // Dropping the original bytes again reuses the first copy.
+        let repeat = material_target(&materials, &source, &first_stamp);
+        assert_eq!(repeat, first);
+    }
+
+    #[test]
+    fn material_stamp_is_stable_and_content_sensitive() {
+        assert_eq!(material_stamp(b"abc"), material_stamp(b"abc"));
+        assert_ne!(material_stamp(b"abc"), material_stamp(b"abd"));
     }
 }

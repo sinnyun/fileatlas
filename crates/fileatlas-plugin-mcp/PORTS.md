@@ -359,6 +359,14 @@ Position is logical client pixels in 0–4096; delta is finite logical pixels in
 -4096–4096 (negative scrolls down). Requires mutations enabled, does not send
 OS input, and returns the same pending-queue error as other pointer actions.
 
+`control_ui {action:"canvas_drop_files", request:{"paths":["…"]}}` hands file
+paths to the WorkCrate page editor exactly like dropping files on its canvas;
+the view filters images, opens the official session when needed, and places
+each file linked. GPUI seals the OS `ExternalPaths` drag value, so a real
+`FileDropEvent` cannot be synthesized in-process — this is the semantic
+equivalent through the `workcrate.canvas.drop-request` surfaces key, consumed
+by the panel's preview watcher. Requires mutations enabled.
+
 Run `node scripts/validate-ui-mcp.cjs` after a locked Shell build to scan the
 isolated fixture profile, capture 23 UI states, and sample the real Preview
 chrome fade curve. Output lives in target/mcp-ui-screenshots; the script never

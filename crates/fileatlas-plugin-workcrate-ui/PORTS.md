@@ -70,17 +70,20 @@ ChangeGate publishes `workcrate.ui` only when its serialized state changes.
 Snapshot contains screen (`projects`, `pages`, `editor`), project_id, board_id,
 busy, page_count, boards (id/native_id/index/title/dimensions/info/preview_ready/
 error), previews_ready, preview_pending, selection, connection, executable, port,
-document, message and `auto_sync` (syncs/pending/error), plus `canvas`: mode (`preview`/`edit`), busy, zoom, `state`
+document, message and `auto_sync` (syncs/pending/error), plus `canvas`: busy, zoom, `state`
 (the official `CanvasSnapshot`: session_id/live/tool/revision/dirty/selection/
 selection_bounds/artboard/preview/preview_size/last_step, null before a session opens),
 `object` (official node detail: id/kind/name/bounds/text/linked/status/link_path)
 and `drag` (kind `move` or `handle<N>`, origin, start, current) while a pointer
-gesture is in flight. View drop clears it. Existing tracking measures controls
+gesture is in flight. View drop clears it. The editor screen is a single interface:
+showing a page opens the official session automatically (`ensure_canvas_session`)
+and the former preview/edit mode split is gone; entering the page list or project
+list commits and closes the session as before. Existing tracking measures controls
 under `workcrate.control.<id>`, including artboard, inspector, page previews,
 project actions, material fields, `field-edit-input`, `field-edit-save`,
 `settings-vectorcraft-executable`, `settings-vectorcraft-port`,
 `settings-vectorcraft-save` and `settings-vectorcraft-browse`, and the edit screen
-`workcrate-canvas-preview`, `workcrate-canvas-edit`, `workcrate-canvas-zoom-in`,
+`workcrate-editor-rail`, `workcrate-canvas-zoom-in`,
 `workcrate-canvas-zoom-out`, `workcrate-canvas-undo`, `workcrate-canvas-redo`,
 `workcrate-canvas-handoff`, `workcrate-canvas-viewport`,
 `workcrate-canvas-artboard`, `workcrate-canvas-object`, `canvas-x`, `canvas-y`,
@@ -273,9 +276,26 @@ fix (previously 840/1831 because every button greyed out). Wrapping inputs in
 child view hosts does not scope GPUI dirty propagation (ancestors are always
 marked dirty) and was reverted.
 
+## 2026-10-22 single merged editor interface
+
+The preview/edit mode toggle is gone. `canvas_mode` was removed from
+`WorkCratePanel`; `toggle_canvas_mode` and `canvas_mode_button` no longer exist
+and the `workcrate-canvas-preview` / `workcrate-canvas-edit` controls were
+removed. Showing a page (rail click, restore, remote selection or a landed
+snapshot) runs `ensure_canvas_session`, which opens the official session the
+same way the edit toggle did; autosync, field saves and the preview watcher
+keep refusing only while `canvas.is_some()`. The editor toolbar now always
+shows zoom/undo/redo plus the former preview-only `place-design-file` and
+`export-current-image` actions beside `workcrate-canvas-handoff`. The right
+rail (`workcrate-editor-rail`, 310 px) stacks the canvas object panel and the
+page material inspector; `inspector` and `canvas_object_panel` render inner
+content only. The former local-bitmap preview branch in `render_editor` is
+removed — the artboard is always the official frame. `canvas.mode` no longer
+appears in `workcrate.ui` state.
+
 ## 2026-10-22 no panel-wide disabling during canvas jobs
 
-`canvas_action`, `canvas_mode_button` and the position/size number inputs no
+`canvas_action`, position/size number inputs and the toolbar actions no
 longer disable while `canvas_busy`. Structural disabled conditions remain (no
 canvas, set-text needs a type object, links-update needs a linked object); a
 click while `busy || canvas_busy` sets the hint "画布操作进行中，请稍候…".
@@ -293,3 +313,83 @@ scale — only the sampled points change. This is implemented here because the
 installed vectorcraft-cli 0.14.0 ignores `pointer_gesture`'s `mods` parameter
 in headless sessions (verified: four spellings all scale freely). The visual
 prediction and the forwarded gesture share the same constrained points.
+
+## 2026-10-22 canvas accepts dropped images
+
+The canvas viewport (preview and edit mode) registers `on_drop`/
+`drag_over` for GPUI's external `ExternalPaths`, `FileManagerFileDragPayload`
+(only when `allows_drop()`) and `FileStagingDragPayload`. All three feed
+`canvas_drop_files`: extensions are filtered against the image whitelist,
+non-images hint "拖入的内容里没有可放置的图片。", a busy canvas hints
+"画布操作进行中，请稍候…", and each image runs
+`canvas_place_dropped(board, path, centre+24·i)` — opening the session quietly
+first when none holds the page, and copying sources the official single read
+root can never reach into `<document folder>/materials` (see the boards
+PORTS) before placing the copy linked.
+Hovering a drag over the viewport highlights its border with `accent_hover`.
+
+Because GPUI 0.2.2 seals `ExternalPaths` construction, MCP validation uses the
+semantic equivalent `control_ui {action:"canvas_drop_files"}` → surfaces key
+`workcrate.canvas.drop-request`, consumed by the panel's preview watcher
+(1.5 s) into the same `canvas_drop_files`; `ui.drops` counts accepted drop
+requests. `boards.canvas_holds` now returns `Ok(false)` when no session is
+open (it previously errored, contradicting its name; both earlier callers
+guarded with `canvas_is_open()` first). Validation:
+`docs/validation-ui/2026-10-22-workcrate-canvas-drop/README.md`.
+
+## 2026-10-22 projects screen redesign: shared tier band and unified icon buttons
+
+The Tier 1 projects screen follows `docs/reference-ui/concepts/
+workcrate-projects-user-2026-10-21.png`: a centered three-tier entry band
+(`WorkCratePanel::tier_band`, shared by all three screens), a hero header with
+the unified search field plus `icon_button` sort/archive toggles and a primary
+新建工程, redesigned project cards (icon row 重命名/复制/删除/更多-menu, meta
+line "N 个画布 · 相对时间", first-page info band from the boards cache,
+preview caption, ".vc 关联工程 / 进入页面矩阵" footer) and a centered
+创建新物料工程 tile. All paints come from the native theme and
+`fileatlas_ui_bridge::components`; no local palette.
+
+MCP surface: `workcrate-ui.state` now reports `sort_by_name`/`show_archived`.
+The pages/editor breadcrumb was replaced by the same tier band plus a slim
+action bar (关联工程/新增 A3 页面/同步工程与预览 with icons); the tier pills
+keep the old control ids `workcrate-projects-home`/`workcrate-pages-home`, so
+older scenarios still navigate. Page counts and first-page summaries are read
+from each project's boards cache inside the snapshot read (no official
+process). Relative-age formatting is a pure function with unit tests.
+Validation: `docs/validation-ui/2026-10-22-workcrate-projects-redesign/README.md`.
+
+## 2026-10-22 pages and studio screen redesign: unified icon buttons and section cards
+
+The Tier 2 pages screen follows `docs/reference-ui/concepts/
+workcrate-pages-user-2026-10-21.png`: a hero header (eyebrow, project-name
+title, "共 N 个独立物料 · 已选中 M 个" statistics) with a multi-select
+`icon_button` toggle (ListChecks), 全选/取消全选 ghost buttons, 关联工程/
+同步工程与预览 outline actions and a primary 新增画布; page cards with an
+always-visible checkbox icon (Square/SquareCheck, selecting turns multi-select
+on), spec line, optional material info band, preview (unchanged open/toggle
+semantics) and a "第 N 页 · 编辑" footer; and an export bar with the
+PNG/JPEG toggle, 导出选中页为图片 (FileImage) and 导出全部为 PDF. The slim
+screen bar now shows only on the editor screen.
+
+The Tier 3 editor follows `workcrate-studio-user-2026-10-21.png` +
+`workcrate-inspector-2026-10-21.png`: the canvas toolbar uses unified icon
+controls — 添加图片 (ImagePlus), 新建文字 (Type), ZoomOut/ZoomIn, Undo2/Redo2
+via the new `WorkCratePanel::icon_action` (same field-save/canvas-busy guards
+as `screen_action`; the old text-only `action` helper was removed),
+放置设计文件 (FilePlus), 导出本页图片 (FileImage) and a primary 在 VectorCraft
+中编辑 (ExternalLink); the left rail renders numbered mini-cards (accent
+number, truncated title, physical-size line, accent border when active); the
+object panel and page inspector render as shared `section_card`s
+(画布对象·官方选区, 位置与尺寸·官方 bounds, 文字/文字内容·官方文本,
+链接图片·外部文件, 文字格式·字体与字号, 画板·添加图片, 页面信息·画板规格,
+页面内容·同步物料栏). Canvas semantics (gestures, mapping, drop, official
+session) are unchanged.
+
+All previous control ids are preserved (`pages-multi-select`, `pages-select-all`,
+`pages-clear-selection`, `pages-exit-multi-select`, `select-page-{id}`,
+`open-page-{id}`, `page-preview-{id}`, `export-*`, `rail-{id}`, `field-*`,
+`preset-*`, `page-add-field`, `workcrate-canvas-*`, `place-design-file`,
+`export-current-image`, `workcrate-canvas-handoff`), so existing scenario
+scripts keep working. Validation:
+`docs/validation-ui/2026-10-22-workcrate-pages-studio-redesign/README.md`
+(scenario `scripts/validate-workcrate-pages-redesign.cjs`).

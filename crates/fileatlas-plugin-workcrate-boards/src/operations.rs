@@ -259,6 +259,11 @@ impl WorkCrateBoardsService {
         if result.is_null() {
             return Err(BoardsError::Invalid("placement pending dialog".into()));
         }
+        let ids = result["ids"]
+            .as_array()
+            .map(|items| items.iter().filter_map(Value::as_u64).collect::<Vec<_>>())
+            .unwrap_or_default();
+        native::group_content(&mut c, b.native_id, &ids)?;
         c.save_file(&native_path)?;
         self.refresh_cache_from_client(&mut c, project, binding)?;
         Ok(())

@@ -5,7 +5,6 @@ impl WorkCratePanel {
         let mut panel = div()
             .v_flex()
             .gap_2()
-            .child(super::inspector::section("文字格式"))
             .child(
                 div()
                     .h_flex()

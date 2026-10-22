@@ -45,11 +45,26 @@ struct BoardCard {
     preview_checked: bool,
     canvas_revision: Option<u64>,
 }
+/// Card-level page facts read from each project's local boards cache; the
+/// projects screen shows them without opening any official process.
+#[derive(Clone, Default)]
+pub(crate) struct PageSummary {
+    title: String,
+    material: String,
+    size: String,
+    quantity: String,
+}
+#[derive(Clone, Default)]
+pub(crate) struct ProjectSummary {
+    pages: usize,
+    first: Option<PageSummary>,
+}
 struct Snapshot {
     items: Vec<fileatlas_workcrate_contracts::WorkCrateProject>,
     presets: fileatlas_plugin_workcrate_projects::FieldPresets,
     boards: Vec<WorkCrateBoard>,
     covers: BTreeMap<String, Arc<RenderImage>>,
+    summaries: BTreeMap<String, ProjectSummary>,
     config: fileatlas_plugin_workcrate_boards::VectorCraftConfig,
     document: Option<PathBuf>,
 }
@@ -64,6 +79,7 @@ struct WorkCratePanel {
     preset_fields: fileatlas_plugin_workcrate_projects::FieldPresets,
     boards_view: Vec<BoardCard>,
     project_covers: BTreeMap<String, Arc<RenderImage>>,
+    summaries: BTreeMap<String, ProjectSummary>,
     selected_project: Option<String>,
     selected_board: Option<String>,
     selected_pages: BTreeSet<String>,
@@ -76,7 +92,6 @@ struct WorkCratePanel {
     edit_input: Entity<gpui_kit::component::input::InputState>,
     search_input: Entity<gpui_kit::component::input::InputState>,
     query: String,
-    canvas_mode: bool,
     canvas_zoom: f32,
     canvas: Option<CanvasSnapshot>,
     canvas_image: Option<Arc<RenderImage>>,
@@ -103,6 +118,8 @@ struct WorkCratePanel {
     reloads: u64,
     /// Whole-view renders. Used to prove an interaction did not repaint the panel.
     renders: u64,
+    /// Drop requests accepted by the canvas, whatever surface they came from.
+    drops: u64,
     auto_sync_error: Option<String>,
     auto_sync_retry_at: Option<std::time::Instant>,
     load_generation: u64,
@@ -178,7 +195,15 @@ pub(super) fn panel(
         let mut preview_state_read = ReadModel::default();
         preview_state_read.set_wake(preview_state_wake.clone());
         let tasks = vec![
-            refresh::listen(cx, wake, |v: &mut WorkCratePanel, _| v.deliver()),
+            refresh::listen(cx, wake, |v: &mut WorkCratePanel, cx| {
+                let delivered = v.deliver();
+                // The editor is one interface with the official session always open; a
+                // restored or remotely picked page opens its session once its snapshot lands.
+                if delivered {
+                    v.ensure_canvas_session(cx);
+                }
+                delivered
+            }),
             refresh::listen(cx, canvas_wake, |v: &mut WorkCratePanel, cx| {
                 v.deliver_canvas_probe(cx)
             }),
@@ -205,8 +230,8 @@ pub(super) fn panel(
                         selection != (v.selected_project.clone(), v.selected_board.clone());
                     let catalog_changed = revision.1 != v.catalog_refresh_revision;
                     // One official session holds the whole document, so a page change
-                    // inside the editor only moves its artboard: the connection and the
-                    // current edit/preview mode stay, and no catalogue reload runs.
+                    // inside the editor only moves its artboard: the connection stays
+                    // and no catalogue reload runs.
                     let page_switch = v.canvas.is_some()
                         && selection.0 == v.selected_project
                         && selection.0.is_some()
@@ -234,10 +259,7 @@ pub(super) fn panel(
                     v.selected_board = selection.1;
                     v.board_refresh_revision = revision.0;
                     v.catalog_refresh_revision = revision.1;
-                    if !selection_changed
-                        && !catalog_changed
-                        && (v.canvas.is_some() || v.canvas_mode)
-                    {
+                    if !selection_changed && !catalog_changed && v.canvas.is_some() {
                         // Another client re-read one page. The catalogue and every other
                         // card are unchanged, so only the visible page moves; no reload.
                         v.refresh_visible_board(cx);
@@ -264,6 +286,7 @@ pub(super) fn panel(
             preset_fields: Default::default(),
             boards_view: vec![],
             project_covers: Default::default(),
+            summaries: Default::default(),
             selected_project: (!selection.0.is_empty()).then_some(selection.0),
             selected_board: (!selection.1.is_empty()).then_some(selection.1),
             selected_pages: Default::default(),
@@ -276,7 +299,6 @@ pub(super) fn panel(
             edit_input,
             search_input,
             query: String::new(),
-            canvas_mode: false,
             canvas_zoom: 1.,
             canvas: None,
             canvas_image: None,
@@ -301,6 +323,7 @@ pub(super) fn panel(
             auto_syncs: 0,
             reloads: 0,
             renders: 0,
+            drops: 0,
             auto_sync_error: None,
             auto_sync_retry_at: None,
             load_generation: 0,
@@ -332,15 +355,31 @@ impl WorkCratePanel {
         let boards = self.boards.clone();
         let selected = self.selected_project.clone();
         let existing_covers = self.project_covers.clone();
+        let existing_summaries = self.summaries.clone();
         self.busy = true;
         self.model.request(self.load_generation, move || {
             let items = projects.projects(true).map_err(|e| e.to_string())?;
             let presets = projects.field_presets().map_err(|e| e.to_string())?;
             let config = boards.configuration().map_err(|e| e.to_string())?;
             let mut covers = existing_covers;
+            let mut summaries = existing_summaries;
             if selected.is_none() {
                 covers.clear();
+                summaries.clear();
                 for p in &items {
+                    let catalog = boards.board_catalog(&p.id).unwrap_or_default();
+                    summaries.insert(
+                        p.id.clone(),
+                        ProjectSummary {
+                            pages: catalog.len(),
+                            first: catalog.iter().min_by_key(|b| b.index).map(|b| PageSummary {
+                                title: b.title.clone(),
+                                material: b.info.material.clone(),
+                                size: b.info.size.clone(),
+                                quantity: b.info.quantity.clone(),
+                            }),
+                        },
+                    );
                     let path = p
                         .main_image
                         .as_ref()
@@ -386,6 +425,7 @@ impl WorkCratePanel {
                 presets,
                 boards: catalog,
                 covers,
+                summaries,
                 config,
                 document,
             })
@@ -435,6 +475,7 @@ impl WorkCratePanel {
                     self.items = s.items.clone();
                     self.preset_fields = s.presets.clone();
                     self.project_covers = s.covers.clone();
+                    self.summaries = s.summaries.clone();
                     self.config = s.config.clone();
                     self.document = s.document.clone();
                     let previous = std::mem::take(&mut self.boards_view);
@@ -547,8 +588,12 @@ impl WorkCratePanel {
             .ui_state
             .navigate(self.selected_project.clone(), self.selected_board.clone());
         // A page change inside the page editor keeps the official session; only its
-        // artboard moves, so the edit mode and the preview follow at once.
-        self.switch_canvas_page(cx);
+        // artboard moves. The first page shown opens the session itself.
+        if self.canvas.is_some() {
+            self.switch_canvas_page(cx);
+        } else {
+            self.ensure_canvas_session(cx);
+        }
         cx.notify();
     }
     fn panel_content_size(&self) -> (f64, f64) {

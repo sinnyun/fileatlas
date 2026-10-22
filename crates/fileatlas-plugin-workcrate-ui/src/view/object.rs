@@ -1,12 +1,10 @@
 //! The canvas editing panel. Every control here calls one official VectorCraft command;
 //! FileAtlas stores no artwork of its own, so the panel is a form over the official truth.
-use super::canvas::CANVAS_INSPECTOR_WIDTH;
-use super::inspector::section;
 use super::*;
 use gpui_kit::component::{Sizable as _, input::NumberInput};
 
 const TEXT_SIZE: f64 = 18.;
-const IMAGE_FILTERS: [&str; 12] = [
+pub(super) const IMAGE_FILTERS: [&str; 12] = [
     "png", "jpg", "jpeg", "gif", "webp", "tif", "tiff", "bmp", "psd", "ai", "eps", "svg",
 ];
 
@@ -119,161 +117,183 @@ impl WorkCratePanel {
             .map(|snapshot| snapshot.selection.len())
             .unwrap_or_default();
         let object = self.canvas_object.as_ref();
-        let mut panel =
+        let mut object_body = div().v_flex().gap_1().child(
             div()
-                .id("workcrate-canvas-object")
-                .h_full()
-                .w(px(CANVAS_INSPECTOR_WIDTH))
-                .flex_shrink_0()
-                .min_h_0()
-                .v_flex()
-                .gap_2()
-                .p_3()
-                .border_l_1()
-                .border_color(rgb(theme::separator()))
-                .overflow_y_scroll()
-                .child(section("画布对象"))
-                .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                    if selected == 0 {
-                        "在画布上单击或框选对象后即可编辑。".to_owned()
-                    } else {
-                        format!("已选中 {selected} 个对象。")
-                    },
-                ));
+                .text_xs()
+                .text_color(rgb(theme::text_muted()))
+                .child(if selected == 0 {
+                    "在画布上单击或框选对象后即可编辑。".to_owned()
+                } else {
+                    format!("已选中 {selected} 个对象。")
+                }),
+        );
         if let Some(object) = object {
-            panel = panel
+            object_body = object_body
                 .child(value_row("名称", object.name.clone()))
                 .child(value_row("类型", kind_label(&object.kind)));
         }
+        let mut panel = div()
+            .id("workcrate-canvas-object")
+            .v_flex()
+            .flex_shrink_0()
+            .gap_3()
+            .p_3()
+            .child(super::inspector::section_card(
+                "画布对象",
+                "官方选区",
+                object_body,
+            ));
         if selected > 0 {
-            panel = panel
-                .child(section("位置与尺寸"))
+            panel = panel.child(super::inspector::section_card(
+                "位置与尺寸",
+                "官方 bounds",
+                div()
+                    .v_flex()
+                    .gap_1()
+                    .child(
+                        div()
+                            .h_flex()
+                            .gap_2()
+                            .child(self.number_field("canvas-x", "X 位置", 0))
+                            .child(self.number_field("canvas-y", "Y 位置", 1)),
+                    )
+                    .child(
+                        div()
+                            .h_flex()
+                            .gap_2()
+                            .child(self.number_field("canvas-width", "宽度", 2))
+                            .child(self.number_field("canvas-height", "高度", 3)),
+                    )
+                    .child(
+                        div()
+                            .text_xs()
+                            .text_color(rgb(theme::text_muted()))
+                            .child("单位为 pt，X/Y 为文档坐标，取对象左上角。"),
+                    )
+                    .child(self.canvas_action(
+                        "workcrate-canvas-apply-bounds",
+                        "应用位置与尺寸",
+                        |v, cx| {
+                            v.canvas_apply_bounds(cx);
+                        },
+                        cx,
+                    )),
+            ));
+        }
+        let is_text = object.is_some_and(|o| o.kind.eq_ignore_ascii_case("type"));
+        panel = panel.child(super::inspector::section_card(
+            if is_text { "文字内容" } else { "文字" },
+            "官方文本",
+            div()
+                .v_flex()
+                .gap_1()
+                .child(super::tracking::control(
+                    "canvas-text-input",
+                    fileatlas_ui_bridge::components::textarea(&self.canvas_text_input)
+                        .w_full()
+                        .h(px(120.)),
+                    &self.surfaces,
+                ))
                 .child(
                     div()
                         .h_flex()
+                        .flex_wrap()
                         .gap_2()
-                        .child(self.number_field("canvas-x", "X 位置", 0))
-                        .child(self.number_field("canvas-y", "Y 位置", 1)),
-                )
+                        .child(self.canvas_action(
+                            "workcrate-canvas-set-text",
+                            "更改文字",
+                            |v, cx| {
+                                v.canvas_apply_text(cx);
+                            },
+                            cx,
+                        ))
+                        .child(self.canvas_action(
+                            "workcrate-canvas-create-text",
+                            "新建文字",
+                            |v, cx| v.canvas_create_text(cx),
+                            cx,
+                        )),
+                ),
+        ));
+        if object.is_some_and(|o| o.kind.eq_ignore_ascii_case("image")) {
+            let links_body = div()
+                .v_flex()
+                .gap_1()
+                .child(value_row(
+                    "状态",
+                    object
+                        .map(|o| link_status_label(&o.status))
+                        .unwrap_or_default(),
+                ))
+                .child(value_row(
+                    "文件",
+                    object
+                        .map(|o| display_path(&o.link_path))
+                        .filter(|path| !path.is_empty())
+                        .unwrap_or_else(|| "已嵌入，不链接外部文件".into()),
+                ))
                 .child(
                     div()
                         .h_flex()
+                        .flex_wrap()
                         .gap_2()
-                        .child(self.number_field("canvas-width", "宽度", 2))
-                        .child(self.number_field("canvas-height", "高度", 3)),
+                        .child(self.canvas_action(
+                            "workcrate-canvas-links-update",
+                            "更新链接",
+                            |v, cx| v.canvas_update_links(cx),
+                            cx,
+                        ))
+                        .child(self.canvas_action(
+                            "workcrate-canvas-links-relink",
+                            "替换文件",
+                            |v, cx| v.canvas_relink(cx),
+                            cx,
+                        )),
+                );
+            panel = panel.child(super::inspector::section_card(
+                "链接图片",
+                "外部文件",
+                links_body,
+            ));
+        }
+        if is_text {
+            panel = panel.child(super::inspector::section_card(
+                "文字格式",
+                "字体与字号",
+                self.canvas_typography(cx),
+            ));
+        }
+        panel = panel.child(super::inspector::section_card(
+            "画板",
+            "添加图片",
+            div()
+                .v_flex()
+                .gap_1()
+                .child(
+                    div()
+                        .h_flex()
+                        .flex_wrap()
+                        .gap_2()
+                        .child(self.canvas_action(
+                            "workcrate-canvas-place-embed",
+                            "添加图片",
+                            |v, cx| v.canvas_pick_and_place(false, cx),
+                            cx,
+                        ))
+                        .child(self.canvas_action(
+                            "workcrate-canvas-place-link",
+                            "链接图片",
+                            |v, cx| v.canvas_pick_and_place(true, cx),
+                            cx,
+                        )),
                 )
                 .child(
                     div()
                         .text_xs()
                         .text_color(rgb(theme::text_muted()))
-                        .child("单位为 pt，X/Y 为文档坐标，取对象左上角。"),
-                )
-                .child(self.canvas_action(
-                    "workcrate-canvas-apply-bounds",
-                    "应用位置与尺寸",
-                    |v, cx| {
-                        v.canvas_apply_bounds(cx);
-                    },
-                    cx,
-                ));
-        }
-        let is_text = object.is_some_and(|o| o.kind.eq_ignore_ascii_case("type"));
-        panel = panel
-            .child(section(if is_text { "文字内容" } else { "文字" }))
-            .child(super::tracking::control(
-                "canvas-text-input",
-                fileatlas_ui_bridge::components::textarea(&self.canvas_text_input)
-                    .w_full()
-                    .h(px(120.)),
-                &self.surfaces,
-            ))
-            .child(
-                div()
-                    .h_flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .child(self.canvas_action(
-                        "workcrate-canvas-set-text",
-                        "更改文字",
-                        |v, cx| {
-                            v.canvas_apply_text(cx);
-                        },
-                        cx,
-                    ))
-                    .child(self.canvas_action(
-                        "workcrate-canvas-create-text",
-                        "新建文字",
-                        |v, cx| v.canvas_create_text(cx),
-                        cx,
-                    )),
-            );
-        if object.is_some_and(|o| o.kind.eq_ignore_ascii_case("image")) {
-            panel = panel.child(section("链接图片")).child(
-                div()
-                    .v_flex()
-                    .gap_1()
-                    .child(value_row(
-                        "状态",
-                        object
-                            .map(|o| link_status_label(&o.status))
-                            .unwrap_or_default(),
-                    ))
-                    .child(value_row(
-                        "文件",
-                        object
-                            .map(|o| display_path(&o.link_path))
-                            .filter(|path| !path.is_empty())
-                            .unwrap_or_else(|| "已嵌入，不链接外部文件".into()),
-                    )),
-            );
-            panel = panel.child(
-                div()
-                    .h_flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .child(self.canvas_action(
-                        "workcrate-canvas-links-update",
-                        "更新链接",
-                        |v, cx| v.canvas_update_links(cx),
-                        cx,
-                    ))
-                    .child(self.canvas_action(
-                        "workcrate-canvas-links-relink",
-                        "替换文件",
-                        |v, cx| v.canvas_relink(cx),
-                        cx,
-                    )),
-            );
-        }
-        if is_text {
-            panel = panel.child(self.canvas_typography(cx));
-        }
-        panel = panel
-            .child(section("画板"))
-            .child(
-                div()
-                    .h_flex()
-                    .flex_wrap()
-                    .gap_2()
-                    .child(self.canvas_action(
-                        "workcrate-canvas-place-embed",
-                        "添加图片",
-                        |v, cx| v.canvas_pick_and_place(false, cx),
-                        cx,
-                    ))
-                    .child(self.canvas_action(
-                        "workcrate-canvas-place-link",
-                        "链接图片",
-                        |v, cx| v.canvas_pick_and_place(true, cx),
-                        cx,
-                    )),
-            )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
-                    .child("添加的图片落在画板中心；链接方式可随时更新或替换。"),
-            );
+                        .child("添加的图片落在画板中心；链接方式可随时更新或替换。"),
+                ),
+        ));
         panel.into_any_element()
     }
 
@@ -399,7 +419,7 @@ impl WorkCratePanel {
                 artboard.y + artboard.height / 2.,
             ];
             let _ = this.update(cx, |view: &mut WorkCratePanel, cx| {
-                if !view.canvas_mode || view.selected_board.as_ref() != Some(&target) {
+                if view.canvas.is_none() || view.selected_board.as_ref() != Some(&target) {
                     return;
                 }
                 view.canvas_job(
@@ -443,7 +463,7 @@ impl WorkCratePanel {
             };
             let path = file.path().to_path_buf();
             let _ = this.update(cx, |view: &mut WorkCratePanel, cx| {
-                if !view.canvas_mode
+                if view.canvas.is_none()
                     || view.selected_board != target
                     || view.canvas_selection().0 != ids
                 {

@@ -1251,3 +1251,129 @@ busy 中间帧验证过。
 （`pointer_move` 无按键状态不触发采样）。
 
 [本轮验证](validation-ui/2026-10-22-workcrate-local-refresh/README.md)。
+
+## 2026-10-22 WorkCrate 画布支持拖拽放置并链接图片
+
+页面编辑器（预览与编辑模式）的画布视口接受三种拖放：外部程序（GPUI
+`ExternalPaths`）、文件卡片（`FileManagerFileDragPayload`，`allows_drop()` 才
+落放）、文件暂存区（`FileStagingDragPayload`）；悬停边框以 accent 高亮。每张
+图片走 `canvas_place(link=true)`，会话未开先静默开启，并登记为项目引用；非
+图片拒收提示。GPUI 0.2.2 封闭 `ExternalPaths` 构造，进程内无法合成真实
+`FileDropEvent`，故新增 `control_ui {action:"canvas_drop_files"}` 语义通道
+（surfaces 键 `workcrate.canvas.drop-request` → 面板预览轮询消费同一
+`canvas_drop_files`），`ui.drops` 计数。实测（wc-canvasdrop3）：预览模式拖入
+`small.png` 修订→2、`linked=true` 且模式保持 preview；`.txt` 拒收修订不变；
+编辑模式拖入 `tiny.jpg` 修订→3 `linked=true`；`ui.drops`=3；截图
+`profiles/wc-canvasdrop3/screenshots/editor-preview-drop.png` 可见两图落在画
+板中心。顺带把 `boards.canvas_holds` 无会话时的行为从报错改为 `Ok(false)`。
+OS 级鼠标拖放接线与 file-manager 既有落放同构，但只能由用户手工确认（未覆盖）。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-canvas-drop/README.md)。
+
+## 2026-10-22 补充：拖入画布跨卷/跨根时自动复制到 materials
+
+用户实测官方拒绝与文档不共享安全文件夹的拖入源（单读根限制，报
+“CLI inputs do not share a safe folder…”）。新增 `canvas_place_dropped`：
+先按原路径链接放置；自动化根约束失败时把源复制到 `<文档文件夹>/materials`
+（内容戳去重），重开静默会话后放置副本并链接、登记引用；可授予的来源仍原地
+链接。实测（wc-canvasdrop4）C: 盘临时文件拖入 F: 盘文档：修订→2、
+`linked=true`、链接指向 materials 下副本且文件存在。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-canvas-drop/README.md)。
+
+## 2026-10-22 页面编辑器合并为单一界面
+
+按用户要求移除页面编辑器的 预览/编辑 双模式：`canvas_mode`、
+`toggle_canvas_mode`、模式切换按钮与预览本地位图分支全部删除；显示页面即经
+`ensure_canvas_session` 自动打开官方会话（页面栏点击、快照落地、远端选择、
+放置设计文件完成后的重开均覆盖）。原预览专属的 放置设计文件 / 导出本页图片
+并入画布工具条，右侧 310px 栏堆叠画布对象面板与页面物料信息（预览独有功能
+并入编辑界面）；`canvas.mode` 不再出现在 `workcrate.ui`。实测（wc-merged2）：
+进入编辑器会话自动打开（revision 1）、合并控件齐全且旧模式按钮不渲染、
+合并界面内拖放 `small.png` revision→2 `linked=true`、工具条撤销经官方会话
+revision→3 无错误；截图 `profiles/wc-merged2/screenshots/merged-editor.png`。
+未实测：导出/放置按钮的原生对话框路径与 handoff 启动 GUI（均未改动）。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-merged-editor/README.md)。
+
+## 2026-10-22 物料栏主组/子组分组、内容组与仅面板的尺寸标记
+
+按用户三点要求重构 WorkCrate 在官方文档内的图层归属：每页物料条节点归入本页
+子组（`header_page`），全部子组归入一个全文档主组（`header_root`）并在写入末尾
+锁定（`object.setProps locked:true`，实测随保存持久化；锁定不阻塞 headless 命令，
+面板照常修改，VectorCraft GUI 无法选中物料条）；画布新建文字与放置/链接图片经
+`group_content` 归入本页内容组（`content_root`，含 `select.set` 恢复选中）；尺寸
+标记（size_label）改为仅面板字段——物料条不再画规格行，catalog 不再从节点读取，
+两条目录重建按页面 id 从旧缓存回填。官方接口先探测后使用：锁定持久化、锁内
+headless 可写、`node.move` 入组、单子节点成组、成组/移动会清选中。
+实测（wc-groups4）：字段保存往返、文字创建（对象面板 type）、外源拖入（linked）
+新建第二页、目录重建后尺寸标记保留全部通过；官方 CLI 读回已保存文档结构断言：
+主组锁定、2 个子组、1 个内容组（文字+图片）、无规格行节点。
+截图 `profiles/wc-groups4/screenshots/header-groups.png`。旧文档平铺结构与已画
+规格行待下次字段保存自动迁移/清除，未做一次性迁移。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-header-groups/README.md)。
+
+## 2026-10-22 画布点选钻取：组内直接选中子图层
+
+修复分组后的回归：官方命中测试永远报告最外层组，编辑画布点击选中整页内容组、
+手势移动整组变换。现在 `canvas_gesture` 规划每个事件批次：纯 down/up 点击转发后
+由 `drill_click` 沿 `document.inspect` 图层树（唯一带 bounds 的官方树，depth:16
+含 selection/selectionBounds/locked）按 z 序选中最深命中子节点，锁定组内点击取消
+选中；拖拽由 `run_drag` 决定——显示子图层时按节点 id `object.move` 并保持选中、
+显示组/多选原样转发、选区外先合成点击拾取（子图层移动、空白转发套索、物料栏
+吞掉）；角点缩放由界面直接提交 `object.setBounds(reference:0)` 预测框。关键官方
+事实：按压总是重新命中测试（选中子图层后拖拽仍会抓走整组），因此移动/缩放
+不再走手势通道；无头套索不选中（官方行为）。
+实测（wc-drill，scenario validate-canvas-drill.cjs）：点选/真实窗口点击均选中
+文字而非内容组、拖动与空手抓取只移动该文字、真实角点拖拽缩放文字 112→233、
+物料栏点击选区为空、官方 CLI 读回内容组结构完整。截图
+`profiles/wc-drill/screenshots/canvas-drill.png`。实时 GUI 的套索/整组移动走官方
+路径未在无头会话复现，属官方行为。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-canvas-drill/README.md)。
+
+## 2026-10-22 项目管理面板重设计：统一图标按钮与组件
+
+按 2026-10-21 用户稿重做 Tier 1 项目管理：居中三层入口带（共享组件，页面/
+编辑器屏同用；Tier 1/2 保留旧控制 id）、hero 头部块＋右侧统一搜索框/排序/
+归档图标开关/primary 新建工程；项目卡为标题＋图标行（重命名/复制/删除/
+更多菜单）＋“N 个画布 · 相对时间”＋页内信息条（boards-cache 首页摘要）＋
+预览区＋“.vc 关联工程/进入页面矩阵”页脚；底部居中创建磁贴。全部使用
+GPUI Kit 主题与 `components` 公共组件，无本地配色。
+实测（wc-projects，scenario scripts/validate-workcrate-projects-redesign.cjs）：
+控制齐全、排序/归档状态往返、卡片菜单开合、编辑器→页面→项目管理真实窗口
+导航全部通过；暗色截图与参考稿逐项对照。亮色与小窗口未验。
+状态面新增 `sort_by_name`/`show_archived`。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-projects-redesign/README.md)。
+
+## 2026-10-22 页面管理与装配工作台重设计：统一图标按钮与组件
+
+按 `docs/reference-ui/concepts/workcrate-pages-user-2026-10-21.png` 与
+`workcrate-studio-user-2026-10-21.png` + `workcrate-inspector-2026-10-21.png`
+重做 Tier 2/Tier 3；清单见 workcrate-three-level-2026-10-20.md 的
+"2026-10-22 pages and studio screen implementation checklist"。
+
+- Tier 2：头部块（eyebrow/hero/统计＋多选图标开关、全选/取消全选、关联工程、
+  同步、primary 新增画布）替换通用窄条；页面卡改为复选框＋标题＋规格＋物料
+  信息条＋预览＋“第 N 页 · 编辑”页脚；导出页脚统一图标按钮。screen_bar 仅
+  编辑器显示。
+- Tier 3：画布工具条统一（添加图片 ImagePlus、新建文字 Type、ZoomOut/In、
+  Undo2/Redo2 图标钮、放置设计文件、导出本页图片、primary 在 VectorCraft 中
+  编辑 ExternalLink）；左栏编号迷你页卡（accent 边框活动态）；对象面板与页面
+  检查器统一 section_card 卡片；中央 meta 行补像素规格。画布编辑语义零改动，
+  全部旧控制 id 保留。
+- 同进程 MCP 场景（scripts/validate-workcrate-pages-redesign.cjs，profile
+  wc-pages-redesign-20261022）：Tier 2 十三个控制框、Tier 3 十个控制框、
+  多选/复选框选择状态往返、缩放 100→80→100、编辑器→页面→项目真实窗口导航
+  全部通过；暗色截图与参考稿逐项对照。多页 rail 换页沿用既有场景覆盖。
+  亮色与小窗口未验。
+- 状态断言依赖既有 `multi_select`/`selected_pages`/`canvas.zoom`。
+
+[本轮验证](validation-ui/2026-10-22-workcrate-pages-studio-redesign/README.md)。
+
+用户确认三张参考图后复核：页面卡信息条改为常显（"01 标题"＋可选字段）、
+导出按钮带数量、hero 标题旁补 "页面管理 (Tier 2)" 徽标；复测
+wc-pages-redesign-20261022b/c 全部断言通过。参考稿中无后端支撑的元素
+（图层数计数、页级复制/删除、导出 .vectorcraft 工程）未虚构。

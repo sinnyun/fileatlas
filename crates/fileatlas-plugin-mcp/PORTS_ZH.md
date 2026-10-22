@@ -348,6 +348,13 @@ UI。`capturing_key` 标志也涵盖现有的打开媒体键捕获。
 -4096–4096 内的有限逻辑像素（负值向下滚动）。需要启用变更，不发送
 操作系统输入，并返回与其它指针动作相同的待处理队列错误。
 
+`control_ui {action:"canvas_drop_files", request:{"paths":["…"]}}` 把文件路径按
+“拖放到 WorkCrate 页面编辑器画布”的同等语义交给该视图；视图过滤图片、按需
+打开官方会话并把每个文件以链接方式放置。GPUI 封闭了操作系统的
+`ExternalPaths` 拖拽值，进程内无法合成真实 `FileDropEvent` —— 因此经
+`workcrate.canvas.drop-request` surfaces 键走语义等价通道，由面板的预览
+轮询消费。需要启用变更。
+
 在一次 locked 的 Shell 构建之后运行 `node scripts/validate-ui-mcp.cjs`，以扫描
 隔离 fixture 配置、捕获 23 个 UI 状态，并采样真实的 Preview
 渐隐曲线。输出位于 target/mcp-ui-screenshots；该脚本从不

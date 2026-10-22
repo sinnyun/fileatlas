@@ -115,6 +115,93 @@ must not permit falsifying them. Artwork/text in concepts are illustrative.
 - Empty, selected, editable, missing/error, long-name and narrow-window states
   need same-process MCP verification; no visual pass from compilation alone.
 
+## 2026-10-22 projects screen implementation checklist
+
+Active draft: `workcrate-projects-user-2026-10-21.png` (Tier 1 screen). Unified
+icon buttons and shared workbench components throughout; no local palette.
+
+- Top tier band, centered, bottom hairline, fixed height: three entries —
+  项目管理 (Tier 1, briefcase), 页面管理 (Tier 2, grid, meta "· {项目名}"),
+  装配工作台 (Tier 3, pen tool, meta "· {页码}"). Active entry = card surface,
+  border, semibold; inactive-with-target = muted, hover surface, clickable
+  (control ids `workcrate-projects-home` / `workcrate-pages-home` preserved);
+  inactive-without-target = muted, inert.
+- Projects header block: tiny muted eyebrow "TIER 1 · PROJECT REPOSITORY ·
+  VECTOR ENGINE READY"; hero title 项目工程大盘 (24 semibold); two-line muted
+  description; right cluster on the header's top line: unified search field
+  (220), sort icon toggle ArrowUpDown (selected = 名称排序, tooltip), archive
+  icon toggle Archive (selected = 已归档, tooltip), primary 新建工程 with Plus.
+- Cards: responsive three columns (existing width rule), gap 24, scrollable.
+  Card = workbench_card + title row (truncated semibold title; icon row
+  重命名 Pencil / 复制 Copy / 删除 Trash2 / 更多 Ellipsis menu holding
+  更换主图 Image and 归档·恢复 Archive, all `components::icon_button` with
+  Chinese tooltips, disabled while busy), meta line "{N} 个画布 · {相对时间}",
+  page info band (only with pages: selection-color surface, "01 {首页标题}" +
+  "{物料} {尺寸} {数量}"), preview area (cover or first-page preview, rounded,
+  faint surface, caption "项目主图 · 模版画布预览"), footer row above a
+  hairline: FileBox icon + ".vc 关联工程"/"未关联工程" left, ghost
+  "进入页面矩阵" + ArrowRight right; cover and footer navigate to Tier 2.
+- Bottom: centered 480-wide clickable tile (Plus + 创建新物料工程 +
+  tiny "（自动加载 VectorCraft 模版）"), control id `workcrate-add-project-tile`.
+- Page/editor screens keep their actions in a slim bar under the same tier
+  band (icon+label buttons: 关联工程 Link2, 新增 A3 页面 Plus, 同步 RefreshCw).
+- States: busy disables card icons and screen actions; empty result shows a
+  muted message; long names truncate; narrow window keeps min 210 columns and
+  wraps; hover/selected come from workbench_card only.
+
+## 2026-10-22 pages and studio screen implementation checklist
+
+Active drafts: `workcrate-pages-user-2026-10-21.png` (Tier 2 screen) and
+`workcrate-studio-user-2026-10-21.png` + `workcrate-inspector-2026-10-21.png`
+(Tier 3 screen). Same unified icon-button/component treatment as the Tier 1
+pass; canvas editing semantics unchanged.
+
+### 页面管理 (Tier 2)
+
+- Header block replaces the generic slim bar on this screen: tiny muted
+  eyebrow "TIER 2 · PAGE MATRIX · {项目名}"; hero title = project name
+  (24 semibold); muted description "VectorCraft 内部多画布 · 共 {N} 个独立物料
+  · 已选中 {M} 个"; right cluster: multi-select icon toggle
+  (ListChecks, selected = 已开启多选), ghost 全选 / 取消全选, outline
+  关联工程 (Link2) + 同步工程与预览 (RefreshCw), primary 新增画布 (Plus).
+- Preserved control ids: `pages-multi-select`, `pages-select-all`,
+  `pages-clear-selection`, `pages-exit-multi-select`, `attach-document`,
+  `workcrate-new-page`, `refresh-native`, `page-preview-{id}`,
+  `select-page-{id}`, `open-page-{id}`.
+- Page cards, three columns (existing width rule), gap 24: title row =
+  checkbox icon button (Square/SquareCheck, always visible; selecting turns
+  multi-select on) + truncated semibold title + tiny "物理 · 像素" right;
+  info band (selection-color surface, rounded) = "{序号} {物料/尺寸/数量}"
+  joined facts when any exist; preview area identical to project-card
+  preview behavior (click opens the page, or toggles selection while
+  multi-select is on, accent border when selected); footer above a hairline:
+  tiny "第 {n} 页 · {像素规格}" left, ghost 编辑 (Pencil icon) right.
+- Export footer, hairline top: left tiny "本地预览 · 外部编辑保存后请同步" +
+  "已选 {M} 页"; right: PNG/JPEG ghost toggle, outline 导出选中页为图片
+  (FileImage), primary 导出全部为 PDF. Preserved ids `export-image-format`,
+  `export-selected-images`, `export-all-pages`.
+- Empty states keep the existing copy; multi-select row hint stays.
+
+### 装配工作台 (Tier 3)
+
+- Slim context bar (tier band child) shows the page title only; the
+  canvas toolbar carries the editor actions.
+- Canvas toolbar unified, hairline top/bottom: left 添加图片 (ImagePlus) and
+  新建文字 (Type) icon+label outline actions; center-right: ZoomOut icon,
+  zoom % text, ZoomIn icon, hairline divider, Undo2 / Redo2 icon buttons,
+  放置设计文件 (FilePlus outline), 导出本页图片 (FileImage outline),
+  canvas status text, primary 在 VectorCraft 中编辑 (ExternalLink).
+  Existing control ids preserved (`workcrate-canvas-zoom-out/-in/-undo/-redo`,
+  `place-design-file`, `export-current-image`, `workcrate-canvas-handoff`).
+- Left rail: numbered mini-cards (accent number badge, thumbnail, tiny size
+  line), active card = accent border card surface; `rail-{id}` ids and
+  click-to-switch preserved; keeps "页面 · 物料列表" heading.
+- Right inspector: object panel and page inspector wrapped in the shared
+  section card style (accent dot + semibold label + muted caption, rounded
+  bordered card); field rows, presets, dropdowns and object fields keep
+  their ids and behavior; no new palette.
+- Canvas surface, gestures, mapping, drop handling: unchanged.
+
 ## 2026-10-20 user-reported rejection and correction checklist
 
 The previous service-level proof did not establish that the visible add-image

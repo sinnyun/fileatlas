@@ -66,17 +66,19 @@ ChangeGate 仅在其序列化状态改变时才发布 `workcrate.ui`。
 Snapshot 包含 screen（`projects`、`pages`、`editor`）、project_id、board_id、
 busy、page_count、boards（id/native_id/index/title/dimensions/info/preview_ready/
 error）、previews_ready、preview_pending、selection、connection、executable、port、
-document 与 message，外加 `canvas`：mode（`preview`/`edit`）、busy、zoom、`state`
+document 与 message，外加 `canvas`：busy、zoom、`state`
 （官方 `CanvasSnapshot`：session_id/live/tool/revision/dirty/selection/selection_bounds/
-artboard/preview/preview_size/last_step，预览态为 null）、`object`
+artboard/preview/preview_size/last_step，会话未开时为 null）、`object`
 （官方节点详情：id/kind/name/bounds/text/linked/status/link_path）
 以及指针手势进行中的 `drag`（kind 为 `move` 或 `handle<N>`、origin、start、current）。
-视图丢弃时会清空它。已有的埋点在
+视图丢弃时会清空它。页面编辑器是单一界面：显示页面即自动打开官方会话
+（`ensure_canvas_session`），原先的预览/编辑双模式已移除；回到页面列表或工程
+列表仍照旧提交并关闭会话。已有的埋点在
 `workcrate.control.<id>` 下度量控件，包括画板、检视器、页面预览、
 工程操作、材料字段、`field-edit-input`、`field-edit-save`、
 `settings-vectorcraft-executable`、`settings-vectorcraft-port`、
 `settings-vectorcraft-save` 以及 `settings-vectorcraft-browse`，还有编辑态的
-`workcrate-canvas-preview`、`workcrate-canvas-edit`、`workcrate-canvas-zoom-in`、
+`workcrate-editor-rail`、`workcrate-canvas-zoom-in`、
 `workcrate-canvas-zoom-out`、`workcrate-canvas-undo`、`workcrate-canvas-redo`、
 `workcrate-canvas-handoff`、`workcrate-canvas-viewport`、
 `workcrate-canvas-artboard`、`workcrate-canvas-object`、`canvas-x`、`canvas-y`、
@@ -224,12 +226,26 @@ GUI，并且只读取已保存文件。
 
 ## 2026-10-22 画布命令执行期间不再整体置灰
 
-`canvas_action`、预览/编辑切换按钮与位置/尺寸数字输入框不再因 `canvas_busy`
+`canvas_action`、位置/尺寸数字输入框与工具栏动作不再因 `canvas_busy`
 禁用。结构性禁用条件保留（无画布、"更改文字"需要文字对象、"链接图片"需要已
 链接对象）；`busy || canvas_busy` 时点击提示"画布操作进行中，请稍候…"。
 `WorkCratePanel::action`（画布工具栏缩放/撤销/重做与顶部工具栏）同样去掉
 `canvas_busy` 禁用并使用相同点击提示。数值草稿由应用按钮的拒绝逻辑兜底，
 不再靠输入框禁用。
+
+## 2026-10-22 页面编辑器合并为单一界面
+
+预览/编辑模式切换已移除：`WorkCratePanel` 不再有 `canvas_mode`，
+`toggle_canvas_mode` 与 `canvas_mode_button` 删除，
+`workcrate-canvas-preview` / `workcrate-canvas-edit` 控件不复存在。
+显示页面（页面栏点击、恢复、远端选择或快照落地）即运行 `ensure_canvas_session`，
+以与原"编辑"按钮相同的方式打开官方会话；自动同步、字段保存与预览监视器
+仍只在 `canvas.is_some()` 时让位。编辑器工具栏常显缩放/撤销/重做，并把原
+预览专属的"放置设计文件""导出本页图片"与 `workcrate-canvas-handoff`
+并列；右侧栏（`workcrate-editor-rail`，310px）纵向堆叠画布对象面板与页面
+物料信息面板，`inspector` 与 `canvas_object_panel` 只渲染内部内容。
+`render_editor` 中原本地位图预览分支已删除——画板始终是官方画面。
+`workcrate.ui` 状态不再包含 `canvas.mode`。
 
 ## 2026-10-22 画布角点拖拽等比缩放
 
@@ -239,3 +255,69 @@ GUI，并且只读取已保存文件。
 本侧实现：安装的 vectorcraft-cli 0.14.0 在 headless 会话中忽略
 `pointer_gesture` 的 `mods` 参数（四种写法实测均为自由缩放）。视觉预测与转发
 手势共用同一约束点。
+
+## 2026-10-22 画布接受拖入的图片
+
+画布视口（预览与编辑模式）对外部 `ExternalPaths`、`FileManagerFileDragPayload`
+（仅 `allows_drop()`）与 `FileStagingDragPayload` 注册 `on_drop`/`drag_over`，
+三者都汇入 `canvas_drop_files`：按扩展名白名单过滤图片，非图片提示
+“拖入的内容里没有可放置的图片。”，忙碌时提示“画布操作进行中，请稍候…”，
+每张图片走
+`canvas_place_dropped(board, path, centre+24·i)`——会话未开则先静默开启；官方
+单读根无法覆盖的来源先复制进 `<文档文件夹>/materials`（见 boards PORTS）
+再链接放置副本。拖拽悬停在视口上时边框以 `accent_hover` 高亮。
+
+因 GPUI 0.2.2 封闭了 `ExternalPaths` 的构造，MCP 验证走语义等价通道
+`control_ui {action:"canvas_drop_files"}` → surfaces 键
+`workcrate.canvas.drop-request`，由面板预览轮询（1.5s）消费进同一个
+`canvas_drop_files`；`ui.drops` 计数接受的拖放请求。`boards.canvas_holds`
+在会话未开时现返回 `Ok(false)`（原先报错，与函数名相悖；原有两个调用点
+都先判 `canvas_is_open()`，兼容）。验证记录：
+`docs/validation-ui/2026-10-22-workcrate-canvas-drop/README.md`。
+
+## 2026-10-22 项目管理面板重设计：共享三层入口带与统一图标按钮
+
+Tier 1 项目管理界面按 `docs/reference-ui/concepts/
+workcrate-projects-user-2026-10-21.png` 落地：居中三层入口带
+（`WorkCratePanel::tier_band`，三屏共用）、hero 头部＋统一搜索框＋排序/归档
+图标开关＋primary 新建工程；项目卡改为标题＋图标行（重命名/复制/删除/
+更多菜单）＋“N 个画布 · 相对时间”＋页内信息条（取自 boards-cache 首页摘要）＋
+预览说明＋“.vc 关联工程 / 进入页面矩阵”页脚；底部居中创建磁贴。全部颜色
+来自原生主题与 `fileatlas_ui_bridge::components`，无本地调色板。
+
+MCP 面：`workcrate-ui.state` 新增 `sort_by_name`/`show_archived`。页面/编辑器
+的旧面包屑替换为同一入口带＋窄操作条（关联工程/新增 A3 页面/同步工程与预览，
+带图标）；入口胶囊保留旧控制 id `workcrate-projects-home`/
+`workcrate-pages-home`，旧场景仍可导航。页数与首页摘要在快照读取中从各项目
+boards 缓存读取（不开官方进程）。相对时间为纯函数并带单测。验证记录：
+`docs/validation-ui/2026-10-22-workcrate-projects-redesign/README.md`。
+
+## 2026-10-22 页面管理与装配工作台重设计：统一图标按钮与分区卡片
+
+Tier 2 页面管理按 `docs/reference-ui/concepts/workcrate-pages-user-2026-10-21.png`
+落地：hero 头部（eyebrow、项目名标题、“共 N 个独立物料 · 已选中 M 个”统计）＋
+多选图标开关（ListChecks）、全选/取消全选 ghost、关联工程/同步工程与预览
+outline、primary 新增画布；页面卡为常显复选框图标（Square/SquareCheck，勾选
+即开启多选）＋规格行＋物料信息条（无字段不显示）＋预览（打开/多选切换语义
+不变）＋“第 N 页 · 编辑”页脚；导出页脚含 PNG/JPEG 切换、导出选中页为图片
+（FileImage）、导出全部为 PDF。窄操作条仅在编辑器屏显示。
+
+Tier 3 编辑器按 `workcrate-studio-user-2026-10-21.png` +
+`workcrate-inspector-2026-10-21.png` 优化：画布工具条统一图标控件——添加图片
+（ImagePlus）、新建文字（Type）、ZoomOut/ZoomIn、Undo2/Redo2（新
+`WorkCratePanel::icon_action`，与 `screen_action` 相同的保存/画布忙碌守卫；
+原纯文字 `action` 助手删除）、放置设计文件（FilePlus）、导出本页图片
+（FileImage）、primary 在 VectorCraft 中编辑（ExternalLink）；左栏为编号迷你
+页卡（accent 编号＋截断标题＋物理尺寸行，活动卡 accent 边框）；对象面板与
+页面检查器统一为 `section_card` 分区卡片（画布对象·官方选区、位置与尺寸·
+官方 bounds、文字/文字内容·官方文本、链接图片·外部文件、文字格式·字体与
+字号、画板·添加图片、页面信息·画板规格、页面内容·同步物料栏）。画布编辑
+语义（手势、映射、拖放、官方会话）零改动。
+
+全部旧控制 id 保留（`pages-multi-select`、`pages-select-all`、
+`pages-clear-selection`、`pages-exit-multi-select`、`select-page-{id}`、
+`open-page-{id}`、`page-preview-{id}`、`export-*`、`rail-{id}`、`field-*`、
+`preset-*`、`page-add-field`、`workcrate-canvas-*`、`place-design-file`、
+`export-current-image`、`workcrate-canvas-handoff`），既有场景脚本无需修改。
+验证记录：`docs/validation-ui/2026-10-22-workcrate-pages-studio-redesign/README.md`
+（场景 `scripts/validate-workcrate-pages-redesign.cjs`）。

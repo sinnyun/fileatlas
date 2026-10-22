@@ -12,7 +12,8 @@ const AUTO_SYNC_RETRY: Duration = Duration::from_secs(30);
 
 impl WorkCratePanel {
     pub(super) fn start_preview_watcher(&mut self, cx: &mut ViewContext<Self>) {
-        refresh::poll(cx, PREVIEW_STATE_INTERVAL, |view, _| {
+        refresh::poll(cx, PREVIEW_STATE_INTERVAL, |view, cx| {
+            view.take_canvas_drop_request(cx);
             view.request_preview_state()
         });
     }
@@ -23,7 +24,6 @@ impl WorkCratePanel {
         if self.busy
             || self.canvas_busy
             || self.canvas.is_some()
-            || self.canvas_mode
             || self.auto_sync
             || !self.field_saves.is_empty()
             || self.document.is_none()
@@ -72,7 +72,6 @@ impl WorkCratePanel {
         if self.busy
             || self.canvas_busy
             || self.canvas.is_some()
-            || self.canvas_mode
             || self.auto_sync
             || !self.field_saves.is_empty()
             || self
@@ -128,7 +127,6 @@ impl WorkCratePanel {
     fn apply_auto_sync(&mut self, sync: AutoSync, project: &str, cx: &mut ViewContext<Self>) {
         if self.selected_project.as_deref() != Some(project)
             || self.canvas.is_some()
-            || self.canvas_mode
             || !self.field_saves.is_empty()
         {
             return;

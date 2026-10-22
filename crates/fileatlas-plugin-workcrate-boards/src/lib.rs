@@ -461,13 +461,27 @@ impl WorkCrateBoardsService {
         Ok(previews)
     }
 
+    /// 尺寸标记 is panel-only since the compact band stopped painting it: the official
+    /// document carries no node for it, so a catalogue rebuild must keep the cached value.
+    fn merge_panel_fields(&self, project: &str, boards: &mut [WorkCrateBoard]) {
+        let Ok(Some(old)) = self.read_cache(project) else {
+            return;
+        };
+        for board in boards {
+            if let Some(old_board) = old.boards.iter().find(|b| b.id == board.id) {
+                board.info.size_label = old_board.info.size_label.clone();
+            }
+        }
+    }
+
     fn refresh_cache_from_client(
         &self,
         client: &mut mcp::McpSession,
         project: &str,
         binding: String,
     ) -> Result<Vec<WorkCrateBoard>, BoardsError> {
-        let boards = native::catalog(client, project, &binding)?;
+        let mut boards = native::catalog(client, project, &binding)?;
+        self.merge_panel_fields(project, &mut boards);
         let previews = self.make_previews(client, &boards)?;
         self.write_cache(
             project,

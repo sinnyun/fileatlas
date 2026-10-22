@@ -34,6 +34,8 @@ struct Header {
     origin: (f64, f64),
     owned: native::OwnedNodes,
     sited: BTreeMap<String, Sited>,
+    /// The group that wraps this page's whole material band inside the locked master.
+    subgroup: Option<u64>,
 }
 
 pub(crate) fn write(
@@ -101,15 +103,9 @@ fn check_request(
             "页面尺寸太小，放不下物料信息条".into(),
         ));
     }
-    for text in [
-        project_name,
-        &info.material,
-        &info.size,
-        &info.quantity,
-        &info.size_label,
-    ]
-    .into_iter()
-    .chain(info.extra.values().map(String::as_str))
+    for text in [project_name, &info.material, &info.size, &info.quantity]
+        .into_iter()
+        .chain(info.extra.values().map(String::as_str))
     {
         if text.chars().count() > 1024
             || text
@@ -157,9 +153,16 @@ fn apply(
         owned = native::OwnedNodes::default();
     }
     native::header_layer(c)?;
+    // The master group locks the whole material band against edits made inside the official
+    // GUI; headless commands still reach its children, so the panel keeps writing freely.
+    let master = native::header_root(c)?;
+    if let Some(id) = master {
+        c.execute("object.setProps", json!({"id":id,"locked":false}))?;
+    }
     let mut header = Header {
         board: b.native_id,
         origin,
+        subgroup: owned.page_group,
         owned,
         sited: BTreeMap::new(),
     };
@@ -173,10 +176,7 @@ fn apply(
     .into_iter()
     .flatten()
     .collect::<Vec<_>>();
-    let mut rows = [requested("size_label", "规格", &info.size_label)]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+    let mut rows: Vec<Requested> = Vec::new();
     for (key, value) in &info.extra {
         if let Some(field) = requested(&format!("extra:{key}"), key, value) {
             rows.push(field);
@@ -328,6 +328,7 @@ fn apply(
     )?;
     c.execute("paint.setStroke", json!({"id":band,"none":true}))?;
     tag(c, band, geometry::ROLE_BAND, b.native_id, false)?;
+    let mut chip_id = None;
     if let Some(chip) = &layout.chip {
         let rectangle = c.execute(
             "shape.rectangle",
@@ -345,16 +346,66 @@ fn apply(
             json!({"id":id,"color":geometry::COLOR_CHIP_EDGE}),
         )?;
         tag(c, id, geometry::ROLE_PAGE_CHIP, b.native_id, false)?;
+        chip_id = Some(id);
     }
-    c.execute("object.arrange.sendToBack", json!({"ids":[band]}))?;
-    let text = header
-        .sited
-        .values()
-        .map(|site| site.id)
-        .collect::<Vec<_>>();
-    if !text.is_empty() {
-        c.execute("object.arrange.bringToFront", json!({"ids":text}))?;
+    // Every node this page owns is now created: band first, then chip, then text, so the
+    // explicit group indexes keep the band behind its own text without selection calls.
+    let mut order = vec![band];
+    if let Some(id) = chip_id {
+        order.push(id);
     }
+    order.extend(header.sited.values().map(|site| site.id));
+    assemble_groups(c, b.native_id, order, header.subgroup, master)?;
+    Ok(())
+}
+
+/// Place this page's band nodes into the page subgroup and the subgroup into the locked
+/// master. The subgroup is created as a single-child group when the page had none; the
+/// master likewise when the document had none. Re-locking the master is the last write, so
+/// the official GUI can never select or move a material-bar node between saves.
+fn assemble_groups(
+    c: &mut impl NativeProtocol,
+    board: u64,
+    order: Vec<u64>,
+    subgroup: Option<u64>,
+    master: Option<u64>,
+) -> Result<(), BoardsError> {
+    let subgroup = match subgroup {
+        Some(group) => {
+            for (index, node) in order.iter().enumerate() {
+                c.execute("node.move", json!({"id":node,"parent":group,"index":index}))?;
+            }
+            group
+        }
+        None => {
+            let created = c.execute("object.group", json!({"ids":order}))?;
+            let id = created["id"].as_u64().ok_or_else(|| {
+                BoardsError::Protocol("官方程序未创建物料栏子组，请重新同步页面后再保存".into())
+            })?;
+            native::tag_node(c, id, "header_page", Some(board), false)?;
+            for (index, node) in order.iter().enumerate() {
+                c.execute("node.move", json!({"id":node,"parent":id,"index":index}))?;
+            }
+            id
+        }
+    };
+    let master = match master {
+        Some(id) => {
+            // A freshly created subgroup lands beside the master; moving it in is
+            // idempotent, so an existing subgroup also heals back into the master.
+            c.execute("node.move", json!({"id":subgroup,"parent":id}))?;
+            id
+        }
+        None => {
+            let created = c.execute("object.group", json!({"ids":[subgroup]}))?;
+            let id = created["id"].as_u64().ok_or_else(|| {
+                BoardsError::Protocol("官方程序未创建物料栏主组，请重新同步页面后再保存".into())
+            })?;
+            native::tag_node(c, id, "header_root", None, false)?;
+            id
+        }
+    };
+    c.execute("object.setProps", json!({"id":master,"locked":true}))?;
     Ok(())
 }
 
@@ -440,6 +491,9 @@ impl Header {
                     BoardsError::Protocol("官方程序未创建信息条文字，请重新同步页面后再保存".into())
                 })?;
                 tag(c, id, role, self.board, inherited)?;
+                if let Some(group) = self.subgroup {
+                    c.execute("node.move", json!({"id":id,"parent":group}))?;
+                }
                 let bounds = &created["bounds"];
                 let site = Sited {
                     id,
@@ -475,17 +529,7 @@ fn tag(
     board: u64,
     inherited: bool,
 ) -> Result<(), BoardsError> {
-    let mut note = json!({"namespace":"fileatlas.workcrate","version":1,"board":board,"role":role});
-    if inherited {
-        note["inherited"] = json!(true);
-    }
-    let written = c.execute("attributes.set", json!({"id":id,"note":note.to_string()}))?;
-    if written["changed"].as_u64() != Some(1) {
-        return Err(BoardsError::Protocol(
-            "官方程序未能记录该字段的归属，请重新同步页面后再保存".into(),
-        ));
-    }
-    Ok(())
+    native::tag_node(c, id, role, Some(board), inherited)
 }
 
 fn measured_box(c: &mut impl NativeProtocol, id: u64) -> Result<(f64, f64, f64, f64), BoardsError> {

@@ -348,6 +348,9 @@ impl WorkCratePanel {
                         if v.preview_current.is_none() {
                             v.start_preview();
                         }
+                        // The merged editor always shows the official session; the place
+                        // path just closed it to write the document page by page.
+                        v.ensure_canvas_session(cx);
                         v.message = Some("已放置文件".into());
                     }
                     Err(error) => v.message = Some(format!("放置失败：{error}")),
@@ -370,8 +373,5 @@ impl WorkCratePanel {
             },
             cx,
         );
-    }
-    pub(super) fn open_editor(&mut self, cx: &mut ViewContext<Self>) {
-        self.canvas_handoff_editor(cx);
     }
 }

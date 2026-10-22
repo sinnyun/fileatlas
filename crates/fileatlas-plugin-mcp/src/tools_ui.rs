@@ -15,6 +15,9 @@ pub(super) struct UiRequest {
     /// workspace_select: existing workspace id; workspace_manager: open|close.
     /// pointer_down/pointer_drag/pointer_up: value is logical client coordinates "x,y".
     /// pointer_scroll: value "x,y,delta_y", negative delta scrolls down; bounded logical pixels.
+    /// canvas_drop_files: `request` is {"paths":[…]} — hands the paths to the WorkCrate
+    /// page editor exactly like dropping image files on its canvas. GPUI seals the OS
+    /// `ExternalPaths` drag value, so a real event cannot be synthesized in-process.
     /// sidebar_request: `request` is one SidebarUiRequest JSON object, e.g.
     /// {"kind":"remove_quick_access","path":"F:\\library"}.
     action: String,
@@ -547,6 +550,26 @@ impl FileAtlasMcpServer {
                     y: coordinates[1],
                     scroll_y: if scroll { coordinates[2] } else { 0. },
                 })
+            }
+            "canvas_drop_files" => {
+                let Some(payload) = request.request else {
+                    return error_json("canvas_drop_files requires a {paths} request payload");
+                };
+                let Some(paths) = payload.get("paths").and_then(|p| p.as_array()) else {
+                    return error_json("canvas_drop_files requires a paths array");
+                };
+                let paths = paths
+                    .iter()
+                    .filter_map(|p| p.as_str().map(str::to_owned))
+                    .collect::<Vec<_>>();
+                if paths.is_empty() || paths.iter().any(|p| p.trim().is_empty()) {
+                    return error_json("canvas_drop_files requires 1 or more non-empty paths");
+                }
+                let _ = self.surfaces.set_value(
+                    "workcrate.canvas.drop-request",
+                    &json!({"paths":paths}).to_string(),
+                );
+                Ok(())
             }
             "address_bar" => {
                 let Some(payload) = request.request else {

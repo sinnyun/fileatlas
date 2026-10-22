@@ -40,7 +40,8 @@ Cordis 插件 `fileatlas.workcrate-boards` 发布 `fileatlas/workcrate-boards`�
 `frame`，覆盖层直接显示保存后的页面，变化探针不会再渲染一次。其余情况走被路由
 的会话写入，并只替换该页的目录记录与预览（`store_page`），其它页面保留各自的预
 览文件。`canvas_open_quiet(board_id)` 与 `canvas_open` 共用建会话流程但不渲染预热
-帧，`canvas_holds(board_id)` 报告当前会话是否已属于该页；字段保存调用方用它们静默
+帧，`canvas_holds(board_id)` 报告当前会话是否已属于该页（无会话时返回
+`Ok(false)`——原先报错；2026-10-22 的拖放放置依赖这一语义）；字段保存调用方用它们静默
 预热并只渲染一次，草稿最终未变时只关闭自己刚开的会话。在此之前，ID 的关联段会与
 `projects.document_binding(project)` 比对，绑定轮换后宁可拒绝也不会写进过期页面。
 
@@ -101,3 +102,63 @@ GUI 通道，也不走 `official_session`），用 `rebuild_cache` 重建目录�
 配新值。切页不写文件；离开编辑区时才提交文档。被忽略的官方测试
 `page_switches_reuse_the_same_official_session` 覆盖了复用、每页独立预览路径、清空
 选择，以及真正关闭后重新打开会得到新 id。
+
+## 2026-10-22 拖放放置把无法授予的来源复制进 materials
+
+`canvas_place_dropped(board_id, source, centre)` 是拖放入口：先按原路径走
+`canvas_place(link=true)`；当官方单读根使来源不可达（`automation_folder` 报
+"CLI inputs" 开头的 `Invalid`——跨卷或仅在盘根相交）时，把源文件复制到
+`<文档文件夹>/materials`（内容戳去重：同名同内容复用，冲突改为
+`名-<戳>.扩展名`），重开静默会话（失败的授权已把会话关闭），然后放置副本并
+链接、登记为项目引用。可合法授予的来源保持原地链接。MCP `canvas_place`
+语义不变。
+
+## 2026-10-22 物料栏分组、内容组与仅面板的尺寸标记
+
+物料栏现在成组。每页的物料条节点（底色、页码底、全部文字）都在该页的子组内
+——标注 `role:"header_page"` 并带页面 board id 的组；所有子组再进一个全文档
+主组——标注 `role:"header_root"`、不带 board id 的组。`header::write` 在撤销
+组开始时先解锁主组（`object.setProps locked:false`），用显式 `node.move` 索引
+排定页内节点次序（底色、页码底、文字），缺失时用单子节点 `object.group` 创建
+子组/主组，幂等地把子组移入主组，最后一步重新锁定主组。该设计依据的官方实测：
+`locked` 随保存/重开持久化；锁定父组不阻塞官方 headless 命令改其子节点——面板
+照常写入，而 VectorCraft 窗口无法选中或移动物料条节点。旧的平铺文档和压缩条
+之前的 `role:"header"` 组在下次字段保存时迁移为子组；`extract_owned` 仍沿整
+个嵌套深度读取标注文字字段。
+
+页面内容同样成组：`native::group_content` 把每个新建文字（`canvas_create_text`）
+和放置的图片（`canvas_place`、`place_at`）移入该页的内容组——标注
+`role:"content_root"` 并带 board id 的组，缺失时由首个节点成组创建。官方
+`file.place` 返回 `ids`；新建 id 用 `node.move` 移入，id 不变，选择仍有效。
+
+`PageInfo.size_label`（尺寸标记）改为仅面板字段：`header::write` 不再画规格行，
+`catalog` 不再从节点读取，旧的尺寸标记节点由既有的过期字段清理在下一次保存时
+删除。该值保存在 `boards-cache.json`；两条目录重建路径
+（`refresh_cache_from_client`、autosync `rebuild_cache`）都通过
+`merge_panel_fields` 按页面 id 从旧缓存合并回来，画布保存和外部保存都不会丢。
+旧文档已画的规格行保留到下一次保存时移除。
+
+## 2026-10-22 画布点选与变换只作用于子图层
+
+官方命中测试永远报告最外层组，物料栏与内容分组之后，画布点击会选中整页内容组、
+手势移动会整组一起变换。`canvas_gesture` 现在对每个事件批次做规划：
+
+- 只有 `down`/`up` 的批次视为点击：先照常转发，再由 `native::drill_click`
+  把选区重指到指针下的子图层。它沿官方 `document.inspect` 图层树（唯一携带
+  `bounds` 的官方树，`document.json` 没有 bounds）按 z 序自上而下查找包含
+  点击点的最深层子节点，嵌套组递归进入。落在锁定组内（物料主组及其子组）的
+  点击会被取消选择：那部分内容只归页面编辑面板所有。
+- 拖拽由 `native::run_drag` 决定执行方式。按在当前显示选区之内时：显示的是
+  子图层就用 `object.move` 按节点 id 移动并保持选中（官方按压会重新抓走整组）；
+  显示的是组或多选则原样转发，用户是整体选中的。按下点在选区之外时，先发一次
+  合成点击拾取该点下的节点：拾到子图层就移动并选中；空白纸面则转发原始批次
+  （套索）；按进锁定的物料栏时吞掉这次手势。
+- 角点拖拽不再走手势通道：界面层把预测框用一次官方 `object.setBounds`
+  （`reference:0`）提交，workcrate-ui 的 `canvas_up` 对
+  `CanvasDragKind::Handle` 发送该调用。
+
+`gesture_points` 只解释纯 `down`/`drag`/`up` 批次，其余原样转发。设计依据的
+官方行为：即使目标已被选中，按压仍会重新命中测试；`document.inspect` 在
+`depth:16` 下报告 `selection`、`selectionBounds` 与带 `locked` 标记的完整图层
+树；无头会话的套索手势不产生选择（实时 GUI 保持官方套索行为）。官方测试
+`click_drill_picks_the_topmost_child_under_the_pointer` 覆盖树查找逻辑。

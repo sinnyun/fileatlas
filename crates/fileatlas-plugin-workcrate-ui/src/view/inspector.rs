@@ -368,23 +368,17 @@ impl WorkCratePanel {
             .id("workcrate-inspector")
             .relative()
             .child(super::tracking::measure("inspector", self.surfaces.clone()))
-            .h_full()
-            .w(px(310.))
-            .flex_shrink_0()
-            .min_h_0()
             .v_flex()
+            .flex_shrink_0()
             .gap_3()
             .p_3()
-            .border_l_1()
-            .border_color(rgb(theme::separator()))
-            .overflow_y_scroll()
             .child(section_card("页面信息", "画板规格", info_body))
             .child(section_card("页面内容", "同步物料栏", content_body))
             .into_any_element()
     }
 }
 
-fn section_card(label: &str, caption: &str, body: gpui::Div) -> gpui::Div {
+pub(super) fn section_card(label: &str, caption: &str, body: gpui::Div) -> gpui::Div {
     div()
         .v_flex()
         .flex_shrink_0()
@@ -416,18 +410,4 @@ fn section_card(label: &str, caption: &str, body: gpui::Div) -> gpui::Div {
                 ),
         )
         .child(body)
-}
-pub(super) fn section(label: &str) -> gpui::Div {
-    div()
-        .h_flex()
-        .items_center()
-        .gap_2()
-        .pt_2()
-        .child(
-            div()
-                .text_size(px(13.))
-                .font_semibold()
-                .child(label.to_owned()),
-        )
-        .child(div().flex_1().h(px(1.)).bg(rgb(theme::separator())))
 }

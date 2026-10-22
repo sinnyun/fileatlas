@@ -9,7 +9,7 @@ use ::gpui::{
 
 impl WorkCratePanel {
     fn canvas_down(&mut self, event: &MouseDownEvent, cx: &mut ViewContext<Self>) {
-        if self.busy || self.canvas_busy || !self.canvas_mode {
+        if self.busy || self.canvas_busy {
             return;
         }
         let (Some(map), Some(snapshot)) = (self.canvas_window_map(), self.canvas.clone()) else {
@@ -64,15 +64,35 @@ impl WorkCratePanel {
         let (Some(map), Some(drag)) = (self.canvas_window_map(), self.canvas_drag.take()) else {
             return;
         };
+        let scale = drag.is_handle().then(|| drag.predicted());
         let events = drag.finish(map.to_document(event.position));
-        self.canvas_job(
-            move |boards| {
-                boards
-                    .canvas_gesture(serde_json::Value::Array(events))
-                    .map_err(|e| e.to_string())
-            },
-            cx,
-        );
+        match scale {
+            Some(rect) => {
+                let Some(snapshot) = self.canvas.clone() else {
+                    return;
+                };
+                if snapshot.selection.is_empty() {
+                    return;
+                }
+                let ids = snapshot.selection.clone();
+                self.canvas_job(
+                    move |boards| {
+                        boards
+                            .canvas_set_bounds(&ids, &rect)
+                            .map_err(|e| e.to_string())
+                    },
+                    cx,
+                );
+            }
+            None => self.canvas_job(
+                move |boards| {
+                    boards
+                        .canvas_gesture(serde_json::Value::Array(events))
+                        .map_err(|e| e.to_string())
+                },
+                cx,
+            ),
+        }
     }
 
     pub(super) fn canvas_area(&self, cx: &mut ViewContext<Self>) -> gpui::AnyElement {
@@ -88,6 +108,40 @@ impl WorkCratePanel {
             .justify_center()
             .p_3()
             .bg(rgb(theme::surface_faint()))
+            // Explorer and other programs drop ExternalPaths; FileAtlas views drag typed payloads.
+            .drag_over::<::gpui::ExternalPaths>(|style, _, _, _| {
+                style.border_color(rgb(theme::accent_hover()))
+            })
+            .drag_over::<fileatlas_contracts::FileManagerFileDragPayload>(|style, _, _, _| {
+                style.border_color(rgb(theme::accent_hover()))
+            })
+            .drag_over::<fileatlas_contracts::FileStagingDragPayload>(|style, _, _, _| {
+                style.border_color(rgb(theme::accent_hover()))
+            })
+            .on_drop::<::gpui::ExternalPaths>(cx.listener(
+                |view, paths: &::gpui::ExternalPaths, _, cx| {
+                    view.canvas_drop_files(
+                        paths
+                            .paths()
+                            .iter()
+                            .map(|p| p.to_string_lossy().into_owned())
+                            .collect(),
+                        cx,
+                    );
+                },
+            ))
+            .on_drop::<fileatlas_contracts::FileManagerFileDragPayload>(cx.listener(
+                |view, payload: &fileatlas_contracts::FileManagerFileDragPayload, _, cx| {
+                    if payload.allows_drop() {
+                        view.canvas_drop_files(payload.paths.clone(), cx);
+                    }
+                },
+            ))
+            .on_drop::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
+                |view, payload: &fileatlas_contracts::FileStagingDragPayload, _, cx| {
+                    view.canvas_drop_files(payload.paths.clone(), cx);
+                },
+            ))
             .child(super::tracking::measure(
                 "canvas-viewport",
                 self.surfaces.clone(),
@@ -216,39 +270,10 @@ impl WorkCratePanel {
         .into_any_element()
     }
 
-    fn canvas_mode_button(
-        &self,
-        label: &str,
-        editing: bool,
-        cx: &mut ViewContext<Self>,
-    ) -> gpui::Div {
-        let id = if editing {
-            "workcrate-canvas-edit"
-        } else {
-            "workcrate-canvas-preview"
-        };
-        let button = Button::new(id.to_owned()).compact().label(label.to_owned());
-        super::tracking::control(
-            id,
-            if self.canvas_mode == editing {
-                button.primary()
-            } else {
-                button.outline()
-            }
-            .on_click(cx.listener(move |view, _, _, cx| {
-                if view.busy || view.canvas_busy {
-                    view.message = Some("画布操作进行中，请稍候…".into());
-                    cx.notify();
-                    return;
-                }
-                view.toggle_canvas_mode(editing, cx);
-            })),
-            &self.surfaces,
-        )
-    }
-
     pub(super) fn canvas_toolbar(&self, cx: &mut ViewContext<Self>) -> gpui::Div {
-        let row = div()
+        use gpui_kit::assets::IconName;
+        let divider = || div().w(px(1.)).h(px(18.)).bg(rgb(theme::separator()));
+        div()
             .h_flex()
             .flex_wrap()
             .items_center()
@@ -257,18 +282,28 @@ impl WorkCratePanel {
             .py_2()
             .border_b_1()
             .border_color(rgb(theme::separator()))
-            .child(self.canvas_mode_button("预览", false, cx))
-            .child(self.canvas_mode_button("编辑", true, cx));
-        if !self.canvas_mode {
-            return row;
-        }
-        row.child(div().w(px(1.)).h(px(18.)).bg(rgb(theme::separator())))
-            .child(self.action(
+            .child(self.screen_action(
+                "workcrate-canvas-add-image",
+                Some(IconName::ImagePlus),
+                "添加图片",
+                false,
+                |v, cx| v.canvas_pick_and_place(false, cx),
+                cx,
+            ))
+            .child(self.screen_action(
+                "workcrate-canvas-create-text",
+                Some(IconName::Type),
+                "新建文字",
+                false,
+                |v, cx| v.canvas_create_text(cx),
+                cx,
+            ))
+            .child(divider())
+            .child(self.icon_action(
                 "workcrate-canvas-zoom-out",
-                "－",
-                |v, cx| {
-                    v.set_canvas_zoom(1. / 1.25, cx);
-                },
+                IconName::ZoomOut,
+                "缩小画布",
+                |v, cx| v.set_canvas_zoom(1. / 1.25, cx),
                 cx,
             ))
             .child(
@@ -277,28 +312,45 @@ impl WorkCratePanel {
                     .text_color(rgb(theme::text_muted()))
                     .child(format!("{:.0}%", self.canvas_zoom * 100.)),
             )
-            .child(self.action(
+            .child(self.icon_action(
                 "workcrate-canvas-zoom-in",
-                "＋",
-                |v, cx| {
-                    v.set_canvas_zoom(1.25, cx);
-                },
+                IconName::ZoomIn,
+                "放大画布",
+                |v, cx| v.set_canvas_zoom(1.25, cx),
                 cx,
             ))
-            .child(div().w(px(1.)).h(px(18.)).bg(rgb(theme::separator())))
-            .child(self.action(
+            .child(divider())
+            .child(self.icon_action(
                 "workcrate-canvas-undo",
-                "撤销",
-                |v, cx| {
-                    v.canvas_undo_redo(false, cx);
-                },
+                IconName::Undo2,
+                "撤销上一步",
+                |v, cx| v.canvas_undo_redo(false, cx),
                 cx,
             ))
-            .child(self.action(
+            .child(self.icon_action(
                 "workcrate-canvas-redo",
+                IconName::Redo2,
                 "重做",
+                |v, cx| v.canvas_undo_redo(true, cx),
+                cx,
+            ))
+            .child(divider())
+            .child(self.screen_action(
+                "place-design-file",
+                Some(IconName::FilePlus),
+                "放置设计文件",
+                false,
+                |v, cx| v.place_file(cx),
+                cx,
+            ))
+            .child(self.screen_action(
+                "export-current-image",
+                Some(IconName::FileImage),
+                "导出本页图片",
+                false,
                 |v, cx| {
-                    v.canvas_undo_redo(true, cx);
+                    v.selected_pages = v.selected_board.iter().cloned().collect();
+                    v.export_catalog(true, cx);
                 },
                 cx,
             ))
@@ -309,9 +361,11 @@ impl WorkCratePanel {
                     .text_color(rgb(theme::text_muted()))
                     .child(canvas_status(self.canvas.as_ref())),
             )
-            .child(self.action(
+            .child(self.screen_action(
                 "workcrate-canvas-handoff",
+                Some(IconName::ExternalLink),
                 "在 VectorCraft 中编辑",
+                true,
                 |v, cx| v.canvas_handoff_editor(cx),
                 cx,
             ))

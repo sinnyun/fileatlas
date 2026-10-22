@@ -65,7 +65,9 @@ it a second time. Otherwise a routed session writes the page and only that
 page's catalogue record and preview are replaced (`store_page`); the other pages
 keep their existing preview files. `canvas_open_quiet(board_id)` shares
 `canvas_open`'s setup but skips the warm-up render, and `canvas_holds(board_id)`
-reports whether the open session already belongs to the page; the field-save
+reports whether the open session already belongs to the page (`Ok(false)` when
+no session is open — it previously errored; 2026-10-22 drop placement relies on
+that); the field-save
 caller uses them to warm a session silently and render exactly once, and closes
 only a session it opened itself when the draft turns out unchanged. Before any
 of this the id's association segment is compared with
@@ -134,3 +136,80 @@ then removes preview files the new map no longer references. A missing document
 is not stale: with no saved file there is nothing to read, so the cached view
 stays. Only the saved file is read; unsaved state in a running GUI becomes
 visible when the user saves it there.
+
+## 2026-10-22 drag-and-drop placement copies unreachable sources
+
+`canvas_place_dropped(board_id, source, centre)` is the drop path: it first
+tries `canvas_place(source, centre, link=true)`; when the official single read
+root makes the source unreachable (`Invalid` errors starting with "CLI
+inputs" from `automation_folder` — another volume, or folders meeting only at
+a drive root), the source is copied into `<document folder>/materials`
+(content-stamp dedupe: same name+content reuses the file, a collision becomes
+`name-<stamp>.ext`), the quiet session is reopened (the failed grant already
+closed it), and the copy is placed linked and registered as the reference.
+Grantable sources keep linking in place. MCP `canvas_place` is unchanged.
+
+## 2026-10-22 grouped material bars, content groups and panel-only size label
+
+The material bar is now grouped. Every page's band nodes (band path, page-number
+chip, all header text) live inside that page's subgroup — a group tagged
+`role:"header_page"` with the page's board id — and every subgroup lives inside
+one document-wide master group tagged `role:"header_root"` with no board id.
+`header::write` unlocks the master (`object.setProps locked:false`) at the start
+of the undo group, orders the page's nodes with explicit `node.move` indexes
+(band first, then chip, then text) instead of selection-based z-order calls,
+creates the subgroup/master as single-child `object.group`s when missing, moves
+the subgroup into the master idempotently, and re-locks the master as the last
+write. Verified official behavior behind this design: `locked` persists through
+save/reopen, and locked parents do not block official headless commands on
+their children — so the panel keeps writing while the VectorCraft GUI cannot
+select or move a band node. Legacy flat documents and the pre-compact
+`role:"header"` group migrate to subgroups on the next field save; `extract_owned`
+still reads tagged text fields through the whole nesting depth.
+
+Page content is grouped too: `native::group_content` moves every freshly created
+text (`canvas_create_text`) and placed image (`canvas_place`, `place_at`) into
+that page's content group — a group tagged `role:"content_root"` with the board
+id — creating it from the first node when absent. Official `file.place` returns
+`ids`; created ids move with `node.move`, keeping ids stable for selection.
+
+`PageInfo.size_label` (尺寸标记) is panel-only now: `header::write` no longer
+paints the 规格 row, `catalog` no longer reads it from nodes, and stale
+size-label nodes are deleted by the existing stale-field cleanup on the next
+save. The value lives in `boards-cache.json`; both catalogue rebuilds
+(`refresh_cache_from_client`, autosync `rebuild_cache`) merge it back from the
+previous cache by board id via `merge_panel_fields`, so canvas saves and external
+saves never lose it. Old documents keep their painted 规格 row until the next
+save removes it.
+
+## 2026-10-22 canvas picks and transforms stay on the child
+
+The official hit test always reports the outermost group, so after the material
+and content grouping a canvas click selected the whole page's content group and
+any gesture moved everything at once. `canvas_gesture` now plans each batch:
+
+- A still `down`/`up` pair is a click: forwarded, then `native::drill_click`
+  re-points the selection at the child under the pointer. It walks the official
+  `document.inspect` layer tree (the only official tree that carries `bounds`;
+  `document.json` has none) top-down in reverse z-order, selects the deepest
+  child whose bounds contain the point, recursing through nested groups. A
+  click that landed inside a locked group (the band master and its subgroups)
+  is deselected: the panel owns that content.
+- A drag is decided by `native::run_drag`. When the press lands inside the shown
+  selection, a shown child is moved by `object.move` on its id and re-selected
+  (the official press would re-grab the group); a shown group or multi-selection
+  is forwarded unchanged, since the user picked it as a whole. When the press
+  starts elsewhere, a synthetic click picks the node under it first: a child is
+  moved and re-selected, empty paper forwards the original marquee, and a press
+  inside the locked band swallows the gesture.
+- Handle drags never reach the gesture transport: the overlay commits its
+  predicted box with one official `object.setBounds` (`reference:0`), which the
+  workcrate-ui `canvas_up` sends for `CanvasDragKind::Handle`.
+
+`gesture_points` only interprets plain `down`/`drag`/`up` batches; anything else
+is forwarded untouched. Official facts behind this design: the press re-runs the
+hit test even when the target is already selected, `document.inspect` reports
+`selection`, `selectionBounds` and the full layer tree with `locked` flags at
+`depth:16`, and headless marquee gestures select nothing (a live GUI keeps its
+own official marquee). The ignored official test
+`click_drill_picks_the_topmost_child_under_the_pointer` covers the tree walk.

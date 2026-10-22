@@ -89,6 +89,17 @@ impl CanvasDrag {
             CanvasDragKind::Body => point,
         }
     }
+
+    /// A handle drag scales the shown selection, so its commit is the predicted box
+    /// applied as one official setBounds — the gesture press would re-hit-test and grab
+    /// the enclosing group instead of the child the user sees.
+    pub(super) fn is_handle(&self) -> bool {
+        matches!(self.kind, CanvasDragKind::Handle(_))
+    }
+
+    pub(super) fn predicted(&self) -> CanvasGeometry {
+        predict(self, self.current)
+    }
 }
 
 /// One official frame: the truth about the document plus the decoded bitmap, the
@@ -295,12 +306,90 @@ impl WorkCratePanel {
     }
 
     pub(super) fn clear_canvas_state(&mut self) {
-        self.canvas_mode = false;
         self.canvas = None;
         self.canvas_image = None;
         self.canvas_object = None;
         self.canvas_drag = None;
         self.canvas_poll += 1;
+    }
+
+    /// Validation surface for the drop path: GPUI seals the OS drag value, so MCP
+    /// hands the same file list this consumer forwards to `canvas_drop_files`.
+    pub(super) fn take_canvas_drop_request(&mut self, cx: &mut ViewContext<Self>) {
+        let Some(value) = self.surfaces.value("workcrate.canvas.drop-request") else {
+            return;
+        };
+        let _ = self.surfaces.set_value("workcrate.canvas.drop-request", "");
+        let Some(paths) = serde_json::from_str::<serde_json::Value>(&value)
+            .ok()
+            .and_then(|request| {
+                request["paths"].as_array().map(|paths| {
+                    paths
+                        .iter()
+                        .filter_map(|path| path.as_str().map(str::to_owned))
+                        .collect::<Vec<_>>()
+                })
+            })
+            .filter(|paths| !paths.is_empty())
+        else {
+            return;
+        };
+        self.drops += 1;
+        self.canvas_drop_files(paths, cx);
+    }
+
+    /// Drop images from Explorer or FileAtlas views onto the canvas: each becomes one
+    /// official linked placement registered as a project reference. Works in preview and
+    /// edit mode; the session is opened quietly when no editing session holds the page.
+    pub(super) fn canvas_drop_files(&mut self, dropped: Vec<String>, cx: &mut ViewContext<Self>) {
+        let Some(board) = self.selected_board.clone() else {
+            return;
+        };
+        let images: Vec<PathBuf> = dropped
+            .into_iter()
+            .map(PathBuf::from)
+            .filter(|path| {
+                path.extension().is_some_and(|ext| {
+                    let ext = ext.to_string_lossy().to_ascii_lowercase();
+                    super::object::IMAGE_FILTERS.contains(&ext.as_str())
+                })
+            })
+            .collect();
+        if images.is_empty() {
+            self.message = Some("拖入的内容里没有可放置的图片。".into());
+            cx.notify();
+            return;
+        }
+        if self.busy || self.canvas_busy || !self.field_saves.is_empty() {
+            self.message = Some("画布操作进行中，请稍候…".into());
+            cx.notify();
+            return;
+        }
+        self.canvas_job(
+            move |boards| {
+                if !boards.canvas_holds(&board).map_err(|e| e.to_string())? {
+                    boards
+                        .canvas_open_quiet(&board)
+                        .map_err(|e| e.to_string())?;
+                }
+                let artboard = boards.board(&board).map_err(|e| e.to_string())?;
+                let centre = [artboard.width_pt / 2., artboard.height_pt / 2.];
+                let mut snapshot = None;
+                for (index, path) in images.iter().enumerate() {
+                    let at = [
+                        centre[0] + 24. * index as f64,
+                        centre[1] + 24. * index as f64,
+                    ];
+                    snapshot = Some(
+                        boards
+                            .canvas_place_dropped(&board, path, at)
+                            .map_err(|e| e.to_string())?,
+                    );
+                }
+                snapshot.ok_or_else(|| "没有可放置的图片。".to_owned())
+            },
+            cx,
+        );
     }
 
     /// Sample the official session on a timer while the canvas is open. The timer is only
@@ -318,7 +407,7 @@ impl WorkCratePanel {
     }
 
     pub(super) fn request_canvas_probe(&mut self) -> refresh::PollResult {
-        if self.canvas.is_none() && !self.canvas_mode && !self.canvas_busy {
+        if self.canvas.is_none() && !self.canvas_busy {
             return refresh::PollResult::until(false, false);
         }
         // The open snapshot arrives through canvas_job; probing before it exists would
@@ -382,36 +471,21 @@ impl WorkCratePanel {
         }
     }
 
-    pub(super) fn toggle_canvas_mode(&mut self, editing: bool, cx: &mut ViewContext<Self>) {
-        if editing == self.canvas_mode
-            || self.busy
-            || self.canvas_busy
-            || !self.field_saves.is_empty()
-        {
+    /// The editor screen is one interface: whenever a page is shown, the official session
+    /// must hold its document. Safe to call on every entry path; a running job or an
+    /// already open session makes it a no-op.
+    pub(super) fn ensure_canvas_session(&mut self, cx: &mut ViewContext<Self>) {
+        if self.canvas.is_some() || self.canvas_busy || self.busy || !self.field_saves.is_empty() {
             return;
         }
-        self.canvas_mode = editing;
-        if self.canvas.is_some() {
-            // Preview hides editing affordances, not the live official frame.
-            self.canvas_drag = None;
-            if editing {
-                self.switch_canvas_page(cx);
-            }
-            cx.notify();
+        let Some(id) = self.selected_board.clone() else {
             return;
-        }
-        if editing {
-            let Some(id) = self.selected_board.clone() else {
-                return;
-            };
-            self.start_canvas_poller(cx);
-            self.canvas_job(
-                move |boards| boards.canvas_open(&id).map_err(|e| e.to_string()),
-                cx,
-            );
-            return;
-        }
-        cx.notify();
+        };
+        self.start_canvas_poller(cx);
+        self.canvas_job(
+            move |boards| boards.canvas_open(&id).map_err(|e| e.to_string()),
+            cx,
+        );
     }
 
     /// Show another page of the same document in the already open editor. The official

@@ -108,7 +108,8 @@ impl WorkCrateBoardsService {
         mut client: mcp::McpSession,
     ) -> Result<Vec<WorkCrateBoard>, BoardsError> {
         client.open_document(path)?;
-        let boards = native::catalog(&mut client, project, &binding)?;
+        let mut boards = native::catalog(&mut client, project, &binding)?;
+        self.merge_panel_fields(project, &mut boards);
         let previews = self.make_previews(&mut client, &boards)?;
         self.write_cache(
             project,

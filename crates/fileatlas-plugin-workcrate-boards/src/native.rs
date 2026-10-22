@@ -250,7 +250,6 @@ pub(crate) fn catalog(
                     "material" => info.material = node.text.clone(),
                     "size" => info.size = node.text.clone(),
                     "quantity" => info.quantity = node.text.clone(),
-                    "size_label" => info.size_label = node.text.clone(),
                     "project_name" => {
                         if !node.inherited {
                             info.project_name_override = Some(node.text.clone())
@@ -285,25 +284,290 @@ pub(crate) struct HeaderNode {
     pub inherited: bool,
 }
 pub(crate) type Fields = BTreeMap<u64, BTreeMap<String, HeaderNode>>;
-/// Everything FileAtlas owns on one artboard: the text fields plus the band rectangle and,
-/// in documents written before the compact band, the single group that wrapped the block.
+/// Everything FileAtlas owns on one artboard: the text fields plus the band rectangle and
+/// the groups around them. `page_group` wraps this page's whole material band inside the
+/// document-wide master; `content_group` holds the artwork the user added to this page.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct OwnedNodes {
     pub fields: BTreeMap<String, HeaderNode>,
     pub band: Option<u64>,
     pub chip: Option<u64>,
     pub legacy_group: Option<u64>,
+    pub page_group: Option<u64>,
+    pub content_group: Option<u64>,
+}
+/// One document-wide scan: every artboard's owned nodes plus the master group that wraps
+/// all pages' material bands (locked so only FileAtlas can edit it).
+#[derive(Clone, Debug, Default)]
+pub(crate) struct OwnedLayout {
+    pub boards: BTreeMap<u64, OwnedNodes>,
+    pub header_root: Option<u64>,
 }
 pub(crate) fn header_fields(c: &mut impl NativeProtocol) -> Result<Fields, BoardsError> {
-    Ok(owned_by_board(c)?
+    Ok(owned_layout(c)?
+        .boards
         .into_iter()
         .map(|(board, owned)| (board, owned.fields))
         .collect())
 }
 pub(crate) fn owned(c: &mut impl NativeProtocol, board: u64) -> Result<OwnedNodes, BoardsError> {
-    Ok(owned_by_board(c)?.remove(&board).unwrap_or_default())
+    Ok(owned_layout(c)?.boards.remove(&board).unwrap_or_default())
 }
-fn owned_by_board(c: &mut impl NativeProtocol) -> Result<BTreeMap<u64, OwnedNodes>, BoardsError> {
+pub(crate) fn header_root(c: &mut impl NativeProtocol) -> Result<Option<u64>, BoardsError> {
+    Ok(owned_layout(c)?.header_root)
+}
+/// Mark one node as FileAtlas-owned. `board` scopes the node to one artboard; the
+/// document-wide master group carries no board. `inherited` only annotates the printed
+/// project name.
+pub(crate) fn tag_node(
+    c: &mut impl NativeProtocol,
+    id: u64,
+    role: &str,
+    board: Option<u64>,
+    inherited: bool,
+) -> Result<(), BoardsError> {
+    let mut note = json!({"namespace":"fileatlas.workcrate","version":1,"role":role});
+    if let Some(board) = board {
+        note["board"] = json!(board);
+    }
+    if inherited {
+        note["inherited"] = json!(true);
+    }
+    let written = c.execute("attributes.set", json!({"id":id,"note":note.to_string()}))?;
+    if written["changed"].as_u64() != Some(1) {
+        return Err(BoardsError::Protocol(
+            "官方程序未能记录该节点的归属，请重新同步页面后再保存".into(),
+        ));
+    }
+    Ok(())
+}
+/// Move freshly created content (a placed image, a new text) into the page's content
+/// group, creating that group from the first node the page receives.
+pub(crate) fn group_content(
+    c: &mut impl NativeProtocol,
+    board: u64,
+    created: &[u64],
+) -> Result<(), BoardsError> {
+    if created.is_empty() {
+        return Ok(());
+    }
+    let group = owned(c, board)?.content_group;
+    match group {
+        Some(group) => {
+            for node in created {
+                c.execute("node.move", json!({"id":node,"parent":group}))?;
+            }
+        }
+        None => {
+            let created_group = c.execute("object.group", json!({"ids":created}))?;
+            let id = created_group["id"]
+                .as_u64()
+                .ok_or_else(|| BoardsError::Protocol("官方程序未创建页面内容组，请重试".into()))?;
+            tag_node(c, id, "content_root", Some(board), false)?;
+        }
+    }
+    // Grouping and moving deselect everything, so restore the created ids: the overlay's
+    // object panel must keep showing the node the user just made.
+    c.execute("select.set", json!({"ids":created}))?;
+    Ok(())
+}
+/// Re-point an official click selection at the layer under the pointer. The official hit
+/// test reports the outermost group, so a click on grouped content would select and drag
+/// the whole page's content as one piece; FileAtlas walks the group's children instead and
+/// selects the deepest one under the click. A click that landed inside a locked group —
+/// the material band's master and its subgroups — selects nothing: the panel owns those.
+pub(crate) fn drill_click(
+    c: &mut impl NativeProtocol,
+    point: (f64, f64),
+) -> Result<(), BoardsError> {
+    // `document.json` carries no bounds; the inspect layer tree does, together with the
+    // selection this click produced.
+    let inspect = c.request("document.inspect", json!({"depth":16}))?;
+    let selected = inspect["selection"]
+        .as_array()
+        .and_then(|ids| match ids.as_slice() {
+            [one] => one.as_u64(),
+            _ => None,
+        });
+    let Some(id) = selected else {
+        return Ok(());
+    };
+    let layers = inspect["layers"]
+        .as_array()
+        .ok_or_else(|| BoardsError::Protocol("native layer tree missing".into()))?;
+    let Some((node, enclosed)) = locate(layers, id, false) else {
+        return Ok(());
+    };
+    if enclosed {
+        c.execute("select.none", json!({}))?;
+        return Ok(());
+    }
+    if !node["kind"]
+        .as_str()
+        .is_some_and(|kind| kind.eq_ignore_ascii_case("group"))
+    {
+        return Ok(());
+    }
+    if let Some(child) = deepest_at(node, point)
+        && child != id
+    {
+        c.execute("select.set", json!({"ids":[child]}))?;
+    }
+    Ok(())
+}
+/// Execute one drag whose press lands at `down` and whose pointer ends `delta` away,
+/// with `original` as the raw event batch. The official hit test re-selects the
+/// outermost group at the press, so forwarding the batch would move the whole page's
+/// content group; FileAtlas moves the child the overlay shows instead, picks the child
+/// under the press when the drag starts elsewhere, and forwards only the batches the
+/// official engine already handles right (a marquee from empty paper, a shown group).
+pub(crate) fn run_drag(
+    c: &mut impl NativeProtocol,
+    down: (f64, f64),
+    delta: (f64, f64),
+    original: &Value,
+) -> Result<(), BoardsError> {
+    let inspect = c.request("document.inspect", json!({"depth":16}))?;
+    let layers = inspect["layers"]
+        .as_array()
+        .ok_or_else(|| BoardsError::Protocol("native layer tree missing".into()))?;
+    let selection = selection_ids(&inspect);
+    let shown = bounds_contains(&inspect["selectionBounds"], down);
+    if shown && !selection.is_empty() {
+        let whole = match selection.as_slice() {
+            [one] => locate(layers, *one, false).is_some_and(|(node, locked)| {
+                !locked
+                    && node["kind"]
+                        .as_str()
+                        .is_some_and(|k| k.eq_ignore_ascii_case("group"))
+            }),
+            _ => true,
+        };
+        if whole {
+            c.request("pointer_gesture", json!({"events":original}))?;
+            return Ok(());
+        }
+        if let [one] = selection.as_slice() {
+            let Some((_, locked)) = locate(layers, *one, false) else {
+                return Ok(());
+            };
+            if !locked {
+                move_node(c, *one, delta)?;
+            }
+        }
+        return Ok(());
+    }
+    // The drag starts elsewhere: pick what the press lands on with a synthetic click.
+    c.request(
+        "pointer_gesture",
+        json!({"events":[{"kind":"down","x":down.0,"y":down.1},{"kind":"up","x":down.0,"y":down.1}]}),
+    )?;
+    let picked = c.request("document.inspect", json!({"depth":16}))?;
+    let picked_layers = picked["layers"]
+        .as_array()
+        .ok_or_else(|| BoardsError::Protocol("native layer tree missing".into()))?;
+    match selection_ids(&picked).as_slice() {
+        // Empty paper: the drag was a marquee, which the official engine runs itself.
+        [] => {
+            c.request("pointer_gesture", json!({"events":original}))?;
+        }
+        [one] => {
+            let Some((node, locked)) = locate(picked_layers, *one, false) else {
+                return Ok(());
+            };
+            if locked {
+                // The press landed in the material band: the panel owns it.
+                return Ok(());
+            }
+            let target = match node["kind"]
+                .as_str()
+                .is_some_and(|k| k.eq_ignore_ascii_case("group"))
+            {
+                true => deepest_at(node, down).unwrap_or(*one),
+                false => *one,
+            };
+            c.execute(
+                "object.move",
+                json!({"ids":[target],"dx":delta.0,"dy":delta.1}),
+            )?;
+            c.execute("select.set", json!({"ids":[target]}))?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+/// Move one node by a pointer delta, keeping it selected for the overlay's object panel.
+fn move_node(c: &mut impl NativeProtocol, id: u64, delta: (f64, f64)) -> Result<(), BoardsError> {
+    c.execute("object.move", json!({"ids":[id],"dx":delta.0,"dy":delta.1}))?;
+    c.execute("select.set", json!({"ids":[id]}))?;
+    Ok(())
+}
+fn selection_ids(inspect: &Value) -> Vec<u64> {
+    inspect["selection"]
+        .as_array()
+        .map(|ids| ids.iter().filter_map(Value::as_u64).collect())
+        .unwrap_or_default()
+}
+fn bounds_contains(bounds: &Value, point: (f64, f64)) -> bool {
+    let (Some(x), Some(y), Some(width), Some(height)) = (
+        bounds["x"].as_f64(),
+        bounds["y"].as_f64(),
+        bounds["width"].as_f64(),
+        bounds["height"].as_f64(),
+    ) else {
+        return false;
+    };
+    point.0 >= x && point.0 <= x + width && point.1 >= y && point.1 <= y + height
+}
+/// Find `id` in the official inspect layer tree, reporting whether a locked group
+/// encloses it.
+fn locate(layers: &[Value], id: u64, locked: bool) -> Option<(&Value, bool)> {
+    for layer in layers {
+        let here = locked || layer["locked"].as_bool().unwrap_or(false);
+        if layer["id"].as_u64() == Some(id) {
+            return Some((layer, here));
+        }
+        if let Some(found) = locate(
+            layer["children"]
+                .as_array()
+                .map(Vec::as_slice)
+                .unwrap_or(&[]),
+            id,
+            here,
+        ) {
+            return Some(found);
+        }
+    }
+    None
+}
+/// The deepest child of `node` whose bounds contain `point`, topmost first; document
+/// order is z-order, so later children sit above earlier ones.
+fn deepest_at(node: &Value, point: (f64, f64)) -> Option<u64> {
+    let children = node["children"].as_array()?;
+    children.iter().rev().find_map(|child| {
+        let bounds = &child["bounds"];
+        let (x, y, width, height) = (
+            bounds["x"].as_f64()?,
+            bounds["y"].as_f64()?,
+            bounds["width"].as_f64()?,
+            bounds["height"].as_f64()?,
+        );
+        let inside = point.0 >= x && point.0 <= x + width && point.1 >= y && point.1 <= y + height;
+        if !inside {
+            return None;
+        }
+        child["id"].as_u64().map(|id| {
+            match child["kind"]
+                .as_str()
+                .is_some_and(|k| k.eq_ignore_ascii_case("group"))
+            {
+                true => deepest_at(child, point).unwrap_or(id),
+                false => id,
+            }
+        })
+    })
+}
+fn owned_layout(c: &mut impl NativeProtocol) -> Result<OwnedLayout, BoardsError> {
     extract_owned(&c.execute("document.json", json!({}))?)
 }
 fn note_of(node: &Value) -> Option<Value> {
@@ -311,10 +575,10 @@ fn note_of(node: &Value) -> Option<Value> {
     let parsed = serde_json::from_str::<Value>(note).ok()?;
     (parsed["namespace"] == "fileatlas.workcrate" && parsed["version"] == 1).then_some(parsed)
 }
-fn extract_owned(document: &Value) -> Result<BTreeMap<u64, OwnedNodes>, BoardsError> {
+fn extract_owned(document: &Value) -> Result<OwnedLayout, BoardsError> {
     fn visit(
         node: &Value,
-        out: &mut BTreeMap<u64, OwnedNodes>,
+        out: &mut OwnedLayout,
         count: &mut usize,
         depth: usize,
     ) -> Result<(), BoardsError> {
@@ -332,7 +596,7 @@ fn extract_owned(document: &Value) -> Result<BTreeMap<u64, OwnedNodes>, BoardsEr
             if let (Some(board), Some(role), Some(id)) =
                 (board, note["role"].as_str(), node["id"].as_u64())
             {
-                let owned = out.entry(board).or_default();
+                let owned = out.boards.entry(board).or_default();
                 match kind {
                     "text" => {
                         let runs = node["kind"]["runs"]
@@ -362,8 +626,16 @@ fn extract_owned(document: &Value) -> Result<BTreeMap<u64, OwnedNodes>, BoardsEr
                     "path" if role == "band" => owned.band = Some(id),
                     "path" if role == "page_number_chip" => owned.chip = Some(id),
                     "group" if role == "header" => owned.legacy_group = Some(id),
+                    "group" if role == "header_page" => owned.page_group = Some(id),
+                    "group" if role == "content_root" => owned.content_group = Some(id),
                     _ => {}
                 }
+            }
+            // The master group wraps every page's band, so it carries no board id.
+            if note["role"] == "header_root"
+                && let Some(id) = node["id"].as_u64()
+            {
+                out.header_root = Some(id);
             }
         }
         if let Some(children) = node["kind"]["children"].as_array() {
@@ -373,15 +645,15 @@ fn extract_owned(document: &Value) -> Result<BTreeMap<u64, OwnedNodes>, BoardsEr
         }
         Ok(())
     }
-    let mut owned = BTreeMap::new();
+    let mut out = OwnedLayout::default();
     let mut count = 0;
     for layer in document["layers"]
         .as_array()
         .ok_or_else(|| BoardsError::Protocol("native layers missing".into()))?
     {
-        visit(layer, &mut owned, &mut count, 0)?
+        visit(layer, &mut out, &mut count, 0)?
     }
-    Ok(owned)
+    Ok(out)
 }
 /// The topmost official layer reserved for header nodes, created when a document has none.
 pub(crate) fn header_layer(c: &mut impl NativeProtocol) -> Result<u64, BoardsError> {
@@ -426,11 +698,13 @@ mod tests {
             tagged(3,"text",json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"project_name","inherited":true}),Some("全局名")),
         ]});
         let owned = extract_owned(&value)?;
-        assert_eq!(owned[&7].fields["material"].text, "中文123");
-        assert_eq!(owned[&7].fields["material"].inherited, false);
-        assert_eq!(owned[&7].fields["project_name"].text, "全局名");
-        assert_eq!(owned[&7].fields["project_name"].inherited, true);
-        assert_eq!(owned[&7].band, None);
+        let page = &owned.boards[&7];
+        assert_eq!(page.fields["material"].text, "中文123");
+        assert_eq!(page.fields["material"].inherited, false);
+        assert_eq!(page.fields["project_name"].text, "全局名");
+        assert_eq!(page.fields["project_name"].inherited, true);
+        assert_eq!(page.band, None);
+        assert_eq!(owned.header_root, None);
         Ok(())
     }
     #[test]
@@ -454,10 +728,47 @@ mod tests {
             None,
         );
         let owned = extract_owned(&json!({"layers":[band,chip,legacy]}))?;
-        assert_eq!(owned[&7].band, Some(4));
-        assert_eq!(owned[&7].chip, Some(6));
-        assert_eq!(owned[&7].legacy_group, Some(5));
-        assert!(owned[&7].fields.is_empty());
+        assert_eq!(owned.boards[&7].band, Some(4));
+        assert_eq!(owned.boards[&7].chip, Some(6));
+        assert_eq!(owned.boards[&7].legacy_group, Some(5));
+        assert!(owned.boards[&7].fields.is_empty());
+        Ok(())
+    }
+    #[test]
+    fn page_content_groups_and_master_are_reported() -> Result<(), BoardsError> {
+        let subgroup = tagged(
+            4,
+            "group",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"header_page"}),
+            None,
+        );
+        let content = tagged(
+            5,
+            "group",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":7,"role":"content_root"}),
+            None,
+        );
+        // The master wraps every page's band, so it carries no board id of its own.
+        let master = tagged(
+            6,
+            "group",
+            json!({"namespace":"fileatlas.workcrate","version":1,"role":"header_root"}),
+            None,
+        );
+        let other = tagged(
+            7,
+            "group",
+            json!({"namespace":"fileatlas.workcrate","version":1,"board":8,"role":"header_page"}),
+            None,
+        );
+        let owned = extract_owned(&json!({"layers":[
+            json!({"id":9,"kind":{"type":"group","children":[subgroup]}}),
+            content, master, other,
+        ]}))?;
+        assert_eq!(owned.boards[&7].page_group, Some(4));
+        assert_eq!(owned.boards[&7].content_group, Some(5));
+        assert_eq!(owned.boards[&8].page_group, Some(7));
+        assert_eq!(owned.header_root, Some(6));
         Ok(())
     }
     #[test]
@@ -470,7 +781,7 @@ mod tests {
         );
         let group = json!({"id":9,"kind":{"type":"group","children":[text]}});
         let owned = extract_owned(&json!({"layers":[group]}))?;
-        assert_eq!(owned[&7].fields["size"].id, 3);
+        assert_eq!(owned.boards[&7].fields["size"].id, 3);
         Ok(())
     }
     #[test]
@@ -484,6 +795,39 @@ mod tests {
             )
         };
         assert!(extract_owned(&json!({"layers":[node(1),node(2)]})).is_err());
+    }
+    #[test]
+    fn click_drill_picks_the_topmost_child_under_the_pointer() {
+        let boxed = |id: u64, kind: &str, x: f64, y: f64| json!({"id":id,"kind":kind,"locked":false,"bounds":{"x":x,"y":y,"width":100.,"height":50.}});
+        let nested = json!({
+            "id":3,"kind":"Group","locked":false,
+            "children":[boxed(4,"Image",10.,10.),boxed(5,"Type",10.,10.)],
+            "bounds":{"x":0.,"y":0.,"width":200.,"height":100.},
+        });
+        let content = json!({
+            "id":2,"kind":"Group","locked":false,
+            "children":[boxed(6,"Path",0.,80.),nested],
+            "bounds":{"x":0.,"y":0.,"width":200.,"height":150.},
+        });
+        let layers = vec![boxed(1, "Path", 300., 0.), content.clone()];
+        // Later children sit above earlier ones, so the text over the image wins.
+        assert_eq!(deepest_at(&content, (15., 15.)), Some(5));
+        // Inside the nested group's bounds but on none of its children: the group itself.
+        assert_eq!(deepest_at(&content, (50., 90.)), Some(3));
+        assert_eq!(deepest_at(&content, (150., 140.)), None);
+        // Locked groups (the material band's master) and their children are reported so
+        // the drill can deselect them instead.
+        let header =
+            json!({"id":7,"kind":"Group","locked":true,"children":[boxed(9,"Type",10.,10.)]});
+        assert_eq!(
+            locate(&layers, 5, false).map(|(node, locked)| (node["id"].as_u64(), locked)),
+            Some((Some(5), false))
+        );
+        assert_eq!(
+            locate(&[header], 9, false).map(|(_, locked)| locked),
+            Some(true)
+        );
+        assert_eq!(locate(&layers, 99, false), None);
     }
     #[test]
     fn resource_diagnostics_summarize_missing_files_and_repair_steps() {

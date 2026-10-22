@@ -447,6 +447,7 @@ impl NativeProtocol for McpSession {
         let (tool, args) = match method {
             "engine.commands" => ("command_list", params),
             "document.inspect" => ("doc_inspect", params),
+            "pointer_gesture" => ("pointer_gesture", params),
             "app.open" => ("open_file", params),
             "app.save" => ("save_file", params),
             "app.export" => ("export", params),
