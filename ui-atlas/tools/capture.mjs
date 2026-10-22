@@ -38,5 +38,6 @@ for (const mode of ['dark', 'light']) {
 }
 
 run(process.execPath, [path.join(paths.tokens, '..', 'tools', 'tokens.mjs'), '--import', '.local/validation/profiles'], '令牌生成');
-run(process.execPath, [path.join(repo, 'ui-atlas/tools/build.mjs')], '目录重建');
+run(process.execPath, [path.join(paths.root, 'tools', 'icons.mjs')], '图标同步');
+run(process.execPath, [path.join(paths.root, 'tools', 'build.mjs')], '目录重建');
 console.log('ui-atlas: 令牌与截图基准已按实机刷新。');

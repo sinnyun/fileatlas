@@ -1,5 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800" font-family="Segoe UI" role="img" aria-label="FileAtlas 主工作台单栏布局，含图标栏、侧栏、浏览栏、检查器与状态带">
   <!-- FA:TOKENS:BEGIN --><style>:root{--fa-surface-base:#ffffff;--fa-surface-panel:#ffffff;--fa-surface-card:#f5f5f5;--fa-surface-elevated:#e5e5e5;--fa-surface-modal:#ffffff;--fa-surface-faint:#f5f5f5;--fa-surface-audio:#ffffff;--fa-surface-extreme:#f5f5f5;--fa-surface-rail:#fafafa;--fa-surface-sidebar:#fafafa;--fa-surface-region:#f5f5f5;--fa-surface-group-header:#fafafa;--fa-surface-group-header-hover:#f5f5f5;--fa-text-primary:#0a0a0a;--fa-text-secondary:#737373;--fa-text-muted:#737373;--fa-separator:#e5e5e5;--fa-control-box:#e5e5e5;--fa-control-box-hover:#e5e5e5;--fa-control-box-pressed:#e5e5e5;--fa-danger:#ef4444;--fa-danger-hover:#f15757;--fa-danger-text:#0a0a0a;--fa-warning:#eab308;--fa-warning-text:#0a0a0a;--fa-success:#22c55e;--fa-success-text:#0a0a0a;--fa-star:#eab308;--fa-star-text:#0a0a0a;--fa-info:#06b6d4;--fa-info-text:#0a0a0a;--fa-category:#1d4ed8;--fa-category-text:#1d4ed8;--fa-branch-alternate:#1d4ed8;--fa-branch-alternate-text:#1d4ed8;--fa-data:#1e40af;--fa-data-text:#1e40af;--fa-accent:#171717;--fa-accent-hover:#262626;--fa-accent-text:#171717;--fa-selection-color:#f5f5f5;--fa-selection-text:#171717;--fa-text-on-accent:#fafafa;--fa-text-on-danger:#fafafa;--fa-text-on-warning:#fafafa;--fa-text-on-success:#fafafa;--fa-media-badge-background:#ffffff;--fa-text-on-media-badge:#0a0a0a;--fa-star-on-media-badge:#0a0a0a;--fa-separator-light:#e5e5e5ff;--fa-fill-subtle:#f5f5f5ff;--fa-fill-hover:#f5f5f5ff;--fa-fill-active:#e5e5e5b3;--fa-fill-transparent-overlay:#0a0a0a00;--fa-region-edge:#e5e5e5ff;--fa-scrim:#0000000d;--fa-border-strong:#60a5faff;--fa-media-scrim:#ffffffff;--fa-media-scrim-strong:#ffffffff;--fa-tooltip-surface:#ffffffff;--fa-shadow-overlay:#0000000d;--fa-track-shadow:#e5e5e5ff;--fa-track-highlight:#0a0a0aff;--fa-track-active:#171717ff;--fa-hairline:#e5e5e5ff;--fa-border:#e5e5e5ff;--fa-native-background:#ffffff;--fa-native-foreground:#0a0a0a;--fa-native-border:#e5e5e5;--fa-native-input:#e5e5e5;--fa-native-ring:#a3a3a3;--fa-native-primary:#171717;--fa-native-primary-hover:#262626;--fa-native-primary-active:#0a0a0a;--fa-native-primary-foreground:#fafafa;--fa-native-accent:#f5f5f5;--fa-native-accent-foreground:#171717;--fa-native-secondary:#e5e5e5;--fa-native-secondary-hover:#e5e5e5;--fa-native-secondary-active:#d4d4d4;--fa-native-secondary-foreground:#171717;--fa-native-muted:#f5f5f5;--fa-native-muted-foreground:#737373;--fa-native-popover:#ffffff;--fa-native-popover-foreground:#0a0a0a;--fa-native-button:#ffffff;--fa-native-button-hover:#e5e5e5;--fa-native-button-active:#e5e5e5;--fa-native-button-foreground:#0a0a0a;--fa-native-button-primary:#171717;--fa-native-button-primary-hover:#262626;--fa-native-button-primary-active:#0a0a0a;--fa-native-button-primary-foreground:#fafafa;--fa-native-button-danger:#ef4444;--fa-native-button-danger-hover:#ef4444;--fa-native-button-danger-active:#ef4444;--fa-native-button-danger-foreground:#ef4444;--fa-native-danger:#ef4444;--fa-native-danger-hover:#f15757;--fa-native-danger-active:#ed2828;--fa-native-danger-foreground:#fafafa;--fa-native-warning:#eab308;--fa-native-success:#22c55e;--fa-native-info:#06b6d4;--fa-native-link:#171717;--fa-native-link-hover:#171717;--fa-native-selection:#55a0fc;--fa-native-sidebar:#fafafa;--fa-native-sidebar-border:#e5e5e5;--fa-native-sidebar-accent:#e5e5e5;--fa-native-sidebar-foreground:#171717;--fa-native-group-box:#f5f5f5;--fa-native-group-box-foreground:#171717;--fa-native-title-bar:#f8f8f8;--fa-native-title-bar-border:#e5e5e5;--fa-native-status-bar:#f8f8f8;--fa-native-tab-bar:#f5f5f5;--fa-native-tab-bar-segmented:#f5f5f5;--fa-native-tab:#000000;--fa-native-tab-active:#ffffff;--fa-native-tab-active-foreground:#171717;--fa-native-tab-foreground:#404040;--fa-native-table:#ffffff;--fa-native-table-head:#fafafa;--fa-native-table-head-foreground:#737373;--fa-native-table-hover:#f5f5f5;--fa-native-table-even:#fafafa;--fa-native-table-active:#bfdbfe;--fa-native-table-row-border:#e5e5e5;--fa-native-table-foot:#fafafa;--fa-native-list:#ffffff;--fa-native-list-hover:#f5f5f5;--fa-native-list-active:#bfdbfe;--fa-native-list-active-border:#60a5fa;--fa-native-list-even:#fafafa;--fa-native-list-head:#fafafa;--fa-native-switch:#d4d4d4;--fa-native-switch-thumb:#ffffff;--fa-native-slider-bar:#171717;--fa-native-slider-thumb:#ffffff;--fa-native-progress-bar:#171717;--fa-native-skeleton:#f5f5f5;--fa-native-scrollbar:#fafafa;--fa-native-scrollbar-thumb:#a3a3a3;--fa-native-scrollbar-thumb-hover:#a3a3a3;--fa-native-drag-border:#171717;--fa-native-drop-target:#3b82f6;--fa-native-accordion:#ffffff;--fa-native-caret:#0a0a0a;--fa-native-overlay:#000000;--fa-default-accent-name:Workbench Blue;--fa-system-accent-name:System;--fa-space-1:4px;--fa-space-2:8px;--fa-space-3:12px;--fa-space-4:16px;--fa-panel-gap:10px;--fa-nav-row-height:40px;--fa-action-height:38px;--fa-icon-button-size:30px;--fa-window-width:1280px;--fa-window-height:800px;--fa-window-min-width:960px;--fa-window-min-height:600px;--fa-window-work-area-fraction:0.85px;--fa-title-band-height:56px;--fa-status-bar-height:40px;--fa-sidebar-width:264px;--fa-sidebar-min-width:200px;--fa-sidebar-max-width:400px;--fa-sidebar-row-height:30px;--fa-sidebar-arrow-slot:18px;--fa-group-header-height:40px;--fa-group-header-gap:10px;--fa-group-top-gap:18px;--fa-region-header-height:26px;--fa-inspector-width:300px;--fa-search-field-height:32px;--fa-filter-chip-height:30px;--fa-thumb-size-min:80px;--fa-thumb-size-max:300px;--fa-thumb-size-default:150px;--fa-thumb-slider-width:116px;--fa-source-font-size-button:13px;--fa-source-item-spacing-x:8px;--fa-source-item-spacing-y:6px;--fa-source-button-padding-x:12px;--fa-source-button-padding-y:5px;--fa-source-menu-margin-x:10px;--fa-source-menu-margin-y:8px;--fa-source-window-margin:14px;--fa-source-scrollbar-width:7px;--fa-selection-bar-width:3px;--fa-round-sm:4px;--fa-round-md:6px;--fa-round-lg:8px;--fa-round-xl:10px;--fa-round-pill:999px;--fa-thumb-round:6px;--fa-font-size-tiny:11px;--fa-font-size-small:12px;--fa-font-size-body:14px;--fa-font-size-button:14px;--fa-font-size-heading:15px;--fa-font-size-title:18px;--fa-ui-font-family:Segoe UI;--fa-settings-font-family:Microsoft YaHei UI;--fa-settings-nav-width:224px;--fa-settings-content-padding:40px;--fa-settings-title-size:24px;--fa-settings-section-size:16px;--fa-settings-control-height:36px;--fa-semibold-font-family:Segoe UI Semibold;--fa-icon-size-small:12px;--fa-icon-size-default:16px;--fa-icon-size-large:20px;--fa-icon-size-empty-state:40px;--fa-region-depth-border:border;--fa-region-depth-shadow:shadow;}@media (prefers-color-scheme:dark){:root{--fa-surface-base:#0a0a0a;--fa-surface-panel:#0a0a0a;--fa-surface-card:#0a0a0a;--fa-surface-elevated:#262626;--fa-surface-modal:#0a0a0a;--fa-surface-faint:#262626;--fa-surface-audio:#0a0a0a;--fa-surface-extreme:#262626;--fa-surface-rail:#0a0a0a;--fa-surface-sidebar:#0a0a0a;--fa-surface-region:#0a0a0a;--fa-surface-group-header:#171717;--fa-surface-group-header-hover:#262626;--fa-text-primary:#fafafa;--fa-text-secondary:#a3a3a3;--fa-text-muted:#a3a3a3;--fa-separator:#262626;--fa-control-box:#2f2f2f;--fa-control-box-hover:#2f2f2f;--fa-control-box-pressed:#2f2f2f;--fa-danger:#f87171;--fa-danger-hover:#e06767;--fa-danger-text:#f87171;--fa-warning:#facc15;--fa-warning-text:#facc15;--fa-success:#4ade80;--fa-success-text:#4ade80;--fa-star:#facc15;--fa-star-text:#facc15;--fa-info:#22d3ee;--fa-info-text:#22d3ee;--fa-category:#1d4ed8;--fa-category-text:#fafafa;--fa-branch-alternate:#1d4ed8;--fa-branch-alternate-text:#fafafa;--fa-data:#1e40af;--fa-data-text:#fafafa;--fa-accent:#fafafa;--fa-accent-hover:#f5f5f5;--fa-accent-text:#fafafa;--fa-selection-color:#262626;--fa-selection-text:#fafafa;--fa-text-on-accent:#171717;--fa-text-on-danger:#dc2626;--fa-text-on-warning:#ca8a04;--fa-text-on-success:#16a34a;--fa-media-badge-background:#0a0a0a;--fa-text-on-media-badge:#fafafa;--fa-star-on-media-badge:#fafafa;--fa-separator-light:#262626ff;--fa-fill-subtle:#262626ff;--fa-fill-hover:#26262699;--fa-fill-active:#2f2f2fb3;--fa-fill-transparent-overlay:#fafafa00;--fa-region-edge:#262626ff;--fa-scrim:#00000033;--fa-border-strong:#1d4ed8ff;--fa-media-scrim:#0a0a0aff;--fa-media-scrim-strong:#0a0a0aff;--fa-tooltip-surface:#0a0a0aff;--fa-shadow-overlay:#00000033;--fa-track-shadow:#262626ff;--fa-track-highlight:#fafafaff;--fa-track-active:#fafafaff;--fa-hairline:#262626ff;--fa-border:#262626ff;--fa-native-background:#0a0a0a;--fa-native-foreground:#fafafa;--fa-native-border:#262626;--fa-native-input:#2f2f2f;--fa-native-ring:#737373;--fa-native-primary:#fafafa;--fa-native-primary-hover:#f5f5f5;--fa-native-primary-active:#e5e5e5;--fa-native-primary-foreground:#171717;--fa-native-accent:#262626;--fa-native-accent-foreground:#fafafa;--fa-native-secondary:#262626;--fa-native-secondary-hover:#292929;--fa-native-secondary-active:#212121;--fa-native-secondary-foreground:#fafafa;--fa-native-muted:#262626;--fa-native-muted-foreground:#a3a3a3;--fa-native-popover:#0a0a0a;--fa-native-popover-foreground:#fafafa;--fa-native-button:#2f2f2f;--fa-native-button-hover:#2f2f2f;--fa-native-button-active:#2f2f2f;--fa-native-button-foreground:#fafafa;--fa-native-button-primary:#fafafa;--fa-native-button-primary-hover:#f5f5f5;--fa-native-button-primary-active:#e5e5e5;--fa-native-button-primary-foreground:#171717;--fa-native-button-danger:#f87171;--fa-native-button-danger-hover:#f87171;--fa-native-button-danger-active:#f87171;--fa-native-button-danger-foreground:#f87171;--fa-native-danger:#f87171;--fa-native-danger-hover:#e06767;--fa-native-danger-active:#f52c2c;--fa-native-danger-foreground:#dc2626;--fa-native-warning:#facc15;--fa-native-success:#4ade80;--fa-native-info:#22d3ee;--fa-native-link:#fafafa;--fa-native-link-hover:#fafafa;--fa-native-selection:#1d4ed8;--fa-native-sidebar:#0a0a0a;--fa-native-sidebar-border:#262626;--fa-native-sidebar-accent:#262626;--fa-native-sidebar-foreground:#f5f5f5;--fa-native-group-box:#0a0a0a;--fa-native-group-box-foreground:#fafafa;--fa-native-title-bar:#171717;--fa-native-title-bar-border:#262626;--fa-native-status-bar:#171717;--fa-native-tab-bar:#171717;--fa-native-tab-bar-segmented:#171717;--fa-native-tab:#000000;--fa-native-tab-active:#0a0a0a;--fa-native-tab-active-foreground:#fafafa;--fa-native-tab-foreground:#d4d4d4;--fa-native-table:#0a0a0a;--fa-native-table-head:#171717;--fa-native-table-head-foreground:#525252;--fa-native-table-hover:#262626;--fa-native-table-even:#171717;--fa-native-table-active:#1e40af;--fa-native-table-row-border:#262626;--fa-native-table-foot:#171717;--fa-native-list:#0a0a0a;--fa-native-list-hover:#262626;--fa-native-list-active:#1e40af;--fa-native-list-active-border:#1d4ed8;--fa-native-list-even:#171717;--fa-native-list-head:#171717;--fa-native-switch:#404040;--fa-native-switch-thumb:#0a0a0a;--fa-native-slider-bar:#fafafa;--fa-native-slider-thumb:#0a0a0a;--fa-native-progress-bar:#fafafa;--fa-native-skeleton:#171717;--fa-native-scrollbar:#171717;--fa-native-scrollbar-thumb:#525252;--fa-native-scrollbar-thumb-hover:#525252;--fa-native-drag-border:#fafafa;--fa-native-drop-target:#3b82f6;--fa-native-accordion:#0a0a0a;--fa-native-caret:#fafafa;--fa-native-overlay:#000000;}}</style><!-- FA:TOKENS:END -->
+  <!-- FA:ICONS:BEGIN --><defs><symbol id="fa-icon-app-window" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" />
+  <path d="M10 4v4" />
+  <path d="M2 8h20" />
+  <path d="M6 4v4" /></symbol><symbol id="fa-icon-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7" />
+  <path d="M19 12H5" /></symbol><symbol id="fa-icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" />
+  <path d="m12 5 7 7-7 7" /></symbol><symbol id="fa-icon-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" />
+  <path d="M12 19V5" /></symbol><symbol id="fa-icon-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" />
+  <circle cx="12" cy="13" r="3" /></symbol><symbol id="fa-icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol><symbol id="fa-icon-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol><symbol id="fa-icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></symbol><symbol id="fa-icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" /></symbol><symbol id="fa-icon-folder-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></symbol><symbol id="fa-icon-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" />
+  <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+  <path d="M2 12h20" /></symbol><symbol id="fa-icon-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+  <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></symbol><symbol id="fa-icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" />
+  <path d="M12 16v-4" />
+  <path d="M12 8h.01" /></symbol><symbol id="fa-icon-layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" />
+  <rect width="7" height="7" x="14" y="3" rx="1" />
+  <rect width="7" height="7" x="14" y="14" rx="1" />
+  <rect width="7" height="7" x="3" y="14" rx="1" /></symbol><symbol id="fa-icon-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01" />
+  <path d="M3 12h.01" />
+  <path d="M3 19h.01" />
+  <path d="M8 5h13" />
+  <path d="M8 12h13" />
+  <path d="M8 19h13" /></symbol><symbol id="fa-icon-loader" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4" />
+  <path d="m16.2 7.8 2.9-2.9" />
+  <path d="M18 12h4" />
+  <path d="m16.2 16.2 2.9 2.9" />
+  <path d="M12 18v4" />
+  <path d="m4.9 19.1 2.9-2.9" />
+  <path d="M2 12h4" />
+  <path d="m4.9 4.9 2.9 2.9" /></symbol><symbol id="fa-icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" />
+  <path d="M12 5v14" /></symbol><symbol id="fa-icon-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z" /></symbol><symbol id="fa-icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34" />
+  <circle cx="11" cy="11" r="8" /></symbol><symbol id="fa-icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" />
+  <circle cx="12" cy="12" r="3" /></symbol><symbol id="fa-icon-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /></symbol><symbol id="fa-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" />
+  <path d="M12 2v2" />
+  <path d="M12 20v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="m17.66 17.66 1.41 1.41" />
+  <path d="M2 12h2" />
+  <path d="M20 12h2" />
+  <path d="m6.34 17.66-1.41 1.41" />
+  <path d="m19.07 4.93-1.41 1.41" /></symbol><symbol id="fa-icon-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+  <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></symbol><symbol id="fa-icon-toggle-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="3" />
+  <rect width="20" height="14" x="2" y="5" rx="7" /></symbol><symbol id="fa-icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" />
+  <path d="m6 6 12 12" /></symbol></defs><!-- FA:ICONS:END -->
 <rect width="1280" height="800" fill="var(--fa-surface-base)"/>
 
   <!-- 系统标题条 32 -->
@@ -18,45 +61,42 @@
     <rect y="32" width="1280" height="56" fill="var(--fa-surface-panel)"/>
     <rect y="87" width="1280" height="1" fill="var(--fa-separator)"/>
     <rect x="12" y="46" width="28" height="28" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-    <path d="M19 60 h14 M26 53 v14" stroke="var(--fa-text-secondary)" stroke-width="1.4"/>
-    <circle cx="58" cy="60" r="10" fill="none" stroke="var(--fa-text-primary)" stroke-width="1.4"/>
-    <path d="M52 60 h12 M58 54 c4 4 4 8 0 12 M58 54 c-4 4 -4 8 0 12" stroke="var(--fa-text-primary)" stroke-width="1"/>
+    <use href="#fa-icon-plus" x="18" y="52" width="16" height="16" color="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-globe" x="48" y="50" width="20" height="20" color="var(--fa-text-primary)"/>
     <text x="76" y="65" font-size="15" font-weight="600" fill="var(--fa-text-primary)">FileAtlas</text>
 
     <g font-size="12" fill="var(--fa-text-secondary)">
       <rect x="176" y="45" width="96" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="190" y="64">全部类型</text><path d="M258 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="190" y="64">全部类型</text><use href="#fa-icon-chevron-down" x="256" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="280" y="45" width="76" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="294" y="64">标签</text><path d="M340 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="294" y="64">标签</text><use href="#fa-icon-chevron-down" x="338" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="364" y="45" width="96" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="378" y="64">扩展名</text><path d="M442 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="378" y="64">扩展名</text><use href="#fa-icon-chevron-down" x="440" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="468" y="45" width="76" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="482" y="64">日期</text><path d="M528 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="482" y="64">日期</text><use href="#fa-icon-chevron-down" x="526" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="552" y="45" width="76" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="566" y="64">评分</text><path d="M612 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="566" y="64">评分</text><use href="#fa-icon-chevron-down" x="610" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="636" y="45" width="104" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <text x="650" y="64">最新优先</text><path d="M722 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="650" y="64">最新优先</text><use href="#fa-icon-chevron-down" x="720" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
       <rect x="748" y="45" width="104" height="30" rx="6" fill="var(--fa-control-box)" stroke="var(--fa-separator)"/>
-      <text x="762" y="64" fill="var(--fa-text-primary)">按月分组</text><path d="M834 58 l4 4 l4 -4" fill="none" stroke="var(--fa-text-muted)"/>
+      <text x="762" y="64" fill="var(--fa-text-primary)">按月分组</text><use href="#fa-icon-chevron-down" x="832" y="54" width="12" height="12" color="var(--fa-text-muted)"/>
     </g>
 
-    <g stroke="var(--fa-text-secondary)" fill="none" stroke-width="1.3">
-      <rect x="1000" y="50" width="6" height="6"/><rect x="1009" y="50" width="6" height="6"/>
-      <rect x="1000" y="59" width="6" height="6"/><rect x="1009" y="59" width="6" height="6"/>
-      <path d="M1030 52 h14 M1030 58 h14 M1030 64 h14"/>
-      <rect x="1060" y="50" width="14" height="14" rx="2"/>
-      <path d="M1086 55 l4 4 l4 -4"/>
-      <circle cx="1110" cy="59" r="6"/><path d="M1103 59 h14"/>
+    <g>
+      <use href="#fa-icon-layout-grid" x="1000" y="52" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <use href="#fa-icon-list" x="1029" y="52" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <use href="#fa-icon-square" x="1059" y="52" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <use href="#fa-icon-chevron-down" x="1082" y="53" width="14" height="14" color="var(--fa-text-secondary)"/>
+      <use href="#fa-icon-toggle-left" x="1102" y="52" width="16" height="16" color="var(--fa-text-secondary)"/>
     </g>
     <g>
       <rect x="1128" y="58" width="72" height="3" rx="1.5" fill="var(--fa-native-slider-bar)"/>
       <circle cx="1152" cy="59.5" r="6" fill="var(--fa-native-slider-thumb)" stroke="var(--fa-separator)"/>
-      <path d="M1186 56 l5 4 l-5 4" fill="none" stroke="var(--fa-text-secondary)"/>
+      <use href="#fa-icon-chevron-right" x="1183" y="53" width="14" height="14" color="var(--fa-text-secondary)"/>
     </g>
     <g>
       <rect x="1200" y="44" width="68" height="32" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-      <circle cx="1216" cy="59" r="5" fill="none" stroke="var(--fa-text-muted)"/>
-      <path d="M1220 63 l4 4" stroke="var(--fa-text-muted)"/>
+      <use href="#fa-icon-search" x="1208" y="52" width="16" height="16" color="var(--fa-text-muted)"/>
       <text x="1230" y="64" font-size="12" fill="var(--fa-text-muted)">搜索文件</text>
     </g>
   </g>
@@ -67,17 +107,17 @@
     <rect x="47" y="88" width="1" height="672" fill="var(--fa-separator)"/>
     <rect x="4" y="104" width="40" height="44" rx="6" fill="var(--fa-accent)"/>
     <g font-size="11" text-anchor="middle">
-      <g fill="var(--fa-text-on-accent)"><path d="M16 116 h16 v12 h-16 z" fill="none" stroke="var(--fa-text-on-accent)"/><text x="24" y="142">文件夹</text></g>
-      <g fill="var(--fa-text-secondary)"><path d="M17 166 l10 0 l6 6 l-10 10 l-10 -10 z" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="194">标签</text></g>
-      <g fill="var(--fa-text-secondary)"><path d="M18 214 v14 M18 220 h8 M18 226 h8" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="242">项目树</text></g>
-      <g fill="var(--fa-text-secondary)"><rect x="16" y="262" width="7" height="7" fill="none" stroke="var(--fa-text-secondary)"/><rect x="25" y="262" width="7" height="7" fill="none" stroke="var(--fa-text-secondary)"/><rect x="16" y="271" width="7" height="7" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="290">扩展</text></g>
-      <g fill="var(--fa-text-secondary)"><rect x="15" y="310" width="18" height="13" rx="2" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="338">程序</text></g>
-      <g fill="var(--fa-text-secondary)"><rect x="17" y="358" width="14" height="16" rx="2" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="386">剪贴板</text></g>
-      <g fill="var(--fa-text-secondary)"><path d="M15 410 h18 l-2 10 h-14 z" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="434">截图</text></g>
-      <g fill="var(--fa-text-secondary)"><path d="M15 456 h18 v12 h-18 z M15 456 l4 -6 h10 l4 6" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="482">暂存篮</text></g>
-      <g fill="var(--fa-text-secondary)"><path d="M16 504 h16 v14 h-16 z M16 504 v-4 h8" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="530">项目</text></g>
-      <g fill="var(--fa-text-secondary)"><circle cx="24" y="0" cy="700" r="7" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="716">主题</text></g>
-      <g fill="var(--fa-text-secondary)"><circle cx="24" cy="732" r="7" fill="none" stroke="var(--fa-text-secondary)"/><text x="24" y="748">设置</text></g>
+      <use href="#fa-icon-folder" x="16" y="114" width="16" height="16" color="var(--fa-text-on-accent)"/><text x="24" y="142" fill="var(--fa-text-on-accent)">文件夹</text>
+      <use href="#fa-icon-tag" x="16" y="164" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="194" fill="var(--fa-text-secondary)">标签</text>
+      <use href="#fa-icon-list" x="16" y="212" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="242" fill="var(--fa-text-secondary)">项目树</text>
+      <use href="#fa-icon-puzzle" x="16" y="260" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="290" fill="var(--fa-text-secondary)">扩展</text>
+      <use href="#fa-icon-app-window" x="15" y="308" width="18" height="18" color="var(--fa-text-secondary)"/><text x="24" y="338" fill="var(--fa-text-secondary)">程序</text>
+      <use href="#fa-icon-clipboard" x="16" y="356" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="386" fill="var(--fa-text-secondary)">剪贴板</text>
+      <use href="#fa-icon-camera" x="16" y="408" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="434" fill="var(--fa-text-secondary)">截图</text>
+      <use href="#fa-icon-inbox" x="16" y="456" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="482" fill="var(--fa-text-secondary)">暂存篮</text>
+      <use href="#fa-icon-folder-open" x="16" y="504" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="530" fill="var(--fa-text-secondary)">项目</text>
+      <use href="#fa-icon-sun" x="16" y="692" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="716" fill="var(--fa-text-secondary)">主题</text>
+      <use href="#fa-icon-settings" x="16" y="724" width="16" height="16" color="var(--fa-text-secondary)"/><text x="24" y="748" fill="var(--fa-text-secondary)">设置</text>
     </g>
   </g>
 
@@ -85,33 +125,33 @@
   <g>
     <rect x="48" y="88" width="264" height="672" fill="var(--fa-surface-sidebar)"/>
     <rect x="311" y="88" width="1" height="672" fill="var(--fa-separator)"/>
-    <path d="M60 112 l4 4 l4 -4" fill="none" stroke="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-chevron-down" x="58" y="106" width="12" height="12" color="var(--fa-text-secondary)"/>
     <text x="76" y="119" font-size="12" font-weight="600" fill="var(--fa-text-primary)">驱动器</text>
     <text x="266" y="119" font-size="12" fill="var(--fa-text-muted)">⋯</text>
-    <circle cx="288" cy="115" r="7" fill="none" stroke="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-loader" x="281" y="108" width="14" height="14" color="var(--fa-text-secondary)"/>
     <text x="60" y="139" font-size="11" fill="var(--fa-text-muted)">正在加载驱动器…</text>
     <rect x="56" y="150" width="248" height="1" fill="var(--fa-hairline)"/>
-    <path d="M60 176 l4 4 l4 -4" fill="none" stroke="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-chevron-down" x="58" y="170" width="12" height="12" color="var(--fa-text-secondary)"/>
     <text x="76" y="183" font-size="12" font-weight="600" fill="var(--fa-text-primary)">快速访问</text>
     <text x="266" y="183" font-size="12" fill="var(--fa-text-muted)">⋯</text>
-    <path d="M282 179 h12 M288 173 v12" stroke="var(--fa-text-secondary)" stroke-width="1.3"/>
+    <use href="#fa-icon-plus" x="282" y="173" width="12" height="12" color="var(--fa-text-secondary)"/>
     <rect x="56" y="196" width="248" height="30" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
     <text x="180" y="215" font-size="12" text-anchor="middle" fill="var(--fa-text-secondary)">＋ 新建分组</text>
   </g>
 
   <!-- 浏览栏：地址行 + 空状态 -->
   <g>
-    <path d="M330 116 l-7 -7 l7 -7 M352 109 l7 -7 l-7 -7 M378 112 l7 -7 l7 7 M385 105 v10" fill="none" stroke="var(--fa-text-muted)" stroke-width="1.3"/>
+    <use href="#fa-icon-arrow-left" x="318" y="101" width="16" height="16" color="var(--fa-text-muted)"/>
+    <use href="#fa-icon-arrow-right" x="351" y="101" width="16" height="16" color="var(--fa-text-muted)"/>
+    <use href="#fa-icon-arrow-up" x="377" y="101" width="16" height="16" color="var(--fa-text-muted)"/>
     <rect x="404" y="94" width="540" height="32" rx="6" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
     <text x="418" y="114" font-size="12" fill="var(--fa-text-muted)">Folder path</text>
     <text x="956" y="114" font-size="12" fill="var(--fa-text-secondary)">Go</text>
-    <path d="M986 104 h12 v10 h-12 z M986 104 l3 -3 h6 l3 3" fill="none" stroke="var(--fa-text-secondary)"/>
-    <circle cx="1022" cy="110" r="7" fill="none" stroke="var(--fa-text-secondary)"/>
-    <path d="M1022 105 v5 l4 2" fill="none" stroke="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-folder-open" x="983" y="102" width="16" height="16" color="var(--fa-text-secondary)"/>
     <rect x="324" y="132" width="620" height="1" fill="var(--fa-hairline)"/>
 
     <g>
-      <path d="M600 430 h44 l8 10 h52 v40 h-104 z" fill="none" stroke="var(--fa-star)" stroke-width="2.4"/>
+      <use href="#fa-icon-folder-open" x="614" y="424" width="40" height="40" color="var(--fa-text-muted)"/>
       <text x="634" y="500" font-size="14" text-anchor="middle" fill="var(--fa-text-secondary)">此文件夹为空</text>
     </g>
   </g>
@@ -121,13 +161,11 @@
     <rect x="960" y="88" width="300" height="672" fill="var(--fa-surface-panel)"/>
     <rect x="960" y="88" width="1" height="672" fill="var(--fa-separator)"/>
     <text x="976" y="115" font-size="14" font-weight="600" fill="var(--fa-text-primary)">程序信息</text>
-    <path d="M1234 105 l10 10 M1244 105 l-10 10" stroke="var(--fa-text-muted)" stroke-width="1.3"/>
+    <use href="#fa-icon-x" x="1231" y="101" width="14" height="14" color="var(--fa-text-muted)"/>
 
     <rect x="976" y="128" width="268" height="82" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
     <rect x="992" y="144" width="48" height="48" rx="8" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-    <rect x="1002" y="156" width="28" height="24" rx="2" fill="none" stroke="var(--fa-text-secondary)"/>
-    <circle cx="1010" cy="163" r="3" fill="var(--fa-text-secondary)"/>
-    <path d="M1002 176 l9 -8 l7 6 l6 -5 l6 7" fill="none" stroke="var(--fa-text-secondary)"/>
+    <use href="#fa-icon-app-window" x="1002" y="154" width="28" height="28" color="var(--fa-text-secondary)"/>
     <text x="1052" y="164" font-size="15" font-weight="600" fill="var(--fa-text-primary)">FileAtlas</text>
     <text x="1052" y="184" font-size="12" fill="var(--fa-text-muted)">本地文件浏览与管理</text>
 
@@ -161,8 +199,7 @@
 
     <text x="976" y="654" font-size="15" font-weight="600" fill="var(--fa-text-primary)">使用提示</text>
     <rect x="976" y="666" width="268" height="66" rx="8" fill="var(--fa-surface-faint)" stroke="var(--fa-separator)"/>
-    <circle cx="996" cy="690" r="7" fill="none" stroke="var(--fa-text-secondary)"/>
-    <path d="M996 686 v0.5 M996 689 v6" stroke="var(--fa-text-secondary)" stroke-width="1.4"/>
+    <use href="#fa-icon-info" x="989" y="683" width="14" height="14" color="var(--fa-text-secondary)"/>
     <text x="1012" y="692" font-size="12" fill="var(--fa-text-secondary)">在左侧选择文件夹或标签查看详情</text>
     <text x="1012" y="712" font-size="12" fill="var(--fa-text-secondary)">，或选择文件查看文件信息。</text>
   </g>

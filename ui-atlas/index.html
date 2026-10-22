@@ -28,6 +28,17 @@
       <main id="main"></main>
       <aside class="detail" id="detail" hidden></aside>
     </div>
+    <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="viewer-title">
+      <div class="viewer-bar">
+        <strong id="viewer-title"></strong>
+        <span class="chip" id="viewer-version"></span>
+        <span class="spacer"></span>
+        <button id="viewer-theme" class="ghost">切换明暗</button>
+        <button id="viewer-fullscreen" class="ghost">浏览器全屏</button>
+        <button id="viewer-close" class="ghost">关闭 (Esc)</button>
+      </div>
+      <div class="viewer-stage" id="viewer-stage"></div>
+    </div>
     <script src="catalog/data.js"></script>
     <script src="catalog/sources.js"></script>
     <script src="app/gallery.js"></script>

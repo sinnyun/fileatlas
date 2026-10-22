@@ -8,8 +8,10 @@
 1. 颜色：实机 GPUI Kit 主题的角色解析值，由 FileAtlas MCP `get_ui_state.theme.roles`
    在同一进程内导出（暗色 `Default Dark`、亮色 `Default Light` 各一次）。
 2. 几何：`crates/fileatlas-ui-bridge/src/theme.rs` 的公开常量，由脚本直接解析，不手抄。
-3. 结构与状态：实机窗口截图（`.local/validation/profiles/ui-tokens-*/window-*.png`）
-   与对应 crate 的渲染代码。三者冲突时，以实机为准并回写清单。
+3. 图标：扫描 `crates/` 中全部 `IconName::` 引用，从产品实际依赖的
+   `gpui-kit-assets`（Lucide，ISC）复制同名 SVG 到 `icons/`。**不手绘图标**。
+4. 结构与状态：实机窗口截图（`.local/validation/profiles/ui-tokens-*/window-*.png`）
+   与对应 crate 的渲染代码。四者冲突时，以实机为准并回写清单。
 
 刷新令牌与截图：
 
@@ -24,12 +26,13 @@ node ui-atlas/tools/capture.mjs
 index.html            画廊（file:// 直接打开为只读）
 app/                  画廊脚本与样式；tokens.css 为生成文件
 tokens/               geometry.json + theme.light.json + theme.dark.json
+icons/                产品实际使用的 Lucide 图标（gpui-kit-assets 原样复制）+ index.json
 catalog/inventory.json 全量条目清单（唯一人工维护的登记表）
 catalog/manifest.json  版本登记（生成）
 catalog/data.js        画廊离线数据（生成）
 catalog/sources.js     全部 SVG 源（生成）
 svg/<分类>/<id>.svg    描摹产物
-tools/                tokens / build / serve / capture
+tools/                tokens / icons / build / serve / capture
 ```
 
 ## 编写规范
@@ -42,15 +45,19 @@ tools/                tokens / build / serve / capture
   几何常量同样可用，如 `--fa-space-3`、`--fa-round-md`、`--fa-action-height`。
 - 尺寸取自 theme.rs：控件高 32/36/38/40，图标按钮 30，圆角 4/6/8/10，间距 4/8/12/16，
   字号 11/12/14/15/18，侧栏 264，检查器 300，标题带 56，状态带 40，浮窗标题栏 36。
+- 图标一律引用产品同源的 Lucide 库，不手绘近似图形：
+  `<use href="#fa-icon-search" x="12" y="14" width="16" height="16" color="var(--fa-text-muted)"/>`。
+  可用名称见 `icons/index.json` 的 `icons` 或 `icons/*.svg` 文件名；构建时会把所用 symbol
+  注入每个 SVG 的 `FA:ICONS` 块，引用不存在的图标会直接报错。
 - 组件必须画全实际存在的状态（默认/悬停/按下/选中/禁用/焦点中适用者），并在图内用小字标注状态名。
 - 一个条目一个文件；同一控件的多状态放在同一张图里并排展示，不拆成多文件。
 
 ## 版本规则
 
 - 新文件首次入库：`1.0.0`。
-- 内容哈希变化（不含机器管理的令牌块）：修订号 `+0.0.1`。
+- 内容哈希变化（不含机器管理的 `FA:TOKENS`、`FA:ICONS` 块）：修订号 `+0.0.1`。
 - `viewBox` 尺寸变化：次版本号 `+0.1.0`。
-- 主题令牌刷新只改写文件头部的 `FA:TOKENS` 块，不触发版本变化。
+- 主题令牌或图标库刷新只改写文件头部的机器块，不触发版本变化；改动 `<use>` 引用才算内容变化。
 - 每次有任何变化，`catalogRevision` 自增，条目 `history` 追加一条（版本、哈希、时间、说明）。
 - 触发方式：网页内保存（`POST /api/save`）、`node tools/build.mjs`、或 `npm run check` 后手动构建。
 
@@ -58,10 +65,11 @@ tools/                tokens / build / serve / capture
 
 ```bash
 npm run tokens     # 由 theme.rs 与实机转储重新生成令牌与 tokens.css
-npm run build      # 嵌入令牌块、校验、升版本、刷新 catalog
+npm run icons      # 按 crates/ 的 IconName 引用同步 gpui-kit-assets 图标
+npm run build      # 嵌入令牌/图标块、校验、升版本、刷新 catalog
 npm run check      # 只校验不写盘（CI/自检用）
 npm run serve      # http://127.0.0.1:8181/ ，开启网页内编辑回写
-npm run capture    # 跑实机 MCP 导出亮/暗令牌与窗口截图
+npm run capture    # 跑实机 MCP 导出令牌与截图，然后同步图标并重建
 ```
 
 ## 网页能做什么
@@ -69,6 +77,8 @@ npm run capture    # 跑实机 MCP 导出亮/暗令牌与窗口截图
 - 按「完整界面 / 区域部件 / 原子控件 / 对话框 / 状态与反馈」分类浏览，支持搜索与状态过滤。
 - 明暗切换：SVG 只引用令牌，切换即整库换肤。
 - 条目详情显示归属 crate、源文件、规格、尺寸、哈希、更新时间与完整版本历史。
+- 全屏查看：卡片悬停出现「全屏」，详情页也有「全屏查看」；单张 SVG 撑满窗口，
+  可切换明暗、进入浏览器原生全屏，Esc 或「关闭」退出。
 - 待描摹条目以虚线卡片显示其规格与归属，覆盖进度实时统计，未描摹的一律不标成完成。
 - 编辑区直接改 SVG 源码，保存后写回磁盘并自动升版本，页面即时反映新版本。
 

@@ -9,6 +9,7 @@
   },
   "scripts": {
     "tokens": "node tools/tokens.mjs",
+    "icons": "node tools/icons.mjs",
     "build": "node tools/build.mjs",
     "check": "node tools/build.mjs --check",
     "serve": "node tools/serve.mjs",

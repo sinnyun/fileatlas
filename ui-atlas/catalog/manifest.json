@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T20:43:42.704Z",
-  "catalogRevision": 4,
+  "generatedAt": "2026-10-22T23:12:57.093Z",
+  "catalogRevision": 7,
   "app": {
     "name": "FileAtlas",
     "themeLight": "Default Light",
@@ -689,13 +689,13 @@
   },
   "stats": {
     "total": 108,
-    "traced": 3,
-    "todo": 105,
+    "traced": 24,
+    "todo": 84,
     "missing": 0,
     "categories": {
       "原子控件": {
         "total": 30,
-        "traced": 1
+        "traced": 22
       },
       "区域部件": {
         "total": 26,
@@ -716,6 +716,114 @@
     }
   },
   "entries": {
+    "atom/button-compact": {
+      "id": "atom/button-compact",
+      "title": "紧凑按钮",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "gpui-kit Button compact",
+      "source": [],
+      "ref": null,
+      "spec": "高 30，内边距 12/5",
+      "status": "traced",
+      "file": "svg/atom/button-compact.svg",
+      "version": "1.0.0",
+      "sha256": "efbfce5cd96976ab",
+      "size": {
+        "width": 468,
+        "height": 152
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "efbfce5cd96976ab",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/button-danger": {
+      "id": "atom/button-danger",
+      "title": "危险操作按钮",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "gpui-kit Button .danger()",
+      "source": [],
+      "ref": null,
+      "spec": "底色 danger，前景 text_on_danger，悬停 danger_hover",
+      "status": "traced",
+      "file": "svg/atom/button-danger.svg",
+      "version": "1.0.0",
+      "sha256": "ed6f2396aa4b740a",
+      "size": {
+        "width": 468,
+        "height": 152
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "ed6f2396aa4b740a",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/button-ghost": {
+      "id": "atom/button-ghost",
+      "title": "文字按钮",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "gpui-kit Button",
+      "source": [],
+      "ref": null,
+      "spec": "无底色，悬停 fill_hover",
+      "status": "traced",
+      "file": "svg/atom/button-ghost.svg",
+      "version": "1.0.0",
+      "sha256": "b666652ff30217e4",
+      "size": {
+        "width": 600,
+        "height": 156
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "b666652ff30217e4",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/button-outline": {
+      "id": "atom/button-outline",
+      "title": "次级描边按钮",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "fileatlas-ui-bridge::components",
+      "source": [],
+      "ref": null,
+      "spec": "描边用 control_box，文字 text_primary；六态",
+      "status": "traced",
+      "file": "svg/atom/button-outline.svg",
+      "version": "1.0.0",
+      "sha256": "c5fe31964a85cfc9",
+      "size": {
+        "width": 600,
+        "height": 156
+      },
+      "updatedAt": "2026-10-22T23:01:36.535Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "c5fe31964a85cfc9",
+          "at": "2026-10-22T23:01:36.535Z",
+          "note": "描摹次级描边按钮"
+        }
+      ]
+    },
     "atom/button-primary": {
       "id": "atom/button-primary",
       "title": "主按钮",
@@ -729,13 +837,13 @@
       "spec": "高 38（ACTION_HEIGHT），圆角 6，字号 14；默认/悬停/按下/选中/禁用/焦点六态",
       "status": "traced",
       "file": "svg/atom/button-primary.svg",
-      "version": "1.0.2",
-      "sha256": "56c7700b0b337901",
+      "version": "1.0.3",
+      "sha256": "cc7516b0c9e6d205",
       "size": {
         "width": 468,
         "height": 152
       },
-      "updatedAt": "2026-10-22T20:43:42.704Z",
+      "updatedAt": "2026-10-22T22:49:04.761Z",
       "history": [
         {
           "version": "1.0.0",
@@ -754,6 +862,477 @@
           "sha": "56c7700b0b337901",
           "at": "2026-10-22T20:43:42.704Z",
           "note": "还原为原内容"
+        },
+        {
+          "version": "1.0.3",
+          "sha": "cc7516b0c9e6d205",
+          "at": "2026-10-22T22:49:04.761Z",
+          "note": "图标改用 gpui-kit-assets 的 Lucide 图标库"
+        }
+      ]
+    },
+    "atom/checkbox": {
+      "id": "atom/checkbox",
+      "title": "复选框",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "gpui-kit Checkbox",
+      "source": [],
+      "ref": null,
+      "spec": "未选/悬停/选中/禁用/焦点",
+      "status": "traced",
+      "file": "svg/atom/checkbox.svg",
+      "version": "1.0.0",
+      "sha256": "9bd9d82f7e64dc66",
+      "size": {
+        "width": 448,
+        "height": 152
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "9bd9d82f7e64dc66",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/color-swatch": {
+      "id": "atom/color-swatch",
+      "title": "色板选择",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "gpui-kit ColorSelect",
+      "source": [],
+      "ref": null,
+      "spec": "Swatches 控件与 ColorSelect 色块，选中描 border_strong",
+      "status": "traced",
+      "file": "svg/atom/color-swatch.svg",
+      "version": "1.0.0",
+      "sha256": "d67918e6035c05c0",
+      "size": {
+        "width": 560,
+        "height": 310
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "d67918e6035c05c0",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/format-badge": {
+      "id": "atom/format-badge",
+      "title": "媒体格式角标",
+      "category": "原子控件",
+      "group": "标签",
+      "owner": "file-manager view/card.rs",
+      "source": [
+        "crates/fileatlas-plugin-file-manager/src/view/card.rs"
+      ],
+      "ref": null,
+      "spec": "底 media_badge_background，前景 text_on_media_badge，扩展名分色",
+      "status": "traced",
+      "file": "svg/atom/format-badge.svg",
+      "version": "1.0.0",
+      "sha256": "db08ef73360e757e",
+      "size": {
+        "width": 600,
+        "height": 240
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "db08ef73360e757e",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/icon-button": {
+      "id": "atom/icon-button",
+      "title": "图标按钮",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "components::icon_button",
+      "source": [
+        "crates/fileatlas-ui-bridge/src/components"
+      ],
+      "ref": null,
+      "spec": "30×30，Lucide 16；悬停/按下/禁用/焦点",
+      "status": "traced",
+      "file": "svg/atom/icon-button.svg",
+      "version": "1.0.0",
+      "sha256": "a6fb275fd3684ae7",
+      "size": {
+        "width": 300,
+        "height": 194
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "a6fb275fd3684ae7",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/link-text": {
+      "id": "atom/link-text",
+      "title": "链接文字",
+      "category": "原子控件",
+      "group": "文字",
+      "owner": "theme::accent_text",
+      "source": [],
+      "ref": null,
+      "spec": "link 角色，悬停 link.hover",
+      "status": "traced",
+      "file": "svg/atom/link-text.svg",
+      "version": "1.0.0",
+      "sha256": "0354094049b2fee5",
+      "size": {
+        "width": 560,
+        "height": 242
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "0354094049b2fee5",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/nav-button": {
+      "id": "atom/nav-button",
+      "title": "导航按钮行",
+      "category": "原子控件",
+      "group": "按钮",
+      "owner": "components::nav_button",
+      "source": [],
+      "ref": null,
+      "spec": "高 40（NAV_ROW_HEIGHT），选中保留 hover 色",
+      "status": "traced",
+      "file": "svg/atom/nav-button.svg",
+      "version": "1.0.0",
+      "sha256": "676de2110c108251",
+      "size": {
+        "width": 532,
+        "height": 184
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "676de2110c108251",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/radio-group": {
+      "id": "atom/radio-group",
+      "title": "单选组",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "settings_page Radios",
+      "source": [],
+      "ref": null,
+      "spec": "Radios 控件，行内标签",
+      "status": "traced",
+      "file": "svg/atom/radio-group.svg",
+      "version": "1.0.0",
+      "sha256": "e7c524a0d240ea3d",
+      "size": {
+        "width": 640,
+        "height": 200
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "e7c524a0d240ea3d",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/search-input": {
+      "id": "atom/search-input",
+      "title": "搜索输入框",
+      "category": "原子控件",
+      "group": "输入",
+      "owner": "components::search_input",
+      "source": [],
+      "ref": null,
+      "spec": "高 32，搜索图标 16、清除按钮、原生焦点环",
+      "status": "traced",
+      "file": "svg/atom/search-input.svg",
+      "version": "1.0.0",
+      "sha256": "442efaa8245d715e",
+      "size": {
+        "width": 612,
+        "height": 160
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "442efaa8245d715e",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/segmented": {
+      "id": "atom/segmented",
+      "title": "分段选择",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "settings_page Segments",
+      "source": [],
+      "ref": null,
+      "spec": "tab_bar.segmented 底色，选中段抬升",
+      "status": "traced",
+      "file": "svg/atom/segmented.svg",
+      "version": "1.0.0",
+      "sha256": "7a1fcf8e019de124",
+      "size": {
+        "width": 480,
+        "height": 216
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "7a1fcf8e019de124",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/select": {
+      "id": "atom/select",
+      "title": "下拉选择",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "settings_page Select",
+      "source": [],
+      "ref": null,
+      "spec": "闭合态 + 展开菜单态",
+      "status": "traced",
+      "file": "svg/atom/select.svg",
+      "version": "1.0.0",
+      "sha256": "fc279e729e903bbb",
+      "size": {
+        "width": 668,
+        "height": 300
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "fc279e729e903bbb",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/slider": {
+      "id": "atom/slider",
+      "title": "滑杆",
+      "category": "原子控件",
+      "group": "输入",
+      "owner": "file-manager view/sliders.rs",
+      "source": [],
+      "ref": null,
+      "spec": "轨道 track_shadow/track_highlight，已填充 track_active，滑块宽 116（THUMB_SLIDER_WIDTH）",
+      "status": "traced",
+      "file": "svg/atom/slider.svg",
+      "version": "1.0.0",
+      "sha256": "b8ae8a677c9fc8f0",
+      "size": {
+        "width": 560,
+        "height": 248
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "b8ae8a677c9fc8f0",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/star-rating": {
+      "id": "atom/star-rating",
+      "title": "评分星标",
+      "category": "原子控件",
+      "group": "标签",
+      "owner": "file-manager",
+      "source": [],
+      "ref": null,
+      "spec": "star 色，媒体图上用 star_on_media_badge",
+      "status": "traced",
+      "file": "svg/atom/star-rating.svg",
+      "version": "1.0.0",
+      "sha256": "475ccf95ea865faf",
+      "size": {
+        "width": 600,
+        "height": 238
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "475ccf95ea865faf",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/tag-capsule": {
+      "id": "atom/tag-capsule",
+      "title": "标签胶囊",
+      "category": "原子控件",
+      "group": "标签",
+      "owner": "tag_capsule::TagCapsule",
+      "source": [
+        "crates/fileatlas-ui-bridge/src/tag_capsule.rs"
+      ],
+      "ref": null,
+      "spec": "标准 24 高 / 紧凑 18 高，含图标、名称、选中态与用户自定义色",
+      "status": "traced",
+      "file": "svg/atom/tag-capsule.svg",
+      "version": "1.0.0",
+      "sha256": "a6fb77e0f5ae837e",
+      "size": {
+        "width": 600,
+        "height": 192
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "a6fb77e0f5ae837e",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/text-input": {
+      "id": "atom/text-input",
+      "title": "单行输入框",
+      "category": "原子控件",
+      "group": "输入",
+      "owner": "components::text_input",
+      "source": [],
+      "ref": null,
+      "spec": "高 32（SEARCH_FIELD_HEIGHT），边框 input=separator，底 surface_faint，圆角 6",
+      "status": "traced",
+      "file": "svg/atom/text-input.svg",
+      "version": "1.0.0",
+      "sha256": "fa98f9d55fd646be",
+      "size": {
+        "width": 612,
+        "height": 160
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "fa98f9d55fd646be",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/textarea": {
+      "id": "atom/textarea",
+      "title": "多行文本框",
+      "category": "原子控件",
+      "group": "输入",
+      "owner": "components::textarea",
+      "source": [],
+      "ref": null,
+      "spec": "保留 Kit 原生外观与焦点，不套私画边框",
+      "status": "traced",
+      "file": "svg/atom/textarea.svg",
+      "version": "1.0.0",
+      "sha256": "2c7df84ce601e2bd",
+      "size": {
+        "width": 792,
+        "height": 150
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "2c7df84ce601e2bd",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/toggle": {
+      "id": "atom/toggle",
+      "title": "开关",
+      "category": "原子控件",
+      "group": "选择",
+      "owner": "settings_page Toggle/InlineToggle",
+      "source": [],
+      "ref": null,
+      "spec": "控件高 36，开关底 switch.background",
+      "status": "traced",
+      "file": "svg/atom/toggle.svg",
+      "version": "1.0.0",
+      "sha256": "24c9f65874e220e2",
+      "size": {
+        "width": 560,
+        "height": 340
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "24c9f65874e220e2",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/version-badge": {
+      "id": "atom/version-badge",
+      "title": "版本状态徽标",
+      "category": "原子控件",
+      "group": "标签",
+      "owner": "file-manager view/version_badges.rs",
+      "source": [],
+      "ref": null,
+      "spec": "modified/未同步等状态徽标",
+      "status": "traced",
+      "file": "svg/atom/version-badge.svg",
+      "version": "1.0.0",
+      "sha256": "31a38299f32b25c0",
+      "size": {
+        "width": 600,
+        "height": 240
+      },
+      "updatedAt": "2026-10-22T23:12:57.093Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "31a38299f32b25c0",
+          "at": "2026-10-22T23:12:57.093Z",
+          "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
         }
       ]
     },
@@ -768,19 +1347,25 @@
       "spec": "缩略图默认 150（THUMB_SIZE_DEFAULT）圆角 6，含选择框、格式角标、评分、文件名",
       "status": "traced",
       "file": "svg/part/media-card.svg",
-      "version": "1.0.0",
-      "sha256": "bcacd1f2cd0e184f",
+      "version": "1.0.1",
+      "sha256": "52237480a682b14b",
       "size": {
         "width": 560,
         "height": 236
       },
-      "updatedAt": "2026-10-22T20:42:56.726Z",
+      "updatedAt": "2026-10-22T22:49:04.761Z",
       "history": [
         {
           "version": "1.0.0",
           "sha": "bcacd1f2cd0e184f",
           "at": "2026-10-22T20:42:56.726Z",
           "note": "首批描摹：主按钮、媒体卡、主工作台"
+        },
+        {
+          "version": "1.0.1",
+          "sha": "52237480a682b14b",
+          "at": "2026-10-22T22:49:04.761Z",
+          "note": "图标改用 gpui-kit-assets 的 Lucide 图标库"
         }
       ]
     },
@@ -795,367 +1380,27 @@
       "spec": "1280×800 默认窗口：图标栏 + 侧栏 264 + 单栏浏览 + 检查器 300 + 顶部 56 / 底部 40",
       "status": "traced",
       "file": "svg/screen/main-workbench.svg",
-      "version": "1.0.0",
-      "sha256": "81c247db800363e5",
+      "version": "1.0.1",
+      "sha256": "1a1a4496fdb5f6eb",
       "size": {
         "width": 1280,
         "height": 800
       },
-      "updatedAt": "2026-10-22T20:42:56.726Z",
+      "updatedAt": "2026-10-22T22:49:04.761Z",
       "history": [
         {
           "version": "1.0.0",
           "sha": "81c247db800363e5",
           "at": "2026-10-22T20:42:56.726Z",
           "note": "首批描摹：主按钮、媒体卡、主工作台"
+        },
+        {
+          "version": "1.0.1",
+          "sha": "1a1a4496fdb5f6eb",
+          "at": "2026-10-22T22:49:04.761Z",
+          "note": "图标改用 gpui-kit-assets 的 Lucide 图标库"
         }
       ]
-    },
-    "atom/button-outline": {
-      "id": "atom/button-outline",
-      "title": "次级描边按钮",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "fileatlas-ui-bridge::components",
-      "source": [],
-      "ref": null,
-      "spec": "描边用 control_box，文字 text_primary；六态",
-      "status": "todo",
-      "file": "svg/atom/button-outline.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/button-danger": {
-      "id": "atom/button-danger",
-      "title": "危险操作按钮",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "gpui-kit Button .danger()",
-      "source": [],
-      "ref": null,
-      "spec": "底色 danger，前景 text_on_danger，悬停 danger_hover",
-      "status": "todo",
-      "file": "svg/atom/button-danger.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/button-ghost": {
-      "id": "atom/button-ghost",
-      "title": "文字按钮",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "gpui-kit Button",
-      "source": [],
-      "ref": null,
-      "spec": "无底色，悬停 fill_hover",
-      "status": "todo",
-      "file": "svg/atom/button-ghost.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/button-compact": {
-      "id": "atom/button-compact",
-      "title": "紧凑按钮",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "gpui-kit Button compact",
-      "source": [],
-      "ref": null,
-      "spec": "高 30，内边距 12/5",
-      "status": "todo",
-      "file": "svg/atom/button-compact.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/icon-button": {
-      "id": "atom/icon-button",
-      "title": "图标按钮",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "components::icon_button",
-      "source": [
-        "crates/fileatlas-ui-bridge/src/components"
-      ],
-      "ref": null,
-      "spec": "30×30，Lucide 16；悬停/按下/禁用/焦点",
-      "status": "todo",
-      "file": "svg/atom/icon-button.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/nav-button": {
-      "id": "atom/nav-button",
-      "title": "导航按钮行",
-      "category": "原子控件",
-      "group": "按钮",
-      "owner": "components::nav_button",
-      "source": [],
-      "ref": null,
-      "spec": "高 40（NAV_ROW_HEIGHT），选中保留 hover 色",
-      "status": "todo",
-      "file": "svg/atom/nav-button.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/text-input": {
-      "id": "atom/text-input",
-      "title": "单行输入框",
-      "category": "原子控件",
-      "group": "输入",
-      "owner": "components::text_input",
-      "source": [],
-      "ref": null,
-      "spec": "高 32（SEARCH_FIELD_HEIGHT），边框 input=separator，底 surface_faint，圆角 6",
-      "status": "todo",
-      "file": "svg/atom/text-input.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/search-input": {
-      "id": "atom/search-input",
-      "title": "搜索输入框",
-      "category": "原子控件",
-      "group": "输入",
-      "owner": "components::search_input",
-      "source": [],
-      "ref": null,
-      "spec": "高 32，搜索图标 16、清除按钮、原生焦点环",
-      "status": "todo",
-      "file": "svg/atom/search-input.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/textarea": {
-      "id": "atom/textarea",
-      "title": "多行文本框",
-      "category": "原子控件",
-      "group": "输入",
-      "owner": "components::textarea",
-      "source": [],
-      "ref": null,
-      "spec": "保留 Kit 原生外观与焦点，不套私画边框",
-      "status": "todo",
-      "file": "svg/atom/textarea.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/checkbox": {
-      "id": "atom/checkbox",
-      "title": "复选框",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "gpui-kit Checkbox",
-      "source": [],
-      "ref": null,
-      "spec": "未选/悬停/选中/禁用/焦点",
-      "status": "todo",
-      "file": "svg/atom/checkbox.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/radio-group": {
-      "id": "atom/radio-group",
-      "title": "单选组",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "settings_page Radios",
-      "source": [],
-      "ref": null,
-      "spec": "Radios 控件，行内标签",
-      "status": "todo",
-      "file": "svg/atom/radio-group.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/select": {
-      "id": "atom/select",
-      "title": "下拉选择",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "settings_page Select",
-      "source": [],
-      "ref": null,
-      "spec": "闭合态 + 展开菜单态",
-      "status": "todo",
-      "file": "svg/atom/select.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/segmented": {
-      "id": "atom/segmented",
-      "title": "分段选择",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "settings_page Segments",
-      "source": [],
-      "ref": null,
-      "spec": "tab_bar.segmented 底色，选中段抬升",
-      "status": "todo",
-      "file": "svg/atom/segmented.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/toggle": {
-      "id": "atom/toggle",
-      "title": "开关",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "settings_page Toggle/InlineToggle",
-      "source": [],
-      "ref": null,
-      "spec": "控件高 36，开关底 switch.background",
-      "status": "todo",
-      "file": "svg/atom/toggle.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/color-swatch": {
-      "id": "atom/color-swatch",
-      "title": "色板选择",
-      "category": "原子控件",
-      "group": "选择",
-      "owner": "gpui-kit ColorSelect",
-      "source": [],
-      "ref": null,
-      "spec": "Swatches 控件与 ColorSelect 色块，选中描 border_strong",
-      "status": "todo",
-      "file": "svg/atom/color-swatch.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/tag-capsule": {
-      "id": "atom/tag-capsule",
-      "title": "标签胶囊",
-      "category": "原子控件",
-      "group": "标签",
-      "owner": "tag_capsule::TagCapsule",
-      "source": [
-        "crates/fileatlas-ui-bridge/src/tag_capsule.rs"
-      ],
-      "ref": null,
-      "spec": "标准 24 高 / 紧凑 18 高，含图标、名称、选中态与用户自定义色",
-      "status": "todo",
-      "file": "svg/atom/tag-capsule.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/format-badge": {
-      "id": "atom/format-badge",
-      "title": "媒体格式角标",
-      "category": "原子控件",
-      "group": "标签",
-      "owner": "file-manager view/card.rs",
-      "source": [
-        "crates/fileatlas-plugin-file-manager/src/view/card.rs"
-      ],
-      "ref": null,
-      "spec": "底 media_badge_background，前景 text_on_media_badge，扩展名分色",
-      "status": "todo",
-      "file": "svg/atom/format-badge.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/star-rating": {
-      "id": "atom/star-rating",
-      "title": "评分星标",
-      "category": "原子控件",
-      "group": "标签",
-      "owner": "file-manager",
-      "source": [],
-      "ref": null,
-      "spec": "star 色，媒体图上用 star_on_media_badge",
-      "status": "todo",
-      "file": "svg/atom/star-rating.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/version-badge": {
-      "id": "atom/version-badge",
-      "title": "版本状态徽标",
-      "category": "原子控件",
-      "group": "标签",
-      "owner": "file-manager view/version_badges.rs",
-      "source": [],
-      "ref": null,
-      "spec": "modified/未同步等状态徽标",
-      "status": "todo",
-      "file": "svg/atom/version-badge.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/slider": {
-      "id": "atom/slider",
-      "title": "滑杆",
-      "category": "原子控件",
-      "group": "输入",
-      "owner": "file-manager view/sliders.rs",
-      "source": [],
-      "ref": null,
-      "spec": "轨道 track_shadow/track_highlight，已填充 track_active，滑块宽 116（THUMB_SLIDER_WIDTH）",
-      "status": "todo",
-      "file": "svg/atom/slider.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
     },
     "atom/section-heading": {
       "id": "atom/section-heading",
@@ -1287,23 +1532,6 @@
       "spec": "图标 40（ICON_SIZE_EMPTY_STATE）+ 14 号说明文字",
       "status": "todo",
       "file": "svg/atom/empty-state-icon.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/link-text": {
-      "id": "atom/link-text",
-      "title": "链接文字",
-      "category": "原子控件",
-      "group": "文字",
-      "owner": "theme::accent_text",
-      "source": [],
-      "ref": null,
-      "spec": "link 角色，悬停 link.hover",
-      "status": "todo",
-      "file": "svg/atom/link-text.svg",
       "version": null,
       "sha256": null,
       "size": null,

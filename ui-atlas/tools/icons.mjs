@@ -42,11 +42,19 @@ for (const file of walk(path.join(repo, 'crates'))) {
   for (const match of text.matchAll(/IconName::([A-Za-z0-9_]+)/g)) used.add(match[1]);
 }
 
+// Lucide spells letter runs as separate words; the Rust enum does not.
+const aliases = {
+  ArrowDownAZ: 'arrow-down-a-z',
+  ArrowUpZA: 'arrow-up-z-a',
+  Grid2x2: 'grid-2x2',
+};
 const kebab = name =>
+  aliases[name] ??
   name
     .replace(/_/g, '-')
-    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/([A-Za-z])([0-9])/g, '$1-$2')
     .toLowerCase();
 
 fs.mkdirSync(path.join(paths.root, 'icons'), { recursive: true });

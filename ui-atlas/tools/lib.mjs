@@ -9,6 +9,7 @@ export const repo = path.resolve(root, '..');
 export const paths = {
   root,
   svg: path.join(root, 'svg'),
+  icons: path.join(root, 'icons'),
   tokens: path.join(root, 'tokens'),
   catalog: path.join(root, 'catalog'),
   app: path.join(root, 'app'),
@@ -19,8 +20,10 @@ export const paths = {
   inventory: path.join(root, 'catalog/inventory.json'),
 };
 
-// The token block is machine-managed, so it must not count as a design change.
-export const TOKEN_BLOCK = /<!--\s*FA:TOKENS:BEGIN\s*-->[\s\S]*?<!--\s*FA:TOKENS:END\s*-->\s*/g;
+// Token and icon blocks are machine-managed, so they must not count as design changes.
+export const TOKEN_BLOCK = /<!--\s*FA:TOKENS:BEGIN\s*-->[\s\S]*?<!--\s*FA:TOKENS:END\s*-->/g;
+export const ICON_BLOCK = /<!--\s*FA:ICONS:BEGIN\s*-->[\s\S]*?<!--\s*FA:ICONS:END\s*-->/g;
+const MANAGED_BLOCK = /<!--\s*FA:(?:TOKENS|ICONS):BEGIN\s*-->[\s\S]*?<!--\s*FA:(?:TOKENS|ICONS):END\s*-->\s*/g;
 
 export function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -41,6 +44,36 @@ export function constVar(name) {
 
 export function stripTokenBlock(svg) {
   return svg.replace(TOKEN_BLOCK, '');
+}
+
+export function stripManaged(svg) {
+  return svg.replace(MANAGED_BLOCK, '');
+}
+
+export function iconUseNames(svg) {
+  const names = new Set();
+  for (const match of svg.matchAll(/href\s*=\s*"#fa-icon-([a-z0-9-]+)"/g)) names.add(match[1]);
+  return [...names].sort();
+}
+
+export function missingIcons(names) {
+  return names.filter(name => !fs.existsSync(path.join(paths.icons, `${name}.svg`)));
+}
+
+// Inline the exact Lucide symbol once per SVG so <use> references stay offline.
+export function iconsForSvg(names) {
+  if (!names.length) return null;
+  const symbols = names.map(name => {
+    const file = path.join(paths.icons, `${name}.svg`);
+    if (!fs.existsSync(file)) return '';
+    const inner = fs
+      .readFileSync(file, 'utf8')
+      .replace(/^[\s\S]*?<svg\b[^>]*>/, '')
+      .replace(/<\/svg>\s*$/, '')
+      .trim();
+    return `<symbol id="fa-icon-${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</symbol>`;
+  });
+  return `<!-- FA:ICONS:BEGIN --><defs>${symbols.join('')}</defs><!-- FA:ICONS:END -->`;
 }
 
 export function svgSize(svg) {

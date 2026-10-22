@@ -1,7 +1,7 @@
 // FileAtlas 界面图谱：分类浏览、检索、明暗切换、网页内编辑回写与版本历史。
 const TOKEN_BLOCK = /<!--\s*FA:TOKENS:BEGIN\s*-->[\s\S]*?<!--\s*FA:TOKENS:END\s*-->\s*/;
 const http = location.protocol !== 'file:';
-const state = { cat: '全部', group: '全部', status: '全部', q: '', id: null, view: 'grid' };
+const state = { cat: '全部', group: '全部', status: '全部', q: '', id: null, view: 'grid', viewer: null };
 let manifest = window.UI_ATLAS;
 let sources = window.UI_ATLAS_SVGS ?? {};
 
@@ -85,7 +85,7 @@ function card(item) {
   const svg = bare(item.id);
   const thumb = svg ?? `<div class="note">${esc(item.spec ?? '尚未描摹')}</div>`;
   return `<article class="card ${item.status}" data-id="${esc(item.id)}" title="${esc(item.id)}">
-    <div class="thumb">${thumb}</div>
+    <div class="thumb">${thumb}${svg ? `<button class="fs" data-fs="${esc(item.id)}" title="全屏查看">全屏</button>` : ''}</div>
     <div class="name">${esc(item.title)}</div>
     <div class="meta">
       <span class="badge ${item.status}">${statusLabel(item)}</span>
@@ -99,7 +99,13 @@ function card(item) {
 function renderGrid() {
   const list = filtered();
   $('main').innerHTML = `<div class="grid">${list.map(card).join('') || '<div class="note">没有匹配的条目</div>'}</div>`;
-  $('main').querySelectorAll('.card').forEach(node => node.addEventListener('click', () => select(node.dataset.id)));
+  $('main').querySelectorAll('.card').forEach(node => {
+    node.addEventListener('click', () => select(node.dataset.id));
+    node.querySelector('.fs')?.addEventListener('click', event => {
+      event.stopPropagation();
+      openViewer(node.dataset.id);
+    });
+  });
 }
 
 function renderChanges() {
@@ -141,7 +147,7 @@ function renderDetail() {
   const svg = bare(item.id);
   const source = sources[item.id] ?? '';
   panel.innerHTML = `
-    <div class="toolbar"><h2>${esc(item.title)}</h2><span class="badge ${item.status}">${statusLabel(item)}</span>${item.version ? `<span class="chip">v${esc(item.version)}</span>` : ''}</div>
+    <div class="toolbar"><h2>${esc(item.title)}</h2><span class="badge ${item.status}">${statusLabel(item)}</span>${item.version ? `<span class="chip">v${esc(item.version)}</span>` : ''}${svg ? '<button id="full" class="ghost">全屏查看</button>' : ''}</div>
     <div class="preview">${svg ?? '<div class="note">该条目尚未描摹为 SVG。</div>'}</div>
     <div class="kv">
       <b>组件标识</b><code>${esc(item.id)}</code>
@@ -171,6 +177,7 @@ function renderDetail() {
     state.id = null;
     renderDetail();
   });
+  $('full')?.addEventListener('click', () => openViewer(item.id));
   $('save')?.addEventListener('click', save);
   $('revert')?.addEventListener('click', () => {
     $('src').value = source;
@@ -214,6 +221,31 @@ async function reload() {
   render();
 }
 
+function openViewer(id) {
+  const item = manifest.entries[id];
+  const svg = bare(id);
+  if (!item || !svg) return;
+  state.viewer = id;
+  $('viewer-title').textContent = item.title;
+  $('viewer-version').textContent = item.version ? `v${item.version}` : '未建版';
+  $('viewer-stage').innerHTML = svg;
+  $('viewer').hidden = false;
+}
+
+function closeViewer() {
+  state.viewer = null;
+  $('viewer').hidden = true;
+  $('viewer-stage').innerHTML = '';
+  $('viewer-fullscreen').textContent = '浏览器全屏';
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+
+function toggleTheme() {
+  document.documentElement.dataset.faTheme = document.documentElement.dataset.faTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('fa-atlas-theme', document.documentElement.dataset.faTheme);
+  if (state.view === 'tokens') renderTokens();
+}
+
 function render() {
   $('revision').textContent = `目录修订 ${manifest.catalogRevision}`;
   renderTree();
@@ -221,15 +253,31 @@ function render() {
   else if (state.view === 'tokens') renderTokens();
   else renderGrid();
   renderDetail();
+  if (state.viewer) {
+    if (manifest.entries[state.viewer] && sources[state.viewer]) openViewer(state.viewer);
+    else closeViewer();
+  }
 }
 
 function boot() {
   const stored = localStorage.getItem('fa-atlas-theme');
   document.documentElement.dataset.faTheme = stored ?? 'dark';
-  $('theme').addEventListener('click', () => {
-    document.documentElement.dataset.faTheme = document.documentElement.dataset.faTheme === 'light' ? 'dark' : 'light';
-    localStorage.setItem('fa-atlas-theme', document.documentElement.dataset.faTheme);
-    if (state.view === 'tokens') renderTokens();
+  $('theme').addEventListener('click', toggleTheme);
+  $('viewer-theme').addEventListener('click', toggleTheme);
+  $('viewer-close').addEventListener('click', closeViewer);
+  $('viewer-fullscreen').addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await $('viewer').requestFullscreen();
+    } catch {
+      $('viewer-fullscreen').textContent = '浏览器不支持全屏';
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    $('viewer-fullscreen').textContent = document.fullscreenElement ? '退出浏览器全屏' : '浏览器全屏';
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && state.viewer && !document.fullscreenElement) closeViewer();
   });
   $('search').addEventListener('input', event => {
     state.q = event.target.value;

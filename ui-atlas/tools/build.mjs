@@ -13,12 +13,16 @@ import {
   constVar,
   readJson,
   writeJson,
-  stripTokenBlock,
+  stripManaged,
   tokensForSvg,
   svgId,
   svgSize,
   listSvgFiles,
+  iconUseNames,
+  missingIcons,
+  iconsForSvg,
   TOKEN_BLOCK,
+  ICON_BLOCK,
 } from './lib.mjs';
 
 const argv = process.argv.slice(2);
@@ -41,12 +45,25 @@ function bump(version, kind) {
 function ensureTokenBlock(svg, block) {
   if (TOKEN_BLOCK.test(svg)) {
     TOKEN_BLOCK.lastIndex = 0;
-    return svg.replace(TOKEN_BLOCK, `${block}\n`);
+    return svg.replace(TOKEN_BLOCK, block);
   }
   TOKEN_BLOCK.lastIndex = 0;
   const open = /<svg\b[^>]*>/.exec(svg);
   if (!open) return null;
   const at = open.index + open[0].length;
+  return `${svg.slice(0, at)}\n  ${block}\n${svg.slice(at)}`;
+}
+
+function ensureIconBlock(svg, block) {
+  if (ICON_BLOCK.test(svg)) {
+    ICON_BLOCK.lastIndex = 0;
+    return block === null ? svg.replace(ICON_BLOCK, '') : svg.replace(ICON_BLOCK, block);
+  }
+  ICON_BLOCK.lastIndex = 0;
+  if (block === null) return svg;
+  const anchor = /<!--\s*FA:TOKENS:END\s*-->/.exec(svg) ?? /<svg\b[^>]*>/.exec(svg);
+  if (!anchor) return null;
+  const at = anchor.index + anchor[0].length;
   return `${svg.slice(0, at)}\n  ${block}\n${svg.slice(at)}`;
 }
 
@@ -69,6 +86,7 @@ export function rebuild({ check = false, note = null } = {}) {
   const now = new Date().toISOString();
   const entries = {};
   const bumps = [];
+  const drift = [];
 
   for (const file of files) {
     const id = svgId(file);
@@ -78,14 +96,27 @@ export function rebuild({ check = false, note = null } = {}) {
       problems.push(`${id}: 缺少 <svg> 根元素`);
       continue;
     }
-    if (withTokens !== raw && !check) fs.writeFileSync(file, withTokens, 'utf8');
-    const design = stripTokenBlock(withTokens);
+    const design = stripManaged(withTokens);
+    const uses = iconUseNames(design);
+    const absent = missingIcons(uses);
+    if (absent.length) {
+      problems.push(`${id}: 引用了不存在的图标 ${absent.map(name => `#fa-icon-${name}`).join('、')}`);
+    }
+    const withIcons = ensureIconBlock(withTokens, iconsForSvg(uses.filter(name => !absent.includes(name))));
+    if (withIcons === null) {
+      problems.push(`${id}: 缺少 <svg> 根元素`);
+      continue;
+    }
+    if (withIcons !== raw) {
+      drift.push(id);
+      if (!check) fs.writeFileSync(file, withIcons, 'utf8');
+    }
     for (const match of design.matchAll(/var\((--fa-[a-z0-9-]+)/g)) {
       if (!knownVars.has(match[1])) problems.push(`${id}: 引用了未知令牌 ${match[1]}`);
     }
     const hardcoded = [...design.matchAll(/\b(?:fill|stroke|stop-color)\s*=\s*"#/g)];
     if (hardcoded.length) problems.push(`${id}: 有 ${hardcoded.length} 处写死色值，应改用 var(--fa-…) 令牌`);
-    sources[id] = withTokens;
+    sources[id] = withIcons;
     const sha = hash(design);
     const meta = inventory.find(item => item.id === id);
     if (!meta) problems.push(`${id}: 有 SVG 文件但未登记在 catalog/inventory.json`);
@@ -183,11 +214,7 @@ export function rebuild({ check = false, note = null } = {}) {
   };
 
   if (check) {
-    const drift = files.filter(file => {
-      const raw = fs.readFileSync(file, 'utf8');
-      return ensureTokenBlock(raw, tokenBlock) !== raw;
-    });
-    if (drift.length) problems.push(`令牌块需要刷新: ${drift.map(svgId).join(', ')}`);
+    if (drift.length) problems.push(`机器维护块需要刷新: ${drift.join(', ')}`);
   } else {
     writeJson(paths.manifest, manifest);
     fs.writeFileSync(paths.dataJs, `window.UI_ATLAS = ${JSON.stringify(manifest)};\n`, 'utf8');

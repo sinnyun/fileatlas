@@ -85,6 +85,7 @@ main { flex: 1; min-width: 0; overflow: auto; padding: var(--fa-space-4); }
 }
 .card:hover { border-color: var(--fa-border-strong); }
 .card .thumb {
+  position: relative;
   height: 132px;
   display: flex;
   align-items: center;
@@ -95,6 +96,17 @@ main { flex: 1; min-width: 0; overflow: auto; padding: var(--fa-space-4); }
   border: 1px solid var(--fa-hairline);
 }
 .card .thumb svg { max-width: 100%; max-height: 120px; height: auto; }
+.card .fs {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: var(--fa-font-size-small);
+  opacity: 0;
+  pointer-events: none;
+}
+.card:hover .fs, .card .fs:focus-visible { opacity: 1; pointer-events: auto; }
 .card .name { font-weight: 600; }
 .card .meta { display: flex; align-items: center; gap: var(--fa-space-2); color: var(--fa-text-secondary); font-size: var(--fa-font-size-small); flex-wrap: wrap; }
 .card.todo { border-style: dashed; background: transparent; }
@@ -131,3 +143,30 @@ main { flex: 1; min-width: 0; overflow: auto; padding: var(--fa-space-4); }
 .note { font-size: var(--fa-font-size-small); color: var(--fa-text-muted); }
 .toolbar { display: flex; gap: var(--fa-space-2); align-items: center; flex-wrap: wrap; }
 h3 { font-size: var(--fa-font-size-heading); margin: var(--fa-space-2) 0 0; }
+
+.viewer { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; background: var(--fa-surface-base); }
+.viewer[hidden] { display: none; }
+.viewer:fullscreen { background: var(--fa-surface-base); }
+.viewer-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--fa-space-2);
+  padding: var(--fa-space-2) var(--fa-space-4);
+  background: var(--fa-surface-panel);
+  border-bottom: 1px solid var(--fa-separator);
+  flex: none;
+}
+.viewer-bar .spacer { flex: 1; }
+.viewer-bar strong { font-size: var(--fa-font-size-heading); }
+.viewer-bar button { height: 30px; }
+.viewer-stage {
+  flex: 1;
+  min-height: 0;
+  padding: var(--fa-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--fa-surface-base);
+}
+.viewer-stage svg { width: 100%; height: 100%; display: block; }
