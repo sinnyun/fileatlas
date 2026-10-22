@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T23:12:57.093Z",
-  "catalogRevision": 7,
+  "generatedAt": "2026-10-22T23:44:16.798Z",
+  "catalogRevision": 8,
   "app": {
     "name": "FileAtlas",
     "themeLight": "Default Light",
@@ -689,17 +689,17 @@
   },
   "stats": {
     "total": 108,
-    "traced": 24,
-    "todo": 84,
+    "traced": 36,
+    "todo": 72,
     "missing": 0,
     "categories": {
       "原子控件": {
         "total": 30,
-        "traced": 22
+        "traced": 27
       },
       "区域部件": {
         "total": 26,
-        "traced": 1
+        "traced": 8
       },
       "完整界面": {
         "total": 29,
@@ -1010,6 +1010,33 @@
         }
       ]
     },
+    "atom/menu": {
+      "id": "atom/menu",
+      "title": "下拉菜单",
+      "category": "原子控件",
+      "group": "浮层",
+      "owner": "gpui-kit DropdownMenu",
+      "source": [],
+      "ref": null,
+      "spec": "popover 底/前景，菜单项含图标、快捷键、危险项、分隔线",
+      "status": "traced",
+      "file": "svg/atom/menu.svg",
+      "version": "1.0.0",
+      "sha256": "85c0093cbce3205c",
+      "size": {
+        "width": 860,
+        "height": 400
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "85c0093cbce3205c",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
     "atom/nav-button": {
       "id": "atom/nav-button",
       "title": "导航按钮行",
@@ -1034,6 +1061,33 @@
           "sha": "676de2110c108251",
           "at": "2026-10-22T23:12:57.093Z",
           "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/page-heading": {
+      "id": "atom/page-heading",
+      "title": "页面标题",
+      "category": "原子控件",
+      "group": "文字",
+      "owner": "settings_page::page_heading",
+      "source": [],
+      "ref": null,
+      "spec": "字号 24（SETTINGS_TITLE_SIZE）",
+      "status": "traced",
+      "file": "svg/atom/page-heading.svg",
+      "version": "1.0.0",
+      "sha256": "21edd2786bd54f0f",
+      "size": {
+        "width": 640,
+        "height": 260
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "21edd2786bd54f0f",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
         }
       ]
     },
@@ -1064,6 +1118,33 @@
         }
       ]
     },
+    "atom/scrollbar": {
+      "id": "atom/scrollbar",
+      "title": "滚动条",
+      "category": "原子控件",
+      "group": "容器",
+      "owner": "gpui-kit",
+      "source": [],
+      "ref": null,
+      "spec": "宽 7（SOURCE_SCROLLBAR_WIDTH），thumb 悬停加深",
+      "status": "traced",
+      "file": "svg/atom/scrollbar.svg",
+      "version": "1.0.0",
+      "sha256": "25cfdf698cc3efb7",
+      "size": {
+        "width": 640,
+        "height": 380
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "25cfdf698cc3efb7",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
     "atom/search-input": {
       "id": "atom/search-input",
       "title": "搜索输入框",
@@ -1088,6 +1169,33 @@
           "sha": "442efaa8245d715e",
           "at": "2026-10-22T23:12:57.093Z",
           "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "atom/section-heading": {
+      "id": "atom/section-heading",
+      "title": "分区标题",
+      "category": "原子控件",
+      "group": "文字",
+      "owner": "components::section_heading",
+      "source": [],
+      "ref": null,
+      "spec": "字号 15（FONT_SIZE_HEADING），semibold",
+      "status": "traced",
+      "file": "svg/atom/section-heading.svg",
+      "version": "1.0.0",
+      "sha256": "b0f46fc9e4a51bbf",
+      "size": {
+        "width": 640,
+        "height": 216
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "b0f46fc9e4a51bbf",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
         }
       ]
     },
@@ -1309,6 +1417,33 @@
         }
       ]
     },
+    "atom/tooltip": {
+      "id": "atom/tooltip",
+      "title": "文字提示",
+      "category": "原子控件",
+      "group": "浮层",
+      "owner": "gpui-kit tooltip",
+      "source": [],
+      "ref": null,
+      "spec": "tooltip_surface 底",
+      "status": "traced",
+      "file": "svg/atom/tooltip.svg",
+      "version": "1.0.0",
+      "sha256": "77ce8d9f47345832",
+      "size": {
+        "width": 420,
+        "height": 284
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "77ce8d9f47345832",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
     "atom/version-badge": {
       "id": "atom/version-badge",
       "title": "版本状态徽标",
@@ -1333,6 +1468,60 @@
           "sha": "31a38299f32b25c0",
           "at": "2026-10-22T23:12:57.093Z",
           "note": "描摹原子控件批次：输入、按钮、选择器与标签文字"
+        }
+      ]
+    },
+    "part/inspector-file": {
+      "id": "part/inspector-file",
+      "title": "检查器·文件详情",
+      "category": "区域部件",
+      "group": "检查器",
+      "owner": "file-manager inspector",
+      "source": [],
+      "ref": null,
+      "spec": "预览、元数据、标签编辑、版本与操作按钮",
+      "status": "traced",
+      "file": "svg/part/inspector-file.svg",
+      "version": "1.0.0",
+      "sha256": "2103cbcd93eaa893",
+      "size": {
+        "width": 300,
+        "height": 900
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "2103cbcd93eaa893",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
+    "part/inspector-program": {
+      "id": "part/inspector-program",
+      "title": "检查器·程序信息",
+      "category": "区域部件",
+      "group": "检查器",
+      "owner": "file-manager inspector",
+      "source": [],
+      "ref": null,
+      "spec": "宽 300（INSPECTOR_WIDTH）：程序卡、浏览概览统计卡、存储位置、程序状态、使用提示",
+      "status": "traced",
+      "file": "svg/part/inspector-program.svg",
+      "version": "1.0.0",
+      "sha256": "58814c80316a1557",
+      "size": {
+        "width": 300,
+        "height": 860
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "58814c80316a1557",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
         }
       ]
     },
@@ -1369,6 +1558,143 @@
         }
       ]
     },
+    "part/panel-chrome": {
+      "id": "part/panel-chrome",
+      "title": "浮窗外壳",
+      "category": "区域部件",
+      "group": "容器",
+      "owner": "panels::mount/FloatingPanel",
+      "source": [
+        "crates/fileatlas-ui-bridge/src/panels"
+      ],
+      "ref": null,
+      "spec": "标题栏高 36（HEADER_HEIGHT），拖动、最大化/还原、关闭、8 向缩放手柄、Esc",
+      "status": "traced",
+      "file": "svg/part/panel-chrome.svg",
+      "version": "1.0.0",
+      "sha256": "b3861f2ec9489128",
+      "size": {
+        "width": 960,
+        "height": 480
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "b3861f2ec9489128",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
+    "part/sidebar-section": {
+      "id": "part/sidebar-section",
+      "title": "侧栏分组区",
+      "category": "区域部件",
+      "group": "侧栏",
+      "owner": "components::sidebar_section/sidebar_header",
+      "source": [],
+      "ref": null,
+      "spec": "标题 + ⋯ 菜单 + 右侧动作按钮，边框与字号统一",
+      "status": "traced",
+      "file": "svg/part/sidebar-section.svg",
+      "version": "1.0.0",
+      "sha256": "2fa8a5a018cba9b5",
+      "size": {
+        "width": 600,
+        "height": 288
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "2fa8a5a018cba9b5",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
+    "part/stat-card": {
+      "id": "part/stat-card",
+      "title": "统计卡",
+      "category": "区域部件",
+      "group": "检查器",
+      "owner": "file-manager inspector",
+      "source": [],
+      "ref": null,
+      "spec": "图标 + 辅助文字 12 + 数值 18，卡底 surface_card",
+      "status": "traced",
+      "file": "svg/part/stat-card.svg",
+      "version": "1.0.0",
+      "sha256": "3cb558a631087f99",
+      "size": {
+        "width": 840,
+        "height": 140
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "3cb558a631087f99",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
+    "part/statistics-panel": {
+      "id": "part/statistics-panel",
+      "title": "统计面板",
+      "category": "区域部件",
+      "group": "媒体区",
+      "owner": "file-manager view/statistics.rs",
+      "source": [],
+      "ref": null,
+      "spec": "照片/视频/音频/评分计数网格与错误态",
+      "status": "traced",
+      "file": "svg/part/statistics-panel.svg",
+      "version": "1.0.0",
+      "sha256": "7e069b4879280def",
+      "size": {
+        "width": 840,
+        "height": 1150
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "7e069b4879280def",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
+    "part/workbench-containers": {
+      "id": "part/workbench-containers",
+      "title": "容器三形态",
+      "category": "区域部件",
+      "group": "容器",
+      "owner": "components::WorkbenchStyle",
+      "source": [],
+      "ref": null,
+      "spec": "workbench_section / workbench_card(selected) / workbench_nav(selected) 圆角 8",
+      "status": "traced",
+      "file": "svg/part/workbench-containers.svg",
+      "version": "1.0.0",
+      "sha256": "12fbd5a96e7e2e63",
+      "size": {
+        "width": 880,
+        "height": 330
+      },
+      "updatedAt": "2026-10-22T23:44:16.798Z",
+      "history": [
+        {
+          "version": "1.0.0",
+          "sha": "12fbd5a96e7e2e63",
+          "at": "2026-10-22T23:44:16.798Z",
+          "note": "描摹批次：标题/菜单/提示/滚动条原子与检查器容器部件"
+        }
+      ]
+    },
     "screen/main-workbench": {
       "id": "screen/main-workbench",
       "title": "主工作台（单栏）",
@@ -1401,91 +1727,6 @@
           "note": "图标改用 gpui-kit-assets 的 Lucide 图标库"
         }
       ]
-    },
-    "atom/section-heading": {
-      "id": "atom/section-heading",
-      "title": "分区标题",
-      "category": "原子控件",
-      "group": "文字",
-      "owner": "components::section_heading",
-      "source": [],
-      "ref": null,
-      "spec": "字号 15（FONT_SIZE_HEADING），semibold",
-      "status": "todo",
-      "file": "svg/atom/section-heading.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/page-heading": {
-      "id": "atom/page-heading",
-      "title": "页面标题",
-      "category": "原子控件",
-      "group": "文字",
-      "owner": "settings_page::page_heading",
-      "source": [],
-      "ref": null,
-      "spec": "字号 24（SETTINGS_TITLE_SIZE）",
-      "status": "todo",
-      "file": "svg/atom/page-heading.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/menu": {
-      "id": "atom/menu",
-      "title": "下拉菜单",
-      "category": "原子控件",
-      "group": "浮层",
-      "owner": "gpui-kit DropdownMenu",
-      "source": [],
-      "ref": null,
-      "spec": "popover 底/前景，菜单项含图标、快捷键、危险项、分隔线",
-      "status": "todo",
-      "file": "svg/atom/menu.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/tooltip": {
-      "id": "atom/tooltip",
-      "title": "文字提示",
-      "category": "原子控件",
-      "group": "浮层",
-      "owner": "gpui-kit tooltip",
-      "source": [],
-      "ref": null,
-      "spec": "tooltip_surface 底",
-      "status": "todo",
-      "file": "svg/atom/tooltip.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "atom/scrollbar": {
-      "id": "atom/scrollbar",
-      "title": "滚动条",
-      "category": "原子控件",
-      "group": "容器",
-      "owner": "gpui-kit",
-      "source": [],
-      "ref": null,
-      "spec": "宽 7（SOURCE_SCROLLBAR_WIDTH），thumb 悬停加深",
-      "status": "todo",
-      "file": "svg/atom/scrollbar.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
     },
     "atom/divider": {
       "id": "atom/divider",
@@ -1608,23 +1849,6 @@
       "updatedAt": null,
       "history": []
     },
-    "part/sidebar-section": {
-      "id": "part/sidebar-section",
-      "title": "侧栏分组区",
-      "category": "区域部件",
-      "group": "侧栏",
-      "owner": "components::sidebar_section/sidebar_header",
-      "source": [],
-      "ref": null,
-      "spec": "标题 + ⋯ 菜单 + 右侧动作按钮，边框与字号统一",
-      "status": "todo",
-      "file": "svg/part/sidebar-section.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
     "part/sidebar-tree-row": {
       "id": "part/sidebar-tree-row",
       "title": "侧栏树行",
@@ -1727,57 +1951,6 @@
       "updatedAt": null,
       "history": []
     },
-    "part/inspector-program": {
-      "id": "part/inspector-program",
-      "title": "检查器·程序信息",
-      "category": "区域部件",
-      "group": "检查器",
-      "owner": "file-manager inspector",
-      "source": [],
-      "ref": null,
-      "spec": "宽 300（INSPECTOR_WIDTH）：程序卡、浏览概览统计卡、存储位置、程序状态、使用提示",
-      "status": "todo",
-      "file": "svg/part/inspector-program.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "part/inspector-file": {
-      "id": "part/inspector-file",
-      "title": "检查器·文件详情",
-      "category": "区域部件",
-      "group": "检查器",
-      "owner": "file-manager inspector",
-      "source": [],
-      "ref": null,
-      "spec": "预览、元数据、标签编辑、版本与操作按钮",
-      "status": "todo",
-      "file": "svg/part/inspector-file.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "part/stat-card": {
-      "id": "part/stat-card",
-      "title": "统计卡",
-      "category": "区域部件",
-      "group": "检查器",
-      "owner": "file-manager inspector",
-      "source": [],
-      "ref": null,
-      "spec": "图标 + 辅助文字 12 + 数值 18，卡底 surface_card",
-      "status": "todo",
-      "file": "svg/part/stat-card.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
     "part/status-band": {
       "id": "part/status-band",
       "title": "底部状态带",
@@ -1789,42 +1962,6 @@
       "spec": "高 40（STATUS_BAR_HEIGHT），左侧计数，右侧调试入口",
       "status": "todo",
       "file": "svg/part/status-band.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "part/panel-chrome": {
-      "id": "part/panel-chrome",
-      "title": "浮窗外壳",
-      "category": "区域部件",
-      "group": "容器",
-      "owner": "panels::mount/FloatingPanel",
-      "source": [
-        "crates/fileatlas-ui-bridge/src/panels"
-      ],
-      "ref": null,
-      "spec": "标题栏高 36（HEADER_HEIGHT），拖动、最大化/还原、关闭、8 向缩放手柄、Esc",
-      "status": "todo",
-      "file": "svg/part/panel-chrome.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "part/workbench-containers": {
-      "id": "part/workbench-containers",
-      "title": "容器三形态",
-      "category": "区域部件",
-      "group": "容器",
-      "owner": "components::WorkbenchStyle",
-      "source": [],
-      "ref": null,
-      "spec": "workbench_section / workbench_card(selected) / workbench_nav(selected) 圆角 8",
-      "status": "todo",
-      "file": "svg/part/workbench-containers.svg",
       "version": null,
       "sha256": null,
       "size": null,
@@ -1944,23 +2081,6 @@
       "spec": "文件名/路径/标签/时间 四项勾选 + 全盘搜索开关",
       "status": "todo",
       "file": "svg/part/search-scopes.svg",
-      "version": null,
-      "sha256": null,
-      "size": null,
-      "updatedAt": null,
-      "history": []
-    },
-    "part/statistics-panel": {
-      "id": "part/statistics-panel",
-      "title": "统计面板",
-      "category": "区域部件",
-      "group": "媒体区",
-      "owner": "file-manager view/statistics.rs",
-      "source": [],
-      "ref": null,
-      "spec": "照片/视频/音频/评分计数网格与错误态",
-      "status": "todo",
-      "file": "svg/part/statistics-panel.svg",
       "version": null,
       "sha256": null,
       "size": null,

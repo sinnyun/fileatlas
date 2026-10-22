@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="1150" viewBox="0 0 840 1150" font-family="Segoe UI" role="img" aria-label="媒体统计浮窗：统计卡、占用空间、评分分布、前十个标签、按月统计，以及空数据与错误态">
+  <!-- FA:TOKENS:BEGIN --><style>:root{--fa-surface-base:#ffffff;--fa-surface-panel:#ffffff;--fa-surface-card:#f5f5f5;--fa-surface-elevated:#e5e5e5;--fa-surface-modal:#ffffff;--fa-surface-faint:#f5f5f5;--fa-surface-audio:#ffffff;--fa-surface-extreme:#f5f5f5;--fa-surface-rail:#fafafa;--fa-surface-sidebar:#fafafa;--fa-surface-region:#f5f5f5;--fa-surface-group-header:#fafafa;--fa-surface-group-header-hover:#f5f5f5;--fa-text-primary:#0a0a0a;--fa-text-secondary:#737373;--fa-text-muted:#737373;--fa-separator:#e5e5e5;--fa-control-box:#e5e5e5;--fa-control-box-hover:#e5e5e5;--fa-control-box-pressed:#e5e5e5;--fa-danger:#ef4444;--fa-danger-hover:#f15757;--fa-danger-text:#0a0a0a;--fa-warning:#eab308;--fa-warning-text:#0a0a0a;--fa-success:#22c55e;--fa-success-text:#0a0a0a;--fa-star:#eab308;--fa-star-text:#0a0a0a;--fa-info:#06b6d4;--fa-info-text:#0a0a0a;--fa-category:#1d4ed8;--fa-category-text:#1d4ed8;--fa-branch-alternate:#1d4ed8;--fa-branch-alternate-text:#1d4ed8;--fa-data:#1e40af;--fa-data-text:#1e40af;--fa-accent:#171717;--fa-accent-hover:#262626;--fa-accent-text:#171717;--fa-selection-color:#f5f5f5;--fa-selection-text:#171717;--fa-text-on-accent:#fafafa;--fa-text-on-danger:#fafafa;--fa-text-on-warning:#fafafa;--fa-text-on-success:#fafafa;--fa-media-badge-background:#ffffff;--fa-text-on-media-badge:#0a0a0a;--fa-star-on-media-badge:#0a0a0a;--fa-separator-light:#e5e5e5ff;--fa-fill-subtle:#f5f5f5ff;--fa-fill-hover:#f5f5f5ff;--fa-fill-active:#e5e5e5b3;--fa-fill-transparent-overlay:#0a0a0a00;--fa-region-edge:#e5e5e5ff;--fa-scrim:#0000000d;--fa-border-strong:#60a5faff;--fa-media-scrim:#ffffffff;--fa-media-scrim-strong:#ffffffff;--fa-tooltip-surface:#ffffffff;--fa-shadow-overlay:#0000000d;--fa-track-shadow:#e5e5e5ff;--fa-track-highlight:#0a0a0aff;--fa-track-active:#171717ff;--fa-hairline:#e5e5e5ff;--fa-border:#e5e5e5ff;--fa-native-background:#ffffff;--fa-native-foreground:#0a0a0a;--fa-native-border:#e5e5e5;--fa-native-input:#e5e5e5;--fa-native-ring:#a3a3a3;--fa-native-primary:#171717;--fa-native-primary-hover:#262626;--fa-native-primary-active:#0a0a0a;--fa-native-primary-foreground:#fafafa;--fa-native-accent:#f5f5f5;--fa-native-accent-foreground:#171717;--fa-native-secondary:#e5e5e5;--fa-native-secondary-hover:#e5e5e5;--fa-native-secondary-active:#d4d4d4;--fa-native-secondary-foreground:#171717;--fa-native-muted:#f5f5f5;--fa-native-muted-foreground:#737373;--fa-native-popover:#ffffff;--fa-native-popover-foreground:#0a0a0a;--fa-native-button:#ffffff;--fa-native-button-hover:#e5e5e5;--fa-native-button-active:#e5e5e5;--fa-native-button-foreground:#0a0a0a;--fa-native-button-primary:#171717;--fa-native-button-primary-hover:#262626;--fa-native-button-primary-active:#0a0a0a;--fa-native-button-primary-foreground:#fafafa;--fa-native-button-danger:#ef4444;--fa-native-button-danger-hover:#ef4444;--fa-native-button-danger-active:#ef4444;--fa-native-button-danger-foreground:#ef4444;--fa-native-danger:#ef4444;--fa-native-danger-hover:#f15757;--fa-native-danger-active:#ed2828;--fa-native-danger-foreground:#fafafa;--fa-native-warning:#eab308;--fa-native-success:#22c55e;--fa-native-info:#06b6d4;--fa-native-link:#171717;--fa-native-link-hover:#171717;--fa-native-selection:#55a0fc;--fa-native-sidebar:#fafafa;--fa-native-sidebar-border:#e5e5e5;--fa-native-sidebar-accent:#e5e5e5;--fa-native-sidebar-foreground:#171717;--fa-native-group-box:#f5f5f5;--fa-native-group-box-foreground:#171717;--fa-native-title-bar:#f8f8f8;--fa-native-title-bar-border:#e5e5e5;--fa-native-status-bar:#f8f8f8;--fa-native-tab-bar:#f5f5f5;--fa-native-tab-bar-segmented:#f5f5f5;--fa-native-tab:#000000;--fa-native-tab-active:#ffffff;--fa-native-tab-active-foreground:#171717;--fa-native-tab-foreground:#404040;--fa-native-table:#ffffff;--fa-native-table-head:#fafafa;--fa-native-table-head-foreground:#737373;--fa-native-table-hover:#f5f5f5;--fa-native-table-even:#fafafa;--fa-native-table-active:#bfdbfe;--fa-native-table-row-border:#e5e5e5;--fa-native-table-foot:#fafafa;--fa-native-list:#ffffff;--fa-native-list-hover:#f5f5f5;--fa-native-list-active:#bfdbfe;--fa-native-list-active-border:#60a5fa;--fa-native-list-even:#fafafa;--fa-native-list-head:#fafafa;--fa-native-switch:#d4d4d4;--fa-native-switch-thumb:#ffffff;--fa-native-slider-bar:#171717;--fa-native-slider-thumb:#ffffff;--fa-native-progress-bar:#171717;--fa-native-skeleton:#f5f5f5;--fa-native-scrollbar:#fafafa;--fa-native-scrollbar-thumb:#a3a3a3;--fa-native-scrollbar-thumb-hover:#a3a3a3;--fa-native-drag-border:#171717;--fa-native-drop-target:#3b82f6;--fa-native-accordion:#ffffff;--fa-native-caret:#0a0a0a;--fa-native-overlay:#000000;--fa-default-accent-name:Workbench Blue;--fa-system-accent-name:System;--fa-space-1:4px;--fa-space-2:8px;--fa-space-3:12px;--fa-space-4:16px;--fa-panel-gap:10px;--fa-nav-row-height:40px;--fa-action-height:38px;--fa-icon-button-size:30px;--fa-window-width:1280px;--fa-window-height:800px;--fa-window-min-width:960px;--fa-window-min-height:600px;--fa-window-work-area-fraction:0.85px;--fa-title-band-height:56px;--fa-status-bar-height:40px;--fa-sidebar-width:264px;--fa-sidebar-min-width:200px;--fa-sidebar-max-width:400px;--fa-sidebar-row-height:30px;--fa-sidebar-arrow-slot:18px;--fa-group-header-height:40px;--fa-group-header-gap:10px;--fa-group-top-gap:18px;--fa-region-header-height:26px;--fa-inspector-width:300px;--fa-search-field-height:32px;--fa-filter-chip-height:30px;--fa-thumb-size-min:80px;--fa-thumb-size-max:300px;--fa-thumb-size-default:150px;--fa-thumb-slider-width:116px;--fa-source-font-size-button:13px;--fa-source-item-spacing-x:8px;--fa-source-item-spacing-y:6px;--fa-source-button-padding-x:12px;--fa-source-button-padding-y:5px;--fa-source-menu-margin-x:10px;--fa-source-menu-margin-y:8px;--fa-source-window-margin:14px;--fa-source-scrollbar-width:7px;--fa-selection-bar-width:3px;--fa-round-sm:4px;--fa-round-md:6px;--fa-round-lg:8px;--fa-round-xl:10px;--fa-round-pill:999px;--fa-thumb-round:6px;--fa-font-size-tiny:11px;--fa-font-size-small:12px;--fa-font-size-body:14px;--fa-font-size-button:14px;--fa-font-size-heading:15px;--fa-font-size-title:18px;--fa-ui-font-family:Segoe UI;--fa-settings-font-family:Microsoft YaHei UI;--fa-settings-nav-width:224px;--fa-settings-content-padding:40px;--fa-settings-title-size:24px;--fa-settings-section-size:16px;--fa-settings-control-height:36px;--fa-semibold-font-family:Segoe UI Semibold;--fa-icon-size-small:12px;--fa-icon-size-default:16px;--fa-icon-size-large:20px;--fa-icon-size-empty-state:40px;--fa-region-depth-border:border;--fa-region-depth-shadow:shadow;}@media (prefers-color-scheme:dark){:root{--fa-surface-base:#0a0a0a;--fa-surface-panel:#0a0a0a;--fa-surface-card:#0a0a0a;--fa-surface-elevated:#262626;--fa-surface-modal:#0a0a0a;--fa-surface-faint:#262626;--fa-surface-audio:#0a0a0a;--fa-surface-extreme:#262626;--fa-surface-rail:#0a0a0a;--fa-surface-sidebar:#0a0a0a;--fa-surface-region:#0a0a0a;--fa-surface-group-header:#171717;--fa-surface-group-header-hover:#262626;--fa-text-primary:#fafafa;--fa-text-secondary:#a3a3a3;--fa-text-muted:#a3a3a3;--fa-separator:#262626;--fa-control-box:#2f2f2f;--fa-control-box-hover:#2f2f2f;--fa-control-box-pressed:#2f2f2f;--fa-danger:#f87171;--fa-danger-hover:#e06767;--fa-danger-text:#f87171;--fa-warning:#facc15;--fa-warning-text:#facc15;--fa-success:#4ade80;--fa-success-text:#4ade80;--fa-star:#facc15;--fa-star-text:#facc15;--fa-info:#22d3ee;--fa-info-text:#22d3ee;--fa-category:#1d4ed8;--fa-category-text:#fafafa;--fa-branch-alternate:#1d4ed8;--fa-branch-alternate-text:#fafafa;--fa-data:#1e40af;--fa-data-text:#fafafa;--fa-accent:#fafafa;--fa-accent-hover:#f5f5f5;--fa-accent-text:#fafafa;--fa-selection-color:#262626;--fa-selection-text:#fafafa;--fa-text-on-accent:#171717;--fa-text-on-danger:#dc2626;--fa-text-on-warning:#ca8a04;--fa-text-on-success:#16a34a;--fa-media-badge-background:#0a0a0a;--fa-text-on-media-badge:#fafafa;--fa-star-on-media-badge:#fafafa;--fa-separator-light:#262626ff;--fa-fill-subtle:#262626ff;--fa-fill-hover:#26262699;--fa-fill-active:#2f2f2fb3;--fa-fill-transparent-overlay:#fafafa00;--fa-region-edge:#262626ff;--fa-scrim:#00000033;--fa-border-strong:#1d4ed8ff;--fa-media-scrim:#0a0a0aff;--fa-media-scrim-strong:#0a0a0aff;--fa-tooltip-surface:#0a0a0aff;--fa-shadow-overlay:#00000033;--fa-track-shadow:#262626ff;--fa-track-highlight:#fafafaff;--fa-track-active:#fafafaff;--fa-hairline:#262626ff;--fa-border:#262626ff;--fa-native-background:#0a0a0a;--fa-native-foreground:#fafafa;--fa-native-border:#262626;--fa-native-input:#2f2f2f;--fa-native-ring:#737373;--fa-native-primary:#fafafa;--fa-native-primary-hover:#f5f5f5;--fa-native-primary-active:#e5e5e5;--fa-native-primary-foreground:#171717;--fa-native-accent:#262626;--fa-native-accent-foreground:#fafafa;--fa-native-secondary:#262626;--fa-native-secondary-hover:#292929;--fa-native-secondary-active:#212121;--fa-native-secondary-foreground:#fafafa;--fa-native-muted:#262626;--fa-native-muted-foreground:#a3a3a3;--fa-native-popover:#0a0a0a;--fa-native-popover-foreground:#fafafa;--fa-native-button:#2f2f2f;--fa-native-button-hover:#2f2f2f;--fa-native-button-active:#2f2f2f;--fa-native-button-foreground:#fafafa;--fa-native-button-primary:#fafafa;--fa-native-button-primary-hover:#f5f5f5;--fa-native-button-primary-active:#e5e5e5;--fa-native-button-primary-foreground:#171717;--fa-native-button-danger:#f87171;--fa-native-button-danger-hover:#f87171;--fa-native-button-danger-active:#f87171;--fa-native-button-danger-foreground:#f87171;--fa-native-danger:#f87171;--fa-native-danger-hover:#e06767;--fa-native-danger-active:#f52c2c;--fa-native-danger-foreground:#dc2626;--fa-native-warning:#facc15;--fa-native-success:#4ade80;--fa-native-info:#22d3ee;--fa-native-link:#fafafa;--fa-native-link-hover:#fafafa;--fa-native-selection:#1d4ed8;--fa-native-sidebar:#0a0a0a;--fa-native-sidebar-border:#262626;--fa-native-sidebar-accent:#262626;--fa-native-sidebar-foreground:#f5f5f5;--fa-native-group-box:#0a0a0a;--fa-native-group-box-foreground:#fafafa;--fa-native-title-bar:#171717;--fa-native-title-bar-border:#262626;--fa-native-status-bar:#171717;--fa-native-tab-bar:#171717;--fa-native-tab-bar-segmented:#171717;--fa-native-tab:#000000;--fa-native-tab-active:#0a0a0a;--fa-native-tab-active-foreground:#fafafa;--fa-native-tab-foreground:#d4d4d4;--fa-native-table:#0a0a0a;--fa-native-table-head:#171717;--fa-native-table-head-foreground:#525252;--fa-native-table-hover:#262626;--fa-native-table-even:#171717;--fa-native-table-active:#1e40af;--fa-native-table-row-border:#262626;--fa-native-table-foot:#171717;--fa-native-list:#0a0a0a;--fa-native-list-hover:#262626;--fa-native-list-active:#1e40af;--fa-native-list-active-border:#1d4ed8;--fa-native-list-even:#171717;--fa-native-list-head:#171717;--fa-native-switch:#404040;--fa-native-switch-thumb:#0a0a0a;--fa-native-slider-bar:#fafafa;--fa-native-slider-thumb:#0a0a0a;--fa-native-progress-bar:#fafafa;--fa-native-skeleton:#171717;--fa-native-scrollbar:#171717;--fa-native-scrollbar-thumb:#525252;--fa-native-scrollbar-thumb-hover:#525252;--fa-native-drag-border:#fafafa;--fa-native-drop-target:#3b82f6;--fa-native-accordion:#0a0a0a;--fa-native-caret:#fafafa;--fa-native-overlay:#000000;}}</style><!-- FA:TOKENS:END -->
+  <!-- FA:ICONS:BEGIN --><defs><symbol id="fa-icon-files" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2h-4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8" />
+  <path d="M16.706 2.706A2.4 2.4 0 0 0 15 2v5a1 1 0 0 0 1 1h5a2.4 2.4 0 0 0-.706-1.706z" />
+  <path d="M5 7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 1.732-1" /></symbol><symbol id="fa-icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+  <circle cx="9" cy="9" r="2" />
+  <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol><symbol id="fa-icon-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" />
+  <circle cx="6" cy="18" r="3" />
+  <circle cx="18" cy="16" r="3" /></symbol><symbol id="fa-icon-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" />
+  <rect x="2" y="6" width="14" height="12" rx="2" /></symbol><symbol id="fa-icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" />
+  <path d="m6 6 12 12" /></symbol></defs><!-- FA:ICONS:END -->
+
+
+  <rect width="840" height="1150" fill="var(--fa-surface-panel)"/>
+
+  <text x="20" y="14" font-size="11" fill="var(--fa-text-muted)">有数据（示例）</text>
+
+  <g aria-label="有数据的媒体统计浮窗">
+    <rect x="20" y="22" width="800" height="552" rx="8" fill="var(--fa-surface-modal)" stroke="var(--fa-separator)"/>
+    <rect x="20" y="58" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="36" y="45" font-size="14" font-weight="600" fill="var(--fa-text-primary)">媒体统计</text>
+    <use href="#fa-icon-x" x="789" y="32" width="16" height="16" color="var(--fa-text-secondary)"/>
+
+    <g aria-label="统计卡网格">
+      <rect x="34" y="66" width="187" height="84" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <use href="#fa-icon-files" x="46" y="78" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <text x="70" y="91" font-size="12" fill="var(--fa-text-secondary)">全部文件</text>
+      <text x="46" y="118" font-size="18" font-weight="600" fill="var(--fa-text-primary)">1248</text>
+
+      <rect x="229" y="66" width="187" height="84" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <use href="#fa-icon-image" x="241" y="78" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <text x="265" y="91" font-size="12" fill="var(--fa-text-secondary)">照片</text>
+      <text x="241" y="118" font-size="18" font-weight="600" fill="var(--fa-text-primary)">986</text>
+
+      <rect x="424" y="66" width="187" height="84" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <use href="#fa-icon-video" x="436" y="78" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <text x="460" y="91" font-size="12" fill="var(--fa-text-secondary)">视频</text>
+      <text x="436" y="118" font-size="18" font-weight="600" fill="var(--fa-text-primary)">154</text>
+
+      <rect x="619" y="66" width="187" height="84" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <use href="#fa-icon-music" x="631" y="78" width="16" height="16" color="var(--fa-text-secondary)"/>
+      <text x="655" y="91" font-size="12" fill="var(--fa-text-secondary)">音频</text>
+      <text x="631" y="118" font-size="18" font-weight="600" fill="var(--fa-text-primary)">108</text>
+    </g>
+
+    <g aria-label="占用空间">
+      <rect x="34" y="160" width="380" height="152" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <text x="46" y="186" font-size="14" font-weight="600" fill="var(--fa-text-primary)">占用空间</text>
+      <text x="46" y="216" font-size="18" font-weight="600" fill="var(--fa-text-primary)">82.4 GB</text>
+      <text x="46" y="238" font-size="11" fill="var(--fa-text-secondary)">已索引媒体的总大小。</text>
+    </g>
+
+    <g aria-label="评分分布">
+      <rect x="426" y="160" width="380" height="152" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <text x="438" y="186" font-size="14" font-weight="600" fill="var(--fa-text-primary)">评分分布</text>
+
+      <text x="468" y="238" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">312</text>
+      <rect x="456" y="242" width="24" height="40" rx="2" fill="var(--fa-accent)"/>
+      <text x="468" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+
+      <text x="527" y="274" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">24</text>
+      <rect x="515" y="278" width="24" height="4" rx="2" fill="var(--fa-accent)"/>
+      <text x="527" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 1</text>
+
+      <text x="586" y="271" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">56</text>
+      <rect x="574" y="275" width="24" height="7" rx="2" fill="var(--fa-accent)"/>
+      <text x="586" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 2</text>
+
+      <text x="646" y="259" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">148</text>
+      <rect x="634" y="263" width="24" height="19" rx="2" fill="var(--fa-accent)"/>
+      <text x="646" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 3</text>
+
+      <text x="705" y="226" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">402</text>
+      <rect x="693" y="230" width="24" height="52" rx="2" fill="var(--fa-accent)"/>
+      <text x="705" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 4</text>
+
+      <text x="764" y="243" text-anchor="middle" font-size="11" fill="var(--fa-text-secondary)">268</text>
+      <rect x="752" y="247" width="24" height="35" rx="2" fill="var(--fa-accent)"/>
+      <text x="764" y="300" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 5</text>
+    </g>
+
+    <g aria-label="前十个标签">
+      <rect x="34" y="322" width="380" height="174" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <text x="46" y="348" font-size="14" font-weight="600" fill="var(--fa-text-primary)">前 10 个标签</text>
+
+      <text x="46" y="368" font-size="11" fill="var(--fa-text-primary)">旅行</text>
+      <rect x="116" y="360" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="360" width="140" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="368" font-size="11" fill="var(--fa-text-primary)">128</text>
+
+      <text x="46" y="381" font-size="11" fill="var(--fa-text-primary)">日本</text>
+      <rect x="116" y="373" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="373" width="105" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="381" font-size="11" fill="var(--fa-text-primary)">96</text>
+
+      <text x="46" y="394" font-size="11" fill="var(--fa-text-primary)">欧洲</text>
+      <rect x="116" y="386" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="386" width="92" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="394" font-size="11" fill="var(--fa-text-primary)">84</text>
+
+      <text x="46" y="407" font-size="11" fill="var(--fa-text-primary)">美食</text>
+      <rect x="116" y="399" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="399" width="83" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="407" font-size="11" fill="var(--fa-text-primary)">76</text>
+
+      <text x="46" y="420" font-size="11" fill="var(--fa-text-primary)">自然</text>
+      <rect x="116" y="412" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="412" width="70" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="420" font-size="11" fill="var(--fa-text-primary)">64</text>
+
+      <text x="46" y="433" font-size="11" fill="var(--fa-text-primary)">城市</text>
+      <rect x="116" y="425" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="425" width="57" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="433" font-size="11" fill="var(--fa-text-primary)">52</text>
+
+      <text x="46" y="446" font-size="11" fill="var(--fa-text-primary)">夜景</text>
+      <rect x="116" y="438" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="438" width="48" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="446" font-size="11" fill="var(--fa-text-primary)">44</text>
+
+      <text x="46" y="459" font-size="11" fill="var(--fa-text-primary)">人像</text>
+      <rect x="116" y="451" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="451" width="42" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="459" font-size="11" fill="var(--fa-text-primary)">38</text>
+
+      <text x="46" y="472" font-size="11" fill="var(--fa-text-primary)">建筑</text>
+      <rect x="116" y="464" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="464" width="33" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="472" font-size="11" fill="var(--fa-text-primary)">30</text>
+
+      <text x="46" y="485" font-size="11" fill="var(--fa-text-primary)">街拍</text>
+      <rect x="116" y="477" width="140" height="8" rx="2" fill="var(--fa-surface-faint)"/>
+      <rect x="116" y="477" width="24" height="8" rx="2" fill="var(--fa-accent)"/>
+      <text x="264" y="485" font-size="11" fill="var(--fa-text-primary)">22</text>
+    </g>
+
+    <g aria-label="按月统计的媒体数量">
+      <rect x="426" y="322" width="380" height="174" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+      <text x="438" y="348" font-size="14" font-weight="600" fill="var(--fa-text-primary)">按月统计的媒体数量</text>
+
+      <text x="452.8" y="417" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">96</text>
+      <rect x="443.8" y="421.2" width="18" height="34.8" rx="2" fill="var(--fa-accent)"/>
+      <text x="452.8" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">1月</text>
+
+      <text x="482.5" y="422" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">84</text>
+      <rect x="473.5" y="425.6" width="18" height="30.4" rx="2" fill="var(--fa-accent)"/>
+      <text x="482.5" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">2月</text>
+
+      <text x="512.2" y="412" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">110</text>
+      <rect x="503.2" y="416.1" width="18" height="39.9" rx="2" fill="var(--fa-accent)"/>
+      <text x="512.2" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">3月</text>
+
+      <text x="541.8" y="426" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">72</text>
+      <rect x="532.8" y="429.9" width="18" height="26.1" rx="2" fill="var(--fa-accent)"/>
+      <text x="541.8" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">4月</text>
+
+      <text x="571.5" y="431" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">58</text>
+      <rect x="562.5" y="435" width="18" height="21" rx="2" fill="var(--fa-accent)"/>
+      <text x="571.5" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">5月</text>
+
+      <text x="601.2" y="428" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">66</text>
+      <rect x="592.2" y="432.1" width="18" height="23.9" rx="2" fill="var(--fa-accent)"/>
+      <text x="601.2" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">6月</text>
+
+      <text x="630.8" y="435" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">48</text>
+      <rect x="621.8" y="438.6" width="18" height="17.4" rx="2" fill="var(--fa-accent)"/>
+      <text x="630.8" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">7月</text>
+
+      <text x="660.5" y="425" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">74</text>
+      <rect x="651.5" y="429.2" width="18" height="26.8" rx="2" fill="var(--fa-accent)"/>
+      <text x="660.5" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">8月</text>
+
+      <text x="690.2" y="420" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">88</text>
+      <rect x="681.2" y="424.1" width="18" height="31.9" rx="2" fill="var(--fa-accent)"/>
+      <text x="690.2" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">9月</text>
+
+      <text x="719.8" y="409" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">120</text>
+      <rect x="710.8" y="412.5" width="18" height="43.5" rx="2" fill="var(--fa-accent)"/>
+      <text x="719.8" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">10月</text>
+
+      <text x="749.5" y="401" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">142</text>
+      <rect x="740.5" y="404.5" width="18" height="51.5" rx="2" fill="var(--fa-accent)"/>
+      <text x="749.5" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">11月</text>
+
+      <text x="779.2" y="394" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">160</text>
+      <rect x="770.2" y="398" width="18" height="58" rx="2" fill="var(--fa-accent)"/>
+      <text x="779.2" y="474" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">12月</text>
+    </g>
+
+    <rect x="20" y="506" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="776" y="531" text-anchor="middle" font-size="14" fill="var(--fa-text-primary)">关闭</text>
+  </g>
+
+  <text x="20" y="600" font-size="11" fill="var(--fa-text-muted)">空数据</text>
+
+  <g aria-label="空数据的媒体统计浮窗">
+    <rect x="20" y="610" width="800" height="336" rx="8" fill="var(--fa-surface-modal)" stroke="var(--fa-separator)"/>
+    <rect x="20" y="646" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="36" y="633" font-size="14" font-weight="600" fill="var(--fa-text-primary)">媒体统计</text>
+    <use href="#fa-icon-x" x="789" y="620" width="16" height="16" color="var(--fa-text-secondary)"/>
+
+    <rect x="34" y="654" width="187" height="72" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <use href="#fa-icon-files" x="46" y="664" width="16" height="16" color="var(--fa-text-secondary)"/>
+    <text x="70" y="677" font-size="12" fill="var(--fa-text-secondary)">全部文件</text>
+    <text x="46" y="702" font-size="18" font-weight="600" fill="var(--fa-text-primary)">0</text>
+
+    <rect x="229" y="654" width="187" height="72" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <use href="#fa-icon-image" x="241" y="664" width="16" height="16" color="var(--fa-text-secondary)"/>
+    <text x="265" y="677" font-size="12" fill="var(--fa-text-secondary)">照片</text>
+    <text x="241" y="702" font-size="18" font-weight="600" fill="var(--fa-text-primary)">0</text>
+
+    <rect x="424" y="654" width="187" height="72" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <use href="#fa-icon-video" x="436" y="664" width="16" height="16" color="var(--fa-text-secondary)"/>
+    <text x="460" y="677" font-size="12" fill="var(--fa-text-secondary)">视频</text>
+    <text x="436" y="702" font-size="18" font-weight="600" fill="var(--fa-text-primary)">0</text>
+
+    <rect x="619" y="654" width="187" height="72" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <use href="#fa-icon-music" x="631" y="664" width="16" height="16" color="var(--fa-text-secondary)"/>
+    <text x="655" y="677" font-size="12" fill="var(--fa-text-secondary)">音频</text>
+    <text x="631" y="702" font-size="18" font-weight="600" fill="var(--fa-text-primary)">0</text>
+
+    <rect x="34" y="736" width="380" height="100" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <text x="46" y="762" font-size="14" font-weight="600" fill="var(--fa-text-primary)">占用空间</text>
+    <text x="46" y="790" font-size="18" font-weight="600" fill="var(--fa-text-primary)">0 B</text>
+    <text x="46" y="812" font-size="11" fill="var(--fa-text-secondary)">已索引媒体的总大小。</text>
+
+    <rect x="426" y="736" width="380" height="100" rx="8" fill="var(--fa-surface-card)" stroke="var(--fa-separator)"/>
+    <text x="438" y="762" font-size="14" font-weight="600" fill="var(--fa-text-primary)">评分分布</text>
+    <text x="468" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="456" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="468" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <text x="527" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="515" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="527" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 1</text>
+    <text x="586" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="574" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="586" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 2</text>
+    <text x="646" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="634" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="646" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 3</text>
+    <text x="705" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="693" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="705" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 4</text>
+    <text x="764" y="796" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">0</text>
+    <rect x="752" y="804" width="24" height="2" rx="1" fill="var(--fa-accent)"/>
+    <text x="764" y="826" text-anchor="middle" font-size="11" fill="var(--fa-text-muted)">Rating 5</text>
+
+    <text x="46" y="858" font-size="12" font-weight="600" fill="var(--fa-text-primary)">前 10 个标签</text>
+    <text x="46" y="876" font-size="11" fill="var(--fa-text-secondary)">尚未分配标签。</text>
+    <text x="438" y="858" font-size="12" font-weight="600" fill="var(--fa-text-primary)">按月统计的媒体数量</text>
+    <text x="438" y="876" font-size="11" fill="var(--fa-text-secondary)">没有可用的日期信息。</text>
+
+    <rect x="20" y="892" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="776" y="919" text-anchor="middle" font-size="14" fill="var(--fa-text-primary)">关闭</text>
+  </g>
+
+  <text x="20" y="970" font-size="11" fill="var(--fa-text-muted)">错误态</text>
+
+  <g aria-label="错误态的媒体统计浮窗">
+    <rect x="20" y="980" width="800" height="150" rx="8" fill="var(--fa-surface-modal)" stroke="var(--fa-separator)"/>
+    <rect x="20" y="1016" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="36" y="1003" font-size="14" font-weight="600" fill="var(--fa-text-primary)">媒体统计</text>
+    <use href="#fa-icon-x" x="789" y="990" width="16" height="16" color="var(--fa-text-secondary)"/>
+
+    <text x="34" y="1044" font-size="12" fill="var(--fa-danger-text)">Error loading statistics: 统计数据库暂不可用</text>
+    <text x="34" y="1064" font-size="11" fill="var(--fa-text-muted)">错误信息以 danger 角色显示；标题栏与关闭按钮仍可用。</text>
+
+    <rect x="20" y="1076" width="800" height="1" fill="var(--fa-separator-light)"/>
+    <text x="776" y="1103" text-anchor="middle" font-size="14" fill="var(--fa-text-primary)">关闭</text>
+  </g>
+</svg>
