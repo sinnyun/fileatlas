@@ -65,6 +65,9 @@ impl WorkCrateProjectsService {
             .prefix(".workcrate-migration-")
             .tempdir_in(&folder)?;
         management::copy_directory(&source, staging.path())?;
+        // `canvas/` is the obsolete per-frame mirror older releases wrote beside each cached
+        // preview; the copy carries one frame per page and the legacy source stays untouched.
+        let _ = std::fs::remove_dir_all(staging.path().join("canvas"));
         atomic_write_json(&staging.path().join("project.json"), &document)?;
         std::fs::rename(staging.path(), &target)?;
         let mut next = self

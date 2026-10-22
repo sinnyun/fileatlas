@@ -1432,3 +1432,10 @@ reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和
 ## 2026-10-23 WorkCrate 项目数据随文件夹保存
 
 新建自动相邻数据、旧项目显式迁移、移动文件夹重新打开和原生图片更新验证见 [运行记录](validation-ui/2026-10-23-workcrate-portable/README.md)。沿用活动项目管理用户稿，局部增加打开项目文件夹与菜单迁移入口。
+
+
+## 2026-10-23 WorkCrate 每页只保留一帧预览
+
+`canvas/` 渲染镜像已取消：官方渲染直写 `native-previews/page<画板号>-<关联>-1600.png`，文件名只由
+页面与文档关联决定，重复渲染原地覆盖自己的文件；被替换的帧与旧版 `canvas/` 镜像由 `write_cache`
+统一回收，迁移复制不再带走镜像。原因、实测与剩余缺陷见[本轮记录](validation-ui/2026-10-23-workcrate-preview-dedup/README.md)。

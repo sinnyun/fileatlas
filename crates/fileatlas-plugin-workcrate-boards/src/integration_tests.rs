@@ -599,3 +599,173 @@ fn canvas_edits_land_in_the_native_document() -> Result<(), Box<dyn std::error::
     );
     Ok(())
 }
+
+fn board(project: &str, binding: &str, native_id: u64) -> WorkCrateBoard {
+    WorkCrateBoard {
+        id: format!("{project}:{binding}:{native_id}"),
+        project_id: project.into(),
+        native_id,
+        index: 0,
+        title: page_title(0),
+        width_pt: 420.,
+        height_pt: 297.,
+        info: PageInfo::default(),
+    }
+}
+
+#[test]
+fn each_page_has_one_frame_name_that_its_next_render_replaces()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let projects = Arc::new(WorkCrateProjectsService::open_at(root.path().join("data"))?);
+    let project = projects.create_project("Stable frames")?;
+    let native = root.path().join("document.vectorcraft");
+    std::fs::write(&native, b"native")?;
+    projects.set_document_path(&project.id, &native)?;
+    let service = WorkCrateBoardsService::new(projects.clone());
+    let directory = projects.project_directory(&project.id)?;
+
+    let (relative, path) = service.preview_frame(&project.id, 12)?;
+    assert_eq!(
+        relative,
+        service.preview_frame(&project.id, 12)?.0,
+        "one page must keep one frame file so a render replaces it"
+    );
+    assert_ne!(
+        relative,
+        service.preview_frame(&project.id, 13)?.0,
+        "another page must not share the file"
+    );
+    assert!(path.starts_with(directory.join(PREVIEW_DIR)));
+    assert!(!path.to_string_lossy().contains("canvas"));
+
+    let rebinding = root.path().join("other.vectorcraft");
+    std::fs::write(&rebinding, b"native")?;
+    let previous = service.preview_frame(&project.id, 12)?.0;
+    projects.set_document_path(&project.id, &rebinding)?;
+    assert_ne!(
+        previous,
+        service.preview_frame(&project.id, 12)?.0,
+        "a new association cannot reuse the old frame"
+    );
+    Ok(())
+}
+
+#[test]
+fn publishing_a_frame_reclaims_the_replaced_file_and_the_legacy_mirror()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let projects = Arc::new(WorkCrateProjectsService::open_at(root.path().join("data"))?);
+    let project = projects.create_project("Reclaimed frames")?;
+    let native = root.path().join("document.vectorcraft");
+    std::fs::write(&native, b"native")?;
+    projects.set_document_path(&project.id, &native)?;
+    let binding = projects.document_binding(&project.id)?;
+    let service = WorkCrateBoardsService::new(projects.clone());
+    let directory = projects.project_directory(&project.id)?;
+    let previews = directory.join(PREVIEW_DIR);
+    std::fs::create_dir_all(&previews)?;
+    let board = board(&project.id, &binding, 12);
+    let key = format!("{}@{PREVIEW_WIDTH}", board.id);
+
+    // An earlier release wrote the frame twice: a token-named cache file plus a `canvas/`
+    // mirror nothing could reference or reclaim.
+    let legacy = previews.join("1792624274426-0.png");
+    std::fs::write(&legacy, b"legacy frame")?;
+    service.write_cache(
+        &project.id,
+        &BoardCache {
+            version: 1,
+            binding: binding.clone(),
+            boards: vec![board.clone()],
+            previews: BTreeMap::from([(key.clone(), "native-previews/1792624274426-0.png".into())]),
+            source: None,
+        },
+    )?;
+    assert!(
+        legacy.is_file(),
+        "a frame the current cache names is never removed"
+    );
+    std::fs::create_dir_all(directory.join("canvas"))?;
+    std::fs::write(directory.join("canvas").join("12.png"), b"mirror")?;
+
+    let (relative, path) = service.preview_frame(&project.id, board.native_id)?;
+    std::fs::write(&path, b"rendered frame")?;
+    assert_eq!(
+        relative,
+        WorkCrateBoardsService::durable_preview_relative(&directory, &path.to_string_lossy())?,
+        "the render target is exactly the cache value"
+    );
+    service.write_cache(
+        &project.id,
+        &BoardCache {
+            version: 1,
+            binding: binding.clone(),
+            boards: vec![board.clone()],
+            previews: BTreeMap::from([(key.clone(), relative.clone())]),
+            source: None,
+        },
+    )?;
+
+    assert!(
+        !legacy.exists(),
+        "a frame the cache no longer names is removed"
+    );
+    assert!(
+        !directory.join("canvas").exists(),
+        "the duplicate mirror is removed with the first publication"
+    );
+    assert_eq!(
+        std::fs::read_dir(&previews)?.count(),
+        1,
+        "one page holds one frame file: {relative}"
+    );
+
+    // Rendering the same page again replaces that file instead of adding another name.
+    std::fs::write(&path, b"second render")?;
+    service.write_cache(
+        &project.id,
+        &BoardCache {
+            version: 1,
+            binding,
+            boards: vec![board],
+            previews: BTreeMap::from([(key, relative)]),
+            source: None,
+        },
+    )?;
+    assert_eq!(std::fs::read_dir(&previews)?.count(), 1);
+    assert_eq!(std::fs::read(&path)?, b"second render");
+    Ok(())
+}
+
+#[test]
+fn a_frame_outside_the_preview_folder_is_refused() -> Result<(), Box<dyn std::error::Error>> {
+    let root = tempfile::tempdir()?;
+    let directory = root.path().join("data");
+    std::fs::create_dir_all(directory.join(PREVIEW_DIR))?;
+    let frame = directory.join(PREVIEW_DIR).join("page1-abcd1234-1600.png");
+    let native = frame.to_string_lossy().to_string();
+    // The editing session reports the frame it wrote with `/` separators, and the projects
+    // service hands back a Windows verbatim path; both still name the one durable frame.
+    let display = native.replace('\\', "/");
+    for reported in [native.as_str(), display.as_str()] {
+        assert_eq!(
+            WorkCrateBoardsService::durable_preview_relative(&directory, reported)?,
+            "native-previews/page1-abcd1234-1600.png",
+            "{reported} is the frame this page owns"
+        );
+    }
+    for outside in [
+        directory.join("canvas").join("12.png"),
+        directory.join("loose.png"),
+        directory.join(PREVIEW_DIR).join("nested").join("frame.png"),
+        root.path().join("elsewhere.png"),
+    ] {
+        let reported = outside.to_string_lossy().to_string();
+        assert!(
+            WorkCrateBoardsService::durable_preview_relative(&directory, &reported).is_err(),
+            "refusing to publish {reported} keeps one durable frame per page"
+        );
+    }
+    Ok(())
+}

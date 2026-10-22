@@ -141,14 +141,11 @@ impl WorkCrateBoardsService {
             && changed.contains(&frame.board_id)
             && let Some(source) = &frame.preview
         {
-            let relative = format!("native-previews/{}.png", unique_token());
-            std::fs::copy(
-                source,
-                self.projects.project_directory(project)?.join(&relative),
-            )?;
+            let directory = self.projects.project_directory(project)?;
+            let relative = Self::durable_preview_relative(&directory, source)?;
             cache
                 .previews
-                .insert(format!("{}@1600", frame.board_id), relative);
+                .insert(format!("{}@{PREVIEW_WIDTH}", frame.board_id), relative);
         }
         cache.binding = binding.into();
         cache.boards = boards.clone();

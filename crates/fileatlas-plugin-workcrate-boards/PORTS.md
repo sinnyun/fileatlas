@@ -35,7 +35,7 @@ Page identity remains project UUID + persisted association UUID + native numeric
 
 `canvas_edit` and `canvas_refresh` publish the official rendered PNG into the
 existing version-1 boards-cache.json preview map via the existing atomic writer.
-Only the edited page is copied; old cache assets use existing cleanup. No schema
+Only the edited page is published; old cache assets use existing cleanup. No schema
 migration or extra data store. Cached render_preview therefore sees edits before
 canvas_close/refresh_project. UI frames reuse the same decoded bitmap in the rail.
 
@@ -292,3 +292,25 @@ header_state.last_write remains the last update_info header write report; reorde
 
 
 2026-10-23: Newly created body text explicitly sends text.create font=Microsoft YaHei, sharing header_layout::TEXT_FONT with material headers. canvas_create_text still accepts its positive size and the existing bounds/gesture services remain intact. CanvasObject.font_family is a read-only projection of the official text.getRange first run style, used to verify the actual font; it does not add a font editor or rewrite existing artwork.
+
+
+### One durable frame per page (2026-10-23)
+
+`PREVIEW_DIR` (`native-previews/`) is the only cached-frame folder, and `preview_frame(project,
+native_id) -> Result<(String, PathBuf), BoardsError>` is its only writer-side naming rule:
+`native-previews/page<native_id>-<association prefix>-1600.png`. The name is per page and per
+native-document association, never per render, so a re-render replaces its own file in place
+(`mcp::McpSession::render_preview` already writes through a sibling temp file plus atomic
+rename). `make_previews` renders straight into that path; the page editor's `canvas_open`
+targets the same path, and `publish_canvas_frame` / `store_order` / `store_page` only record it
+in the cache map keyed `{board_id}@1600`. `durable_preview_relative(project_dir, reported)`
+accepts exactly one `native-previews/*.png` component (the session reports `/` separators, so
+that spelling is rebuilt as a native path) and refuses anything else instead of copying it
+somewhere new. `write_cache` owns reclamation: entries dropped by the new map are deleted after
+the write succeeds, newly written files are deleted when it fails, and
+`remove_legacy_canvas_scratch` deletes the `canvas/` render mirror older releases wrote beside
+each cached preview. Browsing, the page grid and `render_preview` still never start a session.
+Re-associating a document rotates the binding, so `attach_document` clears every old frame and
+the new association names new files. Inspect failures through BoardsError values,
+`header_state.previews` and the cache map. Evidence:
+docs/validation-ui/2026-10-23-workcrate-preview-dedup/README.md.

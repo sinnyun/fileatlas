@@ -36,3 +36,12 @@ Directory copying skips filesystem links. Failures surface through errors, UI an
 `project_field_presets(&str) -> Result<FieldPresets, WorkCrateProjectsError>` is a memory-only snapshot validated against the live project index. `save_project_field_presets(&str, FieldPresets) -> Result<(), ...>` writes an optional `field_presets` member into the existing version-1 project manifest (legacy `projects/<uuid>/project.json`, adjacent `.workcrate/<uuid>/project.json`); old manifests have no member and start with empty builtin columns. Startup hydrates the memory catalogue; duplicate preserves project presets via the copied ProjectDocument, delete retains them in existing trash. Atomic JSON publication and `.json.bak` recovery are reused; invalid/unsupported presets remain visible errors. No SQLite, binary assets or new settings framework.
 
 `effective_field_presets(&str) -> Result<FieldPresets, ...>` returns project-first union with program defaults by stable field key, deduplicating values. `promote_project_field(&str, &str) -> Result<(), ...>` merges only the requested saved project column into `field-presets.json` under the existing write gate; unrelated global columns remain identical. Empty or unknown columns, duplicate/empty/oversized values, unsupported versions and missing projects are refused before publication. Saves/promotions increment existing revision and Wake. Global `local` label normalizes from historical 项目名称 to 物料类别 on read; stable key stays compatible. Defaults never fill or rewrite page values automatically.
+
+
+## 2026-10-23 adjacent dataset folders
+
+A project's adjacent `.workcrate/<uuid>` folder holds `project.json`, `boards-cache.json`,
+`previews/` (covers and custom preview images), `native-previews/` (the one cached frame per
+page, owned and reclaimed by Boards) and `cli-config/`. `copy_directory` carries the whole
+folder for duplicate, migration and relocation, then drops the `canvas/` render mirror older
+releases wrote beside each cached frame; the source dataset is never rewritten by that copy.

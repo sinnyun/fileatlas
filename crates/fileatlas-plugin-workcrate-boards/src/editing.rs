@@ -167,9 +167,7 @@ impl WorkCrateBoardsService {
             .document_path(&project)?
             .ok_or(BoardsError::NoDocument)?;
         let directory = self.projects.project_directory(&project)?;
-        let preview_dir = directory.join("canvas");
-        std::fs::create_dir_all(&preview_dir)?;
-        let preview = preview_dir.join(format!("{}.png", board.native_id));
+        let (_, preview) = self.preview_frame(&project, board.native_id)?;
 
         let mut slot = self.canvas.lock().map_err(|_| BoardsError::Poisoned)?;
         let mut warm = slot.take();
@@ -398,8 +396,9 @@ impl WorkCrateBoardsService {
     }
 
     /// Publish one page's official frame, and — when a field save produced a new card
-    /// record — patch that record in the same cache write. Every other page keeps its own
-    /// record and preview file, so one field save never redraws another card.
+    /// record — patch that record in the same cache write. The frame already lives at its
+    /// durable per-page path, so publishing records that path and the previous page frame is
+    /// reclaimed by the cache write; one field save never redraws another card.
     fn publish_canvas_frame(
         &self,
         snapshot: &CanvasSnapshot,
@@ -416,12 +415,10 @@ impl WorkCrateBoardsService {
             return Ok(());
         }
         let directory = self.projects.project_directory(project)?;
-        let relative = format!("native-previews/{}.png", unique_token());
-        std::fs::create_dir_all(directory.join("native-previews"))?;
-        std::fs::copy(source, directory.join(&relative))?;
+        let relative = Self::durable_preview_relative(&directory, source)?;
         cache
             .previews
-            .insert(format!("{}@1600", snapshot.board_id), relative);
+            .insert(format!("{}@{PREVIEW_WIDTH}", snapshot.board_id), relative);
         if let Some(board) = board {
             if let Some(entry) = cache.boards.iter_mut().find(|b| b.id == board.id) {
                 *entry = board.clone();

@@ -412,7 +412,54 @@ impl WorkCrateBoardsService {
         for preview in old_paths.difference(&new_paths) {
             remove_owned_preview(&project_dir, preview);
         }
+        remove_legacy_canvas_scratch(&project_dir);
         Ok(())
+    }
+
+    /// The durable PNG of one page, as a project-relative cache value and an absolute render
+    /// target. The name is fixed per page and width, so every render replaces its own file
+    /// instead of leaving a new file behind; only a page or association that disappears
+    /// removes one. The association binding is part of the name, so a re-associated document
+    /// can never show the previous association's frame.
+    fn preview_frame(
+        &self,
+        project: &str,
+        native_id: u64,
+    ) -> Result<(String, PathBuf), BoardsError> {
+        let binding = self.projects.document_binding(project)?;
+        let stamp: String = binding
+            .chars()
+            .filter(char::is_ascii_alphanumeric)
+            .take(8)
+            .collect();
+        let directory = self.projects.project_directory(project)?;
+        std::fs::create_dir_all(directory.join(PREVIEW_DIR))?;
+        let name = format!("page{native_id}-{stamp}-{PREVIEW_WIDTH}.png");
+        Ok((
+            format!("{PREVIEW_DIR}/{name}"),
+            directory.join(PREVIEW_DIR).join(name),
+        ))
+    }
+
+    /// The cache-relative form of a rendered frame. The session reports the frame it wrote with
+    /// `/` separators, so that spelling is rebuilt as a native path here. A frame outside the
+    /// project's durable preview folder is a bug, so it is reported, never copied elsewhere.
+    pub(crate) fn durable_preview_relative(
+        project_dir: &Path,
+        reported: &str,
+    ) -> Result<String, BoardsError> {
+        let invalid = || BoardsError::Invalid("rendered frame outside the preview folder".into());
+        let native = reported.replace('/', "\\");
+        let path = Path::new(&native);
+        let relative = path.strip_prefix(project_dir).map_err(|_| invalid())?;
+        let mut components = relative.components();
+        if !matches!(components.next(), Some(std::path::Component::Normal(name)) if name == PREVIEW_DIR)
+            || !matches!(components.next(), Some(std::path::Component::Normal(name)) if name.to_string_lossy().ends_with(".png"))
+            || components.next().is_some()
+        {
+            return Err(invalid());
+        }
+        Ok(relative.to_string_lossy().replace('\\', "/"))
     }
     pub fn load_board(&self, project: &str, id: &str) -> Result<WorkCrateBoard, BoardsError> {
         self.board_catalog(project)?
@@ -444,33 +491,27 @@ impl WorkCrateBoardsService {
         boards: &[WorkCrateBoard],
     ) -> Result<BTreeMap<String, String>, BoardsError> {
         let mut previews = BTreeMap::new();
-        let mut created = Vec::new();
+        let mut fresh = Vec::new();
         let result = (|| {
             for board in boards {
-                let width = 1600u32;
-                let scale = (width as f64 / board.width_pt).min(2048. / board.height_pt);
+                let scale = (PREVIEW_WIDTH as f64 / board.width_pt).min(2048. / board.height_pt);
                 let max_side = (scale * board.width_pt)
                     .max(scale * board.height_pt)
                     .round() as u32;
-                let directory = self
-                    .projects
-                    .project_directory(&board.project_id)?
-                    .join("native-previews");
-                std::fs::create_dir_all(&directory)?;
-                let path = directory.join(format!("{}.png", unique_token()));
+                let (relative, path) = self.preview_frame(&board.project_id, board.native_id)?;
+                // A re-render replaces its own file, so only a frame that did not exist
+                // before is rolled back when a later page in the batch fails.
+                let existed = path.is_file();
                 client.render_preview(board.index, max_side, &path)?;
-                created.push(path.clone());
-                let relative = path
-                    .strip_prefix(self.projects.project_directory(&board.project_id)?)
-                    .map_err(|_| BoardsError::Invalid("preview path escaped project cache".into()))?
-                    .to_string_lossy()
-                    .replace('\\', "/");
-                previews.insert(format!("{}@{width}", board.id), relative);
+                if !existed {
+                    fresh.push(path.clone());
+                }
+                previews.insert(format!("{}@{PREVIEW_WIDTH}", board.id), relative);
             }
             Ok(())
         })();
         if let Err(error) = result {
-            for path in created {
+            for path in fresh {
                 let _ = std::fs::remove_file(path);
             }
             return Err(error);
@@ -614,6 +655,12 @@ impl WorkCrateBoardsService {
     }
 }
 
+/// The one folder holding cached page frames. A cache entry may only reference a PNG inside
+/// it, which is also the only folder the page editor is allowed to render into.
+const PREVIEW_DIR: &str = "native-previews";
+/// The width every page frame is rendered and keyed at, so one page has one frame file.
+const PREVIEW_WIDTH: u32 = 1600;
+
 fn cache_preview_paths(
     project_dir: &Path,
     cache: &BoardCache,
@@ -624,7 +671,7 @@ fn cache_preview_paths(
         .filter_map(|relative| {
             let relative = Path::new(relative);
             let mut components = relative.components();
-            if !matches!(components.next(), Some(std::path::Component::Normal(name)) if name == "native-previews")
+            if !matches!(components.next(), Some(std::path::Component::Normal(name)) if name == PREVIEW_DIR)
                 || !matches!(components.next(), Some(std::path::Component::Normal(name)) if name.to_string_lossy().ends_with(".png"))
                 || components.next().is_some()
             {
@@ -648,11 +695,29 @@ fn remove_owned_preview(project_dir: &Path, preview: &Path) {
     if !preview_dir.starts_with(&project_root)
         || preview_dir
             .file_name()
-            .is_none_or(|name| name != "native-previews")
+            .is_none_or(|name| name != PREVIEW_DIR)
     {
         return;
     }
     let _ = std::fs::remove_file(preview);
+}
+
+/// Releases that held each page's frame twice — the render target in `canvas/` plus a copied
+/// cache entry — so the render mirror is now obsolete scratch that no cache entry can name.
+fn remove_legacy_canvas_scratch(project_dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(project_dir.join("canvas")) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        if entry
+            .path()
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+        {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+    let _ = std::fs::remove_dir(project_dir.join("canvas"));
 }
 
 fn safe_document_name(name: &str) -> String {
