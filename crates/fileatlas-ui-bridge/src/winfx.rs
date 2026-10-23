@@ -4,6 +4,26 @@
 //! opt-in at the shell after GPUI creates its HWND; non-Windows builds return
 //! `Backdrop::None` and do not load Windows libraries.
 
+use std::sync::{LazyLock, RwLock};
+
+static MAIN_WINDOW: LazyLock<RwLock<isize>> = LazyLock::new(Default::default);
+
+/// Register the main native window so resolved theme changes can update its
+/// non-client caption colors alongside GPUI's client area.
+pub fn register_main_window(hwnd: isize) {
+    *MAIN_WINDOW.write().expect("main window handle lock") = hwnd;
+    set_title_bar_mode(
+        hwnd,
+        crate::theme::color_mode() == crate::theme::ColorMode::Dark,
+    );
+}
+
+/// Called after GPUI Kit publishes its resolved Theme.
+pub fn refresh_main_title_bar(dark: bool) {
+    let hwnd = *MAIN_WINDOW.read().expect("main window handle lock");
+    set_title_bar_mode(hwnd, dark);
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Backdrop {
     None,
@@ -156,8 +176,15 @@ mod imp {
     const DWMWA_USE_IMMERSIVE_DARK_MODE: u32 = 20;
     const DWMWA_SYSTEMBACKDROP_TYPE: u32 = 38;
 
-    fn set_dark_title_bar(hwnd: Hwnd) {
-        let enabled: i32 = 1;
+    pub fn set_title_bar_mode(hwnd: isize, dark: bool) {
+        if hwnd == 0 {
+            return;
+        }
+        set_title_bar_mode_impl(hwnd, dark);
+    }
+
+    fn set_title_bar_mode_impl(hwnd: Hwnd, dark: bool) {
+        let enabled: i32 = i32::from(dark);
         unsafe {
             let _ = DwmSetWindowAttribute(
                 hwnd,
@@ -222,11 +249,11 @@ mod imp {
         }
     }
 
-    pub fn apply_backdrop(hwnd: isize) -> Backdrop {
+    pub fn apply_backdrop(hwnd: isize, dark: bool) -> Backdrop {
         if hwnd == 0 {
             return Backdrop::None;
         }
-        set_dark_title_bar(hwnd);
+        set_title_bar_mode_impl(hwnd, dark);
         if build_number() >= 22_000 && try_mica(hwnd) {
             return Backdrop::Mica;
         }
@@ -236,6 +263,14 @@ mod imp {
         Backdrop::None
     }
 }
+
+#[cfg(target_os = "windows")]
+pub fn set_title_bar_mode(hwnd: isize, dark: bool) {
+    imp::set_title_bar_mode(hwnd, dark);
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn set_title_bar_mode(_hwnd: isize, _dark: bool) {}
 
 #[cfg(target_os = "windows")]
 pub fn system_accent() -> Option<u32> {
@@ -249,7 +284,10 @@ pub fn system_accent() -> Option<u32> {
 
 #[cfg(target_os = "windows")]
 pub fn apply_backdrop(hwnd: isize) -> Backdrop {
-    imp::apply_backdrop(hwnd)
+    imp::apply_backdrop(
+        hwnd,
+        crate::theme::color_mode() == crate::theme::ColorMode::Dark,
+    )
 }
 
 #[cfg(not(target_os = "windows"))]

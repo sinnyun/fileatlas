@@ -62,6 +62,11 @@ impl FileAtlasShell {
                     &panel.definition.options.title,
                 ));
                 let hwnd = native_handle(window);
+                fileatlas_ui_bridge::winfx::set_title_bar_mode(
+                    hwnd,
+                    fileatlas_ui_bridge::theme::color_mode()
+                        == fileatlas_ui_bridge::theme::ColorMode::Dark,
+                );
                 fileatlas_ui_bridge::winfx::apply_backdrop(hwnd);
                 let _ = surfaces.set_value(&format!("panel.{}.hwnd", panel.id), &hwnd.to_string());
                 let close_id = panel.id.clone();

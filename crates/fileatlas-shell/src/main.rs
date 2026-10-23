@@ -1133,6 +1133,7 @@ fn main() {
                         _ => None,
                     });
                 capture_handle.set(hwnd.unwrap_or_default());
+                fileatlas_ui_bridge::winfx::register_main_window(hwnd.unwrap_or_default());
                 let backdrop = hwnd
                     .map(fileatlas_ui_bridge::winfx::apply_backdrop)
                     .unwrap_or(fileatlas_ui_bridge::winfx::Backdrop::None);

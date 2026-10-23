@@ -161,6 +161,7 @@ fn apply_request(cx: &mut App) {
         });
     }
     publish(cx);
+    crate::winfx::refresh_main_title_bar(mode == ThemeMode::Dark);
     cx.global_mut::<ThemeListener>().applied = Some(request);
     cx.refresh_windows();
 }
