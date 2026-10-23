@@ -1163,5 +1163,7 @@ msg-project-tree = 项目树
 msg-project-folder-path = 项目文件夹路径
 msg-project-add-folder = 添加文件夹
 msg-project-loading-folders = 正在加载项目文件夹…
+msg-project-tree-folder-gone = 项目文件夹已不存在：{ $path }
+msg-project-tree-folder-unreadable = 无法读取项目文件夹：{ $path }
 msg-project-remove = 移除项目
 msg-file-staging-add = 添加到文件暂存篮

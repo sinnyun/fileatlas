@@ -5,6 +5,8 @@
   "Project folder path": "msg-project-folder-path",
   "Add folder": "msg-project-add-folder",
   "Loading project folders…": "msg-project-loading-folders",
+  "Project folder no longer exists: {path}": "msg-project-tree-folder-gone",
+  "Project folder cannot be read: {path}": "msg-project-tree-folder-unreadable",
   "Remove project": "msg-project-remove",
   "Add current folder to group": "msg-sidebar-add-current-favorite",
   "Favorite group no longer exists": "msg-sidebar-favorite-group-gone",

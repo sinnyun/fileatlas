@@ -32,9 +32,7 @@ fn link_status_label(status: &str) -> String {
 }
 
 /// The official program reports Win32 extended-length paths; the panel shows the plain one.
-fn display_path(path: &str) -> String {
-    path.strip_prefix(r"\\?\").unwrap_or(path).to_owned()
-}
+use fileatlas_ui_bridge::display_path;
 
 fn value_row(label: &str, value: String) -> gpui::Div {
     div()

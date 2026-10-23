@@ -446,6 +446,10 @@ control_file_manager actions select_many (1–1000 unique existing media_ids) an
 
 control_ui adds navigation_tab(folders/tags/extensions), inspector_tab(information/history/extensions; info alias), sidebar_width/inspector_width(value:logical pixels100–1000 then hostclamp), pointer_down/pointer_drag/pointer_up(value:x,y logicalclient coordinates0–4096). These UI-control actions require Standard or Full access. CaptureWindowHandle now holds the nativehandle and bounded single pending McpPointerInput{kind,x,y}; queue_pointer rejects busy/poisoned and shell take_pointer drains/deferred GPUI event dispatch. No OS pointer/keyboard injection and no external-process attach. get_ui_state exposes active pages and applied widths. control_navigation adds expand_folder(folder_id), expand_path(value:directory), select_path(value:directory), folder_search(value:query); requests validate registeredroot containment and perform canonical path selection/lazy loading. Live event drags/clicks and read-only rejection verified; see docs/redesign-validation.md.
 
+## Navigation page keys (2026-10-23)
+
+control_ui `navigation_tab` accepts the current Navigation page keys `folders`, `tags`, `project-tree` and `extensions`, so the project tree sidebar page opens semantically instead of through a rail coordinate click. `get_ui_state.navigation_tab` reports the same key. The project tree page itself has no MCP state: its roots come from `fileatlas.project-tree` JSON and its per-root scan status is only rendered in the page.
+
 ## Floating panels and list validation (2026-10-14)
 
 `control_file_manager layout` accepts value grid/list through FileManagerUiRequest::Layout. `get_ui_state.file_manager.layout` is the live rendered choice. `get_ui_state` adds panels(builtin visibility/frame/client bounds), panel_instances(all currently open frame/client bounds), open_panel_ids and active_panel. Bounds are comma-separated logical pixel strings; client_bounds are GPUI-measured, independent of screenshot DPI/nonclient offsets.

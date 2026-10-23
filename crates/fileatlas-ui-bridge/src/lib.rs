@@ -20,6 +20,16 @@ pub use views::{
     OwnedUiView, UiViewCatalog, UiViewContribution, UiViewFactory, register_views_for_plugin,
 };
 
+/// Turn a Windows namespace path back into the form the user recognizes.
+/// Canonical paths keep the `\\?\` prefix for long-path IO; only views strip it.
+pub fn display_path(path: &str) -> String {
+    if let Some(unc) = path.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{unc}")
+    } else {
+        path.strip_prefix(r"\\?\").unwrap_or(path).to_owned()
+    }
+}
+
 /// Cordis service contract for the application's lifecycle-managed UI catalog.
 pub struct UiBridgeService {
     /// Shared catalog read by the GPUI application thread.
@@ -565,6 +575,13 @@ mod tests {
                 order: 0,
             },
         )
+    }
+
+    #[test]
+    fn display_path_strips_only_the_windows_namespace_prefix() {
+        assert_eq!(display_path(r"\\?\D:\项目\测试"), r"D:\项目\测试");
+        assert_eq!(display_path(r"\\?\UNC\nas\share"), r"\\nas\share");
+        assert_eq!(display_path(r"C:\Users\me"), r"C:\Users\me");
     }
 
     #[test]

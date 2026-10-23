@@ -185,13 +185,7 @@ pub(super) fn parse_tag_color(value: Option<&str>) -> u32 {
 }
 
 /// Windows namespace prefixes are useful for IO but add noise to visible paths.
-pub(super) fn display_path(path: &str) -> String {
-    if let Some(unc) = path.strip_prefix(r"\\?\UNC\") {
-        format!(r"\\{unc}")
-    } else {
-        path.strip_prefix(r"\\?\").unwrap_or(path).to_string()
-    }
-}
+pub(super) use fileatlas_ui_bridge::display_path;
 
 /// The reader supplies friendly fields followed by raw EXIF fields. Collapse
 /// exact aliases for display while preserving distinct values and unknown tags.

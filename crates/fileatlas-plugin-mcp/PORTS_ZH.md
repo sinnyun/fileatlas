@@ -433,6 +433,10 @@ control_file_manager 的动作 select_many（1–1000 个唯一存在的 media_i
 
 control_ui 添加 navigation_tab(folders/tags/extensions)、inspector_tab(information/history/extensions；别名 info)、sidebar_width/inspector_width（value：逻辑像素 100–1000，之后由宿主钳制）、pointer_down/pointer_drag/pointer_up（value：x,y 逻辑客户端坐标 0–4096）。这些 UI 控制动作需要 Standard 或 Full 访问。CaptureWindowHandle 现在持有原生句柄与有界的单个待处理 McpPointerInput{kind,x,y}；queue_pointer 拒绝 busy/poisoned，shell 的 take_pointer 排空/延迟派发 GPUI 事件。没有操作系统指针/键盘注入，也没有外部进程附加。get_ui_state 暴露活动页面与已应用的宽度。control_navigation 添加 expand_folder(folder_id)、expand_path(value：目录)、select_path(value：目录)、folder_search(value：查询)；请求校验已注册根包含并执行规范路径选择/惰性加载。已验证实时事件拖拽/点击与只读拒绝；参见 docs/redesign-validation.md。
 
+## 导航页签标识（2026-10-23）
+
+control_ui `navigation_tab` 接受当前 Navigation 页签标识 `folders`、`tags`、`project-tree`、`extensions`，因此项目树侧栏页可以按语义打开，不再依赖 rail 坐标点击。`get_ui_state.navigation_tab` 返回同一标识。项目树页本身没有 MCP 状态：根目录来自 `fileatlas.project-tree` JSON，每个根目录的扫描状态只在页面内渲染。
+
 ## 浮动面板与列表验证（2026-10-14）
 
 `control_file_manager layout` 通过 FileManagerUiRequest::Layout 接受值 grid/list。`get_ui_state.file_manager.layout` 是实时渲染的选择。`get_ui_state` 添加 panels（内置可见性/框架/客户端边界）、panel_instances（当前所有打开的框架/客户端边界）、open_panel_ids 与 active_panel。边界是以逗号分隔的逻辑像素字符串；client_bounds 由 GPUI 测量，独立于截图 DPI/非客户端偏移。

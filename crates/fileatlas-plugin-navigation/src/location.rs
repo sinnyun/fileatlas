@@ -65,13 +65,7 @@ impl NavigationHistory {
     }
 }
 
-pub(crate) fn display_path(path: &str) -> String {
-    if let Some(tail) = path.strip_prefix(r"\\?\UNC\") {
-        format!(r"\\{tail}")
-    } else {
-        path.strip_prefix(r"\\?\").unwrap_or(path).to_owned()
-    }
-}
+pub(crate) use fileatlas_ui_bridge::display_path;
 
 #[derive(Clone, Debug)]
 pub(crate) struct Crumb {

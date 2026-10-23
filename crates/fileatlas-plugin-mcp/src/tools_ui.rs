@@ -668,8 +668,10 @@ impl FileAtlasMcpServer {
             }
             "navigation_tab" => {
                 let value = request.value.as_deref().unwrap_or("");
-                if !["folders", "tags", "extensions"].contains(&value) {
-                    return error_json("navigation_tab requires folders/tags/extensions");
+                if !["folders", "tags", "project-tree", "extensions"].contains(&value) {
+                    return error_json(
+                        "navigation_tab requires folders/tags/project-tree/extensions",
+                    );
                 }
                 self.surfaces.set_value("navigation.tab", value)
             }

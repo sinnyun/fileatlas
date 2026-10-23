@@ -1449,3 +1449,14 @@ reference-ui/concepts/workcrate-editing-tools-2026-10-20.md。功能、视觉和
 PNG、`INDEX.md` 与 `manifest.json` 只留在 `.local/validation/profiles/panel-atlas-final/`，不入库。
 本轮实测暴露两个缺陷：打开"编辑标签"对话框触发 GPUI a11y 重复节点 id panic 使进程退出；
 搜索范围浮层的 `search_scopes_open` 状态为真但画面未渲染。面板注册表 8 个定义已全部有图。
+
+
+## 2026-10-23 项目树失效根目录隔离
+
+项目树原先把所有根目录合并成一个扫描结果，任一目录读取失败就让整棵树失败，并把带
+`\\?\` 前缀与 `os error 3` 的原始错误画在每个展开的根下面。现改为逐根独立扫描：失效根只在
+自己行上显示“不可用”，展开时给一条带普通路径的本地化说明，其它项目子树照常渲染，子目录
+读取失败只跳过该子树并记日志。`\\?\` 前缀只在 IO 与清单里保留，界面统一走新增的
+`fileatlas_ui_bridge::display_path`（同时替换 Navigation、FileManager、WorkCrate 的三份私有
+副本）；MCP `navigation_tab` 补上 `project-tree` 页签标识。原因、实测命令与两张同进程截图见
+[本轮记录](validation-ui/2026-10-23-project-tree-missing-root/README.md)。

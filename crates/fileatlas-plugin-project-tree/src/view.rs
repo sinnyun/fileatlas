@@ -24,7 +24,31 @@ struct ProjectNode {
     has_next_sibling: bool,
 }
 
-fn scan_project_tree(projects: &[ProjectTreeRoot]) -> Result<Vec<ProjectNode>, String> {
+/// One project root whose children could not be listed. A root that is missing
+/// is a different state from a folder the current user cannot open.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct UnavailableRoot {
+    path: String,
+    missing: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+struct ProjectScan {
+    nodes: Vec<ProjectNode>,
+    unavailable: Vec<UnavailableRoot>,
+}
+
+impl ProjectScan {
+    fn failure(&self, root_path: &str) -> Option<&UnavailableRoot> {
+        self.unavailable
+            .iter()
+            .find(|failure| same_path(&failure.path, root_path))
+    }
+}
+
+/// Scan every root independently: one dead folder must not hide the other
+/// projects' trees or repeat its own message under them.
+fn scan_project_tree(projects: &[ProjectTreeRoot]) -> ProjectScan {
     fn walk(
         path: &Path,
         depth: usize,
@@ -39,8 +63,8 @@ fn scan_project_tree(projects: &[ProjectTreeRoot]) -> Result<Vec<ProjectNode>, S
         }
         let mut dirs = Vec::new();
         for entry in std::fs::read_dir(path)? {
-            let entry = entry?;
-            let ty = entry.file_type()?;
+            let Ok(entry) = entry else { continue };
+            let Ok(ty) = entry.file_type() else { continue };
             if ty.is_dir() {
                 dirs.push(entry.path());
             }
@@ -67,14 +91,16 @@ fn scan_project_tree(projects: &[ProjectTreeRoot]) -> Result<Vec<ProjectNode>, S
             });
             let mut child_ancestors = ancestor_continues.to_vec();
             child_ancestors.push(has_next_sibling);
-            walk(child, depth + 1, root_path, &child_ancestors, out, seen)?;
+            if let Err(error) = walk(child, depth + 1, root_path, &child_ancestors, out, seen) {
+                tracing::warn!(%error, path = %child.display(), "project subfolder skipped");
+            }
         }
         Ok(())
     }
-    let mut rows = Vec::new();
+
+    let mut scan = ProjectScan::default();
     for project in projects {
-        let mut seen = std::collections::HashSet::new();
-        rows.push(ProjectNode {
+        scan.nodes.push(ProjectNode {
             root_path: project.path.clone(),
             path: project.path.clone(),
             name: project.name.clone(),
@@ -82,17 +108,23 @@ fn scan_project_tree(projects: &[ProjectTreeRoot]) -> Result<Vec<ProjectNode>, S
             ancestor_continues: Vec::new(),
             has_next_sibling: false,
         });
-        walk(
+        let mut seen = std::collections::HashSet::new();
+        if let Err(error) = walk(
             Path::new(&project.path),
             1,
             &project.path,
             &[],
-            &mut rows,
+            &mut scan.nodes,
             &mut seen,
-        )
-        .map_err(|error| format!("{}: {error}", project.path))?;
+        ) {
+            tracing::warn!(%error, path = %project.path, "project root scan failed");
+            scan.unavailable.push(UnavailableRoot {
+                path: project.path.clone(),
+                missing: error.kind() == std::io::ErrorKind::NotFound,
+            });
+        }
     }
-    Ok(rows)
+    scan
 }
 
 pub(super) fn sidebar_page(
@@ -114,7 +146,7 @@ fn page(
 ) -> AnyView {
     app.new(|cx| {
         let wake = fileatlas_ui_bridge::refresh::Wake::default();
-        let mut tree = ReadModel::<Vec<String>, Vec<ProjectNode>>::default();
+        let mut tree = ReadModel::<Vec<String>, ProjectScan>::default();
         tree.set_wake(wake.clone());
         let projects = service.snapshot();
         let paths = projects.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
@@ -135,7 +167,7 @@ fn page(
                     .map(|project| project.path.clone())
             })
             .or_else(|| projects.first().map(|project| project.path.clone()));
-        tree.request(paths, move || scan_project_tree(&projects));
+        tree.request(paths, move || Ok(scan_project_tree(&projects)));
         let task =
             fileatlas_ui_bridge::refresh::listen(cx, wake, |view: &mut ProjectTreePage, _| {
                 view.tree.poll()
@@ -175,7 +207,7 @@ struct ProjectTreePage {
     navigation: Arc<NavigationService>,
     selected_path: Option<String>,
     expanded_project: Option<String>,
-    tree: ReadModel<Vec<String>, Vec<ProjectNode>>,
+    tree: ReadModel<Vec<String>, ProjectScan>,
     error: Option<String>,
 }
 
@@ -184,7 +216,7 @@ impl ProjectTreePage {
         let projects = self.service.snapshot();
         let paths = projects.iter().map(|p| p.path.clone()).collect::<Vec<_>>();
         self.tree
-            .request(paths, move || scan_project_tree(&projects));
+            .request(paths, move || Ok(scan_project_tree(&projects)));
     }
     fn add_current_folder(&mut self, cx: &mut Context<Self>) {
         let path = self.navigation.sidebar_state().and_then(|state| {
@@ -282,8 +314,13 @@ impl Render for ProjectTreePage {
             );
         }
         let projects = self.service.snapshot();
-        let tree = self.tree.value().cloned();
+        let scan = self
+            .tree
+            .value()
+            .and_then(|result| result.as_ref().ok())
+            .cloned();
         for (index, project) in projects.into_iter().enumerate() {
+            let failure = scan.as_ref().and_then(|scan| scan.failure(&project.path));
             let selected = selected_path
                 .as_deref()
                 .is_some_and(|path| same_path(path, &project.path));
@@ -326,10 +363,12 @@ impl Render for ProjectTreePage {
                     div()
                         .h_flex()
                         .min_w_0()
+                        .flex_1()
                         .gap(px(8.))
                         .child(
                             Button::new(format!("project-tree-expand-{index}"))
                                 .ghost()
+                                .flex_shrink_0()
                                 .icon(theme::small_icon(if expanded {
                                     IconName::ChevronDown
                                 } else {
@@ -349,12 +388,28 @@ impl Render for ProjectTreePage {
                                     this.toggle_project(&toggle_path, cx);
                                 })),
                         )
-                        .child(theme::small_icon(IconName::Folder))
-                        .child(project.name),
+                        .child(theme::small_icon(IconName::Folder).flex_shrink_0())
+                        .child(
+                            div()
+                                .min_w_0()
+                                .overflow_hidden()
+                                .text_ellipsis()
+                                .child(project.name),
+                        )
+                        .when(failure.is_some(), |row| {
+                            row.child(
+                                div()
+                                    .flex_shrink_0()
+                                    .text_xs()
+                                    .text_color(rgb(theme::text_muted()))
+                                    .child(fileatlas_ui_bridge::i18n::tr("Unavailable")),
+                            )
+                        }),
                 )
                 .child(
                     Button::new(format!("remove-project-tree-root-{index}"))
                         .ghost()
+                        .flex_shrink_0()
                         .icon(theme::small_icon(IconName::X))
                         .accessibility_label(fileatlas_ui_bridge::i18n::tr("Remove project"))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -385,29 +440,21 @@ impl Render for ProjectTreePage {
                 );
             let mut project_block = div().v_flex().gap_0().child(root_row);
             if expanded {
-                match &tree {
-                    Some(Ok(rows)) => {
-                        let children = rows
-                            .iter()
-                            .filter(|node| {
-                                node.depth > 0 && same_path(&node.root_path, &project.path)
-                            })
-                            .map(|node| project_tree_row(node, selected_path.as_deref(), cx))
-                            .collect::<Vec<_>>();
-                        project_block =
-                            project_block.child(div().v_flex().gap_0().children(children));
-                    }
-                    Some(Err(error)) => {
-                        project_block = project_block.child(
-                            div()
-                                .ml(px(22.))
-                                .text_sm()
-                                .text_color(rgb(theme::danger_text()))
-                                .child(error.clone()),
+                let mut subtree = div().v_flex().gap_0();
+                match &scan {
+                    Some(scan) => {
+                        subtree = subtree.children(
+                            scan.nodes
+                                .iter()
+                                .filter(|node| {
+                                    node.depth > 0 && same_path(&node.root_path, &project.path)
+                                })
+                                .map(|node| project_tree_row(node, selected_path.as_deref(), cx))
+                                .collect::<Vec<_>>(),
                         );
                     }
                     None => {
-                        project_block = project_block.child(
+                        subtree = subtree.child(
                             div()
                                 .ml(px(22.))
                                 .text_sm()
@@ -416,6 +463,28 @@ impl Render for ProjectTreePage {
                         );
                     }
                 }
+                if let Some(failure) = failure {
+                    let path = fileatlas_ui_bridge::display_path(&failure.path);
+                    let message = if failure.missing {
+                        fileatlas_ui_bridge::i18n::tr_args(
+                            "Project folder no longer exists: {path}",
+                            &[("path", path)],
+                        )
+                    } else {
+                        fileatlas_ui_bridge::i18n::tr_args(
+                            "Project folder cannot be read: {path}",
+                            &[("path", path)],
+                        )
+                    };
+                    subtree = subtree.child(
+                        div()
+                            .ml(px(22.))
+                            .text_sm()
+                            .text_color(rgb(theme::text_muted()))
+                            .child(message),
+                    );
+                }
+                project_block = project_block.child(subtree);
             }
             content = content.child(project_block);
         }
@@ -505,4 +574,52 @@ fn project_tree_row(
         .child(node.name.clone())
         .children(guides)
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ProjectTreeRoot, UnavailableRoot, scan_project_tree};
+
+    fn root(path: &str) -> ProjectTreeRoot {
+        ProjectTreeRoot {
+            path: path.to_owned(),
+            name: path.rsplit(['\\', '/']).next().unwrap_or(path).to_owned(),
+        }
+    }
+
+    #[test]
+    fn a_missing_root_only_marks_itself_and_keeps_the_other_tree() -> std::io::Result<()> {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
+        let base = std::env::temp_dir().join(format!(
+            "fileatlas-project-tree-{}-{}",
+            std::process::id(),
+            stamp.as_nanos()
+        ));
+        let live = base.join("live");
+        std::fs::create_dir_all(live.join("docs").join("notes"))?;
+        std::fs::create_dir_all(live.join("src"))?;
+        let live = live.to_string_lossy().into_owned();
+        let gone = base.join("gone").to_string_lossy().into_owned();
+
+        let scan = scan_project_tree(&[root(&live), root(&gone)]);
+        let children: Vec<&str> = scan
+            .nodes
+            .iter()
+            .filter(|node| node.depth > 0)
+            .map(|node| node.name.as_str())
+            .collect();
+        assert_eq!(children, ["docs", "notes", "src"]);
+        assert_eq!(
+            scan.unavailable,
+            vec![UnavailableRoot {
+                path: gone.clone(),
+                missing: true,
+            }]
+        );
+        assert!(scan.failure(&live).is_none());
+        assert!(scan.failure(&gone).is_some());
+        std::fs::remove_dir_all(&base)
+    }
 }
