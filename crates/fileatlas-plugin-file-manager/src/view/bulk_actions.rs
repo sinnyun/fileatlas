@@ -1,17 +1,18 @@
 //! Source-compatible filter-driven bulk file actions.
 use super::{FileManagerView, format_bulk_outcome};
 use chrono::Utc;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 mod filters;
 mod read_model;
 use crate::filter::MediaTypeFilter;
 use fileatlas_plugin_database::{MediaItem, MediaQuery};
-use fileatlas_ui_bridge::theme;
 use filters::{filter_controls, match_results_list, section_title};
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::calendar::Date;
-use gpui_kit::component::date_picker::DatePicker;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 use read_model::MatchRequest;
@@ -251,16 +252,17 @@ pub(super) fn render(
     height: f32,
     cx: &mut Context<FileManagerView>,
 ) -> AnyElement {
-    let mut panel = div()
-        .v_flex()
-        .w_full()
-        .gap_3()
-        .h(px(height))
-        .min_h_0()
-        .overflow_hidden()
-        .rounded_md()
-        .bg(rgb(theme::surface_modal()))
-        .p_3();
+    let mut panel = fileatlas_ui_bridge::components::card_surface(
+        div()
+            .v_flex()
+            .w_full()
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .h(px(height))
+            .min_h_0()
+            .overflow_hidden()
+            .p(px(fileatlas_ui_bridge::theme::space_expanded())),
+        false,
+    );
     let Some(action) = view.bulk_action else {
         return panel.into_any_element();
     };
@@ -282,13 +284,13 @@ pub(super) fn render(
         .h_flex()
         .w_full()
         .items_start()
-        .gap_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             div()
                 .v_flex()
                 .w(px(column_width))
                 .flex_shrink_0()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(section_title("1. Choose action"))
                 .children(
                     [
@@ -299,69 +301,57 @@ pub(super) fn render(
                     .into_iter()
                     .map(|choice| {
                         let selected = view.bulk_action == Some(choice);
-                        Button::new(format!("file_manager-bulk-action-{}", choice.verb()))
-                            .ghost()
-                            .compact()
-                            .w_full()
-                            .bg(if view.bulk_action == Some(choice) {
-                                rgb(theme::selection_color())
-                            } else {
-                                rgba(0)
-                            })
-                            .text_color(rgb(if view.bulk_action == Some(choice) {
-                                theme::selection_text()
-                            } else {
-                                theme::text_primary()
-                            }))
-                            .child(choice_row(choice.label(), selected))
-                            .toggled(selected)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.bulk_action = Some(choice);
-                                this.confirm_bulk_action = false;
-                                this.confirm_bulk_action_ids = None;
-                                cx.notify();
-                            }))
+                        fileatlas_ui_bridge::components::button(format!(
+                            "file_manager-bulk-action-{}",
+                            choice.verb()
+                        ))
+                        .ghost()
+                        .child(choice_row(
+                            format!("bulk-action-choice-{}", choice.verb()),
+                            choice.label(),
+                            selected,
+                        ))
+                        .toggled(selected)
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.bulk_action = Some(choice);
+                            this.confirm_bulk_action = false;
+                            this.confirm_bulk_action_ids = None;
+                            cx.notify();
+                        }))
                     }),
                 ),
         )
         .child(
             div()
                 .v_flex()
-                .w(px(column_width))
                 .flex_shrink_0()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(section_title("2. Choose source"))
                 .children(BulkActionSource::ALL.into_iter().map(|choice| {
                     let selected = view.bulk_source == choice;
-                    Button::new(format!("file_manager-bulk-source-{}", choice.label()))
-                        .ghost()
-                        .compact()
-                        .w_full()
-                        .bg(if view.bulk_source == choice {
-                            rgb(theme::selection_color())
-                        } else {
-                            rgba(0)
-                        })
-                        .text_color(rgb(if view.bulk_source == choice {
-                            theme::selection_text()
-                        } else {
-                            theme::text_primary()
-                        }))
-                        .child(choice_row(choice.label(), selected))
-                        .toggled(selected)
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.bulk_source = choice;
-                            this.confirm_bulk_action = false;
-                            this.confirm_bulk_action_ids = None;
-                            cx.notify();
-                        }))
+                    fileatlas_ui_bridge::components::button(format!(
+                        "file_manager-bulk-source-{}",
+                        choice.label()
+                    ))
+                    .ghost()
+                    .child(choice_row(
+                        format!("bulk-source-choice-{}", choice.label()),
+                        choice.label(),
+                        selected,
+                    ))
+                    .toggled(selected)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.bulk_source = choice;
+                        this.confirm_bulk_action = false;
+                        this.confirm_bulk_action_ids = None;
+                        cx.notify();
+                    }))
                 })),
         );
     let mut controls = div()
         .v_flex()
-        .gap_2()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .overflow_y_scrollbar()
-        .w(px(available_width))
         .h_full()
         .min_w_0()
         .min_h_0()
@@ -369,40 +359,27 @@ pub(super) fn render(
         .child(
             div()
                 .h_flex()
-                .gap_3()
-                .p_2()
-                .rounded_md()
-                .bg(rgb(theme::surface_panel()))
+                .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
                 .child(action_source),
         );
     if let Some(error) = error {
-        controls = controls.child(
-            div()
-                .text_sm()
-                .text_color(rgb(theme::danger_text()))
-                .child(error),
-        );
+        controls = controls.child(div().workbench_assistant().child(error));
     }
     if loading {
         controls = controls.child(fileatlas_ui_bridge::i18n::tr("Loading file info…"));
     }
     if let Some(status) = &view.operation_status {
-        controls = controls.child(
-            div()
-                .text_sm()
-                .text_color(rgb(theme::text_secondary()))
-                .child(status.clone()),
-        );
+        controls = controls.child(div().workbench_assistant().child(status.clone()));
     }
     if view.bulk_source == BulkActionSource::CurrentSelection {
-        controls = controls.child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
-                .child(fileatlas_ui_bridge::i18n::tr(
-                    "Current selection uses its selected items directly; filters are skipped.",
-                )),
-        );
+        controls = controls.child(div().workbench_assistant().child(
+            fileatlas_ui_bridge::i18n::tr(
+                "Current selection uses its selected items directly; filters are skipped.",
+            ),
+        ));
     } else {
         controls = controls.child(filter_controls(view, cx));
     }
@@ -412,7 +389,7 @@ pub(super) fn render(
         .flex_1()
         .min_h_0()
         .items_start()
-        .gap_4()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .w_full()
         .child(controls)
         .child(result_list);
@@ -423,22 +400,24 @@ pub(super) fn render(
             .flex_shrink_0()
             .items_center()
             .justify_between()
-            .mt(px(3.))
-            .pt(px(10.))
-            .border_t_1()
-            .border_color(rgba(theme::separator_light()))
-            .child(div().text_sm().child(fileatlas_ui_bridge::i18n::tr_args(
-                "Matches: {count} items",
-                &[("count", count.to_string())],
-            )))
+            .mt(px(fileatlas_ui_bridge::theme::space_compact()))
+            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+            .child(
+                div()
+                    .workbench_assistant()
+                    .child(fileatlas_ui_bridge::i18n::tr_args(
+                        "Matches: {count} items",
+                        &[("count", count.to_string())],
+                    )),
+            )
             .child(
                 div()
                     .h_flex()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
-                        Button::new("file_manager-bulk-cancel")
+                        fileatlas_ui_bridge::components::button("file_manager-bulk-cancel")
                             .ghost()
-                            .compact()
                             .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.bulk_action = None;
@@ -448,9 +427,8 @@ pub(super) fn render(
                             })),
                     )
                     .child(
-                        Button::new("file_manager-bulk-run")
+                        fileatlas_ui_bridge::components::button("file_manager-bulk-run")
                             .primary()
-                            .compact()
                             .label(fileatlas_ui_bridge::i18n::tr(
                                 &(if action == BulkActionKind::Delete && view.confirm_bulk_action {
                                     fileatlas_ui_bridge::i18n::tr_args(
@@ -479,36 +457,17 @@ pub(super) fn render(
     panel.into_any_element()
 }
 
-fn choice_row(label: &str, selected: bool) -> Div {
-    let accent = theme::accent();
+fn choice_row(id: String, label: &str, selected: bool) -> Div {
     div()
         .h_flex()
         .w_full()
         .items_center()
-        .gap_2()
-        .child(
-            div()
-                .size(px(14.))
-                .rounded_full()
-                .border_1()
-                .border_color(if selected {
-                    rgb(accent)
-                } else {
-                    rgba(theme::border().to_rgba())
-                })
-                .flex()
-                .items_center()
-                .justify_center()
-                .child(if selected {
-                    div().size(px(6.)).rounded_full().bg(rgb(accent))
-                } else {
-                    div().size(px(6.))
-                }),
-        )
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .child(fileatlas_ui_bridge::components::radio(id, selected))
         .child(
             div()
                 .flex_1()
-                .text_sm()
+                .workbench_body()
                 .child(fileatlas_ui_bridge::i18n::tr(label)),
         )
 }
@@ -530,22 +489,22 @@ fn date_row(view: &FileManagerView, from: bool, cx: &mut Context<FileManagerView
     let mut row = div()
         .h_flex()
         .items_center()
-        .gap_2()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
                 .w(px(110.))
                 .flex_shrink_0()
-                .text_sm()
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr(label)),
         )
         .child(
-            DatePicker::new(picker)
+            fileatlas_ui_bridge::components::date_picker(picker)
                 .w(px(220.))
                 .placeholder(fileatlas_ui_bridge::i18n::tr("Select date")),
         );
     if has_value {
         row = row.child(
-            Button::new(if from {
+            fileatlas_ui_bridge::components::button(if from {
                 "file_manager-bulk-clear-date-from"
             } else {
                 "file_manager-bulk-clear-date-to"

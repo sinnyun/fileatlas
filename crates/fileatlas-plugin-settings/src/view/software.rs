@@ -1,4 +1,7 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use gpui_kit::component::button::Button;
 use std::path::PathBuf;
 
 #[derive(Clone, serde::Serialize)]
@@ -59,7 +62,9 @@ impl SettingsView {
         cx: &mut Context<Self>,
         screenshot_plugin: bool,
     ) -> impl IntoElement {
-        let mut content = div().v_flex().gap_3().line_height(relative(1.));
+        let mut content = div()
+            .v_flex()
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()));
         if !screenshot_plugin {
             content = content.child(
                 div()
@@ -83,59 +88,50 @@ impl SettingsView {
                         "unsupported" => "Detection unavailable",
                         _ => "Not detected",
                     };
-                    let state_color = if item.state == "installed" {
-                        theme::success_text()
-                    } else {
-                        theme::text_secondary()
-                    };
-                    let mut details = div().v_flex().gap_2();
+                    let mut details = div()
+                        .v_flex()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()));
                     details = details.child(
                         div()
                             .h_flex()
                             .items_center()
                             .justify_between()
-                            .gap_3()
+                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                             .child(
                                 div()
-                                    .text_size(px(theme::FONT_SIZE_HEADING))
-                                    .font_semibold()
+                                    .workbench_title()
                                     .child(fileatlas_ui_bridge::i18n::tr(item.name)),
                             )
                             .child(
                                 div()
-                                    .text_xs()
-                                    .font_semibold()
-                                    .text_color(rgb(state_color))
+                                    .workbench_assistant()
                                     .child(fileatlas_ui_bridge::i18n::tr(state_label)),
                             ),
                     );
                     details = details.child(
                         div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .child(fileatlas_ui_bridge::i18n::tr(item.purpose)),
                     );
                     if let Some(version) = &item.version {
-                        details = details.child(div().text_xs().child(format!(
+                        details = details.child(div().workbench_assistant().child(format!(
                             "{}: {version}",
                             fileatlas_ui_bridge::i18n::tr("Version")
                         )));
                     }
                     if let Some(path) = &item.path {
-                        details = details.child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(theme::text_secondary()))
-                                .child(format!(
-                                    "{}: {path}",
-                                    fileatlas_ui_bridge::i18n::tr("Location")
-                                )),
-                        );
+                        details = details.child(div().workbench_assistant().child(format!(
+                            "{}: {path}",
+                            fileatlas_ui_bridge::i18n::tr("Location")
+                        )));
                     }
                     let project_url = item.project_url;
                     let download_url = item.download_url;
                     let github_url = item.github_url;
-                    let mut links = div().h_flex().items_center().gap_2();
+                    let mut links = div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()));
                     links = links.child(link_button(
                         format!("settings-software-{}-project", item.name),
                         "Project page",
@@ -162,45 +158,39 @@ impl SettingsView {
                     {
                         details = details.child(
                             div()
-                                .text_xs()
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr(note)),
                         );
                     }
                     content = content.child(
                         div()
                             .w_full()
-                            .py(px(theme::SPACE_4))
-                            .border_b_1()
-                            .border_color(rgb(theme::separator()))
+                            .py(px(theme::space_expanded()))
+                            .workbench_separator(
+                                fileatlas_ui_bridge::components::DividerEdge::Bottom,
+                            )
                             .child(details),
                     );
                 }
             }
             Some(Err(error)) => {
-                content = content.child(div().text_sm().child(error.clone()));
+                content = content.child(div().workbench_assistant().child(error.clone()));
             }
             None => {
-                content = content.child(
-                    div()
-                        .text_sm()
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(fileatlas_ui_bridge::i18n::tr(
-                            "Checking installed software…",
-                        )),
-                );
+                content = content.child(div().workbench_assistant().child(
+                    fileatlas_ui_bridge::i18n::tr("Checking installed software…"),
+                ));
             }
         }
         if !screenshot_plugin {
-            content=content.child(div().text_size(px(theme::FONT_SIZE_SMALL)).text_color(rgb(theme::text_secondary()))
+            content=content.child(div().workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("This page only reads installation records and checks common paths. It does not install or start listed software.")));
         }
         content
     }
     pub(super) fn software_refresh_button(&self, cx: &mut Context<Self>) -> Button {
-        Button::new("settings-software-refresh")
+        fileatlas_ui_bridge::components::button("settings-software-refresh")
             .outline()
-            .h(px(32.))
             .icon(theme::small_icon(gpui_kit::assets::IconName::RefreshCw))
             .label(fileatlas_ui_bridge::i18n::tr("Refresh"))
             .on_click(cx.listener(|this, _, _, cx| {
@@ -216,9 +206,8 @@ fn link_button(
     url: &'static str,
     cx: &mut Context<SettingsView>,
 ) -> Button {
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .outline()
-        .h(px(32.))
         .label(fileatlas_ui_bridge::i18n::tr(label))
         .on_click(cx.listener(move |_, _, _, _| {
             let _ = open::that(url);

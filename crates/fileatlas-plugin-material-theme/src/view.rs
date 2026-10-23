@@ -1,5 +1,6 @@
 //! Settings schema owns layout; this view only owns generator draft/input state.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::{UiViewContribution, settings_page::*, theme};
 use gpui_kit::component::ActiveTheme as _;
 use gpui_kit::component::color_picker::{ColorPickerEvent, ColorPickerState, ColorSelect};
@@ -151,6 +152,6 @@ impl Render for GeneratorView {
                 cx.notify();
             });
         }))
-        .text_color(rgb(theme::text_primary()))
+        .workbench_body()
     }
 }

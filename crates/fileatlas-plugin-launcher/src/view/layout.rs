@@ -1,4 +1,7 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 
 impl Render for LauncherPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -71,7 +74,7 @@ impl Render for LauncherPanel {
             .flex_shrink_0()
             .flex_wrap()
             .items_start()
-            .gap(px(12.));
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()));
         for entry in filtered {
             grid = grid.child(self.program_card(entry, cx));
         }
@@ -82,19 +85,20 @@ impl Render for LauncherPanel {
             .flex_1()
             .min_h_0()
             .min_w_0()
-            .gap(px(16.))
-            .p(px(18.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_region(false)
             .child(
                 div()
                     .h_flex()
                     .flex_shrink_0()
                     .items_center()
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         div()
                             .flex_1()
                             .min_w_0()
-                            .h(px(36.))
+                            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_TOOLBAR)))
                             .h_flex()
                             .items_center()
                             .child(fileatlas_ui_bridge::components::search_input(
@@ -102,8 +106,7 @@ impl Render for LauncherPanel {
                             )),
                     )
                     .child(
-                        Button::new("launcher-add-program")
-                            .h(px(34.))
+                        fileatlas_ui_bridge::components::button("launcher-add-program")
                             .label(tr("Add program"))
                             .icon(theme::icon(IconName::Plus))
                             .disabled(self.add_program_task.is_some())
@@ -112,8 +115,7 @@ impl Render for LauncherPanel {
                             ),
                     )
                     .child(
-                        Button::new("launcher-rescan")
-                            .h(px(34.))
+                        fileatlas_ui_bridge::components::button("launcher-rescan")
                             .label(tr(if self.snapshot.scanning {
                                 "Scanning…"
                             } else {
@@ -133,26 +135,23 @@ impl Render for LauncherPanel {
                     .flex_shrink_0()
                     .items_center()
                     .justify_between()
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
-                        div()
-                            .v_flex()
-                            .gap(px(4.))
-                            .min_w_0()
-                            .child(div().text_size(px(18.)).font_semibold().child(heading))
-                            .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                                fileatlas_ui_bridge::i18n::tr_args(
-                                    "Showing {count} programs",
-                                    &[("count", count.to_string())],
-                                ),
-                            )),
+                        fileatlas_ui_bridge::components::heading_block(
+                            heading,
+                            fileatlas_ui_bridge::i18n::tr_args(
+                                "Showing {count} programs",
+                                &[("count", count.to_string())],
+                            ),
+                        )
+                        .min_w_0(),
                     )
                     .child(
                         div()
                             .h_flex()
-                            .gap(px(4.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(
-                                Button::new("launcher-sort")
+                                fileatlas_ui_bridge::components::button("launcher-sort")
                                     .label(self.sort_by.label())
                                     .dropdown_caret(true)
                                     .dropdown_menu(move |mut menu, _, _| {
@@ -176,7 +175,7 @@ impl Render for LauncherPanel {
                                     }),
                             )
                             .child(
-                                Button::new("launcher-sort-direction")
+                                fileatlas_ui_bridge::components::button("launcher-sort-direction")
                                     .ghost()
                                     .icon(theme::small_icon(if self.descending {
                                         IconName::ArrowDown
@@ -202,12 +201,7 @@ impl Render for LauncherPanel {
                     ),
             );
         if let Some(message) = &self.message {
-            body = body.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::danger_text()))
-                    .child(message.clone()),
-            );
+            body = body.child(div().workbench_assistant().child(message.clone()));
         }
         let contents = if count == 0 {
             div()
@@ -215,17 +209,16 @@ impl Render for LauncherPanel {
                 .items_center()
                 .justify_center()
                 .h(px(200.))
-                .gap(px(12.))
-                .text_color(rgb(theme::text_muted()))
+                .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(theme::empty_state_icon(IconName::LayoutGrid))
-                .child(tr(if self.snapshot.scanning {
+                .child(div().workbench_body().child(tr(if self.snapshot.scanning {
                     "Discovering system programs…"
                 } else {
                     "No matching programs"
-                }))
+                })))
                 .child(
                     div()
-                        .text_xs()
+                        .workbench_assistant()
                         .text_center()
                         .child(tr("Try another category, search term, or add a program.")),
                 )
@@ -252,8 +245,8 @@ impl Render for LauncherPanel {
             .v_flex()
             .size_full()
             .min_h_0()
-            .text_size(px(theme::FONT_SIZE_BODY))
-            .bg(rgb(theme::surface_base()))
+            .workbench_body()
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Base)
             .child(
                 div()
                     .h_flex()
@@ -268,14 +261,12 @@ impl Render for LauncherPanel {
                 div()
                     .h_flex()
                     .flex_shrink_0()
-                    .h(px(34.))
+                    .h(px(theme::ui_height(theme::CONTROL_HEIGHT_TOOLBAR)))
                     .items_center()
                     .justify_between()
-                    .px(px(14.))
-                    .border_t_1()
-                    .border_color(rgba(theme::separator_light()))
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr_args(
                         "{programs} programs · {categories} categories",
                         &[
@@ -290,15 +281,23 @@ impl Render for LauncherPanel {
                         div()
                             .h_flex()
                             .items_center()
-                            .gap(px(4.))
-                            .text_color(rgb(status_color))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                            .workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Custom(
+                                    status_color,
+                                ),
+                            )
                             .child(
                                 theme::small_icon(if status_active {
                                     IconName::Loader
                                 } else {
                                     IconName::CircleCheck
                                 })
-                                .text_color(rgb(status_color)),
+                                .workbench_foreground(
+                                    fileatlas_ui_bridge::components::ForegroundRole::Custom(
+                                        status_color,
+                                    ),
+                                ),
                             )
                             .child(tr(if self.snapshot.scanning {
                                 "Scanning"

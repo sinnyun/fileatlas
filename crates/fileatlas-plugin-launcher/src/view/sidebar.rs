@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 
 impl LauncherPanel {
@@ -19,23 +20,24 @@ impl LauncherPanel {
                 this.show_hidden = false;
                 cx.notify();
             }))
-            .child(div().w(px(20.)).text_size(px(17.)).child(theme::icon(icon)))
+            .child(div().w(px(20.)).child(theme::icon(icon).size(px(16.))))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .overflow_hidden()
-                    .text_sm()
+                    .workbench_assistant()
+                    .text_ellipsis()
                     .child(name),
             )
-            .child(div().text_xs().child(count.to_string()))
+            .child(div().workbench_assistant().child(count.to_string()))
             .into_any_element()
     }
 
     pub(super) fn sidebar(&self, cx: &mut Context<Self>) -> AnyElement {
         let mut categories = div()
             .v_flex()
-            .gap(px(3.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .flex_1()
             .min_h_0()
             .overflow_y_scrollbar();
@@ -61,7 +63,7 @@ impl LauncherPanel {
                 )));
             if category.name != "General" {
                 row = row.child(
-                    Button::new(format!("launcher-category-menu-{id}"))
+                    fileatlas_ui_bridge::components::button(format!("launcher-category-menu-{id}"))
                         .ghost()
                         .icon(theme::icon(IconName::Ellipsis))
                         .dropdown_menu(move |menu, _, _| {
@@ -115,22 +117,23 @@ impl LauncherPanel {
         let hidden_count = self.snapshot.entries.iter().filter(|e| e.hidden).count();
         let mut editor = div()
             .v_flex()
-            .gap(px(7.))
-            .pt(px(12.))
-            .border_t_1()
-            .border_color(rgba(theme::separator_light()))
-            .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                if self.editing_category.is_some() {
-                    tr("Rename")
-                } else {
-                    tr("Add category")
-                },
-            ));
+            .gap(px(theme::space_standard()))
+            .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+            .child(
+                div()
+                    .workbench_assistant()
+                    .child(if self.editing_category.is_some() {
+                        tr("Rename")
+                    } else {
+                        tr("Add category")
+                    }),
+            );
         {
             editor = editor
                 .child(fileatlas_ui_bridge::components::text_input(&self.name_input).w_full())
                 .child(
-                    Button::new("launcher-save-category")
+                    fileatlas_ui_bridge::components::button("launcher-save-category")
                         .label(tr(if self.editing_category.is_some() {
                             "Save category"
                         } else {
@@ -141,7 +144,7 @@ impl LauncherPanel {
         }
         if self.editing_category.is_some() {
             editor = editor.child(
-                Button::new("launcher-cancel-category")
+                fileatlas_ui_bridge::components::button("launcher-cancel-category")
                     .ghost()
                     .label(tr("Cancel"))
                     .on_click(cx.listener(|this, _, window, cx| {
@@ -152,45 +155,30 @@ impl LauncherPanel {
                     })),
             );
         }
-        div()
+        fileatlas_ui_bridge::components::section()
             .v_flex()
             .w(px(218.))
             .h_full()
             .flex_shrink_0()
-            .p(px(12.))
-            .gap(px(8.))
-            .bg(rgb(theme::surface_faint()))
-            .border_r_1()
-            .border_color(rgba(theme::separator_light()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(10.))
-                    .py(px(12.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .py(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
                         div()
-                            .text_size(px(27.))
-                            .text_color(rgb(theme::accent_text()))
+                            .workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::AccentText,
+                            )
                             .child(theme::large_icon(IconName::LayoutGrid)),
                     )
-                    .child(
-                        div()
-                            .v_flex()
-                            .gap(px(4.))
-                            .child(
-                                div()
-                                    .font_semibold()
-                                    .text_size(px(17.))
-                                    .child(tr("Launchpad")),
-                            )
-                            .child(
-                                div()
-                                    .text_xs()
-                                    .text_color(rgb(theme::text_muted()))
-                                    .child(tr("Personal program workbench")),
-                            ),
-                    ),
+                    .child(fileatlas_ui_bridge::components::heading_block(
+                        tr("Launchpad"),
+                        tr("Personal program workbench"),
+                    )),
             )
             .child(self.category_row(
                 None,
@@ -210,18 +198,24 @@ impl LauncherPanel {
                         cx.notify();
                     }))
                     .child(div().w(px(20.)).child(theme::icon(IconName::EyeOff)))
-                    .child(div().flex_1().text_sm().child(tr("Hidden tools")))
-                    .child(div().text_xs().child(hidden_count.to_string())),
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_hidden()
+                            .workbench_assistant()
+                            .text_ellipsis()
+                            .child(tr("Hidden tools")),
+                    )
+                    .child(div().workbench_assistant().child(hidden_count.to_string())),
             )
             .child(
                 div()
-                    .pt(px(14.))
-                    .pb(px(5.))
-                    .px(px(10.))
-                    .border_t_1()
-                    .border_color(rgba(theme::separator_light()))
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .pb(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                    .workbench_title()
                     .child(tr("Categories")),
             )
             .child(categories)

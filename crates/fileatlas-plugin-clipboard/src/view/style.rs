@@ -1,21 +1,7 @@
 use super::*;
 pub(super) use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 
-pub(super) fn rule() -> u32 {
-    fileatlas_ui_bridge::theme::separator()
-}
-pub(super) fn background() -> u32 {
-    fileatlas_ui_bridge::theme::surface_base()
-}
-pub(super) fn inset() -> u32 {
-    fileatlas_ui_bridge::theme::surface_faint()
-}
-pub(super) fn text() -> u32 {
-    fileatlas_ui_bridge::theme::text_primary()
-}
-pub(super) fn muted() -> u32 {
-    fileatlas_ui_bridge::theme::text_secondary()
-}
 pub(super) fn icon(name: IconName, size: f32) -> gpui_kit::component::Icon {
     gpui_kit::component::Icon::new(name).size(px(size))
 }

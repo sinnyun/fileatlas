@@ -1,5 +1,8 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 
 pub(super) fn render(
@@ -9,7 +12,7 @@ pub(super) fn render(
 ) -> impl IntoElement {
     let mut panel = div()
         .v_flex()
-        .gap_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .w_full()
         .max_w(px(760.))
         .min_w_0()
@@ -30,7 +33,7 @@ pub(super) fn render(
                 div()
                     .h_flex()
                     .flex_wrap()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(metric_card(IconName::Files, "All files", total_value))
                     .child(metric_card(
                         IconName::Image,
@@ -47,8 +50,7 @@ pub(super) fn render(
             if let Err(error) = &audio_count {
                 panel = panel.child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::danger_text()))
+                        .workbench_assistant()
                         .child(format!("Audio count unavailable: {error}")),
                 );
             }
@@ -81,14 +83,12 @@ pub(super) fn render(
             storage_panel = storage_panel
                 .child(
                     div()
-                        .text_xl()
-                        .font_semibold()
+                        .workbench_body()
                         .child(format_storage(stats.total_size_bytes)),
                 )
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(
                             "Total size across indexed media.",
                         )),
@@ -98,7 +98,7 @@ pub(super) fn render(
                     .h_flex()
                     .flex_wrap()
                     .items_start()
-                    .gap_3()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(storage_panel.flex_1())
                     .child(rating_panel.flex_1()),
             );
@@ -143,7 +143,7 @@ pub(super) fn render(
                     .h_flex()
                     .flex_wrap()
                     .items_start()
-                    .gap_3()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(tags_panel.flex_1())
                     .child(months_panel.flex_1()),
             );
@@ -151,7 +151,7 @@ pub(super) fn render(
         Some(Err(error)) => {
             panel = panel.child(
                 div()
-                    .text_color(rgb(theme::danger_text()))
+                    .workbench_assistant()
                     .child(format!("Error loading statistics: {error}")),
             );
         }
@@ -168,28 +168,25 @@ fn metric_card(icon: IconName, label: &'static str, value: String) -> Div {
         .flex_1()
         .min_w_0()
         .min_w(px(140.))
-        .gap_1()
-        .p_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .workbench_section()
-        .bg(rgb(theme::surface_card()))
+        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Card)
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
-                .child(
-                    theme::icon(icon)
-                        .size(px(16.))
-                        .text_color(rgb(theme::text_secondary())),
-                )
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .child(theme::icon(icon).size(px(16.)).workbench_foreground(
+                    fileatlas_ui_bridge::components::ForegroundRole::Secondary,
+                ))
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(label)),
                 ),
         )
-        .child(div().text_xl().font_semibold().child(value))
+        .child(div().workbench_body().child(value))
 }
 
 fn stat_section(title: &'static str) -> Div {
@@ -198,14 +195,13 @@ fn stat_section(title: &'static str) -> Div {
         .flex_1()
         .min_w_0()
         .min_w(px(280.))
-        .gap_2()
-        .p_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .workbench_section()
-        .bg(rgb(theme::surface_card()))
+        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Card)
         .child(
             div()
-                .text_sm()
-                .font_semibold()
+                .workbench_title()
                 .child(fileatlas_ui_bridge::i18n::tr(title)),
         )
 }
@@ -230,23 +226,25 @@ fn bar_row(label: String, count: i64, max: i64, color: u32, width: f32) -> Div {
     div()
         .h_flex()
         .items_center()
-        .gap_2()
-        .child(div().w(px(90.)).text_xs().child(label))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .child(div().w(px(90.)).workbench_assistant().child(label))
         .child(
             div()
                 .w(px(width))
                 .h(px(14.))
-                .rounded_sm()
-                .bg(rgb(theme::surface_faint()))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                 .child(
                     div()
                         .w(px(width * fraction))
                         .h_full()
-                        .rounded_sm()
-                        .bg(rgb(color)),
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Custom(
+                            color,
+                        )),
                 ),
         )
-        .child(div().text_xs().child(count.to_string()))
+        .child(div().workbench_assistant().child(count.to_string()))
 }
 
 fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
@@ -254,7 +252,7 @@ fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
         .h_flex()
         .items_end()
         .justify_between()
-        .gap(px(3.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .h(px(118.))
         .children(data.into_iter().map(|(label, count)| {
             let bar_height = if count <= 0 {
@@ -269,25 +267,21 @@ fn vertical_chart(data: Vec<(String, i64)>, max: i64, color: u32) -> Div {
                 .h(px(118.))
                 .items_center()
                 .justify_end()
-                .gap(px(3.))
-                .child(
-                    div()
-                        .text_size(px(9.))
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(count.to_string()),
-                )
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                .child(div().workbench_assistant().child(count.to_string()))
                 .child(
                     div()
                         .w(px(24.))
                         .h(px(bar_height))
-                        .rounded(px(2.))
-                        .bg(rgb(color)),
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Micro)
+                        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Custom(
+                            color,
+                        )),
                 )
                 .child(
                     div()
                         .w_full()
-                        .text_size(px(9.))
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .text_center()
                         .overflow_hidden()
                         .text_ellipsis()

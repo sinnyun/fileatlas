@@ -1,5 +1,6 @@
 //! Unified favorite shortcuts; library indexing/registration remains independent.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 impl SidebarView {
     pub(super) fn render_favorite_folder_creation(&self, cx: &mut Context<Self>) -> Option<Div> {
@@ -7,26 +8,21 @@ impl SidebarView {
         Some(
             div()
                 .v_flex()
-                .gap_1()
-                .p_1()
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(parent.clone()),
-                )
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .p(px(fileatlas_ui_bridge::theme::space_compact()))
+                .child(div().workbench_assistant().child(parent.clone()))
                 .child(fileatlas_ui_bridge::components::text_input(&self.new_folder_name).w_full())
                 .child(
                     div()
                         .h_flex()
-                        .gap_1()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .child(
-                            Button::new("navigation-create-subfolder")
+                            fileatlas_ui_bridge::components::button("navigation-create-subfolder")
                                 .label(fileatlas_ui_bridge::i18n::tr("Create"))
                                 .on_click(cx.listener(|this, _, _, cx| this.create_subfolder(cx))),
                         )
                         .child(
-                            Button::new("navigation-cancel-subfolder")
+                            fileatlas_ui_bridge::components::button("navigation-cancel-subfolder")
                                 .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.new_folder_parent = None;

@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::settings_page::{
     Choice, SettingControl, SettingRow, SettingValue, SettingsPage, SettingsSection,
 };
@@ -15,7 +16,7 @@ impl SettingsView {
             Tab::Tags => self.render_tags(s, cx).into_any_element(),
             Tab::Ai => div()
                 .v_flex()
-                .gap(px(theme::SPACE_3))
+                .gap(px(theme::space_expanded()))
                 .child(self.section("Automatic analysis"))
                 .child(self.toggle_button(
                     "ai",
@@ -28,14 +29,13 @@ impl SettingsView {
                         .h_flex()
                         .items_center()
                         .justify_between()
-                        .gap_3()
+                        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                         .child(self.section("Mandatory tag groups").flex_1())
                         .child(self.add_group_button(cx)),
                 )
                 .child(
                     div()
-                        .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(
                             "Each group defines required tags for automatic analysis.",
                         )),

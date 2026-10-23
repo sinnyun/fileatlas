@@ -57,7 +57,6 @@ use fileatlas_plugin_tagging::TaggingService;
 use fileatlas_ui_bridge::theme;
 use fileatlas_ui_bridge::{UiCommandInvoked, UiViewContribution};
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::calendar::CalendarState;
 use gpui_kit::component::date_picker::{DatePickerEvent, DatePickerState, DateTime};
 use gpui_kit::component::input::{InputEvent, InputState};

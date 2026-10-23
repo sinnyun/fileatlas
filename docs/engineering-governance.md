@@ -52,6 +52,9 @@
 | A5 lint deny | 冻结基线中的 deny crate 清单及 workspace-lints 清单；检查 deny 是否仍存在、是否与基线一致、deny crate 债务是否为零 | check-architecture.cjs + 各 crate lib.rs | 与基线不符失败；目前正则只确认 `unwrap_used` 或 `expect_used` 至少出现其一，不保证两项都存在，也不检查属性位置 |
 | A6 crate 分层 | 检查 Cargo workspace 本地 path 依赖不得向较低层反向依赖；检查 UI 栈依赖只允许在 L3+；检查 SQLite 连接只由 database crate 打开；跨 crate 深模块路径须列入显式例外 | scripts/check-layering.cjs + rust-checks.yml | 非法依赖或越界模块导入失败；本地路径依赖解析限当前 Cargo.toml 常见写法，深模块检查是源码词法规则 |
 | L1 清单一致性 | 检查功能计划中的阶段行数量至少为 4、状态前缀在允许词表内、文档相对链接目标存在；有进展的行只要求包含 Markdown 链接 | scripts/check-feature-ledger.cjs | 检查失败时退出 1；不验证证据与声明是否相符，也不验证链接锚点 |
+| U1 字体与间距令牌 | 锁定标题/正文/辅助字号与行高、4/8/16 三档密度缩放间距；禁止产品 UI 使用本地字号覆盖、Kit 数值间距快捷方法或非令牌动态间距 | scripts/check-ui-design-tokens.cjs | token 变化、快捷间距、局部字体样式或新动态间距失败；精确冻结当前几何遗留表达式及数量；不替代视觉验收，也不约束业务画布尺寸 |
+| U2 交互状态所有权 | 插件标准按钮/输入/选择/日期/Popover 通过 UI Bridge；插件不能自行设 GPUI Style、绘制共享表面或覆写交互/文字样式 | scripts/check-ui-theme.cjs | 直接 Kit 构造（含常见类型别名）、`.style`/Style、背景/前景/圆角/边框/阴影/hover、局部字体和颜色失败；不能替代运行时状态覆盖 |
+| U3 基础组件审查覆盖 | 共享 section/row/card、侧栏分组、设置行、媒体/目录卡片、rail footer、modal frame/overlay、divider 与色块选择统一由 UI Bridge 拥有；插件不得新增直接 GPUI Canvas 绘制入口 | scripts/check-ui-geometry-coverage.cjs + scripts/check-ui-theme.cjs | 几何脚本守护已知基础组件入口并禁止直接 modal scrim；主题脚本冻结七个历史 plugin Canvas 路径及每个调用数，新增直接绘制失败 |
 
 生成/更新基线：`node scripts/check-architecture.cjs --update-baseline`（人工审查 diff 后提交）。
 
@@ -79,6 +82,9 @@
 - [x] P5b UI/MCP 命令目录：UI Bridge `Command` 元数据含 `CommandNeeds`；Shell
       UI 和 MCP `command_list`/`command_run` 共用生命周期注册表及 Cordis 命令事件。
       目前只覆盖已注册 UI 命令；通用 CLI 未实现，MCP 专用工具仍保留自身参数契约。
+- [x] U1 字体与间距守卫：`scripts/check-ui-design-tokens.cjs` 验证三层字体 token、三档间距 token 与共享文字组件映射，并拦截局部字号覆写、Kit 数值间距快捷方法及 `.gap(px(local_value))` 一类非令牌动态间距；历史结构缩进/几何变量以逐表达式和计数冻结，CI 执行 self-test 与全仓检查。
+- [x] U2 交互状态所有权：插件内禁止局部 `.hover()`、Kit 标准控件直接构造（包括常见 import/type alias）、GPUI `Style`/`.style(...)` 以及直接组件绘制样式；主侧栏快捷入口、可选行、表面悬停、评分文字和分组标题统一经 UI Bridge `WorkbenchStyle` 实现。运行时状态覆盖仍须同进程 MCP 验证。
+- [x] U3 基础组件审查覆盖：共享 Section/row/card 审查包装器接入侧栏分组、设置行、文件分组、媒体/目录卡片、标签胶囊及 rail 底部控制区；modal shell、遮罩、分割线和数据色块控件开始归入 UI Bridge，并加入源码守卫。插件剩余通用样式构造仍在逐类盘点迁移，不能据此宣称全量完成。
 - [ ] P5 后续：预算型滚动基准测试；债务 crate 逐批清零后补 deny。
 
 ## 守卫边界与已知偏差
@@ -95,6 +101,13 @@
   测试代码增长也可能触发棘轮。脚本只比较总量，不排除测试，也不定位具体新增行。
 - A5 的零债务 deny 范围由基线清单指定，并非脚本自动要求所有零债务 crate 启用 deny；
   当前实现也未分别确认 `unwrap_used` 和 `expect_used` 两项 lint 均存在。
+- U2/U3 是源码词法守卫：直接 Kit 类型别名有探针，但宏生成、非标准 re-export/别名链、
+  通过其他 helper 间接生成的 UI 仍需源码审查；七个历史 Canvas 调用属于逐文件计数例外，
+  不是给新插件复制的范例。`div()` 仍用于 feature 内部布局，因此守卫不能仅凭它证明
+  某个自定义组合面板是否应提升为基础组件。
+- U1 的动态间距扫描解析 GPUI 常见 `.gap/.p/.px/... (px(...))` 调用，但不是完整 Rust AST；
+  宏展开、别名 helper 或其他单位包装可能绕过。当前结构缩进及布局遗留项仅按精确表达式/计数放行，
+  不能复制到新插件；新增间距写法必须直接使用三档共享 token。
 - L1 只验证链接路径存在，不验证 Markdown 锚点、证据内容或证据与阶段声明的对应关系；
   阶段行数量至少为 4，但脚本不要求恰好是 F0–F3。
 

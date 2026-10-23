@@ -1,11 +1,14 @@
 //! v5 design 07: native destination selection and the real export state machine.
 use crate::{MetadataExportService, MetadataExportStatus};
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::i18n::{tr, tr_args};
 use fileatlas_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::spinner::Spinner;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
@@ -133,50 +136,41 @@ impl Render for ExportPanel {
                 theme::danger_text(),
             ),
         };
-        let mut body = div().v_flex().gap_3().p_4().child(
-            div()
-                .h_flex()
-                .items_start()
-                .gap_3()
-                .child(theme::large_icon(icon).text_color(rgb(color)))
-                .child(
-                    div()
-                        .v_flex()
-                        .flex_1()
-                        .min_w_0()
-                        .gap_2()
-                        .child(div().text_size(px(16.)).font_semibold().child(title))
-                        .child(
-                            div()
-                                .text_sm()
-                                .text_color(rgb(if color == theme::danger_text() {
-                                    theme::danger_text()
-                                } else {
-                                    theme::text_secondary()
-                                }))
-                                .child(detail),
-                        ),
-                ),
-        );
+        let mut body = div()
+            .v_flex()
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .child(
+                div()
+                    .h_flex()
+                    .items_start()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .child(theme::large_icon(icon).workbench_foreground(
+                        fileatlas_ui_bridge::components::ForegroundRole::Custom(color),
+                    ))
+                    .child(
+                        fileatlas_ui_bridge::components::heading_block(title, detail)
+                            .flex_1()
+                            .min_w_0(),
+                    ),
+            );
         if exporting {
             body = body.child(
                 div()
                     .h_flex()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(Spinner::new())
-                    .child(tr("Exporting…")),
+                    .child(div().workbench_assistant().child(tr("Exporting…"))),
             );
         }
         if let MetadataExportStatus::Succeeded { path, .. } = &status {
-            body = body.child(
+            body = body.child(fileatlas_ui_bridge::components::card_surface(
                 div()
                     .v_flex()
-                    .gap_1()
-                    .p_3()
-                    .bg(rgb(theme::surface_panel()))
-                    .rounded(px(4.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
-                        div().text_sm().child(
+                        div().workbench_assistant().child(
                             path.file_name()
                                 .map(|name| name.to_string_lossy().into_owned())
                                 .unwrap_or_default(),
@@ -184,99 +178,77 @@ impl Render for ExportPanel {
                     )
                     .child(
                         div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .overflow_hidden()
                             .text_ellipsis()
                             .child(path.display().to_string()),
                     ),
-            );
+                false,
+            ));
         }
         if let Some(error) = &self.input_error {
-            body = body.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone()),
-            );
+            body = body.child(div().workbench_assistant().child(error.clone()));
         }
-        div()
-            .absolute()
-            .inset_0()
-            .flex()
-            .items_center()
-            .justify_center()
-            .bg(rgba(theme::scrim()))
-            .child(
-                div()
-                    .v_flex()
-                    .w(px((f32::from(window.bounds().size.width) - 48.).min(560.)))
-                    .rounded(px(6.))
-                    .border_1()
-                    .border_color(rgb(theme::separator()))
-                    .bg(rgb(theme::surface_modal()))
-                    .child(
-                        div()
-                            .h_flex()
-                            .gap_2()
-                            .h(px(48.))
-                            .px_4()
-                            .border_b_1()
-                            .border_color(rgba(theme::separator_light()))
-                            .child(
-                                theme::icon(IconName::Upload).text_color(rgb(theme::accent_text())),
+        fileatlas_ui_bridge::components::modal_overlay(
+            div()
+                .w(px((f32::from(window.bounds().size.width) - 48.).min(560.)))
+                .child(
+                    div()
+                        .h_flex()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
+                        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
+                        .child(theme::icon(IconName::Upload).workbench_foreground(
+                            fileatlas_ui_bridge::components::ForegroundRole::AccentText,
+                        ))
+                        .child(
+                            div()
+                                .flex_1()
+                                .workbench_title()
+                                .child(tr("Metadata export (JSON)")),
+                        )
+                        .child(
+                            fileatlas_ui_bridge::components::button("export-close-header")
+                                .ghost()
+                                .icon(theme::icon(IconName::X))
+                                .disabled(exporting)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    let _ = this.surfaces.set_open("metadata-export", false);
+                                    cx.notify();
+                                })),
+                        ),
+                )
+                .child(body)
+                .child(
+                    div()
+                        .h_flex()
+                        .justify_end()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                        .py(px(fileatlas_ui_bridge::theme::space_expanded()))
+                        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                        .when(!exporting, |row| {
+                            row.child(
+                                fileatlas_ui_bridge::components::button("export-choose")
+                                    .primary()
+                                    .label(tr("Choose destination…"))
+                                    .on_click(
+                                        cx.listener(|this, _, _, cx| this.choose_and_export(cx)),
+                                    ),
                             )
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .font_semibold()
-                                    .text_sm()
-                                    .child(tr("Metadata export (JSON)")),
-                            )
-                            .child(
-                                Button::new("export-close-header")
-                                    .ghost()
-                                    .icon(theme::icon(IconName::X))
-                                    .disabled(exporting)
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        let _ = this.surfaces.set_open("metadata-export", false);
-                                        cx.notify();
-                                    })),
-                            ),
-                    )
-                    .child(body)
-                    .child(
-                        div()
-                            .h_flex()
-                            .justify_end()
-                            .gap_2()
-                            .px_4()
-                            .py_3()
-                            .border_t_1()
-                            .border_color(rgba(theme::separator_light()))
-                            .when(!exporting, |row| {
-                                row.child(
-                                    Button::new("export-choose")
-                                        .primary()
-                                        .label(tr("Choose destination…"))
-                                        .on_click(
-                                            cx.listener(|this, _, _, cx| {
-                                                this.choose_and_export(cx)
-                                            }),
-                                        ),
-                                )
-                            })
-                            .child(
-                                Button::new("export-close-footer")
-                                    .label(tr("Close"))
-                                    .disabled(exporting)
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        let _ = this.surfaces.set_open("metadata-export", false);
-                                        cx.notify();
-                                    })),
-                            ),
-                    ),
-            )
-            .into_any_element()
+                        })
+                        .child(
+                            fileatlas_ui_bridge::components::button("export-close-footer")
+                                .label(tr("Close"))
+                                .disabled(exporting)
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    let _ = this.surfaces.set_open("metadata-export", false);
+                                    cx.notify();
+                                })),
+                        ),
+                ),
+        )
+        .into_any_element()
     }
 }

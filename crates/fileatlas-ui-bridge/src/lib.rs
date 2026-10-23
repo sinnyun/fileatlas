@@ -6,6 +6,7 @@ use std::sync::{Arc, RwLock};
 use cordis::{Event, Service};
 
 pub mod components;
+pub mod geometry_audit;
 pub mod i18n;
 pub mod panel_catalog;
 pub mod panels;

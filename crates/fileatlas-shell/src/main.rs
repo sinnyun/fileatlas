@@ -1,5 +1,6 @@
 //! Native GPUI host and Cordis runtime composition.
 
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::prelude::FluentBuilder;
 
 use std::sync::Arc;
@@ -59,7 +60,6 @@ use cordis::{Context as CordisContext, Plugin, PreparedPlugin, Routing};
 use fileatlas_ui_bridge::{
     ContributionKind, OwnedContribution, UiBridgeService, UiCatalog, UiCommandInvoked, theme,
 };
-use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::component::*;
 use gpui_kit::*;
@@ -108,33 +108,17 @@ fn render_contribution(owned: &OwnedContribution) -> Div {
         .h_flex()
         .w_full()
         .items_center()
-        .gap_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .rounded_md()
         .border_1()
         .border_color(rgba(theme::border().to_rgba()))
         .bg(rgb(theme::surface_panel()))
-        .px_3()
-        .py_2()
-        .child(
-            div()
-                .w_24()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
-                .child(category),
-        )
+        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .child(div().w_24().workbench_assistant().child(category))
         .child(div().flex_1().child(title))
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
-                .child(location),
-        )
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::text_muted()))
-                .child(owned.owner.clone()),
-        )
+        .child(div().workbench_assistant().child(location))
+        .child(div().workbench_assistant().child(owned.owner.clone()))
 }
 
 fn main() {

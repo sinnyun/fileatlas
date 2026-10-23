@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::prelude::FluentBuilder as _;
 
@@ -24,10 +25,10 @@ impl ClipboardPanel {
                     .flex_1()
                     .min_w_0()
                     .overflow_hidden()
-                    .text_size(px(14.))
+                    .workbench_body()
                     .child(label.to_owned()),
             )
-            .child(div().text_size(px(12.)).child(count.to_string()))
+            .child(div().workbench_assistant().child(count.to_string()))
             .into_any_element()
     }
     fn start_group_edit(&mut self, id: Option<i64>, window: &mut Window, cx: &mut Context<Self>) {
@@ -42,59 +43,55 @@ impl ClipboardPanel {
         cx.notify();
     }
     fn group_form(&self, cx: &mut Context<Self>) -> AnyElement {
-        div()
-            .v_flex()
-            .gap(px(8.))
-            .p(px(10.))
-            .rounded(px(7.))
-            .bg(rgb(inset()))
-            .border_1()
-            .border_color(rgb(rule()))
-            .child(div().text_size(px(12.)).text_color(rgb(muted())).child(
-                if self.rename_group.is_some() {
-                    "重命名分组"
-                } else {
-                    "新建分组"
-                },
-            ))
-            .child(
-                fileatlas_ui_bridge::components::text_input(&self.category_name)
-                    .h(px(34.))
-                    .w_full()
-                    .appearance(false)
-                    .bordered(false),
-            )
-            .child(
-                div()
-                    .h_flex()
-                    .gap(px(6.))
-                    .child(
-                        action("clipboard-group-submit", "保存", true)
-                            .flex_1()
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                let name = this.category_name.read(cx).value().trim().to_owned();
-                                let result = match this.rename_group {
-                                    Some(id) => this.service.rename_category(id, &name),
-                                    None => this.service.add_category(&name),
-                                };
-                                if result.is_ok() {
+        fileatlas_ui_bridge::components::card_surface(
+            div()
+                .v_flex()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                .child(
+                    div()
+                        .workbench_assistant()
+                        .child(if self.rename_group.is_some() {
+                            "重命名分组"
+                        } else {
+                            "新建分组"
+                        }),
+                )
+                .child(fileatlas_ui_bridge::components::text_input(&self.category_name).w_full())
+                .child(
+                    div()
+                        .h_flex()
+                        .gap(px(theme::space_standard()))
+                        .child(
+                            action("clipboard-group-submit", "保存", true)
+                                .flex_1()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    let name =
+                                        this.category_name.read(cx).value().trim().to_owned();
+                                    let result = match this.rename_group {
+                                        Some(id) => this.service.rename_category(id, &name),
+                                        None => this.service.add_category(&name),
+                                    };
+                                    if result.is_ok() {
+                                        this.category_form = false;
+                                        this.rename_group = None;
+                                    }
+                                    this.finish(result, "分组已保存", cx);
+                                })),
+                        )
+                        .child(
+                            action("clipboard-group-cancel", "取消", false)
+                                .flex_1()
+                                .on_click(cx.listener(|this, _, _, cx| {
                                     this.category_form = false;
                                     this.rename_group = None;
-                                }
-                                this.finish(result, "分组已保存", cx);
-                            })),
-                    )
-                    .child(
-                        action("clipboard-group-cancel", "取消", false)
-                            .flex_1()
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.category_form = false;
-                                this.rename_group = None;
-                                cx.notify();
-                            })),
-                    ),
-            )
-            .into_any_element()
+                                    cx.notify();
+                                })),
+                        ),
+                ),
+            false,
+        )
+        .into_any_element()
     }
     pub(super) fn sidebar(&self, cx: &mut Context<Self>) -> AnyElement {
         let pinned = self.items.iter().filter(|item| item.pinned).count();
@@ -105,7 +102,7 @@ impl ClipboardPanel {
             .count();
         let mut navigation = div()
             .v_flex()
-            .gap(px(3.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(self.nav(
                 "clipboard-filter-all",
                 "全部历史",
@@ -132,14 +129,11 @@ impl ClipboardPanel {
             ))
             .child(
                 div()
-                    .mt(px(12.))
-                    .pt(px(14.))
-                    .mb(px(6.))
-                    .border_t_1()
-                    .border_color(rgb(rule()))
-                    .text_color(rgb(muted()))
-                    .text_size(px(12.))
-                    .font_semibold()
+                    .mt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .mb(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                    .workbench_assistant()
                     .child("内容类型 · 自动识别"),
             );
         for kind in [
@@ -164,17 +158,10 @@ impl ClipboardPanel {
                 .h_flex()
                 .items_center()
                 .justify_between()
-                .mt(px(12.))
-                .pt(px(10.))
-                .border_t_1()
-                .border_color(rgb(rule()))
-                .child(
-                    div()
-                        .text_size(px(12.))
-                        .text_color(rgb(muted()))
-                        .font_semibold()
-                        .child("我的分组"),
-                )
+                .mt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                .child(div().workbench_title().child("我的分组"))
                 .child(
                     small_icon("clipboard-group-new".into(), IconName::Plus).on_click(
                         cx.listener(|this, _, window, cx| this.start_group_edit(None, window, cx)),
@@ -199,10 +186,9 @@ impl ClipboardPanel {
         if self.categories.is_empty() && !self.category_form {
             navigation = navigation.child(
                 div()
-                    .px(px(12.))
-                    .py(px(10.))
-                    .text_size(px(12.))
-                    .text_color(rgb(muted()))
+                    .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .py(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_assistant()
                     .child("点击 ＋ 创建自己的分组"),
             );
         }
@@ -214,8 +200,8 @@ impl ClipboardPanel {
             group_controls = group_controls.child(
                 div()
                     .h_flex()
-                    .gap(px(6.))
-                    .mt(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .mt(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         action("clipboard-group-rename", "重命名", false)
                             .flex_1()
@@ -236,10 +222,9 @@ impl ClipboardPanel {
                 group_controls = group_controls.child(
                     div()
                         .v_flex()
-                        .gap(px(8.))
-                        .p(px(10.))
-                        .text_size(px(12.))
-                        .text_color(rgb(muted()))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_assistant()
                         .child("仅删除分组，记录将回到未分类。")
                         .child(
                             action("clipboard-group-delete-confirm", "确认删除分组", false)
@@ -258,27 +243,29 @@ impl ClipboardPanel {
             .w(px(220.))
             .flex_shrink_0()
             .h_full()
-            .gap(px(18.))
-            .p(px(14.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(12.))
-                    .pt(px(6.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         div()
-                            .text_color(rgb(theme::accent_text()))
+                            .workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::AccentText,
+                            )
                             .child(icon(IconName::Clipboard, 28.)),
                     )
-                    .child(div().text_size(px(23.)).font_semibold().child("剪贴板")),
+                    .child(div().workbench_title().child("剪贴板")),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(8.))
-                    .h(px(40.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .h(px(theme::ui_height(theme::CONTROL_HEIGHT_NAV)))
                     .child(fileatlas_ui_bridge::components::search_input(&self.search)),
             )
             .child(
@@ -294,21 +281,23 @@ impl ClipboardPanel {
             .child(
                 div()
                     .v_flex()
-                    .gap(px(10.))
-                    .pt(px(14.))
-                    .border_t_1()
-                    .border_color(rgb(rule()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                     .child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap(px(8.))
-                            .child(div().size(px(8.)).rounded_full().bg(rgb(if paused {
-                                theme::warning()
-                            } else {
-                                theme::success()
-                            })))
-                            .child(div().flex_1().text_size(px(13.)).child(if paused {
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .child(fileatlas_ui_bridge::components::status_dot(
+                                8.,
+                                if paused {
+                                    fileatlas_ui_bridge::components::StatusTone::Warning
+                                } else {
+                                    fileatlas_ui_bridge::components::StatusTone::Success
+                                },
+                            ))
+                            .child(div().flex_1().workbench_body().child(if paused {
                                 "已暂停捕获"
                             } else {
                                 "正在捕获剪贴板"
@@ -331,12 +320,7 @@ impl ClipboardPanel {
                                 )),
                             ),
                     )
-                    .child(
-                        div()
-                            .text_size(px(11.))
-                            .text_color(rgb(muted()))
-                            .child("Ctrl+Shift+V 唤醒工作台"),
-                    ),
+                    .child(div().workbench_assistant().child("Ctrl+Shift+V 唤醒工作台")),
             )
             .into_any_element()
     }

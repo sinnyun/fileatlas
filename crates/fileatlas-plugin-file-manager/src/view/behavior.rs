@@ -129,7 +129,7 @@ impl FileManagerView {
                 let row_y = bounds.origin.y;
                 let card_y = row_y
                     + px(if row.month_label.is_some() {
-                        theme::GROUP_HEADER_HEIGHT + theme::GROUP_HEADER_GAP
+                        theme::GROUP_HEADER_HEIGHT + theme::space_standard()
                     } else {
                         0.
                     });

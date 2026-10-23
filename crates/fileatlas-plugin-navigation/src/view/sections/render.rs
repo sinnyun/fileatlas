@@ -1,9 +1,14 @@
 //! Rendering for the drives / quick access / grouped-favorites sidebar sections.
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use gpui_kit::component::button::Button;
 mod editor;
 mod favorites;
 mod quick_access;
 use super::super::render::tag_render;
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
 use gpui_kit::component::progress::Progress;
@@ -15,13 +20,19 @@ fn drive_icon(drive: &crate::DriveInfo) -> IconName {
     }
 }
 
-fn usage_text(used_bytes: u64, total_bytes: u64) -> String {
-    let gb = 1_073_741_824u64;
-    format!(
-        "{} / {}",
-        group_thousands(used_bytes / gb),
-        group_thousands(total_bytes / gb)
-    )
+fn size_label(bytes: u64) -> String {
+    const TB: u64 = 1_099_511_627_776;
+    const GB: u64 = 1_073_741_824;
+    const MB: u64 = 1_048_576;
+    if bytes >= TB {
+        format!("{:.1} TB", bytes as f64 / TB as f64)
+    } else if bytes >= GB {
+        format!("{} GB", bytes / GB)
+    } else if bytes >= MB {
+        format!("{} MB", bytes / MB)
+    } else {
+        format!("{} KB", bytes / 1_024)
+    }
 }
 
 fn menu_item(
@@ -60,20 +71,15 @@ fn section_header(
     trailing: Vec<Button>,
 ) -> Div {
     let toggle = view.clone();
-    let menu_button = Button::new(format!("navigation-section-menu-{key}"))
-        .ghost()
-        .compact()
-        .w(px(22.))
-        .h(px(22.))
-        .icon(theme::small_icon(IconName::Ellipsis))
-        .dropdown_menu(move |popup_menu, _, _| menu(popup_menu));
+    let menu_button =
+        fileatlas_ui_bridge::components::button(format!("navigation-section-menu-{key}"))
+            .ghost()
+            .icon(theme::small_icon(IconName::Ellipsis))
+            .dropdown_menu(move |popup_menu, _, _| menu(popup_menu));
     fileatlas_ui_bridge::components::sidebar_header(
         fileatlas_ui_bridge::i18n::tr(label),
-        Button::new(format!("navigation-section-chevron-{key}"))
+        fileatlas_ui_bridge::components::button(format!("navigation-section-chevron-{key}"))
             .ghost()
-            .compact()
-            .p_0()
-            .w(px(theme::SIDEBAR_ARROW_SLOT))
             .icon(theme::small_icon(if collapsed {
                 IconName::ChevronRight
             } else {
@@ -96,11 +102,8 @@ fn icon_button(
     handler: impl Fn(&mut SidebarView, &mut Context<SidebarView>) + 'static,
     cx: &mut Context<SidebarView>,
 ) -> Button {
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
-        .w(px(22.))
-        .h(px(22.))
         .icon(theme::small_icon(icon))
         .on_click(cx.listener(move |this, _, _, cx| handler(this, cx)))
 }
@@ -112,12 +115,8 @@ fn expand_chevron(
     toggle: impl Fn(&mut SidebarView, &mut Context<SidebarView>) + 'static,
 ) -> Button {
     let chevron_view = view.clone();
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
-        .p_0()
-        .w(px(theme::SIDEBAR_ARROW_SLOT))
-        .h(px(24.))
         .icon(theme::small_icon(if expanded {
             IconName::ChevronDown
         } else {
@@ -162,26 +161,12 @@ fn path_row(
         .child(
             div()
                 .id(format!("navigation-{id_key}"))
+                .workbench_tree_row(selected)
                 .flex_1()
                 .min_w_0()
-                .h_flex()
-                .items_center()
-                .gap(px(6.))
                 .h(px(24.))
-                .rounded(px(4.))
-                .px(px(4.))
-                .hover(move |style| {
-                    style.bg(if selected {
-                        rgb(theme::selection_color())
-                    } else {
-                        rgba(theme::fill_hover())
-                    })
-                })
-                .when(selected, |style| {
-                    style
-                        .bg(rgb(theme::selection_color()))
-                        .text_color(rgb(theme::selection_text()))
-                })
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                .px(px(fileatlas_ui_bridge::theme::space_compact()))
                 .on_click(move |_, _, cx| {
                     let _ = activate_view.update(cx, |this, cx| {
                         if browse {
@@ -193,27 +178,24 @@ fn path_row(
                 })
                 .child(
                     theme::small_icon(if expanded { IconName::FolderOpen } else { icon })
-                        .text_color(rgb(if selected {
-                            theme::selection_text()
+                        .workbench_foreground(if selected {
+                            fileatlas_ui_bridge::components::ForegroundRole::AccentText
                         } else {
-                            theme::text_secondary()
-                        })),
+                            fileatlas_ui_bridge::components::ForegroundRole::Secondary
+                        }),
                 )
                 .child(
                     div()
                         .flex_1()
                         .min_w_0()
-                        .text_size(px(12.5))
+                        .workbench_assistant()
                         .text_ellipsis()
                         .child(label),
                 ),
         )
         .child(
-            Button::new(format!("navigation-{id_key}-menu"))
+            fileatlas_ui_bridge::components::button(format!("navigation-{id_key}-menu"))
                 .ghost()
-                .compact()
-                .w(px(22.))
-                .h(px(22.))
                 .icon(theme::small_icon(IconName::Ellipsis))
                 .dropdown_menu(move |popup_menu, _, _| menu(popup_menu)),
         )
@@ -251,10 +233,9 @@ fn children_column(
     Some(
         div()
             .v_flex()
-            .ml(px(22.))
-            .pl(px(8.))
-            .border_l_1()
-            .border_color(rgba(theme::border_strong()))
+            .ml(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Left)
             .children(rows),
     )
 }
@@ -311,17 +292,14 @@ impl SidebarView {
                 ))
             },
             vec![
-                Button::new("navigation-drives-toggle-network")
+                fileatlas_ui_bridge::components::button("navigation-drives-toggle-network")
                     .ghost()
-                    .compact()
-                    .w(px(22.))
-                    .h(px(22.))
                     .icon(theme::small_icon(IconName::Globe))
-                    .text_color(rgb(if network_shown {
-                        theme::accent()
+                    .workbench_foreground(if network_shown {
+                        fileatlas_ui_bridge::components::ForegroundRole::Accent
                     } else {
-                        theme::text_muted()
-                    }))
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted
+                    })
                     .on_click(move |_, _, cx| {
                         let _ = toggle_view.update(cx, |this, cx| {
                             this.toggle_network_drives(cx);
@@ -333,20 +311,14 @@ impl SidebarView {
             column.child(
                 div()
                     .v_flex()
-                    .gap_1()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .child(div().workbench_assistant().child(format!(
+                        "{}: {error}",
+                        fileatlas_ui_bridge::i18n::tr("Sidebar changes not saved")
+                    )))
                     .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::danger_text()))
-                            .child(format!(
-                                "{}: {error}",
-                                fileatlas_ui_bridge::i18n::tr("Sidebar changes not saved")
-                            )),
-                    )
-                    .child(
-                        Button::new("sidebar-save-retry")
+                        fileatlas_ui_bridge::components::button("sidebar-save-retry")
                             .ghost()
-                            .compact()
                             .label(fileatlas_ui_bridge::i18n::tr("Retry"))
                             .on_click(cx.listener(|view, _, _, cx| view.retry_sidebar_save(cx))),
                     ),
@@ -368,8 +340,7 @@ impl SidebarView {
                 if drives.is_empty() {
                     section = section.child(
                         div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
                             .child(fileatlas_ui_bridge::i18n::tr("No drives found")),
                     );
                 }
@@ -395,7 +366,7 @@ impl SidebarView {
                             .h_flex()
                             .w_full()
                             .items_start()
-                            .gap(px(2.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(expand_chevron(
                                 &chevron_view,
                                 format!("navigation-drive-chevron-{root}"),
@@ -408,22 +379,11 @@ impl SidebarView {
                                     .flex_1()
                                     .min_w_0()
                                     .v_flex()
-                                    .gap(px(2.))
-                                    .rounded(px(4.))
-                                    .px(px(4.))
-                                    .py(px(2.))
-                                    .hover(move |style| {
-                                        style.bg(if selected {
-                                            rgb(theme::selection_color())
-                                        } else {
-                                            rgba(theme::fill_hover())
-                                        })
-                                    })
-                                    .when(selected, |style| {
-                                        style
-                                            .bg(rgb(theme::selection_color()))
-                                            .text_color(rgb(theme::selection_text()))
-                                    })
+                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                                    .px(px(fileatlas_ui_bridge::theme::space_compact()))
+                                    .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                                    .workbench_selectable_surface(selected)
                                     .on_click(move |_, _, cx| {
                                         let _ = activate_view.update(cx, |this, cx| {
                                             if browse {
@@ -440,35 +400,34 @@ impl SidebarView {
                                         div()
                                             .h_flex()
                                             .items_center()
-                                            .gap(px(6.))
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                                             .child(
-                                                theme::small_icon(drive_icon(&drive)).text_color(
-                                                    rgb(if selected {
-                                                        theme::selection_text()
+                                                theme::small_icon(drive_icon(&drive)).workbench_foreground(
+                                                    if selected {
+                                                        fileatlas_ui_bridge::components::ForegroundRole::Selection
                                                     } else {
-                                                        theme::text_secondary()
-                                                    }),
+                                                        fileatlas_ui_bridge::components::ForegroundRole::Secondary
+                                                    },
                                                 ),
                                             )
                                             .child(
                                                 div()
                                                     .flex_1()
                                                     .min_w_0()
-                                                    .text_size(px(12.5))
+                                                    .workbench_assistant()
                                                     .text_ellipsis()
                                                     .child(drive.display_name()),
                                             )
                                             .child(
                                                 div()
-                                                    .text_size(px(10.5))
-                                                    .text_color(rgb(theme::text_muted()))
+                                                    .min_w_0()
+                                                    .overflow_hidden()
+                                                    .workbench_assistant()
+                                                    .text_ellipsis()
                                                     .child(if drive.usage_error.is_some() {
                                                         fileatlas_ui_bridge::i18n::tr("Unavailable")
                                                     } else {
-                                                        usage_text(
-                                                            drive.used_bytes,
-                                                            drive.total_bytes,
-                                                        )
+                                                        size_label(drive.total_bytes)
                                                     }),
                                             ),
                                     )
@@ -482,13 +441,13 @@ impl SidebarView {
                                     ),
                             )
                             .child(
-                                Button::new(format!("navigation-drive-menu-{root}"))
-                                    .ghost()
-                                    .compact()
-                                    .w(px(22.))
-                                    .h(px(22.))
-                                    .icon(theme::small_icon(IconName::Ellipsis))
-                                    .dropdown_menu(move |menu, _, _| {
+                                fileatlas_ui_bridge::components::button(format!(
+                                    "navigation-drive-menu-{root}"
+                                ))
+                                .ghost()
+                                .icon(theme::small_icon(IconName::Ellipsis))
+                                .dropdown_menu(
+                                    move |menu, _, _| {
                                         let add_view = menu_view.clone();
                                         let add_path = menu_root.clone();
                                         let open_view = menu_view.clone();
@@ -507,7 +466,8 @@ impl SidebarView {
                                                 this.open_folder_in_explorer(&open_path);
                                             },
                                         ))
-                                    }),
+                                    },
+                                ),
                             ),
                     );
                     if expanded {
@@ -518,18 +478,12 @@ impl SidebarView {
                 }
             }
             Some(Err(error)) => {
-                section = section.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::danger_text()))
-                        .child(error.clone()),
-                );
+                section = section.child(div().workbench_assistant().child(error.clone()));
             }
             None => {
                 section = section.child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Loading drives…")),
                 );
             }

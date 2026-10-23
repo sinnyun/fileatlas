@@ -28,6 +28,24 @@ metadata schema and lifecycle catalog remain unchanged.
 any `Styled + InteractiveElement`, preserving IDs/actions. `section()`,
 `action(id, label, primary)`, `icon_button(id, IconName)` and `section_heading(label)`
 are stateless builders. They register no services/events and perform no IO.
+All product buttons enter through `components::button/action/icon_button`; GPUI Kit
+variants own button hover/pressed/focus/disabled states. Plugin `.hover()` styling is
+forbidden. Non-Button interactions use `workbench_hover_surface`,
+`workbench_selectable_surface`, `workbench_hover_foreground`,
+`workbench_hover_group_header`, `workbench_hover_accent_surface`,
+`workbench_hover_accent_border`, or the corresponding card/navigation method. The
+vertical rail uses `rail_shortcut(id, label, icon, selected)` so its spacing, 42 px
+width, density-scaled 54 px height, assistant text tier, selection and hover states
+are common across feature contributions.
+The temporary geometry review frame is also applied at this shared layer:
+`review_section`, `review_row`, and `review_card` preserve product styling while
+recording bounds and showing the section/row/card audit color. `section_heading`,
+`heading_block`, `sidebar_section`, `sidebar_header`, and `rail_footer` instrument
+their own base-component boundary. Keep plugin-specific content inside these shared
+frames so an unmarked visible panel is treated as a missing base component.
+`rail_footer(theme_control, settings_control)` owns the bottom rail footprint and
+spacing for the mode toggle and Settings button, using the shared 48 px width and
+density-scaled 96 px height tokens.
 `text_input(&Entity<InputState>) -> Input`, `search_input(&Entity<InputState>) -> Input`
 and `textarea(&Entity<TextareaState>) -> Textarea` preserve native editing/focus,
 with common inset backgrounds. Kit `Theme.colors.input` is the border token;
@@ -138,6 +156,21 @@ separation, compact padding/corners and nonshrinking frame geometry.
 returns a shared chevron/title/menu/action row; dropdown wrappers retain their own
 native behavior. Navigation uses these builders for drives, quick access and
 every favorite group. The builders do not register resources or own product data.
+# Fluent light elevation tokens (2026-10-23)
+
+Region separation is always shadow-based now; the former `RegionDepth`
+border/shadow toggle was removed with its Settings row and MCP action.
+`theme::separate_region(div, RegionEdge)` casts a soft directional shadow from
+the listed edge(s). New shared elevation tokens (all colors resolve the native
+`overlay` role, never a local palette): `theme::card_shadow()` (key+ambient
+micro elevation for `workbench_card`/`workbench_section`), `control_shadow()`
+(icon buttons and large actions), `region_shadow()` (top-level shell cards:
+title band, sidebar, content, inspector, status bar), `floating_shadow()`
+(generic floating-panel shells). `theme::surface_canvas()` maps the native
+`muted` role for the window canvas behind the cards, and
+`theme::REGION_GAP = 6` is the padding/gap between the shell's region cards.
+Inspect failures by comparing the live `get_ui_state.theme` roles against a
+same-process screenshot.
 # Declarative settings pages — 2026-10-18
 
 `settings_page` owns `SettingsPage`, `SettingsSection`, `SettingRow`, typed

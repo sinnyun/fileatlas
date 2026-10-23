@@ -1,16 +1,12 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 
 fn information_row(label: &str, value: String) -> AnyElement {
     div()
         .v_flex()
-        .gap(px(4.))
-        .child(
-            div()
-                .text_xs()
-                .text_color(rgb(theme::text_muted()))
-                .child(tr(label)),
-        )
-        .child(div().text_sm().child(value))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .child(div().workbench_assistant().child(tr(label)))
+        .child(div().workbench_body().child(value))
         .into_any_element()
 }
 
@@ -36,24 +32,17 @@ impl LauncherPanel {
             .w(px(250.))
             .h_full()
             .flex_shrink_0()
-            .p(px(14.))
-            .gap(px(14.))
-            .border_l_1()
-            .border_color(rgba(theme::separator_light()))
-            .bg(rgb(theme::surface_faint()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_region(true)
             .child(
                 div()
                     .h_flex()
                     .items_center()
                     .justify_between()
+                    .child(div().workbench_title().child(tr("Program information")))
                     .child(
-                        div()
-                            .font_semibold()
-                            .text_size(px(15.))
-                            .child(tr("Program information")),
-                    )
-                    .child(
-                        Button::new("launcher-inspector-close")
+                        fileatlas_ui_bridge::components::button("launcher-inspector-close")
                             .ghost()
                             .icon(theme::icon(IconName::X))
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -70,13 +59,12 @@ impl LauncherPanel {
                         .flex_1()
                         .items_center()
                         .justify_center()
-                        .gap(px(14.))
-                        .text_color(rgb(theme::text_muted()))
+                        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                         .child(theme::empty_state_icon(IconName::LayoutGrid))
-                        .child(div().text_sm().child(tr("Select a program")))
+                        .child(div().workbench_body().child(tr("Select a program")))
                         .child(
                             div()
-                                .text_xs()
+                                .workbench_assistant()
                                 .text_center()
                                 .child(tr("Select an icon to view and edit its information.")),
                         ),
@@ -98,26 +86,21 @@ impl LauncherPanel {
             || self.draft_hidden != entry.hidden;
         let form = div()
             .v_flex()
-            .gap(px(14.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
             .flex_shrink_0()
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .py(px(8.))
+                    .py(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(self.icon(&entry, 72.)),
             )
             .child(
                 div()
                     .v_flex()
-                    .gap(px(6.))
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_muted()))
-                            .child(tr("Display name")),
-                    )
+                    .gap(px(theme::space_standard()))
+                    .child(div().workbench_body().child(tr("Display name")))
                     .child(fileatlas_ui_bridge::components::text_input(&self.entry_name).w_full()),
             )
             .child(information_row(
@@ -127,15 +110,10 @@ impl LauncherPanel {
             .child(
                 div()
                     .v_flex()
-                    .gap(px(6.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .child(div().workbench_body().child(tr("Categories")))
                     .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_muted()))
-                            .child(tr("Categories")),
-                    )
-                    .child(
-                        Button::new("launcher-inspector-category")
+                        fileatlas_ui_bridge::components::button("launcher-inspector-category")
                             .label(current_category)
                             .dropdown_caret(true)
                             .dropdown_menu(move |mut menu, _, _| {
@@ -157,7 +135,7 @@ impl LauncherPanel {
                     ),
             )
             .child(
-                Button::new("launcher-inspector-hidden")
+                fileatlas_ui_bridge::components::button("launcher-inspector-hidden")
                     .icon(theme::small_icon(if self.draft_hidden {
                         IconName::SquareCheck
                     } else {
@@ -174,7 +152,7 @@ impl LauncherPanel {
                     })),
             )
             .child(
-                Button::new("launcher-inspector-pin")
+                fileatlas_ui_bridge::components::button("launcher-inspector-pin")
                     .label(format!(
                         "{}: {}",
                         tr("Pin to top"),
@@ -207,10 +185,9 @@ impl LauncherPanel {
             )
             .child(
                 div()
-                    .pt(px(12.))
-                    .border_t_1()
-                    .border_color(rgba(theme::separator_light()))
-                    .font_semibold()
+                    .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                    .workbench_body()
                     .child(tr("Installation information")),
             )
             .child(information_row(
@@ -236,14 +213,9 @@ impl LauncherPanel {
                     .to_string_lossy()
                     .replace('\\', "\\\u{200b}"),
             ))
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
-                    .child(tr(
-                        "Installation information comes from Windows. Missing values are unknown.",
-                    )),
-            );
+            .child(div().workbench_assistant().child(tr(
+                "Installation information comes from Windows. Missing values are unknown.",
+            )));
         panel = panel
             .child(
                 div()
@@ -256,17 +228,17 @@ impl LauncherPanel {
             .child(
                 div()
                     .v_flex()
-                    .gap(px(7.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .flex_shrink_0()
                     .child(
-                        Button::new("launcher-inspector-save")
+                        fileatlas_ui_bridge::components::button("launcher-inspector-save")
                             .primary()
                             .label(tr("Save changes"))
                             .disabled(!dirty)
                             .on_click(cx.listener(|this, _, _, cx| this.save_entry(cx))),
                     )
                     .child(
-                        Button::new("launcher-inspector-launch")
+                        fileatlas_ui_bridge::components::button("launcher-inspector-launch")
                             .label(tr("Launch"))
                             .disabled(!entry.available)
                             .on_click(cx.listener(move |this, _, _, cx| {

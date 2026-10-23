@@ -10,6 +10,14 @@ ThemeSet JSON，经由 UI Bridge 排队应用，并在文件缺失或无效时�
 现有侧栏模式操作仍通过 Settings 持久化；所有框架/自定义视图都从
 原生主题网关获取更新。下方较早的手动主题笔记仅是历史实现记录。
 
+## 全局布局密度与间距 — 2026-10-23
+
+Settings 的 `ui_density` 是可选 JSON 字符串，旧文件缺失时默认为 `standard`；有效值为
+`compact`、`standard`、`comfortable`。外观页以同一设置项统一缩放 UI Bridge 三档间距、
+共享按钮/输入控件/导航行高度。所有插件读取 UI Bridge 运行时令牌，不提供插件级覆盖。
+颜色继续由 `color_mode` 与 GPUI Kit 原生 ThemeSet/Material 主题页控制；不增加第二份颜色状态。
+该字段与既有 Settings JSON 同文件保存，没有迁移步骤；未知值安全回退到标准密度。
+
 # Settings 插件对接 / 设置面板对接
 
 ## QuickLook 替换 — 2026-10-16
@@ -181,18 +189,12 @@ JSON 区块；旧文档反序列化保持不变。插件观察
 SidebarFoldersChanged 观察者拒绝过期 revision；失败的 revision 可以重试。它将保存错误传播给 Navigation 以获得可见的重试反馈。普通 JSON 字段与路径不变。测试覆盖并发编辑、过期投递与失败/重试；这不是崩溃安全的文件系统事务保证。
 
 
-## 区块分隔令牌（2026-10-16）
+## 区块分隔令牌（2026-10-16；2026-10-23 移除）
 
-`Settings.region_separation`（默认 `"border"`，可选 `"shadow"`）加入现有的
-与源码兼容的 JSON schema；旧文件通过 `serde(default)` 继续可用。
-`SettingsService::persist` 是唯一写入漏斗，现在会在成功写入磁盘后
-重新发布它拥有的绘制期令牌（`set_accent_name`、`set_region_depth_name`），因此
-Settings 视图、`control_ui {action:"region_separation"}`
-以及任何将来的写入者应用相同状态；写入失败则磁盘与
-主题都保持不变。Settings 视图继续调用 `apply_accent_components(cx)`（它需要
-`&mut App`），并新增 `cx.refresh_windows()`，即与语言切换使用的
-相同的整窗重绘，因为区块边缘由每个区块负责绘制。
-启动时仍在 `SettingsPlugin::apply` 中应用已加载的值。
+原 `Settings.region_separation` 字段（"border"/"shadow"）及其外观设置行已随
+统一的 Fluent 轻质感浮起样式移除：所有区块统一为带柔和阴影的浮起卡片，
+该选项不再存在。仍含此键的旧 JSON 文件可正常加载（serde 忽略未知字段），
+该值不再使用。成功写入后重发布的绘制期令牌仅剩 `set_accent_name`。
 
 ## 外部软件检查（2026-10-17）
 

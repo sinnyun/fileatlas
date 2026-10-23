@@ -1,12 +1,14 @@
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use fileatlas_plugin_navigation::{NavigationService, NavigationUiRequest};
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use fileatlas_ui_bridge::{UiViewContribution, read_model::ReadModel, theme};
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::gpui::InteractiveElement as _;
 use gpui_kit::prelude::FluentBuilder as _;
@@ -272,18 +274,22 @@ impl Render for ProjectTreePage {
             .selected_path
             .clone()
             .or_else(|| current_folder.clone());
-        let mut content = div().v_flex().size_full().gap(px(8.)).px(px(8.)).py(px(8.));
+        let mut content = div()
+            .v_flex()
+            .size_full()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_standard()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()));
         content = content.child(
             div()
                 .h_flex()
                 .items_center()
                 .justify_between()
-                .px(px(8.))
-                .py(px(5.))
+                .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                .py(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(
                     div()
-                        .text_sm()
-                        .font_semibold()
+                        .workbench_title()
                         .child(fileatlas_ui_bridge::i18n::tr("Project tree")),
                 )
                 .child(theme::small_icon(IconName::Folder)),
@@ -293,10 +299,10 @@ impl Render for ProjectTreePage {
                 .h_flex()
                 .items_center()
                 .justify_between()
-                .px(px(8.))
-                .py(px(5.))
+                .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                .py(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(
-                    Button::new("project-tree-add")
+                    fileatlas_ui_bridge::components::button("project-tree-add")
                         .ghost()
                         .icon(theme::small_icon(IconName::Plus))
                         .tooltip(fileatlas_ui_bridge::i18n::tr("Add folder"))
@@ -306,12 +312,7 @@ impl Render for ProjectTreePage {
                 ),
         );
         if let Some(error) = &self.error {
-            content = content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone()),
-            );
+            content = content.child(div().workbench_assistant().child(error.clone()));
         }
         let projects = self.service.snapshot();
         let scan = self
@@ -331,42 +332,34 @@ impl Render for ProjectTreePage {
             let select_path = project.path.clone();
             let toggle_path = project.path.clone();
             let remove_path = project.path.clone();
-            let root_row = div()
-                .id(format!("project-tree-root-{index}"))
-                .h_flex()
-                .items_center()
-                .justify_between()
-                .gap(px(8.))
-                .px(px(8.))
-                .py(px(5.))
-                .text_color(rgb(if selected {
-                    theme::selection_text()
-                } else {
-                    theme::text_primary()
-                }))
-                .when(selected, |style| style.bg(rgb(theme::selection_color())))
-                .hover(|style| style.bg(rgba(theme::fill_hover())))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.selected_path = Some(select_path.clone());
-                    this.expanded_project = Some(select_path.clone());
-                    cx.notify();
-                    if let Err(error) =
-                        this.navigation
-                            .request_ui(NavigationUiRequest::SelectPathPreservingPage(
-                                select_path.clone(),
-                            ))
-                    {
-                        tracing::warn!(%error, "project navigation request rejected");
-                    }
-                }))
-                .child(
-                    div()
-                        .h_flex()
-                        .min_w_0()
-                        .flex_1()
-                        .gap(px(8.))
-                        .child(
-                            Button::new(format!("project-tree-expand-{index}"))
+            let root_row =
+                div()
+                    .id(format!("project-tree-root-{index}"))
+                    .workbench_tree_row(selected)
+                    .justify_between()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.selected_path = Some(select_path.clone());
+                        this.expanded_project = Some(select_path.clone());
+                        cx.notify();
+                        if let Err(error) = this.navigation.request_ui(
+                            NavigationUiRequest::SelectPathPreservingPage(select_path.clone()),
+                        ) {
+                            tracing::warn!(%error, "project navigation request rejected");
+                        }
+                    }))
+                    .child(
+                        div()
+                            .h_flex()
+                            .min_w_0()
+                            .flex_1()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .child(
+                                fileatlas_ui_bridge::components::button(format!(
+                                    "project-tree-expand-{index}"
+                                ))
                                 .ghost()
                                 .flex_shrink_0()
                                 .icon(theme::small_icon(if expanded {
@@ -384,30 +377,33 @@ impl Render for ProjectTreePage {
                                 } else {
                                     "Expand project folders"
                                 }))
-                                .on_click(cx.listener(move |this, _, _, cx| {
-                                    this.toggle_project(&toggle_path, cx);
-                                })),
-                        )
-                        .child(theme::small_icon(IconName::Folder).flex_shrink_0())
-                        .child(
-                            div()
-                                .min_w_0()
-                                .overflow_hidden()
-                                .text_ellipsis()
-                                .child(project.name),
-                        )
-                        .when(failure.is_some(), |row| {
-                            row.child(
-                                div()
-                                    .flex_shrink_0()
-                                    .text_xs()
-                                    .text_color(rgb(theme::text_muted()))
-                                    .child(fileatlas_ui_bridge::i18n::tr("Unavailable")),
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.toggle_project(&toggle_path, cx);
+                                    },
+                                )),
                             )
-                        }),
-                )
-                .child(
-                    Button::new(format!("remove-project-tree-root-{index}"))
+                            .child(theme::small_icon(IconName::Folder).flex_shrink_0())
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .overflow_hidden()
+                                    .text_ellipsis()
+                                    .child(project.name),
+                            )
+                            .when(failure.is_some(), |row| {
+                                row.child(
+                                    div()
+                                        .flex_shrink_0()
+                                        .workbench_assistant()
+                                        .child(fileatlas_ui_bridge::i18n::tr("Unavailable")),
+                                )
+                            }),
+                    )
+                    .child(
+                        fileatlas_ui_bridge::components::button(format!(
+                            "remove-project-tree-root-{index}"
+                        ))
                         .ghost()
                         .flex_shrink_0()
                         .icon(theme::small_icon(IconName::X))
@@ -437,7 +433,7 @@ impl Render for ProjectTreePage {
                             this.reload();
                             cx.notify();
                         })),
-                );
+                    );
             let mut project_block = div().v_flex().gap_0().child(root_row);
             if expanded {
                 let mut subtree = div().v_flex().gap_0();
@@ -456,9 +452,8 @@ impl Render for ProjectTreePage {
                     None => {
                         subtree = subtree.child(
                             div()
-                                .ml(px(22.))
-                                .text_sm()
-                                .text_color(rgb(theme::text_muted()))
+                                .ml(px(fileatlas_ui_bridge::theme::space_expanded()))
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr("Loading project folders…")),
                         );
                     }
@@ -478,9 +473,8 @@ impl Render for ProjectTreePage {
                     };
                     subtree = subtree.child(
                         div()
-                            .ml(px(22.))
-                            .text_sm()
-                            .text_color(rgb(theme::text_muted()))
+                            .ml(px(fileatlas_ui_bridge::theme::space_expanded()))
+                            .workbench_assistant()
                             .child(message),
                     );
                 }
@@ -502,21 +496,11 @@ fn project_tree_row(
     const DOT_SIZE: f32 = 2.;
     let selected = selected_path.is_some_and(|path| same_path(path, &node.path));
     let path = node.path.clone();
-    let mut guides = Vec::new();
+    let mut guide_points = Vec::new();
     let mut add_vertical = |x: f32, start: f32, end: f32| {
         let mut y = start;
         while y <= end {
-            guides.push(
-                div()
-                    .absolute()
-                    .left(px(x))
-                    .top(px(y))
-                    .w(px(DOT_SIZE))
-                    .h(px(DOT_SIZE))
-                    .rounded(px(DOT_SIZE / 2.))
-                    .bg(rgb(theme::separator()))
-                    .into_any_element(),
-            );
+            guide_points.push((x, y));
             y += DOT_STEP;
         }
     };
@@ -532,34 +516,18 @@ fn project_tree_row(
     }
     let mut x = branch_x + DOT_STEP;
     while x < 8. + node.depth as f32 * 14. {
-        guides.push(
-            div()
-                .absolute()
-                .left(px(x))
-                .top(px(ROW_HEIGHT / 2. - DOT_SIZE / 2.))
-                .w(px(DOT_SIZE))
-                .h(px(DOT_SIZE))
-                .rounded(px(DOT_SIZE / 2.))
-                .bg(rgb(theme::separator()))
-                .into_any_element(),
-        );
+        guide_points.push((x, ROW_HEIGHT / 2. - DOT_SIZE / 2.));
         x += DOT_STEP;
     }
+    let guides = fileatlas_ui_bridge::components::tree_guide_dots(guide_points, DOT_SIZE);
     div()
         .id(format!("project-tree-node-{}", node.path))
-        .relative()
-        .h_flex()
-        .items_center()
-        .gap(px(7.))
-        .px(px(8. + node.depth as f32 * 14.))
+        .workbench_tree_row(selected)
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .px(px(fileatlas_ui_bridge::theme::space_standard()
+            + node.depth as f32
+                * fileatlas_ui_bridge::theme::space_expanded()))
         .h(px(ROW_HEIGHT))
-        .text_color(rgb(if selected {
-            theme::selection_text()
-        } else {
-            theme::text_secondary()
-        }))
-        .when(selected, |style| style.bg(rgb(theme::selection_color())))
-        .hover(|style| style.bg(rgba(theme::fill_hover())))
         .on_click(cx.listener(move |this, _, _, cx| {
             this.selected_path = Some(path.clone());
             cx.notify();

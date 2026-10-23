@@ -1,13 +1,16 @@
 //! Bottom drawer and status button. The user-requested addition preserves the v2 main layout.
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 #[path = "view/selection.rs"]
 mod selection;
 use crate::DebugService;
-use fileatlas_ui_bridge::{UiViewContribution, i18n::tr, theme};
+use fileatlas_ui_bridge::{UiViewContribution, components::WorkbenchStyle as _, i18n::tr, theme};
 use gpui_kit::{
     assets::IconName,
     base::{Disableable, StyledExt},
     component::{
-        button::{Button, ButtonVariants},
+        button::ButtonVariants,
         input::{InputEvent, InputState},
         menu::{DropdownMenu, PopupMenuItem},
         scroll::ScrollableElement,
@@ -120,9 +123,8 @@ impl Render for DebugView {
         let ui = s.ui_state();
         if !self.panel {
             return div().flex_shrink_0().child(
-                Button::new("debug-toggle")
+                fileatlas_ui_bridge::components::button("debug-toggle")
                     .ghost()
-                    .compact()
                     .toggled(ui.open)
                     .label(tr("Debug"))
                     .on_click(control(&s, "toggle", String::new())),
@@ -141,9 +143,8 @@ impl Render for DebugView {
         let level_s = s.clone();
         let size_s = s.clone();
         let categories = page.categories.clone();
-        let category = Button::new("debug-category")
+        let category = fileatlas_ui_bridge::components::button("debug-category")
             .ghost()
-            .compact()
             .label(format!(
                 "{}: {}",
                 tr("Category"),
@@ -170,9 +171,8 @@ impl Render for DebugView {
                 }
                 menu
             });
-        let level = Button::new("debug-level")
+        let level = fileatlas_ui_bridge::components::button("debug-level")
             .ghost()
-            .compact()
             .label(if ui.filter.level.is_empty() {
                 tr("All levels")
             } else {
@@ -196,9 +196,8 @@ impl Render for DebugView {
                 }
                 menu
             });
-        let sizes = Button::new("debug-page-size")
+        let sizes = fileatlas_ui_bridge::components::button("debug-page-size")
             .ghost()
-            .compact()
             .label(format!("{} / {}", page.page_size, tr("page")))
             .dropdown_caret(true)
             .dropdown_menu(move |mut menu, _, _| {
@@ -216,21 +215,20 @@ impl Render for DebugView {
             .h_flex()
             .flex_shrink_0()
             .items_center()
-            .gap_1()
+            .gap(px(theme::space_standard()))
             .overflow_x_scroll()
-            .child(div().font_semibold().child(tr("Runtime diagnostics")))
+            .child(div().workbench_title().child(tr("Runtime diagnostics")))
             .child(category)
             .child(level)
             .child(
                 div()
-                    .w(px(210.))
+                    .w(px(theme::CONTROL_WIDTH_STANDARD))
                     .flex_shrink_0()
                     .child(fileatlas_ui_bridge::components::text_input(&self.search)),
             )
             .child(
-                Button::new("debug-pause")
+                fileatlas_ui_bridge::components::button("debug-pause")
                     .ghost()
-                    .compact()
                     .label(tr(if ui.filter.through_id.is_some() {
                         "Resume live"
                     } else {
@@ -247,17 +245,15 @@ impl Render for DebugView {
                     )),
             )
             .child(
-                Button::new("debug-clear")
+                fileatlas_ui_bridge::components::button("debug-clear")
                     .ghost()
-                    .compact()
                     .label(tr("Clear logs"))
                     .on_click(control(&s, "clear", String::new())),
             )
             .child(self.selection_controls(&s, cx))
             .child(
-                Button::new("debug-close")
+                fileatlas_ui_bridge::components::button("debug-close")
                     .ghost()
-                    .compact()
                     .label(tr("Close"))
                     .on_click(control(&s, "close", String::new())),
             );
@@ -282,18 +278,12 @@ impl Render for DebugView {
                     .h_flex()
                     .w_full()
                     .min_w_0()
-                    .gap_2()
-                    .py_1()
-                    .px_2()
-                    .border_b_1()
-                    .border_color(rgb(theme::separator()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
                     .cursor_pointer()
-                    .bg(rgb(if ui.selected_ids.contains(&r.id) {
-                        theme::surface_elevated()
-                    } else {
-                        theme::surface_panel()
-                    }))
-                    .hover(|s| s.bg(rgb(theme::surface_card())))
+                    .workbench_selectable_surface(ui.selected_ids.contains(&r.id))
                     .child(
                         div()
                             .w(px(91.))
@@ -304,7 +294,9 @@ impl Render for DebugView {
                         div()
                             .w(px(47.))
                             .flex_shrink_0()
-                            .text_color(rgb(color))
+                            .workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Custom(color),
+                            )
                             .child(r.level.clone()),
                     )
                     .child(
@@ -342,7 +334,12 @@ impl Render for DebugView {
             );
         }
         if page.records.is_empty() {
-            rows = rows.child(div().p_4().child(tr("No matching logs")));
+            rows = rows.child(
+                div()
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_assistant()
+                    .child(tr("No matching logs")),
+            );
         }
         let selected = ui.selected.and_then(|id| s.record_by_id(id));
         let mut panel = div()
@@ -353,21 +350,20 @@ impl Render for DebugView {
             ))
             .flex_shrink_0()
             .min_h_0()
-            .border_t_1()
-            .border_color(rgba(theme::border_strong()))
-            .bg(rgb(theme::surface_panel()))
-            .text_size(px(11.))
-            .px_2()
-            .py_1()
-            .gap_1()
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+            .workbench_assistant()
+            .px(px(fileatlas_ui_bridge::theme::space_standard()))
+            .py(px(fileatlas_ui_bridge::theme::space_compact()))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(toolbar)
             .child(
                 div()
                     .h_flex()
                     .flex_shrink_0()
-                    .gap_2()
-                    .px_2()
-                    .text_color(rgb(theme::text_muted()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_body()
                     .children(
                         [
                             (91., "Time"),
@@ -376,13 +372,19 @@ impl Render for DebugView {
                             (180., "Action"),
                             (85., "Duration"),
                         ]
-                        .map(|(width, label)| div().w(px(width)).flex_shrink_0().child(tr(label))),
+                        .map(|(width, label)| {
+                            div()
+                                .w(px(width))
+                                .flex_shrink_0()
+                                .workbench_body()
+                                .child(tr(label))
+                        }),
                     )
-                    .child(div().flex_1().child(tr("Details"))),
+                    .child(div().flex_1().workbench_body().child(tr("Details"))),
             )
             .child(self.selectable_list(rows, page.latest_id, cx));
         if let Some(message) = ui.feedback {
-            panel = panel.child(div().text_color(rgb(theme::text_muted())).child(message));
+            panel = panel.child(div().workbench_assistant().child(message));
         }
         if let Some(r) = selected {
             panel = panel.child(
@@ -391,8 +393,8 @@ impl Render for DebugView {
                     .max_h(px(88.))
                     .flex_shrink_0()
                     .overflow_y_scrollbar()
-                    .p_2()
-                    .bg(rgb(theme::surface_card()))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Card)
                     .child(format!(
                         "#{}  {}  {} {}  {}  elapsed={:.3} ms duration={:?} ms  span={:?} parent={:?}  {}\n{}",
                         r.id, r.time, r.level, r.action, r.target, r.elapsed_ms, r.duration_ms, r.span_id, r.parent_span_id, r.thread, r.message
@@ -404,7 +406,7 @@ impl Render for DebugView {
                 .h_flex()
                 .flex_shrink_0()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(div().flex_1().child(format!(
                     "{} {} · {} {} · {} {}",
                     page.total,
@@ -416,18 +418,20 @@ impl Render for DebugView {
                 )))
                 .child(sizes)
                 .child(
-                    Button::new("debug-prev")
+                    fileatlas_ui_bridge::components::button("debug-prev")
                         .ghost()
-                        .compact()
                         .icon(theme::small_icon(IconName::ChevronLeft))
                         .disabled(page.page == 0)
                         .on_click(control(&s, "page", page.page.saturating_sub(1).to_string())),
                 )
-                .child(div().child(format!("{} / {}", page.page + 1, page.pages)))
+                .child(div().workbench_assistant().child(format!(
+                    "{} / {}",
+                    page.page + 1,
+                    page.pages
+                )))
                 .child(
-                    Button::new("debug-next")
+                    fileatlas_ui_bridge::components::button("debug-next")
                         .ghost()
-                        .compact()
                         .icon(theme::small_icon(IconName::ChevronRight))
                         .disabled(page.page + 1 >= page.pages)
                         .on_click(control(&s, "page", (page.page + 1).to_string())),

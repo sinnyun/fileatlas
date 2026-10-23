@@ -1,4 +1,7 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::base::Disableable;
 
 impl SettingsView {
@@ -115,16 +118,13 @@ impl SettingsView {
             _ => vec![("存储路径", "该插件尚无路径声明".to_owned())],
         };
         let rows = locations.into_iter().map(|(label, path)| {
-            design::row().child(design::label(label, "")).child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child(path),
-            )
+            design::row()
+                .child(design::label(label, ""))
+                .child(div().workbench_assistant().child(path))
         });
         div()
             .v_flex()
-            .gap(px(theme::SPACE_2))
+            .gap(px(theme::space_standard()))
             .child(self.section("数据存储位置"))
             .children(rows)
     }
@@ -132,7 +132,7 @@ impl SettingsView {
     pub(super) fn render_plugin_cards(&self, _s: &Settings, cx: &mut Context<Self>) -> Div {
         let runtime = self.service.plugin_runtime();
         let statuses = runtime.snapshot_now();
-        let mut body = div().v_flex().gap(px(theme::SPACE_2));
+        let mut body = div().v_flex().gap(px(theme::space_standard()));
         for plugin in statuses {
             let id = plugin.id.clone();
             let name = plugin.title.clone();
@@ -151,23 +151,26 @@ impl SettingsView {
             body = body.child(
                 div()
                     .v_flex()
-                    .gap_2()
-                    .py(px(theme::SPACE_4))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .py(px(theme::space_expanded()))
                     .min_h(px(100.))
                     .justify_center()
-                    .border_b_1()
-                    .border_color(rgb(theme::separator()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
                     .child(
                         div()
                             .h_flex()
                             .items_center()
                             .justify_between()
-                            .gap_3()
+                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                             .child(
                                 div()
                                     .size(px(30.))
-                                    .rounded(px(theme::ROUND_MD))
-                                    .bg(rgb(theme::surface_panel()))
+                                    .workbench_corner(
+                                        fileatlas_ui_bridge::components::CornerRole::Medium,
+                                    )
+                                    .workbench_surface(
+                                        fileatlas_ui_bridge::components::SurfaceRole::Panel,
+                                    )
                                     .h_flex()
                                     .items_center()
                                     .justify_center()
@@ -176,42 +179,34 @@ impl SettingsView {
                             .child(
                                 div()
                                     .v_flex()
-                                    .gap_1()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                                     .flex_1()
                                     .min_w_0()
                                     .child(
                                         div()
-                                            .text_size(px(theme::FONT_SIZE_HEADING))
-                                            .font_medium()
+                                            .workbench_title()
                                             .child(fileatlas_ui_bridge::i18n::tr(&name)),
                                     )
                                     .child(
                                         div()
-                                            .text_sm()
-                                            .text_color(rgb(theme::text_secondary()))
+                                            .workbench_assistant()
                                             .child(fileatlas_ui_bridge::i18n::tr(&description)),
                                     ),
                             )
+                            .child(div().workbench_assistant().child(if busy {
+                                "处理中"
+                            } else if enabled {
+                                "已启用"
+                            } else {
+                                "已停用"
+                            }))
                             .child(
-                                div()
-                                    .text_size(px(theme::FONT_SIZE_SMALL))
-                                    .text_color(rgb(if enabled {
-                                        theme::success_text()
-                                    } else {
-                                        theme::text_muted()
-                                    }))
-                                    .child(if busy {
-                                        "处理中"
-                                    } else if enabled {
-                                        "已启用"
-                                    } else {
-                                        "已停用"
-                                    }),
-                            )
-                            .child(
-                                Button::new(format!("settings-open-plugin-{id}"))
-                                    .label(fileatlas_ui_bridge::i18n::tr("Settings"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(format!(
+                                    "settings-open-plugin-{id}"
+                                ))
+                                .label(fileatlas_ui_bridge::i18n::tr("Settings"))
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
                                         this.tab = Tab::PluginSettings;
                                         this.selected_plugin_id = Some(settings_id.clone());
                                         let _ = this.surfaces.set_value("settings.tab", "plugin");
@@ -219,19 +214,23 @@ impl SettingsView {
                                             .surfaces
                                             .set_value("settings.plugin_id", &settings_id);
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
-                                Button::new(format!("settings-toggle-plugin-{id}"))
-                                    .label(fileatlas_ui_bridge::i18n::tr(if busy {
-                                        "Working…"
-                                    } else if enabled {
-                                        "Disable"
-                                    } else {
-                                        "Enable"
-                                    }))
-                                    .disabled(busy)
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(format!(
+                                    "settings-toggle-plugin-{id}"
+                                ))
+                                .label(fileatlas_ui_bridge::i18n::tr(if busy {
+                                    "Working…"
+                                } else if enabled {
+                                    "Disable"
+                                } else {
+                                    "Enable"
+                                }))
+                                .disabled(busy)
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
                                         let runtime = this.service.plugin_runtime();
                                         let plugin_id = plugin_id.clone();
                                         let next = !enabled;
@@ -259,24 +258,26 @@ impl SettingsView {
                                             });
                                         })
                                         .detach();
-                                    })),
+                                    },
+                                )),
                             ),
                     ),
             );
         }
         body.child(
             div()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child("停用会停止相关任务并移除命令和面板，数据文件会保留。"),
         )
     }
 
     pub(super) fn render_plugin_settings(&self, s: &Settings, cx: &mut Context<Self>) -> Div {
         let Some(id) = self.selected_plugin_id.as_deref() else {
-            return div().child(fileatlas_ui_bridge::i18n::tr(
-                "Select a plugin from the navigation.",
-            ));
+            return div()
+                .workbench_assistant()
+                .child(fileatlas_ui_bridge::i18n::tr(
+                    "Select a plugin from the navigation.",
+                ));
         };
         let Some(plugin) = self
             .service
@@ -389,7 +390,7 @@ impl SettingsView {
                     div()
                         .h_flex()
                         .items_center()
-                        .gap_3()
+                        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                         .child(self.section("External software").flex_1())
                         .child(self.software_refresh_button(cx)),
                 )
@@ -431,9 +432,9 @@ impl SettingsView {
             body = body.child(self.section("Tool entry"));
         }
         body = body.child(design::row().child(design::label(entry_label,entry_note)).child(
-            Button::new(format!("settings-open-plugin-panel-{id}"))
+            fileatlas_ui_bridge::components::button(format!("settings-open-plugin-panel-{id}"))
                 .outline()
-                .h(px(36.))
+
                 .label(fileatlas_ui_bridge::i18n::tr("Open plugin panel"))
                 .disabled(!plugin.enabled || plugin.busy || command_id.is_empty())
                 .on_click(move |_, _, _| {

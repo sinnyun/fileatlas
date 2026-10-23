@@ -1,9 +1,9 @@
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use std::sync::Arc;
 use std::time::Duration;
 
-use fileatlas_ui_bridge::{UiViewContribution, theme};
+use fileatlas_ui_bridge::UiViewContribution;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::*;
 
 use crate::DevTestService;
@@ -44,8 +44,8 @@ impl Render for StatusPanel {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
             .v_flex()
-            .p_4()
-            .gap_3()
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child("开发测试：真实扫描及规模任务状态")
             .child(if self.0.is_running() {
                 "运行中"
@@ -80,29 +80,20 @@ impl Render for DevTestPanel {
         div()
             .v_flex()
             .w_full()
-            .gap_2()
-            .p_3()
-            .border_t_1()
-            .border_color(rgb(theme::surface_faint()))
-            .child(
-                div()
-                    .text_sm()
-                    .font_semibold()
-                    .child("开发测试：本地文件与规模数据"),
-            )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child("样例扫描会读 test-data/fileatlas-fixtures 中的真实文件，并使用隔离的开发数据库。"),
-            )
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+            .child(fileatlas_ui_bridge::components::heading_block(
+                "开发测试：本地文件与规模数据",
+                "样例扫描会读 test-data/fileatlas-fixtures 中的真实文件，并使用隔离的开发数据库。",
+            ))
             .child(
                 div()
                     .h_flex()
                     .flex_wrap()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
-                        Button::new("dev-test-scan-fixtures")
+                        fileatlas_ui_bridge::components::button("dev-test-scan-fixtures")
                             .label(fileatlas_ui_bridge::i18n::tr(&("扫描样例目录").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.scan_fixture();
@@ -110,7 +101,7 @@ impl Render for DevTestPanel {
                             })),
                     )
                     .child(
-                        Button::new("dev-test-seed-1k")
+                        fileatlas_ui_bridge::components::button("dev-test-seed-1k")
                             .label(fileatlas_ui_bridge::i18n::tr(&("注入 1 千").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(1_000);
@@ -118,7 +109,7 @@ impl Render for DevTestPanel {
                             })),
                     )
                     .child(
-                        Button::new("dev-test-seed-10k")
+                        fileatlas_ui_bridge::components::button("dev-test-seed-10k")
                             .label(fileatlas_ui_bridge::i18n::tr(&("注入 1 万").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(10_000);
@@ -126,7 +117,7 @@ impl Render for DevTestPanel {
                             })),
                     )
                     .child(
-                        Button::new("dev-test-seed-100k")
+                        fileatlas_ui_bridge::components::button("dev-test-seed-100k")
                             .label(fileatlas_ui_bridge::i18n::tr(&("注入 10 万").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.inject_virtual(100_000);
@@ -134,7 +125,7 @@ impl Render for DevTestPanel {
                             })),
                     )
                     .child(
-                        Button::new("dev-test-clear-virtual")
+                        fileatlas_ui_bridge::components::button("dev-test-clear-virtual")
                             .label(fileatlas_ui_bridge::i18n::tr(&("清理虚拟记录").to_string()))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.service.clear_virtual();
@@ -142,11 +133,6 @@ impl Render for DevTestPanel {
                             })),
                     ),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child(self.service.status()),
-            )
+            .child(div().workbench_assistant().child(self.service.status()))
     }
 }

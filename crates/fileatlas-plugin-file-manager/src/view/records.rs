@@ -1,5 +1,7 @@
 //! Reviewable missing-file record maintenance. All filesystem work is off-thread.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::component::button::ButtonVariants;
 
 impl FileManagerView {
@@ -135,22 +137,22 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
     let page = view.records_page.min(pages - 1);
     let mut content = div()
         .v_flex()
-        .gap_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .w_full()
         .min_h_0()
         .child(
             div()
                 .h_flex()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
-                    Button::new("records-choose-folder")
+                    fileatlas_ui_bridge::components::button("records-choose-folder")
                         .label(fileatlas_ui_bridge::i18n::tr("Choose relink folder"))
                         .on_click(
                             cx.listener(|view, _, _, cx| view.choose_record_target(None, cx)),
                         ),
                 )
                 .child(
-                    Button::new("records-delete-missing")
+                    fileatlas_ui_bridge::components::button("records-delete-missing")
                         .label(fileatlas_ui_bridge::i18n::tr(
                             if view.confirm_delete_missing {
                                 "Confirm delete missing records"
@@ -168,7 +170,7 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
                         })),
                 )
                 .child(
-                    Button::new("records-refresh")
+                    fileatlas_ui_bridge::components::button("records-refresh")
                         .ghost()
                         .label(fileatlas_ui_bridge::i18n::tr("Refresh folder"))
                         .on_click(cx.listener(|view, _, _, cx| {
@@ -177,16 +179,12 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
                         })),
                 ),
         )
-        .child(div().text_sm().child(format!(
+        .child(div().workbench_assistant().child(format!(
             "{}: {count}",
             fileatlas_ui_bridge::i18n::tr("Missing files")
         )));
     if let Some(Err(error)) = view.records_read.value() {
-        content = content.child(
-            div()
-                .text_color(rgb(theme::danger_text()))
-                .child(error.clone()),
-        );
+        content = content.child(div().workbench_assistant().child(error.clone()));
     }
     if view.records_read.is_pending() {
         content = content.child(gpui_kit::component::spinner::Spinner::new());
@@ -194,9 +192,9 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
     content = content.child(
         div()
             .h_flex()
-            .gap_2()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
-                Button::new("records-prev")
+                fileatlas_ui_bridge::components::button("records-prev")
                     .ghost()
                     .label("‹")
                     .on_click(cx.listener(move |view, _, _, cx| {
@@ -204,9 +202,13 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
                         cx.notify();
                     })),
             )
-            .child(div().text_sm().child(format!("{} / {pages}", page + 1)))
             .child(
-                Button::new("records-next")
+                div()
+                    .workbench_assistant()
+                    .child(format!("{} / {pages}", page + 1)),
+            )
+            .child(
+                fileatlas_ui_bridge::components::button("records-next")
                     .ghost()
                     .label("›")
                     .on_click(cx.listener(move |view, _, _, cx| {
@@ -220,31 +222,21 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
         let candidate = view.record_candidates.get(&id).cloned();
         let mut row = div()
             .v_flex()
-            .gap_2()
-            .p_3()
-            .rounded_md()
-            .bg(rgb(theme::surface_faint()))
-            .child(div().font_semibold().child(item.filename))
-            .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_muted()))
-                    .child(format!(
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
+            .child(div().workbench_body().child(item.filename))
+            .child(div().workbench_assistant().child(format!(
                         "{} · {}",
                         card::format_bytes(item.file_size),
                         chrono::DateTime::from_timestamp(item.modified_at, 0)
                             .map(|d| d.format("%Y-%m-%d %H:%M").to_string())
                             .unwrap_or_default()
-                    )),
-            )
+                    )))
+            .child(div().workbench_assistant().child(item.full_path))
             .child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_muted()))
-                    .child(item.full_path),
-            )
-            .child(
-                Button::new(format!("relink-choose-{id}"))
+                fileatlas_ui_bridge::components::button(format!("relink-choose-{id}"))
                     .ghost()
                     .label(fileatlas_ui_bridge::i18n::tr("Choose replacement file"))
                     .on_click(
@@ -255,37 +247,43 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
             row = row.child(
                 div()
                     .h_flex()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         img(PathBuf::from(path))
                             .size(px(64.))
                             .object_fit(ObjectFit::Contain),
                     )
-                    .child(div().child(fileatlas_ui_bridge::i18n::tr("Saved preview"))),
+                    .child(
+                        div()
+                            .workbench_body()
+                            .child(fileatlas_ui_bridge::i18n::tr("Saved preview")),
+                    ),
             );
         }
         if let Some(candidate) = candidate {
-            row = row.child(div().text_sm().child(candidate)).child(
-                div()
-                    .h_flex()
-                    .gap_2()
-                    .child(
-                        Button::new(format!("relink-apply-{id}"))
-                            .label(fileatlas_ui_bridge::i18n::tr("Apply relink"))
-                            .on_click(
-                                cx.listener(move |view, _, _, cx| view.relink_record(id, cx)),
-                            ),
-                    )
-                    .child(
-                        Button::new(format!("relink-skip-{id}"))
-                            .ghost()
-                            .label(fileatlas_ui_bridge::i18n::tr("Skip"))
-                            .on_click(cx.listener(move |view, _, _, cx| {
-                                view.record_candidates.remove(&id);
-                                cx.notify();
-                            })),
-                    ),
-            );
+            row = row
+                .child(div().workbench_assistant().child(candidate))
+                .child(
+                    div()
+                        .h_flex()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .child(
+                            fileatlas_ui_bridge::components::button(format!("relink-apply-{id}"))
+                                .label(fileatlas_ui_bridge::i18n::tr("Apply relink"))
+                                .on_click(
+                                    cx.listener(move |view, _, _, cx| view.relink_record(id, cx)),
+                                ),
+                        )
+                        .child(
+                            fileatlas_ui_bridge::components::button(format!("relink-skip-{id}"))
+                                .ghost()
+                                .label(fileatlas_ui_bridge::i18n::tr("Skip"))
+                                .on_click(cx.listener(move |view, _, _, cx| {
+                                    view.record_candidates.remove(&id);
+                                    cx.notify();
+                                })),
+                        ),
+                );
         }
         row
     });
@@ -293,7 +291,7 @@ pub(super) fn render(view: &FileManagerView, cx: &mut Context<FileManagerView>) 
         .child(
             div()
                 .v_flex()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .h(px(350.))
                 .overflow_y_scrollbar()
                 .children(rows),

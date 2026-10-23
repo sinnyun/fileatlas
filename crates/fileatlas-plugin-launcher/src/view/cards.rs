@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::prelude::FluentBuilder as _;
@@ -37,10 +39,11 @@ impl LauncherPanel {
             .size(px(size))
             .items_center()
             .justify_center()
-            .rounded(px(12.))
-            .bg(rgba((theme::accent() << 8) | 0x18))
-            .text_color(rgb(theme::accent_text()))
-            .text_size(px(size * 0.6))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::ExtraLarge)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                (theme::accent() << 8) | 0x18,
+            ))
+            .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::AccentText)
             .child(theme::icon(category_icon(category)).size(px(size * 0.5)))
             .into_any_element()
     }
@@ -55,19 +58,19 @@ impl LauncherPanel {
             .relative()
             .v_flex()
             .w(px(112.))
-            .h(px(132.))
+            .h(px(theme::PROGRAM_CARD_HEIGHT))
             .flex_shrink_0()
             .items_center()
             .justify_start()
-            .pt(px(10.))
-            .px(px(5.))
-            .gap(px(10.))
+            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_compact()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .workbench_card(selected)
-            .text_color(rgb(if entry.available {
-                theme::text_primary()
+            .workbench_foreground(if entry.available {
+                fileatlas_ui_bridge::components::ForegroundRole::Primary
             } else {
-                theme::text_muted()
-            }))
+                fileatlas_ui_bridge::components::ForegroundRole::Muted
+            })
             .on_click(cx.listener(move |this, event: &ClickEvent, window, cx| {
                 this.select_entry(id, window, cx);
                 if event.click_count() == 2 {
@@ -83,10 +86,10 @@ impl LauncherPanel {
             .child(
                 div()
                     .w_full()
-                    .h(px(36.))
+                    .h(px(theme::PROGRAM_CARD_NAME_HEIGHT))
                     .overflow_hidden()
                     .text_center()
-                    .text_size(px(12.))
+                    .workbench_body()
                     .child(entry.display_name.clone()),
             )
             .when(entry.pin_scope != crate::PinScope::None, |tile| {
@@ -95,7 +98,7 @@ impl LauncherPanel {
                         .absolute()
                         .top(px(5.))
                         .right(px(7.))
-                        .text_color(rgb(theme::star_text()))
+                        .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Star)
                         .child(theme::small_icon(
                             if entry.pin_scope == crate::PinScope::AllPrograms {
                                 IconName::StarFill

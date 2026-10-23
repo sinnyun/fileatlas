@@ -4,16 +4,16 @@
 //! Mockups: docs/reference-ui/final-v5/00-main-library.png and
 //! 05-filters-menus.png.
 
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use gpui_kit::assets::IconName;
+use gpui_kit::base::Selectable as _;
 use gpui_kit::component::button::ButtonVariants;
-use gpui_kit::component::checkbox::Checkbox;
-use gpui_kit::component::date_picker::DatePicker;
 use gpui_kit::component::popover::Popover;
-use gpui_kit::component::radio::Radio;
 
 use super::*;
 use crate::filter::SearchScopes;
-use gpui_kit::prelude::FluentBuilder as _;
 
 mod helpers;
 mod multi_select;
@@ -29,7 +29,7 @@ pub(super) fn render(view: &mut FileManagerView, cx: &mut Context<FileManagerVie
         .h_flex()
         .w_full()
         .items_center()
-        .gap(px(4.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .overflow_x_scroll();
     row = row.child(type_chip(view, weak.clone(), cx));
     row = row.child(tags_chip(view, weak.clone(), cx));
@@ -50,7 +50,7 @@ pub(super) fn search_scope_popover(
     let scopes = view.filter.search_scopes;
     let weak = cx.entity().downgrade();
     let open_weak = weak.clone();
-    Popover::new("file_manager-search-scopes-popover")
+    fileatlas_ui_bridge::components::popover("file_manager-search-scopes-popover")
         .anchor(gpui_kit::Anchor::TopRight)
         .open(view.search_scopes_open)
         .on_open_change(move |open, _, cx| {
@@ -74,7 +74,7 @@ fn search_scope_popover_panel(scopes: SearchScopes, weak: WeakEntity<FileManager
     let mut panel = div()
         .v_flex()
         .w(px(260.))
-        .gap(px(2.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .child(popover_title("Search scope"));
     for (id, scope, title, subtitle, checked) in [
         (
@@ -111,26 +111,27 @@ fn search_scope_popover_panel(scopes: SearchScopes, weak: WeakEntity<FileManager
                 .id(format!("file_manager-{id}"))
                 .h_flex()
                 .items_center()
-                .gap(px(8.))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .h(px(44.))
-                .px(px(6.))
-                .rounded(px(theme::ROUND_SM))
+                .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
                 .cursor_pointer()
-                .hover(|style| style.bg(rgba(theme::fill_hover())))
-                .child(Checkbox::new(format!("file_manager-{id}-box")).checked(checked))
+                .workbench_hover_surface()
+                .child(fileatlas_ui_bridge::components::checkbox(
+                    format!("file_manager-{id}-box"),
+                    checked,
+                ))
                 .child(
                     div()
                         .v_flex()
                         .child(
                             div()
-                                .text_size(px(theme::FONT_SIZE_BUTTON))
-                                .text_color(rgb(theme::text_primary()))
+                                .workbench_body()
                                 .child(fileatlas_ui_bridge::i18n::tr(title)),
                         )
                         .child(
                             div()
-                                .text_size(px(theme::FONT_SIZE_TINY))
-                                .text_color(rgb(theme::text_muted()))
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr(subtitle)),
                         ),
                 )
@@ -177,7 +178,7 @@ fn type_chip(
         let mut panel = div()
             .v_flex()
             .w(px(220.))
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Media type"));
         for (value, label, icon) in [
             (MediaTypeFilter::All, "All files", IconName::LayoutGrid),
@@ -189,11 +190,13 @@ fn type_chip(
             let popover = popover.clone();
             panel = panel.child(
                 menu_row(format!("file_manager-filter-type-{}", value as u8))
-                    .child(
-                        Radio::new(format!("file_manager-filter-type-radio-{}", value as u8))
-                            .checked(value == selected),
-                    )
-                    .child(theme::small_icon(icon).text_color(rgb(theme::text_muted())))
+                    .child(fileatlas_ui_bridge::components::radio(
+                        format!("file_manager-filter-type-radio-{}", value as u8),
+                        value == selected,
+                    ))
+                    .child(theme::small_icon(icon).workbench_foreground(
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                    ))
                     .child(row_label(fileatlas_ui_bridge::i18n::tr(label).to_string()))
                     .on_click(move |_, window, cx| {
                         let _ = weak.update(cx, |this, cx| this.set_media_type(value, cx));
@@ -247,21 +250,21 @@ fn date_chip(
         div()
             .v_flex()
             .w(px(304.))
-            .gap(px(6.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Date range"))
             .child(
                 div()
                     .h_flex()
                     .w_full()
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         div()
                             .v_flex()
                             .flex_1()
-                            .gap(px(4.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(row_label(fileatlas_ui_bridge::i18n::tr("Date from")))
                             .child(
-                                DatePicker::new(&date_from)
+                                fileatlas_ui_bridge::components::date_picker(&date_from)
                                     .placeholder(fileatlas_ui_bridge::i18n::tr("Select date"))
                                     .w_full(),
                             ),
@@ -270,10 +273,10 @@ fn date_chip(
                         div()
                             .v_flex()
                             .flex_1()
-                            .gap(px(4.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(row_label(fileatlas_ui_bridge::i18n::tr("Date to")))
                             .child(
-                                DatePicker::new(&date_to)
+                                fileatlas_ui_bridge::components::date_picker(&date_to)
                                     .placeholder(fileatlas_ui_bridge::i18n::tr("Select date"))
                                     .w_full(),
                             ),
@@ -281,9 +284,8 @@ fn date_chip(
             )
             .child(gpui_kit::component::calendar::Calendar::new(&calendar).w_full())
             .child(
-                Button::new("file_manager-date-clear-all")
+                fileatlas_ui_bridge::components::button("file_manager-date-clear-all")
                     .ghost()
-                    .compact()
                     .label(fileatlas_ui_bridge::i18n::tr("Clear dates"))
                     .on_click(move |_, window, cx| {
                         let _ = weak.update(cx, |this, cx| {
@@ -340,26 +342,29 @@ fn rating_chip(
                 (view.filter.rating_min, view.filter.rating_max)
             })
             .unwrap_or((rating_min, rating_max));
-        let mut stars = div().h_flex().items_center().gap(px(4.));
+        let mut stars = div()
+            .h_flex()
+            .items_center()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()));
         for star in 1..=5u8 {
             let weak = weak.clone();
             stars = stars.child(
                 div()
                     .id(format!("file_manager-filter-rating-star-{star}"))
                     .cursor_pointer()
-                    .text_color(rgb(if i32::from(star) <= rating_min {
-                        theme::star_text()
+                    .workbench_foreground(if i32::from(star) <= rating_min {
+                        fileatlas_ui_bridge::components::ForegroundRole::Star
                     } else {
-                        theme::text_muted()
-                    }))
-                    .hover(|style| style.text_color(rgb(theme::star_text())))
-                    .child(theme::icon(IconName::Star).text_color(rgb(
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted
+                    })
+                    .workbench_hover_foreground(theme::star_text())
+                    .child(theme::icon(IconName::Star).workbench_foreground(
                         if i32::from(star) <= rating_min {
-                            theme::star_text()
+                            fileatlas_ui_bridge::components::ForegroundRole::Star
                         } else {
-                            theme::text_muted()
+                            fileatlas_ui_bridge::components::ForegroundRole::Muted
                         },
-                    )))
+                    ))
                     .on_click(cx.listener(move |_, _, _, cx| {
                         let _ = weak.update(cx, |this, cx| {
                             let next = i32::from(star);
@@ -377,27 +382,17 @@ fn rating_chip(
         div()
             .v_flex()
             .w(px(270.))
-            .gap(px(8.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(popover_title("Rating range"))
             .child(stars)
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(8.))
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
-                            .child("0"),
-                    )
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .child(div().workbench_assistant().child("0"))
                     .child(rating_slider(weak, popup, rating_min, rating_max))
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
-                            .child("5"),
-                    ),
+                    .child(div().workbench_assistant().child("5")),
             )
     })
     .into_any_element()
@@ -428,7 +423,7 @@ fn sort_chip(
         let mut panel = div()
             .v_flex()
             .w(px(250.))
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Sort by"));
         for (order, icon) in [
             (SortOrder::NewestFirst, IconName::CalendarArrowDown),
@@ -444,11 +439,13 @@ fn sort_chip(
             let popover = popover.clone();
             panel = panel.child(
                 menu_row(format!("file_manager-filter-sort-{}", order as u8))
-                    .child(
-                        Radio::new(format!("file_manager-filter-sort-radio-{}", order as u8))
-                            .checked(order == selected),
-                    )
-                    .child(theme::small_icon(icon).text_color(rgb(theme::text_muted())))
+                    .child(fileatlas_ui_bridge::components::radio(
+                        format!("file_manager-filter-sort-radio-{}", order as u8),
+                        order == selected,
+                    ))
+                    .child(theme::small_icon(icon).workbench_foreground(
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                    ))
                     .child(row_label(
                         fileatlas_ui_bridge::i18n::tr(order.label()).to_string(),
                     ))
@@ -487,17 +484,17 @@ pub(super) fn grouping_chip(
         let mut panel = div()
             .v_flex()
             .w(px(280.))
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Group by"));
         for mode in fileatlas_plugin_grouping::GroupingMode::ALL {
             let weak = weak.clone();
             let popover = popover.clone();
             panel = panel.child(
                 menu_row(format!("grouping-{}", mode.key()))
-                    .child(
-                        Radio::new(format!("grouping-radio-{}", mode.key()))
-                            .checked(mode == selected),
-                    )
+                    .child(fileatlas_ui_bridge::components::radio(
+                        format!("grouping-radio-{}", mode.key()),
+                        mode == selected,
+                    ))
                     .child(row_label(
                         fileatlas_ui_bridge::i18n::tr(mode.label()).to_string(),
                     ))

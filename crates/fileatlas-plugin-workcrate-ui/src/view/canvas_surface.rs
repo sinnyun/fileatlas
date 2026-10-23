@@ -2,10 +2,9 @@
 //! and the pointer events forwarded to VectorCraft as one gesture sequence.
 use super::canvas::*;
 use super::*;
-use ::gpui::{
-    Bounds, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, point, rgba,
-    size,
-};
+use ::gpui::{Bounds, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, point, size};
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 impl WorkCratePanel {
     fn canvas_down(&mut self, event: &MouseDownEvent, cx: &mut ViewContext<Self>) {
@@ -106,17 +105,17 @@ impl WorkCratePanel {
             .flex()
             .items_center()
             .justify_center()
-            .p_3()
-            .bg(rgb(theme::surface_faint()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
             // Explorer and other programs drop ExternalPaths; FileAtlas views drag typed payloads.
             .drag_over::<::gpui::ExternalPaths>(|style, _, _, _| {
-                style.border_color(rgb(theme::accent_hover()))
+                fileatlas_ui_bridge::components::drop_target_style(style)
             })
             .drag_over::<fileatlas_contracts::FileManagerFileDragPayload>(|style, _, _, _| {
-                style.border_color(rgb(theme::accent_hover()))
+                fileatlas_ui_bridge::components::drop_target_style(style)
             })
             .drag_over::<fileatlas_contracts::FileStagingDragPayload>(|style, _, _, _| {
-                style.border_color(rgb(theme::accent_hover()))
+                fileatlas_ui_bridge::components::drop_target_style(style)
             })
             .on_drop::<::gpui::ExternalPaths>(cx.listener(
                 |view, paths: &::gpui::ExternalPaths, _, cx| {
@@ -148,13 +147,11 @@ impl WorkCratePanel {
             ));
         let Some(snapshot) = self.canvas.clone() else {
             return area
-                .child(div().text_sm().text_color(rgb(theme::text_muted())).child(
-                    if self.canvas_busy {
-                        "正在连接官方画布…"
-                    } else {
-                        "官方画布未就绪"
-                    },
-                ))
+                .child(div().workbench_assistant().child(if self.canvas_busy {
+                    "正在连接官方画布…"
+                } else {
+                    "官方画布未就绪"
+                }))
                 .into_any_element();
         };
         let inner = viewport.size.width - px(24. + CANVAS_BORDER);
@@ -181,47 +178,44 @@ impl WorkCratePanel {
             _ => None,
         };
         let frame = shown.as_ref().or(snapshot.selection_bounds.as_ref());
-        let mut artboard = div()
-            .id("workcrate-canvas-artboard")
-            .relative()
-            .flex_shrink_0()
-            .w(width)
-            .h(height)
-            .border_1()
-            .border_color(rgb(theme::separator()))
-            .bg(rgb(theme::surface_card()))
-            .child(
-                self.canvas_image
-                    .clone()
-                    .map(|image| {
-                        img(image)
-                            .size_full()
-                            .object_fit(ObjectFit::Fill)
-                            .into_any_element()
-                    })
-                    .unwrap_or_else(|| {
-                        div()
-                            .size_full()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .child("正在读取官方预览…")
-                            .into_any_element()
-                    }),
-            )
-            .child(super::tracking::measure(
-                "canvas-artboard",
-                self.surfaces.clone(),
-            ));
+        let mut artboard = fileatlas_ui_bridge::components::artboard(
+            div()
+                .id("workcrate-canvas-artboard")
+                .flex_shrink_0()
+                .w(width)
+                .h(height)
+                .child(
+                    self.canvas_image
+                        .clone()
+                        .map(|image| {
+                            img(image)
+                                .size_full()
+                                .object_fit(ObjectFit::Fill)
+                                .into_any_element()
+                        })
+                        .unwrap_or_else(|| {
+                            div()
+                                .size_full()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child("正在读取官方预览…")
+                                .into_any_element()
+                        }),
+                )
+                .child(super::tracking::measure(
+                    "canvas-artboard",
+                    self.surfaces.clone(),
+                )),
+        );
         if let (Some(map), Some(bounds)) = (local, frame) {
             let rect = map.rect_of(bounds);
-            artboard = artboard
-                .child(selection_box(rect))
-                .children((0..8u8).map(move |index| {
-                    let point =
-                        map.point_of(handle_point(bounds, index).0, handle_point(bounds, index).1);
-                    handle_box(point)
-                }));
+            artboard = artboard.child(fileatlas_ui_bridge::components::selection_frame(
+                f32::from(rect.origin.x),
+                f32::from(rect.origin.y),
+                f32::from(rect.size.width),
+                f32::from(rect.size.height),
+            ));
             if let Some(drag) = drag {
                 let label = match drag.kind {
                     CanvasDragKind::Body => format!(
@@ -238,13 +232,10 @@ impl WorkCratePanel {
                         .absolute()
                         .left(px(f32::from(rect.origin.x + rect.size.width) + 8.))
                         .top(px(f32::from(rect.origin.y)))
-                        .px_2()
-                        .py_1()
-                        .rounded(px(4.))
-                        .bg(rgb(theme::surface_elevated()))
-                        .border_1()
-                        .border_color(rgb(theme::separator()))
-                        .text_xs()
+                        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .workbench_card(false)
+                        .workbench_assistant()
                         .child(label),
                 );
             }
@@ -272,16 +263,21 @@ impl WorkCratePanel {
 
     pub(super) fn canvas_toolbar(&self, cx: &mut ViewContext<Self>) -> gpui::Div {
         use gpui_kit::assets::IconName;
-        let divider = || div().w(px(1.)).h(px(18.)).bg(rgb(theme::separator()));
+        let divider = || {
+            fileatlas_ui_bridge::components::separator_line(
+                1.,
+                18.,
+                fileatlas_ui_bridge::components::DividerTone::Standard,
+            )
+        };
         div()
             .h_flex()
             .flex_wrap()
             .items_center()
-            .gap_2()
-            .px_3()
-            .py_2()
-            .border_b_1()
-            .border_color(rgb(theme::separator()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
             .child(self.screen_action(
                 "workcrate-canvas-add-image",
                 Some(IconName::ImagePlus),
@@ -308,8 +304,7 @@ impl WorkCratePanel {
             ))
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .child(format!("{:.0}%", self.canvas_zoom * 100.)),
             )
             .child(self.icon_action(
@@ -357,8 +352,7 @@ impl WorkCratePanel {
             .child(div().flex_1())
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .child(canvas_status(self.canvas.as_ref())),
             )
             .child(self.screen_action(
@@ -373,27 +367,3 @@ impl WorkCratePanel {
 }
 
 const CANVAS_BORDER: f32 = 2.;
-
-fn selection_box(rect: Bounds<Pixels>) -> gpui::Div {
-    div()
-        .absolute()
-        .left(px(f32::from(rect.origin.x)))
-        .top(px(f32::from(rect.origin.y)))
-        .w(px(f32::from(rect.size.width)))
-        .h(px(f32::from(rect.size.height)))
-        .border_1()
-        .border_color(rgb(theme::accent()))
-        .bg(rgba(theme::fill_transparent_overlay() | 24))
-}
-
-fn handle_box(center: Point<Pixels>) -> gpui::Div {
-    div()
-        .absolute()
-        .left(px(f32::from(center.x) - HANDLE / 2.))
-        .top(px(f32::from(center.y) - HANDLE / 2.))
-        .w(px(HANDLE))
-        .h(px(HANDLE))
-        .border_1()
-        .border_color(rgb(theme::accent()))
-        .bg(rgb(theme::surface_elevated()))
-}

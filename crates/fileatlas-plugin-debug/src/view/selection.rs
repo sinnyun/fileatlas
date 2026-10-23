@@ -11,26 +11,26 @@ impl DebugView {
         let ui = s.ui_state();
         div()
             .h_flex()
-            .gap_1()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .items_center()
-            .child(div().text_color(rgb(theme::text_muted())).child(
-                fileatlas_ui_bridge::i18n::tr_args(
-                    "{count} selected",
-                    &[("count", ui.selected_ids.len().to_string())],
-                ),
-            ))
             .child(
-                Button::new("debug-copy")
+                div()
+                    .workbench_assistant()
+                    .child(fileatlas_ui_bridge::i18n::tr_args(
+                        "{count} selected",
+                        &[("count", ui.selected_ids.len().to_string())],
+                    )),
+            )
+            .child(
+                fileatlas_ui_bridge::components::button("debug-copy")
                     .ghost()
-                    .compact()
                     .label(tr("Copy logs"))
                     .disabled(ui.selected_ids.is_empty())
                     .on_click(cx.listener(|this, _, _, cx| this.perform_action("copy", cx))),
             )
             .child(
-                Button::new("debug-export")
+                fileatlas_ui_bridge::components::button("debug-export")
                     .ghost()
-                    .compact()
                     .label(tr("Export .txt"))
                     .disabled(ui.selected_ids.is_empty() || self.exporting)
                     .on_click(cx.listener(|this, _, _, cx| this.perform_action("export", cx))),
@@ -256,17 +256,12 @@ impl DebugView {
             );
         if let (Some(drag), Some(viewport)) = (&self.drag, *self.list_bounds.lock().unwrap()) {
             let band = selection_bounds(drag).intersect(&viewport);
-            list = list.child(
-                div()
-                    .absolute()
-                    .left(band.origin.x - viewport.origin.x)
-                    .top(band.origin.y - viewport.origin.y)
-                    .w(band.size.width)
-                    .h(band.size.height)
-                    .border_1()
-                    .border_color(rgb(theme::accent()))
-                    .bg(rgba((theme::accent() << 8) | 0x22)),
-            );
+            list = list.child(fileatlas_ui_bridge::components::selection_region(
+                f32::from(band.origin.x - viewport.origin.x),
+                f32::from(band.origin.y - viewport.origin.y),
+                f32::from(band.size.width),
+                f32::from(band.size.height),
+            ));
         }
         list.into_any_element()
     }

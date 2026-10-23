@@ -1,5 +1,6 @@
 //! Shared rendering for FileAtlas tag labels across feature plugins.
 
+use crate::components::WorkbenchStyle as _;
 use crate::theme;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::*;
@@ -50,12 +51,22 @@ impl TagCapsule {
             .and_then(theme::parse_hex_color)
             .map(|[r, g, b]| (u32::from(r) << 16) | (u32::from(g) << 8) | u32::from(b));
         let colors = theme::tag_colors(tint, self.selected);
-        let (gap, height, padding, icon_size, font_size) = if self.compact {
-            (2., 18., 4., 10., theme::FONT_SIZE_TINY)
+        let (gap, height, padding, icon_size) = if self.compact {
+            (
+                theme::space_compact(),
+                theme::ui_height(18.),
+                theme::space_compact(),
+                10.,
+            )
         } else {
-            (5., 24., 8., 13., theme::FONT_SIZE_SMALL)
+            (
+                theme::space_standard(),
+                theme::ui_height(24.),
+                theme::space_standard(),
+                13.,
+            )
         };
-        div()
+        let capsule = div()
             .h_flex()
             .items_center()
             .gap(px(gap))
@@ -66,23 +77,34 @@ impl TagCapsule {
             .border_1()
             .border_color(rgb(colors.border))
             .bg(rgb(colors.background))
-            .text_size(px(font_size))
+            .text_size(px(theme::FONT_SIZE_ASSISTANT))
+            .line_height(px(theme::LINE_HEIGHT_ASSISTANT))
+            .font_weight(FontWeight::NORMAL)
             .text_color(rgb(colors.foreground))
-            .hover(|style| style.border_color(rgb(theme::accent())))
+            .workbench_hover_accent_border()
             .child(
                 theme::small_icon(theme::tag_icon(self.icon.as_deref()))
                     .size(px(icon_size))
                     .flex_shrink_0()
                     .text_color(rgb(colors.icon)),
             )
-            .child(
+            .child(crate::components::observe_assistant_typography(
                 div()
                     .flex_1()
                     .min_w_0()
                     .overflow_hidden()
                     .text_ellipsis()
                     .child(self.name),
-            )
+            ));
+        crate::components::review_card(
+            capsule,
+            crate::geometry_audit::ComponentTokens {
+                height: Some(theme::ui_height(height)),
+                gap: Some(gap),
+                padding_x: Some(padding),
+                ..Default::default()
+            },
+        )
     }
 }
 

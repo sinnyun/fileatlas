@@ -1,6 +1,5 @@
 use super::SettingsView;
 use super::tag_choices::TagChoice;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::*;
 
@@ -22,13 +21,10 @@ pub(super) fn button(
                 fileatlas_ui_bridge::i18n::tr("None")
             }
         });
-    let mut button = Button::new(format!("settings-tag-hotkey-{key}"))
-        .compact()
+    let mut button = fileatlas_ui_bridge::components::button(format!("settings-tag-hotkey-{key}"))
         // DropdownMenu wraps its trigger; flex on Button does not size that wrapper.
-        .w(px(width))
         .min_w_0()
-        .justify_start()
-        .h(px(26.));
+        .justify_start();
     if let Some(tag) = selected_tag {
         button = button.child(
             fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name)

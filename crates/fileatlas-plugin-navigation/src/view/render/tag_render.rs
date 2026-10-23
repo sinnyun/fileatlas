@@ -1,4 +1,8 @@
 use super::super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 
 pub(in crate::view) fn render_tag(
@@ -18,12 +22,12 @@ pub(in crate::view) fn render_tag(
     let tag_color = theme::tag_tint(tag.color.as_deref());
     let row_group = format!("navigation-tag-row-{}", tag.id);
     let select_name_id = tag.id;
-    let name = Button::new(format!("navigation-tag-name-{}", tag.id))
+    let name = fileatlas_ui_bridge::components::button(format!("navigation-tag-name-{}", tag.id))
         .ghost()
         .compact()
         .flex_1()
         .min_w_0()
-        .text_size(px(12.))
+        .workbench_assistant()
         .when(is_included, |button| {
             button.icon(theme::small_icon(IconName::Check))
         })
@@ -42,6 +46,7 @@ pub(in crate::view) fn render_tag(
         .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
             this.toggle_tag_selection(select_name_id, event.modifiers(), cx)
         }));
+    let name = fileatlas_ui_bridge::components::fixed_button_geometry(name);
     let drag_name = div()
         .id(format!("navigation-tag-drag-{}", tag.id))
         .on_drag(TagDragPayload { source_id: tag.id }, |payload, _, _, cx| {
@@ -52,138 +57,136 @@ pub(in crate::view) fn render_tag(
         .child(name);
     let is_expanded = !query.is_empty() || expanded.contains(&tag.id);
     let toggle_id = tag.id;
-    let toggle = Button::new(format!("navigation-tag-expand-{toggle_id}"))
-        .ghost()
-        .compact()
-        .w(px(17.))
-        .icon(theme::small_icon(if is_expanded {
-            IconName::ChevronDown
-        } else {
-            IconName::ChevronRight
-        }))
-        .on_click(cx.listener(move |this, _, _, cx| {
-            this.toggle_tag(toggle_id);
-            cx.notify();
-        }));
+    let toggle =
+        fileatlas_ui_bridge::components::button(format!("navigation-tag-expand-{toggle_id}"))
+            .ghost()
+            .icon(theme::small_icon(if is_expanded {
+                IconName::ChevronDown
+            } else {
+                IconName::ChevronRight
+            }))
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.toggle_tag(toggle_id);
+                cx.notify();
+            }));
     let menu_id = tag.id;
     let menu_display = tag.display;
     let view = cx.entity().downgrade();
-    let actions = Button::new(format!("navigation-tag-actions-{menu_id}"))
-        .compact()
-        .opacity(0.72)
-        .group_hover(row_group.clone(), |style| style.opacity(1.))
-        .icon(theme::small_icon(IconName::Ellipsis))
-        .accessibility_label(fileatlas_ui_bridge::i18n::tr("Tag actions"))
-        .dropdown_menu(move |mut menu, _, _| {
-            let child_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Create child tag")).on_click(
-                    move |_, window, cx| {
-                        let _ = child_view.update(cx, |this, cx| {
-                            this.parent_tag_id = Some(menu_id);
-                            this.tag_parent
-                                .update(cx, |state, cx| state.set_value("", window, cx));
-                            this.tag_name
-                                .update(cx, |state, cx| state.set_value("", window, cx));
-                            this.tag_create_open = true;
-                            cx.notify();
-                        });
-                    },
-                ),
-            );
-            let merge_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Merge into…")).on_click(
-                    move |_, window, cx| {
-                        let _ = merge_view.update(cx, |this, cx| {
-                            this.begin_merge(menu_id, window, cx);
-                        });
-                    },
-                ),
-            );
-            let edit_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit fields")).on_click(
-                    move |_, window, cx| {
-                        let _ = edit_view.update(cx, |this, cx| {
-                            this.begin_edit_tag(menu_id, window, cx);
-                        });
-                    },
-                ),
-            );
-            let rename_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Rename…")).on_click(
-                    move |_, window, cx| {
-                        let _ = rename_view.update(cx, |this, cx| {
-                            this.begin_rename_tag(menu_id, window, cx);
-                        });
-                    },
-                ),
-            );
-            let display_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(if menu_display {
-                    "Hide chips"
-                } else {
-                    "Show chips"
-                })
-                .on_click(move |_, _, cx| {
-                    let _ = display_view.update(cx, |this, cx| {
-                        this.toggle_tag_display(menu_id, !menu_display, cx);
-                        cx.notify();
-                    });
-                }),
-            );
-            let parent_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Use as parent")).on_click(
-                    move |_, window, cx| {
-                        let _ = parent_view.update(cx, |this, cx| {
-                            this.use_tag_as_parent(menu_id, window, cx);
-                            this.tag_create_open = true;
-                            cx.notify();
-                        });
-                    },
-                ),
-            );
-            let move_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Move…")).on_click(
-                    move |_, window, cx| {
-                        let _ = move_view.update(cx, |this, cx| {
-                            this.move_source_id = Some(menu_id);
-                            this.move_target_tag_id = None;
-                            this.tag_move_target.update(cx, |input, cx| {
-                                input.set_value("", window, cx);
+    let actions =
+        fileatlas_ui_bridge::components::button(format!("navigation-tag-actions-{menu_id}"))
+            .workbench_reveal_on_group_hover(row_group.clone(), 0.72)
+            .icon(theme::small_icon(IconName::Ellipsis))
+            .accessibility_label(fileatlas_ui_bridge::i18n::tr("Tag actions"))
+            .dropdown_menu(move |mut menu, _, _| {
+                let child_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Create child tag")).on_click(
+                        move |_, window, cx| {
+                            let _ = child_view.update(cx, |this, cx| {
+                                this.parent_tag_id = Some(menu_id);
+                                this.tag_parent
+                                    .update(cx, |state, cx| state.set_value("", window, cx));
+                                this.tag_name
+                                    .update(cx, |state, cx| state.set_value("", window, cx));
+                                this.tag_create_open = true;
+                                cx.notify();
                             });
+                        },
+                    ),
+                );
+                let merge_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Merge into…")).on_click(
+                        move |_, window, cx| {
+                            let _ = merge_view.update(cx, |this, cx| {
+                                this.begin_merge(menu_id, window, cx);
+                            });
+                        },
+                    ),
+                );
+                let edit_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit fields")).on_click(
+                        move |_, window, cx| {
+                            let _ = edit_view.update(cx, |this, cx| {
+                                this.begin_edit_tag(menu_id, window, cx);
+                            });
+                        },
+                    ),
+                );
+                let rename_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Rename…")).on_click(
+                        move |_, window, cx| {
+                            let _ = rename_view.update(cx, |this, cx| {
+                                this.begin_rename_tag(menu_id, window, cx);
+                            });
+                        },
+                    ),
+                );
+                let display_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(if menu_display {
+                        "Hide chips"
+                    } else {
+                        "Show chips"
+                    })
+                    .on_click(move |_, _, cx| {
+                        let _ = display_view.update(cx, |this, cx| {
+                            this.toggle_tag_display(menu_id, !menu_display, cx);
                             cx.notify();
                         });
-                    },
-                ),
-            );
-            let style_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit appearance…")).on_click(
-                    move |_, window, cx| {
-                        let _ = style_view.update(cx, |this, cx| {
-                            this.begin_edit_tag(menu_id, window, cx);
-                        });
-                    },
-                ),
-            );
-            let delete_view = view.clone();
-            menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Delete tag…")).on_click(
-                    move |_, _, cx| {
-                        let _ = delete_view.update(cx, |this, cx| {
-                            this.request_delete_tag(menu_id, cx);
-                            cx.notify();
-                        });
-                    },
-                ),
-            )
-        });
+                    }),
+                );
+                let parent_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Use as parent")).on_click(
+                        move |_, window, cx| {
+                            let _ = parent_view.update(cx, |this, cx| {
+                                this.use_tag_as_parent(menu_id, window, cx);
+                                this.tag_create_open = true;
+                                cx.notify();
+                            });
+                        },
+                    ),
+                );
+                let move_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Move…")).on_click(
+                        move |_, window, cx| {
+                            let _ = move_view.update(cx, |this, cx| {
+                                this.move_source_id = Some(menu_id);
+                                this.move_target_tag_id = None;
+                                this.tag_move_target.update(cx, |input, cx| {
+                                    input.set_value("", window, cx);
+                                });
+                                cx.notify();
+                            });
+                        },
+                    ),
+                );
+                let style_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit appearance…")).on_click(
+                        move |_, window, cx| {
+                            let _ = style_view.update(cx, |this, cx| {
+                                this.begin_edit_tag(menu_id, window, cx);
+                            });
+                        },
+                    ),
+                );
+                let delete_view = view.clone();
+                menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Delete tag…")).on_click(
+                        move |_, _, cx| {
+                            let _ = delete_view.update(cx, |this, cx| {
+                                this.request_delete_tag(menu_id, cx);
+                                cx.notify();
+                            });
+                        },
+                    ),
+                )
+            });
     let children = if is_expanded {
         let rows = tag
             .children
@@ -198,13 +201,11 @@ pub(in crate::view) fn render_tag(
                 div()
                     .relative()
                     .child(
-                        div()
+                        fileatlas_ui_bridge::components::vertical_divider()
                             .absolute()
                             .left(px(3. + depth as f32 * 12. + 9.))
                             .top(px(0.))
-                            .bottom(px(0.))
-                            .w(px(1.))
-                            .bg(rgb(theme::separator())),
+                            .bottom(px(0.)),
                     )
                     .children(rows),
             ]
@@ -216,17 +217,16 @@ pub(in crate::view) fn render_tag(
     let before = div()
         .w_full()
         .h(px(8.))
-        .opacity(0.)
+        .workbench_visible(false)
         .items_center()
         .justify_center()
-        .text_xs()
-        .text_color(rgb(theme::text_muted()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr("Drop above to place before"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
             style
-                .opacity(1.)
-                .bg(rgb(theme::selection_color()))
-                .text_color(rgb(theme::selection_text()))
+                .workbench_visible(true)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Selection)
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -245,41 +245,29 @@ pub(in crate::view) fn render_tag(
                 .relative()
                 .h_flex()
                 .items_center()
-                .ml(px(3. + depth as f32 * 12.))
-                .mr(px(3.))
-                .pl(px(6.))
-                .pr(px(5.))
+                .ml(px(fileatlas_ui_bridge::theme::space_compact()
+                    + depth as f32
+                        * fileatlas_ui_bridge::theme::space_expanded()))
+                .mr(px(fileatlas_ui_bridge::theme::space_compact()))
+                .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+                .pr(px(fileatlas_ui_bridge::theme::space_compact()))
                 .h(px(theme::SIDEBAR_ROW_HEIGHT))
-                .rounded(px(9.))
-                .bg(rgb(theme::surface_base()))
-                .border_1()
-                .border_color(rgba(theme::hairline().to_rgba()))
-                .when(selected, |row| {
-                    row.bg(rgb(theme::selection_color()))
-                        .text_color(rgb(theme::selection_text()))
-                        .border_color(rgb(theme::accent()))
-                        .child(
-                            div()
-                                .absolute()
-                                .left(px(1.))
-                                .top(px(5.))
-                                .w(px(3.))
-                                .h(px(16.))
-                                .rounded(px(1.5))
-                                .bg(rgb(theme::accent())),
-                        )
-                })
+                .workbench_tree_row(selected)
                 .child(
                     div()
                         .h_flex()
                         .flex_1()
                         .min_w_0()
                         .items_center()
-                        .gap(px(5.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .child(toggle)
                         .child(drag_name.flex_1().min_w_0())
                         .drag_over::<TagDragPayload>(move |style, _, _, _| {
-                            style.bg(rgba((tag_color << 8) | 0x50))
+                            style.workbench_surface(
+                                fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                                    (tag_color << 8) | 0x50,
+                                ),
+                            )
                         })
                         .on_drop::<TagDragPayload>(cx.listener(
                             move |this, payload: &TagDragPayload, _, cx| {
@@ -295,7 +283,7 @@ pub(in crate::view) fn render_tag(
                     div()
                         .h_flex()
                         .items_center()
-                        .gap(px(3.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .flex_shrink_0()
                         .child(
                             div()
@@ -304,12 +292,15 @@ pub(in crate::view) fn render_tag(
                                 .items_center()
                                 .justify_end()
                                 .flex_shrink_0()
-                                .px(px(5.))
-                                .py(px(1.))
-                                .rounded(px(7.))
-                                .bg(rgb(theme::surface_elevated()))
-                                .text_size(px(10.))
-                                .text_color(rgb(theme::text_muted()))
+                                .px(px(fileatlas_ui_bridge::theme::space_compact()))
+                                .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                                .workbench_corner(
+                                    fileatlas_ui_bridge::components::CornerRole::Medium,
+                                )
+                                .workbench_surface(
+                                    fileatlas_ui_bridge::components::SurfaceRole::Elevated,
+                                )
+                                .workbench_assistant()
                                 .child(tag.media_count.to_string()),
                         )
                         .child(actions),
@@ -317,13 +308,14 @@ pub(in crate::view) fn render_tag(
         )
         .when(depth > 0, |row| {
             row.child(
-                div()
-                    .absolute()
-                    .left(px(3. + (depth - 1) as f32 * 12. + 9.))
-                    .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.))
-                    .w(px(8.))
-                    .h(px(1.))
-                    .bg(rgb(theme::separator())),
+                fileatlas_ui_bridge::components::separator_line(
+                    8.,
+                    1.,
+                    fileatlas_ui_bridge::components::DividerTone::Standard,
+                )
+                .absolute()
+                .left(px(3. + (depth - 1) as f32 * 12. + 9.))
+                .top(px(8. + theme::SIDEBAR_ROW_HEIGHT / 2.)),
             )
         })
         .children(children);
@@ -331,17 +323,16 @@ pub(in crate::view) fn render_tag(
     let after = div()
         .w_full()
         .h(px(8.))
-        .opacity(0.)
+        .workbench_visible(false)
         .items_center()
         .justify_center()
-        .text_xs()
-        .text_color(rgb(theme::text_muted()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr("Drop below to place after"))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
             style
-                .opacity(1.)
-                .bg(rgb(theme::selection_color()))
-                .text_color(rgb(theme::selection_text()))
+                .workbench_visible(true)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Selection)
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             this.move_tag_to(
@@ -360,11 +351,11 @@ struct TagDragGhost {
 impl Render for TagDragGhost {
     fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
         div()
-            .px_2()
-            .py_1()
-            .rounded_md()
-            .bg(rgb(theme::surface_panel()))
-            .text_sm()
+            .px(px(fileatlas_ui_bridge::theme::space_standard()))
+            .py(px(fileatlas_ui_bridge::theme::space_compact()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+            .workbench_assistant()
             .child(self.label.clone())
     }
 }
@@ -403,50 +394,44 @@ pub(in crate::view) fn render_subdirectory(
     let menu_path = node.path.clone();
     let row_group = format!("navigation-directory-row-{}", node.path);
     let view = cx.entity().downgrade();
-    let menu = Button::new(format!("navigation-directory-menu-{}", node.path))
-        .absolute()
-        .right(px(2.))
-        .top(px(2.))
-        .ghost()
-        .compact()
-        .opacity(0.)
-        .group_hover(row_group.clone(), |style| style.opacity(1.))
-        .icon(theme::small_icon(IconName::Ellipsis))
-        .accessibility_label(fileatlas_ui_bridge::i18n::tr("Folder actions"))
-        .w(px(20.))
-        .h(px(22.))
-        .bg(rgb(theme::surface_base()))
-        .dropdown_menu(move |mut menu, _, _| {
-            let create_path = menu_path.clone();
-            let create_view = view.clone();
-            menu = menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("New subfolder…")).on_click(
-                    move |_, window, cx| {
-                        let _ = create_view.update(cx, |this, cx| {
-                            this.request_new_subfolder(create_path.clone(), window, cx)
-                        });
-                    },
-                ),
-            );
-            let open_path = menu_path.clone();
-            let open_view = view.clone();
-            menu.item(
-                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Open in file manager")).on_click(
-                    move |_, _, cx| {
-                        let _ = open_view
-                            .update(cx, |this, _| this.open_folder_in_explorer(&open_path));
-                    },
-                ),
-            )
-        });
+    let menu =
+        fileatlas_ui_bridge::components::button(format!("navigation-directory-menu-{}", node.path))
+            .absolute()
+            .right(px(2.))
+            .top(px(2.))
+            .ghost()
+            .workbench_reveal_on_group_hover(row_group.clone(), 0.)
+            .icon(theme::small_icon(IconName::Ellipsis))
+            .accessibility_label(fileatlas_ui_bridge::i18n::tr("Folder actions"))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Base)
+            .dropdown_menu(move |mut menu, _, _| {
+                let create_path = menu_path.clone();
+                let create_view = view.clone();
+                menu = menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("New subfolder…")).on_click(
+                        move |_, window, cx| {
+                            let _ = create_view.update(cx, |this, cx| {
+                                this.request_new_subfolder(create_path.clone(), window, cx)
+                            });
+                        },
+                    ),
+                );
+                let open_path = menu_path.clone();
+                let open_view = view.clone();
+                menu.item(
+                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Open in file manager"))
+                        .on_click(move |_, _, cx| {
+                            let _ = open_view
+                                .update(cx, |this, _| this.open_folder_in_explorer(&open_path));
+                        }),
+                )
+            });
     let selected = selected_directory
         .is_some_and(|path| crate::sidebar_folders::same_sidebar_path(path, &node.path));
     let expand = if node.has_children {
         let directory_path = node.path.clone();
-        Button::new(format!("navigation-expand-dir-{}", node.path))
+        fileatlas_ui_bridge::components::button(format!("navigation-expand-dir-{}", node.path))
             .ghost()
-            .compact()
-            .w(px(18.))
             .icon(theme::small_icon(
                 if expanded.contains_key(&node.path) || !query.is_empty() {
                     IconName::ChevronDown
@@ -459,34 +444,21 @@ pub(in crate::view) fn render_subdirectory(
                 cx.notify();
             }))
     } else {
-        Button::new(format!("navigation-expand-dir-{}", node.path))
+        fileatlas_ui_bridge::components::button(format!("navigation-expand-dir-{}", node.path))
             .ghost()
-            .compact()
-            .w(px(18.))
             .label(" ")
     };
     let row = div()
         .group(row_group)
-        .relative()
-        .h_flex()
-        .w_full()
-        .h(px(26.))
-        .items_center()
-        .gap(px(3.))
-        .rounded(px(4.))
-        .px(px(3.))
-        .hover(move |style| {
-            style.bg(if selected {
-                rgb(theme::selection_color())
-            } else {
-                rgb(theme::surface_elevated())
-            })
-        })
-        .when(selected, |row| {
-            row.bg(rgb(theme::selection_color()))
-                .text_color(rgb(theme::selection_text()))
-        })
-        .child(div().w(px(8.)).h(px(1.)).bg(rgba(theme::border_strong())))
+        .id(format!("navigation-directory-row-{}", node.path))
+        .workbench_tree_row(selected)
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .px(px(fileatlas_ui_bridge::theme::space_compact()))
+        .child(
+            div().workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                theme::hairline().to_rgba(),
+            )),
+        )
         .child(expand)
         .child(
             div()
@@ -496,7 +468,7 @@ pub(in crate::view) fn render_subdirectory(
                 .min_w_0()
                 .h_full()
                 .items_center()
-                .gap(px(6.))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .on_click(
                     cx.listener(move |this, _, _, cx| this.select_path(selected_path.clone(), cx)),
                 )
@@ -509,17 +481,15 @@ pub(in crate::view) fn render_subdirectory(
                     div()
                         .flex_1()
                         .min_w_0()
-                        .text_xs()
+                        .workbench_assistant()
                         .text_ellipsis()
                         .child(node.name.clone()),
                 )
-                .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                    if counts_known {
-                        node.media_count.to_string()
-                    } else {
-                        String::new()
-                    },
-                )),
+                .child(div().workbench_assistant().child(if counts_known {
+                    node.media_count.to_string()
+                } else {
+                    String::new()
+                })),
         );
     let row = row.child(menu);
     let mut subtree = div().v_flex().child(row);
@@ -527,10 +497,9 @@ pub(in crate::view) fn render_subdirectory(
         subtree = subtree.child(
             div()
                 .v_flex()
-                .ml(px(9.))
-                .pl(px(9.))
-                .border_l_1()
-                .border_color(rgba(theme::border_strong()))
+                .ml(px(fileatlas_ui_bridge::theme::space_standard()))
+                .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Left)
                 .children(children),
         );
     }
@@ -597,7 +566,7 @@ pub(in crate::view) fn merge_target_buttons(
     if targets.is_empty() {
         return vec![
             div()
-                .text_xs()
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("No matching tags")),
         ];
     }
@@ -606,10 +575,11 @@ pub(in crate::view) fn merge_target_buttons(
         .map(|(tag, depth)| {
             let id = tag.id;
             div().child(
-                Button::new(format!("navigation-merge-target-{id}"))
+                fileatlas_ui_bridge::components::button(format!("navigation-merge-target-{id}"))
                     .ghost()
-                    .w_full()
-                    .pl(px(8. + depth as f32 * 14.))
+                    .pl(px(fileatlas_ui_bridge::theme::space_standard()
+                        + depth as f32
+                            * fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
                         div()
                             .h_flex()
@@ -623,7 +593,11 @@ pub(in crate::view) fn merge_target_buttons(
                                     .icon(tag.icon.as_deref())
                                     .render(),
                             )
-                            .child(div().text_xs().child(tag.media_count.to_string())),
+                            .child(
+                                div()
+                                    .workbench_assistant()
+                                    .child(tag.media_count.to_string()),
+                            ),
                     )
                     .on_click(cx.listener(move |this, _, _, cx| this.merge_tag_into(id, cx))),
             )

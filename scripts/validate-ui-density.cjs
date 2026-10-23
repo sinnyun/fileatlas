@@ -1,0 +1,32 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+module.exports = async ({ call, payload, step, delay, profile }) => {
+  const invoke = async (tool, args = {}, options = {}) => (await step({ tool, arguments: args, ...options })).result;
+  await step({ tool: 'get_ui_state', until: { field: 'window_status.valid', equals: true, attempts: 60, interval_ms: 400 } });
+  await invoke('control_ui', { action: 'settings_open' }, { wait_ms: 800 });
+  const save = async name => {
+    const shot = await call('screenshot_window');
+    const image = (shot.content || []).find(item => item.type === 'image');
+    assert(image, `missing ${name} screenshot`);
+    fs.writeFileSync(path.join(profile, 'screenshots', `${name}.png`), Buffer.from(image.data, 'base64'));
+    const geometry = payload(await call('debug.ui_geometry'));
+    fs.writeFileSync(path.join(profile, `${name}.geometry.json`), JSON.stringify(geometry, null, 2));
+    const buttons = (geometry.entries || []).filter(item => item.tier === 'button' && item.height > 20);
+    assert(buttons.length > 0, 'shared button geometry missing');
+    return { height: buttons[0].height, count: buttons.length };
+  };
+  const standard = await save('density-standard');
+  await invoke('control_ui', { action: 'pointer_down', value: '1477,688' }, { wait_ms: 150 });
+  await invoke('control_ui', { action: 'pointer_up', value: '1477,688' }, { wait_ms: 600 });
+  await delay(400);
+  const compact = await save('density-compact');
+  assert(compact.height < standard.height, `compact button should shrink (${compact.height} !< ${standard.height})`);
+  await invoke('control_ui', { action: 'pointer_down', value: '1581,688' }, { wait_ms: 150 });
+  await invoke('control_ui', { action: 'pointer_up', value: '1581,688' }, { wait_ms: 700 });
+  await delay(400);
+  const comfortable = await save('density-comfortable');
+  assert(comfortable.height > standard.height, `comfortable button should grow (${comfortable.height} !> ${standard.height})`);
+  fs.writeFileSync(path.join(profile, 'density-results.json'), JSON.stringify({standard, compact, comfortable}, null, 2));
+  console.log(JSON.stringify({standard: standard.height, compact: compact.height, comfortable: comfortable.height, buttons: standard.count}));
+};

@@ -1,5 +1,7 @@
 //! Information views for the four selection contexts in the right inspector.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 
 pub(super) enum InspectorContext {
@@ -73,34 +75,29 @@ fn tag_hero(tag: &fileatlas_plugin_database::Tag) -> AnyElement {
     div()
         .w_full()
         .flex_shrink_0()
-        .p(px(14.))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             well()
                 .v_flex()
                 .min_h(px(108.))
                 .items_start()
                 .justify_center()
-                .gap(px(10.))
-                .p(px(16.))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(
                     fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
                         .color(tag.color.as_deref())
                         .icon(tag.icon.as_deref())
                         .render(),
                 )
-                .child(
-                    div()
-                        .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(format!(
-                            "{} · {}",
-                            fileatlas_ui_bridge::i18n::tr_args(
-                                "{count} files",
-                                &[("count", tag.media_count.to_string())]
-                            ),
-                            tag.full_path
-                        )),
-                ),
+                .child(div().workbench_assistant().child(format!(
+                    "{} · {}",
+                    fileatlas_ui_bridge::i18n::tr_args(
+                        "{count} files",
+                        &[("count", tag.media_count.to_string())]
+                    ),
+                    tag.full_path
+                ))),
         )
         .into_any_element()
 }
@@ -201,48 +198,51 @@ fn hero(icon: IconName, title: &str, subtitle: &str, accent: Option<u32>) -> Any
     div()
         .w_full()
         .flex_shrink_0()
-        .p(px(14.))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             well()
                 .h_flex()
                 .items_center()
                 .min_h(px(108.))
-                .gap(px(14.))
-                .p(px(16.))
+                .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(
                     div()
                         .size(px(56.))
                         .flex_shrink_0()
-                        .rounded(px(14.))
-                        .bg(rgba((color << 8) | if solid { 0xff } else { 0x26 }))
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::ExtraLarge)
+                        .workbench_surface(
+                            fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                                (color << 8) | if solid { 0xff } else { 0x26 },
+                            ),
+                        )
                         .flex()
                         .items_center()
                         .justify_center()
-                        .child(theme::icon(icon).size(px(30.)).text_color(rgb(if solid {
-                            theme::contrasting_text(color)
-                        } else {
-                            color
-                        }))),
+                        .child(theme::icon(icon).size(px(30.)).workbench_foreground(
+                            fileatlas_ui_bridge::components::ForegroundRole::Custom(if solid {
+                                theme::contrasting_text(color)
+                            } else {
+                                color
+                            }),
+                        )),
                 )
                 .child(
                     div()
                         .v_flex()
                         .flex_1()
                         .min_w_0()
-                        .gap(px(6.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .child(
                             div()
-                                .text_size(px(20.))
-                                .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                                .text_color(rgb(theme::text_primary()))
+                                .workbench_title()
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(title.to_string()),
                         )
                         .child(
                             div()
-                                .text_size(px(12.))
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(subtitle.to_string()),

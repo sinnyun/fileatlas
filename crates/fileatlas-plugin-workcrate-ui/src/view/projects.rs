@@ -1,4 +1,7 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Selectable as _;
 
@@ -48,9 +51,9 @@ impl WorkCratePanel {
             .flex_wrap()
             .content_start()
             .items_start()
-            .gap(px(24.))
-            .px(px(28.))
-            .py(px(16.));
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_expanded()));
         let mut items = self.items.clone();
         items.sort_by_key(|p| std::cmp::Reverse(p.created_at));
         if self.sort_by_name {
@@ -60,8 +63,8 @@ impl WorkCratePanel {
             grid = grid.child(
                 div()
                     .w_full()
-                    .py(px(48.))
-                    .text_color(rgb(theme::text_muted()))
+                    .py(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_body()
                     .child(if self.query.is_empty() {
                         "还没有项目。点击右上角“新建工程”开始。"
                     } else {
@@ -89,8 +92,8 @@ impl WorkCratePanel {
                     .flex_shrink_0()
                     .flex()
                     .justify_center()
-                    .px(px(28.))
-                    .pb(px(20.))
+                    .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .pb(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(self.add_project_tile(cx)),
             )
             .into_any_element()
@@ -102,49 +105,41 @@ impl WorkCratePanel {
         div()
             .h_flex()
             .items_start()
-            .gap_3()
-            .px(px(28.))
-            .pt(px(20.))
-            .pb(px(4.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pb(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .v_flex()
-                    .gap_1()
+                    .gap(px(theme::space_standard()))
                     .child(
                         div()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
+
                             .child("TIER 1 · PROJECT REPOSITORY · VECTOR ENGINE READY"),
                     )
                     .child(
-                        div()
-                            .font_semibold()
-                            .text_size(px(theme::SETTINGS_TITLE_SIZE))
-                            .child("项目工程大盘"),
-                    )
-                    .child(
-                        div()
-                            .max_w(px(560.))
-                            .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(
-                                "基于 VectorCraft 矢量画布构建的多画布物料工程。每个项目绑定一份核心矢量文档，通过统一物料模版对各画布进行批量规格定义与出版交付。",
-                            ),
+                        fileatlas_ui_bridge::components::heading_block(
+                            "项目工程大盘",
+                            "基于 VectorCraft 矢量画布构建的多画布物料工程。每个项目绑定一份核心矢量文档，通过统一物料模版对各画布进行批量规格定义与出版交付。",
+                        )
+                        .max_w(px(560.)),
                     ),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .flex_shrink_0()
-                    .pt(px(6.))
+                    .pt(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(super::tracking::control(
                         "workcrate-search-input",
                         fileatlas_ui_bridge::components::search_input(&self.search_input)
-                            .w(px(220.)),
+                            .w(px(fileatlas_ui_bridge::theme::CONTROL_WIDTH_STANDARD)),
                         &self.surfaces,
                     ))
                     .child(super::tracking::control(
@@ -228,20 +223,19 @@ impl WorkCratePanel {
             .v_flex()
             .w(px(width))
             .workbench_card(false)
-            .p(px(theme::SPACE_3))
-            .gap_2();
+            .p(px(theme::space_expanded()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()));
         card = card.child(
             div()
                 .h_flex()
                 .items_center()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(
                     div()
                         .flex_1()
                         .min_w_0()
                         .truncate()
-                        .font_semibold()
-                        .text_size(px(theme::FONT_SIZE_TITLE))
+                        .workbench_title()
                         .child(name),
                 )
                 .child(self.card_icon(
@@ -305,24 +299,23 @@ impl WorkCratePanel {
         );
         card = card.child(
             div()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_muted()))
+                .workbench_assistant()
                 .child(format!("{} 个画布 · {age}", summary.pages)),
         );
         if let Some(first) = &summary.first {
             let mut band = div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .w_full()
-                .rounded(px(theme::ROUND_MD))
-                .bg(rgb(theme::selection_color()))
-                .px_2()
-                .h(px(26.))
-                .text_size(px(theme::FONT_SIZE_TINY))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+                .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                .h(px(theme::ui_height(theme::CONTROL_HEIGHT_COMPACT)))
+                .workbench_assistant()
                 .child(
                     div()
-                        .font_semibold()
+                        .workbench_body()
                         .min_w_0()
                         .truncate()
                         .child(format!("01 {}", first.title)),
@@ -338,12 +331,7 @@ impl WorkCratePanel {
             .collect::<Vec<_>>()
             .join("  ");
             if !facts.is_empty() {
-                band = band.child(
-                    div()
-                        .flex_shrink_0()
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(facts),
-                );
+                band = band.child(div().flex_shrink_0().workbench_assistant().child(facts));
             }
             card = card.child(band);
         }
@@ -352,10 +340,10 @@ impl WorkCratePanel {
                 .id(format!("project-cover-{id}"))
                 .w_full()
                 .h(px(width * 0.72))
-                .rounded(px(theme::ROUND_LG))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Large)
                 .overflow_hidden()
                 .cursor_pointer()
-                .bg(rgb(theme::surface_faint()))
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                 .flex()
                 .items_center()
                 .justify_center()
@@ -375,28 +363,21 @@ impl WorkCratePanel {
                         })
                         .unwrap_or_else(|| {
                             div()
-                                .text_size(px(theme::FONT_SIZE_SMALL))
-                                .text_color(rgb(theme::text_muted()))
+                                .workbench_body()
                                 .child("选择项目主图")
                                 .into_any_element()
                         }),
                 )
                 .on_click(open),
         );
-        card = card.child(
-            div()
-                .text_size(px(theme::FONT_SIZE_TINY))
-                .text_color(rgb(theme::text_muted()))
-                .child("项目主图 · 模版画布预览"),
-        );
+        card = card.child(div().workbench_assistant().child("项目主图 · 模版画布预览"));
         card = card.child(
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
-                .pt_1()
-                .border_t_1()
-                .border_color(rgb(theme::separator()))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                 .child(theme::small_icon(IconName::FileBox))
                 .child(
                     div()
@@ -410,30 +391,28 @@ impl WorkCratePanel {
                                 .clone()
                                 .unwrap_or_else(|| "未关联工程".into());
                             let copy = summary.document.clone();
-                            Button::new(format!("project-copy-path-{id}"))
-                                .ghost()
-                                .compact()
-                                .w_full()
-                                .min_w_0()
-                                .justify_start()
-                                .px_0()
-                                .tooltip(path.clone())
-                                .child(
-                                    div()
-                                        .min_w_0()
-                                        .flex_1()
-                                        .truncate()
-                                        .text_size(px(theme::FONT_SIZE_TINY))
-                                        .text_color(rgb(theme::text_muted()))
-                                        .child(path),
-                                )
-                                .on_click(move |_, _, cx| {
-                                    if let Some(path) = &copy {
-                                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(
-                                            path.clone(),
-                                        ));
-                                    }
-                                })
+                            fileatlas_ui_bridge::components::button(format!(
+                                "project-copy-path-{id}"
+                            ))
+                            .ghost()
+                            .min_w_0()
+                            .justify_start()
+                            .tooltip(path.clone())
+                            .child(
+                                div()
+                                    .min_w_0()
+                                    .flex_1()
+                                    .truncate()
+                                    .workbench_assistant()
+                                    .child(path),
+                            )
+                            .on_click(move |_, _, cx| {
+                                if let Some(path) = &copy {
+                                    cx.write_to_clipboard(gpui::ClipboardItem::new_string(
+                                        path.clone(),
+                                    ));
+                                }
+                            })
                         })
                         .child(super::tracking::measure(
                             &format!("project-path-{id}"),
@@ -442,9 +421,8 @@ impl WorkCratePanel {
                 )
                 .child(super::tracking::control(
                     &format!("project-open-{id}"),
-                    Button::new(format!("project-open-{id}"))
+                    fileatlas_ui_bridge::components::button(format!("project-open-{id}"))
                         .ghost()
-                        .compact()
                         .label("进入页面矩阵")
                         .icon(theme::small_icon(IconName::ArrowRight))
                         .disabled(self.busy)
@@ -463,18 +441,13 @@ impl WorkCratePanel {
         );
         if self.manage_id.as_ref() == Some(&project.id) {
             let target = project.id.clone();
-            let mut menu = div()
+            let mut menu = fileatlas_ui_bridge::components::menu_panel()
                 .absolute()
                 .top(px(38.))
                 .right(px(6.))
-                .w(px(160.))
-                .v_flex()
-                .gap_1()
-                .workbench_section()
-                .p_2()
                 .child(super::tracking::control(
                     &format!("project-cover-{target}-menu"),
-                    Button::new(format!("project-cover-{target}-menu"))
+                    fileatlas_ui_bridge::components::button(format!("project-cover-{target}-menu"))
                         .ghost()
                         .label("更换主图")
                         .disabled(self.busy)
@@ -487,7 +460,7 @@ impl WorkCratePanel {
             let target = project.id.clone();
             menu = menu.child(super::tracking::control(
                 &format!("project-relocate-{target}"),
-                Button::new(format!("project-relocate-{target}"))
+                fileatlas_ui_bridge::components::button(format!("project-relocate-{target}"))
                     .ghost()
                     .label("迁移项目数据")
                     .tooltip("将项目数据保存到原生工程文件旁")
@@ -500,7 +473,7 @@ impl WorkCratePanel {
             let target = project.id.clone();
             menu = menu.child(super::tracking::control(
                 &format!("project-archive-{target}"),
-                Button::new(format!("project-archive-{target}"))
+                fileatlas_ui_bridge::components::button(format!("project-archive-{target}"))
                     .ghost()
                     .label(if project.archived {
                         "恢复项目"
@@ -552,7 +525,7 @@ impl WorkCratePanel {
                 .h_flex()
                 .items_center()
                 .justify_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .w(px(480.))
                 .h(px(72.))
                 .workbench_card(false)
@@ -564,21 +537,17 @@ impl WorkCratePanel {
                         .items_center()
                         .justify_center()
                         .size(px(28.))
-                        .rounded_full()
-                        .bg(rgb(theme::selection_color()))
-                        .text_color(rgb(theme::accent()))
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Pill)
+                        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+                        .workbench_foreground(
+                            fileatlas_ui_bridge::components::ForegroundRole::Accent,
+                        )
                         .child(theme::icon(IconName::Plus)),
                 )
+                .child(div().workbench_body().child("创建新物料工程"))
                 .child(
                     div()
-                        .font_semibold()
-                        .text_size(px(theme::FONT_SIZE_BODY))
-                        .child("创建新物料工程"),
-                )
-                .child(
-                    div()
-                        .text_size(px(theme::FONT_SIZE_TINY))
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .child("（自动加载 VectorCraft 模版）"),
                 ),
             &self.surfaces,

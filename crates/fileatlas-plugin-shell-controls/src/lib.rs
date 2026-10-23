@@ -3,7 +3,6 @@ use std::sync::Arc;
 use cordis::{Context as CordisContext, Plugin};
 use fileatlas_ui_bridge::{UiBridgeService, UiSurfaceState, UiViewContribution, theme};
 use gpui_kit::assets::IconName;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::*;
 
@@ -111,9 +110,8 @@ impl Render for ActionView {
             ),
         };
         let surfaces = Arc::clone(&self.surfaces);
-        Button::new(id)
+        fileatlas_ui_bridge::components::button(id)
             .ghost()
-            .compact()
             .icon(theme::small_icon(icon))
             .tooltip(fileatlas_ui_bridge::i18n::tr(label))
             .accessibility_label(fileatlas_ui_bridge::i18n::tr(label))

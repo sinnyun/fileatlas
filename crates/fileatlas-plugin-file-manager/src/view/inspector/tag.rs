@@ -2,6 +2,7 @@
 use super::*;
 use fileatlas_plugin_database::Tag;
 use fileatlas_plugin_navigation::{NavigationService, NavigationUiRequest};
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 pub(super) fn render(
     tag: &Tag,
@@ -29,8 +30,8 @@ pub(super) fn render(
         .v_flex()
         .w_full()
         .min_w_0()
-        .px(px(16.))
-        .pb(px(20.))
+        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .pb(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(super::tag_editor::render(tag, view, cx))
         .child(inspector_divider())
         .child(section_title("Tag details"))
@@ -52,9 +53,8 @@ pub(super) fn render(
         .child(inspector_divider())
         .child(
             section_title("Child tags").child(
-                Button::new("inspector-tag-add-child")
+                fileatlas_ui_bridge::components::button("inspector-tag-add-child")
                     .ghost()
-                    .compact()
                     .icon(theme::icon(IconName::Plus))
                     .tooltip(fileatlas_ui_bridge::i18n::tr("Create tag"))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -74,14 +74,11 @@ pub(super) fn render(
                     .w_full()
                     .min_w_0()
                     .items_center()
-                    .gap(px(9.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .min_h(px(38.))
-                    .px(px(9.))
-                    .my(px(3.))
-                    .rounded(px(7.))
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .my(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .workbench_section()
                     .child(
                         fileatlas_ui_bridge::tag_capsule::TagCapsule::new(child.name.clone())
                             .color(child.color.as_deref())
@@ -93,44 +90,44 @@ pub(super) fn render(
                     .child(
                         div()
                             .text_right()
-                            .text_size(px(12.))
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .child(child.media_count.to_string()),
                     )
                     .child(
-                        Button::new(format!("inspector-child-edit-{child_id}"))
-                            .ghost()
-                            .compact()
-                            .icon(theme::icon(IconName::Ellipsis))
-                            .tooltip(fileatlas_ui_bridge::i18n::tr("Edit tag"))
-                            .dropdown_menu(move |menu, _, _| {
-                                let edit = child_menu.clone();
-                                let remove = child_menu.clone();
-                                menu.item(
-                                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit tag"))
-                                        .on_click(move |_, _, cx| {
-                                            let _ = edit.update(cx, |this, cx| {
-                                                request(
-                                                    this,
-                                                    NavigationUiRequest::OpenEdit(child_id),
-                                                    cx,
-                                                )
-                                            });
-                                        }),
-                                )
-                                .item(
-                                    PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Delete tag"))
-                                        .on_click(move |_, _, cx| {
-                                            let _ = remove.update(cx, |this, cx| {
-                                                request(
-                                                    this,
-                                                    NavigationUiRequest::OpenDelete(child_id),
-                                                    cx,
-                                                )
-                                            });
-                                        }),
-                                )
-                            }),
+                        fileatlas_ui_bridge::components::button(format!(
+                            "inspector-child-edit-{child_id}"
+                        ))
+                        .ghost()
+                        .icon(theme::icon(IconName::Ellipsis))
+                        .tooltip(fileatlas_ui_bridge::i18n::tr("Edit tag"))
+                        .dropdown_menu(move |menu, _, _| {
+                            let edit = child_menu.clone();
+                            let remove = child_menu.clone();
+                            menu.item(
+                                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Edit tag"))
+                                    .on_click(move |_, _, cx| {
+                                        let _ = edit.update(cx, |this, cx| {
+                                            request(
+                                                this,
+                                                NavigationUiRequest::OpenEdit(child_id),
+                                                cx,
+                                            )
+                                        });
+                                    }),
+                            )
+                            .item(
+                                PopupMenuItem::new(fileatlas_ui_bridge::i18n::tr("Delete tag"))
+                                    .on_click(move |_, _, cx| {
+                                        let _ = remove.update(cx, |this, cx| {
+                                            request(
+                                                this,
+                                                NavigationUiRequest::OpenDelete(child_id),
+                                                cx,
+                                            )
+                                        });
+                                    }),
+                            )
+                        }),
                     ),
             );
         }

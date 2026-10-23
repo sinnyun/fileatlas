@@ -1,12 +1,15 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement;
 
 impl SidebarView {
     pub(super) fn render_tag_modal(&mut self, cx: &mut Context<Self>) -> Div {
         if self.tag_create_open {
-            let create = Button::new("navigation-create-tag-submit")
+            let create = fileatlas_ui_bridge::components::button("navigation-create-tag-submit")
                 .primary()
                 .label(fileatlas_ui_bridge::i18n::tr("Create"))
                 .on_click(cx.listener(|this, _, _, cx| this.create_tag(cx)));
@@ -14,7 +17,7 @@ impl SidebarView {
                 fileatlas_ui_bridge::i18n::tr("Create tag"),
                 div()
                     .v_flex()
-                    .gap_3()
+                    .gap(px(theme::space_standard()))
                     .child(field_label("Tag name"))
                     .child(fileatlas_ui_bridge::components::text_input(&self.tag_name))
                     .child(field_label("Parent tag"))
@@ -22,18 +25,21 @@ impl SidebarView {
                     .child(
                         div()
                             .h_flex()
-                            .pt(px(10.))
-                            .border_t_1()
-                            .border_color(rgb(theme::separator()))
+                            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                             .justify_end()
-                            .gap_2()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(
-                                Button::new("navigation-create-tag-cancel")
-                                    .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-create-tag-cancel",
+                                )
+                                .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.tag_create_open = false;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(create),
                     ),
@@ -48,7 +54,7 @@ impl SidebarView {
                     fileatlas_ui_bridge::i18n::tr("Rename tag"),
                     div()
                         .v_flex()
-                        .gap_3()
+                        .gap(px(theme::space_standard()))
                         .child(field_label("Tag name"))
                         .child(fileatlas_ui_bridge::components::text_input(
                             &self.tag_edit_name,
@@ -56,30 +62,39 @@ impl SidebarView {
                         .child(
                             div()
                                 .h_flex()
-                                .pt(px(10.))
-                                .border_t_1()
-                                .border_color(rgb(theme::separator()))
+                                .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                                .workbench_separator(
+                                    fileatlas_ui_bridge::components::DividerEdge::Top,
+                                )
                                 .justify_end()
-                                .gap_2()
+                                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                 .child(
-                                    Button::new("navigation-rename-tag-cancel")
-                                        .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
-                                        .on_click(cx.listener(|this, _, _, cx| {
+                                    fileatlas_ui_bridge::components::button(
+                                        "navigation-rename-tag-cancel",
+                                    )
+                                    .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
+                                    .on_click(cx.listener(
+                                        |this, _, _, cx| {
                                             this.associated_edit_tag = None;
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    Button::new("navigation-rename-tag-save")
-                                        .primary()
-                                        .label(fileatlas_ui_bridge::i18n::tr("Save"))
-                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                    fileatlas_ui_bridge::components::button(
+                                        "navigation-rename-tag-save",
+                                    )
+                                    .primary()
+                                    .label(fileatlas_ui_bridge::i18n::tr("Save"))
+                                    .on_click(cx.listener(
+                                        move |this, _, _, cx| {
                                             this.rename_tag(id, cx);
                                             if this.snapshot.is_ok() {
                                                 this.associated_edit_tag = None;
                                             }
                                             cx.notify();
-                                        })),
+                                        },
+                                    )),
                                 ),
                         ),
                     modal_close_button(cx),
@@ -94,32 +109,36 @@ impl SidebarView {
                 .unwrap_or_default();
             let mut association_rows = Vec::new();
             collect_association_rows(&tags, id, &mut association_rows);
-            let associations = association_rows.into_iter().fold(
-                div()
-                    .v_flex()
-                    .gap_1()
-                    .max_h(px(286.))
-                    .overflow_y_scrollbar(),
-                |rows, (tag_id, path)| {
-                    let checked = self.associated_tag_ids.contains(&tag_id);
-                    let depth = path.matches('>').count();
-                    rows.child(
-                        Button::new(format!("navigation-associated-tag-{tag_id}"))
+            let associations =
+                association_rows.into_iter().fold(
+                    div()
+                        .v_flex()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .max_h(px(286.))
+                        .overflow_y_scrollbar(),
+                    |rows, (tag_id, path)| {
+                        let checked = self.associated_tag_ids.contains(&tag_id);
+                        let depth = path.matches('>').count();
+                        rows.child(
+                            fileatlas_ui_bridge::components::button(format!(
+                                "navigation-associated-tag-{tag_id}"
+                            ))
                             .ghost()
-                            .w_full()
-                            .pl(px(6. + depth as f32 * 12.))
+                            .pl(px(fileatlas_ui_bridge::theme::space_compact()
+                                + depth as f32
+                                    * fileatlas_ui_bridge::theme::space_expanded()))
                             .icon(theme::small_icon(if checked {
                                 IconName::Check
                             } else {
                                 IconName::Square
                             }))
                             .label(fileatlas_ui_bridge::i18n::tr(&path.replace('>', " › ")))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.toggle_associated_tag(tag_id, cx)
-                            })),
-                    )
-                },
-            );
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| this.toggle_associated_tag(tag_id, cx),
+                            )),
+                        )
+                    },
+                );
             let selected_color = self.tag_color.read(cx).value().trim().to_ascii_lowercase();
             let swatches = [
                 [
@@ -141,30 +160,22 @@ impl SidebarView {
             .map(|row| {
                 div()
                     .h_flex()
-                    .gap(px(4.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .children(row.into_iter().map(|color| {
                         let value = format!("#{color:06x}");
                         let selected = selected_color == value;
                         let tint = color;
-                        Button::new(format!("navigation-tag-color-{color}"))
-                            .when(selected, |button| {
-                                button.icon(theme::small_icon(IconName::Check))
-                            })
-                            .text_color(rgb(theme::contrasting_text(tint)))
-                            .w(px(22.))
-                            .h(px(22.))
-                            .rounded(px(12.))
-                            .border_2()
-                            .border_color(rgb(if selected {
-                                theme::text_primary()
-                            } else {
-                                theme::surface_modal()
-                            }))
-                            .bg(rgb(tint))
-                            .on_click(cx.listener(move |this, _, window, cx| {
+                        fileatlas_ui_bridge::components::color_swatch(
+                            format!("navigation-tag-color-{color}"),
+                            tint,
+                            selected,
+                        )
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
                                 this.tag_color
                                     .update(cx, |state, cx| state.set_value(&value, window, cx));
-                            }))
+                            },
+                        ))
                     }))
             })
             .collect::<Vec<_>>();
@@ -197,36 +208,22 @@ impl SidebarView {
             .map(|row| {
                 div()
                     .h_flex()
-                    .gap(px(5.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .children(row.into_iter().map(|icon| {
                         let value = format!("{icon:?}");
                         let selected = selected_icon.as_deref() == Some(value.as_str());
-                        Button::new(format!("navigation-tag-icon-{value}"))
-                            .w(px(30.))
-                            .h(px(30.))
-                            .rounded(px(4.))
-                            .text_color(rgb(if selected {
-                                theme::selection_text()
-                            } else {
-                                theme::text_primary()
-                            }))
-                            .bg(if selected {
-                                rgb(theme::selection_color())
-                            } else {
-                                rgba(theme::fill_subtle())
-                            })
-                            .border_1()
-                            .border_color(rgb(if selected {
-                                theme::accent()
-                            } else {
-                                theme::separator()
-                            }))
-                            .icon(theme::small_icon(icon))
-                            .accessibility_label(value.clone())
-                            .on_click(cx.listener(move |this, _, window, cx| {
+                        fileatlas_ui_bridge::components::icon_choice_button(
+                            format!("navigation-tag-icon-{value}"),
+                            icon,
+                            selected,
+                        )
+                        .accessibility_label(value.clone())
+                        .on_click(cx.listener(
+                            move |this, _, window, cx| {
                                 this.tag_icon
                                     .update(cx, |state, cx| state.set_value(&value, window, cx));
-                            }))
+                            },
+                        ))
                     }))
             })
             .collect::<Vec<_>>();
@@ -234,44 +231,57 @@ impl SidebarView {
                 fileatlas_ui_bridge::i18n::tr("Edit tag"),
                 div()
                     .v_flex()
-                    .gap_3()
+                    .gap(px(theme::space_standard()))
                     .child(
                         div()
                             .h_flex()
                             .items_start()
-                            .gap(px(18.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                             .child(
                                 div()
                                     .v_flex()
                                     .flex_1()
                                     .min_w_0()
-                                    .gap_2()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                     .child(field_label("Tag name"))
                                     .child(fileatlas_ui_bridge::components::text_input(
                                         &self.tag_edit_name,
                                     ))
                                     .child(field_label("Tag color"))
-                                    .child(div().v_flex().gap(px(4.)).children(swatches))
+                                    .child(
+                                        div()
+                                            .v_flex()
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .children(swatches),
+                                    )
                                     .child(fileatlas_ui_bridge::components::text_input(
                                         &self.tag_color,
                                     ))
                                     .child(field_label("Tag icon"))
-                                    .child(div().v_flex().gap(px(5.)).children(icons))
                                     .child(
-                                        Button::new("navigation-tag-edit-display")
-                                            .ghost()
-                                            .w_full()
-                                            .justify_start()
-                                            .when(self.tag_edit_display, |button| {
-                                                button.icon(theme::small_icon(IconName::Check))
-                                            })
-                                            .label(fileatlas_ui_bridge::i18n::tr(
-                                                "Display on thumbnails",
-                                            ))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        div()
+                                            .v_flex()
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .children(icons),
+                                    )
+                                    .child(
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-tag-edit-display",
+                                        )
+                                        .ghost()
+                                        .justify_start()
+                                        .when(self.tag_edit_display, |button| {
+                                            button.icon(theme::small_icon(IconName::Check))
+                                        })
+                                        .label(fileatlas_ui_bridge::i18n::tr(
+                                            "Display on thumbnails",
+                                        ))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.tag_edit_display = !this.tag_edit_display;
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     ),
                             )
                             .child(
@@ -279,53 +289,54 @@ impl SidebarView {
                                     .v_flex()
                                     .flex_1()
                                     .min_w_0()
-                                    .gap_2()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                     .child(field_label("Associated tags"))
                                     .child(
                                         div()
                                             .v_flex()
-                                            .gap_1()
-                                            .p(px(8.))
-                                            .rounded(px(4.))
-                                            .bg(rgb(theme::surface_faint()))
-                                            .border_1()
-                                            .border_color(rgb(theme::separator()))
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                                            .workbench_section()
                                             .child(associations),
                                     )
                                     .child(
-                                        Button::new("navigation-tag-appearance-children")
-                                            .ghost()
-                                            .w_full()
-                                            .justify_start()
-                                            .when(self.apply_tag_appearance_to_children, |button| {
-                                                button.icon(theme::small_icon(IconName::Check))
-                                            })
-                                            .label(fileatlas_ui_bridge::i18n::tr(
-                                                "Apply to children",
-                                            ))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-tag-appearance-children",
+                                        )
+                                        .ghost()
+                                        .justify_start()
+                                        .when(self.apply_tag_appearance_to_children, |button| {
+                                            button.icon(theme::small_icon(IconName::Check))
+                                        })
+                                        .label(fileatlas_ui_bridge::i18n::tr("Apply to children"))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.apply_tag_appearance_to_children =
                                                     !this.apply_tag_appearance_to_children;
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     )
                                     .when(self.apply_tag_appearance_to_children, |body| {
                                         body.child(
-                                            Button::new("navigation-tag-appearance-skip-edited")
-                                                .ghost()
-                                                .w_full()
-                                                .justify_start()
-                                                .when(self.exclude_edited_tag_children, |button| {
-                                                    button.icon(theme::small_icon(IconName::Check))
-                                                })
-                                                .label(fileatlas_ui_bridge::i18n::tr(
-                                                    "Skip edited children",
-                                                ))
-                                                .on_click(cx.listener(|this, _, _, cx| {
+                                            fileatlas_ui_bridge::components::button(
+                                                "navigation-tag-appearance-skip-edited",
+                                            )
+                                            .ghost()
+                                            .justify_start()
+                                            .when(self.exclude_edited_tag_children, |button| {
+                                                button.icon(theme::small_icon(IconName::Check))
+                                            })
+                                            .label(fileatlas_ui_bridge::i18n::tr(
+                                                "Skip edited children",
+                                            ))
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| {
                                                     this.exclude_edited_tag_children =
                                                         !this.exclude_edited_tag_children;
                                                     cx.notify();
-                                                })),
+                                                }),
+                                            ),
                                         )
                                     }),
                             ),
@@ -333,21 +344,24 @@ impl SidebarView {
                     .child(
                         div()
                             .h_flex()
-                            .pt(px(10.))
-                            .border_t_1()
-                            .border_color(rgb(theme::separator()))
+                            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                             .justify_end()
-                            .gap_2()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(
-                                Button::new("navigation-edit-tag-cancel")
-                                    .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-edit-tag-cancel",
+                                )
+                                .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.associated_edit_tag = None;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
-                                Button::new("navigation-edit-tag-save")
+                                fileatlas_ui_bridge::components::button("navigation-edit-tag-save")
                                     .primary()
                                     .label(fileatlas_ui_bridge::i18n::tr("Save"))
                                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -378,40 +392,36 @@ impl SidebarView {
                 fileatlas_ui_bridge::i18n::tr("Delete tag"),
                 div()
                     .v_flex()
-                    .gap_3()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap_3()
+                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                             .child(
                                 div()
-                                    .text_color(rgb(theme::danger_text()))
+                                    .workbench_foreground(
+                                        fileatlas_ui_bridge::components::ForegroundRole::Danger,
+                                    )
                                     .child(theme::large_icon(IconName::TriangleAlert)),
                             )
                             .child(
                                 div()
                                     .v_flex()
-                                    .gap_1()
-                                    .child(
-                                        div().font_family(theme::SEMIBOLD_FONT_FAMILY).child(name),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_sm()
-                                            .text_color(rgb(theme::text_secondary()))
-                                            .child(fileatlas_ui_bridge::i18n::tr_args(
-                                                "Used by {count} media items",
-                                                &[("count", count.to_string())],
-                                            )),
-                                    ),
+                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                    .child(div().workbench_body().child(name))
+                                    .child(div().workbench_assistant().child(
+                                        fileatlas_ui_bridge::i18n::tr_args(
+                                            "Used by {count} media items",
+                                            &[("count", count.to_string())],
+                                        ),
+                                    )),
                             ),
                     )
                     .child(field_label("When deleting this tag"))
                     .child(
-                        Button::new("navigation-delete-tag-keep")
+                        fileatlas_ui_bridge::components::button("navigation-delete-tag-keep")
                             .ghost()
-                            .w_full()
                             .justify_start()
                             .icon(theme::small_icon(if !self.delete_clean_parents {
                                 IconName::CircleDot
@@ -425,9 +435,8 @@ impl SidebarView {
                             })),
                     )
                     .child(
-                        Button::new("navigation-delete-tag-clean")
+                        fileatlas_ui_bridge::components::button("navigation-delete-tag-clean")
                             .ghost()
-                            .w_full()
                             .justify_start()
                             .icon(theme::small_icon(if self.delete_clean_parents {
                                 IconName::CircleDot
@@ -440,36 +449,45 @@ impl SidebarView {
                                 cx.notify();
                             })),
                     )
-                    .child(div().text_sm().text_color(rgb(theme::text_muted())).child(
-                        fileatlas_ui_bridge::i18n::tr(
-                            "This action removes tag assignments from matching media.",
-                        ),
-                    ))
+                    .child(
+                        div()
+                            .workbench_assistant()
+                            .child(fileatlas_ui_bridge::i18n::tr(
+                                "This action removes tag assignments from matching media.",
+                            )),
+                    )
                     .child(
                         div()
                             .h_flex()
-                            .pt(px(10.))
-                            .border_t_1()
-                            .border_color(rgb(theme::separator()))
+                            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                             .justify_end()
-                            .gap_2()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(
-                                Button::new("navigation-delete-tag-cancel")
-                                    .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-delete-tag-cancel",
+                                )
+                                .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.confirm_delete = None;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
-                                Button::new("navigation-delete-tag-confirm")
-                                    .danger()
-                                    .label(fileatlas_ui_bridge::i18n::tr("Delete"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-delete-tag-confirm",
+                                )
+                                .danger()
+                                .label(fileatlas_ui_bridge::i18n::tr("Delete"))
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
                                         let clean_parents = this.delete_clean_parents;
                                         this.confirm_delete = None;
                                         this.delete_tag(id, clean_parents, cx);
-                                    })),
+                                    },
+                                )),
                             ),
                     ),
                 modal_close_button(cx),
@@ -500,13 +518,13 @@ impl SidebarView {
                 fileatlas_ui_bridge::i18n::tr("Merge tag"),
                 div()
                     .v_flex()
-                    .gap_3()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap_2()
-                            .child(div().font_family(theme::SEMIBOLD_FONT_FAMILY).child(fileatlas_ui_bridge::i18n::tr("Source tag")))
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .child(div().workbench_body().child(fileatlas_ui_bridge::i18n::tr("Source tag")))
                             .child(
                                 fileatlas_ui_bridge::tag_capsule::TagCapsule::new(source_name)
                                     .color(
@@ -526,27 +544,23 @@ impl SidebarView {
                         div()
                             .h_flex()
                             .items_start()
-                            .gap(px(16.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                             .child(
                                 div()
                                     .v_flex()
                                     .flex_1()
                                     .min_w_0()
-                                    .gap_2()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                     .child(field_label("Choose a merge target"))
                                     .child(fileatlas_ui_bridge::components::text_input(&self.merge_search))
                                     .child(
-                                        div()
+                                        fileatlas_ui_bridge::components::card_surface(div()
                                             .v_flex()
-                                            .gap_1()
-                                            .p(px(6.))
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .p(px(fileatlas_ui_bridge::theme::space_standard()))
                                             .max_h(px(310.))
                                             .overflow_y_scrollbar()
-                                            .rounded(px(4.))
-                                            .bg(rgb(theme::surface_faint()))
-                                            .border_1()
-                                            .border_color(rgb(theme::separator()))
-                                            .children(targets),
+                                            .children(targets), false),
                                     ),
                             )
                             .child(
@@ -554,18 +568,18 @@ impl SidebarView {
                                     .v_flex()
                                     .flex_1()
                                     .min_w_0()
-                                    .gap_2()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                     .child(field_label("Child tag handling"))
-                                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
+                                    .child(div().workbench_assistant().child(
                                         fileatlas_ui_bridge::i18n::tr_args(
                                             "This tag has {count} direct child tags.",
                                             &[("count", child_count.to_string())],
                                         ),
                                     ))
                                     .child(
-                                        Button::new("navigation-merge-children-reparent")
+                                        fileatlas_ui_bridge::components::button("navigation-merge-children-reparent")
                                             .ghost()
-                                            .w_full()
+
                                             .justify_start()
                                             .icon(theme::small_icon(if self.merge_reparent_children {
                                                 IconName::CircleDot
@@ -578,13 +592,13 @@ impl SidebarView {
                                                 cx.notify();
                                             })),
                                     )
-                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::text_muted())).child(
+                                    .child(div().pl(px(fileatlas_ui_bridge::theme::space_expanded())).workbench_assistant().child(
                                         fileatlas_ui_bridge::i18n::tr("Existing child tags are kept and moved below the target."),
                                     ))
                                     .child(
-                                        Button::new("navigation-merge-children-delete")
+                                        fileatlas_ui_bridge::components::button("navigation-merge-children-delete")
                                             .ghost()
-                                            .w_full()
+
                                             .justify_start()
                                             .icon(theme::small_icon(if self.merge_reparent_children {
                                                 IconName::Circle
@@ -597,13 +611,13 @@ impl SidebarView {
                                                 cx.notify();
                                             })),
                                     )
-                                    .child(div().pl(px(24.)).text_xs().text_color(rgb(theme::text_muted())).child(
+                                    .child(div().pl(px(fileatlas_ui_bridge::theme::space_expanded())).workbench_assistant().child(
                                         fileatlas_ui_bridge::i18n::tr("Child tag assignments are removed with the source tag."),
                                     )),
                             ),
                     )
                     .child(
-                        Button::new("navigation-merge-cancel")
+                        fileatlas_ui_bridge::components::button("navigation-merge-cancel")
                             .self_end()
                             .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -621,32 +635,40 @@ impl SidebarView {
                 fileatlas_ui_bridge::i18n::tr("Move tag"),
                 div()
                     .v_flex()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(tag_picker::move_target_picker(self, cx))
                     .child(
                         div()
                             .h_flex()
                             .justify_end()
-                            .gap_2()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(
-                                Button::new("navigation-move-tag-cancel")
-                                    .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-move-tag-cancel",
+                                )
+                                .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.move_source_id = None;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             )
                             .child(
-                                Button::new("navigation-move-tag-submit")
-                                    .primary()
-                                    .label(fileatlas_ui_bridge::i18n::tr("Move"))
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "navigation-move-tag-submit",
+                                )
+                                .primary()
+                                .label(fileatlas_ui_bridge::i18n::tr("Move"))
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
                                         this.move_tag_into(source_id, cx);
                                         if this.snapshot.is_ok() {
                                             this.move_source_id = None;
                                         }
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             ),
                     ),
                 modal_close_button(cx),
@@ -658,54 +680,30 @@ impl SidebarView {
 }
 
 fn modal_shell(title: String, body: Div, close: Button, width: f32) -> Div {
-    div()
-        .absolute()
-        .inset_0()
-        .flex()
-        .items_center()
-        .justify_center()
-        .bg(rgba(theme::scrim()))
-        .child(
-            div()
-                .v_flex()
-                .items_start()
-                .h_auto()
-                .w(px(width))
-                .max_h(px(640.))
-                .overflow_y_scrollbar()
-                .gap_3()
-                .p(px(18.))
-                .rounded(px(6.))
-                .bg(rgb(theme::surface_modal()))
-                .border_1()
-                .border_color(rgb(theme::separator()))
-                .child(
-                    div()
-                        .h_flex()
-                        .items_center()
-                        .justify_between()
-                        .w_full()
-                        .pb(px(10.))
-                        .border_b_1()
-                        .border_color(rgb(theme::separator()))
-                        .child(
-                            div()
-                                .text_size(px(15.))
-                                .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                                .child(title),
-                        )
-                        .child(close),
-                )
-                .child(body.w_full()),
-        )
+    fileatlas_ui_bridge::components::modal_overlay(
+        div()
+            .items_start()
+            .h_auto()
+            .w(px(width))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .child(
+                div()
+                    .h_flex()
+                    .items_center()
+                    .justify_between()
+                    .pb(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
+                    .child(div().workbench_title().child(title))
+                    .child(close),
+            )
+            .child(div().max_h(px(640.)).overflow_y_scrollbar().child(body)),
+    )
 }
 
 fn modal_close_button(cx: &mut Context<SidebarView>) -> Button {
-    Button::new("navigation-tag-modal-close")
+    fileatlas_ui_bridge::components::button("navigation-tag-modal-close")
         .ghost()
-        .compact()
-        .w(px(28.))
-        .h(px(28.))
         .icon(theme::small_icon(IconName::X))
         .on_click(cx.listener(|this, _, _, cx| {
             this.close_tag_modal();
@@ -715,8 +713,7 @@ fn modal_close_button(cx: &mut Context<SidebarView>) -> Button {
 
 fn field_label(label: &str) -> Div {
     div()
-        .text_size(px(11.))
-        .text_color(rgb(theme::text_secondary()))
+        .workbench_body()
         .child(fileatlas_ui_bridge::i18n::tr(label))
 }
 

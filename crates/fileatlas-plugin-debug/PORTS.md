@@ -50,8 +50,8 @@ No product service/data/event contract changes. See `docs/ui-theme.md`.
 
 ## Plugin-owned MCP tools
 
-The plugin registers `debug.query`, `debug.control`, and
-`debug.selected_logs` through the shared MCP registry. Query parameters and
+The plugin registers `debug.query`, `debug.control`, `debug.selected_logs`, and
+`debug.ui_geometry` through the shared MCP registry. Query parameters and
 responses come directly from `DebugService::query`, `ui_state`, and
 `view_revision`; drawer mutations call `DebugService::control`. The mutating
 tool follows the host MCP mutation policy. Stopping Debug removes these tools
@@ -64,3 +64,11 @@ with the plugin's Cordis registration guard.
   copy/export, and clear operations. It is mutation-gated.
 - `debug.selected_logs` accepts no arguments and returns selected log text and
   IDs.
+- `debug.ui_geometry` is read-only. Optional `window` and `tier` filters return
+  current per-window bounds, font size/line height/weight/family and source
+  location for shared title/body/assistant, button, region, section and tree-row
+  observers. Measurements are refreshed in GPUI prepaint; only current-frame
+  observers are included. Button/region samples are geometry records; font
+  fields are the text style active at that observer. Input/Textarea bounds,
+  parent-child IDs, explicit gap/padding tokens and a complete native layout
+  tree are not yet exposed.

@@ -1,5 +1,6 @@
 //! Lore-backed file history and version switching.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 #[derive(Clone)]
 pub(super) struct Version {
@@ -107,7 +108,12 @@ impl FileManagerView {
             .unwrap_or_default();
         let weak = cx.entity().downgrade();
         let create_open = self.history_create_open;
-        let mut body = div().v_flex().w_full().min_w_0().gap(px(9.)).p(px(16.));
+        let mut body = div()
+            .v_flex()
+            .w_full()
+            .min_w_0()
+            .gap(px(theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()));
         if create_open {
             body = body
                 .child(
@@ -118,9 +124,9 @@ impl FileManagerView {
                 .child(
                     div()
                         .h_flex()
-                        .gap(px(8.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(
-                            Button::new("inspector-history-save")
+                            fileatlas_ui_bridge::components::button("inspector-history-save")
                                 .primary()
                                 .flex_1()
                                 .label(fileatlas_ui_bridge::i18n::tr("Save version"))
@@ -133,7 +139,7 @@ impl FileManagerView {
                                 ),
                         )
                         .child(
-                            Button::new("inspector-history-cancel")
+                            fileatlas_ui_bridge::components::button("inspector-history-cancel")
                                 .outline()
                                 .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                                 .disabled(self.history_busy)
@@ -148,12 +154,11 @@ impl FileManagerView {
                 div()
                     .h_flex()
                     .w_full()
-                    .gap(px(10.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
-                        Button::new("inspector-history-create")
+                        fileatlas_ui_bridge::components::button("inspector-history-create")
                             .primary()
                             .flex_1()
-                            .h(px(36.))
                             .icon(theme::icon(IconName::Plus))
                             .label(fileatlas_ui_bridge::i18n::tr("Create version"))
                             .disabled(self.history_busy)
@@ -164,10 +169,9 @@ impl FileManagerView {
                             })),
                     )
                     .child(
-                        Button::new("inspector-history-switch")
+                        fileatlas_ui_bridge::components::button("inspector-history-switch")
                             .outline()
                             .flex_1()
-                            .h(px(36.))
                             .label(fileatlas_ui_bridge::i18n::tr("Switch version"))
                             .disabled(
                                 self.history_busy
@@ -189,12 +193,11 @@ impl FileManagerView {
                 .child(section_title("Version history"))
                 .child(
                     div()
-                        .text_size(px(11.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(format!("{} versions · Lore", versions.len())),
                 ),
         );
-        body = body.child(div().h(px(1.)).w_full().bg(rgba(theme::separator_light())));
+        body = body.child(fileatlas_ui_bridge::components::subtle_divider());
         if let Some(message) = error.or_else(|| self.history_error.clone()) {
             body = body.child(inspector_message(&message));
         } else if loading && versions.is_empty() {
@@ -214,10 +217,10 @@ impl FileManagerView {
             ));
             if let Some(selected_version) = selected_version {
                 body = body
-                    .child(div().h(px(1.)).w_full().bg(rgba(theme::separator_light())))
+                    .child(fileatlas_ui_bridge::components::subtle_divider())
                     .child(
                         well()
-                            .gap(px(7.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(section_title("Selected version"))
                             .child(
                                 div()
@@ -225,7 +228,7 @@ impl FileManagerView {
                                     .w_full()
                                     .min_w_0()
                                     .items_start()
-                                    .gap(px(10.))
+                                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                                     .child(history_tree::thumbnail(
                                         selected_version.thumbnail.clone(),
                                         72.,
@@ -261,16 +264,9 @@ impl FileManagerView {
             if let Some(state) = &status.state
                 && state.status != fileatlas_plugin_versions::FileVersionStatus::Unversioned
             {
-                let color =
-                    if state.status == fileatlas_plugin_versions::FileVersionStatus::Modified {
-                        theme::warning_text()
-                    } else {
-                        theme::text_secondary()
-                    };
                 body = body.child(
                     div()
-                        .text_size(px(12.))
-                        .text_color(rgb(color))
+                        .workbench_assistant()
                         .child(super::super::version_badges::message(state)),
                 );
             }

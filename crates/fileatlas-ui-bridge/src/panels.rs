@@ -3,9 +3,10 @@ use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::*;
 
+use crate::components::WorkbenchTypography as _;
 use crate::{UiSurfaceState, theme};
 
 pub const HEADER_HEIGHT: f32 = 36.;
@@ -219,6 +220,7 @@ impl Render for FloatingPanel {
             .bg(rgb(theme::surface_base()))
             .border_1()
             .border_color(rgba(theme::separator_light()))
+            .shadow(theme::floating_shadow())
             .occlude()
             .child(frame_measure)
             .capture_any_mouse_down(cx.listener(|panel, _, _, _| {
@@ -236,12 +238,11 @@ impl Render for FloatingPanel {
                 div()
                     .h_flex()
                     .h(px(HEADER_HEIGHT))
-                    .text_size(px(theme::FONT_SIZE_BODY))
-                    .text_color(rgb(theme::text_primary()))
+                    .workbench_title()
                     .flex_shrink_0()
                     .items_center()
-                    .px_2()
-                    .gap_2()
+                    .px(px(crate::theme::space_standard()))
+                    .gap(px(crate::theme::space_standard()))
                     .border_b_1()
                     .border_color(rgba(theme::separator_light()))
                     .child(
@@ -265,9 +266,8 @@ impl Render for FloatingPanel {
                             ),
                     )
                     .child(
-                        Button::new(format!("panel-maximize-{}", self.options.id))
+                        crate::components::button(format!("panel-maximize-{}", self.options.id))
                             .ghost()
-                            .compact()
                             .icon(theme::icon(if self.restore.is_some() {
                                 IconName::Minimize
                             } else {
@@ -289,9 +289,8 @@ impl Render for FloatingPanel {
                             })),
                     )
                     .child(
-                        Button::new(format!("panel-close-{}", self.options.id))
+                        crate::components::button(format!("panel-close-{}", self.options.id))
                             .ghost()
-                            .compact()
                             .icon(theme::icon(gpui_kit::assets::IconName::X))
                             .on_click(cx.listener(move |_, _, _, cx| {
                                 close();
@@ -360,6 +359,12 @@ impl Render for FloatingPanel {
                     }),
                 );
             frame = frame.child(handle);
+        }
+        if theme::geometry_audit_enabled() {
+            frame = frame.child(crate::components::audit_overlay(
+                theme::AUDIT_FRAME_OUTER,
+                2.,
+            ));
         }
         let mut root = div()
             .absolute()

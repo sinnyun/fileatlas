@@ -7,7 +7,7 @@ use fileatlas_plugin_session::SessionService;
 use fileatlas_plugin_updater::{UpdateInfo, UpdaterService};
 use fileatlas_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::{Button, ButtonVariants};
+use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::InputState;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
@@ -295,6 +295,7 @@ impl SettingsView {
                 } else {
                     fileatlas_ui_bridge::theme::ColorMode::Dark
                 });
+                fileatlas_ui_bridge::theme::set_ui_density(&settings.ui_density);
                 fileatlas_ui_bridge::theme::apply_accent_components(cx);
                 // Paint-time tokens (accent, region separation) live in every region, so
                 // repaint all windows instead of waiting for each view's next notify.

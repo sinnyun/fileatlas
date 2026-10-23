@@ -3,6 +3,11 @@ use super::*;
 pub fn surface_base() -> u32 {
     packed(native_colors().background)
 }
+/// Canvas behind the floating region cards: the muted surface one step below
+/// the panel background in both light and dark themes.
+pub fn surface_canvas() -> u32 {
+    packed(native_colors().muted)
+}
 pub fn surface_panel() -> u32 {
     packed(native_colors().background)
 }
@@ -11,6 +16,10 @@ pub fn surface_card() -> u32 {
 }
 pub fn surface_elevated() -> u32 {
     packed(native_colors().secondary)
+}
+/// Native interaction surface shared by custom navigation and cards.
+pub fn surface_hover() -> u32 {
+    packed(native_colors().list_hover)
 }
 pub fn surface_modal() -> u32 {
     packed(native_colors().popover)
@@ -39,14 +48,33 @@ pub fn surface_group_header() -> u32 {
 pub fn surface_group_header_hover() -> u32 {
     packed(native_colors().table_hover)
 }
+pub fn text_title() -> u32 {
+    if typography_audit_enabled() {
+        AUDIT_TEXT_TITLE
+    } else {
+        packed(native_colors().foreground)
+    }
+}
 pub fn text_primary() -> u32 {
-    packed(native_colors().foreground)
+    if typography_audit_enabled() {
+        AUDIT_TEXT_BODY
+    } else {
+        packed(native_colors().foreground)
+    }
 }
 pub fn text_secondary() -> u32 {
-    packed(native_colors().description_list_label_foreground)
+    if typography_audit_enabled() {
+        AUDIT_TEXT_ASSISTANT
+    } else {
+        packed(native_colors().muted_foreground)
+    }
 }
 pub fn text_muted() -> u32 {
-    packed(native_colors().muted_foreground)
+    if typography_audit_enabled() {
+        AUDIT_TEXT_ASSISTANT
+    } else {
+        packed(native_colors().muted_foreground)
+    }
 }
 pub fn separator() -> u32 {
     packed(native_colors().border)
@@ -133,7 +161,7 @@ pub fn fill_hover() -> u32 {
     packed_rgba(native_colors().list_hover)
 }
 pub fn fill_active() -> u32 {
-    packed_rgba(native_colors().button_active)
+    packed_rgba(native_colors().accent)
 }
 pub fn region_edge() -> u32 {
     packed_rgba(native_colors().border)

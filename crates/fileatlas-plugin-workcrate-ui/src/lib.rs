@@ -1,14 +1,15 @@
 //! WorkCrate project and board UI contribution.
-use ::gpui::{Context as ViewContext, Window, px};
+use ::gpui::{Context as ViewContext, Window};
 use cordis::{Context, Plugin};
 use fileatlas_plugin_workcrate_boards::WorkCrateBoardsService;
 use fileatlas_plugin_workcrate_export::WorkCrateExportService;
 use fileatlas_plugin_workcrate_projects::{WorkCrateProjectsError, WorkCrateProjectsService};
 use fileatlas_ui_bridge::{
+    components,
     panel_catalog::{PanelCatalog, PanelDefinition, PanelMultiplicity},
     theme,
 };
-use gpui_kit::{base::StyledExt as _, *};
+use gpui_kit::*;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -222,25 +223,17 @@ struct WorkCrateSidebarButton {
 }
 impl Render for WorkCrateSidebarButton {
     fn render(&mut self, _: &mut Window, cx: &mut ViewContext<Self>) -> impl IntoElement {
-        div()
-            .id("workcrate-open")
-            .v_flex()
-            .w(px(42.))
-            .h(px(54.))
-            .items_center()
-            .justify_center()
-            .gap(px(4.))
-            .rounded(px(6.))
-            .text_xs()
-            .text_color(rgb(theme::text_secondary()))
-            .hover(|s| s.bg(rgba(theme::fill_hover())))
-            .on_click(cx.listener(|this, _, _, _| {
-                if let Err(error) = this.panels.open(PANEL) {
-                    tracing::error!(%error, "could not open WorkCrate panel");
-                }
-            }))
-            .child(theme::icon(gpui_kit::assets::IconName::Briefcase))
-            .child("项目")
+        components::rail_shortcut(
+            "workcrate-open",
+            "项目",
+            theme::icon(gpui_kit::assets::IconName::Briefcase),
+            false,
+        )
+        .on_click(cx.listener(|this, _, _, _| {
+            if let Err(error) = this.panels.open(PANEL) {
+                tracing::error!(%error, "could not open WorkCrate panel");
+            }
+        }))
     }
 }
 

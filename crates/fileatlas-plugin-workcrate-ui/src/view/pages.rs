@@ -1,5 +1,8 @@
 use super::preview::page_preview;
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Selectable as _;
 
@@ -15,15 +18,15 @@ impl WorkCratePanel {
             .flex_wrap()
             .content_start()
             .items_start()
-            .gap(px(24.))
-            .px(px(28.))
-            .py(px(16.));
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_expanded()));
         if self.boards_view.is_empty() {
             grid = grid.child(
                 div()
                     .w_full()
-                    .py(px(48.))
-                    .text_color(rgb(theme::text_muted()))
+                    .py(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
                     .child(if self.document.is_some() {
                         "本地没有画板目录。点击右上角“同步工程与预览”读取，或新增画布。"
                     } else {
@@ -57,64 +60,55 @@ impl WorkCratePanel {
         div()
             .h_flex()
             .items_start()
-            .gap_3()
-            .px(px(28.))
-            .pt(px(20.))
-            .pb(px(4.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pt(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pb(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .v_flex()
-                    .gap_1()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(
                         div()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
                             .child(format!("TIER 2 · PAGE MATRIX · {project}")),
                     )
                     .child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .font_semibold()
-                                    .text_size(px(theme::SETTINGS_TITLE_SIZE))
-                                    .truncate()
-                                    .child(project.clone()),
-                            )
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .child(div().workbench_title().truncate().child(project.clone()))
                             .child(
                                 div()
                                     .flex_shrink_0()
-                                    .rounded(px(theme::ROUND_MD))
-                                    .bg(rgb(theme::selection_color()))
-                                    .text_color(rgb(theme::accent()))
-                                    .text_size(px(theme::FONT_SIZE_TINY))
-                                    .px_2()
-                                    .py(px(2.))
+                                    .workbench_corner(
+                                        fileatlas_ui_bridge::components::CornerRole::Medium,
+                                    )
+                                    .workbench_surface(
+                                        fileatlas_ui_bridge::components::SurfaceRole::Selection,
+                                    )
+                                    .workbench_assistant()
+                                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                                    .py(px(fileatlas_ui_bridge::theme::space_compact()))
                                     .child("页面管理 (Tier 2)"),
                             ),
                     )
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(format!(
-                                "VectorCraft 内部多画布 · 共 {} 个独立物料 · 已选中 {} 个",
-                                self.boards_view.len(),
-                                self.selected_pages.len()
-                            )),
-                    ),
+                    .child(div().workbench_assistant().child(format!(
+                        "VectorCraft 内部多画布 · 共 {} 个独立物料 · 已选中 {} 个",
+                        self.boards_view.len(),
+                        self.selected_pages.len()
+                    ))),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .flex_shrink_0()
-                    .pt(px(6.))
+                    .pt(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(super::tracking::control(
                         "pages-multi-select",
                         fileatlas_ui_bridge::components::icon_button(
@@ -138,9 +132,8 @@ impl WorkCratePanel {
                     ))
                     .child(super::tracking::control(
                         "pages-select-all",
-                        Button::new("pages-select-all")
+                        fileatlas_ui_bridge::components::button("pages-select-all")
                             .ghost()
-                            .compact()
                             .label("全选")
                             .disabled(self.boards_view.is_empty())
                             .on_click(cx.listener(|view, _, _, cx| {
@@ -156,9 +149,8 @@ impl WorkCratePanel {
                     ))
                     .child(super::tracking::control(
                         "pages-clear-selection",
-                        Button::new("pages-clear-selection")
+                        fileatlas_ui_bridge::components::button("pages-clear-selection")
                             .ghost()
-                            .compact()
                             .label("取消全选")
                             .disabled(self.selected_pages.is_empty())
                             .on_click(cx.listener(|view, _, _, cx| {
@@ -218,7 +210,7 @@ impl WorkCratePanel {
         div()
             .id(format!("page-card-{id}"))
             .drag_over::<super::page_order::PageDrag>(|style, _, _, _| {
-                style.border_color(rgb(theme::accent_hover()))
+                fileatlas_ui_bridge::components::drop_target_style(style)
             })
             .on_drop::<super::page_order::PageDrag>(cx.listener({
                 let id = id.clone();
@@ -227,13 +219,13 @@ impl WorkCratePanel {
             .v_flex()
             .w(px(width))
             .workbench_card(selected)
-            .p(px(theme::SPACE_3))
-            .gap_2()
+            .p(px(theme::space_expanded()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_1()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(self.card_icon(
                         &format!("select-page-{id}"),
                         if selected {
@@ -260,8 +252,7 @@ impl WorkCratePanel {
                             .flex_1()
                             .min_w_0()
                             .truncate()
-                            .font_semibold()
-                            .text_size(px(theme::FONT_SIZE_TITLE))
+                            .workbench_title()
                             .child(card.board.title.clone()),
                     )
                     .child(self.page_order_controls(&id, index, cx)),
@@ -270,86 +261,73 @@ impl WorkCratePanel {
                 let mut band = div()
                     .h_flex()
                     .items_center()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .w_full()
-                    .rounded(px(theme::ROUND_MD))
-                    .bg(rgb(theme::selection_color()))
-                    .px_2()
-                    .h(px(26.))
-                    .text_size(px(theme::FONT_SIZE_TINY))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .h(px(theme::ui_height(theme::CONTROL_HEIGHT_COMPACT)))
+                    .workbench_assistant()
                     .child(
                         div()
-                            .font_semibold()
+                            .workbench_body()
                             .flex_1()
                             .min_w_0()
                             .truncate()
                             .child(format!("{:02} {}", index + 1, card.board.title)),
                     );
                 if !facts.is_empty() {
-                    band = band.child(
-                        div()
-                            .flex_shrink_0()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(facts),
-                    );
+                    band = band.child(div().flex_shrink_0().workbench_assistant().child(facts));
                 }
                 band
             })
             .child(
-                div()
-                    .id(format!("page-open-preview-{}", card.board.id))
-                    .w_full()
-                    .rounded(px(theme::ROUND_LG))
-                    .overflow_hidden()
-                    .border_1()
-                    .border_color(rgb(if selected {
-                        theme::accent()
-                    } else {
-                        theme::separator()
-                    }))
-                    .bg(rgb(theme::surface_faint()))
-                    .cursor_pointer()
-                    .child(super::tracking::control(
-                        &format!("page-preview-{}", card.board.id),
-                        page_preview(&card, width - 24.),
-                        &self.surfaces,
-                    ))
-                    .on_click(cx.listener({
-                        let id = card.board.id.clone();
-                        move |view, _, _, cx| {
-                            if view.multi_select {
-                                if !view.selected_pages.remove(&id) {
-                                    view.selected_pages.insert(id.clone());
-                                }
-                                cx.notify();
-                            } else {
-                                view.open_page(&id, cx);
+                fileatlas_ui_bridge::components::card_surface(
+                    div()
+                        .id(format!("page-open-preview-{}", card.board.id))
+                        .w_full()
+                        .overflow_hidden()
+                        .cursor_pointer(),
+                    selected,
+                )
+                .child(super::tracking::control(
+                    &format!("page-preview-{}", card.board.id),
+                    page_preview(&card, width - 24.),
+                    &self.surfaces,
+                ))
+                .on_click(cx.listener({
+                    let id = card.board.id.clone();
+                    move |view, _, _, cx| {
+                        if view.multi_select {
+                            if !view.selected_pages.remove(&id) {
+                                view.selected_pages.insert(id.clone());
                             }
+                            cx.notify();
+                        } else {
+                            view.open_page(&id, cx);
                         }
-                    })),
+                    }
+                })),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_2()
-                    .pt_1()
-                    .border_t_1()
-                    .border_color(rgb(theme::separator()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                     .child(
                         div()
                             .flex_1()
                             .min_w_0()
                             .truncate()
-                            .text_size(px(theme::FONT_SIZE_TINY))
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
                             .child(format!("第 {} 页", index + 1)),
                     )
                     .child(super::tracking::control(
                         &format!("open-page-{id}"),
-                        Button::new(format!("open-page-{id}"))
+                        fileatlas_ui_bridge::components::button(format!("open-page-{id}"))
                             .ghost()
-                            .compact()
                             .label("编辑")
                             .icon(theme::small_icon(IconName::Pencil))
                             .on_click(cx.listener(move |view, _, _, cx| view.open_page(&id, cx))),
@@ -364,30 +342,26 @@ impl WorkCratePanel {
         div()
             .h_flex()
             .items_center()
-            .gap_3()
-            .p_3()
-            .px(px(28.))
-            .border_t_1()
-            .border_color(rgb(theme::separator()))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
             .flex_wrap()
             .child(
                 div()
-                    .text_size(px(theme::FONT_SIZE_TINY))
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .child("本地预览 · 外部编辑保存后请同步"),
             )
             .child(
                 div()
-                    .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(format!("已选 {} 页", self.selected_pages.len())),
             )
             .child(div().flex_1())
             .child(super::tracking::control(
                 "pages-exit-multi-select",
-                Button::new("pages-exit-multi-select")
+                fileatlas_ui_bridge::components::button("pages-exit-multi-select")
                     .ghost()
-                    .compact()
                     .label("取消多选")
                     .disabled(!self.multi_select)
                     .on_click(cx.listener(|view, _, _, cx| {
@@ -399,9 +373,8 @@ impl WorkCratePanel {
             ))
             .child(super::tracking::control(
                 "export-image-format",
-                Button::new("export-image-format")
+                fileatlas_ui_bridge::components::button("export-image-format")
                     .ghost()
-                    .compact()
                     .label(if self.image_export_jpeg {
                         "JPEG"
                     } else {
@@ -415,10 +388,9 @@ impl WorkCratePanel {
             ))
             .child(super::tracking::control(
                 "export-selected-images",
-                Button::new("export-selected-images")
+                fileatlas_ui_bridge::components::button("export-selected-images")
                     .outline()
-                    .compact()
-                    .rounded(px(theme::ROUND_MD))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
                     .label(format!("导出选中页为图片 ({})", self.selected_pages.len()))
                     .icon(theme::icon(IconName::FileImage))
                     .disabled(self.busy || self.selected_pages.is_empty())
@@ -427,10 +399,9 @@ impl WorkCratePanel {
             ))
             .child(super::tracking::control(
                 "export-all-pages",
-                Button::new("export-all-pages")
+                fileatlas_ui_bridge::components::button("export-all-pages")
                     .primary()
-                    .compact()
-                    .rounded(px(theme::ROUND_MD))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
                     .label(format!("导出全部为 PDF ({} 页)", self.boards_view.len()))
                     .disabled(self.busy || self.boards_view.is_empty())
                     .on_click(cx.listener(|view, _, _, cx| view.export_catalog(false, cx))),

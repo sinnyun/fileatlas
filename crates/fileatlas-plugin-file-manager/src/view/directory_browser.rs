@@ -1,8 +1,12 @@
 //! Native directory tiles and Navigation-service routing for ungrouped views.
 use super::*;
 use fileatlas_plugin_navigation::{NavigationService, NavigationUiRequest};
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Disableable;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::prelude::FluentBuilder as _;
 
@@ -58,10 +62,10 @@ impl FileManagerView {
         let mut row = div()
             .h_flex()
             .items_center()
-            .gap(px(3.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .w_full()
             .min_w_0()
-            .px(px(6.))
+            .px(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(self.address_nav_button(
                 "back",
                 IconName::ArrowLeft,
@@ -89,15 +93,14 @@ impl FileManagerView {
                     .h_flex()
                     .flex_1()
                     .min_w_0()
-                    .gap(px(3.))
+                    .gap(px(theme::space_standard()))
                     .child(fileatlas_ui_bridge::components::text_input(&self.address))
                     .child(
-                        Button::new(format!(
+                        fileatlas_ui_bridge::components::button(format!(
                             "file_manager-column-{0}-address-go",
                             self.column_index
                         ))
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Go"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             let path = this.address.read(cx).value().to_string();
@@ -117,7 +120,7 @@ impl FileManagerView {
                 .flex_shrink_1()
                 .min_w_0()
                 .items_center()
-                .gap(px(2.))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .overflow_x_scroll();
             let mut current_crumb = None;
             if let Some(path) = path.as_deref() {
@@ -128,18 +131,18 @@ impl FileManagerView {
                 for (index, (label, target)) in crumbs.into_iter().enumerate() {
                     if index > 0 {
                         trail = trail.child(
-                            theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::text_muted())),
+                            theme::small_icon(IconName::ChevronRight).workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                            ),
                         );
                     }
                     let destination = target.clone();
                     trail = trail.child(
-                        Button::new(format!(
+                        fileatlas_ui_bridge::components::button(format!(
                             "file_manager-column-{}-crumb-{index}",
                             self.column_index
                         ))
                         .ghost()
-                        .compact()
                         .flex_shrink_0()
                         .label(label)
                         .tooltip(target)
@@ -150,24 +153,26 @@ impl FileManagerView {
                 }
                 if let Some((label, target)) = current {
                     let destination = target.clone();
-                    let mut current_view =
-                        div().h_flex().flex_shrink_0().items_center().gap(px(2.));
+                    let mut current_view = div()
+                        .h_flex()
+                        .flex_shrink_0()
+                        .items_center()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()));
                     if has_ancestors {
                         current_view = current_view.child(
-                            theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::text_muted())),
+                            theme::small_icon(IconName::ChevronRight).workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                            ),
                         );
                     }
                     current_crumb = Some(
                         current_view.child(
-                            Button::new(format!(
+                            fileatlas_ui_bridge::components::button(format!(
                                 "file_manager-column-{}-crumb-current",
                                 self.column_index
                             ))
                             .ghost()
-                            .compact()
                             .flex_shrink_0()
-                            .max_w(px(140.))
                             .label(label)
                             .tooltip(target)
                             .on_click(cx.listener(
@@ -185,14 +190,11 @@ impl FileManagerView {
             }
             row = row.child(div().flex_1().min_w_0());
             row = row.child(
-                Button::new(format!(
+                fileatlas_ui_bridge::components::button(format!(
                     "file_manager-column-{}-address-edit",
                     self.column_index
                 ))
                 .ghost()
-                .compact()
-                .w(px(26.))
-                .h(px(28.))
                 .icon(theme::small_icon(IconName::Pencil))
                 .tooltip(fileatlas_ui_bridge::i18n::tr("Edit folder address"))
                 .accessibility_label(fileatlas_ui_bridge::i18n::tr("Edit folder address"))
@@ -217,26 +219,25 @@ impl FileManagerView {
         cx: &mut Context<Self>,
     ) -> Button {
         let column = self.column_index;
-        Button::new(format!("file_manager-column-{column}-address-{action}"))
-            .ghost()
-            .compact()
-            .flex_shrink_0()
-            .w(px(28.))
-            .h(px(28.))
-            .icon(theme::small_icon(icon))
-            .tooltip(fileatlas_ui_bridge::i18n::tr(label))
-            .accessibility_label(fileatlas_ui_bridge::i18n::tr(label))
-            .disabled(!enabled)
-            .on_click(cx.listener(move |this, _, _, cx| match action {
-                "back" => this.address_history_step(false, cx),
-                "forward" => this.address_history_step(true, cx),
-                "up" => {
-                    if let Some(path) = this.filter.path_prefix.as_deref().and_then(parent_path) {
-                        this.open_column_path(path, cx);
-                    }
+        fileatlas_ui_bridge::components::button(format!(
+            "file_manager-column-{column}-address-{action}"
+        ))
+        .ghost()
+        .flex_shrink_0()
+        .icon(theme::small_icon(icon))
+        .tooltip(fileatlas_ui_bridge::i18n::tr(label))
+        .accessibility_label(fileatlas_ui_bridge::i18n::tr(label))
+        .disabled(!enabled)
+        .on_click(cx.listener(move |this, _, _, cx| match action {
+            "back" => this.address_history_step(false, cx),
+            "forward" => this.address_history_step(true, cx),
+            "up" => {
+                if let Some(path) = this.filter.path_prefix.as_deref().and_then(parent_path) {
+                    this.open_column_path(path, cx);
                 }
-                _ => {}
-            }))
+            }
+            _ => {}
+        }))
     }
 
     fn open_column_path(&mut self, path: String, cx: &mut Context<Self>) {
@@ -444,9 +445,8 @@ impl FileManagerView {
 }
 
 pub(super) fn refresh_button(cx: &mut Context<FileManagerView>) -> Button {
-    Button::new("file_manager-directory-refresh")
+    fileatlas_ui_bridge::components::button("file_manager-directory-refresh")
         .ghost()
-        .compact()
         .icon(theme::icon(IconName::RefreshCw))
         .tooltip(fileatlas_ui_bridge::i18n::tr("Refresh folder"))
         .on_click(cx.listener(|this, _, _, cx| {
@@ -465,35 +465,30 @@ pub(super) fn tile(
 ) -> AnyElement {
     let path = folder.path.clone();
     let list = list_width.is_some();
-    let icon_area = div()
-        .relative()
-        .flex_shrink_0()
-        .size(px(thumb))
-        .flex()
-        .items_center()
-        .justify_center()
-        .rounded(px(theme::THUMB_ROUND))
-        .bg(rgb(theme::surface_faint()))
-        .border_2()
-        .border_color(if selected {
-            rgb(theme::accent())
-        } else {
-            rgba(0)
-        })
-        .child(
-            theme::icon(IconName::Folder)
-                .size(px(if list {
-                    34.
-                } else {
-                    (thumb * 0.46).clamp(40., 96.)
-                }))
-                .text_color(rgb(theme::warning_text())),
-        );
+    let icon_area = fileatlas_ui_bridge::components::card_surface(
+        div()
+            .relative()
+            .flex_shrink_0()
+            .size(px(thumb))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                theme::icon(IconName::Folder)
+                    .size(px(if list {
+                        34.
+                    } else {
+                        (thumb * 0.46).clamp(40., 96.)
+                    }))
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Warning),
+            ),
+        selected,
+    );
     let caption = div()
         .min_w_0()
         .overflow_hidden()
         .text_ellipsis()
-        .text_size(px(theme::FONT_SIZE_BUTTON))
+        .workbench_body()
         .child(folder.name.clone());
     div()
         .id(format!("file_manager-directory-{}", folder.path))
@@ -507,8 +502,8 @@ pub(super) fn tile(
         .when(list, |row| {
             row.h_flex()
                 .items_center()
-                .rounded(px(4.))
-                .bg(rgb(theme::surface_card()))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Card)
         })
         .when(!list, |row| row.v_flex())
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -529,24 +524,23 @@ pub(super) fn tile(
                 .flex_1()
                 .min_w_0()
                 .v_flex()
-                .px_3()
-                .gap_1()
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(caption)
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Folder")),
                 )
         } else {
             div()
                 .h(px(card::CARD_CAPTION_HEIGHT))
                 .w_full()
-                .pt(px(9.))
+                .pt(px(fileatlas_ui_bridge::theme::space_standard()))
                 .text_center()
                 .child(caption)
         })
-        .hover(|style| style.bg(rgba(theme::fill_hover())))
+        .workbench_hover_surface()
         .cursor_pointer()
         .into_any_element()
 }
@@ -570,14 +564,14 @@ pub(super) fn empty(
         .size_full()
         .items_center()
         .justify_center()
-        .gap_3()
+        .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             theme::icon(IconName::FolderOpen)
                 .size(px(48.))
-                .text_color(rgb(theme::warning_text())),
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Warning),
         )
         .child(
-            div().text_color(rgb(theme::text_secondary())).child(
+            div().workbench_body().child(
                 message
                     .map(|text| fileatlas_ui_bridge::i18n::tr(text).to_string())
                     .unwrap_or_else(|| {

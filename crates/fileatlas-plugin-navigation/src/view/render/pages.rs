@@ -1,4 +1,6 @@
 use super::super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 
 pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> Div {
@@ -19,9 +21,10 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
             .h_full()
             .flex_shrink_0()
             .items_center()
-            .gap(px(5.))
-            .py(px(6.))
-            .bg(rgb(theme::surface_rail())),
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_corner_right(fileatlas_ui_bridge::components::CornerRole::Large)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Rail),
         theme::RegionEdge::Right,
     );
     for (page, icon, label) in items {
@@ -30,35 +33,16 @@ pub(super) fn render_rail(view: &SidebarView, cx: &mut Context<SidebarView>) -> 
         }
         let selected = view.active_page == page;
         rail = rail.child(
-            div()
-                .id(format!("navigation-page-{}", page.key()))
-                .v_flex()
-                .w(px(42.))
-                .h(px(54.))
-                .items_center()
-                .justify_center()
-                .gap(px(3.))
-                .rounded(px(6.))
-                .text_xs()
-                .text_color(rgb(if selected {
-                    theme::selection_text()
-                } else {
-                    theme::text_secondary()
-                }))
-                .when(selected, |item| item.bg(rgb(theme::selection_color())))
-                .hover(move |style| {
-                    style.bg(if selected {
-                        rgb(theme::selection_color())
-                    } else {
-                        rgb(theme::surface_elevated())
-                    })
-                })
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.set_navigation_page(page);
-                    cx.notify();
-                }))
-                .child(theme::icon(icon))
-                .child(fileatlas_ui_bridge::i18n::tr(label)),
+            fileatlas_ui_bridge::components::rail_shortcut(
+                format!("navigation-page-{}", page.key()),
+                fileatlas_ui_bridge::i18n::tr(label),
+                theme::icon(icon),
+                selected,
+            )
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.set_navigation_page(page);
+                cx.notify();
+            })),
         );
     }
     rail.children(
@@ -74,13 +58,12 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
         .flex_1()
         .min_w_0()
         .h_full()
-        .gap(px(10.))
-        .px(px(14.))
-        .py(px(12.))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .py(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             div()
-                .font_semibold()
-                .text_size(px(15.))
+                .workbench_title()
                 .child(fileatlas_ui_bridge::i18n::tr("Add-ons")),
         );
     let extension_views = view
@@ -93,11 +76,14 @@ pub(super) fn render_extensions(view: &SidebarView) -> Div {
             div()
                 .v_flex()
                 .items_center()
-                .gap(px(6.))
-                .py(px(26.))
-                .text_color(rgb(theme::text_muted()))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                .py(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(theme::large_icon(IconName::Puzzle))
-                .child(fileatlas_ui_bridge::i18n::tr("No available add-ons.")),
+                .child(
+                    div()
+                        .workbench_assistant()
+                        .child(fileatlas_ui_bridge::i18n::tr("No available add-ons.")),
+                ),
         );
     }
     page.children(extension_views)

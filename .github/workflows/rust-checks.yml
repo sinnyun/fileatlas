@@ -48,6 +48,9 @@ jobs:
 
       - name: Enforce shared workbench theme
         run: |
+          node scripts/check-ui-design-tokens.cjs --self-test
+          node scripts/check-ui-design-tokens.cjs
+          node scripts/check-ui-geometry-coverage.cjs
           node scripts/check-ui-theme.cjs --self-test
           node scripts/check-ui-theme.cjs
 

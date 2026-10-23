@@ -1,5 +1,8 @@
 //! v5 media context menu: real thumbnail/metadata and grouped existing actions.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::menu::{PopupMenu, PopupMenuItem};
@@ -22,15 +25,15 @@ pub(super) fn render_requested(
         img(std::path::PathBuf::from(path))
             .w(px(76.))
             .h(px(72.))
-            .rounded_sm()
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
             .object_fit(ObjectFit::Cover)
             .into_any_element()
     } else {
         div()
             .w(px(76.))
             .h(px(72.))
-            .rounded_sm()
-            .bg(rgb(theme::surface_faint()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
             .flex()
             .items_center()
             .justify_center()
@@ -40,82 +43,70 @@ pub(super) fn render_requested(
                     "audio" => IconName::FileMusic,
                     _ => IconName::FileImage,
                 })
-                .text_color(rgb(theme::text_muted())),
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted),
             )
             .into_any_element()
     };
     let ratings = (0..=5u8)
         .map(|rating| {
-            Button::new(format!("file_manager-requested-menu-rating-{rating}"))
-                .ghost()
-                .compact()
-                .label(if rating == 0 {
-                    "—".into()
-                } else {
-                    rating.to_string()
-                })
-                .when(rating > 0, |button| {
-                    button.icon(theme::small_icon(IconName::Star))
-                })
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.apply_rating_to(&[id], rating);
-                    this.media_actions_id = None;
-                    cx.notify();
-                }))
+            fileatlas_ui_bridge::components::button(format!(
+                "file_manager-requested-menu-rating-{rating}"
+            ))
+            .ghost()
+            .label(if rating == 0 {
+                "—".into()
+            } else {
+                rating.to_string()
+            })
+            .when(rating > 0, |button| {
+                button.icon(theme::small_icon(IconName::Star))
+            })
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.apply_rating_to(&[id], rating);
+                this.media_actions_id = None;
+                cx.notify();
+            }))
         })
         .collect::<Vec<_>>();
     div()
         .v_flex()
-        .w(px(360.))
-        .gap_1()
-        .p_3()
-        .rounded(px(8.))
-        .border_1()
-        .border_color(rgb(theme::separator()))
-        .bg(rgb(theme::surface_modal()))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             div()
                 .h_flex()
                 .items_start()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(thumbnail)
                 .child(
                     div()
                         .v_flex()
                         .flex_1()
                         .min_w_0()
-                        .gap_1()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .child(
                             div()
-                                .text_sm()
-                                .font_medium()
+                                .workbench_assistant()
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(title),
                         )
+                        .child(div().workbench_assistant().child(format!(
+                            "{} · {}",
+                            dimensions,
+                            card::format_bytes(media.file_size)
+                        )))
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(rgb(theme::text_secondary()))
-                                .child(format!(
-                                    "{} · {}",
-                                    dimensions,
-                                    card::format_bytes(media.file_size)
-                                )),
-                        )
-                        .child(
-                            div()
-                                .text_size(px(9.))
-                                .text_color(rgb(theme::text_muted()))
+                                .workbench_assistant()
                                 .overflow_hidden()
                                 .text_ellipsis()
                                 .child(media.full_path.clone()),
                         ),
                 )
                 .child(
-                    Button::new("file_manager-requested-menu-close")
+                    fileatlas_ui_bridge::components::button("file_manager-requested-menu-close")
                         .ghost()
-                        .compact()
                         .icon(theme::icon(IconName::X))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.media_actions_id = None;
@@ -123,20 +114,17 @@ pub(super) fn render_requested(
                         })),
                 ),
         )
-        .child(div().h(px(1.)).bg(rgb(theme::separator())))
+        .child(fileatlas_ui_bridge::components::divider())
         .child(
-            Button::new("file_manager-locate-file")
+            fileatlas_ui_bridge::components::button("file_manager-locate-file")
                 .ghost()
                 .label(fileatlas_ui_bridge::i18n::tr("Open containing folder"))
                 .on_click(cx.listener(move |view, _, _, cx| view.locate_file(id, cx))),
         )
         .child(
-            Button::new("file_manager-requested-menu-preview")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-preview")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label("QuickLook")
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.media_actions_id = None;
@@ -144,12 +132,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-open")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-open")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Open in default app"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.media_actions_id = None;
@@ -157,12 +142,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-reveal")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-reveal")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Show in File Explorer"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.media_actions_id = None;
@@ -173,21 +155,18 @@ pub(super) fn render_requested(
             div()
                 .h_flex()
                 .items_center()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(
                     div()
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Rating")),
                 )
                 .children(ratings),
         )
         .child(
-            Button::new("file_manager-requested-menu-tags")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-tags")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Tags"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.show_tag_picker = true;
@@ -196,12 +175,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-ai-tags")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-ai-tags")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("AI Suggest Tags"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.media_actions_id = None;
@@ -209,12 +185,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-rename")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-rename")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Rename…"))
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.selection.selected_media_ids = vec![id];
@@ -227,12 +200,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-copy")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-copy")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Copy to…"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.selection.selected_media_ids = vec![id];
@@ -241,12 +211,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-move")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-move")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Move to…"))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.selection.selected_media_ids = vec![id];
@@ -255,12 +222,9 @@ pub(super) fn render_requested(
                 })),
         )
         .child(
-            Button::new("file_manager-requested-menu-delete")
+            fileatlas_ui_bridge::components::button("file_manager-requested-menu-delete")
                 .ghost()
-                .compact()
-                .h(px(28.))
                 .justify_start()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("Delete…"))
                 .on_click(cx.listener(move |this, _, window, cx| {
                     this.selection.selected_media_ids = vec![id];
@@ -291,38 +255,28 @@ pub(super) fn build(
     menu = menu
         .min_w(px(250.))
         .item(PopupMenuItem::element(move |_, _| {
-            let mut row = div().h_flex().items_center().gap(px(10.)).py(px(8.));
+            let mut row = div()
+                .h_flex()
+                .items_center()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .py(px(fileatlas_ui_bridge::theme::space_standard()));
             if let Some(path) = &thumb {
                 row = row.child(
                     img(PathBuf::from(path))
                         .w(px(68.))
-                        .h(px(48.))
+                        .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
                         .object_fit(ObjectFit::Cover)
-                        .rounded(px(theme::ROUND_SM)),
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small),
                 );
             }
             row.child(
                 div()
                     .v_flex()
                     .min_w_0()
-                    .gap(px(2.))
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_BODY))
-                            .child(filename.clone()),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(dimensions.clone()),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(theme::FONT_SIZE_SMALL))
-                            .text_color(rgb(theme::text_muted()))
-                            .child(bytes.clone()),
-                    ),
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .child(div().workbench_body().child(filename.clone()))
+                    .child(div().workbench_assistant().child(dimensions.clone()))
+                    .child(div().workbench_assistant().child(bytes.clone())),
             )
         }))
         .item(PopupMenuItem::separator());

@@ -1,5 +1,7 @@
 //! Local MobileNet suggestions and assignment actions, independent of file viewers.
 
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use gpui_kit::component::button::Button;
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::{Arc, mpsc};
@@ -9,9 +11,8 @@ use fileatlas_plugin_ai::{AiService, TagSuggestion};
 use fileatlas_plugin_history::{HistoryService, UndoEntry};
 use fileatlas_plugin_settings::SettingsService;
 use fileatlas_plugin_tagging::TaggingService;
-use fileatlas_ui_bridge::{UiViewContribution, theme};
+use fileatlas_ui_bridge::UiViewContribution;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
 
@@ -385,7 +386,7 @@ impl Render for AiSuggestionsView {
                     div()
                         .h_flex()
                         .items_center()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(div().flex_1().child(format!(
                             "{group}{}  {:.0}%",
                             suggestion.label,
@@ -416,7 +417,7 @@ impl Render for AiSuggestionsView {
                 rows.push(
                     div()
                         .h_flex()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(button("Apply all").on_click(apply_all))
                         .when(suggestions.len() > 3, |row| {
                             row.child(button("Top 3").on_click(apply_top))
@@ -425,12 +426,13 @@ impl Render for AiSuggestionsView {
                 );
             }
         }
-        let mut content = div()
-            .v_flex()
-            .gap_2()
-            .p_3()
-            .rounded_md()
-            .bg(rgba(theme::modal_rgba(theme::surface_modal())));
+        let mut content = fileatlas_ui_bridge::components::card_surface(
+            div()
+                .v_flex()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .p(px(fileatlas_ui_bridge::theme::space_expanded())),
+            false,
+        );
         content = content.child(
             div()
                 .h_flex()
@@ -438,7 +440,7 @@ impl Render for AiSuggestionsView {
                 .justify_between()
                 .child(
                     div()
-                        .font_medium()
+                        .workbench_body()
                         .child(fileatlas_ui_bridge::i18n::tr("AI tag suggestions")),
                 )
                 .child(
@@ -451,43 +453,29 @@ impl Render for AiSuggestionsView {
                 ),
         );
         if unavailable {
-            content = content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child(fileatlas_ui_bridge::i18n::tr(
-                        "Open an indexed image to analyze it.",
-                    )),
-            );
+            content = content.child(div().workbench_assistant().child(
+                fileatlas_ui_bridge::i18n::tr("Open an indexed image to analyze it."),
+            ));
         } else if matches!(self.model_read.value(), Some(Ok(false)))
             && self.inference.is_none()
             && self.download.is_none()
         {
-            content = content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child(fileatlas_ui_bridge::i18n::tr(
-                        "The first analysis downloads the MobileNet model (~14 MB).",
-                    )),
-            );
+            content = content.child(div().workbench_assistant().child(
+                fileatlas_ui_bridge::i18n::tr(
+                    "The first analysis downloads the MobileNet model (~14 MB).",
+                ),
+            ));
         }
         if let Some(message) = &self.message {
-            content = content.child(div().text_sm().child(message.clone()));
+            content = content.child(div().workbench_assistant().child(message.clone()));
         }
         if let Some(error) = &self.error {
-            content = content.child(
-                div()
-                    .text_sm()
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone()),
-            );
+            content = content.child(div().workbench_assistant().child(error.clone()));
         }
         if rows.is_empty() && self.inference.is_none() && self.error.is_none() && !unavailable {
             content = content.child(
                 div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("No suggestions yet.")),
             );
         }
@@ -496,5 +484,6 @@ impl Render for AiSuggestionsView {
 }
 
 fn button(label: &'static str) -> Button {
-    Button::new(format!("ai-{label}")).label(fileatlas_ui_bridge::i18n::tr(&(label).to_string()))
+    fileatlas_ui_bridge::components::button(format!("ai-{label}"))
+        .label(fileatlas_ui_bridge::i18n::tr(&(label).to_string()))
 }

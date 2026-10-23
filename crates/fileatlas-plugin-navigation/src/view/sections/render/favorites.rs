@@ -24,71 +24,71 @@ impl SidebarView {
             let group_id = group.id.clone();
             let menu_view = weak.clone();
             let menu_group = group.id.clone();
-            let menu = Button::new(format!("navigation-group-menu-{}", group.id))
-                .ghost()
-                .compact()
-                .w(px(22.))
-                .h(px(22.))
-                .icon(theme::small_icon(IconName::Ellipsis))
-                .dropdown_menu(move |menu, _, _| {
-                    let current_view = menu_view.clone();
-                    let current_id = menu_group.clone();
-                    let rename_view = menu_view.clone();
-                    let rename_id = menu_group.clone();
-                    let delete_view = menu_view.clone();
-                    let delete_id = menu_group.clone();
-                    let add_view = menu_view.clone();
-                    let add_id = menu_group.clone();
-                    menu.item(menu_item(
-                        "Add current folder to group",
-                        &current_view,
-                        move |this, _, cx| {
-                            this.add_current_favorite(current_id.clone(), cx);
-                        },
-                    ))
-                    .item(menu_item(
-                        "Add folder by path…",
-                        &add_view,
-                        move |this, window, cx| {
-                            this.open_sidebar_editor(
-                                SidebarEditor::AddFavorite {
-                                    group_id: add_id.clone(),
-                                },
-                                "",
-                                window,
-                                cx,
-                            );
-                        },
-                    ))
-                    .item(menu_item(
-                        "Rename",
-                        &rename_view,
-                        move |this, window, cx| {
-                            let initial = this
-                                .sidebar_config()
-                                .favorite_groups
-                                .iter()
-                                .find(|g| g.id == rename_id)
-                                .map(|g| g.name.clone())
-                                .unwrap_or_default();
-                            this.open_sidebar_editor(
-                                SidebarEditor::RenameGroup {
-                                    group_id: rename_id.clone(),
-                                },
-                                &initial,
-                                window,
-                                cx,
-                            );
-                        },
-                    ))
-                    .item(menu_item(
-                        "Delete group",
-                        &delete_view,
-                        move |this, _, cx| {
-                            this.remove_favorite_group(delete_id.clone(), cx);
-                        },
-                    ))
-                });
+            let menu = fileatlas_ui_bridge::components::button(format!(
+                "navigation-group-menu-{}",
+                group.id
+            ))
+            .ghost()
+            .icon(theme::small_icon(IconName::Ellipsis))
+            .dropdown_menu(move |menu, _, _| {
+                let current_view = menu_view.clone();
+                let current_id = menu_group.clone();
+                let rename_view = menu_view.clone();
+                let rename_id = menu_group.clone();
+                let delete_view = menu_view.clone();
+                let delete_id = menu_group.clone();
+                let add_view = menu_view.clone();
+                let add_id = menu_group.clone();
+                menu.item(menu_item(
+                    "Add current folder to group",
+                    &current_view,
+                    move |this, _, cx| {
+                        this.add_current_favorite(current_id.clone(), cx);
+                    },
+                ))
+                .item(menu_item(
+                    "Add folder by path…",
+                    &add_view,
+                    move |this, window, cx| {
+                        this.open_sidebar_editor(
+                            SidebarEditor::AddFavorite {
+                                group_id: add_id.clone(),
+                            },
+                            "",
+                            window,
+                            cx,
+                        );
+                    },
+                ))
+                .item(menu_item(
+                    "Rename",
+                    &rename_view,
+                    move |this, window, cx| {
+                        let initial = this
+                            .sidebar_config()
+                            .favorite_groups
+                            .iter()
+                            .find(|g| g.id == rename_id)
+                            .map(|g| g.name.clone())
+                            .unwrap_or_default();
+                        this.open_sidebar_editor(
+                            SidebarEditor::RenameGroup {
+                                group_id: rename_id.clone(),
+                            },
+                            &initial,
+                            window,
+                            cx,
+                        );
+                    },
+                ))
+                .item(menu_item(
+                    "Delete group",
+                    &delete_view,
+                    move |this, _, cx| {
+                        this.remove_favorite_group(delete_id.clone(), cx);
+                    },
+                ))
+            });
             let toggle = expand_chevron(
                 &group_view,
                 format!("navigation-group-chevron-{}", group.id),
@@ -263,23 +263,16 @@ impl SidebarView {
             region = region.child(sidebar_region(block.child(rows)));
         }
         if let Some(error) = &self.favorite_action_error {
-            region = region.child(
-                div()
-                    .text_xs()
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone()),
-            );
+            region = region.child(div().workbench_assistant().child(error.clone()));
         }
         if let Some(form) = self.render_favorite_folder_creation(cx) {
             region = region.child(form);
         }
         region = region.child(
-            Button::new("navigation-favorites-add-group")
+            fileatlas_ui_bridge::components::button("navigation-favorites-add-group")
                 .outline()
-                .w_full()
                 .flex_shrink_0()
-                .h(px(30.))
-                .mt(px(6.))
+                .mt(px(fileatlas_ui_bridge::theme::space_standard()))
                 .icon(theme::small_icon(IconName::Plus))
                 .label(fileatlas_ui_bridge::i18n::tr("New group"))
                 .on_click(cx.listener(|this, _, window, cx| {

@@ -1,9 +1,10 @@
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use std::sync::Arc;
 
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
 use gpui_kit::component::Disableable as _;
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
@@ -63,26 +64,18 @@ struct LauncherShortcut {
 
 impl Render for LauncherShortcut {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .id("program-launcher-open-sidebar")
-            .v_flex()
-            .w(px(42.))
-            .h(px(54.))
-            .items_center()
-            .justify_center()
-            .gap(px(3.))
-            .rounded(px(6.))
-            .text_xs()
-            .text_color(rgb(theme::text_secondary()))
-            .hover(|style| style.bg(rgba(theme::fill_hover())))
-            .on_click(cx.listener(|this, _, _, _| {
-                if let Err(error) = this.panels.open(PANEL_ID) {
-                    tracing::error!(%error, "could not open program launchpad");
-                }
-            }))
-            .child(theme::icon(IconName::LayoutGrid))
-            .child(tr("Apps"))
-            .into_any_element()
+        fileatlas_ui_bridge::components::rail_shortcut(
+            "program-launcher-open-sidebar",
+            tr("Apps"),
+            theme::icon(IconName::LayoutGrid),
+            false,
+        )
+        .on_click(cx.listener(|this, _, _, _| {
+            if let Err(error) = this.panels.open(PANEL_ID) {
+                tracing::error!(%error, "could not open program launchpad");
+            }
+        }))
+        .into_any_element()
     }
 }
 

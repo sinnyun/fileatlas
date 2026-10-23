@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 
 impl ClipboardPanel {
     pub(super) fn inspector(&self, cx: &mut Context<Self>) -> AnyElement {
@@ -13,16 +14,16 @@ impl ClipboardPanel {
         let selected_image = selected.and_then(|item| item.image_path.as_deref());
         let content_length = format!("{} 字", value.chars().count());
         let dirty = selected.is_none_or(|item| value.as_ref() != item.content);
-        let mut heading = div().h_flex().items_center().justify_between().child(
+        let mut heading =
             div()
-                .text_size(px(18.))
-                .font_semibold()
-                .child(if selected.is_some() {
+                .h_flex()
+                .items_center()
+                .justify_between()
+                .child(div().workbench_title().child(if selected.is_some() {
                     "编辑内容"
                 } else {
                     "新建文本"
-                }),
-        );
+                }));
         if let Some(id) = id.filter(|_| selected.is_some_and(|item| !item.pinned)) {
             heading = heading.child(
                 small_icon("clipboard-delete-selected".into(), IconName::Trash).on_click(
@@ -69,8 +70,8 @@ impl ClipboardPanel {
             .w(px(324.))
             .flex_shrink_0()
             .h_full()
-            .gap(px(14.))
-            .p(px(16.))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(heading)
             .child(if let Some(path) = selected_image {
                 div()
@@ -81,7 +82,7 @@ impl ClipboardPanel {
                     .min_w_0()
                     .items_center()
                     .justify_center()
-                    .gap(px(10.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         img(std::path::PathBuf::from(path))
                             .w_full()
@@ -103,14 +104,11 @@ impl ClipboardPanel {
                     .v_flex()
                     .flex_1()
                     .min_h(px(100.))
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
                         fileatlas_ui_bridge::components::textarea(&self.editor)
                             .h_full()
-                            .w_full()
-                            .text_size(px(theme::FONT_SIZE_BODY))
-                            .line_height(px(23.))
-                            .text_color(rgb(text())),
+                            .w_full(),
                     )
                     .into_any_element()
             })
@@ -118,8 +116,7 @@ impl ClipboardPanel {
                 div()
                     .h_flex()
                     .justify_between()
-                    .text_size(px(12.))
-                    .text_color(rgb(muted()))
+                    .workbench_assistant()
                     .child(if selected_image.is_some() {
                         "图片内容".to_owned()
                     } else {
@@ -137,20 +134,15 @@ impl ClipboardPanel {
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(12.))
-                    .child(div().w(px(38.)).text_size(px(14.)).child("分组"))
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .child(div().w(px(38.)).workbench_body().child("分组"))
                     .child(div().flex_1().min_w_0().child(category)),
             )
-            .child(
-                div()
-                    .text_size(px(11.))
-                    .text_color(rgb(muted()))
-                    .child(if id.is_some() {
-                        "分组变更即时保存，独立于正文编辑"
-                    } else {
-                        "新建记录时一并保存分组"
-                    }),
-            );
+            .child(div().workbench_assistant().child(if id.is_some() {
+                "分组变更即时保存，独立于正文编辑"
+            } else {
+                "新建记录时一并保存分组"
+            }));
         if let Some(item) = selected {
             let item_id = item.id;
             pane = pane
@@ -171,11 +163,11 @@ impl ClipboardPanel {
                                 false,
                             )
                             .icon(icon(IconName::Star, 17.))
-                            .text_color(rgb(if item.pinned {
-                                theme::star_text()
+                            .workbench_foreground(if item.pinned {
+                                fileatlas_ui_bridge::components::ForegroundRole::Star
                             } else {
-                                muted()
-                            }))
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted
+                            })
                             .on_click(cx.listener(
                                 move |this, _, window, cx| {
                                     if let Some(item) =
@@ -195,9 +187,8 @@ impl ClipboardPanel {
                 .child(
                     div()
                         .v_flex()
-                        .gap(px(7.))
-                        .text_color(rgb(muted()))
-                        .text_size(px(12.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_assistant()
                         .child(
                             div().h_flex().justify_between().child("内容类型").child(
                                 self.kinds
@@ -220,14 +211,13 @@ impl ClipboardPanel {
             pane = pane.child(
                 div()
                     .v_flex()
-                    .gap(px(8.))
-                    .text_size(px(12.))
-                    .text_color(rgb(muted()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_assistant()
                     .child("将永久删除这条本地收藏内容，无法恢复。")
                     .child(
                         div()
                             .h_flex()
-                            .gap(px(8.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .child(
                                 action("clipboard-favorite-delete-confirm", "从收藏中删除", false)
                                     .on_click(cx.listener(move |this, _, window, cx| {

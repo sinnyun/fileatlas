@@ -1,4 +1,5 @@
 use super::*;
+use gpui_kit::component::button::Button;
 
 impl SettingsView {
     pub(super) fn capture_shortcut(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
@@ -180,7 +181,7 @@ impl SettingsView {
     }
 
     pub(super) fn open_key_capture_button(&self, cx: &mut Context<Self>) -> Button {
-        Button::new("settings-open-key-capture")
+        fileatlas_ui_bridge::components::button("settings-open-key-capture")
             .label(fileatlas_ui_bridge::i18n::tr(
                 &(if self.capturing_open_key {
                     "Press a key… (Escape cancels)".to_owned()

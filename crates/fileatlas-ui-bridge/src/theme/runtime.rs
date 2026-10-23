@@ -13,6 +13,7 @@ pub enum ColorMode {
 struct Request {
     light: bool,
     json: Option<String>,
+    typography_audit: bool,
 }
 static REQUEST: LazyLock<RwLock<Request>> = LazyLock::new(Default::default);
 static WAKE: LazyLock<crate::refresh::Wake> = LazyLock::new(Default::default);
@@ -47,6 +48,14 @@ pub fn set_color_mode(mode: ColorMode) {
         WAKE.trigger();
     }
 }
+/// Reapply the resolved native theme when the typography review projection changes.
+pub fn set_typography_audit_enabled(enabled: bool) {
+    let mut request = REQUEST.write().expect("theme request lock");
+    if request.typography_audit != enabled {
+        request.typography_audit = enabled;
+        WAKE.trigger();
+    }
+}
 /// Validate and queue a framework ThemeSet. None selects framework defaults.
 pub fn request_theme(mode: &str, json: Option<String>) -> Result<(), String> {
     if let Some(text) = &json {
@@ -65,6 +74,7 @@ pub fn request_theme(mode: &str, json: Option<String>) -> Result<(), String> {
     let next = Request {
         light: mode == "light",
         json,
+        typography_audit: super::typography_audit_enabled(),
     };
     let mut current = REQUEST.write().map_err(|_| "theme request lock")?;
     if *current != next {
@@ -109,23 +119,34 @@ fn apply_request(cx: &mut App) {
         ThemeMode::Dark
     };
     if let Some(json) = &request.json {
-        // Validation occurred on the request path. Native registry owns discovery/resolution.
-        if let Err(error) = ThemeRegistry::global_mut(cx).load_themes_from_str(&json) {
+        // Native registry owns discovery and resolution of the selected theme.
+        if let Err(error) = ThemeRegistry::global_mut(cx).load_themes_from_str(json) {
             tracing::error!(%error, "could not register theme");
             return;
         }
-        let set: ThemeSet = serde_json::from_str(&json).expect("validated ThemeSet");
-        let config = set
-            .themes
-            .iter()
-            .find(|t| t.mode == mode)
-            .expect("validated mode");
-        let config = ThemeRegistry::global(cx)
+        let set: ThemeSet = match serde_json::from_str(json) {
+            Ok(set) => set,
+            Err(error) => {
+                tracing::error!(%error, "validated theme JSON failed to deserialize");
+                return;
+            }
+        };
+        let Some(config) = set.themes.iter().find(|t| t.mode == mode) else {
+            tracing::error!(?mode, "theme has no configuration for the selected mode");
+            return;
+        };
+        let Some(config) = ThemeRegistry::global(cx)
             .themes()
             .get(&config.name)
             .cloned()
-            .expect("registered theme");
-        Theme::update(cx, |theme| theme.apply_config(&config));
+        else {
+            tracing::error!(theme = %config.name, "theme configuration was not registered");
+            return;
+        };
+        Theme::update(cx, |theme| {
+            theme.apply_config(&config);
+            apply_typography_audit_theme(theme, request.typography_audit);
+        });
     } else {
         let registry = ThemeRegistry::global(cx);
         let config = if mode.is_dark() {
@@ -134,11 +155,40 @@ fn apply_request(cx: &mut App) {
             registry.default_light_theme()
         }
         .clone();
-        Theme::update(cx, |theme| theme.apply_config(&config));
+        Theme::update(cx, |theme| {
+            theme.apply_config(&config);
+            apply_typography_audit_theme(theme, request.typography_audit);
+        });
     }
     publish(cx);
     cx.global_mut::<ThemeListener>().applied = Some(request);
     cx.refresh_windows();
+}
+/// TEMP audit-role projection for native GPUI Kit foregrounds that bypass
+/// WorkbenchTypography through component hover/variant styles.
+fn apply_typography_audit_theme(theme: &mut Theme, enabled: bool) {
+    if !enabled {
+        return;
+    }
+    theme.muted_foreground = gpui_kit::rgb(super::AUDIT_TEXT_ASSISTANT).into();
+    let body = gpui_kit::rgb(super::AUDIT_TEXT_BODY).into();
+    theme.foreground = body;
+    // GPUI Kit tooltip/popup labels render with `popover_foreground` directly
+    // instead of WorkbenchTypography; classify their 14px primary text as body.
+    theme.popover_foreground = body;
+    theme.button_foreground = body;
+    theme.accent_foreground = body;
+    theme.primary_foreground = body;
+    theme.secondary_foreground = body;
+    theme.button_primary_foreground = body;
+    theme.button_secondary_foreground = body;
+    theme.button_danger_foreground = body;
+    theme.button_warning_foreground = body;
+    theme.button_success_foreground = body;
+    theme.button_info_foreground = body;
+    theme.link = body;
+    theme.link_hover = body;
+    theme.link_active = body;
 }
 pub fn packed(color: Hsla) -> u32 {
     let rgb = color.to_rgb();

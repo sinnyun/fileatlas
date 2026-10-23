@@ -1,7 +1,7 @@
 //! File identity is independent of thumbnail decoder support.
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::theme;
 use gpui_kit::assets::IconName;
-use gpui_kit::base::StyledExt as _;
 use gpui_kit::*;
 use std::path::Path;
 
@@ -16,25 +16,21 @@ pub(super) fn extension(filename: &str) -> String {
 pub(super) fn badge(filename: &str, width: f32) -> Div {
     let extension = extension(filename);
     let (background, foreground) = theme::file_format_colors(&extension);
-    div()
-        .absolute()
-        .top(px(5.))
-        .right(px(5.))
-        .max_w(px((width - 10.).max(16.)))
-        .px(px(5.))
-        .py(px(2.))
-        .rounded(px(3.))
-        .bg(rgb(background))
-        .text_color(rgb(foreground))
-        .text_size(px(theme::FONT_SIZE_TINY))
-        .font_semibold()
-        .overflow_hidden()
-        .text_ellipsis()
-        .child(if extension.is_empty() {
+    fileatlas_ui_bridge::components::file_format_badge(
+        div().child(if extension.is_empty() {
             "FILE".into()
         } else {
             extension.to_uppercase()
-        })
+        }),
+        background,
+        foreground,
+    )
+    .absolute()
+    .top(px(5.))
+    .right(px(5.))
+    .max_w(px((width - 10.).max(16.)))
+    .overflow_hidden()
+    .text_ellipsis()
 }
 
 pub(super) fn placeholder(filename: &str, media_type: &str, size: f32) -> Div {
@@ -61,7 +57,6 @@ pub(super) fn placeholder(filename: &str, media_type: &str, size: f32) -> Div {
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(size))
-        .text_color(rgb(theme::text_muted()))
-        .child(icon)
+        .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
+        .child(theme::icon(icon).size(px(size)))
 }

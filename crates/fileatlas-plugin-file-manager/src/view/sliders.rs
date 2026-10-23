@@ -1,46 +1,12 @@
 //! Source-painted 22-point sliders (filterbar.rs:600-771).
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 
 #[derive(Clone, Copy)]
 pub(super) enum SliderDrag {
     Size,
     RatingMin,
     RatingMax,
-}
-
-fn thumb(x: f32) -> Div {
-    div()
-        .absolute()
-        .left(px(x - 8.))
-        .top(px(3.))
-        .size(px(16.))
-        .rounded_full()
-        .bg(rgba(theme::track_shadow()))
-        .child(
-            div()
-                .absolute()
-                .inset(px(1.5))
-                .rounded_full()
-                .bg(rgb(theme::surface_elevated())),
-        )
-        .child(
-            div()
-                .absolute()
-                .inset(px(4.8))
-                .rounded_full()
-                .bg(rgb(theme::accent())),
-        )
-}
-
-fn rail(left: f32, right: f32, color: Hsla) -> Div {
-    div()
-        .absolute()
-        .top(px(9.5))
-        .left(px(left))
-        .w(px((right - left).max(0.)))
-        .h(px(3.))
-        .rounded_full()
-        .bg(color)
 }
 
 fn slider(
@@ -64,7 +30,7 @@ fn slider(
     let down_bounds = bounds.clone();
     let move_bounds = bounds;
     let active = !rating || view.filter.rating_min != 0 || view.filter.rating_max != 5;
-    let mut root = div()
+    let root = div()
         .id(if rating {
             "file_manager-rating-slider"
         } else {
@@ -85,21 +51,14 @@ fn slider(
             .absolute()
             .size_full(),
         )
-        .child(rail(
+        .child(fileatlas_ui_bridge::components::range_slider_visual(
             pad,
             width - pad,
-            rgba(theme::track_highlight()).into(),
-        ))
-        .child(rail(
             low,
             high,
-            if active {
-                rgb(theme::accent()).into()
-            } else {
-                rgba(theme::track_active()).into()
-            },
+            active,
+            rating,
         ))
-        .child(thumb(high))
         .on_mouse_down(
             MouseButton::Left,
             cx.listener(move |this, event: &MouseDownEvent, _, cx| {
@@ -126,9 +85,6 @@ fn slider(
             MouseButton::Left,
             cx.listener(|this, _, _, _| this.slider_drag = None),
         );
-    if rating {
-        root = root.child(thumb(low));
-    }
     root
 }
 
@@ -136,10 +92,10 @@ pub(super) fn thumbnail(view: &FileManagerView, cx: &mut Context<FileManagerView
     div()
         .h_flex()
         .items_center()
-        .gap(px(8.))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Secondary)
                 .child(theme::small_icon(gpui_kit::assets::IconName::ZoomIn)),
         )
         .child(slider(view, false, cx))

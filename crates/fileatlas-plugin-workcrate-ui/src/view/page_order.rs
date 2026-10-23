@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 
 #[derive(Clone)]
@@ -11,11 +13,11 @@ pub(super) struct PageDrag {
 impl Render for PageDrag {
     fn render(&mut self, _: &mut Window, _: &mut ViewContext<Self>) -> impl IntoElement {
         div()
-            .px_3()
-            .py_2()
-            .rounded_md()
-            .bg(rgb(theme::surface_panel()))
-            .text_color(rgb(theme::text_primary()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+            .workbench_body()
             .child(format!("移动 {}", self.title))
     }
 }
@@ -30,7 +32,10 @@ impl WorkCratePanel {
         index: usize,
         cx: &mut ViewContext<Self>,
     ) -> gpui::Div {
-        let mut row = div().h_flex().items_center().gap_1();
+        let mut row = div()
+            .h_flex()
+            .items_center()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()));
         let locked = self.order_locked();
         for (key, icon, to) in [
             ("up", IconName::ArrowUp, index.checked_sub(1)),
@@ -43,9 +48,8 @@ impl WorkCratePanel {
             let id = id.to_owned();
             row = row.child(super::tracking::control(
                 &format!("page-{key}-{id}"),
-                Button::new(format!("page-{key}-{id}"))
+                fileatlas_ui_bridge::components::button(format!("page-{key}-{id}"))
                     .ghost()
-                    .compact()
                     .icon(theme::small_icon(icon))
                     .tooltip(if key == "up" {
                         "上移一页"
@@ -75,10 +79,9 @@ impl WorkCratePanel {
             &format!("page-drag-{id}"),
             div()
                 .id(format!("page-drag-{id}"))
-                .px_2()
-                .py_1()
-                .text_size(px(12.))
-                .text_color(rgb(theme::text_muted()))
+                .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                .workbench_assistant()
                 .child("⋮⋮")
                 .when(!locked, |el| {
                     el.cursor_pointer()

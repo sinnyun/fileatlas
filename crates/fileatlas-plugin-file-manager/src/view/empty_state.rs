@@ -2,6 +2,9 @@
 //! "Add folder" action and filtered no-results with "Clear filters".
 
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 
@@ -19,21 +22,24 @@ pub(super) fn render(no_results: bool, cx: &mut Context<FileManagerView>) -> Any
     };
     let emblem = if no_results {
         theme::empty_state_icon(IconName::Search)
-            .text_color(rgb(theme::text_muted()))
+            .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
             .into_any_element()
     } else {
         div()
             .size(px(72.))
-            .rounded(px(theme::ROUND_XL))
-            .bg(rgb(theme::surface_faint()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::ExtraLarge)
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
             .flex()
             .items_center()
             .justify_center()
-            .child(theme::empty_state_icon(IconName::Image).text_color(rgb(theme::text_muted())))
+            .child(
+                theme::empty_state_icon(IconName::Image)
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted),
+            )
             .into_any_element()
     };
     let action = if no_results {
-        Button::new("file_manager-empty-clear-filters")
+        fileatlas_ui_bridge::components::button("file_manager-empty-clear-filters")
             .ghost()
             .label(fileatlas_ui_bridge::i18n::tr("Clear filters"))
             .on_click(cx.listener(|this, _, window, cx| {
@@ -41,7 +47,7 @@ pub(super) fn render(no_results: bool, cx: &mut Context<FileManagerView>) -> Any
             }))
             .into_any_element()
     } else {
-        Button::new("file_manager-empty-add-folder")
+        fileatlas_ui_bridge::components::button("file_manager-empty-add-folder")
             .primary()
             .label(fileatlas_ui_bridge::i18n::tr("Add folder"))
             .icon(theme::icon(IconName::FolderPlus))
@@ -62,20 +68,21 @@ pub(super) fn render(no_results: bool, cx: &mut Context<FileManagerView>) -> Any
                 .child(emblem)
                 .child(
                     div()
-                        .mt(px(16.))
-                        .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                        .text_size(px(theme::FONT_SIZE_HEADING))
-                        .text_color(rgb(theme::text_primary()))
+                        .mt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                        .workbench_title()
                         .child(fileatlas_ui_bridge::i18n::tr(title)),
                 )
                 .child(
                     div()
-                        .mt(px(6.))
-                        .text_size(px(theme::FONT_SIZE_SMALL))
-                        .text_color(rgb(theme::text_secondary()))
+                        .mt(px(theme::space_standard()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(body)),
                 )
-                .child(div().mt(px(20.)).child(action)),
+                .child(
+                    div()
+                        .mt(px(fileatlas_ui_bridge::theme::space_expanded()))
+                        .child(action),
+                ),
         )
         .into_any_element()
 }

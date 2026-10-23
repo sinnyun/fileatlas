@@ -1,6 +1,8 @@
 //! One group owns its title, media area and file-drop destination. Large groups
 //! paint adjoining segments so the FileManager retains row-level virtualization.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::prelude::FluentBuilder as _;
 
 pub(super) fn render(
@@ -25,28 +27,17 @@ pub(super) fn render(
         .v_flex()
         .w_full()
         .h_full()
-        .when(hovered, |frame| frame.bg(rgb(theme::selection_color())))
+        .when(hovered, |frame| {
+            frame.workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
+        })
         .child(header)
         .child(files);
     if grouped {
-        frame = frame.child(
-            div()
-                .absolute()
-                .inset_0()
-                .border_l_1()
-                .border_r_1()
-                .when(first, |edge| {
-                    edge.border_t_1().rounded_t(px(theme::ROUND_SM))
-                })
-                .when(row.group_end, |edge| {
-                    edge.border_b_1().rounded_b(px(theme::ROUND_SM))
-                })
-                .border_color(rgb(if hovered {
-                    theme::accent_hover()
-                } else {
-                    theme::separator()
-                })),
-        );
+        frame = frame.child(div().absolute().inset_0().workbench_group_frame(
+            first,
+            row.group_end,
+            hovered,
+        ));
     }
     if let Some(destination) = row
         .group_label
@@ -103,7 +94,7 @@ pub(super) fn render(
         let staging_destination = destination.clone();
         frame = frame
             .drag_over::<fileatlas_contracts::FileStagingDragPayload>(|style, _, _, _| {
-                style.bg(rgb(theme::selection_color()))
+                style.workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
             })
             .on_drop::<fileatlas_contracts::FileStagingDragPayload>(cx.listener(
                 move |this, payload: &fileatlas_contracts::FileStagingDragPayload, _, cx| {
@@ -115,6 +106,12 @@ pub(super) fn render(
                     );
                 },
             ));
+    }
+    if grouped {
+        frame = fileatlas_ui_bridge::components::review_section(
+            frame,
+            fileatlas_ui_bridge::geometry_audit::ComponentTokens::default(),
+        );
     }
     frame.into_any_element()
 }

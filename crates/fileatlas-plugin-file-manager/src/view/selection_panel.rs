@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 impl FileManagerView {
     pub(super) fn selection_details(&mut self, root: Div, cx: &mut Context<Self>) -> Div {
@@ -9,27 +11,29 @@ impl FileManagerView {
         let Ok(snapshot) = &self.snapshot else {
             return root;
         };
-        let mut panel = div().v_flex().gap_2();
+        let mut panel = div()
+            .v_flex()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()));
         if self.show_selection_details && !self.selection.selected_media_ids.is_empty() {
             panel = panel.child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_1()
-                    .child(div().text_sm().child(format!(
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .child(div().workbench_assistant().child(format!(
                         "{} selected · Rate",
                         self.selection.selected_media_ids.len()
                     )))
                     .children((0..=5).map(|rating| {
-                        Button::new(format!("file_manager-rating-{rating}"))
-                            .icon(theme::small_icon(gpui_kit::assets::IconName::Star))
-                            .label(rating.to_string())
-                            .on_click(
-                                cx.listener(move |this, _, _, cx| this.apply_rating(rating, cx)),
-                            )
+                        fileatlas_ui_bridge::components::button(format!(
+                            "file_manager-rating-{rating}"
+                        ))
+                        .icon(theme::small_icon(gpui_kit::assets::IconName::Star))
+                        .label(rating.to_string())
+                        .on_click(cx.listener(move |this, _, _, cx| this.apply_rating(rating, cx)))
                     }))
                     .child(
-                        Button::new("file_manager-clear-selection")
+                        fileatlas_ui_bridge::components::button("file_manager-clear-selection")
                             .label(fileatlas_ui_bridge::i18n::tr("Clear"))
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.selection = FileManagerSelection::default();
@@ -40,37 +44,39 @@ impl FileManagerView {
             );
             let mut actions = div()
                 .v_flex()
-                .gap_2()
-                .rounded_md()
-                .bg(rgb(theme::surface_panel()))
-                .p_3()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+                .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(
                     div()
-                        .text_sm()
-                        .font_semibold()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("File actions")),
                 );
             actions = actions.child(
-                div().h_flex().gap_2().child(
-                    Button::new("file_manager-preview-selected")
-                        .label(fileatlas_ui_bridge::i18n::tr("Preview first selected"))
-                        .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
-                ),
+                div()
+                    .h_flex()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .child(
+                        fileatlas_ui_bridge::components::button("file_manager-preview-selected")
+                            .label(fileatlas_ui_bridge::i18n::tr("Preview first selected"))
+                            .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx))),
+                    ),
             );
             if self.show_selection_details && self.selection.selected_media_ids.len() == 1 {
                 actions = actions.child(
                     div()
                         .h_flex()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(
-                            Button::new("file_manager-open-selected")
+                            fileatlas_ui_bridge::components::button("file_manager-open-selected")
                                 .label(fileatlas_ui_bridge::i18n::tr("Open"))
                                 .on_click(
                                     cx.listener(|this, _, _, cx| this.open_selected(false, cx)),
                                 ),
                         )
                         .child(
-                            Button::new("file_manager-reveal-selected")
+                            fileatlas_ui_bridge::components::button("file_manager-reveal-selected")
                                 .label(fileatlas_ui_bridge::i18n::tr(&("Reveal").to_string()))
                                 .on_click(
                                     cx.listener(|this, _, _, cx| this.open_selected(true, cx)),
@@ -80,13 +86,13 @@ impl FileManagerView {
                 actions = actions.child(
                     div()
                         .h_flex()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(
                             fileatlas_ui_bridge::components::text_input(&self.rename_input)
-                                .w(px(240.)),
+                                .w(px(fileatlas_ui_bridge::theme::CONTROL_WIDTH_WIDE)),
                         )
                         .child(
-                            Button::new("file_manager-rename-selected")
+                            fileatlas_ui_bridge::components::button("file_manager-rename-selected")
                                 .label(fileatlas_ui_bridge::i18n::tr("Rename"))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.rename_selected_with_repair(cx)
@@ -97,23 +103,23 @@ impl FileManagerView {
             actions = actions.child(
                 div()
                     .h_flex()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(
-                        Button::new("file_manager-copy-selected")
+                        fileatlas_ui_bridge::components::button("file_manager-copy-selected")
                             .label(fileatlas_ui_bridge::i18n::tr("Copy…"))
                             .on_click(
                                 cx.listener(|this, _, _, cx| this.copy_selected_with_dialog(cx)),
                             ),
                     )
                     .child(
-                        Button::new("file_manager-move-selected")
+                        fileatlas_ui_bridge::components::button("file_manager-move-selected")
                             .label(fileatlas_ui_bridge::i18n::tr("Move…"))
                             .on_click(
                                 cx.listener(|this, _, _, cx| this.move_selected_with_dialog(cx)),
                             ),
                     )
                     .child(
-                        Button::new("file_manager-delete-selected")
+                        fileatlas_ui_bridge::components::button("file_manager-delete-selected")
                             .label(fileatlas_ui_bridge::i18n::tr("Delete selected"))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.request_delete_confirmation(window, cx)
@@ -157,19 +163,16 @@ impl FileManagerView {
             }
         }
 
-        root.child(
+        root.child(fileatlas_ui_bridge::components::card_surface(
             div()
                 .absolute()
                 .right(px(12.))
                 .bottom(px(48.))
                 .w(px(420.))
-                .max_h(px(600.))
-                .overflow_y_scrollbar()
-                .bg(rgb(theme::surface_modal()))
-                .rounded_md()
-                .p_3()
-                .child(panel),
-        )
+                .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .child(div().max_h(px(600.)).overflow_y_scrollbar().child(panel)),
+            false,
+        ))
     }
 
     fn ensure_selection_details_data(&mut self, _: &mut Context<Self>) {

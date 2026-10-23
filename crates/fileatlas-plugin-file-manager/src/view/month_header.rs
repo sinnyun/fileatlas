@@ -1,5 +1,8 @@
 //! Group section band; user-requested raised background distinguishes it from media rows.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 
 pub(super) fn render(
     label: String,
@@ -18,19 +21,19 @@ pub(super) fn render(
             }
         })
         .unwrap_or_else(|| fileatlas_ui_bridge::i18n::tr(&label));
-    theme::separate_region(
+    let header = theme::separate_region(
         div()
             .relative()
             .w_full()
             .h(px(theme::GROUP_HEADER_HEIGHT))
-            .bg(rgb(theme::surface_group_header()))
-            .rounded(px(theme::ROUND_SM))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::GroupHeader)
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
             .h_flex()
             .items_center()
-            .pl(px(28.))
-            .pr(px(12.))
-            .pt(px(4.))
-            .gap(px(8.)),
+            .pl(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pr(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard())),
         theme::RegionEdge::All,
     )
     .id(format!("file_manager-month-{label}"))
@@ -39,23 +42,20 @@ pub(super) fn render(
             .min_w_0()
             .overflow_hidden()
             .text_ellipsis()
-            .font_family(theme::SEMIBOLD_FONT_FAMILY)
-            .text_size(px(theme::FONT_SIZE_HEADING))
-            .text_color(rgb(theme::text_primary()))
+            .workbench_title()
             .child(display),
     )
     .child(
         div()
-            .text_size(px(theme::FONT_SIZE_SMALL))
-            .pt(px(2.))
-            .text_color(rgb(theme::text_muted()))
+            .workbench_assistant()
+            .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+            .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
             .child("·"),
     )
     .child(
         div()
-            .text_size(px(theme::FONT_SIZE_SMALL))
-            .pt(px(2.))
-            .text_color(rgb(theme::text_muted()))
+            .workbench_assistant()
+            .pt(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(fileatlas_ui_bridge::i18n::tr_args(
                 "{count} items",
                 &[("count", count.to_string())],
@@ -84,5 +84,15 @@ pub(super) fn render(
         }
     }))
     .cursor_pointer()
-    .hover(|style| style.bg(rgb(theme::surface_group_header_hover())))
+    .workbench_hover_group_header();
+    fileatlas_ui_bridge::components::review_section(
+        header,
+        fileatlas_ui_bridge::geometry_audit::ComponentTokens {
+            height: Some(theme::GROUP_HEADER_HEIGHT),
+            gap: Some(fileatlas_ui_bridge::theme::space_standard()),
+            padding_x: Some(fileatlas_ui_bridge::theme::space_expanded()),
+            padding_y: Some(fileatlas_ui_bridge::theme::space_compact()),
+            ..Default::default()
+        },
+    )
 }

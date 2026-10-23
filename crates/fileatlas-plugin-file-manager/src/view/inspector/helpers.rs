@@ -1,5 +1,7 @@
 //! Inspector sections and real media metadata formatting.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 pub(super) fn basic_info_rows(media: &fileatlas_plugin_database::MediaItem) -> AnyElement {
     let extension = std::path::Path::new(&media.filename)
@@ -11,7 +13,7 @@ pub(super) fn basic_info_rows(media: &fileatlas_plugin_database::MediaItem) -> A
         .v_flex()
         .w_full()
         .min_w_0()
-        .pb(px(6.))
+        .pb(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(info_row("File name", media.filename.clone()))
         .child(info_row("File type", extension))
         .child(info_row("File size", card::format_bytes(media.file_size)))
@@ -32,16 +34,14 @@ pub(super) fn info_row(label: &str, value: String) -> Div {
     div()
         .h_flex()
         .w_full()
-        .gap(px(8.))
-        .py(px(6.))
-        .border_b_1()
-        .border_color(rgba(theme::separator_light()))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
         .child(
             div()
                 .w(px(84.))
                 .flex_shrink_0()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr(label)),
         )
         .child(
@@ -49,8 +49,7 @@ pub(super) fn info_row(label: &str, value: String) -> Div {
                 .flex_1()
                 .min_w_0()
                 .text_right()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_primary()))
+                .workbench_body()
                 .child(value),
         )
 }
@@ -66,8 +65,8 @@ pub(super) fn section_header(
         .h_flex()
         .w_full()
         .items_center()
-        .gap(px(6.))
-        .h(px(34.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .h(px(theme::ui_height(theme::CONTROL_HEIGHT_TOOLBAR)))
         .cursor_pointer()
         .child(
             theme::small_icon(if expanded {
@@ -75,12 +74,11 @@ pub(super) fn section_header(
             } else {
                 IconName::ChevronRight
             })
-            .text_color(rgb(theme::text_muted())),
+            .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted),
         )
         .child(
             div()
-                .text_size(px(theme::FONT_SIZE_BODY))
-                .text_color(rgb(theme::text_primary()))
+                .workbench_title()
                 .child(fileatlas_ui_bridge::i18n::tr(title)),
         )
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_inspector_section(key, cx)))
@@ -92,16 +90,15 @@ pub(super) fn inspector_empty() -> AnyElement {
         .v_flex()
         .items_center()
         .justify_center()
-        .gap(px(8.))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             theme::icon(IconName::Info)
                 .size(px(24.))
-                .text_color(rgb(theme::text_muted())),
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted),
         )
         .child(
             div()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_muted()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("No file selected")),
         )
         .into_any_element()
@@ -110,9 +107,8 @@ pub(super) fn inspector_empty() -> AnyElement {
 pub(super) fn inspector_message(message: &str) -> AnyElement {
     div()
         .w_full()
-        .py(px(8.))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::text_secondary()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(message))
         .into_any_element()
 }
@@ -122,8 +118,10 @@ pub(super) fn inspector_divider() -> Div {
         .h(px(1.))
         .w_full()
         .flex_shrink_0()
-        .my(px(10.))
-        .bg(rgba(theme::separator_light()))
+        .my(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+            theme::separator_light(),
+        ))
 }
 
 pub(super) fn section_title(title: &str) -> Div {
@@ -132,7 +130,7 @@ pub(super) fn section_title(title: &str) -> Div {
         .w_full()
         .items_center()
         .justify_between()
-        .py(px(theme::SPACE_2))
+        .py(px(theme::space_standard()))
 }
 
 pub(super) fn well() -> Div {
@@ -140,8 +138,8 @@ pub(super) fn well() -> Div {
         .v_flex()
         .w_full()
         .min_w_0()
-        .p(px(theme::SPACE_3))
-        .gap(px(theme::SPACE_2))
+        .p(px(theme::space_expanded()))
+        .gap(px(theme::space_standard()))
 }
 
 pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {
@@ -150,20 +148,18 @@ pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {
         .w_full()
         .min_w_0()
         .items_center()
-        .gap(px(9.))
-        .py(px(9.))
-        .border_b_1()
-        .border_color(rgba(theme::separator_light()))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
         .child(
             theme::icon(icon)
                 .size(px(16.))
                 .flex_shrink_0()
-                .text_color(rgb(theme::text_secondary())),
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Secondary),
         )
         .child(
             div()
-                .text_size(px(13.))
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_body()
                 .child(fileatlas_ui_bridge::i18n::tr(label)),
         )
         .child(
@@ -171,8 +167,7 @@ pub(super) fn detail_row(icon: IconName, label: &str, value: String) -> Div {
                 .flex_1()
                 .min_w_0()
                 .text_right()
-                .text_size(px(13.))
-                .text_color(rgb(theme::text_primary()))
+                .workbench_body()
                 .child(value),
         )
 }

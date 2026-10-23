@@ -146,6 +146,8 @@ struct NativePanelView {
 
 impl Render for NativePanelView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let geometry_window = format!("{:?}", window.window_handle().window_id());
+        fileatlas_ui_bridge::geometry_audit::begin_window_frame(&geometry_window);
         if self.capture.get() == self.hwnd {
             super::panel_resize::dispatch_mcp_input(&self.capture, window, cx);
         }
@@ -168,9 +170,8 @@ impl Render for NativePanelView {
             .min_w_0()
             .min_h_0()
             .bg(rgb(theme::surface_panel()))
-            .text_color(rgb(theme::text_primary()))
             .font_family(theme::UI_FONT_FAMILY)
-            .text_size(px(theme::FONT_SIZE_BODY))
+            .workbench_body()
             .track_focus(&self.focus)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, _| {
                 if event.keystroke.key.eq_ignore_ascii_case("escape") {

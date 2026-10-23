@@ -1,5 +1,7 @@
 use super::canvas::CANVAS_INSPECTOR_WIDTH;
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 enum TierTarget {
     Projects,
     Pages,
@@ -33,8 +35,8 @@ impl Render for WorkCratePanel {
             .id("workcrate-panel")
             .size_full()
             .v_flex()
-            .bg(rgb(theme::surface_base()))
-            .text_color(rgb(theme::text_primary()))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Base)
+            .workbench_body()
             .child(self.tier_band(cx));
         // The pages screen has its own hero header; the editor keeps the slim
         // context bar with the project-level actions.
@@ -45,12 +47,11 @@ impl Render for WorkCratePanel {
             div()
                 .h(px(24.))
                 .flex_shrink_0()
-                .px_3()
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .h_flex()
                 .items_center()
-                .text_size(px(11.))
-                .text_color(rgb(theme::text_muted()))
-                .gap_3()
+                .workbench_assistant()
+                .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(div().flex_1().min_w_0().truncate().child(status))
                 .when(self.selected_board.is_some(), |el| {
                     el.child(self.canvas_object_footer())
@@ -79,11 +80,10 @@ impl WorkCratePanel {
             .h_flex()
             .items_center()
             .justify_center()
-            .gap_2()
-            .px_3()
-            .py(px(8.))
-            .border_b_1()
-            .border_color(rgb(theme::separator()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
             .child(tracking::control(
                 "workcrate-projects-home",
                 self.tier_pill(
@@ -125,9 +125,8 @@ impl WorkCratePanel {
             ))
             .child(tracking::control(
                 "project-defaults",
-                Button::new("workcrate-project-defaults")
+                fileatlas_ui_bridge::components::button("workcrate-project-defaults")
                     .outline()
-                    .compact()
                     .label(if in_project {
                         "项目默认信息"
                     } else {
@@ -157,24 +156,20 @@ impl WorkCratePanel {
             .id(id.to_owned())
             .h_flex()
             .items_center()
-            .gap_2()
-            .h(px(34.))
-            .px(px(theme::SPACE_3))
-            .rounded(px(theme::ROUND_MD))
-            .text_size(px(theme::FONT_SIZE_SMALL))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_TOOLBAR)))
+            .px(px(theme::space_expanded()))
+            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+            .workbench_body()
             .child(theme::small_icon(icon))
             .child(label.to_owned())
-            .children(meta.map(|meta| {
-                div()
-                    .text_color(rgb(theme::text_muted()))
-                    .child(format!("· {meta}"))
-            }));
+            .children(meta.map(|meta| div().workbench_assistant().child(format!("· {meta}"))))
+            .workbench_card(active)
+            .workbench_body();
         if active {
-            pill.workbench_card(false).font_semibold()
+            pill
         } else if let Some(target) = target {
             pill.cursor_pointer()
-                .text_color(rgb(theme::text_secondary()))
-                .hover(|style| style.bg(rgb(theme::surface_panel())))
                 .on_click(cx.listener(move |view, _, _, cx| match target {
                     TierTarget::Projects => {
                         if view.canvas.is_some() {
@@ -197,7 +192,7 @@ impl WorkCratePanel {
                     }
                 }))
         } else {
-            pill.text_color(rgb(theme::text_muted()))
+            pill
         }
     }
 
@@ -221,18 +216,16 @@ impl WorkCratePanel {
         div()
             .h_flex()
             .items_center()
-            .gap_2()
-            .px_3()
-            .py(px(6.))
-            .border_b_1()
-            .border_color(rgb(theme::separator()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .truncate()
-                    .font_semibold()
-                    .text_size(px(theme::FONT_SIZE_BODY))
+                    .workbench_body()
                     .child(title),
             )
             .child(self.screen_action(
@@ -271,14 +264,13 @@ impl WorkCratePanel {
         cx: &mut ViewContext<Self>,
     ) -> gpui::Div {
         let button = {
-            let mut button = Button::new(id.to_owned());
+            let mut button = fileatlas_ui_bridge::components::button(id.to_owned());
             if let Some(icon) = icon {
                 button = button.icon(theme::icon(icon));
             }
             let button = button
                 .label(label.to_owned())
-                .compact()
-                .rounded(px(theme::ROUND_MD));
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium);
             let button = if primary {
                 button.primary()
             } else {
@@ -339,17 +331,11 @@ impl WorkCratePanel {
             .h_full()
             .flex_shrink_0()
             .v_flex()
-            .gap_2()
-            .p_3()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .overflow_y_scroll()
-            .border_r_1()
-            .border_color(rgb(theme::separator()))
-            .child(
-                div()
-                    .text_size(px(theme::FONT_SIZE_TINY))
-                    .text_color(rgb(theme::text_muted()))
-                    .child("页面 · 物料列表"),
-            );
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Right)
+            .child(div().workbench_assistant().child("页面 · 物料列表"));
         for (index, c) in self.boards_view.iter().enumerate() {
             let id = c.board.id.clone();
             let active = self.selected_board.as_ref() == Some(&id);
@@ -359,22 +345,17 @@ impl WorkCratePanel {
                     .id(format!("rail-{id}"))
                     .v_flex()
                     .workbench_card(active)
-                    .when(active, |el| {
-                        el.border_1().border_color(rgb(theme::accent()))
-                    })
-                    .p_2()
-                    .gap_1()
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(preview::page_preview(c, 150.))
                     .child(
                         div()
                             .h_flex()
                             .items_center()
-                            .gap_1()
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(
                                 div()
-                                    .font_semibold()
-                                    .text_size(px(theme::FONT_SIZE_TINY))
-                                    .text_color(rgb(theme::accent()))
+                                    .workbench_assistant()
                                     .child(format!("{:02}", index + 1)),
                             )
                             .child(
@@ -382,13 +363,13 @@ impl WorkCratePanel {
                                     .flex_1()
                                     .min_w_0()
                                     .truncate()
-                                    .text_size(px(theme::FONT_SIZE_TINY))
+                                    .workbench_assistant()
                                     .child(c.board.title.clone()),
                             ),
                     )
                     .child(self.page_order_controls(&id, index, cx))
                     .drag_over::<super::page_order::PageDrag>(|style, _, _, _| {
-                        style.border_color(rgb(theme::accent_hover()))
+                        fileatlas_ui_bridge::components::drop_target_style(style)
                     })
                     .on_drop::<super::page_order::PageDrag>(cx.listener({
                         let id = id.clone();
@@ -413,22 +394,21 @@ impl WorkCratePanel {
             .min_w_0()
             .h_full()
             .v_flex()
-            .bg(rgb(theme::surface_faint()))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
             .child(self.canvas_toolbar(cx))
             .child(
                 div()
                     .flex_1()
                     .min_h_0()
                     .v_flex()
-                    .gap_3()
-                    .p_3()
+                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .child(
-                        div().h_flex().items_center().gap_2().child(
-                            div()
-                                .text_size(px(theme::FONT_SIZE_TINY))
-                                .text_color(rgb(theme::text_muted()))
-                                .child(card.board.title.clone()),
-                        ),
+                        div()
+                            .h_flex()
+                            .items_center()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .child(div().workbench_assistant().child(card.board.title.clone())),
                     )
                     .child(self.canvas_area(cx)),
             );
@@ -446,8 +426,7 @@ impl WorkCratePanel {
                     .flex_shrink_0()
                     .min_h_0()
                     .v_flex()
-                    .border_l_1()
-                    .border_color(rgb(theme::separator()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Left)
                     .overflow_y_scroll()
                     .child(self.inspector(card, cx))
                     .child(self.canvas_object_panel(cx)),

@@ -1,9 +1,10 @@
 use super::{FileManagerView, date_row};
 use crate::filter::MediaTypeFilter;
 use fileatlas_plugin_database::MediaItem;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::theme;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
 pub(super) fn section_title(label: &'static str) -> Div {
@@ -13,17 +14,17 @@ pub(super) fn section_title(label: &'static str) -> Div {
 pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManagerView>) -> Div {
     let filters = div()
         .v_flex()
-        .gap_2()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(section_title("3. Match all filters (AND)"))
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
                         .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Media type")),
                 )
                 .children(
@@ -35,14 +36,16 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
                     ]
                     .into_iter()
                     .map(|(choice, label)| {
-                        Button::new(format!("file_manager-bulk-type-{label}"))
-                            .label(fileatlas_ui_bridge::i18n::tr(label))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.bulk_media_type = choice;
-                                this.confirm_bulk_action = false;
-                                this.confirm_bulk_action_ids = None;
-                                cx.notify();
-                            }))
+                        fileatlas_ui_bridge::components::button(format!(
+                            "file_manager-bulk-type-{label}"
+                        ))
+                        .label(fileatlas_ui_bridge::i18n::tr(label))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.bulk_media_type = choice;
+                            this.confirm_bulk_action = false;
+                            this.confirm_bulk_action_ids = None;
+                            cx.notify();
+                        }))
                     }),
                 ),
         )
@@ -50,11 +53,10 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("File name")),
                 )
                 .child(
@@ -67,15 +69,14 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Extensions")),
                 )
                 .child(
-                    Button::new("file_manager-bulk-extension-mode")
+                    fileatlas_ui_bridge::components::button("file_manager-bulk-extension-mode")
                         .label(fileatlas_ui_bridge::i18n::tr(
                             if view.bulk_extension_exclude {
                                 "Exclude"
@@ -102,29 +103,31 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Rating")),
                 )
                 .child(
                     div()
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Minimum rating")),
                 )
-                .child(fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[2]).w(px(80.)))
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[2],
+                ))
                 .child(
                     div()
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Maximum rating")),
                 )
-                .child(fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[3]).w(px(80.)))
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[3],
+                ))
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("0–5")),
                 ),
         )
@@ -132,12 +135,11 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_start()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .pt(px(4.))
-                        .text_xs()
+                        .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Tags")),
                 )
                 .child(bulk_tag_tree(view, cx)),
@@ -147,23 +149,21 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Older / newer days")),
                 )
-                .child(
-                    fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[0]).w(px(120.)),
-                )
-                .child(
-                    fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[1]).w(px(120.)),
-                )
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[0],
+                ))
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[1],
+                ))
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Minimum / maximum age")),
                 ),
         )
@@ -171,23 +171,21 @@ pub(super) fn filter_controls(view: &FileManagerView, cx: &mut Context<FileManag
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
-                        .w(px(110.))
-                        .text_xs()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Size in MB")),
                 )
-                .child(
-                    fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[6]).w(px(120.)),
-                )
-                .child(
-                    fileatlas_ui_bridge::components::text_input(&view.bulk_inputs[7]).w(px(120.)),
-                )
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[6],
+                ))
+                .child(fileatlas_ui_bridge::components::text_input(
+                    &view.bulk_inputs[7],
+                ))
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Minimum / maximum size")),
                 ),
         );
@@ -203,9 +201,8 @@ fn bulk_tag_tree(view: &FileManagerView, cx: &mut Context<FileManagerView>) -> i
         .unwrap_or_default();
     div()
         .v_flex()
-        .gap_1()
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .max_h(px(120.))
-        .w(px(420.))
         .overflow_y_scrollbar()
         .children(bulk_tag_rows(&tags, 0, &view.bulk_tag_ids, cx))
 }
@@ -224,10 +221,10 @@ fn bulk_tag_rows(
             div()
                 .h_flex()
                 .items_center()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .pl(px((depth as f32) * 16.))
                 .child(
-                    Button::new(format!("file_manager-bulk-tag-{id}"))
+                    fileatlas_ui_bridge::components::button(format!("file_manager-bulk-tag-{id}"))
                         .icon(theme::small_icon(if checked {
                             gpui_kit::assets::IconName::Check
                         } else {
@@ -266,55 +263,57 @@ pub(super) fn match_results_list(
     count: usize,
     height: f32,
 ) -> impl IntoElement {
-    let mut list = div()
-        .v_flex()
-        .gap_2()
-        .w(px(240.))
-        .flex_shrink_0()
-        .overflow_y_scrollbar()
-        .min_h_0()
-        .h(px(height))
-        .rounded_md()
-        .bg(rgb(theme::surface_panel()))
-        .p_2()
-        .child(
-            div()
-                .text_sm()
-                .font_semibold()
-                .child(fileatlas_ui_bridge::i18n::tr_args(
-                    "Matching media ({count})",
-                    &[("count", count.to_string())],
-                )),
-        );
+    let mut list = fileatlas_ui_bridge::components::card_surface(
+        div()
+            .v_flex()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .w(px(240.))
+            .flex_shrink_0()
+            .overflow_y_scrollbar()
+            .min_h_0()
+            .h(px(height))
+            .p(px(fileatlas_ui_bridge::theme::space_standard())),
+        false,
+    )
+    .child(
+        div()
+            .workbench_assistant()
+            .child(fileatlas_ui_bridge::i18n::tr_args(
+                "Matching media ({count})",
+                &[("count", count.to_string())],
+            )),
+    );
     if media.is_empty() {
         list = list.child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr(
                     "No matching media preview is available.",
                 )),
         );
     } else {
         for item in media {
-            let mut row = div().h_flex().items_center().gap_2();
+            let mut row = div()
+                .h_flex()
+                .items_center()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()));
             if let Some(path) = &item.thumb_path {
                 row = row.child(
                     img(std::path::PathBuf::from(path))
                         .w(px(48.))
-                        .h(px(48.))
+                        .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
                         .object_fit(ObjectFit::Cover)
-                        .rounded_sm(),
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small),
                 );
             } else {
                 row = row.child(
                     div()
                         .w(px(48.))
-                        .h(px(48.))
+                        .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
                         .flex()
                         .items_center()
                         .justify_center()
-                        .bg(rgb(theme::surface_faint()))
+                        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                         .child(theme::large_icon(if item.media_type == "video" {
                             gpui_kit::assets::IconName::Play
                         } else if item.media_type == "audio" {
@@ -328,13 +327,17 @@ pub(super) fn match_results_list(
                 row.child(
                     div()
                         .v_flex()
-                        .gap_1()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .overflow_hidden()
-                        .child(div().text_xs().text_ellipsis().child(item.filename.clone()))
                         .child(
                             div()
-                                .text_xs()
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
+                                .text_ellipsis()
+                                .child(item.filename.clone()),
+                        )
+                        .child(
+                            div()
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr(item.media_type.as_str())),
                         ),
                 ),

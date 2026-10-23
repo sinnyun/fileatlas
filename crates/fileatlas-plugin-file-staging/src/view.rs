@@ -2,10 +2,15 @@ use crate::{FileStagingService, PANEL, StagedFile};
 use ::gpui::AnyElement;
 use fileatlas_contracts::FileStagingDragPayload;
 use fileatlas_plugin_file_operations::FileOperationsService;
-use fileatlas_ui_bridge::{components::WorkbenchStyle as _, panel_catalog::PanelCatalog, theme};
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use fileatlas_ui_bridge::{
+    components, components::WorkbenchStyle as _, panel_catalog::PanelCatalog, theme,
+};
 use gpui_kit::{
     base::{Disableable as _, StyledExt as _},
-    component::button::{Button, ButtonVariants as _},
+    component::button::ButtonVariants as _,
     prelude::FluentBuilder as _,
     *,
 };
@@ -27,26 +32,18 @@ struct StagingButton {
 }
 impl Render for StagingButton {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .id("file-staging-open")
-            .v_flex()
-            .w(px(42.))
-            .h(px(54.))
-            .items_center()
-            .justify_center()
-            .gap(px(4.))
-            .rounded(px(6.))
-            .text_xs()
-            .text_color(rgb(theme::text_secondary()))
-            .hover(|s| s.bg(rgba(theme::fill_hover())))
-            .on_click(cx.listener(|this, _, _, _| {
-                if let Err(error) = this.panels.open(PANEL) {
-                    tracing::error!(%error, "could not open file staging basket");
-                }
-            }))
-            .child(theme::icon(gpui_kit::assets::IconName::Briefcase))
-            .child("暂存篮")
-            .into_any_element()
+        components::rail_shortcut(
+            "file-staging-open",
+            "暂存篮",
+            theme::icon(gpui_kit::assets::IconName::Briefcase),
+            false,
+        )
+        .on_click(cx.listener(|this, _, _, _| {
+            if let Err(error) = this.panels.open(PANEL) {
+                tracing::error!(%error, "could not open file staging basket");
+            }
+        }))
+        .into_any_element()
     }
 }
 
@@ -306,9 +303,9 @@ impl Render for StagingPanel {
             .flex_wrap()
             .flex_1()
             .min_h_0()
-            .gap(px(10.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .overflow_y_scroll()
-            .p(px(12.));
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()));
         if files.is_empty() {
             let empty = div()
                 .workbench_section()
@@ -318,13 +315,18 @@ impl Render for StagingPanel {
                 .v_flex()
                 .items_center()
                 .justify_center()
-                .gap(px(8.))
+                .gap(px(theme::space_compact()))
                 .child(
-                    theme::icon(gpui_kit::assets::IconName::File)
-                        .text_color(rgb(theme::text_muted())),
+                    theme::icon(gpui_kit::assets::IconName::File).workbench_foreground(
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                    ),
                 )
-                .child("暂存篮为空")
-                .child("从文件列表添加文件；可拖到文件夹直接移动。");
+                .child(div().workbench_body().child("暂存篮为空"))
+                .child(
+                    div()
+                        .workbench_assistant()
+                        .child("从文件列表添加文件；可拖到文件夹直接移动。"),
+                );
             list = list.child(empty);
         } else {
             for (index, item) in files.into_iter().enumerate() {
@@ -360,9 +362,9 @@ impl Render for StagingPanel {
                     .v_flex()
                     .w(px(220.))
                     .min_w(px(180.))
-                    .gap(px(6.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .workbench_card(selected)
-                    .p(px(8.))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
                     .on_click(cx.listener(move |this, event: &ClickEvent, _, cx| {
                         this.toggle_selection(
                             selection_path.clone(),
@@ -391,22 +393,17 @@ impl Render for StagingPanel {
                             .relative()
                             .w_full()
                             .h(px(136.))
-                            .rounded(px(theme::THUMB_ROUND))
+                            .workbench_corner(
+                                fileatlas_ui_bridge::components::CornerRole::Thumbnail,
+                            )
                             .overflow_hidden()
-                            .bg(rgb(theme::surface_faint()))
+                            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                             .child(thumbnail)
                             .when(!available, |tile| {
                                 tile.child(
-                                    div()
-                                        .absolute()
-                                        .inset_0()
-                                        .flex()
-                                        .items_center()
-                                        .justify_center()
-                                        .bg(rgba(theme::panel_rgba(theme::surface_card())))
-                                        .text_xs()
-                                        .text_color(rgb(theme::danger()))
-                                        .child("文件不可用"),
+                                    fileatlas_ui_bridge::components::thumbnail_message_overlay(
+                                        div().child("文件不可用"),
+                                    ),
                                 )
                             }),
                     )
@@ -415,14 +412,12 @@ impl Render for StagingPanel {
                         div()
                             .w_full()
                             .truncate()
-                            .text_xs()
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
                             .child(source_dir),
                     )
                     .child(
-                        Button::new(format!("staging-remove-{index}"))
+                        fileatlas_ui_bridge::components::button(format!("staging-remove-{index}"))
                             .ghost()
-                            .compact()
                             .label("移除")
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.remove(remove_path.clone(), cx)
@@ -435,7 +430,7 @@ impl Render for StagingPanel {
         div()
             .id("file-staging-panel")
             .drag_over::<fileatlas_contracts::FileManagerFileDragPayload>(|style, _, _, _| {
-                style.border_color(rgb(theme::accent_hover()))
+                fileatlas_ui_bridge::components::drop_target_style(style)
             })
             .on_drop::<fileatlas_contracts::FileManagerFileDragPayload>(cx.listener(
                 |this, payload: &fileatlas_contracts::FileManagerFileDragPayload, _, cx| {
@@ -448,22 +443,22 @@ impl Render for StagingPanel {
             .size_full()
             .min_w_0()
             .min_h_0()
-            .gap(px(10.))
-            .p(px(16.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(8.))
-                    .child(div().text_lg().child("文件暂存篮"))
+                    .gap(px(theme::space_compact()))
+                    .child(div().workbench_title().child("文件暂存篮"))
                     .child(
                         div()
-                            .text_color(rgb(theme::text_muted()))
+                            .workbench_assistant()
                             .child(format!("{} 个文件", self.files.len())),
                     )
                     .child(div().flex_1())
                     .child(
-                        Button::new("staging-refresh-status")
+                        fileatlas_ui_bridge::components::button("staging-refresh-status")
                             .ghost()
                             .label("刷新状态")
                             .disabled(self.busy || self.files.is_empty())
@@ -493,7 +488,7 @@ impl Render for StagingPanel {
                             })),
                     )
                     .child(
-                        Button::new("staging-add")
+                        fileatlas_ui_bridge::components::button("staging-add")
                             .outline()
                             .label(if self.busy {
                                 "处理中…"
@@ -504,7 +499,7 @@ impl Render for StagingPanel {
                             .on_click(cx.listener(|this, _, _, cx| this.add_files(cx))),
                     )
                     .child(
-                        Button::new("staging-clear")
+                        fileatlas_ui_bridge::components::button("staging-clear")
                             .ghost()
                             .label("清空")
                             .disabled(self.busy || self.files.is_empty())
@@ -534,8 +529,7 @@ impl Render for StagingPanel {
             )
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .child("暂存项独立于当前窗格和工作区；仅保存路径，不复制文件内容。"),
             )
             .child(list)
@@ -544,26 +538,22 @@ impl Render for StagingPanel {
                     .h_flex()
                     .w_full()
                     .items_center()
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .child(div().flex_1().workbench_assistant().child(
+                        self.message.clone().unwrap_or_else(|| {
+                            if self.selected_paths.is_empty() {
+                                format!("{} 个失效项；拖到文件夹即可移动", invalid)
+                            } else {
+                                format!(
+                                    "已选择 {} 项；拖到文件夹即可移动（{} 个失效项）",
+                                    self.selected_paths.len(),
+                                    invalid
+                                )
+                            }
+                        }),
+                    ))
                     .child(
-                        div()
-                            .flex_1()
-                            .text_xs()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(self.message.clone().unwrap_or_else(|| {
-                                if self.selected_paths.is_empty() {
-                                    format!("{} 个失效项；拖到文件夹即可移动", invalid)
-                                } else {
-                                    format!(
-                                        "已选择 {} 项；拖到文件夹即可移动（{} 个失效项）",
-                                        self.selected_paths.len(),
-                                        invalid
-                                    )
-                                }
-                            })),
-                    )
-                    .child(
-                        Button::new("staging-prune")
+                        fileatlas_ui_bridge::components::button("staging-prune")
                             .outline()
                             .label(format!("移除失效项 ({invalid})"))
                             .disabled(self.busy || invalid == 0)
@@ -596,14 +586,14 @@ impl Render for StagingPanel {
                             })),
                     )
                     .child(
-                        Button::new("staging-copy")
+                        fileatlas_ui_bridge::components::button("staging-copy")
                             .outline()
                             .label("复制到…")
                             .disabled(self.busy || self.files.is_empty())
                             .on_click(cx.listener(|this, _, _, cx| this.transfer(false, cx))),
                     )
                     .child(
-                        Button::new("staging-move")
+                        fileatlas_ui_bridge::components::button("staging-move")
                             .primary()
                             .label("移动到…")
                             .disabled(self.busy || self.files.is_empty())
@@ -622,9 +612,9 @@ impl Render for StagingDragGhost {
         div()
             .h_flex()
             .items_center()
-            .gap(px(8.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .workbench_card(true)
-            .p(px(10.))
+            .p(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(theme::icon(gpui_kit::assets::IconName::File))
             .child(format!("移动 {} 个文件", self.count))
     }
@@ -647,6 +637,6 @@ fn file_thumbnail_placeholder() -> impl IntoElement {
         .flex()
         .items_center()
         .justify_center()
-        .text_color(rgb(theme::text_muted()))
+        .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
         .child(theme::icon(gpui_kit::assets::IconName::File))
 }

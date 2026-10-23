@@ -3,10 +3,12 @@
 use fileatlas_contracts::FileManagerFileDragPayload;
 use fileatlas_contracts::TagDragPayload;
 use fileatlas_plugin_drag_drop::DragDropService;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::theme;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::prelude::FluentBuilder as _;
 use gpui_kit::*;
@@ -52,13 +54,7 @@ pub(super) fn render_media_card(
     let source_allowed = Arc::clone(&payload.allowed);
     let media_type = media.media_type.as_str();
     let micro_image = micro_thumb.and_then(micro_render_image);
-    let mut frame = div()
-        .relative()
-        .absolute()
-        .inset_0()
-        .overflow_hidden()
-        .rounded(px(theme::THUMB_ROUND))
-        .bg(rgb(theme::surface_faint()));
+    let mut frame = fileatlas_ui_bridge::components::thumbnail_frame();
     if let Some(image) = micro_image.clone() {
         frame = frame.child(img(image).absolute().inset_0().object_fit(ObjectFit::Cover));
     }
@@ -83,51 +79,38 @@ pub(super) fn render_media_card(
     }
     if media.missing {
         frame = frame.child(
-            div()
-                .absolute()
-                .bottom_1()
-                .left_1()
-                .px_2()
-                .bg(rgb(theme::danger()))
-                .text_color(rgb(theme::text_on_danger()))
-                .child(fileatlas_ui_bridge::i18n::tr("File missing")),
+            fileatlas_ui_bridge::components::status_badge(
+                div().child(fileatlas_ui_bridge::i18n::tr("File missing")),
+                fileatlas_ui_bridge::components::StatusTone::Danger,
+            )
+            .absolute()
+            .bottom_1()
+            .left_1(),
         );
     }
     let drop_targets = rating_target_ids.clone();
     if media.rating > 0 {
         frame = frame.child(
-            div()
-                .absolute()
-                .left(px(6.))
-                .top(px(6.))
-                .h(px(18.))
-                .rounded_full()
-                .bg(rgb(theme::media_badge_background()))
-                .px_2()
-                .flex()
-                .items_center()
-                .text_xs()
-                .text_color(rgb(theme::star_on_media_badge()))
-                .child(
-                    theme::small_icon(IconName::Star).text_color(rgb(theme::star_on_media_badge())),
-                )
-                .child(media.rating.to_string()),
+            fileatlas_ui_bridge::components::media_badge(
+                div()
+                    .child(theme::small_icon(IconName::Star).workbench_foreground(
+                        fileatlas_ui_bridge::components::ForegroundRole::StarOnMediaBadge,
+                    ))
+                    .child(media.rating.to_string()),
+            )
+            .absolute()
+            .left(px(6.))
+            .top(px(6.)),
         );
     }
     if media_type == "video" {
         frame = frame.child(
-            div()
-                .absolute()
-                .right(px(6.))
-                .bottom(px(6.))
-                .h(px(18.))
-                .rounded_full()
-                .bg(rgb(theme::media_badge_background()))
-                .px_2()
-                .flex()
-                .items_center()
-                .text_color(rgb(theme::text_on_media_badge()))
-                .child(theme::small_icon(IconName::Play)),
+            fileatlas_ui_bridge::components::media_badge(
+                div().child(theme::small_icon(IconName::Play)),
+            )
+            .absolute()
+            .right(px(6.))
+            .bottom(px(6.)),
         );
     }
     if list_width.is_none() {
@@ -157,7 +140,7 @@ pub(super) fn render_media_card(
                 .h_flex()
                 .items_center()
                 .justify_end()
-                .gap(px(3.))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .overflow_hidden();
             for tag in visible_tags.iter().take(shown_count) {
                 chips = chips.child(
@@ -170,24 +153,15 @@ pub(super) fn render_media_card(
                 );
             }
             if overflow > 0 {
-                chips = chips.child(
-                    div()
-                        .h(px(18.))
-                        .px(px(4.))
-                        .rounded_full()
-                        .bg(rgb(theme::media_badge_background()))
-                        .text_size(px(theme::FONT_SIZE_TINY))
-                        .text_color(rgb(theme::text_on_media_badge()))
-                        .child(format!("+{overflow}")),
-                );
+                chips = chips.child(fileatlas_ui_bridge::components::media_badge(
+                    div().child(format!("+{overflow}")),
+                ));
             }
             frame = frame.child(chips);
         }
     }
     if hover > 0.01 {
-        frame = frame.child(div().absolute().inset_0().bg(rgba(
-            theme::fill_transparent_overlay() | (18. * hover) as u32,
-        )));
+        frame = frame.child(fileatlas_ui_bridge::components::media_hover_overlay(hover));
     }
     frame = frame.child(super::file_format::badge(&media.filename, thumb_size));
     let mut image_area = div()
@@ -195,28 +169,12 @@ pub(super) fn render_media_card(
         .w(px(thumb_size))
         .h(px(thumb_size))
         .child(frame);
-    if selection > 0.01 {
-        image_area = image_area.child(
-            div()
-                .absolute()
-                .inset_0()
-                .rounded(px(theme::THUMB_ROUND))
-                .border_2()
-                .border_color(rgba((theme::accent() << 8) | (242. * selection) as u32)),
-        );
-    }
-    if keyboard_focus && selection > 0.5 {
-        image_area = image_area.child(
-            div()
-                .absolute()
-                .top(px(-1.))
-                .left(px(-1.))
-                .right(px(-1.))
-                .bottom(px(-1.))
-                .rounded(px(theme::THUMB_ROUND + 1.))
-                .border_1()
-                .border_color(rgba((theme::accent() << 8) | 0x80)),
-        );
+    if selection > 0.01 || (keyboard_focus && selection > 0.5) {
+        image_area = image_area.child(fileatlas_ui_bridge::components::media_selection_overlay(
+            thumb_size,
+            selection,
+            keyboard_focus,
+        ));
     }
     if let Some(state) = version_state
         && state.status == fileatlas_plugin_versions::FileVersionStatus::Modified
@@ -231,15 +189,14 @@ pub(super) fn render_media_card(
     }
     let mut caption = div()
         .w_full()
-        .pt(px(5.))
+        .pt(px(fileatlas_ui_bridge::theme::space_compact()))
         .v_flex()
         .items_center()
-        .gap(px(1.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .child(
             div()
                 .w_full()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_primary()))
+                .workbench_body()
                 .overflow_hidden()
                 .text_ellipsis()
                 .text_center()
@@ -249,8 +206,7 @@ pub(super) fn render_media_card(
         caption = caption.child(
             div()
                 .w_full()
-                .text_size(px(theme::FONT_SIZE_TINY))
-                .text_color(rgb(theme::text_muted()))
+                .workbench_assistant()
                 .overflow_hidden()
                 .text_ellipsis()
                 .text_center()
@@ -275,13 +231,13 @@ pub(super) fn render_media_card(
             .min_w_0()
             .v_flex()
             .justify_center()
-            .gap_1()
-            .px_3()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(6.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .when_some(version_state, |row, state| {
                         row.when(
                             state.status == fileatlas_plugin_versions::FileVersionStatus::Modified,
@@ -290,7 +246,7 @@ pub(super) fn render_media_card(
                     })
                     .child(
                         div()
-                            .text_sm()
+                            .workbench_assistant()
                             .text_ellipsis()
                             .overflow_hidden()
                             .child(media.filename.clone()),
@@ -298,8 +254,7 @@ pub(super) fn render_media_card(
             )
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .text_ellipsis()
                     .overflow_hidden()
                     .child(metadata.join(" · ")),
@@ -309,7 +264,7 @@ pub(super) fn render_media_card(
     let context_media = media.clone();
     let context_targets = rating_target_ids.clone();
     let context_tags = tag_tree.clone();
-    div()
+    let card = div()
         .relative()
         .w(px(list_width.unwrap_or(thumb_size)))
         .h(px(if list_width.is_some() {
@@ -319,8 +274,8 @@ pub(super) fn render_media_card(
         }))
         .when(list_width.is_some(), |row| {
             row.h_flex()
-                .rounded(px(4.))
-                .bg(rgba(theme::panel_rgba(theme::surface_card())))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::CardOverlay)
         })
         .when(list_width.is_none(), |row| row.v_flex())
         .id(format!("file_manager-media-{media_id}"))
@@ -328,7 +283,7 @@ pub(super) fn render_media_card(
             this.set_card_hover(media_id, *hovered, cx)
         }))
         .drag_over::<TagDragPayload>(|style, _, _, _| {
-            style.border_color(rgb(theme::accent_hover()))
+            fileatlas_ui_bridge::components::drop_target_style(style)
         })
         .on_drop::<TagDragPayload>(cx.listener(move |this, payload: &TagDragPayload, _, cx| {
             let targets = if drop_targets.is_empty() {
@@ -392,7 +347,11 @@ pub(super) fn render_media_card(
                 window,
                 cx,
             )
-        })
+        });
+    fileatlas_ui_bridge::components::review_card(
+        card,
+        fileatlas_ui_bridge::geometry_audit::ComponentTokens::default(),
+    )
 }
 
 /// Second caption line. The source schema stores no media duration, so
@@ -467,25 +426,23 @@ pub(super) fn render_media_details(
         .and_then(|value| value.to_str())
         .map(|value| format!(".{}", value.to_lowercase()))
         .unwrap_or_else(|| "—".to_string());
-    let mut details = div()
-        .v_flex()
-        .gap_1()
-        .rounded_md()
-        .bg(rgb(theme::surface_panel()))
-        .p_3()
-        .child(
-            div()
-                .text_lg()
-                .font_semibold()
-                .child(fileatlas_ui_bridge::i18n::tr("File")),
-        )
-        .child(div().text_sm().font_medium().child(media.filename.clone()))
-        .child(detail_line("Path", &media.full_path))
-        .child(detail_line("Type", &media.media_type))
-        .child(detail_line("Extension", &extension))
-        .child(detail_line("Size", &format_bytes(media.file_size)))
-        .child(detail_line("Rating", &format!("{} / 5", media.rating)))
-        .child(detail_line("Times opened", &open_count.to_string()));
+    let mut details = fileatlas_ui_bridge::components::card_surface(
+        div()
+            .v_flex()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded())),
+        false,
+    )
+    .child(fileatlas_ui_bridge::components::heading_block(
+        fileatlas_ui_bridge::i18n::tr("File"),
+        media.filename.clone(),
+    ))
+    .child(detail_line("Path", &media.full_path))
+    .child(detail_line("Type", &media.media_type))
+    .child(detail_line("Extension", &extension))
+    .child(detail_line("Size", &format_bytes(media.file_size)))
+    .child(detail_line("Rating", &format!("{} / 5", media.rating)))
+    .child(detail_line("Times opened", &open_count.to_string()));
     if let Some(metadata) = filesystem {
         details = details
             .child(detail_line(
@@ -502,8 +459,7 @@ pub(super) fn render_media_details(
         details = details
             .child(
                 div()
-                    .text_sm()
-                    .font_semibold()
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("Image")),
             )
             .child(detail_line("Dimensions", &format!("{width} × {height} px")))
@@ -517,8 +473,7 @@ pub(super) fn render_media_details(
         details = details
             .child(
                 div()
-                    .text_sm()
-                    .font_semibold()
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("Dates")),
             )
             .child(detail_line("Date taken", &format_timestamp(timestamp)));
@@ -527,11 +482,10 @@ pub(super) fn render_media_details(
         details = details
             .child(
                 div()
-                    .text_sm()
-                    .font_semibold()
+                    .workbench_assistant()
                     .child(format!("Tags ({})", tags.len())),
             )
-            .child(div().text_sm().child(format!(
+            .child(div().workbench_assistant().child(format!(
                 "Tags: {}",
                 tags.iter()
                     .map(|tag| tag.full_path.as_str())
@@ -541,8 +495,7 @@ pub(super) fn render_media_details(
     } else {
         details = details.child(
             div()
-                .text_sm()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("No tags assigned.")),
         );
     }
@@ -550,12 +503,11 @@ pub(super) fn render_media_details(
         details = details
             .child(
                 div()
-                    .text_sm()
-                    .font_semibold()
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("Metadata (EXIF)")),
             )
             .child(
-                Button::new("file_manager-toggle-exif")
+                fileatlas_ui_bridge::components::button("file_manager-toggle-exif")
                     .label(fileatlas_ui_bridge::i18n::tr(
                         &(if show_exif {
                             "Hide EXIF fields"
@@ -571,8 +523,7 @@ pub(super) fn render_media_details(
                 Some(Ok(fields)) if fields.is_empty() => {
                     details = details.child(
                         div()
-                            .text_sm()
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .child(fileatlas_ui_bridge::i18n::tr("No EXIF metadata.")),
                     );
                 }
@@ -582,22 +533,12 @@ pub(super) fn render_media_details(
                     }
                 }
                 Some(Err(message)) => {
-                    details = details.child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(message.clone()),
-                    );
+                    details = details.child(div().workbench_assistant().child(message.clone()));
                 }
                 None => {
-                    details = details.child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(fileatlas_ui_bridge::i18n::tr(
-                                "Select one image to read EXIF metadata.",
-                            )),
-                    );
+                    details = details.child(div().workbench_assistant().child(
+                        fileatlas_ui_bridge::i18n::tr("Select one image to read EXIF metadata."),
+                    ));
                 }
             }
         }
@@ -672,11 +613,11 @@ pub(super) fn read_exif_fields(path: &str) -> Result<Vec<(String, String)>, &'st
 fn detail_line(key: &str, value: &str) -> Div {
     div()
         .h_flex()
-        .gap_2()
-        .text_sm()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_assistant()
         .child(
             div()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Secondary)
                 .child(format!("{}:", fileatlas_ui_bridge::i18n::tr(key))),
         )
         .child(div().flex_1().child(value.to_string()))

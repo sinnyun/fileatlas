@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::assets::IconName;
 
 mod native_panels;
@@ -33,6 +34,8 @@ pub(super) struct FileAtlasShell {
 
 impl Render for FileAtlasShell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let geometry_window = format!("{:?}", window.window_handle().window_id());
+        fileatlas_ui_bridge::geometry_audit::begin_window_frame(&geometry_window);
         if self.column_refresh_task.is_none() {
             if let Ok(service) = self
                 .cordis
@@ -225,8 +228,7 @@ impl Render for FileAtlasShell {
             let cordis = self.cordis.clone();
             let executor = self.executor.clone();
             Some(
-                Button::new(command_id.clone())
-                    .compact()
+                fileatlas_ui_bridge::components::button(command_id.clone())
                     .label(fileatlas_ui_bridge::i18n::tr(&(label.clone()).to_string()))
                     .on_click(move |_, _, _| {
                         let cordis = cordis.clone();
@@ -250,91 +252,80 @@ impl Render for FileAtlasShell {
             .h_flex()
             .h_full()
             .items_center()
-            .gap(px(8.))
-            .pl(px(10.))
-            .pr(px(12.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+            .pr(px(fileatlas_ui_bridge::theme::space_expanded()))
             .when(self.sidebar_open, |zone| {
-                theme::separate_region(
-                    zone.w(px(self.sidebar_width)).pr(px(8.)),
-                    theme::RegionEdge::Right,
-                )
+                zone.w(px(self.sidebar_width))
+                    .pr(px(fileatlas_ui_bridge::theme::space_standard()))
             });
-        let title_band = theme::separate_region(
-            div()
-                .h_flex()
-                .w_full()
-                .flex_shrink_0()
-                .h(px(theme::TITLE_BAND_HEIGHT))
-                .items_center()
-                .gap(px(8.))
-                .child(
-                    logo_zone
-                        .children(title_left_actions)
-                        .child(
-                            theme::large_icon(IconName::Aperture)
-                                .text_color(rgb(theme::accent_text())),
-                        )
-                        .child(
-                            div()
-                                .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                                .text_size(px(theme::FONT_SIZE_HEADING))
-                                .child("FileAtlas"),
-                        ),
-                )
-                .child(
-                    div()
-                        .h_flex()
-                        .flex_1()
-                        .min_w_0()
-                        .h_full()
-                        .items_center()
-                        .overflow_hidden()
-                        .children(filter_views)
-                        .child(
-                            div()
-                                .h_flex()
-                                .flex_shrink_0()
-                                .items_center()
-                                .gap(px(theme::SPACE_1))
-                                .ml(px(theme::PANEL_GAP))
-                                .children(view_mode_views)
-                                .children(column_control_views)
-                                .children(view_option_views),
-                        ),
-                )
-                .child(theme::separate_region(
-                    div()
-                        .h_flex()
-                        .h_full()
-                        .flex_shrink_0()
-                        .items_center()
-                        .gap(px(6.))
-                        .pl(px(8.))
-                        .pr(px(8.))
-                        .children(search_views)
-                        .children(toolbar_actions),
-                    theme::RegionEdge::Left,
-                )),
-            theme::RegionEdge::Bottom,
-        );
-        let mut sidebar_column = theme::separate_region(
-            div()
-                .v_flex()
-                .w(px(self.sidebar_width))
-                .h_full()
-                .flex_shrink_0()
-                .min_h_0()
-                .bg(rgb(theme::surface_sidebar())),
-            theme::RegionEdge::Right,
-        )
-        .child(
-            div()
-                .v_flex()
-                .flex_1()
-                .min_h_0()
-                .w_full()
-                .children(sidebar_views),
-        );
+        // Top band floats as its own card on the canvas.
+        let title_band = div()
+            .h_flex()
+            .w_full()
+            .flex_shrink_0()
+            .h(px(theme::TITLE_BAND_HEIGHT))
+            .items_center()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_region(false)
+            .overflow_hidden()
+            .child(
+                logo_zone
+                    .children(title_left_actions)
+                    .child(
+                        theme::large_icon(IconName::Aperture).text_color(rgb(theme::accent_text())),
+                    )
+                    .child(div().workbench_title().child("FileAtlas")),
+            )
+            .child(
+                div()
+                    .h_flex()
+                    .flex_1()
+                    .min_w_0()
+                    .h_full()
+                    .items_center()
+                    .overflow_hidden()
+                    .children(filter_views)
+                    .child(
+                        div()
+                            .h_flex()
+                            .flex_shrink_0()
+                            .items_center()
+                            .gap(px(theme::space_compact()))
+                            .ml(px(theme::space_standard()))
+                            .children(view_mode_views)
+                            .children(column_control_views)
+                            .children(view_option_views),
+                    ),
+            )
+            .child(
+                div()
+                    .h_flex()
+                    .h_full()
+                    .flex_shrink_0()
+                    .items_center()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pr(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .children(search_views)
+                    .children(toolbar_actions),
+            );
+        let mut sidebar_column = div()
+            .v_flex()
+            .w(px(self.sidebar_width))
+            .h_full()
+            .flex_shrink_0()
+            .min_h_0()
+            .workbench_region(true)
+            .overflow_hidden()
+            .child(
+                div()
+                    .v_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .w_full()
+                    .children(sidebar_views),
+            );
         if !sidebar_footer_views.is_empty() {
             sidebar_column = sidebar_column.child(
                 div()
@@ -490,7 +481,7 @@ impl Render for FileAtlasShell {
             .min_w_0()
             .relative()
             .overflow_hidden()
-            .bg(rgb(theme::surface_panel()))
+            .workbench_region(false)
             .when(column_count == 1, |content| {
                 let single_addresses = if column_addresses[0].is_empty() {
                     breadcrumb_views
@@ -509,8 +500,8 @@ impl Render for FileAtlasShell {
                         .flex_shrink_0()
                         .h(px(40.))
                         .items_center()
-                        .gap(px(8.))
-                        .px(px(16.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
                         .children(single_addresses)
                         .children(single_navigation_actions),
                 )
@@ -530,28 +521,30 @@ impl Render for FileAtlasShell {
                     .v_flex()
                     .absolute()
                     .inset_0()
-                    .gap_2()
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .overflow_y_scrollbar()
-                    .p_4()
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .children(contributions.iter().map(render_contribution))
                     .when(contributions.is_empty(), |body| {
                         body.child(
                             div()
-                                .text_sm()
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
                                 .child("No feature plugins are active."),
                         )
                     }),
             );
         }
+        // Canvas with floating region cards: outer padding and gaps keep the
+        // elevated surfaces visually separated in the Fluent light style.
         let mut shell = div()
             .v_flex()
             .size_full()
-            .bg(rgba(theme::base_rgba(theme::surface_base())))
+            .p(px(theme::space_compact()))
+            .gap(px(theme::space_compact()))
+            .bg(rgba(theme::base_rgba(theme::surface_canvas())))
             .relative()
             .font_family(theme::UI_FONT_FAMILY)
-            .text_size(px(theme::FONT_SIZE_BODY))
-            .text_color(rgb(theme::text_primary()))
+            .workbench_body()
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                 if !event.keystroke.key.eq_ignore_ascii_case("escape") {
                     if !this.surfaces.is_capturing_key("settings") {
@@ -647,20 +640,21 @@ impl Render for FileAtlasShell {
                             .min_h_0()
                             .w_full()
                             .relative()
+                            .gap(px(theme::space_compact()))
                             .when(self.sidebar_open, |row| row.child(sidebar_column))
                             .child(content_column)
                             .when(self.inspector_open, |row| {
-                                row.child(theme::separate_region(
+                                row.child(
                                     div()
                                         .v_flex()
                                         .w(px(self.inspector_width))
                                         .h_full()
                                         .flex_shrink_0()
                                         .min_h_0()
-                                        .bg(rgb(theme::surface_card()))
+                                        .workbench_region(false)
+                                        .overflow_hidden()
                                         .children(inspector_views),
-                                    theme::RegionEdge::Left,
-                                ))
+                                )
                             })
                             .when(self.sidebar_open, |row| {
                                 row.child(self.panel_splitter(PanelSide::Sidebar, cx))
@@ -670,7 +664,7 @@ impl Render for FileAtlasShell {
                             }),
                     )
                     .children(bottom_views)
-                    .child(theme::separate_region(
+                    .child(
                         // v5 status band: selection summary and featured actions.
                         div()
                             .h_flex()
@@ -678,7 +672,11 @@ impl Render for FileAtlasShell {
                             .flex_shrink_0()
                             .h(px(theme::STATUS_BAR_HEIGHT))
                             .items_center()
-                            .px(px(16.))
+                            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                            .rounded(px(theme::ROUND_LG))
+                            .bg(rgb(theme::surface_panel()))
+                            .shadow(theme::region_shadow())
+                            .overflow_hidden()
                             .child(
                                 div()
                                     .h_flex()
@@ -688,21 +686,20 @@ impl Render for FileAtlasShell {
                                     .children(status_views),
                             )
                             .children(debug_status),
-                        theme::RegionEdge::Top,
-                    ))
+                    )
             });
         if self.tools_open {
             shell = shell.child(
                 div()
                     .absolute()
-                    .top(px(theme::TITLE_BAND_HEIGHT + 6.))
+                    .top(px(theme::TITLE_BAND_HEIGHT + theme::space_compact() + 6.))
                     .right(px(48.))
                     .w(px(300.))
                     .h(px((f32::from(window.bounds().size.height)
                         - theme::TITLE_BAND_HEIGHT
                         - 24.)
                         .clamp(160., 600.)))
-                    .p(px(10.))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
                     .rounded(px(theme::ROUND_LG))
                     .border_1()
                     .border_color(rgba(theme::separator_light()))
@@ -711,7 +708,7 @@ impl Render for FileAtlasShell {
                         div()
                             .v_flex()
                             .size_full()
-                            .gap(px(6.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .overflow_y_scrollbar()
                             .children(tool_views)
                             .children(tool_commands)

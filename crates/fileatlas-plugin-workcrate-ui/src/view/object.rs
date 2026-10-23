@@ -1,6 +1,7 @@
 //! The canvas editing panel. Every control here calls one official VectorCraft command;
 //! FileAtlas stores no artwork of its own, so the panel is a form over the official truth.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 const TEXT_SIZE: f64 = 18.;
 pub(super) const IMAGE_FILTERS: [&str; 12] = [
@@ -38,16 +39,15 @@ fn value_row(label: &str, value: String) -> gpui::Div {
     div()
         .h_flex()
         .items_start()
-        .gap_2()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
                 .w(px(72.))
                 .flex_shrink_0()
-                .text_xs()
-                .text_color(rgb(theme::text_muted()))
+                .workbench_assistant()
                 .child(label.to_owned()),
         )
-        .child(div().flex_1().min_w_0().text_xs().child(value))
+        .child(div().flex_1().min_w_0().workbench_assistant().child(value))
 }
 
 impl WorkCratePanel {
@@ -60,9 +60,8 @@ impl WorkCratePanel {
     ) -> gpui::Div {
         super::tracking::control(
             id,
-            Button::new(id.to_owned())
+            fileatlas_ui_bridge::components::button(id.to_owned())
                 .outline()
-                .compact()
                 .label(label.to_owned())
                 .disabled(
                     self.canvas.is_none()
@@ -128,27 +127,27 @@ impl WorkCratePanel {
             .id("workcrate-canvas-object")
             .v_flex()
             .flex_shrink_0()
-            .gap_3()
-            .p_3();
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()));
         let is_text = object.is_some_and(|o| o.kind.eq_ignore_ascii_case("type"));
         panel = panel.child(super::inspector::section_card(
             if is_text { "文字内容" } else { "文字" },
             "官方文本",
             div()
                 .v_flex()
-                .gap_1()
+                .gap(px(theme::space_standard()))
                 .child(super::tracking::control(
                     "canvas-text-input",
                     fileatlas_ui_bridge::components::textarea(&self.canvas_text_input)
                         .w_full()
-                        .h(px(120.)),
+                        .h(px(theme::TEXTAREA_HEIGHT_STANDARD)),
                     &self.surfaces,
                 ))
                 .child(
                     div()
                         .h_flex()
                         .flex_wrap()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(self.canvas_action(
                             "workcrate-canvas-set-text",
                             "更改文字",
@@ -168,7 +167,7 @@ impl WorkCratePanel {
         if object.is_some_and(|o| o.kind.eq_ignore_ascii_case("image")) {
             let links_body = div()
                 .v_flex()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(value_row(
                     "状态",
                     object
@@ -186,7 +185,7 @@ impl WorkCratePanel {
                     div()
                         .h_flex()
                         .flex_wrap()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(self.canvas_action(
                             "workcrate-canvas-links-update",
                             "更新链接",
@@ -211,12 +210,12 @@ impl WorkCratePanel {
             "添加图片",
             div()
                 .v_flex()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .child(
                     div()
                         .h_flex()
                         .flex_wrap()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(self.canvas_action(
                             "workcrate-canvas-place-embed",
                             "添加图片",
@@ -232,8 +231,7 @@ impl WorkCratePanel {
                 )
                 .child(
                     div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .child("添加的图片落在画板中心；链接方式可随时更新或替换。"),
                 ),
         ));

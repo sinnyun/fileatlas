@@ -10,7 +10,7 @@ use fileatlas_plugin_workcrate_projects::WorkCrateProjectsService;
 use fileatlas_ui_bridge::{components::WorkbenchStyle as _, read_model::ReadModel, refresh, theme};
 use gpui_kit::{
     base::{Disableable as _, StyledExt as _},
-    component::button::{Button, ButtonVariants as _},
+    component::button::ButtonVariants as _,
     prelude::FluentBuilder as _,
     *,
 };

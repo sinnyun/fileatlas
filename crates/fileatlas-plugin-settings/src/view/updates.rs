@@ -1,8 +1,10 @@
 //! Update-check/download lifecycle for the settings surface.
 
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use fileatlas_ui_bridge::theme;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::scroll::ScrollableElement;
 use gpui_kit::*;
 use std::sync::Arc;
@@ -161,20 +163,16 @@ impl SettingsView {
             .w(px(left_width))
             .h_full()
             .min_h_0()
-            .gap_2()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("Current version")),
             )
             .child(
                 div()
-                    .p_2()
-                    .rounded_sm()
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_section()
                     .child(format!(
                         "FileAtlas {}",
                         fileatlas_plugin_updater::current_version()
@@ -182,19 +180,15 @@ impl SettingsView {
             )
             .child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("Update available")),
             )
             .child(
                 div()
                     .v_flex()
-                    .gap_1()
-                    .p_2()
-                    .rounded_sm()
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_section()
                     .child(
                         div()
                             .h_flex()
@@ -202,32 +196,26 @@ impl SettingsView {
                             .justify_between()
                             .child(
                                 div()
-                                    .font_semibold()
+                                    .workbench_body()
                                     .child(format!("FileAtlas {}", info.version)),
                             )
                             .child(
                                 div()
-                                    .text_xs()
-                                    .text_color(rgb(theme::text_secondary()))
+                                    .workbench_assistant()
                                     .child(format!("{:.1} MB", info.size_mb())),
                             ),
                     )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(format!(
-                                "You're running FileAtlas {}.",
-                                fileatlas_plugin_updater::current_version()
-                            )),
-                    ),
+                    .child(div().workbench_assistant().child(format!(
+                        "You're running FileAtlas {}.",
+                        fileatlas_plugin_updater::current_version()
+                    ))),
             );
         let notes = info.notes_plain();
         if !notes.is_empty() {
             left = left
                 .child(
                     div()
-                        .font_semibold()
+                        .workbench_body()
                         .child(fileatlas_ui_bridge::i18n::tr("Release notes")),
                 )
                 .child(
@@ -235,8 +223,7 @@ impl SettingsView {
                         .h(px(notes_height))
                         .max_h(px(notes_height))
                         .overflow_y_scrollbar()
-                        .text_sm()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(notes),
                 );
         }
@@ -246,10 +233,10 @@ impl SettingsView {
             .w(px(right_width))
             .h_full()
             .min_h_0()
-            .gap_2()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
                 div()
-                    .font_semibold()
+                    .workbench_body()
                     .child(fileatlas_ui_bridge::i18n::tr("Update status")),
             );
         if downloading {
@@ -266,62 +253,59 @@ impl SettingsView {
             right = right.child(
                 div()
                     .v_flex()
-                    .gap_2()
-                    .p_3()
-                    .rounded_sm()
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_section()
                     .child(
                         div()
-                            .font_semibold()
+                            .workbench_body()
                             .child(fileatlas_ui_bridge::i18n::tr("Downloading…")),
                     )
-                    .child(
-                        div()
-                            .text_sm()
-                            .text_color(rgb(theme::text_secondary()))
-                            .child(format!(
-                                "{:.1} MB / {:.1} MB ({percent:.0}%)",
-                                done as f64 / 1_048_576.0,
-                                info.size_mb(),
-                            )),
-                    )
+                    .child(div().workbench_assistant().child(format!(
+                        "{:.1} MB / {:.1} MB ({percent:.0}%)",
+                        done as f64 / 1_048_576.0,
+                        info.size_mb(),
+                    )))
                     .child(
                         div()
                             .w_full()
                             .h(px(8.))
-                            .rounded_full()
-                            .bg(rgb(theme::surface_elevated()))
+                            .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Pill)
+                            .workbench_surface(
+                                fileatlas_ui_bridge::components::SurfaceRole::Elevated,
+                            )
                             .child(
                                 div()
                                     .w(px(bar_width))
                                     .h_full()
-                                    .rounded_full()
-                                    .bg(rgb(theme::accent())),
+                                    .workbench_corner(
+                                        fileatlas_ui_bridge::components::CornerRole::Pill,
+                                    )
+                                    .workbench_surface(
+                                        fileatlas_ui_bridge::components::SurfaceRole::Accent,
+                                    ),
                             ),
                     )
-                    .child(div().text_xs().text_color(rgb(theme::text_muted())).child(
-                        fileatlas_ui_bridge::i18n::tr(
-                            "The update offer stays open while downloading.",
-                        ),
-                    )),
+                    .child(
+                        div()
+                            .workbench_assistant()
+                            .child(fileatlas_ui_bridge::i18n::tr(
+                                "The update offer stays open while downloading.",
+                            )),
+                    ),
             );
         } else if staged {
             right = right.child(
                 div()
                     .v_flex()
-                    .gap_2()
-                    .p_3()
-                    .rounded_sm()
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
-                    .child(div().font_semibold().child(fileatlas_ui_bridge::i18n::tr("Download verified")))
-                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_section()
+                    .child(div().workbench_body().child(fileatlas_ui_bridge::i18n::tr("Download verified")))
+                    .child(div().workbench_assistant().child(
                         fileatlas_ui_bridge::i18n::tr("The update is staged. Restart and install only when you are ready."),
                     ))
-                    .child(div().text_xs().text_color(rgb(theme::success_text())).child(
+                    .child(div().workbench_assistant().child(
                         fileatlas_ui_bridge::i18n::tr("The downloaded file is checked against the published SHA-256 checksum before it is staged."),
                     )),
             );
@@ -329,14 +313,11 @@ impl SettingsView {
             right = right.child(
                 div()
                     .v_flex()
-                    .gap_2()
-                    .p_3()
-                    .rounded_sm()
-                    .border_1()
-                    .border_color(rgba(theme::hairline().to_rgba()))
-                    .bg(rgb(theme::surface_base()))
-                    .child(div().font_semibold().child(fileatlas_ui_bridge::i18n::tr("Download")))
-                    .child(div().text_sm().text_color(rgb(theme::text_secondary())).child(
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .workbench_section()
+                    .child(div().workbench_body().child(fileatlas_ui_bridge::i18n::tr("Download")))
+                    .child(div().workbench_assistant().child(
                         fileatlas_ui_bridge::i18n::tr("The downloaded file is checked against the published SHA-256 checksum before it is staged."),
                     )),
             );
@@ -344,18 +325,17 @@ impl SettingsView {
         if let Some(error) = &self.update_error {
             right = right.child(
                 div()
-                    .p_2()
-                    .rounded_sm()
-                    .bg(rgb(theme::danger()))
-                    .text_color(rgb(theme::text_on_danger()))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Danger)
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::OnDanger)
                     .child(error.clone()),
             );
         }
         if staged && self.confirm_install {
             right = right.child(
                 div()
-                    .text_sm()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr(
                         "FileAtlas will replace its executable and launch the updated version.",
                     )),
@@ -364,27 +344,22 @@ impl SettingsView {
 
         let header = div()
             .h_flex()
-            .h(px(48.))
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
             .flex_shrink_0()
             .items_center()
             .justify_between()
-            .px_4()
-            .border_b_1()
-            .border_color(rgba(theme::hairline().to_rgba()))
-            .bg(rgb(theme::surface_modal()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
             .child(
                 div()
-                    .text_lg()
-                    .font_semibold()
+                    .workbench_title()
                     .child(fileatlas_ui_bridge::i18n::tr("Update available")),
             );
         let header = if downloading {
             header
         } else {
             header.child(
-                Button::new("settings-update-offer-close")
-                    .w(px(32.))
-                    .h(px(32.))
+                fileatlas_ui_bridge::components::button("settings-update-offer-close")
                     .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.update_offer_open = false;
@@ -394,11 +369,14 @@ impl SettingsView {
             )
         };
 
-        let mut actions = div().h_flex().items_center().gap_2();
+        let mut actions = div()
+            .h_flex()
+            .items_center()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()));
         if staged {
             actions = actions
                 .child(
-                    Button::new("settings-update-offer-restart")
+                    fileatlas_ui_bridge::components::button("settings-update-offer-restart")
                         .label(fileatlas_ui_bridge::i18n::tr(
                             &("Restart & install").to_string(),
                         ))
@@ -408,7 +386,7 @@ impl SettingsView {
                         })),
                 )
                 .child(
-                    Button::new("settings-update-offer-later")
+                    fileatlas_ui_bridge::components::button("settings-update-offer-later")
                         .label(fileatlas_ui_bridge::i18n::tr(&("Later").to_string()))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.update_offer_open = false;
@@ -417,13 +395,13 @@ impl SettingsView {
                         })),
                 );
         } else if downloading {
-            actions = actions.child(div().text_sm().text_color(rgb(theme::text_muted())).child(
+            actions = actions.child(div().workbench_assistant().child(
                 fileatlas_ui_bridge::i18n::tr("The update offer stays open while downloading."),
             ));
         } else {
             actions = actions
                 .child(
-                    Button::new("settings-update-offer-download")
+                    fileatlas_ui_bridge::components::button("settings-update-offer-download")
                         .label(fileatlas_ui_bridge::i18n::tr("Update now"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.begin_update_download();
@@ -431,7 +409,7 @@ impl SettingsView {
                         })),
                 )
                 .child(
-                    Button::new("settings-update-offer-later")
+                    fileatlas_ui_bridge::components::button("settings-update-offer-later")
                         .label(fileatlas_ui_bridge::i18n::tr("Not now"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.update_offer_open = false;
@@ -447,7 +425,7 @@ impl SettingsView {
         };
         if !downloading {
             actions = actions.child(
-                Button::new("settings-update-offer-github")
+                fileatlas_ui_bridge::components::button("settings-update-offer-github")
                     .label(fileatlas_ui_bridge::i18n::tr("View on GitHub"))
                     .on_click(move |_, _, _| {
                         let _ = open::that_detached(&url);
@@ -460,20 +438,17 @@ impl SettingsView {
             .flex_shrink_0()
             .items_center()
             .justify_end()
-            .gap_2()
-            .px_4()
-            .border_t_1()
-            .border_color(rgba(theme::hairline().to_rgba()))
-            .bg(rgb(theme::surface_modal()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
             .child(actions);
         let body = div()
             .h_flex()
             .h(px(body_height))
             .flex_shrink_0()
-            .gap_4()
-            .px_4()
-            .py_3()
-            .bg(rgb(theme::surface_modal()))
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(left)
             .child(right);
         let dialog = div()
@@ -482,22 +457,11 @@ impl SettingsView {
             .h(px(dialog_height))
             .max_w(px((f32::from(viewport.width) - 32.).max(1.)))
             .max_h(px((f32::from(viewport.height) - 24.).max(1.)))
-            .rounded_md()
-            .border_1()
-            .border_color(rgba(theme::hairline().to_rgba()))
-            .bg(rgb(theme::surface_modal()))
-            .text_color(rgb(theme::text_primary()))
+            .workbench_body()
             .child(header)
             .child(body)
             .child(footer);
-        div()
-            .absolute()
-            .inset_0()
-            .h_flex()
-            .items_center()
-            .justify_center()
-            .child(div().absolute().inset_0().bg(rgba(theme::scrim())))
-            .child(dialog)
+        fileatlas_ui_bridge::components::modal_overlay(dialog)
     }
 
     pub(super) fn install_update(&mut self, cx: &mut Context<Self>) {

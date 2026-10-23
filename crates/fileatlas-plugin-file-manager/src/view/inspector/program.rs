@@ -1,6 +1,7 @@
 //! Program overview follows the dedicated dark concept: identity, 2×2
 //! metrics, data storage paths, status rows, and a separate tip card.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 pub(super) fn render(view: &FileManagerView) -> AnyElement {
     let snapshot = view.snapshot.as_ref().ok();
@@ -37,19 +38,19 @@ pub(super) fn render(view: &FileManagerView) -> AnyElement {
         .v_flex()
         .w_full()
         .min_w_0()
-        .px(px(16.))
-        .pb(px(20.))
+        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .pb(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(section_title("Browse overview"))
         .child(
             div()
                 .v_flex()
                 .w_full()
-                .gap(px(10.))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
                         .h_flex()
                         .w_full()
-                        .gap(px(10.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(metric(
                             "Current results",
                             snapshot.map_or(0, |s| s.media_count).to_string(),
@@ -67,7 +68,7 @@ pub(super) fn render(view: &FileManagerView) -> AnyElement {
                     div()
                         .h_flex()
                         .w_full()
-                        .gap(px(10.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(metric(
                             "Tags",
                             tags.to_string(),
@@ -104,25 +105,25 @@ pub(super) fn render(view: &FileManagerView) -> AnyElement {
                 .w_full()
                 .items_center()
                 .justify_between()
-                .py(px(9.))
-                .border_b_1()
-                .border_color(rgba(theme::separator_light()))
+                .py(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
                 .child(
                     div()
-                        .text_size(px(13.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_body()
                         .child(fileatlas_ui_bridge::i18n::tr("Browsing state")),
                 )
                 .child(
                     div()
                         .h_flex()
                         .items_center()
-                        .gap(px(7.))
-                        .child(div().size(px(7.)).rounded_full().bg(rgb(status_color)))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .child(fileatlas_ui_bridge::components::status_dot(
+                            7.,
+                            fileatlas_ui_bridge::components::StatusTone::Custom(status_color),
+                        ))
                         .child(
                             div()
-                                .text_size(px(13.))
-                                .text_color(rgb(theme::text_primary()))
+                                .workbench_body()
                                 .child(fileatlas_ui_bridge::i18n::tr(state)),
                         ),
                 ),
@@ -136,9 +137,9 @@ pub(super) fn render(view: &FileManagerView) -> AnyElement {
         body = body.child(inspector_message(&error));
     }
     body.child(inspector_divider()).child(section_title("Usage tips"))
-        .child(well().h_flex().items_center().gap(px(12.))
-            .child(theme::icon(IconName::Info).size(px(25.)).flex_shrink_0().text_color(rgb(theme::accent_text())))
-            .child(div().flex_1().min_w_0().text_size(px(13.)).text_color(rgb(theme::text_secondary()))
+        .child(well().h_flex().items_center().gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .child(theme::icon(IconName::Info).size(px(25.)).flex_shrink_0().workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::AccentText))
+            .child(div().flex_1().min_w_0().workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("Select a folder or tag on the left to view its details, or select a file to inspect it."))))
         .into_any_element()
 }
@@ -147,17 +148,18 @@ fn storage_row(title: &str, path: &str, icon: IconName, color: u32) -> Div {
     well()
         .v_flex()
         .w_full()
-        .gap(px(7.))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap(px(8.))
-                .child(theme::icon(icon).size(px(16.)).text_color(rgb(color)))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .child(theme::icon(icon).size(px(16.)).workbench_foreground(
+                    fileatlas_ui_bridge::components::ForegroundRole::Custom(color),
+                ))
                 .child(
                     div()
-                        .text_size(px(12.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(title)),
                 ),
         )
@@ -165,8 +167,7 @@ fn storage_row(title: &str, path: &str, icon: IconName, color: u32) -> Div {
             div()
                 .w_full()
                 .min_w_0()
-                .text_size(px(12.))
-                .text_color(rgb(theme::text_primary()))
+                .workbench_assistant()
                 .child(path.to_owned()),
         )
 }
@@ -175,32 +176,31 @@ fn metric(title: &str, value: String, icon: IconName, color: u32) -> Div {
     well()
         .flex_1()
         .min_h(px(86.))
-        .p(px(13.))
-        .gap(px(10.))
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap(px(7.))
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     theme::icon(icon)
                         .size(px(17.))
                         .flex_shrink_0()
-                        .text_color(rgb(color)),
+                        .workbench_foreground(
+                            fileatlas_ui_bridge::components::ForegroundRole::Custom(color),
+                        ),
                 )
                 .child(
                     div()
-                        .text_size(px(12.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(title)),
                 ),
         )
         .child(
             div()
-                .pl(px(24.))
-                .text_size(px(25.))
-                .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                .text_color(rgb(theme::text_primary()))
+                .pl(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .workbench_body()
                 .child(value),
         )
 }

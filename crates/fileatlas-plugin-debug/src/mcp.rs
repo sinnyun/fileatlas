@@ -3,6 +3,7 @@ use cordis::{Context, Service};
 use fileatlas_contracts::mcp::{
     McpToolDefinition, McpToolFuture, McpToolRegistration, McpToolRegistry,
 };
+use fileatlas_ui_bridge::geometry_audit;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -80,8 +81,25 @@ pub(super) fn register(context: &Context, service: &Arc<DebugService>) -> Result
         },
     );
 
+    let geometry = tool(
+        "debug.ui_geometry",
+        "Read rendered UI geometry",
+        "Read current rendered bounds, GPUI text style at shared component observers, and declared geometry tokens. This is a component snapshot, not a complete native layout tree.",
+        json!({"type":"object","properties":{"window":{"type":"string"},"tier":{"type":"string","enum":["title","body","assistant","button","region","section","card","navigation","tree-row"]}},"additionalProperties":false}),
+        false,
+        move |args| {
+            Box::pin(async move {
+                let request: GeometryQuery = parse(args)?;
+                let entries =
+                    geometry_audit::snapshot(request.window.as_deref(), request.tier.as_deref());
+                let count = entries.len();
+                Ok(json!({"count":count,"entries":entries}))
+            })
+        },
+    );
+
     let registration = registry
-        .register("fileatlas.debug", vec![query, control, selected])
+        .register("fileatlas.debug", vec![query, control, selected, geometry])
         .map_err(|e| e.to_string())?;
     let _publication = context
         .provide(Arc::new(DebugMcpRegistration {
@@ -106,6 +124,13 @@ struct DebugQuery {
 struct DebugControl {
     action: String,
     value: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GeometryQuery {
+    window: Option<String>,
+    tier: Option<String>,
 }
 
 fn parse<T: serde::de::DeserializeOwned>(value: Value) -> Result<T, String> {

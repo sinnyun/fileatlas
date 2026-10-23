@@ -23,10 +23,12 @@ impl FileAtlasShell {
             .h_full()
             .w(px(8.))
             .when(side == PanelSide::Sidebar, |line| {
-                line.left(px(self.sidebar_width - 4.))
+                // The sidebar card floats SPACE_COMPACT away from the content
+                // card; the splitter rides the boundary between the cards.
+                line.left(px(self.sidebar_width + theme::space_compact() - 4.))
             })
             .when(side == PanelSide::Inspector, |line| {
-                line.right(px(self.inspector_width - 4.))
+                line.right(px(self.inspector_width + theme::space_compact() - 4.))
             })
             .cursor_col_resize()
             .flex()
@@ -37,7 +39,7 @@ impl FileAtlasShell {
             } else {
                 rgba(0)
             })
-            .hover(|style| style.bg(rgba((theme::accent() << 8) | 42)))
+            .workbench_hover_accent_surface()
             .child(div().w(px(2.)).h(px(24.)).rounded_full().bg(rgb(if active {
                 theme::accent()
             } else {

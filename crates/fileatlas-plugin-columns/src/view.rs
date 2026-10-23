@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use fileatlas_plugin_workspaces::ColumnLayout;
-use fileatlas_ui_bridge::{UiViewContribution, components, refresh, theme};
+use fileatlas_ui_bridge::{UiViewContribution, components, refresh};
 use gpui_kit::component::menu::{DropdownMenu as _, PopupMenuItem};
 use gpui_kit::*;
 
@@ -82,9 +82,7 @@ impl Render for ColumnToolbar {
                 ColumnLayout::Quad => gpui_kit::assets::IconName::Grid2x2,
             },
         )
-        .w(px(theme::ICON_BUTTON_SIZE
-            + theme::ICON_SIZE_SMALL
-            + theme::SPACE_1))
+
         .tooltip(fileatlas_ui_bridge::i18n::tr(
             "Column layout and active column",
         ))

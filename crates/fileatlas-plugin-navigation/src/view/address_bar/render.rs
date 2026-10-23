@@ -1,6 +1,9 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::Disableable;
+use gpui_kit::component::button::Button;
 
 fn action_button(
     id: &'static str,
@@ -10,11 +13,8 @@ fn action_button(
     action: R,
     cx: &mut Context<SidebarView>,
 ) -> Button {
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
-        .w(px(28.))
-        .h(px(28.))
         .icon(theme::small_icon(icon))
         .tooltip(fileatlas_ui_bridge::i18n::tr(label))
         .accessibility_label(fileatlas_ui_bridge::i18n::tr(label))
@@ -35,17 +35,10 @@ impl SidebarView {
             .h_flex()
             .flex_1()
             .min_w_0()
-            .h(px(30.))
             .items_center()
-            .gap(px(3.))
-            .rounded(px(5.))
-            .border_1()
-            .border_color(rgb(if self.address.error.is_some() {
-                theme::danger()
-            } else {
-                theme::control_box()
-            }))
-            .px(px(5.));
+            .gap(px(theme::space_standard()))
+            .workbench_control_frame(self.address.error.is_some())
+            .px(px(fileatlas_ui_bridge::theme::space_compact()));
         if self.address.editing {
             address = address
                 .child(
@@ -82,19 +75,22 @@ impl SidebarView {
                 for (i, crumb) in crumbs(path).into_iter().enumerate() {
                     if i > 0 {
                         trail = trail.child(
-                            theme::small_icon(IconName::ChevronRight)
-                                .text_color(rgb(theme::text_muted())),
+                            theme::small_icon(IconName::ChevronRight).workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                            ),
                         );
                     }
                     let target = crumb.path.clone();
                     trail = trail.child(
-                        Button::new(format!("navigation-address-crumb-{i}"))
-                            .ghost()
-                            .compact()
-                            .flex_shrink_0()
-                            .label(crumb.label)
-                            .tooltip(crumb.path)
-                            .on_click(cx.listener(move |view, _, window, cx| {
+                        fileatlas_ui_bridge::components::button(format!(
+                            "navigation-address-crumb-{i}"
+                        ))
+                        .ghost()
+                        .flex_shrink_0()
+                        .label(crumb.label)
+                        .tooltip(crumb.path)
+                        .on_click(cx.listener(
+                            move |view, _, window, cx| {
                                 view.apply_address_request(
                                     R::Crumb {
                                         path: target.clone(),
@@ -102,7 +98,8 @@ impl SidebarView {
                                     window,
                                     cx,
                                 )
-                            })),
+                            },
+                        )),
                     );
                 }
             } else {
@@ -110,8 +107,7 @@ impl SidebarView {
                     Location::Tags { included, excluded } => {
                         trail = trail.child(
                             div()
-                                .text_sm()
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr("Tags")),
                         );
                         if let Some(snapshot) = self.snapshot.as_ref().ok() {
@@ -137,8 +133,7 @@ impl SidebarView {
                     _ => {
                         trail = trail.child(
                             div()
-                                .text_sm()
-                                .text_color(rgb(theme::text_secondary()))
+                                .workbench_assistant()
                                 .child(fileatlas_ui_bridge::i18n::tr("Favorites")),
                         );
                     }
@@ -157,9 +152,8 @@ impl SidebarView {
                         })),
                 )
                 .child(
-                    Button::new("navigation-address-edit")
+                    fileatlas_ui_bridge::components::button("navigation-address-edit")
                         .ghost()
-                        .compact()
                         .icon(theme::small_icon(IconName::Ellipsis))
                         .accessibility_label(fileatlas_ui_bridge::i18n::tr("Edit folder address"))
                         .tooltip(fileatlas_ui_bridge::i18n::tr("Edit folder address"))
@@ -170,20 +164,18 @@ impl SidebarView {
         }
         if let Some(error) = &self.address.error {
             address = address.child(
-                Button::new("navigation-address-error")
+                fileatlas_ui_bridge::components::button("navigation-address-error")
                     .ghost()
-                    .compact()
                     .label("!")
-                    .text_color(rgb(theme::danger_text()))
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Danger)
                     .tooltip(error.clone()),
             );
         }
         div()
             .h_flex()
-            .w_full()
             .min_w_0()
             .items_center()
-            .gap(px(3.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .track_focus(&self.address.focus)
             .on_key_down(cx.listener(|view, event: &KeyDownEvent, window, cx| {
                 let action = if event.keystroke.key == "escape" && view.address.editing {

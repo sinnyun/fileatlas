@@ -1,7 +1,7 @@
 //! Shared filter popover controls.
 use super::*;
+use gpui_kit::component::button::Button;
 use std::sync::{Arc, Mutex};
-const POPOVER_ROW_HEIGHT: f32 = 30.;
 const RATING_SLIDER_WIDTH: f32 = 224.;
 const RATING_SLIDER_PAD: f32 = 9.;
 
@@ -14,37 +14,30 @@ pub(super) fn chip(
     active: bool,
     clear: Option<AnyElement>,
 ) -> Button {
-    let text_color = if active {
-        theme::accent_text()
-    } else {
-        theme::text_secondary()
-    };
     let trailing = clear.unwrap_or_else(|| {
         div()
-            .ml(px(2.))
-            .child(theme::small_icon(IconName::ChevronDown).text_color(rgb(theme::text_muted())))
+            .ml(px(fileatlas_ui_bridge::theme::space_compact()))
+            .child(
+                theme::small_icon(IconName::ChevronDown)
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted),
+            )
             .into_any_element()
     });
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
-        .h(px(theme::FILTER_CHIP_HEIGHT))
-        .px(px(7.))
-        .rounded(px(theme::ROUND_SM))
-        .when(active, |button| button.bg(rgba(theme::fill_subtle())))
-        .text_size(px(theme::FONT_SIZE_BUTTON))
-        .text_color(rgb(text_color))
+        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+        .selected(active)
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap(px(4.))
-                .child(theme::small_icon(icon).text_color(rgb(if active {
-                    theme::accent_text()
-                } else {
-                    theme::text_muted()
-                })))
-                .child(div().child(fileatlas_ui_bridge::i18n::tr(&label)))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                .child(theme::small_icon(icon))
+                .child(
+                    div()
+                        .workbench_body()
+                        .child(fileatlas_ui_bridge::i18n::tr(&label)),
+                )
                 .child(trailing),
         )
 }
@@ -57,10 +50,13 @@ pub(super) fn clear_control(
 ) -> AnyElement {
     div()
         .id(id)
-        .ml(px(2.))
+        .ml(px(fileatlas_ui_bridge::theme::space_compact()))
         .cursor_pointer()
         .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-        .child(theme::small_icon(IconName::X).text_color(rgb(theme::accent_text())))
+        .child(
+            theme::small_icon(IconName::X)
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::AccentText),
+        )
         .on_click(move |event, window, cx| {
             cx.stop_propagation();
             clear(event, window, cx);
@@ -70,10 +66,9 @@ pub(super) fn clear_control(
 
 pub(super) fn popover_title(title: &str) -> Div {
     div()
-        .px(px(6.))
-        .pb(px(6.))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::text_secondary()))
+        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+        .pb(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(title))
 }
 
@@ -83,8 +78,7 @@ pub(super) fn row_label(label: impl Into<String>) -> Div {
         .min_w_0()
         .overflow_hidden()
         .text_ellipsis()
-        .text_size(px(theme::FONT_SIZE_BUTTON))
-        .text_color(rgb(theme::text_primary()))
+        .workbench_body()
         .child(label.into())
 }
 
@@ -93,20 +87,18 @@ pub(super) fn menu_row(id: impl Into<ElementId>) -> Stateful<Div> {
         .id(id)
         .h_flex()
         .items_center()
-        .gap(px(8.))
-        .h(px(POPOVER_ROW_HEIGHT))
-        .px(px(6.))
-        .rounded(px(theme::ROUND_SM))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
         .cursor_pointer()
-        .hover(|style| style.bg(rgba(theme::fill_hover())))
+        .workbench_hover_surface()
 }
 
 pub(super) fn empty_hint(message: &str) -> Div {
     div()
-        .px(px(6.))
-        .py(px(8.))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::text_muted()))
+        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(message))
 }
 
@@ -151,27 +143,18 @@ pub(super) fn segment_pair(
     div()
         .h_flex()
         .w_full()
-        .gap(px(4.))
-        .pb(px(6.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .pb(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(include)
         .child(exclude)
 }
 
 fn segment(id: &'static str, label: &'static str, selected: bool) -> Button {
-    let text_color = if selected {
-        theme::contrasting_text(theme::accent())
-    } else {
-        theme::text_secondary()
-    };
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
         .flex_1()
-        .h(px(26.))
-        .rounded(px(theme::ROUND_SM))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(text_color))
-        .when(selected, |button| button.bg(rgb(theme::accent())))
+        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+        .selected(selected)
         .label(fileatlas_ui_bridge::i18n::tr(label))
 }
 
@@ -211,28 +194,14 @@ pub(super) fn rating_slider(
             .absolute()
             .size_full(),
         )
-        .child(
-            div()
-                .absolute()
-                .top(px(9.5))
-                .left(px(RATING_SLIDER_PAD))
-                .w(px(track))
-                .h(px(3.))
-                .rounded_full()
-                .bg(rgba(theme::track_highlight())),
-        )
-        .child(
-            div()
-                .absolute()
-                .top(px(9.5))
-                .left(px(low))
-                .w(px((high - low).max(0.)))
-                .h(px(3.))
-                .rounded_full()
-                .bg(rgb(theme::accent())),
-        )
-        .child(slider_thumb(low))
-        .child(slider_thumb(high))
+        .child(fileatlas_ui_bridge::components::range_slider_visual(
+            RATING_SLIDER_PAD,
+            RATING_SLIDER_PAD + track,
+            low,
+            high,
+            true,
+            true,
+        ))
         .on_mouse_down(MouseButton::Left, move |event: &MouseDownEvent, _, cx| {
             let x = f32::from(event.position.x - down_bounds.lock().unwrap().origin.x);
             let target = if (x - low).abs() < (x - high).abs() {
@@ -263,30 +232,6 @@ pub(super) fn rating_slider(
         })
 }
 
-fn slider_thumb(x: f32) -> Div {
-    div()
-        .absolute()
-        .left(px(x - 8.))
-        .top(px(3.))
-        .size(px(16.))
-        .rounded_full()
-        .bg(rgba(theme::track_shadow()))
-        .child(
-            div()
-                .absolute()
-                .inset(px(1.5))
-                .rounded_full()
-                .bg(rgb(theme::surface_elevated())),
-        )
-        .child(
-            div()
-                .absolute()
-                .inset(px(4.8))
-                .rounded_full()
-                .bg(rgb(theme::accent())),
-        )
-}
-
 /// Both native triggers and plugin MCP control the same Popover open state.
 pub(super) fn controlled_popover(
     view: &FileManagerView,
@@ -294,7 +239,7 @@ pub(super) fn controlled_popover(
     id: &'static str,
     name: &'static str,
 ) -> Popover {
-    Popover::new(id)
+    fileatlas_ui_bridge::components::popover(id)
         .open(view.surfaces.value("file_manager.popover").as_deref() == Some(name))
         .on_open_change(move |open, _, cx| {
             let _ = weak.update(cx, |this, cx| {

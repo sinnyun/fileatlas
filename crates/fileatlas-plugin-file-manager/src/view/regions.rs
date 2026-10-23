@@ -1,7 +1,10 @@
 //! Projections of the single FileManager entity into the source window bands.
 //! Source: main.rs:1007-1277 and ui/filterbar.rs:15-821.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement as _;
 
@@ -35,11 +38,10 @@ impl Render for FileManagerRegion {
                 Region::Size => div()
                     .h_flex()
                     .items_center()
-                    .gap_1()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(
-                        Button::new("file_manager-open-folder")
+                        fileatlas_ui_bridge::components::button("file_manager-open-folder")
                             .ghost()
-                            .compact()
                             .icon(theme::icon(gpui_kit::assets::IconName::FolderOpen))
                             .tooltip(fileatlas_ui_bridge::i18n::tr("Open folder"))
                             .on_click(cx.listener(|view, _, _, cx| view.pick_browse_location(cx))),
@@ -156,14 +158,14 @@ impl FileManagerView {
         self.refresh_locale(window, cx);
         let search_field = div()
             .w_full()
-            .min_w(px(220.))
-            .max_w(px(280.))
-            .h(px(32.))
+            .min_w(px(theme::CONTROL_WIDTH_STANDARD))
+            .max_w(px(theme::CONTROL_WIDTH_WIDE))
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_STANDARD)))
             .child(fileatlas_ui_bridge::components::search_input(&self.search));
         let search_bar = div()
             .h_flex()
             .items_center()
-            .gap(px(6.))
+            .gap(px(theme::space_standard()))
             .child(search_field)
             .child(self.render_search_location(cx))
             .child(filter_row::search_scope_popover(self, cx));
@@ -208,23 +210,25 @@ impl FileManagerView {
             .h_flex()
             .w_full()
             .items_center()
-            .gap(px(8.))
-            .text_size(px(theme::FONT_SIZE_SMALL))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_assistant()
+            .child(div().child(count_label))
             .child(
                 div()
-                    .text_color(rgb(theme::text_secondary()))
-                    .child(count_label),
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
+                    .child("·"),
             )
-            .child(div().text_color(rgb(theme::text_muted())).child("·"))
-            .child(div().text_color(rgb(theme::text_secondary())).child(
-                fileatlas_ui_bridge::i18n::tr_args(
-                    "{count} selected",
-                    &[(
-                        "count",
-                        (n + usize::from(self.selected_directory.is_some())).to_string(),
-                    )],
-                ),
-            ));
+            .child(
+                div()
+                    .workbench_assistant()
+                    .child(fileatlas_ui_bridge::i18n::tr_args(
+                        "{count} selected",
+                        &[(
+                            "count",
+                            (n + usize::from(self.selected_directory.is_some())).to_string(),
+                        )],
+                    )),
+            );
         if let Some(error) = self
             .snapshot
             .as_ref()
@@ -236,7 +240,7 @@ impl FileManagerView {
                     .min_w_0()
                     .overflow_hidden()
                     .text_ellipsis()
-                    .text_color(rgb(theme::danger_text()))
+                    .workbench_assistant()
                     .child(error.clone()),
             );
         }
@@ -244,15 +248,14 @@ impl FileManagerView {
         if directory_status.2 {
             row = row
                 .child(gpui_kit::component::spinner::Spinner::new())
-                .child(div().child(format!(
+                .child(div().workbench_assistant().child(format!(
                     "{}: {}",
                     fileatlas_ui_bridge::i18n::tr("Loading folder…"),
                     directory_status.3
                 )))
                 .child(
-                    Button::new("directory-cancel")
+                    fileatlas_ui_bridge::components::button("directory-cancel")
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                         .on_click(cx.listener(|view, _, _, cx| {
                             view.service.cancel_directory();
@@ -266,7 +269,7 @@ impl FileManagerView {
                 .child(gpui_kit::component::spinner::Spinner::new())
                 .child(
                     div()
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr(&progress.phase)),
                 )
                 .child(
@@ -281,7 +284,7 @@ impl FileManagerView {
     fn render_tools(&mut self, cx: &mut Context<Self>) -> AnyElement {
         div()
             .v_flex()
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .w_full()
             .child(
                 tool_button(
@@ -352,12 +355,10 @@ impl FileManagerView {
             )
             .child(
                 div()
-                    .border_t_1()
-                    .border_color(rgba(theme::separator_light()))
-                    .mt(px(6.))
-                    .pt(px(6.))
-                    .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                    .mt(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("View")),
             )
             .children(
@@ -394,14 +395,11 @@ impl FileManagerView {
                 available_height
             };
             let mut card = div()
-                .v_flex()
                 .w(px(width))
                 .h(px(height))
                 .max_h(px(height))
                 .min_h_0()
                 .overflow_hidden()
-                .workbench_section()
-                .bg(rgb(theme::surface_modal()))
                 .child(
                     div()
                         .h_flex()
@@ -409,27 +407,21 @@ impl FileManagerView {
                         .justify_between()
                         .h(px(fileatlas_ui_bridge::panels::HEADER_HEIGHT))
                         .flex_shrink_0()
-                        .px_2()
-                        .gap_2()
-                        .border_b_1()
-                        .border_color(rgba(theme::separator_light()))
+                        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
+                        .child(div().workbench_body().child(fileatlas_ui_bridge::i18n::tr(
+                            if self.show_records {
+                                "Relink missing files"
+                            } else if showing_statistics {
+                                "Media Statistics"
+                            } else {
+                                "Bulk actions…"
+                            },
+                        )))
                         .child(
-                            div()
-                                .text_size(px(theme::FONT_SIZE_BODY))
-                                .font_semibold()
-                                .text_color(rgb(theme::text_primary()))
-                                .child(fileatlas_ui_bridge::i18n::tr(if self.show_records {
-                                    "Relink missing files"
-                                } else if showing_statistics {
-                                    "Media Statistics"
-                                } else {
-                                    "Bulk actions…"
-                                })),
-                        )
-                        .child(
-                            Button::new("file_manager-modal-close")
+                            fileatlas_ui_bridge::components::button("file_manager-modal-close")
                                 .ghost()
-                                .compact()
                                 .icon(theme::icon(gpui_kit::assets::IconName::X))
                                 .on_click(cx.listener(|this, _, _, cx| {
                                     this.show_records = false;
@@ -441,8 +433,8 @@ impl FileManagerView {
                                 })),
                         ),
                 )
-                .px(px(14.))
-                .pb(px(14.));
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .pb(px(fileatlas_ui_bridge::theme::space_expanded()));
             if self.show_records {
                 card = card.child(records::render(self, cx));
             } else if self.show_statistics {
@@ -455,18 +447,20 @@ impl FileManagerView {
                             .justify_end()
                             .flex_shrink_0()
                             .h(px(44.))
-                            .px(px(14.))
-                            .border_t_1()
-                            .border_color(rgba(theme::separator_light()))
+                            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                             .child(
-                                Button::new("file_manager-statistics-close")
-                                    .ghost()
-                                    .compact()
-                                    .label(fileatlas_ui_bridge::i18n::tr("Close"))
-                                    .on_click(cx.listener(|this, _, _, cx| {
+                                fileatlas_ui_bridge::components::button(
+                                    "file_manager-statistics-close",
+                                )
+                                .ghost()
+                                .label(fileatlas_ui_bridge::i18n::tr("Close"))
+                                .on_click(cx.listener(
+                                    |this, _, _, cx| {
                                         this.show_statistics = false;
                                         cx.notify();
-                                    })),
+                                    },
+                                )),
                             ),
                     );
             }
@@ -474,43 +468,25 @@ impl FileManagerView {
                 let bulk_height = (height - 58.).max(160.);
                 card = card.child(bulk_actions::render(self, width - 28., bulk_height, cx));
             }
-            root = root.child(
-                div()
-                    .absolute()
-                    .inset_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .bg(rgba(theme::shadow_overlay()))
-                    .child(card),
-            );
+            root = root.child(fileatlas_ui_bridge::components::modal_overlay(card));
         }
         if self.show_tag_picker && !self.selection.selected_media_ids.is_empty() {
             let picker_width = (f32::from(window.bounds().size.width) - 32.).min(690.);
             let picker_height = (f32::from(window.bounds().size.height) - 96.).clamp(360., 430.);
-            root = root.child(
+            root = root.child(fileatlas_ui_bridge::components::modal_overlay(
                 div()
-                    .absolute()
-                    .inset_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .bg(rgba(theme::scrim()))
-                    .child(
-                        div()
-                            .w(px(picker_width))
-                            .max_w(px(690.))
-                            .h(px(picker_height))
-                            .max_h(px((f32::from(window.bounds().size.height) - 48.).max(360.)))
-                            .overflow_hidden()
-                            .child(tagging_picker::render(
-                                self,
-                                picker_width,
-                                picker_height,
-                                cx,
-                            )),
-                    ),
-            );
+                    .w(px(picker_width))
+                    .max_w(px(690.))
+                    .h(px(picker_height))
+                    .max_h(px((f32::from(window.bounds().size.height) - 48.).max(360.)))
+                    .overflow_hidden()
+                    .child(tagging_picker::render(
+                        self,
+                        picker_width,
+                        picker_height,
+                        cx,
+                    )),
+            ));
         }
         if let Some(media_id) = self.media_actions_id {
             match self
@@ -520,16 +496,9 @@ impl FileManagerView {
                 .map(|(_, media)| media)
             {
                 Some(media) => {
-                    root = root.child(
-                        div()
-                            .absolute()
-                            .inset_0()
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .bg(rgba(theme::scrim()))
-                            .child(card_menu::render_requested(&media, cx)),
-                    );
+                    root = root.child(fileatlas_ui_bridge::components::modal_overlay(
+                        card_menu::render_requested(&media, cx),
+                    ));
                 }
                 None => self.media_actions_id = None,
             }
@@ -537,14 +506,10 @@ impl FileManagerView {
         root = self.selection_details(root, cx);
         if let Some(status) = &self.operation_status {
             root = root.child(
-                div()
+                fileatlas_ui_bridge::components::status_toast(div().child(status.clone()))
                     .absolute()
                     .right(px(12.))
-                    .bottom(px(48.))
-                    .p_2()
-                    .rounded_md()
-                    .bg(rgb(theme::surface_panel()))
-                    .child(status.clone()),
+                    .bottom(px(48.)),
             );
         }
         let failures = self
@@ -565,7 +530,7 @@ impl FileManagerView {
                             .max_h(px((f32::from(window.bounds().size.height) - 80.).max(160.)))
                             .overflow_y_scrollbar()
                             .v_flex()
-                            .gap_2()
+                            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                             .children(failures.into_iter().map(|failure| {
                                 super::writeback_failure::render(self, failure, cx)
                             })),
@@ -577,11 +542,8 @@ impl FileManagerView {
 }
 
 fn tool_button(id: &'static str, label: &str, icon: gpui_kit::assets::IconName) -> Button {
-    Button::new(id)
+    fileatlas_ui_bridge::components::button(id)
         .ghost()
-        .compact()
-        .w_full()
-        .h(px(30.))
         .justify_start()
         .icon(theme::icon(icon))
         .label(fileatlas_ui_bridge::i18n::tr(label))

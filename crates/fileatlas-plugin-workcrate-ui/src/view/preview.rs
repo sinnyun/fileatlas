@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
 
 pub(super) fn page_preview(card: &BoardCard, width: f32) -> gpui::AnyElement {
     let height = width * (card.board.height_pt / card.board.width_pt) as f32;
@@ -15,7 +16,7 @@ pub(super) fn page_preview(card: &BoardCard, width: f32) -> gpui::AnyElement {
             div()
                 .w(px(width))
                 .h(px(height))
-                .bg(rgb(theme::surface_faint()))
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                 .flex()
                 .items_center()
                 .justify_center()

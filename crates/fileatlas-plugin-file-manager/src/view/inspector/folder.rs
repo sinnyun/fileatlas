@@ -1,6 +1,7 @@
 //! Filesystem browsing details; counts come from the current projection.
 use super::*;
 use fileatlas_plugin_navigation::{NavigationService, NavigationUiRequest};
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 pub(super) fn render(
     folder: &contexts::FolderInfo,
@@ -22,8 +23,8 @@ pub(super) fn render(
         .v_flex()
         .w_full()
         .min_w_0()
-        .px(px(16.))
-        .pb(px(20.))
+        .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+        .pb(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(section_title("Folder details"))
         .child(detail_row(
             IconName::Folder,
@@ -38,14 +39,12 @@ pub(super) fn render(
             well()
                 .child(
                     div()
-                        .text_size(px(12.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .workbench_assistant()
                         .child(display_path(&folder.path)),
                 )
                 .child(
-                    Button::new("inspector-folder-copy")
+                    fileatlas_ui_bridge::components::button("inspector-folder-copy")
                         .ghost()
-                        .w_full()
                         .label(fileatlas_ui_bridge::i18n::tr("Copy path"))
                         .on_click(cx.listener(move |_, _, _, cx| {
                             cx.write_to_clipboard(ClipboardItem::new_string(copy_path.clone()))
@@ -66,10 +65,8 @@ pub(super) fn render(
         .child(inspector_divider())
         .child(section_title("Actions"))
         .child(
-            Button::new("inspector-folder-open")
+            fileatlas_ui_bridge::components::button("inspector-folder-open")
                 .outline()
-                .w_full()
-                .h(px(36.))
                 .icon(theme::icon(IconName::FolderOpen))
                 .label(fileatlas_ui_bridge::i18n::tr("Open folder"))
                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -85,10 +82,8 @@ pub(super) fn render(
         )
         .child(div().h(px(8.)).flex_shrink_0())
         .child(
-            Button::new("inspector-folder-refresh")
+            fileatlas_ui_bridge::components::button("inspector-folder-refresh")
                 .outline()
-                .w_full()
-                .h(px(36.))
                 .icon(theme::icon(IconName::RefreshCw))
                 .label(fileatlas_ui_bridge::i18n::tr("Refresh"))
                 .on_click(cx.listener(move |this, _, _, _| {

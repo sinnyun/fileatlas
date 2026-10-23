@@ -3,9 +3,10 @@ use crate::{
     content::{ContentKind, classify},
 };
 use fileatlas_plugin_database::{ClipboardCategoryRecord, ClipboardHistoryRecord};
-use fileatlas_ui_bridge::{UiSurfaceState, UiViewContribution, theme};
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use fileatlas_ui_bridge::{UiSurfaceState, UiViewContribution, components, theme};
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::input::{InputEvent, InputState, TextareaState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -55,26 +56,18 @@ struct ClipboardButton {
 }
 impl Render for ClipboardButton {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        div()
-            .id("clipboard-open-sidebar")
-            .v_flex()
-            .w(px(42.))
-            .h(px(54.))
-            .items_center()
-            .justify_center()
-            .gap(px(4.))
-            .rounded(px(6.))
-            .text_xs()
-            .text_color(rgb(theme::text_secondary()))
-            .hover(|s| s.bg(rgba(theme::fill_hover())))
-            .on_click(cx.listener(|this, _, _, _| {
-                if let Err(error) = this.panels.open(PANEL) {
-                    tracing::error!(%error, "could not open clipboard workbench");
-                }
-            }))
-            .child(icon(IconName::Clipboard, 18.))
-            .child("剪贴板")
-            .into_any_element()
+        components::rail_shortcut(
+            "clipboard-open-sidebar",
+            "剪贴板",
+            icon(IconName::Clipboard, 18.),
+            false,
+        )
+        .on_click(cx.listener(|this, _, _, _| {
+            if let Err(error) = this.panels.open(PANEL) {
+                tracing::error!(%error, "could not open clipboard workbench");
+            }
+        }))
+        .into_any_element()
     }
 }
 
@@ -345,11 +338,10 @@ impl Render for ClipboardPanel {
             .h_flex()
             .size_full()
             .min_h_0()
-            .gap(px(theme::PANEL_GAP))
-            .p(px(theme::PANEL_GAP))
-            .bg(rgb(background()))
-            .text_color(rgb(text()))
-            .text_size(px(theme::FONT_SIZE_BODY))
+            .gap(px(theme::space_standard()))
+            .p(px(theme::space_standard()))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Base)
+            .workbench_body()
             .child(self.sidebar(cx))
             .child(self.history(&ids, cx))
             .child(self.inspector(cx))

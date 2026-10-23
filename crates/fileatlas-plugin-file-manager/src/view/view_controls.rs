@@ -1,6 +1,7 @@
 //! Right-aligned view controls in the file_manager filter band.
 use super::*;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::prelude::FluentBuilder as _;
 
@@ -16,7 +17,7 @@ pub(super) fn modes(view: &FileManagerView, cx: &mut Context<FileManagerView>) -
         .h_flex()
         .flex_shrink_0()
         .items_center()
-        .gap(px(4.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .child(
             button("file_manager-layout-grid", IconName::LayoutGrid, "Grid")
                 .toggled(!view.list_layout)
@@ -38,7 +39,7 @@ pub(super) fn options(
         .h_flex()
         .flex_shrink_0()
         .items_center()
-        .gap(px(4.))
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .child(
             button(
                 "file_manager-descendants",

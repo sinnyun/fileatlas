@@ -51,7 +51,7 @@ pub(super) fn tags_chip(
         let mut panel = div()
             .v_flex()
             .w(px(250.))
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Tags"))
             .child(segment_pair(
                 "file_manager-tag-filter-include",
@@ -65,7 +65,7 @@ pub(super) fn tags_chip(
             ));
         let mut list = div()
             .v_flex()
-            .gap(px(1.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .max_h(px(240.))
             .overflow_y_scrollbar();
         if tags.is_empty() {
@@ -81,11 +81,13 @@ pub(super) fn tags_chip(
             let weak = weak.clone();
             list = list.child(
                 menu_row(format!("file_manager-filter-tag-{tag_id}"))
-                    .pl(px(6. + 12. * *depth as f32))
-                    .child(
-                        Checkbox::new(format!("file_manager-filter-tag-box-{tag_id}"))
-                            .checked(checked),
-                    )
+                    .pl(px(fileatlas_ui_bridge::theme::space_compact()
+                        + fileatlas_ui_bridge::theme::space_expanded()
+                            * *depth as f32))
+                    .child(fileatlas_ui_bridge::components::checkbox(
+                        format!("file_manager-filter-tag-box-{tag_id}"),
+                        checked,
+                    ))
                     .child(
                         fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
                             .color(tag.color.as_deref())
@@ -159,7 +161,7 @@ pub(super) fn extensions_chip(
         let mut panel = div()
             .v_flex()
             .w(px(280.))
-            .gap(px(2.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(popover_title("Extensions"))
             .child(segment_pair(
                 "file_manager-ext-filter-include",
@@ -173,7 +175,7 @@ pub(super) fn extensions_chip(
             ));
         let mut list = div()
             .v_flex()
-            .gap(px(1.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .max_h(px(240.))
             .overflow_y_scrollbar();
         if extensions.is_empty() {
@@ -189,10 +191,10 @@ pub(super) fn extensions_chip(
             let weak = weak.clone();
             list = list.child(
                 menu_row(format!("file_manager-ext-filter-{extension}"))
-                    .child(
-                        Checkbox::new(format!("file_manager-ext-filter-box-{extension}"))
-                            .checked(checked),
-                    )
+                    .child(fileatlas_ui_bridge::components::checkbox(
+                        format!("file_manager-ext-filter-box-{extension}"),
+                        checked,
+                    ))
                     .child(row_label(format!(
                         "{} (.{extension})",
                         extension.to_uppercase()
@@ -205,16 +207,19 @@ pub(super) fn extensions_chip(
             );
         }
         panel = panel.child(list).child(
-            div().h_flex().justify_end().pt(px(4.)).child(
-                Button::new("file_manager-ext-filter-clear-all")
-                    .ghost()
-                    .compact()
-                    .label(fileatlas_ui_bridge::i18n::tr("Clear all"))
-                    .on_click(move |_, window, cx| {
-                        let _ = weak.update(cx, |this, cx| this.clear_extensions(cx));
-                        popover.update(cx, |state, cx| state.dismiss(window, cx));
-                    }),
-            ),
+            div()
+                .h_flex()
+                .justify_end()
+                .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+                .child(
+                    fileatlas_ui_bridge::components::button("file_manager-ext-filter-clear-all")
+                        .ghost()
+                        .label(fileatlas_ui_bridge::i18n::tr("Clear all"))
+                        .on_click(move |_, window, cx| {
+                            let _ = weak.update(cx, |this, cx| this.clear_extensions(cx));
+                            popover.update(cx, |state, cx| state.dismiss(window, cx));
+                        }),
+                ),
         );
         panel
     })

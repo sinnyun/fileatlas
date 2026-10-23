@@ -600,16 +600,11 @@ control_ui key_press 在 value 中只接受 enter、escape、ctrl-l、alt-left�
 已签入的脚本：validate-address-bar.cjs（语义路由 + 实际 Enter/Escape）、validate-address-pointer.cjs（真实指针控制）、validate-address-restart.cjs 与 prepare-address-tag-restart.cjs（作用域稳定性）。参见 docs/validation-ui/2026-10-16-address/README.md。
 
 
-## 区域分离探针与控件（2026-10-16）
+## 区域分离探针与控件（2026-10-16；2026-10-23 移除）
 
-`get_ui_state.region_separation` 报告直接读取自 `theme::region_depth_name()`
-的主题令牌（`border`/`shadow`），因此测试观察绘制时辅助函数
-实际使用的值，而不是重新读取 JSON 文件。受变更守卫的
-`control_ui {action:"region_separation", value:"border"|"shadow"}` 从 Cordis 上下文解析
-`fileatlas_plugin_settings::SettingsService` 并调用与 Settings 视图使用的相同
-`update` 路径；未知值在任何写入之前被拒绝。
-它不直接触及 GPUI，因此实时重绘仍然来自 Settings
-视图的 `cx.refresh_windows()`；真实下拉菜单的指针证据记录在
+`get_ui_state.region_separation` 字段与 `control_ui` 的 `region_separation`
+动作已随底层 `RegionDepth` 令牌一同移除：统一的 Fluent 轻质感浮起样式使
+所有区块恒为带阴影的浮起卡片。历史验证证据保留在
 docs/validation-ui/2026-10-16-region-separation/README.md。
 
 ## 设置软件检查（2026-10-17）

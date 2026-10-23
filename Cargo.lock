@@ -3135,6 +3135,7 @@ version = "0.1.0"
 dependencies = [
  "cordis-rs",
  "gpui-kit",
+ "serde",
  "serde_json",
  "tokio",
  "tracing",

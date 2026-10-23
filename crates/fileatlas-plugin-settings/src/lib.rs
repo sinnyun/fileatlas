@@ -110,6 +110,7 @@ impl SettingsService {
     /// Write the source-compatible JSON, then republish the theme tokens it owns so
     /// every writer (Settings view, MCP, future panels) applies the same state.
     fn persist(&self, settings: &Settings) -> Result<(), SettingsServiceError> {
+        fileatlas_ui_bridge::theme::set_ui_density(&settings.ui_density);
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -135,7 +136,10 @@ impl SettingsService {
         } else {
             fileatlas_ui_bridge::theme::ColorMode::Dark
         });
-        fileatlas_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
+        fileatlas_ui_bridge::theme::set_geometry_audit_enabled(settings.show_ui_audit_frames);
+        fileatlas_ui_bridge::theme::set_typography_audit_enabled(
+            settings.show_typography_audit_colors,
+        );
         Ok(())
     }
 }
@@ -220,6 +224,11 @@ impl Plugin for SettingsPlugin {
         let session = context
             .try_service::<fileatlas_plugin_session::SessionService>()
             .ok();
+        fileatlas_ui_bridge::theme::set_ui_density(&settings.ui_density);
+        fileatlas_ui_bridge::theme::set_geometry_audit_enabled(settings.show_ui_audit_frames);
+        fileatlas_ui_bridge::theme::set_typography_audit_enabled(
+            settings.show_typography_audit_colors,
+        );
         let json =
             settings
                 .theme_file
@@ -240,7 +249,6 @@ impl Plugin for SettingsPlugin {
         } else {
             fileatlas_ui_bridge::theme::ColorMode::Dark
         });
-        fileatlas_ui_bridge::theme::set_region_depth_name(&settings.region_separation);
         let publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| SettingsPluginError::Publish(error.to_string()))?;

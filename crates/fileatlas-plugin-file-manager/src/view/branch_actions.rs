@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 use gpui_kit::base::Disableable;
 use gpui_kit::component::button::ButtonVariants;
 
@@ -13,7 +15,7 @@ pub(super) fn render_history_branches(
         .v_flex()
         .w_full()
         .min_w_0()
-        .gap(px(8.))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(branch_section_title("Branches"));
     let graph = view
         .history_branches
@@ -23,14 +25,14 @@ pub(super) fn render_history_branches(
     panel = panel.child(
         div()
             .h_flex()
-            .gap(px(6.))
+            .gap(px(theme::space_standard()))
             .child(
                 fileatlas_ui_bridge::components::text_input(&view.history_branch_name)
                     .flex_1()
                     .min_w_0(),
             )
             .child(
-                Button::new("inspector-history-branch-create")
+                fileatlas_ui_bridge::components::button("inspector-history-branch-create")
                     .outline()
                     .label("Create")
                     .disabled(
@@ -59,65 +61,55 @@ pub(super) fn render_history_branches(
                     div()
                         .v_flex()
                         .w_full()
-                        .gap(px(5.))
-                        .p(px(8.))
-                        .rounded(px(7.))
-                        .border_1()
-                        .border_color(rgba(if is_current {
-                            (theme::accent() << 8) | 0x80
-                        } else {
-                            theme::separator_light()
-                        }))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_card(is_current)
                         .child(
                             div()
                                 .h_flex()
                                 .justify_between()
-                                .child(
-                                    div()
-                                        .text_color(rgb(theme::text_primary()))
-                                        .child(name.clone()),
-                                )
-                                .child(
-                                    div()
-                                        .text_xs()
-                                        .text_color(rgb(theme::text_secondary()))
-                                        .child(if is_current { "Current" } else { "Branch" }),
-                                ),
+                                .child(div().workbench_body().child(name.clone()))
+                                .child(div().workbench_assistant().child(if is_current {
+                                    "Current"
+                                } else {
+                                    "Branch"
+                                })),
                         )
                         .child(
                             div()
                                 .h_flex()
-                                .gap(px(5.))
+                                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                                 .child(
-                                    Button::new(format!("inspector-history-branch-switch-{index}"))
-                                        .outline()
-                                        .compact()
-                                        .label("Switch")
-                                        .disabled(
-                                            view.history_busy || is_current || pending.is_some(),
-                                        )
-                                        .on_click(cx.listener(move |view, _, _, cx| {
+                                    fileatlas_ui_bridge::components::button(format!(
+                                        "inspector-history-branch-switch-{index}"
+                                    ))
+                                    .outline()
+                                    .label("Switch")
+                                    .disabled(view.history_busy || is_current || pending.is_some())
+                                    .on_click(cx.listener(
+                                        move |view, _, _, cx| {
                                             view.switch_history_branch(&switch_name, cx)
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    Button::new(format!("inspector-history-branch-merge-{index}"))
-                                        .outline()
-                                        .compact()
-                                        .label("Merge into current")
-                                        .disabled(
-                                            view.history_busy || is_current || pending.is_some(),
-                                        )
-                                        .on_click(cx.listener(move |view, _, _, cx| {
+                                    fileatlas_ui_bridge::components::button(format!(
+                                        "inspector-history-branch-merge-{index}"
+                                    ))
+                                    .outline()
+                                    .label("Merge into current")
+                                    .disabled(view.history_busy || is_current || pending.is_some())
+                                    .on_click(cx.listener(
+                                        move |view, _, _, cx| {
                                             view.merge_history_branch(&merge_name, cx)
-                                        })),
+                                        },
+                                    )),
                                 )
                                 .child(
-                                    Button::new(format!(
+                                    fileatlas_ui_bridge::components::button(format!(
                                         "inspector-history-branch-archive-{index}"
                                     ))
                                     .ghost()
-                                    .compact()
                                     .label("Archive")
                                     .disabled(view.history_busy || is_current || pending.is_some())
                                     .on_click(cx.listener(
@@ -133,10 +125,14 @@ pub(super) fn render_history_branches(
                 panel = panel.child(
                     div()
                         .v_flex()
-                        .gap(px(6.))
-                        .p(px(8.))
-                        .rounded(px(7.))
-                        .bg(rgba((theme::warning() << 8) | 0x20))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                        .workbench_surface(
+                            fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                                (theme::warning() << 8) | 0x20,
+                            ),
+                        )
                         .child(branch_section_title("Merge conflicts"))
                         .child(format!(
                             "{} into {}: {}",
@@ -147,36 +143,39 @@ pub(super) fn render_history_branches(
                         .child(
                             div()
                                 .h_flex()
-                                .gap(px(5.))
+                                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                                 .child(
-                                    Button::new("inspector-history-merge-ours")
-                                        .outline()
-                                        .compact()
-                                        .label("Keep current")
-                                        .disabled(view.history_busy)
-                                        .on_click(cx.listener(|view, _, _, cx| {
-                                            view.resolve_history_merge("ours", cx)
-                                        })),
+                                    fileatlas_ui_bridge::components::button(
+                                        "inspector-history-merge-ours",
+                                    )
+                                    .outline()
+                                    .label("Keep current")
+                                    .disabled(view.history_busy)
+                                    .on_click(cx.listener(
+                                        |view, _, _, cx| view.resolve_history_merge("ours", cx),
+                                    )),
                                 )
                                 .child(
-                                    Button::new("inspector-history-merge-theirs")
-                                        .outline()
-                                        .compact()
-                                        .label("Use incoming")
-                                        .disabled(view.history_busy)
-                                        .on_click(cx.listener(|view, _, _, cx| {
-                                            view.resolve_history_merge("theirs", cx)
-                                        })),
+                                    fileatlas_ui_bridge::components::button(
+                                        "inspector-history-merge-theirs",
+                                    )
+                                    .outline()
+                                    .label("Use incoming")
+                                    .disabled(view.history_busy)
+                                    .on_click(cx.listener(
+                                        |view, _, _, cx| view.resolve_history_merge("theirs", cx),
+                                    )),
                                 )
                                 .child(
-                                    Button::new("inspector-history-merge-abort")
-                                        .ghost()
-                                        .compact()
-                                        .label("Abort")
-                                        .disabled(view.history_busy)
-                                        .on_click(cx.listener(|view, _, _, cx| {
-                                            view.abort_history_merge(cx)
-                                        })),
+                                    fileatlas_ui_bridge::components::button(
+                                        "inspector-history-merge-abort",
+                                    )
+                                    .ghost()
+                                    .label("Abort")
+                                    .disabled(view.history_busy)
+                                    .on_click(
+                                        cx.listener(|view, _, _, cx| view.abort_history_merge(cx)),
+                                    ),
                                 ),
                         ),
                 );
@@ -347,18 +346,15 @@ fn branch_section_title(title: &str) -> Div {
         .w_full()
         .items_center()
         .justify_between()
-        .py(px(6.))
-        .font_family(theme::SEMIBOLD_FONT_FAMILY)
-        .text_size(px(14.))
-        .text_color(rgb(theme::text_primary()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_title()
         .child(fileatlas_ui_bridge::i18n::tr(title))
 }
 
 fn branch_note(message: &str) -> Div {
     div()
         .w_full()
-        .py(px(6.))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::text_secondary()))
+        .py(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(message))
 }

@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
 impl WorkCratePanel {
@@ -10,8 +12,8 @@ impl WorkCratePanel {
         div()
             .h_flex()
             .items_center()
-            .h(px(32.))
-            .gap_1()
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_STANDARD)))
+            .gap(px(theme::space_standard()))
             .child(
                 super::tracking::control(
                     "field-edit-input",
@@ -23,9 +25,8 @@ impl WorkCratePanel {
             )
             .child(super::tracking::control(
                 "field-edit-save",
-                Button::new("workcrate-edit-save")
+                fileatlas_ui_bridge::components::button("workcrate-edit-save")
                     .primary()
-                    .compact()
                     .label(if saving { "保存中" } else { "保存" })
                     .disabled(self.busy || saving)
                     .on_click(cx.listener(|view, _, _, cx| view.save_edit(cx))),
@@ -33,9 +34,8 @@ impl WorkCratePanel {
             ))
             .child(super::tracking::control(
                 "field-edit-cancel",
-                Button::new("workcrate-edit-cancel")
+                fileatlas_ui_bridge::components::button("workcrate-edit-cancel")
                     .ghost()
-                    .compact()
                     .label("取消")
                     .on_click(cx.listener(|view, _, _, cx| {
                         view.editing = None;
@@ -66,14 +66,18 @@ impl WorkCratePanel {
         };
         // The row keeps one height whether it shows a value or an editor, so committing or
         // cancelling a field never reflows the panel around it.
-        let row = div().h_flex().items_center().h(px(32.)).gap_2().child(
-            div()
-                .w(px(72.))
-                .flex_shrink_0()
-                .text_size(px(12.))
-                .text_color(rgb(theme::text_secondary()))
-                .child(label.to_owned()),
-        );
+        let row = div()
+            .h_flex()
+            .items_center()
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_STANDARD)))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .child(
+                div()
+                    .w(px(72.))
+                    .flex_shrink_0()
+                    .workbench_assistant()
+                    .child(label.to_owned()),
+            );
         if editing {
             return row
                 .child(
@@ -87,9 +91,8 @@ impl WorkCratePanel {
                 )
                 .child(super::tracking::control(
                     "field-edit-save",
-                    Button::new("workcrate-edit-save")
+                    fileatlas_ui_bridge::components::button("workcrate-edit-save")
                         .primary()
-                        .compact()
                         .label(if saving { "保存中" } else { "保存" })
                         .disabled(self.busy || saving)
                         .on_click(cx.listener(|view, _, _, cx| view.save_edit(cx))),
@@ -97,9 +100,8 @@ impl WorkCratePanel {
                 ))
                 .child(super::tracking::control(
                     "field-edit-cancel",
-                    Button::new("workcrate-edit-cancel")
+                    fileatlas_ui_bridge::components::button("workcrate-edit-cancel")
                         .ghost()
-                        .compact()
                         .label("取消")
                         .on_click(cx.listener(|view, _, _, cx| {
                             view.editing = None;
@@ -119,9 +121,8 @@ impl WorkCratePanel {
         let project_id = self.selected_project.clone();
         let selected = value.clone();
         let mut row = row.child(
-            Button::new(format!("field-{id}-{key}"))
+            fileatlas_ui_bridge::components::button(format!("field-{id}-{key}"))
                 .outline()
-                .compact()
                 .flex_1()
                 .min_w_0()
                 .label(displayed)
@@ -136,10 +137,8 @@ impl WorkCratePanel {
             let weak = cx.entity().downgrade();
             row = row.child(super::tracking::control(
                 &format!("preset-{key}"),
-                Button::new(format!("preset-{id}-{key}"))
+                fileatlas_ui_bridge::components::button(format!("preset-{id}-{key}"))
                     .outline()
-                    .compact()
-                    .w(px(32.))
                     .label("⌄")
                     .disabled(self.busy || saving)
                     .dropdown_menu(move |mut menu, _, _| {
@@ -196,13 +195,12 @@ impl WorkCratePanel {
         let id = &board.id;
         let mut content_body = div()
             .v_flex()
-            .gap_1()
-            .children(card.error.as_ref().map(|error| {
-                div()
-                    .text_size(px(11.))
-                    .text_color(rgb(theme::danger_text()))
-                    .child(error.clone())
-            }))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .children(
+                card.error
+                    .as_ref()
+                    .map(|error| div().workbench_assistant().child(error.clone())),
+            )
             .child(self.field(
                 id,
                 "local",
@@ -234,10 +232,8 @@ impl WorkCratePanel {
             .child(
                 super::tracking::control(
                     "page-add-field",
-                    Button::new("page-add-field")
+                    fileatlas_ui_bridge::components::button("page-add-field")
                         .ghost()
-                        .compact()
-                        .w_full()
                         .label("＋ 新增物料参数行")
                         .on_click(cx.listener(move |view, _, window, cx| {
                             view.begin_edit(target.clone(), "new", "", window, cx)
@@ -245,14 +241,13 @@ impl WorkCratePanel {
                     &self.surfaces,
                 )
                 .w_full()
-                .rounded(px(6.))
-                .bg(rgb(theme::surface_faint())),
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint),
             )
             .when(adding, |el| {
                 el.child(
                     div()
-                        .text_size(px(11.))
-                        .text_color(rgb(theme::text_muted()))
+                        .workbench_assistant()
                         .child("输入参数名称，保存后即可填写内容"),
                 )
                 .child(self.edit_row(cx))
@@ -264,8 +259,8 @@ impl WorkCratePanel {
             .child(super::tracking::measure("inspector", self.surfaces.clone()))
             .v_flex()
             .flex_shrink_0()
-            .gap_3()
-            .p_3()
+            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(section_card("页面内容", "同步物料栏", content_body))
             .into_any_element()
     }
@@ -275,32 +270,21 @@ pub(super) fn section_card(label: &str, caption: &str, body: gpui::Div) -> gpui:
     div()
         .v_flex()
         .flex_shrink_0()
-        .gap_2()
-        .p(px(10.))
-        .rounded(px(10.))
-        .border_1()
-        .border_color(rgb(theme::separator()))
-        .bg(rgb(theme::surface_card()))
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+        .p(px(fileatlas_ui_bridge::theme::space_standard()))
+        .workbench_section()
         .child(
             div()
                 .h_flex()
                 .items_center()
-                .gap_2()
-                .child(div().size(px(6.)).rounded_full().bg(rgb(theme::accent())))
-                .child(
-                    div()
-                        .text_size(px(13.))
-                        .font_semibold()
-                        .text_color(rgb(theme::text_primary()))
-                        .child(label.to_owned()),
-                )
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .child(fileatlas_ui_bridge::components::status_dot(
+                    6.,
+                    fileatlas_ui_bridge::components::StatusTone::Accent,
+                ))
+                .child(div().workbench_body().child(label.to_owned()))
                 .child(div().flex_1())
-                .child(
-                    div()
-                        .text_size(px(10.))
-                        .text_color(rgb(theme::text_muted()))
-                        .child(caption.to_owned()),
-                ),
+                .child(div().workbench_assistant().child(caption.to_owned())),
         )
         .child(body)
 }

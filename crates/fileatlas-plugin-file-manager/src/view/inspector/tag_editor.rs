@@ -2,6 +2,7 @@
 use super::*;
 use fileatlas_plugin_database::Tag;
 use fileatlas_plugin_navigation::NavigationService;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 #[derive(Clone)]
 pub(crate) struct TagDraft {
@@ -30,18 +31,12 @@ pub(super) fn render(
     }
     let draft = view.inspector_tag_draft.as_ref().unwrap().clone();
     well()
-        .gap(px(10.))
+        .gap(px(theme::space_standard()))
         .child(label("Tag name"))
         .child(
-            div()
-                .w_full()
-                .rounded(px(6.))
-                .border_1()
-                .border_color(rgba(theme::region_edge()))
-                .bg(rgb(theme::surface_panel()))
-                .child(
-                    fileatlas_ui_bridge::components::text_input(&view.inspector_tag_name).w_full(),
-                ),
+            div().w_full().workbench_control_surface(false).child(
+                fileatlas_ui_bridge::components::text_input(&view.inspector_tag_name).w_full(),
+            ),
         )
         .child(label("Color"))
         .child(swatches(&draft, cx))
@@ -49,10 +44,8 @@ pub(super) fn render(
         .child(icons(&draft, cx))
         .child(visibility_toggle(&draft, cx))
         .child(
-            Button::new("file_manager-inspector-confirm-tag")
+            fileatlas_ui_bridge::components::button("file_manager-inspector-confirm-tag")
                 .primary()
-                .w_full()
-                .h(px(34.))
                 .label(fileatlas_ui_bridge::i18n::tr("Confirm changes"))
                 .on_click(cx.listener(|this, _, _, cx| confirm(this, cx))),
         )
@@ -60,13 +53,16 @@ pub(super) fn render(
 
 fn label(text: &str) -> Div {
     div()
-        .text_size(px(12.))
-        .text_color(rgb(theme::text_secondary()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(text))
 }
 
 fn swatches(draft: &TagDraft, cx: &mut Context<FileManagerView>) -> Div {
-    let mut row = div().h_flex().w_full().flex_wrap().gap(px(7.));
+    let mut row = div()
+        .h_flex()
+        .w_full()
+        .flex_wrap()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()));
     for tint in [
         theme::accent(),
         theme::danger(),
@@ -83,35 +79,28 @@ fn swatches(draft: &TagDraft, cx: &mut Context<FileManagerView>) -> Div {
             .as_deref()
             .is_some_and(|c| c.eq_ignore_ascii_case(&color));
         row = row.child(
-            div()
-                .id(format!("file_manager-inspector-color-{color}"))
-                .size(px(27.))
-                .flex_shrink_0()
-                .flex()
-                .items_center()
-                .justify_center()
-                .rounded_full()
-                .border_1()
-                .border_color(if selected {
-                    rgb(theme::text_primary())
-                } else {
-                    rgba(theme::separator_light())
-                })
-                .cursor_pointer()
-                .child(div().size(px(17.)).rounded_full().bg(rgb(value)))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if let Some(draft) = &mut this.inspector_tag_draft {
-                        draft.color = Some(color.clone());
-                    }
-                    cx.notify();
-                })),
+            fileatlas_ui_bridge::components::color_swatch(
+                format!("file_manager-inspector-color-{color}"),
+                value,
+                selected,
+            )
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if let Some(draft) = &mut this.inspector_tag_draft {
+                    draft.color = Some(color.clone());
+                }
+                cx.notify();
+            })),
         );
     }
     row
 }
 
 fn icons(draft: &TagDraft, cx: &mut Context<FileManagerView>) -> Div {
-    let mut row = div().h_flex().w_full().flex_wrap().gap(px(6.));
+    let mut row = div()
+        .h_flex()
+        .w_full()
+        .flex_wrap()
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()));
     let selected = theme::tag_icon(draft.icon.as_deref());
     for icon in [
         IconName::Tag,
@@ -132,87 +121,47 @@ fn icons(draft: &TagDraft, cx: &mut Context<FileManagerView>) -> Div {
         let value = format!("{icon:?}");
         let active = format!("{selected:?}") == value;
         row = row.child(
-            Button::new(format!("file_manager-inspector-icon-{value}"))
-                .w(px(32.))
-                .h(px(30.))
-                .rounded(px(5.))
-                .border_1()
-                .border_color(if active {
-                    rgb(theme::accent())
-                } else {
-                    rgba(theme::region_edge())
-                })
-                .bg(if active {
-                    rgb(theme::selection_color())
-                } else {
-                    rgba(theme::fill_subtle())
-                })
-                .text_color(rgb(if active {
-                    theme::selection_text()
-                } else {
-                    theme::text_secondary()
-                }))
-                .icon(theme::small_icon(icon))
-                .accessibility_label(value.clone())
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    if let Some(draft) = &mut this.inspector_tag_draft {
-                        draft.icon = Some(value.clone());
-                    }
-                    cx.notify();
-                })),
+            fileatlas_ui_bridge::components::icon_choice_button(
+                format!("file_manager-inspector-icon-{value}"),
+                icon,
+                active,
+            )
+            .accessibility_label(value.clone())
+            .on_click(cx.listener(move |this, _, _, cx| {
+                if let Some(draft) = &mut this.inspector_tag_draft {
+                    draft.icon = Some(value.clone());
+                }
+                cx.notify();
+            })),
         );
     }
     row
 }
 
-fn visibility_toggle(
-    draft: &TagDraft,
-    cx: &mut Context<FileManagerView>,
-) -> gpui_kit::base::Checkbox {
+fn visibility_toggle(draft: &TagDraft, cx: &mut Context<FileManagerView>) -> Div {
     let visible = draft.display;
     let weak = cx.entity().downgrade();
     let text = fileatlas_ui_bridge::i18n::tr("Show on thumbnails");
-    gpui_kit::base::Checkbox::new("file_manager-inspector-toggle-tag-display")
-        .checked(visible)
-        .accessibility_label(text.clone())
+    let checkbox = fileatlas_ui_bridge::components::checkbox(
+        "file_manager-inspector-toggle-tag-display",
+        visible,
+    )
+    .accessibility_label(text.clone())
+    .on_change(move |_, _, cx| {
+        let _ = weak.update(cx, |this, cx| {
+            if let Some(draft) = &mut this.inspector_tag_draft {
+                draft.display = !draft.display;
+            }
+            cx.notify();
+        });
+    });
+    div()
         .h_flex()
         .w_full()
         .items_center()
-        .justify_between()
-        .min_h(px(32.))
-        .text_size(px(12.))
-        .text_color(rgb(theme::text_secondary()))
-        .child(text)
-        .child(
-            div()
-                .relative()
-                .w(px(34.))
-                .h(px(20.))
-                .flex_shrink_0()
-                .rounded_full()
-                .bg(rgb(if visible {
-                    theme::accent()
-                } else {
-                    theme::surface_elevated()
-                }))
-                .child(
-                    div()
-                        .absolute()
-                        .top(px(2.))
-                        .left(px(if visible { 16. } else { 2. }))
-                        .size(px(16.))
-                        .rounded_full()
-                        .bg(rgb(theme::text_on_accent())),
-                ),
-        )
-        .on_change(move |_, _, _, cx| {
-            let _ = weak.update(cx, |this, cx| {
-                if let Some(draft) = &mut this.inspector_tag_draft {
-                    draft.display = !draft.display;
-                }
-                cx.notify();
-            });
-        })
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+        .child(checkbox)
+        .child(div().workbench_assistant().child(text))
 }
 
 fn confirm(view: &mut FileManagerView, cx: &mut Context<FileManagerView>) {

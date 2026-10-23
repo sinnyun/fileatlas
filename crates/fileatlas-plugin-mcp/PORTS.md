@@ -613,17 +613,13 @@ control_ui key_press accepts only enter, escape, ctrl-l, alt-left, alt-right, al
 Checked-in scripts: validate-address-bar.cjs (semantic routes + actual Enter/Escape), validate-address-pointer.cjs (real pointer controls), validate-address-restart.cjs and prepare-address-tag-restart.cjs (scope stability). See docs/validation-ui/2026-10-16-address/README.md.
 
 
-## Region separation probe and control (2026-10-16)
+## Region separation probe and control (2026-10-16; removed 2026-10-23)
 
-`get_ui_state.region_separation` reports the applied theme token (`border`/`shadow`)
-read straight from `theme::region_depth_name()`, so tests observe what the paint-time
-helpers actually use instead of re-reading the JSON file. Mutation-guarded
-`control_ui {action:"region_separation", value:"border"|"shadow"}` resolves
-`fileatlas_plugin_settings::SettingsService` from the Cordis context and calls the same
-`update` path the Settings view uses; an unknown value is rejected before any write.
-It does not touch GPUI directly, so the live repaint still comes from the Settings
-view's `cx.refresh_windows()`; pointer evidence for the real dropdown is recorded in
-docs/validation-ui/2026-10-16-region-separation/README.md.
+The `get_ui_state.region_separation` field and the `control_ui`
+`region_separation` action were removed together with the underlying
+`RegionDepth` token when the unified Fluent light elevation landed: regions
+are always floating shadowed cards now. Historical validation evidence stays
+at docs/validation-ui/2026-10-16-region-separation/README.md.
 
 ## Settings software check (2026-10-17)
 

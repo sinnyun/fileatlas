@@ -16,7 +16,6 @@ use fileatlas_plugin_indexing::ScanProgress;
 use fileatlas_plugin_session::SessionService;
 use fileatlas_ui_bridge::{UiViewContribution, theme};
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::input::InputState;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};

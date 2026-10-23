@@ -24,6 +24,10 @@
 
 # 界面重构验证记录
 
+## 2026-10-23：全局几何/文本交互框架审查（进行中）
+
+统一按钮基础尺寸并以审查色检查主框架、面板和表单。所有单行文本输入、搜索框和多行编辑器采用 UI Bridge 构造器；复核发现的 textarea 漏标已补齐。三层共享文字包装器现显示青色实际占用框，覆盖导航、状态、计数和辅助提示文本。另移除了设置中心两个插件页对共享正文/辅助说明行高的局部覆盖，并将插件行高加入主题守卫。使用既有全面板 atlas 流程重采亮色界面。下一阶段由 UI Bridge 采集组件级几何，扩展现有 `fileatlas-plugin-debug` 提供只读数值查询，自动计算字号、边距、间距与内边距；GPUI 当前没有可直接查询的运行时布局树，详细方案和边界见[几何与文本交互组件覆盖审查](validation-ui/2026-10-23-geometry-audit/README.md)。审查色仍保留，当前不代表完成。
+
 ## 2026-10-20：WorkCrate 项目/画板首个 UI 纵切
 
 此节为首个两层纵切的历史记录，当前三层界面、A3 默认值和修正后的验证见
@@ -1460,3 +1464,61 @@ PNG、`INDEX.md` 与 `manifest.json` 只留在 `.local/validation/profiles/panel
 `fileatlas_ui_bridge::display_path`（同时替换 Navigation、FileManager、WorkCrate 的三份私有
 副本）；MCP `navigation_tab` 补上 `project-tree` 页签标识。原因、实测命令与两张同进程截图见
 [本轮记录](validation-ui/2026-10-23-project-tree-missing-root/README.md)。
+
+## 2026-10-23 Fluent 轻质感浮起卡（亮色模式）
+
+按用户指定的微软轻质感方向：窗口改用 `surface_canvas`（原生 muted 角色）
+画布底，顶带/侧栏/内容列/检查器/状态栏成为圆角 8 白卡，彼此隔
+`REGION_GAP=6` 并带共享 `region_shadow`（key+ambient 双层，颜色解析原生
+overlay 角色）；`workbench_card`/`workbench_section` 白底 + hairline +
+`card_shadow`，`action`/`icon_button` 加 `control_shadow`，通用浮窗外壳加
+`floating_shadow`。「区域区分方式：边框/阴影」设置及 `RegionDepth` 令牌、
+MCP `region_separation` 读写一并移除（旧 JSON 键被忽略）。实施、守卫与
+亮/暗两态同进程 MCP 截图证据（含首版阴影偏淡→双层阴影复测）见
+[本轮记录](validation-ui/2026-10-23-fluent-light/README.md)。文件网格卡片
+保持无常驻阴影、格式徽标配色不在本轮范围。
+
+
+## 2026-10-23 全局组件样式收敛（进行中）
+
+按钮入口、常用控件高度已收敛。2026-10-23 后续按用户新要求把所有界面字体统一为标题 15px 半粗、正文 14px 常规、辅助说明 12px 常规三层，并保留临时红/绿/蓝层级审查色。标题按用户反馈从初版 18px 下调至16px，再下调至15px。浅色设置页、真实图片检查器、暂存插件面板及最低支持尺寸 1920×1080 的同进程截图已采集；此前 1000×680 图片低于支持尺寸，仅作非验收历史压力记录。原生输入框提示已纳入蓝色辅助标记。深色主窗口截图确认顶部筛选、分组和地址栏文字均为正文层；启动器分组标题已归入标题层，程序名称归正文层。GPUI Kit 按钮 hover/variant 前景加入临时正文绿映射；插件中无本地字号/字重调用，统一规范同步到 `docs/ui-theme.md`。深色总览已采集 56 张截图；长文本及 hover/focus/disabled 状态仍在逐项检查，颜色审查未结束。完整证据：[UI 统一验证记录](validation-ui/2026-10-23-ui-unification/README.md)与[三层字体规范](reference-ui/concepts/typography-three-tiers-2026-10-23.md)。
+
+## 2026-10-23：全局三档间距与布局密度设置
+
+所有 UI 插件和 Shell 的 gap、padding、margin 已批量归并到紧凑/标准/宽松三档（基准 4/8/16px）；新增主题守卫防止重新出现局部数字值。Settings 外观页加入持久化全局布局密度，统一缩放三档间距及共享按钮、输入控件、导航行高度；颜色仍复用 GPUI Kit/Material 原生主题入口。无用户数据迁移，旧设置默认为标准密度。
+
+验证：Windows Rust `1.97.1-x86_64-pc-windows-msvc`。格式、指定 shell/UI/settings/navigation/file-manager/project-tree 检查、shell build、UI theme（含 self-test）、refresh、architecture、feature-ledger 全部通过。同进程 MCP density 场景测得共享按钮标准/紧凑/宽松为 32/28.67/35.33px；隔离 profile `.local/validation/profiles/ui-density-control-final-pass-20261023/`。亮色全量 atlas 55 张截图、13,069 条几何记录，profile `.local/validation/profiles/ui-spacing-density-light-20261023/`，设置页亮色图已核对。atlas 留有两个未知 i18n 插件设置页和缺少官方 VectorCraft CLI 的既有场景错误。间距批次已完成；211 处局部固定尺寸仍在审查队列中。文字与几何审查标记继续保留，等待用户确认结束颜色审查。
+
+供外部模型继续检查的范围、复现命令、数据覆盖限制和未通过/未覆盖项，见[UI 一致性审查交接](ui-consistency-review-handoff-2026-10-23.md)。最近移除的两处 FileManager 按钮尺寸覆盖已在随后的全量 atlas 中重新采集；逐状态视觉复核仍按 UI 记录持续进行。
+
+2026-10-23 后续按字体审查报告修复启动台导航层级、统计/状态/提示文字层级、驱动器行省略与标签胶囊审查框。复建后亮色同进程 atlas 55 张、13,813 条几何记录，三层字体解析值无偏差。关键图已目检；其余页面的布局挤压、漏标和裁切仍需继续逐张检查。复核详情见[字体审查报告第 10 节](ui-consistency-review-findings-2026-10-23.md)。
+
+2026-10-23 后续完成亮色 atlas 55 张截图逐张目检；检查器、批量操作、筛选弹层、设置页、导航弹窗、暂存/截图工具、WorkCrate 和调试抽屉均未发现新的确定性字体层级/裁切问题。另以隔离 profile `.local/validation/profiles/typography-review-dark-20261023/` 完成暗色同进程全量 atlas：55 张截图、13,784 条几何记录，三层仍为 15/14/12px Segoe UI，无字重/行高变体，4,810 个共享按钮均高 32px。暗色抽查主窗、设置、启动器及文件菜单 5 张；暗色余下页面、hover/focus/disabled 和长文案状态仍待检查。应用最低支持尺寸为 1920×1080，已另检查主窗、剪贴板、启动台和设置四种状态；低于该尺寸不作为验收范围。两色 atlas 都有未知 i18n 设置页和缺少 VectorCraft CLI 的 WorkCrate 新建项目环境问题，不能按通过计。审查色保持。交接与截图明细见[UI 一致性审查交接](ui-consistency-review-handoff-2026-10-23.md)及[字体审查报告](ui-consistency-review-findings-2026-10-23.md)。
+
+## 2026-10-23：最低支持窗口 1920×1080 布局审查
+
+按用户确认，FileAtlas 最低界面尺寸为 1920×1080，不再执行更小窗口验收。使用同进程 FileAtlas MCP 和隔离 profile `.local/validation/profiles/ui-minimum-window-audit-20261023/`，以 `scripts/validate-ui-minimum-window.cjs` 检查主窗、剪贴板、启动台与设置外观页，并生成四张截图和几何快照。共 1,449 条记录：标题/正文/辅助说明为 15/14/12px，314 个共享按钮均高 32px，23 个导航组件均高 40px；未检测到字体数值变体或按钮高度偏差。四个状态的截图未见明显裁切或遮挡。本轮没有覆盖其他面板或 hover/focus/disabled 状态。此前 1000×680 的采集低于支持尺寸，仅作为非验收压力数据，不用于判定 UI 通过或失败。审查色保留。
+
+## 2026-10-23：字体与间距令牌守卫
+
+新增 `scripts/check-ui-design-tokens.cjs`，锁定标题/正文/辅助字号 15/14/12px、行高 20/18/16px、三档基础间距 4/8/16px 及 `WorkbenchTypography` 的 token 映射；禁止插件/Shell/UI Bridge 非共享组件设置本地字号、行高、字重，也禁止新加 GPUI Kit `.gap_1()`、`.p_3()` 等数值快捷间距。检查已接入 `.github/workflows/rust-checks.yml`。为达到三档间距契约，本轮将 309 处 Kit 数值快捷间距迁到 `theme::space_compact/standard/expanded()`，保留 4 处显式零间距 `.gap_0()`。守卫自测和全量检查通过；Shell 及其插件 `cargo +1.97.1 check -p fileatlas-shell --locked -j 2`、构建、全格式和治理守卫通过。迁移后在 1920×1080 使用同进程 MCP 目检主窗、剪贴板、启动台、设置页；四种状态三层字体值一致，按钮 314/314 高度为 32px，截图没有发现间距变化导致的明显溢出/遮挡。截图和几何记录位于 `.local/validation/profiles/ui-spacing-guard-final-20261023/screenshots/`。审查色保留。
+
+## 2026-10-23：审查边界改为绘制覆盖层
+
+共享组件文字/区域/卡片/导航/行/按钮、浮动面板外框及 UI Bridge 输入框/多行输入框，统一在 GPUI Canvas paint 阶段调用 `Window::paint_quad` 绘制临时审查色；描边宽度不再参与布局或文字可用宽高。GPUI Kit 输入控件保留在外层审查容器中，原生组件仍处理输入、焦点和禁用状态。几何审查快照已移除 `audit_border_inset` 补偿，边界值直接对应实测组件 Bounds。
+
+验证使用 Windows Rust 1.97.1、同进程 FileAtlas MCP、亮色、3000×2000 与隔离 profile `.local/validation/profiles/audit-overlay-20261023/`。`screenshots/overlay-final-enabled-confirmed.png` 确认启用状态的嵌套组件及浮动设置面板描边；`screenshots/overlay-final-off.png` 确认设置关闭后所有临时审查色即时消失；`screenshots/overlay-clipboard-inputs.png` 确认搜索输入与多行输入被 paint 覆盖层标识。Shell locked check/build、fmt、主题、几何覆盖（31 组）、design-token、refresh、architecture、feature-ledger、layering 均通过。全插件 hover/focus/disabled 和长文本状态未由本轮截图覆盖。
+
+## 2026-10-23：字体层级审查色独立开关
+
+设置 → 外观新增“字体层级审查 → 显示字体层级审查色”，持久化字段
+`show_typography_audit_colors` 默认 `true`。开关与“显示组件审查框”完全独立；关闭后 UI Bridge
+重新应用当前 GPUI Kit 原生主题，恢复标题/正文/辅助说明及按钮/链接/菜单文字色，不改变字体尺寸、间距或几何审查状态。
+
+验证环境：Windows MSVC、Rust `1.97.1-x86_64-pc-windows-msvc`、亮色、3000×2000、同进程 FileAtlas MCP，
+隔离 profile `.local/validation/profiles/typography-audit-setting-20261023/`。截图
+`screenshots/typography-off-geometry-on.png` 确认字体颜色关闭后回到主题色、橙色组件边界继续显示；
+`screenshots/typography-restored.png` 确认两个审查设置均恢复开启及红/绿/蓝文字标记恢复。最终隔离
+`settings.json` 中两个布尔值均为 `true`。设置 serde round-trip 单测、Shell locked build、fmt、主题守卫
+(self-test/full)、几何覆盖、design-token、refresh、architecture、feature-ledger、layering 均通过。
+本轮只对亮色模式进行开关视觉对照；暗色对照未单独采集。

@@ -66,11 +66,10 @@ fn default_accent_name() -> String {
     fileatlas_ui_bridge::theme::DEFAULT_ACCENT_NAME.to_string()
 }
 fn default_color_mode() -> String {
-    "dark".into()
+    "light".into()
 }
-/// Mirrors `theme::REGION_DEPTH_BORDER`; kept literal so this model stays UI-free.
-fn default_region_separation() -> String {
-    "border".to_string()
+fn default_ui_density() -> String {
+    "standard".into()
 }
 fn default_show_date_dividers() -> bool {
     true
@@ -250,13 +249,20 @@ pub struct Settings {
     /// Semantic workbench color mode: `dark` or `light`.
     #[serde(default = "default_color_mode")]
     pub color_mode: String,
+    /// Shared geometry scale for the entire workbench, not a plugin override.
+    #[serde(default = "default_ui_density")]
+    pub ui_density: String,
+    /// Show temporary colored outlines and collect shared geometry probes.
+    /// Defaults on during the current user-requested audit phase.
+    #[serde(default = "default_true")]
+    pub show_ui_audit_frames: bool,
+    /// Show temporary red/green/blue colors for title/body/assistant text tiers.
+    /// Defaults on until the user finishes the typography audit.
+    #[serde(default = "default_true")]
+    pub show_typography_audit_colors: bool,
     /// Native GPUI ThemeSet JSON, None selects framework defaults.
     #[serde(default)]
     pub theme_file: Option<PathBuf>,
-    /// How the UI separates its regions: `"border"` hairlines or `"shadow"`.
-    /// Applied to `theme::set_region_depth_name` at startup and on change.
-    #[serde(default = "default_region_separation")]
-    pub region_separation: String,
     /// When true and the file_manager is sorted by date, group thumbnails into
     /// month sections separated by `Month Year` headers. Off → flat grid.
     #[serde(default = "default_show_date_dividers")]
@@ -388,8 +394,10 @@ impl Default for Settings {
             open_key: default_open_key(),
             accent_name: default_accent_name(),
             color_mode: default_color_mode(),
+            ui_density: default_ui_density(),
+            show_ui_audit_frames: default_true(),
+            show_typography_audit_colors: default_true(),
             theme_file: None,
-            region_separation: default_region_separation(),
             show_date_dividers: default_show_date_dividers(),
             search_scopes: SearchScopes::default(),
             search_entire_computer: false,
@@ -525,15 +533,38 @@ pub struct WorkCrateSettings {
 #[cfg(test)]
 mod workcrate_tests {
     use super::*;
+
+    #[test]
+    fn new_settings_default_to_light_without_overriding_saved_mode()
+    -> Result<(), Box<dyn std::error::Error>> {
+        assert_eq!(Settings::default().color_mode, "light");
+        assert!(Settings::default().show_ui_audit_frames);
+        assert!(Settings::default().show_typography_audit_colors);
+
+        let fresh: Settings = serde_json::from_str("{}")?;
+        assert_eq!(fresh.color_mode, "light");
+        assert!(fresh.show_ui_audit_frames);
+        assert!(fresh.show_typography_audit_colors);
+
+        let saved_dark: Settings = serde_json::from_str(r#"{"color_mode":"dark"}"#)?;
+        assert_eq!(saved_dark.color_mode, "dark");
+        Ok(())
+    }
+
     #[test]
     fn old_settings_get_workcrate_defaults_and_new_choices_round_trip()
     -> Result<(), Box<dyn std::error::Error>> {
         let mut settings: Settings = serde_json::from_str("{}")?;
         assert_eq!(settings.workcrate, WorkCrateSettings::default());
+        assert_eq!(settings.ui_density, "standard");
         settings.workcrate.sort_by_name = true;
         settings.workcrate.image_export_jpeg = true;
+        settings.show_ui_audit_frames = false;
+        settings.show_typography_audit_colors = false;
         let reopened: Settings = serde_json::from_str(&serde_json::to_string(&settings)?)?;
         assert_eq!(reopened.workcrate, settings.workcrate);
+        assert!(!reopened.show_ui_audit_frames);
+        assert!(!reopened.show_typography_audit_colors);
         Ok(())
     }
 }

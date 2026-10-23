@@ -1,7 +1,10 @@
 //! Bounded visible-file reads. No filesystem or Lore IO in card rendering.
 use super::*;
 use fileatlas_plugin_versions::{FileVersionState, FileVersionStatus};
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
 use gpui_kit::assets::IconName;
+use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants as _;
 
 pub(super) type StateKey = (u64, u64, Vec<(i64, String)>);
@@ -124,19 +127,18 @@ pub(super) fn badge(
     state: &FileVersionState,
     cx: &mut Context<FileManagerView>,
 ) -> Button {
-    Button::new(format!("file_manager-unsaved-version-{id}"))
+    fileatlas_ui_bridge::components::button(format!("file_manager-unsaved-version-{id}"))
         .ghost()
-        .compact()
-        .w(px(24.))
-        .h(px(24.))
-        .rounded_full()
-        .bg(rgba(theme::tooltip_surface()))
+        .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Pill)
+        .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+            theme::tooltip_surface(),
+        ))
         .icon(
             theme::icon(IconName::Circle)
                 .size(px(13.))
-                .rounded_full()
-                .bg(rgb(theme::surface_elevated()))
-                .text_color(rgb(theme::warning_text())),
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Pill)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Elevated)
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Warning),
         )
         .tooltip(message(state))
         .on_click(cx.listener(move |view, _, window, cx| view.open_unsaved_history(id, window, cx)))

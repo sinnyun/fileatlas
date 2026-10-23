@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::prelude::FluentBuilder as _;
 
 pub(super) const GRID_GAP: f32 = 16.;
@@ -462,7 +464,7 @@ impl Render for FileManagerView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .child(fileatlas_ui_bridge::i18n::tr("Loading…"))
                             .into_any_element();
                     }
@@ -589,7 +591,7 @@ impl Render for FileManagerView {
                         .w_full()
                         .relative()
                         .when(parent_folder_hovered, |frame| {
-                            frame.bg(rgb(theme::selection_color()))
+                            frame.workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Selection)
                         })
                         .on_mouse_down(
                             MouseButton::Left,
@@ -768,8 +770,8 @@ impl Render for FileManagerView {
                                                                 .w(px(card_size))
                                                                 .h(px(card_size
                                                                     + card::CARD_CAPTION_HEIGHT))
-                                                                .rounded(px(theme::THUMB_ROUND))
-                                                                .bg(rgb(theme::surface_faint()))
+                                                                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Thumbnail)
+                                                                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                                                                 .into_any_element(),
                                                         );
                                                     }
@@ -810,12 +812,12 @@ impl Render for FileManagerView {
                                                 .unwrap_or_else(|| div().into_any_element());
                                             let month_top_gap = if row_index > 0 && has_month_label
                                             {
-                                                theme::GROUP_TOP_GAP
+                                                theme::space_expanded()
                                             } else {
                                                 0.0
                                             };
                                             let header_gap = if has_month_label {
-                                                theme::GROUP_HEADER_GAP
+                                                theme::space_standard()
                                             } else {
                                                 0.0
                                             };
@@ -840,7 +842,7 @@ impl Render for FileManagerView {
                                                         div()
                                                             .h_flex()
                                                             .mt(px(header_gap))
-                                                            .gap(px(GRID_GAP))
+                                                            .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                                                             .children(cards)
                                                             .into_any_element(),
                                                         this,
@@ -860,24 +862,18 @@ impl Render for FileManagerView {
                         )
                         .vertical_scrollbar(&list_scroll)
                         .children(rubberband.map(|(left, top, width, height)| {
-                            div()
-                                .absolute()
-                                .left(px(left))
-                                .top(px(top))
-                                .w(px(width))
-                                .h(px(height))
-                                .border_1()
-                                .border_color(rgb(theme::accent()))
-                                .bg(rgb(theme::selection_color()))
+                            fileatlas_ui_bridge::components::selection_region(
+                                left, top, width, height,
+                            )
                         })),
                 );
                 grid.into_any_element()
             }
             Err(error) => div()
                 .size_full()
-                .bg(rgba(theme::base_rgba(theme::surface_base())))
-                .p_4()
-                .text_color(rgb(theme::danger_text()))
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::BaseOverlay)
+                .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .workbench_assistant()
                 .child(format!("Could not load media: {error}"))
                 .into_any_element(),
         }
@@ -919,12 +915,12 @@ pub(super) fn file_manager_row_height(
     list: bool,
 ) -> f32 {
     let header = if row.month_label.is_some() {
-        theme::GROUP_HEADER_HEIGHT + theme::GROUP_HEADER_GAP
+        theme::GROUP_HEADER_HEIGHT + theme::space_standard()
     } else {
         0.
     };
     let month_gap = if index > 0 && row.month_label.is_some() {
-        theme::GROUP_TOP_GAP
+        theme::space_expanded()
     } else {
         0.
     };

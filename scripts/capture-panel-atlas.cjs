@@ -44,7 +44,7 @@ module.exports = async ({ call, payload, delay, profile, output, root }) => {
     // A dead child answers nothing; stop burning 30s timeouts for the remaining screens.
     if (text.includes('MCP timeout') || text.includes('Broken pipe')) dead = true;
   }
-  async function shot(name, note) {
+  async function shot(name, note, require3000x2000 = false) {
     if (dead) return record(name, note, 'skipped-process-dead');
     await record(name, note);
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -52,8 +52,24 @@ module.exports = async ({ call, payload, delay, profile, output, root }) => {
         const captured = await call('screenshot_window');
         const image = (captured.content || []).find(item => item.type === 'image');
         if (image) {
-          fs.writeFileSync(path.join(output, `${name}.png`), Buffer.from(image.data, 'base64'));
+          const bytes = Buffer.from(image.data, 'base64');
+          const dimensions = { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+          if (require3000x2000 && (dimensions.width !== 3000 || dimensions.height !== 2000)) {
+            throw Error(`expected 3000x2000 screenshot; received ${dimensions.width}x${dimensions.height}`);
+          }
+          fs.writeFileSync(path.join(output, `${name}.png`), bytes);
           current.status = 'captured';
+          current.screenshot_dimensions = dimensions;
+          try {
+            const geometry = payload(await call('debug.ui_geometry'));
+            fs.writeFileSync(
+              path.join(output, `${name}.geometry.json`),
+              JSON.stringify(geometry, null, 2),
+            );
+            current.geometry_count = geometry?.count ?? 0;
+          } catch (error) {
+            current.geometry_error = String(error?.message || error).slice(0, 240);
+          }
           flush();
           return true;
         }
@@ -95,9 +111,9 @@ module.exports = async ({ call, payload, delay, profile, output, root }) => {
   // the native handle exists, then re-shoot so the atlas is captured at full size.
   let resized = false;
   for (let attempt = 0; attempt < 20 && !resized; attempt++) {
-    await record(`resize-3200x1800-attempt-${attempt}`, 'wait for a native window handle');
+    await record(`resize-3000x2000-attempt-${attempt}`, 'wait for a native window handle');
     try {
-      await call('resize_window', { width: 3200, height: 1800 });
+      await call('resize_window', { width: 3000, height: 2000 });
       current.status = 'done';
       resized = true;
     } catch (error) {
@@ -107,7 +123,7 @@ module.exports = async ({ call, payload, delay, profile, output, root }) => {
     flush();
   }
   if (!dead) await delay(1500);
-  await shot('001-boot-window-3200x1800', 'main window after resize');
+  await shot('001-boot-window-3000x2000', 'main window after resize', true);
 
   const fixtureRoot = path.join(root, 'test-data', 'fileatlas-fixtures');
   const fixtureFiles = collectFiles(fixtureRoot, 20);

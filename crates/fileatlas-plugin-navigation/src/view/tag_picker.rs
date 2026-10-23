@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::component::scroll::ScrollableElement;
 
 pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -> Div {
@@ -18,9 +19,8 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
         .into_iter()
         .map(|(tag, depth)| {
             let id = tag.id;
-            Button::new(format!("navigation-parent-tag-{id}"))
+            fileatlas_ui_bridge::components::button(format!("navigation-parent-tag-{id}"))
                 .ghost()
-                .w_full()
                 .pl(px(depth as f32 * 12.))
                 .child(
                     fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
@@ -39,16 +39,15 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
         .collect::<Vec<_>>();
     div()
         .v_flex()
-        .gap_1()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(if let Some(tag) = &selected {
                     div()
                         .h_flex()
                         .items_center()
-                        .gap(px(6.))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                         .child(fileatlas_ui_bridge::i18n::tr("Parent"))
                         .child(
                             fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
@@ -57,16 +56,17 @@ pub(super) fn parent_picker(view: &SidebarView, cx: &mut Context<SidebarView>) -
                                 .render(),
                         )
                 } else {
-                    div().child(fileatlas_ui_bridge::i18n::tr("Root tag"))
+                    div()
+                        .workbench_body()
+                        .child(fileatlas_ui_bridge::i18n::tr("Root tag"))
                 }),
         )
         .child(fileatlas_ui_bridge::components::text_input(
             &view.tag_parent,
         ))
         .child(
-            Button::new("navigation-parent-root")
+            fileatlas_ui_bridge::components::button("navigation-parent-root")
                 .ghost()
-                .w_full()
                 .label(fileatlas_ui_bridge::i18n::tr("No parent (root)"))
                 .on_click(cx.listener(|this, _, window, cx| {
                     this.parent_tag_id = None;
@@ -106,9 +106,8 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
         .into_iter()
         .map(|(tag, depth)| {
             let id = tag.id;
-            Button::new(format!("navigation-move-target-{id}"))
+            fileatlas_ui_bridge::components::button(format!("navigation-move-target-{id}"))
                 .ghost()
-                .w_full()
                 .pl(px(depth as f32 * 12.))
                 .child(
                     fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
@@ -127,17 +126,20 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
         .collect::<Vec<_>>();
     div()
         .v_flex()
-        .gap_1()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(if let Some(tag) = &selected {
                     div()
                         .h_flex()
                         .items_center()
-                        .gap(px(6.))
-                        .child(fileatlas_ui_bridge::i18n::tr("Target"))
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .child(
+                            div()
+                                .workbench_body()
+                                .child(fileatlas_ui_bridge::i18n::tr("Target")),
+                        )
                         .child(
                             fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
                                 .color(tag.color.as_deref())
@@ -145,7 +147,9 @@ pub(super) fn move_target_picker(view: &SidebarView, cx: &mut Context<SidebarVie
                                 .render(),
                         )
                 } else {
-                    div().child(fileatlas_ui_bridge::i18n::tr("Choose a target tag"))
+                    div()
+                        .workbench_assistant()
+                        .child(fileatlas_ui_bridge::i18n::tr("Choose a target tag"))
                 }),
         )
         .child(fileatlas_ui_bridge::components::text_input(

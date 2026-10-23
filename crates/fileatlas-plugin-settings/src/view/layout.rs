@@ -1,74 +1,67 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::{WorkbenchStyle as _, WorkbenchTypography as _};
 
 impl SettingsView {
     fn tabs(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let mut rail = div()
             .v_flex()
             .w(px(theme::SETTINGS_NAV_WIDTH))
-            .gap(px(2.))
-            .p(px(theme::SPACE_3))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .p(px(theme::space_expanded()))
             .flex_shrink_0();
         use gpui_kit::assets::IconName;
         let add_group = |rail: Div, title: &'static str| {
             rail.child(
                 div()
-                    .text_xs()
-                    .font_semibold()
-                    .text_color(rgb(theme::text_secondary()))
-                    .px_2()
-                    .pt_2()
-                    .pb_1()
+                    .workbench_title()
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .pb(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(fileatlas_ui_bridge::i18n::tr(title)),
             )
         };
-        let add_tab = |rail: Div, tab: Tab, name: &'static str, icon: IconName| {
-            let active = self.tab == tab;
-            rail.child(
-                fileatlas_ui_bridge::components::nav_button(format!("settings-tab-{name}"), active)
-                    .w_full()
-                    .h(px(theme::NAV_ROW_HEIGHT))
-                    .px(px(10.))
-                    .justify_start()
-                    .rounded(px(theme::ROUND_MD))
-                    .text_size(px(theme::FONT_SIZE_BODY))
-                    .child(
-                        div()
-                            .h_flex()
-                            .w_full()
-                            .items_center()
-                            .justify_start()
-                            .gap_2()
-                            .child(theme::icon(icon))
-                            .child(div().flex_1().text_size(px(theme::FONT_SIZE_BODY)).child(
-                                fileatlas_ui_bridge::i18n::tr(match tab {
-                                    Tab::Tags => "Tags and search",
-                                    Tab::Ai => "AI analysis",
-                                    Tab::Updates => "Software updates",
-                                    Tab::Software => "External software",
-                                    Tab::Plugins => "Plugin management",
-                                    _ => name,
-                                }),
-                            )),
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.cancel_shortcut_capture();
-                        this.capturing_open_key = false;
-                        this.tab = tab;
-                        let name = match tab {
-                            Tab::Appearance => "appearance",
-                            Tab::Shortcuts => "shortcuts",
-                            Tab::Tags => "tags",
-                            Tab::Ai => "ai",
-                            Tab::Updates => "updates",
-                            Tab::Software => "software",
-                            Tab::Plugins => "plugins",
-                            Tab::PluginSettings => "plugin",
-                        };
-                        let _ = this.surfaces.set_value("settings.tab", name);
-                        cx.notify()
-                    })),
-            )
-        };
+        let add_tab =
+            |rail: Div, tab: Tab, name: &'static str, icon: IconName| {
+                let active = self.tab == tab;
+                rail.child(
+                    div()
+                        .id(format!("settings-tab-{name}"))
+                        .workbench_tree_row(active)
+                        .h(px(theme::ui_height(theme::NAV_ROW_HEIGHT)))
+                        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .gap(px(theme::space_standard()))
+                        .workbench_assistant()
+                        .child(theme::icon(icon))
+                        .child(div().flex_1().workbench_body().child(
+                            fileatlas_ui_bridge::i18n::tr(match tab {
+                                Tab::Tags => "Tags and search",
+                                Tab::Ai => "AI analysis",
+                                Tab::Updates => "Software updates",
+                                Tab::Software => "External software",
+                                Tab::Plugins => "Plugin management",
+                                _ => name,
+                            }),
+                        ))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.cancel_shortcut_capture();
+                            this.capturing_open_key = false;
+                            this.tab = tab;
+                            let name = match tab {
+                                Tab::Appearance => "appearance",
+                                Tab::Shortcuts => "shortcuts",
+                                Tab::Tags => "tags",
+                                Tab::Ai => "ai",
+                                Tab::Updates => "updates",
+                                Tab::Software => "software",
+                                Tab::Plugins => "plugins",
+                                Tab::PluginSettings => "plugin",
+                            };
+                            let _ = this.surfaces.set_value("settings.tab", name);
+                            cx.notify()
+                        })),
+                )
+            };
         rail = add_group(rail, "Program settings");
         for (tab, name, icon) in [
             (Tab::Appearance, "Appearance", IconName::Monitor),
@@ -85,8 +78,10 @@ impl SettingsView {
             div()
                 .w_full()
                 .h(px(1.))
-                .my_2()
-                .bg(rgba(theme::hairline().to_rgba())),
+                .my(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Transparent(
+                    theme::hairline().to_rgba(),
+                )),
         );
         rail = add_group(rail, "Plugin settings");
         let mut plugins = self
@@ -105,45 +100,34 @@ impl SettingsView {
             let active =
                 self.tab == Tab::PluginSettings && self.selected_plugin_id.as_deref() == Some(&id);
             rail = rail.child(
-                fileatlas_ui_bridge::components::nav_button(
-                    format!("settings-plugin-page-{id}"),
-                    active,
-                )
-                .w_full()
-                .h(px(theme::NAV_ROW_HEIGHT))
-                .px(px(10.))
-                .justify_start()
-                .rounded(px(theme::ROUND_MD))
-                .text_size(px(theme::FONT_SIZE_BODY))
-                .child(
-                    div()
-                        .h_flex()
-                        .w_full()
-                        .items_center()
-                        .gap_2()
-                        .child(theme::icon(match id.as_str() {
-                            "fileatlas.clipboard" => IconName::Clipboard,
-                            "fileatlas.launcher" => IconName::LayoutGrid,
-                            _ => IconName::ScanLine,
-                        }))
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .truncate()
-                                .child(fileatlas_ui_bridge::i18n::tr(&title)),
-                        ),
-                )
-                .tooltip(fileatlas_ui_bridge::i18n::tr(&title))
-                .on_click(cx.listener(move |this, _, _, cx| {
-                    this.cancel_shortcut_capture();
-                    this.capturing_open_key = false;
-                    this.tab = Tab::PluginSettings;
-                    this.selected_plugin_id = Some(id.clone());
-                    let _ = this.surfaces.set_value("settings.tab", "plugin");
-                    let _ = this.surfaces.set_value("settings.plugin_id", &id);
-                    cx.notify();
-                })),
+                div()
+                    .id(format!("settings-plugin-page-{id}"))
+                    .workbench_tree_row(active)
+                    .h(px(theme::ui_height(theme::NAV_ROW_HEIGHT)))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .gap(px(theme::space_standard()))
+                    .workbench_body()
+                    .child(theme::icon(match id.as_str() {
+                        "fileatlas.clipboard" => IconName::Clipboard,
+                        "fileatlas.launcher" => IconName::LayoutGrid,
+                        _ => IconName::ScanLine,
+                    }))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .truncate()
+                            .child(fileatlas_ui_bridge::i18n::tr(&title)),
+                    )
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        this.cancel_shortcut_capture();
+                        this.capturing_open_key = false;
+                        this.tab = Tab::PluginSettings;
+                        this.selected_plugin_id = Some(id.clone());
+                        let _ = this.surfaces.set_value("settings.tab", "plugin");
+                        let _ = this.surfaces.set_value("settings.plugin_id", &id);
+                        cx.notify();
+                    })),
             );
         }
         rail.h_full().overflow_y_scrollbar()
@@ -196,12 +180,7 @@ impl Render for SettingsView {
             .w(px(card_width))
             .h(px(card_height))
             .max_h(px(card_height))
-            .rounded_md()
-            .bg(rgb(theme::surface_modal()))
-            .text_color(rgb(theme::text_primary()))
-            .font_family(theme::SETTINGS_FONT_FAMILY)
-            .border_1()
-            .border_color(rgba(theme::hairline().to_rgba()))
+            .workbench_body()
             .track_focus(&self.focus_handle)
             .child(
                 div()
@@ -215,30 +194,23 @@ impl Render for SettingsView {
                             .w(px(theme::SETTINGS_NAV_WIDTH))
                             .h(px(body_height))
                             .flex_shrink_0()
-                            .bg(rgb(theme::surface_base()))
+                            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Base)
                             .child(self.tabs(cx)),
                     )
-                    .child(
-                        div()
-                            .h(px(body_height))
-                            .w(px(1.))
-                            .flex_shrink_0()
-                            .bg(rgba(theme::hairline().to_rgba())),
-                    )
+                    .child(fileatlas_ui_bridge::components::vertical_divider())
                     .child(
                         div()
                             .v_flex()
                             .w(px(content_width))
                             .h(px(body_height))
                             .flex_shrink_0()
-                            .bg(rgb(theme::surface_modal()))
                             .child(
                                 div()
                                     .v_flex()
                                     .size_full()
                                     .overflow_y_scrollbar()
                                     .px(px(theme::SETTINGS_CONTENT_PADDING))
-                                    .py(px(28.))
+                                    .py(px(fileatlas_ui_bridge::theme::space_expanded()))
                                     .child(self.page_header())
                                     .child(match self.service.snapshot() {
                                         Ok(s) => self
@@ -259,31 +231,26 @@ impl Render for SettingsView {
         card = card.child(
             div()
                 .h_flex()
-                .h(px(48.))
+                .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
                 .flex_shrink_0()
                 .items_center()
                 .justify_between()
-                .border_t_1()
-                .border_color(rgba(theme::hairline().to_rgba()))
-                .bg(rgb(theme::surface_modal()))
-                .px_3()
-                .py_2()
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                .py(px(fileatlas_ui_bridge::theme::space_standard()))
                 .child(
                     div()
                         .h_flex()
                         .items_center()
-                        .gap_2()
-                        .text_size(px(14.))
-                        .text_color(rgb(theme::text_secondary()))
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                        .workbench_assistant()
                         .child(theme::small_icon(gpui_kit::assets::IconName::Check))
                         .child(fileatlas_ui_bridge::i18n::tr(
                             "Settings changes are saved automatically.",
                         )),
                 )
                 .child(
-                    Button::new("settings-close-footer")
-                        .w(px(100.))
-                        .h(px(32.))
+                    fileatlas_ui_bridge::components::button("settings-close-footer")
                         .label(fileatlas_ui_bridge::i18n::tr("Close"))
                         .on_click(cx.listener(|this, _, _, cx| this.close_surface(cx))),
                 ),
@@ -291,12 +258,11 @@ impl Render for SettingsView {
         if let Some(e) = &self.error {
             card = card.child(
                 div()
-                    .h(px(40.))
+                    .h(px(theme::ui_height(theme::CONTROL_HEIGHT_NAV)))
                     .flex_shrink_0()
-                    .px_3()
-                    .py_2()
-                    .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::danger_text()))
+                    .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+                    .py(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_assistant()
                     .child(format!("Could not save: {e}")),
             );
         }
@@ -305,7 +271,7 @@ impl Render for SettingsView {
             .inset_0()
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|this, event, _, cx| this.handle_key_down(event, cx)))
-            .child(card);
+            .child(fileatlas_ui_bridge::components::modal_frame(card));
         if self.update_offer_open {
             root = root.child(self.render_update_offer(window, cx));
         }

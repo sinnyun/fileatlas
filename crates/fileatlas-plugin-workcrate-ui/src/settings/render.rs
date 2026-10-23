@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
+use fileatlas_ui_bridge::theme;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 impl Render for PresetSettings {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -17,11 +19,11 @@ impl Render for PresetSettings {
             let _ = self.surfaces.set_value("workcrate.settings", &state);
         }
         let executable = div()
-            .w(px(320.))
+            .w(px(theme::CONTROL_WIDTH_EXTRA_WIDE))
             .max_w_full()
             .h_flex()
             .items_center()
-            .gap_2()
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(
                 control(
                     "settings-vectorcraft-executable",
@@ -41,7 +43,7 @@ impl Render for PresetSettings {
             .map(|p| format!("项目：{}", p.name))
             .unwrap_or_else(|| "程序默认信息".into());
         let current = self.project_id.clone();
-        let scope = Button::new("workcrate-preset-scope")
+        let scope = fileatlas_ui_bridge::components::button("workcrate-preset-scope")
             .outline()
             .label(label)
             .disabled(self.busy || self.auto_pending || self.error.is_some())
@@ -151,7 +153,7 @@ impl Render for PresetSettings {
                 .description(
                     "后台任务默认使用同目录的 vectorcraft-cli.exe；保存路径不会启动程序。",
                 ),
-                SettingRow::new("vectorcraft-cli", "后台 CLI 路径", SettingControl::Custom(control("settings-vectorcraft-cli", components::text_input(&self.cli).w(px(320.)), &self.surfaces).into_any_element()))
+                SettingRow::new("vectorcraft-cli", "后台 CLI 路径", SettingControl::Custom(control("settings-vectorcraft-cli", components::text_input(&self.cli).w(px(theme::CONTROL_WIDTH_EXTRA_WIDE)), &self.surfaces).into_any_element()))
                     .description("可留空，自动使用程序同目录的 vectorcraft-cli.exe；可填写独立安装的官方 CLI。"),
                 SettingRow::new(
                     "vectorcraft-port",
@@ -159,7 +161,7 @@ impl Render for PresetSettings {
                     SettingControl::Custom(
                         control(
                             "settings-vectorcraft-port",
-                            components::text_input(&self.port).w(px(180.)),
+                            components::text_input(&self.port).w(px(theme::CONTROL_WIDTH_STANDARD)),
                             &self.surfaces,
                         )
                         .into_any_element(),
@@ -181,14 +183,13 @@ impl Render for PresetSettings {
         ));
         }
         for field in &self.fields {
-            let mut choices = div().v_flex().w(px(320.)).max_w_full().gap_2();
+            let mut choices = div()
+                .v_flex()
+                .w(px(theme::CONTROL_WIDTH_EXTRA_WIDE))
+                .max_w_full()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()));
             if field.values.is_empty() {
-                choices = choices.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_muted()))
-                        .child("暂无默认信息"),
-                );
+                choices = choices.child(div().workbench_assistant().child("暂无默认信息"));
             }
             for (index, value) in field.values.iter().enumerate() {
                 let key = field.key.clone();
@@ -196,7 +197,7 @@ impl Render for PresetSettings {
                     div()
                         .h_flex()
                         .items_center()
-                        .gap_2()
+                        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                         .child(
                             control(
                                 &format!("settings-value-{key}-{index}"),
@@ -207,10 +208,13 @@ impl Render for PresetSettings {
                             .min_w_0(),
                         )
                         .child(
-                            Button::new(format!("preset-remove-value-{key}-{index}"))
-                                .ghost()
-                                .label("删除")
-                                .on_click(cx.listener(move |view, _, _, cx| {
+                            fileatlas_ui_bridge::components::button(format!(
+                                "preset-remove-value-{key}-{index}"
+                            ))
+                            .ghost()
+                            .label("删除")
+                            .on_click(cx.listener(
+                                move |view, _, _, cx| {
                                     if let Some(f) = view.fields.iter_mut().find(|f| f.key == key) {
                                         if index < f.values.len() {
                                             f.values.remove(index);
@@ -220,7 +224,8 @@ impl Render for PresetSettings {
                                     view.subscribe_values(cx);
                                     view.queue_save(cx);
                                     cx.notify();
-                                })),
+                                },
+                            )),
                         ),
                 );
             }
@@ -246,7 +251,7 @@ impl Render for PresetSettings {
                         SettingControl::Custom(
                             control(
                                 &format!("settings-promote-{key}"),
-                                Button::new(format!("promote-{key}"))
+                                fileatlas_ui_bridge::components::button(format!("promote-{key}"))
                                     .outline()
                                     .label("合并到程序默认信息")
                                     .disabled(
@@ -287,7 +292,7 @@ impl Render for PresetSettings {
                     SettingControl::Custom(
                         control(
                             "settings-preset-name",
-                            components::text_input(&self.name).w(px(240.)),
+                            components::text_input(&self.name).w(px(theme::CONTROL_WIDTH_WIDE)),
                             &self.surfaces,
                         )
                         .into_any_element(),
@@ -318,7 +323,7 @@ impl Render for PresetSettings {
             .id("workcrate-defaults-form")
             .size_full()
             .overflow_y_scroll()
-            .p_4()
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 SettingsPage::new("WorkCrate 字段预设", "", sections)
                     .render_body(Rc::new(move |id, value, window, cx| {
@@ -330,7 +335,7 @@ impl Render for PresetSettings {
                             }
                         });
                     }))
-                    .text_color(rgb(theme::text_primary())),
+                    .workbench_body(),
             )
     }
 }

@@ -1,5 +1,7 @@
 //! Executable extension catalog for the file inspector.
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 impl FileManagerView {
     pub(super) fn inspector_extensions(&self) -> AnyElement {
@@ -21,26 +23,20 @@ impl FileManagerView {
             .w_full()
             .h_full()
             .min_h_0()
-            .gap(px(8.))
-            .p(px(14.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
             .children(extensions.into_iter().map(|view| {
                 div()
                     .v_flex()
                     .w_full()
-                    .gap(px(2.))
-                    .p(px(8.))
-                    .rounded(px(theme::ROUND_SM))
-                    .bg(rgb(theme::surface_panel()))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .p(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+                    .child(div().workbench_assistant().child(view.contribution.id))
                     .child(
                         div()
-                            .text_sm()
-                            .text_color(rgb(theme::text_primary()))
-                            .child(view.contribution.id),
-                    )
-                    .child(
-                        div()
-                            .text_xs()
-                            .text_color(rgb(theme::text_secondary()))
+                            .workbench_assistant()
                             .child(format!("{} · {}", view.owner, view.contribution.slot)),
                     )
             }))

@@ -1,9 +1,12 @@
 //! Searchable tag assignment controls for the current file_manager selection.
 
 use fileatlas_plugin_history::UndoEntry;
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::theme;
 use gpui_kit::base::StyledExt as _;
-use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement as _;
 use gpui_kit::*;
@@ -43,19 +46,18 @@ pub(super) fn render(
     let preview_width = (body_width - picker_width).max(1.);
     let picker = div()
         .v_flex()
-        .gap_2()
+        .gap(px(fileatlas_ui_bridge::theme::space_standard()))
         .w(px(picker_width))
         .h(px(body_height))
         .min_w_0()
         .min_h_0()
-        .p_3()
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(fileatlas_ui_bridge::components::text_input(&view.tag_picker_search).w_full());
     let mut picker = picker;
     if list_empty(&tags, &query) {
         picker = picker.child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("No matching tags.")),
         );
     } else {
@@ -65,9 +67,9 @@ pub(super) fn render(
                 .w_full()
                 .flex_1()
                 .min_h_0()
-                .rounded_sm()
-                .bg(rgb(theme::surface_panel()))
-                .p_1()
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
+                .p(px(fileatlas_ui_bridge::theme::space_compact()))
                 .overflow_y_scrollbar()
                 .children(tag_tree_rows(
                     &tags,
@@ -79,7 +81,10 @@ pub(super) fn render(
         );
     }
     if !recent.is_empty() {
-        let mut recent_row = div().h_flex().flex_wrap().gap_1();
+        let mut recent_row = div()
+            .h_flex()
+            .flex_wrap()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()));
         for tag in recent {
             let id = tag.id;
             let selected = view.tag_picker_selected.contains(&id);
@@ -105,13 +110,12 @@ pub(super) fn render(
         picker = picker.child(
             div()
                 .v_flex()
-                .gap_1()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .max_h(px(64.))
                 .flex_shrink_0()
                 .child(
                     div()
-                        .text_xs()
-                        .font_semibold()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr("Recently used tags")),
                 )
                 .child(recent_row),
@@ -124,31 +128,26 @@ pub(super) fn render(
         .h(px(card_height))
         .min_h_0()
         .overflow_hidden()
-        .rounded_md()
-        .bg(rgb(theme::surface_modal()))
         .child(
             div()
                 .h_flex()
                 .w_full()
-                .h(px(48.))
+                .h(px(theme::ui_height(theme::CONTROL_HEIGHT_FOOTER)))
                 .items_center()
                 .justify_between()
-                .border_b_1()
-                .border_color(rgba(theme::border().to_rgba()))
-                .px_4()
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom)
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(
                     div()
-                        .text_sm()
-                        .font_semibold()
+                        .workbench_assistant()
                         .child(fileatlas_ui_bridge::i18n::tr_args(
                             "Assign tags to {count} selected media",
                             &[("count", selected_count.to_string())],
                         )),
                 )
                 .child(
-                    Button::new("file_manager-tag-picker-close")
+                    fileatlas_ui_bridge::components::button("file_manager-tag-picker-close")
                         .ghost()
-                        .compact()
                         .icon(theme::small_icon(gpui_kit::assets::IconName::X))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.show_tag_picker = false;
@@ -170,8 +169,7 @@ pub(super) fn render(
                         .h(px(body_height))
                         .min_w_0()
                         .min_h_0()
-                        .border_l_1()
-                        .border_color(rgba(theme::border().to_rgba()))
+                        .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Left)
                         .child(preview),
                 ),
         )
@@ -183,14 +181,12 @@ pub(super) fn render(
                 .flex_shrink_0()
                 .items_center()
                 .justify_end()
-                .gap_2()
-                .border_t_1()
-                .border_color(rgba(theme::border().to_rgba()))
-                .px_4()
+                .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+                .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+                .px(px(fileatlas_ui_bridge::theme::space_expanded()))
                 .child(
-                    Button::new("file_manager-tag-picker-clear")
+                    fileatlas_ui_bridge::components::button("file_manager-tag-picker-clear")
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Clear choices"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.tag_picker_selected.clear();
@@ -199,9 +195,8 @@ pub(super) fn render(
                 )
                 .child(div().flex_1())
                 .child(
-                    Button::new("file_manager-tag-picker-cancel")
+                    fileatlas_ui_bridge::components::button("file_manager-tag-picker-cancel")
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Cancel"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.show_tag_picker = false;
@@ -209,22 +204,19 @@ pub(super) fn render(
                         })),
                 )
                 .child(
-                    Button::new("file_manager-tag-assign")
-                        .compact()
+                    fileatlas_ui_bridge::components::button("file_manager-tag-assign")
                         .label(fileatlas_ui_bridge::i18n::tr("Assign"))
                         .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(true, cx))),
                 )
                 .child(
-                    Button::new("file_manager-tag-remove")
+                    fileatlas_ui_bridge::components::button("file_manager-tag-remove")
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Remove"))
                         .on_click(cx.listener(|this, _, _, cx| this.apply_picker_tags(false, cx))),
                 )
                 .child(
-                    Button::new("file_manager-tag-clear")
+                    fileatlas_ui_bridge::components::button("file_manager-tag-clear")
                         .ghost()
-                        .compact()
                         .label(fileatlas_ui_bridge::i18n::tr("Clear all tags"))
                         .on_click(cx.listener(|this, _, _, cx| this.clear_picker_tags(cx))),
                 ),
@@ -250,21 +242,23 @@ fn tag_tree_rows(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap_1()
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .pl(px((depth as f32) * 18.))
                     .child(
-                        Button::new(format!("file_manager-tag-choice-{id}"))
-                            .icon(theme::small_icon(if checked {
-                                gpui_kit::assets::IconName::Check
-                            } else {
-                                gpui_kit::assets::IconName::Square
-                            }))
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if !this.tag_picker_selected.remove(&id) {
-                                    this.tag_picker_selected.insert(id);
-                                }
-                                cx.notify();
-                            })),
+                        fileatlas_ui_bridge::components::button(format!(
+                            "file_manager-tag-choice-{id}"
+                        ))
+                        .icon(theme::small_icon(if checked {
+                            gpui_kit::assets::IconName::Check
+                        } else {
+                            gpui_kit::assets::IconName::Square
+                        }))
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            if !this.tag_picker_selected.remove(&id) {
+                                this.tag_picker_selected.insert(id);
+                            }
+                            cx.notify();
+                        })),
                     )
                     .child(
                         fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
@@ -329,16 +323,15 @@ fn selected_media_preview(view: &FileManagerView, width: f32) -> Div {
     let mut preview = div()
         .v_flex()
         .items_start()
-        .gap_1()
+        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
         .w(px(width))
         .h_full()
         .min_w_0()
         .overflow_hidden()
-        .p_3()
+        .p(px(fileatlas_ui_bridge::theme::space_expanded()))
         .child(
             div()
-                .text_xs()
-                .font_semibold()
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("Selected media")),
         );
     if let Some(media) = media {
@@ -360,19 +353,19 @@ fn selected_media_preview(view: &FileManagerView, width: f32) -> Div {
                     .w_full()
                     .h(px(132.))
                     .object_fit(ObjectFit::Cover)
-                    .rounded_md(),
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium),
             );
         } else {
             preview = preview.child(
                 div()
                     .w_full()
                     .h(px(132.))
-                    .rounded_md()
-                    .bg(rgb(theme::surface_faint()))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Medium)
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Muted)
                     .child(theme::large_icon(if media.media_type == "video" {
                         gpui_kit::assets::IconName::FileVideoCamera
                     } else if media.media_type == "audio" {
@@ -385,15 +378,13 @@ fn selected_media_preview(view: &FileManagerView, width: f32) -> Div {
         preview = preview.child(
             div()
                 .w_full()
-                .text_sm()
-                .font_medium()
+                .workbench_assistant()
                 .child(media.filename.clone()),
         );
         if let (Some(width), Some(height)) = (media.width, media.height) {
             preview = preview.child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(format!("{width} × {height}")),
             );
         }
@@ -401,20 +392,22 @@ fn selected_media_preview(view: &FileManagerView, width: f32) -> Div {
         preview = preview.child(
             div()
                 .w_full()
-                .pt_1()
-                .text_xs()
-                .font_semibold()
+                .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr("Tags")),
         );
         if tags_for_media.is_empty() {
             preview = preview.child(
                 div()
-                    .text_xs()
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr("No tags assigned yet.")),
             );
         } else {
-            let mut chips = div().h_flex().w_full().flex_wrap().gap_1();
+            let mut chips = div()
+                .h_flex()
+                .w_full()
+                .flex_wrap()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()));
             for tag in tags_for_media.into_iter().take(6) {
                 chips = chips.child(
                     fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name)
@@ -426,16 +419,17 @@ fn selected_media_preview(view: &FileManagerView, width: f32) -> Div {
             preview = preview.child(chips);
         }
         if selected.len() > 1 {
-            preview = preview.child(div().text_xs().child(fileatlas_ui_bridge::i18n::tr_args(
-                "and {count} more selected",
-                &[("count", (selected.len() - 1).to_string())],
-            )));
+            preview = preview.child(div().workbench_assistant().child(
+                fileatlas_ui_bridge::i18n::tr_args(
+                    "and {count} more selected",
+                    &[("count", (selected.len() - 1).to_string())],
+                ),
+            ));
         }
     } else {
         preview = preview.child(
             div()
-                .text_xs()
-                .text_color(rgb(theme::text_secondary()))
+                .workbench_assistant()
                 .child(fileatlas_ui_bridge::i18n::tr(
                     "Select media to see a preview.",
                 )),

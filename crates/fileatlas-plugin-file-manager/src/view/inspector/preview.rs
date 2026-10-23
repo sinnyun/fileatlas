@@ -1,7 +1,8 @@
 //! Fixed Inspector preview and tab controls.
 
 use super::*;
-use gpui_kit::component::button::ButtonVariants;
+use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 
 impl FileManagerView {
     pub(super) fn active_inspector_tab(&self) -> &'static str {
@@ -15,13 +16,13 @@ impl FileManagerView {
     pub(super) fn inspector_tabs(&self, active: &str, cx: &mut Context<Self>) -> Div {
         let mut tabs = div()
             .h_flex()
+            .items_center()
             .w_full()
             .flex_shrink_0()
-            .h(px(38.))
-            .px(px(8.))
-            .border_t_1()
-            .border_b_1()
-            .border_color(rgb(theme::separator()));
+            .h(px(theme::ui_height(theme::CONTROL_HEIGHT_LARGE)))
+            .px(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom);
         for (key, label) in [
             ("information", "Information"),
             ("history", "History"),
@@ -29,34 +30,15 @@ impl FileManagerView {
         ] {
             let selected = active == key;
             tabs = tabs.child(
-                Button::new(format!("file_manager-inspector-tab-{key}"))
-                    .ghost()
-                    .compact()
-                    .flex_1()
-                    .h_full()
-                    .text_color(rgb(if selected {
-                        theme::accent()
-                    } else {
-                        theme::text_secondary()
-                    }))
-                    .border_b_2()
-                    .border_color(rgb(if selected {
-                        theme::accent()
-                    } else {
-                        theme::surface_modal()
-                    }))
-                    .child(
-                        div()
-                            .w_full()
-                            .h_flex()
-                            .justify_center()
-                            .child(fileatlas_ui_bridge::i18n::tr(label)),
-                    )
-                    .toggled(selected)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        let _ = this.surfaces.set_value("file_manager.inspector.tab", key);
-                        cx.notify();
-                    })),
+                fileatlas_ui_bridge::components::tab_button(
+                    format!("file_manager-inspector-tab-{key}"),
+                    fileatlas_ui_bridge::i18n::tr(label),
+                    selected,
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    let _ = this.surfaces.set_value("file_manager.inspector.tab", key);
+                    cx.notify();
+                })),
             );
         }
         tabs
@@ -69,12 +51,11 @@ impl FileManagerView {
             .v_flex()
             .w_full()
             .flex_shrink_0()
-            .gap(px(6.))
-            .px(px(12.))
-            .pt(px(8.))
-            .pb(px(10.))
-            .border_b_1()
-            .border_color(rgb(theme::separator()));
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+            .pb(px(fileatlas_ui_bridge::theme::space_standard()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Bottom);
         if let Some(media) = media {
             let media_id = media.id;
             let media_type = media.media_type.clone();
@@ -86,9 +67,9 @@ impl FileManagerView {
                 // inspector. Width remains fluid; the details below scroll
                 // independently when the window is short.
                 .h(px(180.))
-                .rounded(px(theme::ROUND_SM))
+                .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
                 .overflow_hidden()
-                .bg(rgb(theme::surface_panel()))
+                .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
                 .flex()
                 .items_center()
                 .justify_center();
@@ -115,7 +96,7 @@ impl FileManagerView {
             preview = preview.child(
                 thumbnail
                     .cursor_pointer()
-                    .hover(|style| style.bg(rgba(theme::fill_hover())))
+                    .workbench_hover_surface()
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.preview_media(media_id, cx);
                     })),
@@ -125,24 +106,21 @@ impl FileManagerView {
                     .w_full()
                     .overflow_hidden()
                     .text_ellipsis()
-                    .text_size(px(theme::FONT_SIZE_BODY))
+                    .workbench_body()
                     .text_center()
-                    .text_color(rgb(theme::text_primary()))
+                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Primary)
                     .child(media.filename),
             );
             if selected_count == 1 {
                 preview =
                     preview.child(self.rating_stars(media.id, media.rating.clamp(0, 5) as u8, cx));
             } else {
-                preview = preview.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::text_secondary()))
-                        .child(fileatlas_ui_bridge::i18n::tr_args(
-                            "{count} selected",
-                            &[("count", selected_count.to_string())],
-                        )),
-                );
+                preview = preview.child(div().workbench_assistant().child(
+                    fileatlas_ui_bridge::i18n::tr_args(
+                        "{count} selected",
+                        &[("count", selected_count.to_string())],
+                    ),
+                ));
             }
         } else {
             let message = if selected_count > 0
@@ -157,13 +135,12 @@ impl FileManagerView {
                 div()
                     .w_full()
                     .h(px(220.))
-                    .rounded(px(theme::ROUND_SM))
-                    .bg(rgb(theme::surface_panel()))
+                    .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Small)
+                    .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Panel)
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_size(px(theme::FONT_SIZE_SMALL))
-                    .text_color(rgb(theme::text_muted()))
+                    .workbench_assistant()
                     .child(fileatlas_ui_bridge::i18n::tr(message)),
             );
         }
@@ -189,7 +166,7 @@ impl FileManagerView {
             .w_full()
             .justify_center()
             .items_center()
-            .gap(px(5.));
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()));
         for star in 1..=5u8 {
             stars = stars.child(
                 div()
@@ -197,20 +174,20 @@ impl FileManagerView {
                         "file_manager-inspector-preview-star-{media_id}-{star}"
                     ))
                     .cursor_pointer()
-                    .text_color(rgb(if star <= rating {
-                        theme::accent()
+                    .workbench_foreground(if star <= rating {
+                        fileatlas_ui_bridge::components::ForegroundRole::Accent
                     } else {
-                        theme::text_muted()
-                    }))
-                    .hover(|style| style.text_color(rgb(theme::accent_text())))
+                        fileatlas_ui_bridge::components::ForegroundRole::Muted
+                    })
+                    .workbench_hover_foreground(theme::accent_text())
                     .child(
-                        theme::icon(gpui_kit::assets::IconName::Star).text_color(rgb(
+                        theme::icon(gpui_kit::assets::IconName::Star).workbench_foreground(
                             if star <= rating {
-                                theme::accent()
+                                fileatlas_ui_bridge::components::ForegroundRole::Accent
                             } else {
-                                theme::text_muted()
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted
                             },
-                        )),
+                        ),
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         let next = if star == rating { 0 } else { star };

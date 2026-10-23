@@ -2,10 +2,11 @@
 //! history and extension pages, plus the existing file actions. Reference:
 //! docs/reference-ui/concepts/sidebar-pages-preview-2026-10-14-v2.png.
 
+use fileatlas_ui_bridge::components::WorkbenchForeground as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::base::Disableable;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
-use gpui_kit::component::popover::Popover;
 
 mod contexts;
 mod folder;
@@ -19,6 +20,7 @@ mod tag;
 pub(super) mod tag_editor;
 use super::card;
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::component::button::ButtonVariants;
 use helpers::*;
 
@@ -45,33 +47,31 @@ impl FileManagerView {
             .items_center()
             .justify_between()
             .h(px(44.))
-            .px(px(14.))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 div()
-                    .font_family(theme::SEMIBOLD_FONT_FAMILY)
-                    .text_size(px(14.))
-                    .text_color(rgb(theme::text_primary()))
+                    .workbench_title()
                     .child(fileatlas_ui_bridge::i18n::tr(context.title())),
             )
             .child(
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(4.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .children(
                         matches!(&context, contexts::InspectorContext::File).then(|| {
-                            Button::new("file_manager-inspector-open-preview")
-                                .ghost()
-                                .compact()
-                                .icon(theme::icon(IconName::ExternalLink))
-                                .tooltip(fileatlas_ui_bridge::i18n::tr("Open preview"))
-                                .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx)))
+                            fileatlas_ui_bridge::components::button(
+                                "file_manager-inspector-open-preview",
+                            )
+                            .ghost()
+                            .icon(theme::icon(IconName::ExternalLink))
+                            .tooltip(fileatlas_ui_bridge::i18n::tr("Open preview"))
+                            .on_click(cx.listener(|this, _, _, cx| this.preview_selected(cx)))
                         }),
                     )
                     .child(
-                        Button::new("file_manager-inspector-close")
+                        fileatlas_ui_bridge::components::button("file_manager-inspector-close")
                             .ghost()
-                            .compact()
                             .icon(theme::icon(IconName::X))
                             .tooltip(fileatlas_ui_bridge::i18n::tr("Close inspector"))
                             .on_click(cx.listener(|this, _, _, cx| {
@@ -186,7 +186,12 @@ impl FileManagerView {
                 .map(|cached| cached.tags.as_slice())
                 .unwrap_or_default()
         };
-        let mut body = div().v_flex().w_full().gap(px(2.)).px(px(14.)).pb(px(14.));
+        let mut body = div()
+            .v_flex()
+            .w_full()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .pb(px(fileatlas_ui_bridge::theme::space_expanded()));
         let basic_open = self.inspector_expanded.contains("basic");
         body = body.child(inspector_divider()).child(section_header(
             "basic",
@@ -224,9 +229,8 @@ impl FileManagerView {
             body = body.child(
                 div()
                     .w_full()
-                    .pb(px(6.))
-                    .text_size(px(theme::FONT_SIZE_TINY))
-                    .text_color(rgb(theme::text_secondary()))
+                    .pb(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .workbench_assistant()
                     .child(display_path(&media.full_path)),
             );
         }
@@ -249,8 +253,8 @@ impl FileManagerView {
         let mut capsules = div()
             .h_flex()
             .flex_wrap()
-            .gap(px(6.))
-            .pb(px(6.))
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .pb(px(fileatlas_ui_bridge::theme::space_standard()))
             .items_center();
         for tag in tags {
             let tag_id = tag.id;
@@ -258,7 +262,7 @@ impl FileManagerView {
                 div()
                     .h_flex()
                     .items_center()
-                    .gap(px(3.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                     .child(
                         fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
                             .color(tag.color.as_deref())
@@ -269,11 +273,9 @@ impl FileManagerView {
                         div()
                             .id(format!("file_manager-inspector-tag-remove-{tag_id}"))
                             .cursor_pointer()
-                            .child(
-                                theme::icon(IconName::X)
-                                    .size(px(11.))
-                                    .text_color(rgb(theme::text_muted())),
-                            )
+                            .child(theme::icon(IconName::X).size(px(11.)).workbench_foreground(
+                                fileatlas_ui_bridge::components::ForegroundRole::Muted,
+                            ))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 let media_ids = vec![media_id];
                                 this.remove_context_tag(&media_ids, tag_id, cx);
@@ -312,7 +314,7 @@ impl FileManagerView {
         let picker_open = self.inspector_tag_picker_open;
         let weak = cx.entity().downgrade();
         let open_view = weak.clone();
-        let picker = Popover::new("file_manager-inspector-tag-picker")
+        let picker = fileatlas_ui_bridge::components::popover("file_manager-inspector-tag-picker")
             .open(picker_open)
             .on_open_change(move |open, window, cx| {
                 let _ = open_view.update(cx, |this, cx| {
@@ -326,9 +328,8 @@ impl FileManagerView {
                 });
             })
             .trigger(
-                Button::new("file_manager-inspector-tag-add")
+                fileatlas_ui_bridge::components::button("file_manager-inspector-tag-add")
                     .ghost()
-                    .compact()
                     .icon(theme::icon(IconName::Plus))
                     .label(fileatlas_ui_bridge::i18n::tr("Add tags")),
             )
@@ -339,13 +340,10 @@ impl FileManagerView {
                     .h(px(38. + 27. * selected_tags.len().saturating_sub(1) as f32))
                     .flex_wrap()
                     .items_center()
-                    .gap(px(5.))
-                    .px(px(8.))
-                    .py(px(5.))
-                    .rounded(px(8.))
-                    .border_1()
-                    .border_color(rgb(theme::accent()))
-                    .bg(rgb(theme::surface_elevated()));
+                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .px(px(fileatlas_ui_bridge::theme::space_standard()))
+                    .py(px(fileatlas_ui_bridge::theme::space_compact()))
+                    .workbench_control_surface(true);
                 for (tag, _) in &selected_tags {
                     let tag_id = tag.id;
                     let chip_view = weak.clone();
@@ -353,7 +351,7 @@ impl FileManagerView {
                         div()
                             .h_flex()
                             .items_center()
-                            .gap(px(4.))
+                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                             .child(
                                 fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())
                                     .color(tag.color.as_deref())
@@ -396,7 +394,7 @@ impl FileManagerView {
                     .v_flex()
                     .w(px(320.))
                     .max_h(px(620.))
-                    .gap(px(8.))
+                    .gap(px(fileatlas_ui_bridge::theme::space_standard()))
                     .child(input);
                 if !selected_rows.is_empty() {
                     panel = panel.child(inspector_picker_section("已选中", selected_rows, None));
@@ -411,7 +409,7 @@ impl FileManagerView {
         div()
             .v_flex()
             .w_full()
-            .gap(px(8.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
             .child(capsules.child(picker))
     }
 
@@ -426,7 +424,7 @@ impl FileManagerView {
             Some(Ok(fields)) => div()
                 .v_flex()
                 .w_full()
-                .pb(px(6.))
+                .pb(px(fileatlas_ui_bridge::theme::space_standard()))
                 .children(
                     display_exif_fields(fields)
                         .into_iter()
@@ -440,9 +438,8 @@ impl FileManagerView {
 
     fn inspector_bottom(&self, media_id: i64, cx: &mut Context<Self>) -> impl IntoElement {
         let menu_view = cx.entity().downgrade();
-        let more = Button::new("file_manager-inspector-more")
+        let more = fileatlas_ui_bridge::components::button("file_manager-inspector-more")
             .ghost()
-            .compact()
             .icon(theme::icon(IconName::Ellipsis))
             .tooltip(fileatlas_ui_bridge::i18n::tr("More"))
             .dropdown_menu(move |mut menu, _, _| {
@@ -505,15 +502,13 @@ impl FileManagerView {
             .w_full()
             .flex_shrink_0()
             .items_center()
-            .gap(px(8.))
-            .p(px(12.))
-            .border_t_1()
-            .border_color(rgb(theme::separator()))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .p(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
             .child(
                 div().flex_1().child(
-                    Button::new("file_manager-inspector-reveal")
+                    fileatlas_ui_bridge::components::button("file_manager-inspector-reveal")
                         .outline()
-                        .w_full()
                         .label(fileatlas_ui_bridge::i18n::tr("Show in Explorer"))
                         .icon(theme::icon(IconName::FolderOpen))
                         .on_click(cx.listener(move |this, _, _, cx| {
@@ -528,20 +523,19 @@ impl FileManagerView {
         div()
             .v_flex()
             .w_full()
-            .gap(px(8.))
-            .px(px(14.))
-            .py(px(16.))
+            .gap(px(fileatlas_ui_bridge::theme::space_standard()))
+            .px(px(fileatlas_ui_bridge::theme::space_expanded()))
+            .py(px(fileatlas_ui_bridge::theme::space_expanded()))
             .child(
                 div()
-                    .text_size(px(theme::FONT_SIZE_BODY))
-                    .text_color(rgb(theme::text_secondary()))
+                    .workbench_body()
                     .child(fileatlas_ui_bridge::i18n::tr_args(
                         "{count} selected",
                         &[("count", count.to_string())],
                     )),
             )
             .child(
-                Button::new("file_manager-inspector-assign-tags")
+                fileatlas_ui_bridge::components::button("file_manager-inspector-assign-tags")
                     .primary()
                     .label(fileatlas_ui_bridge::i18n::tr("Assign tags"))
                     .on_click(cx.listener(|this, _, _, cx| {
@@ -550,7 +544,7 @@ impl FileManagerView {
                     })),
             )
             .child(
-                Button::new("file_manager-inspector-bulk-actions")
+                fileatlas_ui_bridge::components::button("file_manager-inspector-bulk-actions")
                     .outline()
                     .label(fileatlas_ui_bridge::i18n::tr("Bulk actions…"))
                     .on_click(cx.listener(|this, _, window, cx| {
@@ -591,10 +585,9 @@ fn flatten_inspector_tag_choices(
 fn inspector_picker_section(title: &str, rows: Vec<Div>, max_height: Option<Pixels>) -> AnyElement {
     let heading = div()
         .w_full()
-        .px(px(7.))
-        .py(px(3.))
-        .text_size(px(theme::FONT_SIZE_SMALL))
-        .text_color(rgb(theme::text_secondary()))
+        .px(px(fileatlas_ui_bridge::theme::space_standard()))
+        .py(px(fileatlas_ui_bridge::theme::space_compact()))
+        .workbench_assistant()
         .child(fileatlas_ui_bridge::i18n::tr(title));
     let section = div().v_flex().w_full().child(heading);
     if rows.is_empty() {
@@ -639,25 +632,26 @@ fn inspector_tag_choice_rows(
                 .w_full()
                 .min_h(px(32.))
                 .items_center()
-                .gap(px(6.))
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                 .pl(px((*depth as f32) * 14. + 7.))
                 .child(
-                    Button::new(format!("file_manager-inspector-tag-choice-{id}"))
-                        .compact()
-                        .icon(theme::small_icon(if checked {
-                            IconName::Check
-                        } else {
-                            IconName::Square
-                        }))
-                        .on_click(cx.listener(move |_, _, _, cx| {
-                            let _ = row_view.update(cx, |this, cx| {
-                                if checked {
-                                    this.remove_context_tag(&[media_id], id, cx);
-                                } else {
-                                    this.assign_context_tag(&[media_id], id, cx);
-                                }
-                            });
-                        })),
+                    fileatlas_ui_bridge::components::button(format!(
+                        "file_manager-inspector-tag-choice-{id}"
+                    ))
+                    .icon(theme::small_icon(if checked {
+                        IconName::Check
+                    } else {
+                        IconName::Square
+                    }))
+                    .on_click(cx.listener(move |_, _, _, cx| {
+                        let _ = row_view.update(cx, |this, cx| {
+                            if checked {
+                                this.remove_context_tag(&[media_id], id, cx);
+                            } else {
+                                this.assign_context_tag(&[media_id], id, cx);
+                            }
+                        });
+                    })),
                 )
                 .child(
                     fileatlas_ui_bridge::tag_capsule::TagCapsule::new(tag.name.clone())

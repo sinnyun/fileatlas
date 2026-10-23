@@ -26,18 +26,6 @@ pub(super) fn system_quick_access() -> Vec<(&'static str, Option<std::path::Path
     ]
 }
 
-pub(super) fn group_thousands(value: u64) -> String {
-    let digits = value.to_string();
-    let mut out = String::new();
-    for (index, ch) in digits.chars().enumerate() {
-        if index > 0 && (digits.len() - index) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(ch);
-    }
-    out
-}
-
 impl SidebarView {
     pub(super) fn sidebar_config(&self) -> SidebarFoldersConfig {
         self.folders.snapshot()

@@ -2,13 +2,11 @@
 use crate::view::tracking::control;
 use fileatlas_plugin_workcrate_boards::WorkCrateBoardsService;
 use fileatlas_plugin_workcrate_projects::{FieldPreset, FieldPresets, WorkCrateProjectsService};
-use fileatlas_ui_bridge::{
-    UiSurfaceState, UiViewContribution, components, settings_page::*, theme,
-};
+use fileatlas_ui_bridge::{UiSurfaceState, UiViewContribution, components, settings_page::*};
 use gpui_kit::{
     base::{Disableable as _, StyledExt as _},
     component::{
-        button::{Button, ButtonVariants as _},
+        button::ButtonVariants as _,
         input::{InputEvent, InputState},
     },
     *,
@@ -168,9 +166,10 @@ impl PresetSettings {
             "browse" => "settings-vectorcraft-browse",
             _ => "settings-vectorcraft-save",
         };
-        let mut button = Button::new(format!("settings-vectorcraft-{id}"))
-            .label(label.to_owned())
-            .disabled(self.config_busy);
+        let mut button =
+            fileatlas_ui_bridge::components::button(format!("settings-vectorcraft-{id}"))
+                .label(label.to_owned())
+                .disabled(self.config_busy);
         button = if primary {
             button.primary()
         } else {
@@ -201,9 +200,10 @@ impl PresetSettings {
             "save" => "settings-preset-save".into(),
             _ => format!("settings-{id}"),
         };
-        let mut button = Button::new(format!("workcrate-settings-{id}"))
-            .label(label.to_owned())
-            .disabled(self.busy && id == "save");
+        let mut button =
+            fileatlas_ui_bridge::components::button(format!("workcrate-settings-{id}"))
+                .label(label.to_owned())
+                .disabled(self.busy && id == "save");
         if primary {
             button = button.primary();
         } else {

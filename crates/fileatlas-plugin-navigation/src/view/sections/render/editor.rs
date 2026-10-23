@@ -14,22 +14,20 @@ impl SidebarView {
         let browse_label = fileatlas_ui_bridge::i18n::tr("Browse…");
         let mut row = div()
             .h_flex()
-            .gap_1()
+            .gap(px(theme::space_standard()))
             .items_center()
-            .py(px(2.))
+            .py(px(fileatlas_ui_bridge::theme::space_compact()))
             .child(fileatlas_ui_bridge::components::text_input(&self.sidebar_editor_input).flex_1())
             .child(
-                Button::new("navigation-sidebar-editor-confirm")
+                fileatlas_ui_bridge::components::button("navigation-sidebar-editor-confirm")
                     .primary()
-                    .compact()
                     .label(confirm_label)
                     .on_click(cx.listener(|this, _, _, cx| this.confirm_sidebar_editor(cx))),
             );
         if show_browse {
             row = row.child(
-                Button::new("navigation-sidebar-editor-browse")
+                fileatlas_ui_bridge::components::button("navigation-sidebar-editor-browse")
                     .ghost()
-                    .compact()
                     .label(browse_label)
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.picker_editor = Some(editor.clone());
@@ -38,9 +36,8 @@ impl SidebarView {
             );
         }
         let row = row.child(
-            Button::new("navigation-sidebar-editor-cancel")
+            fileatlas_ui_bridge::components::button("navigation-sidebar-editor-cancel")
                 .ghost()
-                .compact()
                 .label(cancel_label)
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.sidebar_editor = None;
@@ -48,16 +45,14 @@ impl SidebarView {
                     cx.notify();
                 })),
         );
-        Some(div().v_flex().gap_1().child(row).when_some(
-            self.sidebar_editor_error.clone(),
-            |column, error| {
-                column.child(
-                    div()
-                        .text_xs()
-                        .text_color(rgb(theme::danger_text()))
-                        .child(error),
-                )
-            },
-        ))
+        Some(
+            div()
+                .v_flex()
+                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                .child(row)
+                .when_some(self.sidebar_editor_error.clone(), |column, error| {
+                    column.child(div().workbench_assistant().child(error))
+                }),
+        )
     }
 }

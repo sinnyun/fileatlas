@@ -1,9 +1,10 @@
 //! Declarative settings presentation. Providers supply memory snapshots and own
 //! validation/persistence; this module only renders controls and emits edits.
+use crate::components::WorkbenchTypography as _;
 use crate::{components, i18n::tr, theme};
 use gpui_kit::assets::IconName;
-use gpui_kit::base::{Disableable as _, StyledExt as _};
-use gpui_kit::component::button::{Button, ButtonVariants as _};
+use gpui_kit::base::{Disableable as _, Selectable as _, StyledExt as _};
+use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::checkbox::Checkbox;
 use gpui_kit::component::input::InputState;
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
@@ -184,9 +185,13 @@ impl SettingsPage {
     }
     pub fn render_body(self, handler: SettingHandler) -> Div {
         if let Err(error) = self.validate() {
-            return div().text_color(rgb(theme::danger_text())).child(error);
+            return div().workbench_assistant().child(error);
         }
-        let mut page = div().v_flex().w_full().min_w_0().gap(px(theme::SPACE_2));
+        let mut page = div()
+            .v_flex()
+            .w_full()
+            .min_w_0()
+            .gap(px(theme::space_standard()));
         for section in self.sections {
             if !section.title.is_empty() {
                 page = page.child(section_heading(&section.title));
@@ -274,29 +279,13 @@ mod tests {
 }
 
 pub fn page_heading(title: &str, description: &str) -> Div {
-    div()
-        .v_flex()
-        .gap(px(theme::SPACE_2))
-        .pb(px(24.))
-        .child(
-            div()
-                .text_size(px(theme::SETTINGS_TITLE_SIZE))
-                .font_semibold()
-                .child(tr(title)),
-        )
-        .child(
-            div()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_secondary()))
-                .child(tr(description)),
-        )
+    components::heading_block(tr(title), tr(description)).pb(px(theme::space_expanded()))
 }
 pub fn section_heading(title: &str) -> Div {
     components::section_heading(tr(title))
-        .text_size(px(theme::SETTINGS_SECTION_SIZE))
         .w_full()
-        .pt(px(theme::SPACE_3))
-        .pb(px(theme::SPACE_2))
+        .pt(px(theme::space_expanded()))
+        .pb(px(theme::space_standard()))
         .border_t_1()
         .border_color(rgb(theme::separator()))
 }
@@ -308,22 +297,17 @@ pub fn row() -> Div {
         .min_h(px(48.))
         .items_center()
         .justify_between()
-        .gap(px(theme::SPACE_4))
+        .gap(px(theme::space_expanded()))
 }
 pub fn label(title: &str, note: &str) -> Div {
     let mut label = div()
         .v_flex()
         .flex_1()
         .min_w_0()
-        .gap(px(theme::SPACE_1))
-        .child(div().text_size(px(theme::FONT_SIZE_BODY)).child(tr(title)));
+        .gap(px(theme::space_compact()))
+        .child(div().workbench_body().child(tr(title)));
     if !note.is_empty() {
-        label = label.child(
-            div()
-                .text_size(px(theme::FONT_SIZE_SMALL))
-                .text_color(rgb(theme::text_secondary()))
-                .child(tr(note)),
-        );
+        label = label.child(div().workbench_assistant().child(tr(note)));
     }
     label
 }

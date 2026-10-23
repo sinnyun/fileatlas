@@ -61,21 +61,38 @@ impl SettingsView {
                     )],
                 ),
                 SettingsSection::new(
-                    "Interface layers",
-                    vec![
-                        SettingRow::new(
-                            "settings-region",
-                            "Region separation",
-                            SettingControl::Segments {
-                                value: s.region_separation.clone(),
-                                options: vec![
-                                    Choice::new("border", "Border"),
-                                    Choice::new("shadow", "Shadow"),
-                                ],
-                            },
-                        )
-                        .description("Choose how the sidebar and content regions are separated."),
-                    ],
+                    "全局布局密度",
+                    vec![SettingRow::new(
+                        "settings-ui-density",
+                        "间距与常用高度",
+                        SettingControl::Segments {
+                            value: s.ui_density.clone(),
+                            options: vec![
+                                Choice::new("compact", "紧凑"),
+                                Choice::new("standard", "标准"),
+                                Choice::new("comfortable", "宽松"),
+                            ],
+                        },
+                    )
+                    .description("统一调整全局三档间距、共享按钮、输入控件和导航行高度；插件不单独覆盖。")],
+                ),
+                SettingsSection::new(
+                    "界面审查",
+                    vec![SettingRow::new(
+                        "settings-ui-audit-frames",
+                        "显示组件审查框",
+                        SettingControl::Toggle(s.show_ui_audit_frames),
+                    )
+                    .description("控制基础组件边界标记与结构化尺寸采集；不影响字体层级颜色标记。")],
+                ),
+                SettingsSection::new(
+                    "字体层级审查",
+                    vec![SettingRow::new(
+                        "settings-typography-audit-colors",
+                        "显示字体层级审查色",
+                        SettingControl::Toggle(s.show_typography_audit_colors),
+                    )
+                    .description("标题为红色、正文为绿色、辅助说明为蓝色；关闭后恢复当前主题文字颜色，不影响组件审查框。")],
                 ),
             ],
         )
@@ -93,8 +110,16 @@ impl SettingsView {
                         {
                             settings.color_mode = value.clone()
                         }
-                        ("settings-region", SettingValue::Choice(value)) => {
-                            settings.region_separation = value.clone()
+                        ("settings-ui-density", SettingValue::Choice(value))
+                            if ["compact", "standard", "comfortable"].contains(&value.as_str()) =>
+                        {
+                            settings.ui_density = value.clone()
+                        }
+                        ("settings-ui-audit-frames", SettingValue::Bool(value)) => {
+                            settings.show_ui_audit_frames = *value
+                        }
+                        ("settings-typography-audit-colors", SettingValue::Bool(value)) => {
+                            settings.show_typography_audit_colors = *value
                         }
                         _ => {}
                     },

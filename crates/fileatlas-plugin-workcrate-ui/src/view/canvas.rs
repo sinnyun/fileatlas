@@ -10,7 +10,6 @@ use ::gpui::{Bounds, Pixels, Point, point, size};
 
 pub(super) const CANVAS_RAIL_WIDTH: f32 = 190.;
 pub(super) const CANVAS_INSPECTOR_WIDTH: f32 = 310.;
-pub(super) const HANDLE: f32 = 7.;
 pub(super) const GRAB: f32 = 8.;
 pub(super) const ZOOM_MIN: f32 = 0.25;
 pub(super) const ZOOM_MAX: f32 = 4.;

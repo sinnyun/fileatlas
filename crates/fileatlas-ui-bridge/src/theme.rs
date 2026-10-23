@@ -2,6 +2,7 @@
 //! geometry and role aliases for custom views; aliases read the native Theme
 //! projection and never define independent dark/light colors.
 use gpui_kit::Styled as _;
+use gpui_kit::{BoxShadow, px, rgba};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 mod color;
 mod contrast;
@@ -12,11 +13,32 @@ pub use contrast::*;
 pub use roles::*;
 pub use runtime::*;
 static BACKDROP_ACTIVE: AtomicBool = AtomicBool::new(false);
+static UI_DENSITY: AtomicU32 = AtomicU32::new(100);
+static GEOMETRY_AUDIT_ENABLED: AtomicBool = AtomicBool::new(true);
+static TYPOGRAPHY_AUDIT_ENABLED: AtomicBool = AtomicBool::new(true);
 pub fn backdrop_active() -> bool {
     BACKDROP_ACTIVE.load(Ordering::Relaxed)
 }
 pub fn set_backdrop_active(active: bool) {
     BACKDROP_ACTIVE.store(active, Ordering::Relaxed);
+}
+/// Whether shared component review outlines and geometry probes are active.
+pub fn geometry_audit_enabled() -> bool {
+    GEOMETRY_AUDIT_ENABLED.load(Ordering::Relaxed)
+}
+/// Update the shared review mode. Settings owns persistence; this module owns
+/// the process-wide rendering switch used by every window and plugin.
+pub fn set_geometry_audit_enabled(enabled: bool) {
+    GEOMETRY_AUDIT_ENABLED.store(enabled, Ordering::Relaxed);
+}
+/// Whether temporary colors identifying the three typography tiers are active.
+pub fn typography_audit_enabled() -> bool {
+    TYPOGRAPHY_AUDIT_ENABLED.load(Ordering::Relaxed)
+}
+/// Toggle typography review separately from geometry outlines.
+pub fn set_typography_audit_enabled(enabled: bool) {
+    TYPOGRAPHY_AUDIT_ENABLED.store(enabled, Ordering::Relaxed);
+    runtime::set_typography_audit_enabled(enabled);
 }
 // Legacy persisted accent names are accepted as metadata, never used as a palette.
 pub const DEFAULT_ACCENT_NAME: &str = "Workbench Blue";
@@ -24,14 +46,68 @@ pub const SYSTEM_ACCENT_NAME: &str = "System";
 pub fn normalize_accent(color: u32) -> u32 {
     color
 }
-pub const SPACE_1: f32 = 4.;
-pub const SPACE_2: f32 = 8.;
-pub const SPACE_3: f32 = 12.;
-pub const SPACE_4: f32 = 16.;
-pub const PANEL_GAP: f32 = 10.;
+/// The only product spacing tiers. Settings scales the shared values together.
+pub fn set_ui_density(density: &str) {
+    let scale = match density {
+        "compact" => 90,
+        "comfortable" => 110,
+        _ => 100,
+    };
+    UI_DENSITY.store(scale, Ordering::Relaxed);
+}
+fn density_scale() -> f32 {
+    UI_DENSITY.load(Ordering::Relaxed) as f32 / 100.
+}
+pub fn space_compact() -> f32 {
+    4. * density_scale()
+}
+pub fn space_standard() -> f32 {
+    8. * density_scale()
+}
+pub fn space_expanded() -> f32 {
+    16. * density_scale()
+}
+pub fn ui_height(value: f32) -> f32 {
+    value * density_scale()
+}
+pub fn button_height() -> f32 {
+    BUTTON_HEIGHT * density_scale()
+}
+pub fn nav_row_height() -> f32 {
+    NAV_ROW_HEIGHT * density_scale()
+}
 pub const NAV_ROW_HEIGHT: f32 = 40.;
 pub const ACTION_HEIGHT: f32 = 38.;
 pub const ICON_BUTTON_SIZE: f32 = 30.;
+/// Vertical launcher rail entries share one footprint across feature plugins.
+pub const RAIL_SHORTCUT_WIDTH: f32 = 42.;
+pub const RAIL_SHORTCUT_HEIGHT: f32 = 54.;
+pub const RAIL_FOOTER_WIDTH: f32 = 48.;
+pub const RAIL_FOOTER_HEIGHT: f32 = 96.;
+/// Shared semantic control heights used by native controls and plugin layouts.
+pub const CONTROL_HEIGHT_COMPACT: f32 = 26.;
+pub const CONTROL_HEIGHT_SMALL: f32 = 28.;
+pub const CONTROL_HEIGHT_DENSE: f32 = 30.;
+pub const CONTROL_HEIGHT_NAV: f32 = 40.;
+pub const CONTROL_HEIGHT_STANDARD: f32 = 32.;
+/// Standard multiline text editing surface height.
+pub const TEXTAREA_HEIGHT_STANDARD: f32 = 120.;
+pub const CONTROL_HEIGHT_LARGE: f32 = 38.;
+pub const CONTROL_HEIGHT_TOOLBAR: f32 = 34.;
+pub const PROGRAM_CARD_HEIGHT: f32 = 180.;
+pub const PROGRAM_CARD_NAME_HEIGHT: f32 = 80.;
+pub const CONTROL_HEIGHT_FOOTER: f32 = 48.;
+pub const KEYCAP_WIDTH_STANDARD: f32 = 114.;
+pub const KEYCAP_WIDTH_COMPACT: f32 = 32.;
+pub const KEYCAP_WIDTH_TAG: f32 = 54.;
+pub const KEYCAP_HEIGHT_TAG: f32 = 24.;
+pub const CANVAS_SELECTION_HANDLE_SIZE: f32 = 7.;
+pub const TIMELINE_CORNER_RADIUS: f32 = 25.;
+pub const TIMELINE_RAIL_WIDTH: f32 = 2.;
+pub const CONTROL_WIDTH_NARROW: f32 = 96.;
+pub const CONTROL_WIDTH_STANDARD: f32 = 200.;
+pub const CONTROL_WIDTH_WIDE: f32 = 240.;
+pub const CONTROL_WIDTH_EXTRA_WIDE: f32 = 320.;
 
 // Shared workbench geometry; feature-specific layouts keep their own constraints.
 /// Lower bound for the startup window; the actual size grows with the display.
@@ -52,21 +128,26 @@ pub const SIDEBAR_ROW_HEIGHT: f32 = 30.0;
 pub const SIDEBAR_ARROW_SLOT: f32 = 18.0;
 /// Height of a browser group title band.
 pub const GROUP_HEADER_HEIGHT: f32 = 40.0;
-/// Vertical gap between a group title band and that group's content cards.
-pub const GROUP_HEADER_GAP: f32 = 10.0;
-/// Vertical gap between two consecutive browser groups.
-pub const GROUP_TOP_GAP: f32 = 18.0;
 /// Height of a sidebar region header row.
 pub const REGION_HEADER_HEIGHT: f32 = 26.0;
 /// Right-hand file information column.
 pub const INSPECTOR_WIDTH: f32 = 300.0;
-pub const SEARCH_FIELD_HEIGHT: f32 = 32.0;
+/// All shared buttons have one height; labels/icons determine width after this minimum.
+pub const BUTTON_HEIGHT: f32 = 32.0;
+pub const BUTTON_MIN_WIDTH: f32 = 32.0;
+pub const DIVIDER_THICKNESS: f32 = 1.0;
 pub const FILTER_CHIP_HEIGHT: f32 = 30.0;
 pub const THUMB_SIZE_MIN: f32 = 80.0;
 pub const THUMB_SIZE_MAX: f32 = 300.0;
 pub const THUMB_SIZE_DEFAULT: f32 = 150.0;
 pub const THUMB_SLIDER_WIDTH: f32 = 116.0;
-pub const SOURCE_FONT_SIZE_BUTTON: f32 = 13.0;
+pub const SLIDER_THUMB_SIZE: f32 = 16.0;
+pub const SLIDER_THUMB_TOP: f32 = 3.0;
+pub const SLIDER_THUMB_RING: f32 = 1.5;
+pub const SLIDER_THUMB_DOT: f32 = 4.8;
+pub const SLIDER_RAIL_TOP: f32 = 9.5;
+pub const SLIDER_RAIL_HEIGHT: f32 = 3.0;
+pub const MEDIA_BADGE_HEIGHT: f32 = 18.0;
 pub const SOURCE_ITEM_SPACING_X: f32 = 8.0;
 pub const SOURCE_ITEM_SPACING_Y: f32 = 6.0;
 pub const SOURCE_BUTTON_PADDING_X: f32 = 12.0;
@@ -76,28 +157,36 @@ pub const SOURCE_MENU_MARGIN_Y: f32 = 8.0;
 pub const SOURCE_WINDOW_MARGIN: f32 = 14.0;
 pub const SOURCE_SCROLLBAR_WIDTH: f32 = 7.0;
 pub const SELECTION_BAR_WIDTH: f32 = 3.0;
+pub const ROUND_MICRO: f32 = 2.0;
 pub const ROUND_SM: f32 = 4.0;
 pub const ROUND_MD: f32 = 6.0;
 pub const ROUND_LG: f32 = 8.0;
 pub const ROUND_XL: f32 = 10.0;
 pub const ROUND_PILL: f32 = 999.0;
 pub const THUMB_ROUND: f32 = 6.0;
-pub const FONT_SIZE_TINY: f32 = 11.0;
-pub const FONT_SIZE_SMALL: f32 = 12.0;
+pub const FONT_SIZE_ASSISTANT: f32 = 12.0;
 pub const FONT_SIZE_BODY: f32 = 14.0;
-pub const FONT_SIZE_BUTTON: f32 = 14.0;
-pub const FONT_SIZE_HEADING: f32 = 15.0;
-pub const FONT_SIZE_TITLE: f32 = 18.0;
+pub const FONT_SIZE_TITLE: f32 = 15.0;
+pub const LINE_HEIGHT_TITLE: f32 = 20.0;
+pub const LINE_HEIGHT_BODY: f32 = 18.0;
+pub const LINE_HEIGHT_ASSISTANT: f32 = 16.0;
+/// Temporary geometry-review colors. Remove only after the user accepts the audit.
+pub const AUDIT_FRAME_OUTER: u32 = 0xE60000;
+pub const AUDIT_FRAME_SECTION: u32 = 0xFF8C00;
+pub const AUDIT_FRAME_CARD: u32 = 0xD6B600;
+pub const AUDIT_FRAME_NAV: u32 = 0x00A040;
+pub const AUDIT_FRAME_BUTTON: u32 = 0x0066CC;
+pub const AUDIT_FRAME_INPUT: u32 = 0xC000C0;
+/// Cyan outlines identify the occupied bounds of shared typography wrappers.
+pub const AUDIT_FRAME_TEXT: u32 = 0x00BFD8;
+pub const AUDIT_TEXT_TITLE: u32 = 0xE60000;
+pub const AUDIT_TEXT_BODY: u32 = 0x00A040;
+pub const AUDIT_TEXT_ASSISTANT: u32 = 0x0066CC;
 pub const UI_FONT_FAMILY: &str = "Segoe UI";
-/// Settings concepts use a sans-serif CJK face rather than Windows' serif fallback.
-pub const SETTINGS_FONT_FAMILY: &str = "Microsoft YaHei UI";
 /// Shared settings geometry, calibrated against the complete minimal concepts.
 pub const SETTINGS_NAV_WIDTH: f32 = 224.;
 pub const SETTINGS_CONTENT_PADDING: f32 = 40.;
-pub const SETTINGS_TITLE_SIZE: f32 = 24.;
-pub const SETTINGS_SECTION_SIZE: f32 = 16.;
 pub const SETTINGS_CONTROL_HEIGHT: f32 = 36.;
-pub const SEMIBOLD_FONT_FAMILY: &str = "Segoe UI Semibold";
 /// Shared icon dimensions in logical pixels. Keep UI icon sizing here so
 /// controls remain visually consistent across feature crates.
 pub const ICON_SIZE_SMALL: f32 = 12.0;
@@ -147,38 +236,62 @@ pub fn tag_icon(name: Option<&str>) -> gpui_kit::assets::IconName {
     }
 }
 
-/// How the application separates its regions from each other.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RegionDepth {
-    /// Hairline rule on the shared edge.
-    Border,
-    /// Drop shadow cast toward the neighbouring region.
-    Shadow,
+/// Unified region separation: every region is a softly floating card that
+/// casts a small drop shadow toward the neighbouring region. Callers must
+/// not add their own border on separated edges.
+pub fn separate_region(region: gpui_kit::Div, edge: RegionEdge) -> gpui_kit::Div {
+    region.shadow(region_shadows(edge))
 }
 
-pub const REGION_DEPTH_BORDER: &str = "border";
-pub const REGION_DEPTH_SHADOW: &str = "shadow";
-static REGION_DEPTH: AtomicU32 = AtomicU32::new(0);
-
-pub fn region_depth() -> RegionDepth {
-    if REGION_DEPTH.load(Ordering::Relaxed) == 1 {
-        RegionDepth::Shadow
-    } else {
-        RegionDepth::Border
-    }
+fn region_shadows(edge: RegionEdge) -> Vec<gpui_kit::BoxShadow> {
+    let (offset_x, offset_y) = match edge {
+        RegionEdge::All => (0., 2.),
+        RegionEdge::Left => (-2., 0.),
+        RegionEdge::Right => (2., 0.),
+        RegionEdge::Top => (0., -2.),
+        RegionEdge::Bottom => (0., 2.),
+    };
+    vec![
+        BoxShadow::new(px(offset_x), px(offset_y), rgba(shadow_overlay()).into())
+            .blur_radius(px(6.))
+            .spread_radius(px(-1.)),
+    ]
 }
 
-/// Name form stored in the settings document.
-pub fn region_depth_name() -> &'static str {
-    match region_depth() {
-        RegionDepth::Border => REGION_DEPTH_BORDER,
-        RegionDepth::Shadow => REGION_DEPTH_SHADOW,
-    }
+/// Micro elevation for cards and floating controls (Fluent light feel):
+/// a tight key shadow plus a soft ambient shadow reads as a lifted surface.
+pub fn card_shadow() -> Vec<gpui_kit::BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.), px(1.), rgba(shadow_overlay()).into()).blur_radius(px(2.)),
+        BoxShadow::new(px(0.), px(2.), rgba(shadow_overlay()).into())
+            .blur_radius(px(6.))
+            .spread_radius(px(-1.)),
+    ]
 }
 
-/// Apply a persisted settings value; unknown values keep the hairline default.
-pub fn set_region_depth_name(name: &str) {
-    REGION_DEPTH.store(u32::from(name == REGION_DEPTH_SHADOW), Ordering::Relaxed);
+/// Compact icon-button variant of the micro elevation.
+pub fn control_shadow() -> Vec<gpui_kit::BoxShadow> {
+    vec![BoxShadow::new(px(0.), px(1.), rgba(shadow_overlay()).into()).blur_radius(px(2.))]
+}
+
+/// Elevation for top-level region cards in the main window composition.
+pub fn region_shadow() -> Vec<gpui_kit::BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.), px(1.), rgba(shadow_overlay()).into()).blur_radius(px(2.)),
+        BoxShadow::new(px(0.), px(4.), rgba(shadow_overlay()).into())
+            .blur_radius(px(10.))
+            .spread_radius(px(-2.)),
+    ]
+}
+
+/// Elevation for floating panel shells above the whole window.
+pub fn floating_shadow() -> Vec<gpui_kit::BoxShadow> {
+    vec![
+        BoxShadow::new(px(0.), px(2.), rgba(shadow_overlay()).into()).blur_radius(px(4.)),
+        BoxShadow::new(px(0.), px(8.), rgba(shadow_overlay()).into())
+            .blur_radius(px(20.))
+            .spread_radius(px(-3.)),
+    ]
 }
 
 /// Sides of a region that carry the separation.
@@ -189,38 +302,6 @@ pub enum RegionEdge {
     Right,
     Top,
     Bottom,
-}
-
-/// Apply the configured region separation to a panel. Shadow mode replaces
-/// the rule with a soft drop shadow, so callers must not add their own border.
-pub fn separate_region(region: gpui_kit::Div, edge: RegionEdge) -> gpui_kit::Div {
-    if region_depth() == RegionDepth::Shadow {
-        return region.shadow(region_shadows(edge));
-    }
-    let region = region.border_color(gpui_kit::rgba(region_edge()));
-    match edge {
-        RegionEdge::All => region.border_1(),
-        RegionEdge::Left => region.border_l_1(),
-        RegionEdge::Right => region.border_r_1(),
-        RegionEdge::Top => region.border_t_1(),
-        RegionEdge::Bottom => region.border_b_1(),
-    }
-}
-
-fn region_shadows(edge: RegionEdge) -> Vec<gpui_kit::BoxShadow> {
-    use gpui_kit::{BoxShadow, px, rgba};
-    let (offset_x, offset_y) = match edge {
-        RegionEdge::All => (0., 6.),
-        RegionEdge::Left => (-10., 0.),
-        RegionEdge::Right => (10., 0.),
-        RegionEdge::Top => (0., -10.),
-        RegionEdge::Bottom => (0., 10.),
-    };
-    vec![
-        BoxShadow::new(px(offset_x), px(offset_y), rgba(shadow_overlay()).into())
-            .blur_radius(px(18.))
-            .spread_radius(px(-2.)),
-    ]
 }
 
 /// Compatibility RGB adapters preserve native Theme alpha, never inject backdrop colors.

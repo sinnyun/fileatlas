@@ -1,4 +1,6 @@
 use super::*;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::assets::IconName;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement as _;
@@ -217,11 +219,11 @@ impl Render for SidebarView {
             .size_full()
             .flex_1()
             .min_w_0()
-            .gap(px(1.))
-            .pl(px(10.))
-            .pr(px(6.))
-            .pt(px(2.))
-            .pb(px(8.));
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .pl(px(fileatlas_ui_bridge::theme::space_standard()))
+            .pr(px(fileatlas_ui_bridge::theme::space_standard()))
+            .pt(px(fileatlas_ui_bridge::theme::space_compact()))
+            .pb(px(fileatlas_ui_bridge::theme::space_standard()));
         if self.active_page == NavigationPage::Folders {
             panel = panel
                 .child(sidebar_region(self.render_drives_section(cx)))
@@ -244,45 +246,51 @@ impl Render for SidebarView {
                             .h_flex()
                             .justify_between()
                             .items_center()
-                            .mt(px(8.))
-                            .pt(px(8.))
-                            .border_t_1()
-                            .border_color(rgb(theme::separator()))
+                            .mt(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .pt(px(fileatlas_ui_bridge::theme::space_standard()))
+                            .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                             .child(
                                 div()
                                     .h_flex()
                                     .items_center()
-                                    .gap(px(5.))
-                                    .text_xs()
-                                    .text_color(rgb(theme::text_muted()))
+                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                    .workbench_assistant()
                                     .child(div().child(theme::small_icon(IconName::Tag)))
                                     .child(fileatlas_ui_bridge::i18n::tr("Tags").to_uppercase()),
                             )
                             .child(
                                 div()
                                     .h_flex()
-                                    .gap_1()
+                                    .gap(px(theme::space_standard()))
                                     .child(
-                                        Button::new("navigation-toggle-tag-search")
-                                            .ghost()
-                                            .icon(theme::small_icon(IconName::Search))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-toggle-tag-search",
+                                        )
+                                        .ghost()
+                                        .icon(theme::small_icon(IconName::Search))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.show_tag_search_controls =
                                                     !this.show_tag_search_controls;
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     )
                                     .child(
-                                        Button::new("navigation-create-tag")
-                                            .ghost()
-                                            .icon(theme::small_icon(IconName::Plus))
-                                            .accessibility_label(fileatlas_ui_bridge::i18n::tr(
-                                                "Create tag",
-                                            ))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-create-tag",
+                                        )
+                                        .ghost()
+                                        .icon(theme::small_icon(IconName::Plus))
+                                        .accessibility_label(fileatlas_ui_bridge::i18n::tr(
+                                            "Create tag",
+                                        ))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.tag_create_open = true;
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     ),
                             ),
                     );
@@ -294,19 +302,22 @@ impl Render for SidebarView {
                     self.tag_search_match = prefs.search_match;
                     if self.show_tag_search_controls {
                         let clear_view = tag_view.clone();
-                        panel = panel.child(
-                            div()
-                                .v_flex()
-                                .gap_1()
-                                .child(fileatlas_ui_bridge::components::text_input(
-                                    &self.tag_search,
-                                ))
-                                .child(
-                                    div()
-                                        .h_flex()
-                                        .gap_1()
-                                        .child(
-                                            Button::new("navigation-tag-mode-select")
+                        panel =
+                            panel.child(
+                                div()
+                                    .v_flex()
+                                    .gap(px(theme::space_standard()))
+                                    .child(fileatlas_ui_bridge::components::text_input(
+                                        &self.tag_search,
+                                    ))
+                                    .child(
+                                        div()
+                                            .h_flex()
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .child(
+                                                fileatlas_ui_bridge::components::button(
+                                                    "navigation-tag-mode-select",
+                                                )
                                                 .when(!self.exclude_mode, |button| {
                                                     button.icon(theme::small_icon(IconName::Check))
                                                 })
@@ -314,9 +325,11 @@ impl Render for SidebarView {
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.set_tag_click_mode(false, cx);
                                                 })),
-                                        )
-                                        .child(
-                                            Button::new("navigation-tag-mode-exclude")
+                                            )
+                                            .child(
+                                                fileatlas_ui_bridge::components::button(
+                                                    "navigation-tag-mode-exclude",
+                                                )
                                                 .when(self.exclude_mode, |button| {
                                                     button.icon(theme::small_icon(
                                                         IconName::CircleSlash,
@@ -326,9 +339,11 @@ impl Render for SidebarView {
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.set_tag_click_mode(true, cx);
                                                 })),
-                                        )
-                                        .child(
-                                            Button::new("navigation-tag-select-all")
+                                            )
+                                            .child(
+                                                fileatlas_ui_bridge::components::button(
+                                                    "navigation-tag-select-all",
+                                                )
                                                 .label(fileatlas_ui_bridge::i18n::tr("All"))
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     let tags = this
@@ -338,9 +353,11 @@ impl Render for SidebarView {
                                                         .unwrap_or_default();
                                                     this.select_all_tags(&tags, cx);
                                                 })),
-                                        )
-                                        .child(
-                                            Button::new("navigation-clear-tag-filter")
+                                            )
+                                            .child(
+                                                fileatlas_ui_bridge::components::button(
+                                                    "navigation-clear-tag-filter",
+                                                )
                                                 .label(fileatlas_ui_bridge::i18n::tr("Clear"))
                                                 .on_click(move |_, _, cx| {
                                                     let _ = clear_view.update(cx, |this, cx| {
@@ -348,56 +365,70 @@ impl Render for SidebarView {
                                                         cx.notify();
                                                     });
                                                 }),
-                                        ),
-                                )
-                                .child(div().text_xs().child(match prefs.exclude_modifier {
-                                    TagExcludeModifier::None => {
-                                        fileatlas_ui_bridge::i18n::tr("No exclude modifier")
-                                    }
-                                    TagExcludeModifier::Ctrl => fileatlas_ui_bridge::i18n::tr_args(
-                                        "{modifier} + click toggles other mode",
-                                        &[("modifier", "Ctrl".into())],
-                                    ),
-                                    TagExcludeModifier::Shift => {
-                                        fileatlas_ui_bridge::i18n::tr_args(
-                                            "{modifier} + click toggles other mode",
-                                            &[("modifier", "Shift".into())],
-                                        )
-                                    }
-                                    TagExcludeModifier::Alt => fileatlas_ui_bridge::i18n::tr_args(
-                                        "{modifier} + click toggles other mode",
-                                        &[("modifier", "Alt".into())],
-                                    ),
-                                })),
-                        );
+                                            ),
+                                    )
+                                    .child(div().workbench_assistant().child(
+                                        match prefs.exclude_modifier {
+                                            TagExcludeModifier::None => {
+                                                fileatlas_ui_bridge::i18n::tr("No exclude modifier")
+                                            }
+                                            TagExcludeModifier::Ctrl => {
+                                                fileatlas_ui_bridge::i18n::tr_args(
+                                                    "{modifier} + click toggles other mode",
+                                                    &[("modifier", "Ctrl".into())],
+                                                )
+                                            }
+                                            TagExcludeModifier::Shift => {
+                                                fileatlas_ui_bridge::i18n::tr_args(
+                                                    "{modifier} + click toggles other mode",
+                                                    &[("modifier", "Shift".into())],
+                                                )
+                                            }
+                                            TagExcludeModifier::Alt => {
+                                                fileatlas_ui_bridge::i18n::tr_args(
+                                                    "{modifier} + click toggles other mode",
+                                                    &[("modifier", "Alt".into())],
+                                                )
+                                            }
+                                        },
+                                    )),
+                            );
                         if !self.included_tags.is_empty() || !self.excluded_tags.is_empty() {
                             panel = panel.child(
                                 div()
                                     .h_flex()
-                                    .gap_1()
+                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
                                     .child(
-                                        Button::new("navigation-tag-clear-included")
-                                            .label(fileatlas_ui_bridge::i18n::tr_args(
-                                                "Included tags ({count})",
-                                                &[("count", self.included_tags.len().to_string())],
-                                            ))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-tag-clear-included",
+                                        )
+                                        .label(fileatlas_ui_bridge::i18n::tr_args(
+                                            "Included tags ({count})",
+                                            &[("count", self.included_tags.len().to_string())],
+                                        ))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.included_tags.clear();
                                                 this.emit_tag_selection(cx);
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     )
                                     .child(
-                                        Button::new("navigation-tag-clear-excluded")
-                                            .label(fileatlas_ui_bridge::i18n::tr_args(
-                                                "Excluded tags ({count})",
-                                                &[("count", self.excluded_tags.len().to_string())],
-                                            ))
-                                            .on_click(cx.listener(|this, _, _, cx| {
+                                        fileatlas_ui_bridge::components::button(
+                                            "navigation-tag-clear-excluded",
+                                        )
+                                        .label(fileatlas_ui_bridge::i18n::tr_args(
+                                            "Excluded tags ({count})",
+                                            &[("count", self.excluded_tags.len().to_string())],
+                                        ))
+                                        .on_click(
+                                            cx.listener(|this, _, _, cx| {
                                                 this.excluded_tags.clear();
                                                 this.emit_tag_selection(cx);
                                                 cx.notify();
-                                            })),
+                                            }),
+                                        ),
                                     ),
                             );
                         }
@@ -426,8 +457,7 @@ impl Render for SidebarView {
             }
             Err(error) => panel.child(
                 div()
-                    .text_sm()
-                    .text_color(rgb(theme::danger_text()))
+                    .workbench_assistant()
                     .child(format!("Could not load library: {error}")),
             ),
         };
