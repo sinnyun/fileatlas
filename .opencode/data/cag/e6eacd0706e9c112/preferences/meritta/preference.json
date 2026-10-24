@@ -1,0 +1,62 @@
+[
+  {
+    "id": "c68a3d4c47474e1b8641811e0ac12239",
+    "userID": "meritta",
+    "domainID": "meritta",
+    "type": "Styling scheme",
+    "content": "Prefers light mode (亮色模式) as the target theme for UI optimization",
+    "remark": "new",
+    "namespace": "DevMate",
+    "createTime": "2026-10-23T01:50:13.919Z",
+    "updateTime": "2026-10-23T01:50:13.919Z",
+    "isDeleted": false
+  },
+  {
+    "id": "8228db29fa5641f2aabeb919d8c91d97",
+    "userID": "meritta",
+    "domainID": "meritta",
+    "type": "Styling scheme",
+    "content": "Prefers layout areas with slightly rounded corners, spacing/gaps between regions, and subtle shadows (card-like separated blocks)",
+    "remark": "new",
+    "namespace": "DevMate",
+    "createTime": "2026-10-23T01:50:13.923Z",
+    "updateTime": "2026-10-23T01:50:13.923Z",
+    "isDeleted": false
+  },
+  {
+    "id": "c9c17ccc724549fdbd0125ef94d3ec7e",
+    "userID": "meritta",
+    "domainID": "meritta",
+    "type": "Styling scheme",
+    "content": "Prefers buttons and checkboxes with a slightly elevated floating shadow style (subtle floating button aesthetic); overall aims for a Microsoft lightweight Fluent-like design quality (微软轻质感)",
+    "remark": "new",
+    "namespace": "DevMate",
+    "createTime": "2026-10-23T01:50:13.926Z",
+    "updateTime": "2026-10-23T01:50:13.926Z",
+    "isDeleted": false
+  },
+  {
+    "id": "2b5105d308a043e8a989a2df4f71e7b6",
+    "userID": "meritta",
+    "domainID": "meritta",
+    "type": "Styling scheme",
+    "content": "Wants clearly visible selection buttons in left sidebars and file tree/project tree styles adjusted with prominently highlighted selected items (e.g., on settings and plugin settings pages)",
+    "remark": "new",
+    "namespace": "DevMate",
+    "createTime": "2026-10-23T01:50:13.928Z",
+    "updateTime": "2026-10-23T01:50:13.928Z",
+    "isDeleted": false
+  },
+  {
+    "id": "c9ce024d642b4380afee96b199ad1c34",
+    "userID": "meritta",
+    "domainID": "meritta",
+    "type": "Language preference",
+    "content": "Communicates in native Chinese for interaction",
+    "remark": "new",
+    "namespace": "DevMate",
+    "createTime": "2026-10-23T01:50:13.930Z",
+    "updateTime": "2026-10-23T01:50:13.930Z",
+    "isDeleted": false
+  }
+]

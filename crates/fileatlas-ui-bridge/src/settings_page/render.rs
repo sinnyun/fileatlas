@@ -55,9 +55,10 @@ pub fn render_row(setting: SettingRow, handler: SettingHandler) -> Div {
                 .on_click(move |_, window, cx| handler(&id, SettingValue::Invoke, window, cx))
                 .into_any_element()
         }
-        SettingControl::Text(state) => {
-            components::text_input_with_disabled(&state, disabled).into_any_element()
-        }
+        SettingControl::Text(state) => components::text_input_with_disabled(&state, disabled)
+            .max_w(px(theme::CONTROL_WIDTH_EXTRA_WIDE))
+            .flex_shrink_0()
+            .into_any_element(),
         SettingControl::Path {
             value,
             browse_label,

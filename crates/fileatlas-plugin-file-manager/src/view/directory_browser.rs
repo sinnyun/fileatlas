@@ -465,25 +465,23 @@ pub(super) fn tile(
 ) -> AnyElement {
     let path = folder.path.clone();
     let list = list_width.is_some();
-    let icon_area = fileatlas_ui_bridge::components::card_surface(
-        div()
-            .relative()
-            .flex_shrink_0()
-            .size(px(thumb))
-            .flex()
-            .items_center()
-            .justify_center()
-            .child(
-                theme::icon(IconName::Folder)
-                    .size(px(if list {
-                        34.
-                    } else {
-                        (thumb * 0.46).clamp(40., 96.)
-                    }))
-                    .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Warning),
-            ),
-        selected,
-    );
+    let icon_area = div()
+        .relative()
+        .flex_shrink_0()
+        .size(px(thumb))
+        .flex()
+        .items_center()
+        .justify_center()
+        .child(
+            theme::icon(IconName::Folder)
+                .size(px(if list {
+                    34.
+                } else {
+                    (thumb * 0.46).clamp(40., 96.)
+                }))
+                .workbench_foreground(fileatlas_ui_bridge::components::ForegroundRole::Warning),
+        )
+        .workbench_card(selected);
     let caption = div()
         .min_w_0()
         .overflow_hidden()

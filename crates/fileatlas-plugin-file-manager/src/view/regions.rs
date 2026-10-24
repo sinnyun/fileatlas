@@ -7,6 +7,7 @@ use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::component::button::Button;
 use gpui_kit::component::button::ButtonVariants;
 use gpui_kit::component::scroll::ScrollableElement as _;
+use gpui_kit::prelude::FluentBuilder as _;
 
 #[derive(Clone, Copy)]
 enum Region {
@@ -370,6 +371,7 @@ impl FileManagerView {
                             mode.label(),
                             gpui_kit::assets::IconName::CalendarRange,
                         )
+                        .when(self.grouping_mode == mode, |button| button.primary())
                         .toggled(self.grouping_mode == mode)
                         .on_click(cx.listener(move |this, _, _, cx| this.set_grouping(mode, cx)))
                     }),

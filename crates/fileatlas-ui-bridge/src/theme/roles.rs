@@ -182,7 +182,10 @@ pub fn tooltip_surface() -> u32 {
     packed_rgba(native_colors().popover)
 }
 pub fn shadow_overlay() -> u32 {
-    packed_rgba(native_colors().overlay)
+    let color = packed_rgba(native_colors().overlay);
+    let rgb = color >> u8::BITS;
+    let alpha = (color as u8) / 8;
+    (rgb << u8::BITS) | u32::from(alpha)
 }
 pub fn track_shadow() -> u32 {
     packed_rgba(native_colors().border)

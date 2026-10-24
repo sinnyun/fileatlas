@@ -437,7 +437,7 @@ impl<T: Styled + InteractiveElement + ParentElement + FluentBuilder> WorkbenchSt
     #[track_caller]
     fn workbench_hover_surface(self) -> Self {
         review_card(
-            self.hover(|style| style.bg(rgba(theme::surface_hover()))),
+            self.hover(|style| style.bg(rgb(theme::surface_hover()))),
             crate::geometry_audit::ComponentTokens::default(),
         )
     }
@@ -507,7 +507,7 @@ impl<T: Styled + InteractiveElement + ParentElement + FluentBuilder> WorkbenchSt
         let row = if selected {
             row.hover(move |style| style.bg(rgb(theme::selection_color())))
         } else {
-            row.hover(move |style| style.bg(rgba(theme::surface_hover())))
+            row.hover(move |style| style.bg(rgb(theme::surface_hover())))
         };
         if theme::geometry_audit_enabled() {
             observe_layout(

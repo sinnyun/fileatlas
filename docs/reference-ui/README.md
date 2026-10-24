@@ -15,7 +15,7 @@
 |---|---|---|
 | 主窗公共操作带与栏目地址导航 | [FileAtlas 0.2 多栏概念图](concepts/multi-column-workspaces-2026-10-19.png) | [多栏与工作区清单](concepts/multi-column-workspaces-2026-10-19.md)：筛选/视图操作和搜索/功能分组位于各栏地址行上方；各栏保留独立地址和完整文件视图。沿用现有控件样式；2026-10-18 工具栏图仅作早期控件调整历史 |
 | 左侧收藏分组（覆盖旧复合收藏区） | [用户分组参考](concepts/sidebar-favorite-groups-user-reference-2026-10-18.png)、[深蓝整合概念](concepts/sidebar-favorite-groups-2026-10-18.png) | [分组栏清单](concepts/sidebar-favorite-groups-2026-10-18.md)：每组独立框，框/标题与驱动器和快速访问共用组件；组内＋直接收藏主窗当前目录 |
-| 全局主题、公共组件（覆盖旧稿颜色和控件风格） | [低饱和度浅/暗主题](concepts/semantic-muted-theme-2026-10-19.png) | [低饱和度语义清单](concepts/semantic-muted-theme-2026-10-19.md)、[主题开发规范](../ui-theme.md)。两种模式保留相同功能布局和控件关系；2026-10-19 起以 GPUI Kit 原生 Theme 为唯一颜色来源，Material 生成 JSON；概念图不再指定旧手写 RGB |
+| 全局主题、公共组件（覆盖旧稿颜色和控件风格） | [八类语义色工作台](concepts/unified-eight-family-theme-2026-10-24.png) | [八类语义色清单](concepts/unified-eight-family-theme-2026-10-24.md)、[主题开发规范](../ui-theme.md)。最多八种可配置语义色类，亮/暗和交互状态用同类色阶；GPUI Kit 是唯一主题解析器，Material 生成 JSON，UI Bridge 是自绘控件的公共主题投影层 |
 | 设置中心全部页面 | [简洁外观](concepts/settings-minimal-2026-10-18.png)及[十页完整概念索引](concepts/settings-complete-2026-10-18.md) | 用户要求先完整概念再逐页还原；统一使用[声明式设置页](../settings-page-contract.md)，覆盖旧设置布局 |
 | 菜单、对话框 | [final-v5 索引](final-v5/README.md) 对应画面 | [v5 companion notes](concepts/fileatlas-v5-companion-interfaces-2026-10-13.md)，应用后续用户决定 |
 | 主窗及文件预览侧栏 | [sidebar-pages-preview v2](concepts/sidebar-pages-preview-2026-10-14-v2.png) | 侧栏/检查器结构沿用[历史界面基线](../development-baseline-2026-10-14.md)；主窗整体定义见[FileAtlas 0.2 基线](../development-baseline-0.2-2026-10-19.md)，中间文件区支持单/双/四栏 |

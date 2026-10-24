@@ -42,13 +42,16 @@ RGB 常量表、`mode_color` 和 `theme/components.rs` 逐项覆盖方式。
 ## Material 只生成原生主题配置
 
 `fileatlas-plugin-material-theme` 通过 Cordis 注册独立设置页与 MCP 工具；固定
-`material-colors = 0.4.2`。输入种子色、风格、对比度，输出同时含亮/暗模式的原生
-GPUI ThemeSet JSON。用户通过“生成并应用”或“应用已生成主题”激活。
-生成器不得更新 GPUI Theme，不得在视图生成 palette，也不得把算法复制到各插件。
+`material-colors = 0.4.2`。输入主色种子、风格、对比度和七个可选语义色，输出同时含
+亮/暗模式的原生 GPUI ThemeSet JSON。配置器共八类：主色、中性表面、正文、次要、
+成功、警告、错误、信息。原生角色可生成同类的亮暗与控件状态色阶，不额外创建语义色。
+用户通过“生成并应用主题”激活。生成器不得更新 GPUI Theme，不得在视图生成 palette，
+也不得把算法复制到各插件。
 
-种子颜色使用 GPUI Kit 原生 `ColorSelect`，点击色块从其开源多色阶色板/滑杆选择，
-不要求手输色值，不在插件维护固定色表。选色仅更新草稿，“生成并应用”才持久化。
-色板本身的选中/焦点/弹层均交给 Kit；所选色是输入数据，不是控件私有主题。
+八类颜色均使用 GPUI Kit 原生 `ColorSelect`。设置页不再开放逐个原生角色的任意颜色，
+避免相同按钮、树行、卡片和表格状态各自分叉。选色仅更新草稿，“生成并应用”才持久化。
+Material 角色扇出集中在生成器；GPUI Kit ThemeRegistry 解析配置，UI Bridge 主题别名和
+共享组件是自绘界面的唯一入口。概念与具体检查项见[八类语义色清单](reference-ui/concepts/unified-eight-family-theme-2026-10-24.md)。
 
 默认使用 GPUI 内嵌 Default Light/Dark；Material 默认参数是低色度 Neutral。
 生成文件正常路径为 `%LOCALAPPDATA%/FileAtlas/themes/material.json`，参数为同目录

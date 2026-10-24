@@ -2717,6 +2717,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tracing",
+ "windows 0.61.3",
 ]
 
 [[package]]

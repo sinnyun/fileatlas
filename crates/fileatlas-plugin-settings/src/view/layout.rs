@@ -180,6 +180,7 @@ impl Render for SettingsView {
             .w(px(card_width))
             .h(px(card_height))
             .max_h(px(card_height))
+            .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Modal)
             .workbench_body()
             .track_focus(&self.focus_handle)
             .child(

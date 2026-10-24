@@ -1522,3 +1522,52 @@ MCP `region_separation` 读写一并移除（旧 JSON 键被忽略）。实施�
 `settings.json` 中两个布尔值均为 `true`。设置 serde round-trip 单测、Shell locked build、fmt、主题守卫
 (self-test/full)、几何覆盖、design-token、refresh、architecture、feature-ledger、layering 均通过。
 本轮只对亮色模式进行开关视觉对照；暗色对照未单独采集。
+
+## 2026-10-24：Material 主题自定义角色与命名保存
+
+设置页沿用声明式 SettingsPage：保留种子色/风格/对比度，增加背景、正文、主色、强调色、边框、成功/警告/错误色选择器；高级原生 ThemeConfig 角色默认折叠展开。**此段初始实现曾包含覆盖和另存两个入口，已于下方用户反馈后更正；当前仅可另存新名称并应用。**手动角色值写入 ThemeSet 的亮/暗配置；其余角色仍由 Material DynamicScheme 生成。
+
+验证：Rust `1.97.1-x86_64-pc-windows-msvc`；`cargo +1.97.1 fmt --all -- --check`、`cargo +1.97.1 test --locked -p fileatlas-plugin-material-theme -j 2`（5 passed）、`cargo +1.97.1 check --locked -p fileatlas-shell -j 2`、`cargo +1.97.1 build --locked -p fileatlas-shell -j 2` 通过。MCP 同进程隔离 profile `.local/validation/profiles/theme-custom-verify/` 打开设置页截图 `screenshots/material-settings-final.png`；MCP 隔离服务 profile `.local/validation/profiles/theme-custom-service/` 用 `Manual-Role-Test`、`primary.background=#336699`、`border=#aabbcc` 生成命名 ThemeSet，PowerShell JSON 解析确认亮/暗两种模式都保留手动颜色。
+
+限制：截图处于组件几何审查模式，且只覆盖设置页上段；颜色选择器弹层、展开后的高级角色、小窗口与 apply=true 的窗口视觉状态未逐项截图。`node scripts/check-ui-theme.cjs` 仍报 `fileatlas-ui-bridge/src/theme/roles.rs` 既有白色画布与阴影 alpha 字面量两项违规，与本次 Material 页面无关；不据此宣告主题治理全通过。
+
+反馈前的同进程 MCP 截图 `theme-custom-scroll/screenshots/settings-scrolled.png` 展示了旧的两个操作与应用复选框；这组截图已被下方更正后的单一应用流程截图取代。MCP `apply=true` 生成 `Apply-Theme-Test.json` 返回 `last_error=null`，应用范围为隔离 profile。
+
+最新构建截图 `.local/validation/profiles/theme-custom-latest/screenshots/material-custom-latest.png` 确认各未覆盖角色展示自身生成的 Light 预览颜色。
+高级角色开关通过同进程 MCP 点击展开，截图 `.local/validation/profiles/theme-custom-advanced2/screenshots/advanced-expanded.png` 确认列表出现并可滚动。
+
+### 2026-10-24 更正：主题只另存并提供单一应用操作
+
+根据用户反馈，上一段关于“覆盖 `material.json`”和“两个生成操作”的说明已过期。设置页现在按角色显示“生成/手动”及当前色值；更改种子、风格或对比度时会刷新未手动编辑的颜色。界面只保留“生成并应用主题”按钮，并把命名主题写入独立文件。命名冲突会显示错误且不会替换已有 JSON；单测确认同名生成失败后原文件字节不变。实际 settings 页内“主题名称/新主题路径/生成并应用”截图和按钮操作记录见 [Material 自定义验证](validation-ui/2026-10-24-material-theme-custom/README.md)，隔离 MCP profile `.local/validation/profiles/theme-settings-live-apply3/`。
+
+本次重新通过 Rust 1.97.1 的 Material 插件测试（5 passed）、Shell check/build、fmt、UI theme、architecture 和 feature-ledger 守卫。MCP 创建的主题是双模式原生 ThemeSet。截图仍启用组件审查色，且设置表单有文字挤压；该证据仅确认单一应用流程，不作为设置页几何验收通过。
+
+### 2026-10-24 截图复核：设置页文本控件挤压
+
+按用户要求重新打开当前设置页截图，并在审查描边关闭的隔离 profile 复核。主题名称 `Text` 控件的全宽包装在水平设置行中挤压标签列，中文标签逐字竖排。UI Bridge 现将声明式文本控件限制为 `CONTROL_WIDTH_EXTRA_WIDE`；另将同名保护提示并入主题文件分区标题。最新同进程截图显示主题名称标签恢复横排、色值行和单一应用按钮清晰。截图与完整 profile 位置见 [Material 自定义验证](validation-ui/2026-10-24-material-theme-custom/README.md)。顶部和保存区分属同一滚动页，需滚动检查；没有声称整页同时可见。
+
+### 2026-10-24 全面板主题颜色核查
+
+按用户要求使用完整主窗与设置页顶部、中段、高级区、底部截图核对所有主题颜色。高辨识度主要色已分别出现在工作区背景、正文、主色/强调色、边框、侧栏、输入、卡片、弹窗、按钮及成功/警告/错误色对应位置。截图中的剩余系统标题栏白色属于 Windows 窗口框架；浅灰来自按钮、列表、表格 hover/pressed 原生状态，不是漏换色的内容面板。核查还发现高级颜色面板之前将未显式生成的原生底层色误显为主色，Material 现在为 GPUI ThemeConfigColors 全部角色生成 Light/Dark 值，并以完整性测试验证。截图、运行快照和具体命令见 [Material 全面板颜色复核](validation-ui/2026-10-24-material-theme-custom/README.md#2026-10-24-完整颜色角色面板复核)。
+
+后续复核进一步定位到工具栏已选中的“按月分组”仍显示浅灰：GPUI Ghost Button 的 selected 状态使用 `secondary.active.background`，核心强调色映射此前漏掉了此角色。Material 现把 `button.active.background`、`button.secondary.active.background` 和 `secondary.active.background` 同步到用户设定的强调色。最新完整主窗截图显示选中按钮为 `#00897B`；其余浅灰仅用于未激活控件 hover，OS 标题栏则由 Windows 绘制。最新证据仍见上述 Material 全面板颜色复核记录，当前主题文件为隔离 profile 中的 `Color-Role-Role-Audit-06.json`。
+
+2026-10-24 补充全界面核验：使用 `scripts/validate-material-theme-colors.cjs` 和同进程隔离 MCP 扫描 12 个生产夹具文件，逐屏截取设置页、填充网格/列表、选中项与右侧信息面板；完整截图见 `docs/validation-ui/2026-10-24-material-theme-custom/README.md` 的“12 个夹具文件的全界面颜色审计”。亮/暗 ThemeSet 手动角色和按钮 active 强调色均有场景断言。角色快照中所有表面映射到预设彩色；浅灰仅用于 hover，白色只出现在按钮/状态色的前景文字图标及系统标题栏。
+
+2026-10-24 用户随后要求允许覆盖主题：现已支持同名生成并应用，覆盖前备份旧文件为 `<name>.json.bak`，通过临时 JSON 后替换；无效输入不改变目标文件。GPUI ThemeConfig 使用每次生成唯一 ID，避免同进程注册表继续呈现旧配色。单一主题应用按钮保留，设置页明确提示覆盖备份。单测 9/9、Shell 锁定构建和主题/架构/feature ledger 守卫通过；隔离同进程 MCP 已确认同路径文件内容替换、备份字节正确且新配色即时应用。截图及场景记录见[Material 覆盖主题验证](validation-ui/2026-10-24-material-theme-custom/README.md)。
+
+### 2026-10-24 更正：统一按钮与文件行悬停色
+
+用户指出顶部按钮悬停颜色可由“强调 / 悬停色”配置，但左侧文件夹树行和中间文件夹卡片仍呈亮蓝色。原因是 Ghost 按钮使用 `accent.background`，而 UI Bridge 的共享 `surface_hover()` 读取独立的 `list.hover.background`；Material 核心强调色此前没有覆盖后者。现在核心强调色同步写入 `list.hover.background`、`table.hover.background`，覆盖文件树行、文件夹卡片及表格 hover，并保持高级角色手动覆盖优先。单测和隔离 MCP 生成断言确认亮/暗 ThemeSet 中 `accent.background`、`list.hover.background`、`table.hover.background` 都与输入一致。截图仍带组件审查描边且中间目录为空，因此不据此声称目测两个区域已通过；详情见[悬停色统一验证](validation-ui/2026-10-24-material-theme-custom/README.md#2026-10-24-统一按钮与文件树行悬停色)。
+
+### 2026-10-24 统一颜色族与生成器职责
+
+全面检索后继续保留 Material 主题生成器插件：它是用户编辑八类语义色、生成原生双模式 ThemeSet、命名保存并应用的唯一入口；删除该插件会失去当前需求的用户可配置入口。插件 UI 只提供主色种子加七个语义色输入。八类语义色由 GPUI Kit 为亮/暗 ThemeSet 派生必要色阶，所有组件通过原生 ThemeRegistry 和 UI Bridge 共用角色；按钮、文件夹树、文件夹卡片、列表/表格 hover 已归并到强调交互族。用户标签色、媒体像素和 VectorCraft 原生文档颜色是内容数据，不由应用主题改写。
+
+验证：Material 单测 12/12；Rust 1.97.1 fmt、锁定 Shell build、UI theme guard、feature ledger 通过。MCP 在隔离 profile 生成并应用 `Eight-Family-Audit.json`；亮/暗两套手动角色及按钮/列表/表格 hover 一致性均由 JSON 检查通过。`check-architecture.cjs` 初次运行发现新增测试令 Material crate 的 `.unwrap()` 计数从 18 增至 27，按仓库要求审阅后更新了架构 debt 基线；同次基线更新还记录 WorkCrate Boards 已有 debt 从 23 降至 9。架构守卫随后通过。
+
+最初的截图请求早于 GPUI 窗口创建，随后在 `validate-material-theme-colors.cjs` 加入窗口/指针就绪轮询。同进程 MCP 全界面场景最终通过：8 类设置、12 项夹具、选中文件、设置页保存区和两处 hover 截图都已核对。截图暴露共享 hover 表面错误使用 `rgba`，以及文件夹图标面板静态表面挡住 hover；Bridge 改为原生不透明 hover 色，文件夹图标面板接入共享卡片状态。重建后截图确认文件夹卡片整块与未选中的侧栏树行使用同一个强调 hover 色。profile `.local/validation/profiles/material-palette-eight-final5/`；截图和命令见 [Material 全局 8 类语义色验证](validation-ui/2026-10-24-material-theme-custom/README.md#2026-10-24-全局-8-类语义色归并)。
+
+### 2026-10-24 单色主题残留色排查
+
+按用户要求，在隔离 profile 中将亮/暗 ThemeSet 的 140 个原生颜色角色全部设为 `#FF00FF`，由 `scripts/validate-single-color-theme.cjs` 通过同进程 FileAtlas MCP 截取主窗、填充文件网格和主题设置页。GPUI ThemeRegistry 运行快照确认应用界面主题角色及派生语义色均为单色。截图残留颜色定位为 Windows 系统标题栏、夹具文件的真实图像像素、颜色选择器的色谱/色样控件；未发现其他绕过主题的 FileAtlas 面板/正文/边框/状态界面色。其后使用既有 `scripts/capture-panel-atlas.cjs` 分四阶段覆盖 55 个唯一画面，同样未发现非主题应用色；完整命令、未覆盖原因和全量截图索引见[批量面板截图验证](validation-ui/2026-10-23-panel-atlas/README.md#2026-10-24-单色全界面复核与后续复用)。单色主题主窗证据见[单色主题排查](validation-ui/2026-10-24-material-theme-custom/README.md#2026-10-24-单色主题残留色排查)，本地 profile 为 `.local/validation/profiles/single-color-panel-atlas/`。

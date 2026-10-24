@@ -91,3 +91,48 @@ WorkCrate 的建页/刷新/放图/预览走官方自动化会话；本次运行�
 - 数据库、settings、日志等原始隔离 profile：`.local/validation/profiles/panel-atlas-final/`
 
 重跑某一阶段会原地更新这些文件；仓库内不再保留截图副本。
+
+## 2026-10-24 单色全界面复核与后续复用
+
+使用同一 `scripts/capture-panel-atlas.cjs` 对 `#FF00FF` 单色主题重新批量截取，用于查找其余面板是否仍有非主题 UI 颜色。隔离 MCP profile 为
+`.local/validation/profiles/single-color-panel-atlas/`；各阶段共享同一份测试数据库，
+每个阶段启动独立 MCP 子进程。当前 profile 的有效原生 ThemeSet 两种模式各 140 个
+角色均为 `#FF00FF`，Material 设置草稿的种子色和七个语义色也相同。
+
+在 PowerShell 中重跑全部批次：
+
+```powershell
+$profile = '.local/validation/profiles/panel-atlas-rerun'
+foreach ($phase in @('browser', 'settings', 'modals', 'panels')) {
+  $env:PANEL_ATLAS_PHASE = $phase
+  node scripts/fileatlas-mcp-debug.cjs `
+    --exe target/debug/fileatlas-shell.exe `
+    --profile $profile `
+    --plugins dev-test `
+    --access-level full `
+    --scenario scripts/capture-panel-atlas.cjs
+}
+Remove-Item Env:PANEL_ATLAS_PHASE
+```
+
+如果要复核现成单色主题，先把该 profile 的 `settings.json`、`themes/single-color-magenta.json`、
+`themes/material-settings.json` 复制进新 profile，并让 `settings.json.theme_file` 指向新 profile 下的
+ThemeSet；普通界面巡检无需复制主题文件。`browser/settings/modals/panels` 分开启动可隔离单面板崩溃，
+`manifest.json` 和 `screenshots/INDEX.md` 会累计更新；需要更大截图时调整场景中的 `resize_window`。
+`PANEL_ATLAS_WORKCRATE_EDIT=1` 才会继续创建 WorkCrate 画板并放图，要求官方 VectorCraft 自动化
+会话可用；未设置时仍会尝试创建工程，但不能把工程创建失败后的空 WorkCrate 画面当成已覆盖编辑器。
+
+本次四阶段累计截图调用数依次为 browser 27、settings 40、modals 50、panels 61；各阶段都会重拍
+两张启动图，因此 61 次调用对应 55 个唯一 PNG 文件。MCP 子进程均正常退出。除首次启动图外，
+其余截图为 3000×2000。清单的 4 项未完成为两次
+不存在的 i18n 设置页请求及其跳过提示（没有注册该页），以及本机缺少 `vectorcraft-cli.exe`，
+导致 WorkCrate 工程/编辑器截图未能验证。其余窗口、主视图状态、设置页、对话框、浮动面板和组合态
+均已截取并查看。单色复核没有发现绕过 FileAtlas 主题的面板/正文/边框/状态色；剩余彩色像素来自
+Windows 标题栏、测试夹具缩略图/程序图标和颜色选择器的色谱控件。该审查只比较颜色来源，单色文字与
+背景相同导致内容不可读，不作为布局或可读性验收。
+
+本轮截图集和缩略索引：
+[完整截图索引](../../../.local/validation/artifacts/2026-10-24-single-color-panel-atlas/INDEX.md)。
+原始 profile 中还保留四阶段 MCP 报告、179 步 manifest、最终 UI 快照及所有原始 PNG；这些都位于
+`.local/validation/profiles/single-color-panel-atlas/`。可复用实现继续维护在
+`scripts/capture-panel-atlas.cjs`，本次完整命令及覆盖结果也记录在此处，未来可直接复制上面的 PowerShell 批次。

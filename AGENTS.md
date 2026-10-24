@@ -206,6 +206,15 @@ written.
 - Material is a compile-time Cordis generator plugin. It outputs native GPUI
   ThemeSet JSON from seed/style/contrast; it must not apply paints itself.
   Reuse its public service and existing Settings persistence, not another manager.
+- The configurable UI palette is limited to eight semantic families: primary,
+  neutral surface, text, secondary, success, warning, danger and info. Native
+  foreground/background/interaction roles are tonal members of those families;
+  the Material generator owns their role fan-out. Do not expose arbitrary
+  per-role colors that create additional palette branches.
+- Feature plugins consume UI colors only through GPUI Kit Theme roles and the
+  shared UI Bridge components. Shared UI Bridge helpers own product styling;
+  plugins may pass content data colors only for actual user data or native
+  document artwork, never to style their own UI.
 - Pair fills with their native foreground roles; media badges and custom widgets
   obey the same native theme. Preserve real media pixels and user tag data.
 - Read docs/ui-theme.md and the Material plugin PORTS before extending themes.

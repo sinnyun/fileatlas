@@ -21,8 +21,11 @@
 
 `MaterialThemeService::snapshot() -> State` 仅存在于内存中。
 `generate(preferences: Preferences, apply: bool) -> Result<State, String>` 校验输入，
-对两种模式都使用 MCU DynamicScheme，把角色转换为原生 ThemeConfig JSON，
-在单个操作锁下序列化写入，并可选地通过 Settings 选择该文件。
+写入 `material.json`；`generate_named(preferences, name, apply)` 写入独立的
+`<safe-name>.json`。同名时会先备份旧文件再替换；设置界面仅提供一个“生成并应用主题”操作，
+按输入名称生成或覆盖主题并立即应用。
+两者对两种模式都使用 MCU DynamicScheme，把角色转换为原生 ThemeConfig JSON，
+并可选地通过 Settings 选择该文件。
 `apply_saved() -> Result<(), String>` 校验已保存的 ThemeSet 并选择它。
 `State { preferences, output: PathBuf, error: Option<String>, generated: bool }`。
 MCP 将领域错误序列化为 `last_error`，以免它与一次失败的工具调用相混淆。
@@ -47,12 +50,15 @@ contrast?, apply? }` 默认为 neutral/0/true，属于变更操作且需要 Stan
 Root = SettingsService.path().parent()/themes；正常情况为 `%LOCALAPPDATA%/FileAtlas/themes`，
 MCP profile 为 <profile>/themes。没有 SQLite、独立存储管理器或二进制资源。
 
-- `material-settings.json`：带版本的 Preferences（schema_version=1）。
+- `material-settings.json`：带版本的 Preferences（schema_version=2；可迁移 v1）。
 - `material.json`：原生 GPUI ThemeSet，包含具名的 light/dark ThemeConfig 条目。
   支配该文件的是 GPUI 已有的 schema，而不是私有的插件主题 schema。
-- 已有文件被备份为 `.json.bak`；写入先暂存到 `.json.tmp` 再重命名。
-  每次文件替换都是原子的；这两个文件不构成一个事务。对于已应用的颜色，ThemeSet 是权威来源；
-  失败会被报告，且保留的备份可以被显式恢复。
+- 用户显式生成时允许覆盖同名主题；覆盖前将旧文件复制为 `<名称>.json.bak`，新内容先写入
+  `.json.tmp`，Windows 使用写穿替换（其他平台原子重命名）。设置页保留单一“生成并应用主题”
+  操作，并提示备份行为。偏好设置也保留 `.json.bak`；主题文件与偏好设置不是一个事务，ThemeSet
+  是应用颜色的权威来源。
+- ThemeConfig 名称包含主题名称和每次生成的唯一 ID，防止 GPUI Kit 按名称缓存而在覆盖后继续
+  使用旧配置。
 - Settings 保留 color_mode 并添加可选的 theme_file。缺失该字段时选择原生默认值。
   旧的 accent_name 作为元数据保留，而不是另一个颜色来源。
 - 被选主题缺失/无效时回退到 GPUI 默认值，并记录确切问题，而不
@@ -76,6 +82,6 @@ MIT OR Apache-2.0；分发时保留所包含的 licenses/ 声明。Workspace 保
 JSON、宿主 Debug 日志，以及 get_ui_state.theme（framework/name/mode/解析后的角色配对）。
 Generate 会在 State 中以及其拥有的视图中报告校验/写入错误；Settings 持久化
 错误会被返回。GUI 应用失败会在 UI Bridge 中记录日志；没有静默的备用调色板。
-测试覆盖跨极端 seed/variant 的原生 JSON 解析/对比度，以及失败/备份
-保留。运行时/视觉证据记录在 docs/validation-ui 之下；编译不是
+测试覆盖跨极端 seed/variant 的原生 JSON 解析/对比度、同名覆盖生成 `.json.bak` 并保存旧文件，
+以及错误输入不会修改现有主题。运行时/视觉证据记录在 docs/validation-ui 之下；编译不是
 每一个自定义组件状态的证明。没有引入动态 DLL/商店/云服务。
