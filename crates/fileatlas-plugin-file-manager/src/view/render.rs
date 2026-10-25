@@ -366,7 +366,12 @@ impl Render for FileManagerView {
         } else {
             f32::from(window.bounds().size.width) - sidebar_width - GRID_PADDING * 2.0
         };
-        let cards_width = (available_width - GRID_PADDING * 2.0).max(0.0);
+        let group_padding = if self.grouping_mode == fileatlas_plugin_grouping::GroupingMode::None {
+            0.0
+        } else {
+            fileatlas_ui_bridge::theme::space_standard() * 2.0
+        };
+        let cards_width = (available_width - GRID_PADDING * 2.0 - group_padding).max(0.0);
         let columns = if self.list_layout {
             1
         } else {
@@ -840,9 +845,14 @@ impl Render for FileManagerView {
                                                         layout_row,
                                                         header,
                                                         div()
+                                                            .w_full()
+                                                            .min_w_0()
                                                             .h_flex()
                                                             .mt(px(header_gap))
                                                             .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
+                                                            .when(layout_row.group_label.is_some(), |files| {
+                                                                files.px(px(fileatlas_ui_bridge::theme::space_standard()))
+                                                            })
                                                             .children(cards)
                                                             .into_any_element(),
                                                         this,

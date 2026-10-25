@@ -273,6 +273,8 @@ pub trait WorkbenchStyle: Sized {
     fn workbench_region(self, sidebar: bool) -> Self;
     fn workbench_section(self) -> Self;
     fn workbench_card(self, selected: bool) -> Self;
+    /// Subtle elevation for the file browser's media cards.
+    fn workbench_media_card(self) -> Self;
     fn workbench_nav(self, selected: bool) -> Self;
     #[track_caller]
     fn workbench_hover_surface(self) -> Self;
@@ -392,6 +394,10 @@ impl<T: Styled + InteractiveElement + ParentElement + FluentBuilder> WorkbenchSt
                 theme::surface_hover()
             }))
         })
+    }
+
+    fn workbench_media_card(self) -> Self {
+        self.shadow(theme::card_shadow())
     }
 
     #[track_caller]

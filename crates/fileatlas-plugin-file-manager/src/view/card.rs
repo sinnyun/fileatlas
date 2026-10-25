@@ -5,6 +5,7 @@ use fileatlas_contracts::TagDragPayload;
 use fileatlas_plugin_drag_drop::DragDropService;
 use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::components::WorkbenchPaint as _;
+use fileatlas_ui_bridge::components::WorkbenchStyle as _;
 use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use fileatlas_ui_bridge::theme;
 use gpui_kit::assets::IconName;
@@ -278,6 +279,7 @@ pub(super) fn render_media_card(
                 .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::CardOverlay)
         })
         .when(list_width.is_none(), |row| row.v_flex())
+        .when(list_width.is_none(), |card| card.workbench_media_card())
         .id(format!("file_manager-media-{media_id}"))
         .on_hover(cx.listener(move |this, hovered: &bool, _, cx| {
             this.set_card_hover(media_id, *hovered, cx)
