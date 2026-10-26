@@ -1,8 +1,9 @@
 //! Host-owned documents and durable metadata; scene semantics belong to Zorite.
-use fileatlas_canvas_engine::{Scene, Template};
+use fileatlas_canvas_engine::{Scene, Template, ToolGroup};
 use fileatlas_ui_bridge::refresh::Wake;
 use serde::{Deserialize, Serialize};
 use std::{
+    hash::{DefaultHasher, Hash, Hasher},
     path::{Path, PathBuf},
     sync::{Arc, Mutex, mpsc},
     thread::JoinHandle,
@@ -24,6 +25,25 @@ pub struct Board {
     pub toolbar_vertical: bool,
     #[serde(default)]
     pub files: Vec<LinkedFile>,
+    #[serde(default)]
+    pub eagle_sources: Vec<fileatlas_plugin_eagle_links::EagleImageSource>,
+    #[serde(default)]
+    pub image_previews: Vec<ImagePreview>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ImagePreview {
+    pub uri: String,
+    /// Filename only; assets live under `whiteboards/previews/<board-id>/`.
+    pub file_name: String,
+    pub width: u32,
+    pub height: u32,
+}
+#[derive(Clone)]
+pub struct ImagePreviewCandidate {
+    pub uri: String,
+    pub cached_path: PathBuf,
+    pub width: u32,
+    pub height: u32,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LinkedFile {
@@ -64,6 +84,8 @@ impl Default for Library {
                 toolbar_pos: None,
                 toolbar_vertical: false,
                 files: vec![],
+                eagle_sources: vec![],
+                image_previews: vec![],
             }],
             templates: vec![],
             colors: vec![],
@@ -93,6 +115,37 @@ pub struct WhiteboardService {
     worker: Option<JoinHandle<()>>,
     stopped: std::sync::atomic::AtomicBool,
     images: Mutex<Vec<(i64, Vec<PathBuf>, Option<[f32; 2]>)>>,
+    scrolls: Mutex<Vec<CanvasScroll>>,
+    panel_actions: Mutex<Vec<CanvasPanelAction>>,
+    tool_group_actions: Mutex<Vec<CanvasToolGroupAction>>,
+    toolbar_menu_actions: Mutex<Vec<CanvasToolbarMenuAction>>,
+}
+#[derive(Clone, Copy)]
+pub struct CanvasScroll {
+    pub board_id: i64,
+    pub dx: f32,
+    pub dy: f32,
+    pub control: bool,
+    pub at: [f32; 2],
+}
+#[derive(Clone, Copy, Debug)]
+pub enum CanvasPanelAction {
+    LeftBoards,
+    LeftResources,
+    LeftClose,
+    RightLayers,
+    RightObject,
+    RightClose,
+}
+#[derive(Clone, Copy)]
+pub struct CanvasToolGroupAction {
+    pub group: ToolGroup,
+}
+#[derive(Clone, Copy)]
+pub enum CanvasToolbarMenuAction {
+    Color,
+    Font,
+    Templates,
 }
 impl cordis::Service for WhiteboardService {
     const NAME: &'static str = "fileatlas/whiteboard";
@@ -128,6 +181,10 @@ impl WhiteboardService {
             worker: Some(worker),
             stopped: std::sync::atomic::AtomicBool::new(false),
             images: Mutex::new(vec![]),
+            scrolls: Mutex::new(vec![]),
+            panel_actions: Mutex::new(vec![]),
+            tool_group_actions: Mutex::new(vec![]),
+            toolbar_menu_actions: Mutex::new(vec![]),
         }))
     }
     pub fn snapshot(&self) -> Library {
@@ -160,6 +217,85 @@ impl WhiteboardService {
         self.images
             .lock()
             .map(|mut v| std::mem::take(&mut *v))
+            .unwrap_or_default()
+    }
+    pub fn queue_canvas_scroll(&self, input: CanvasScroll) -> Result<()> {
+        if !input.dx.is_finite()
+            || !input.dy.is_finite()
+            || input.dx.abs() > 4096.0
+            || input.dy.abs() > 4096.0
+            || input
+                .at
+                .iter()
+                .any(|coordinate| !coordinate.is_finite() || !(0.0..=4096.0).contains(coordinate))
+        {
+            return Err("画布滚轮参数超出允许范围".into());
+        }
+        self.activate(input.board_id)?;
+        let mut scrolls = self.scrolls.lock().map_err(|e| e.to_string())?;
+        if scrolls.len() >= 64 {
+            return Err("画布滚轮请求队列已满".into());
+        }
+        scrolls.push(input);
+        drop(scrolls);
+        self.shared.wake.trigger();
+        Ok(())
+    }
+    pub fn take_canvas_scrolls(&self) -> Vec<CanvasScroll> {
+        self.scrolls
+            .lock()
+            .map(|mut requests| std::mem::take(&mut *requests))
+            .unwrap_or_default()
+    }
+    pub fn queue_panel_action(&self, action: CanvasPanelAction) -> Result<()> {
+        let mut actions = self.panel_actions.lock().map_err(|e| e.to_string())?;
+        if actions.len() >= 16 {
+            return Err("画布面板请求队列已满".into());
+        }
+        actions.push(action);
+        drop(actions);
+        self.shared.wake.trigger();
+        Ok(())
+    }
+    pub fn take_panel_actions(&self) -> Vec<CanvasPanelAction> {
+        self.panel_actions
+            .lock()
+            .map(|mut actions| std::mem::take(&mut *actions))
+            .unwrap_or_default()
+    }
+    pub fn queue_tool_group_action(&self, action: CanvasToolGroupAction) -> Result<()> {
+        let mut actions = self.tool_group_actions.lock().map_err(|e| e.to_string())?;
+        if actions.len() >= 16 {
+            return Err("工具组请求队列已满".into());
+        }
+        actions.push(action);
+        drop(actions);
+        self.shared.wake.trigger();
+        Ok(())
+    }
+    pub fn take_tool_group_actions(&self) -> Vec<CanvasToolGroupAction> {
+        self.tool_group_actions
+            .lock()
+            .map(|mut actions| std::mem::take(&mut *actions))
+            .unwrap_or_default()
+    }
+    pub fn queue_toolbar_menu_action(&self, action: CanvasToolbarMenuAction) -> Result<()> {
+        let mut actions = self
+            .toolbar_menu_actions
+            .lock()
+            .map_err(|e| e.to_string())?;
+        if actions.len() >= 16 {
+            return Err("工具栏菜单请求队列已满".into());
+        }
+        actions.push(action);
+        drop(actions);
+        self.shared.wake.trigger();
+        Ok(())
+    }
+    pub fn take_toolbar_menu_actions(&self) -> Vec<CanvasToolbarMenuAction> {
+        self.toolbar_menu_actions
+            .lock()
+            .map(|mut actions| std::mem::take(&mut *actions))
             .unwrap_or_default()
     }
     pub fn board(&self, id: i64) -> Result<Board> {
@@ -206,6 +342,8 @@ impl WhiteboardService {
                 toolbar_pos: None,
                 toolbar_vertical: false,
                 files: vec![],
+                eagle_sources: vec![],
+                image_previews: vec![],
             });
             s.active_id = Some(id);
             Ok(id)
@@ -249,6 +387,120 @@ impl WhiteboardService {
         serde_json::from_str::<Scene>(&scene).map_err(|e| e.to_string())?;
         self.update_board(id, |b| b.scene = scene)
     }
+    pub fn save_eagle_sources(
+        &self,
+        id: i64,
+        sources: Vec<fileatlas_plugin_eagle_links::EagleImageSource>,
+    ) -> Result<()> {
+        self.update_board(id, |board| {
+            for source in sources {
+                board
+                    .eagle_sources
+                    .retain(|old| old.original_uri != source.original_uri);
+                board.eagle_sources.push(source);
+            }
+        })
+    }
+    pub fn save_scene_assets(
+        &self,
+        id: i64,
+        scene: String,
+        eagle_sources: Vec<fileatlas_plugin_eagle_links::EagleImageSource>,
+        image_previews: Vec<ImagePreview>,
+    ) -> Result<()> {
+        serde_json::from_str::<Scene>(&scene).map_err(|e| e.to_string())?;
+        self.update_board(id, |board| {
+            board.scene = scene;
+            for source in eagle_sources {
+                board
+                    .eagle_sources
+                    .retain(|old| old.original_uri != source.original_uri);
+                board.eagle_sources.push(source);
+            }
+            for preview in image_previews {
+                board.image_previews.retain(|old| old.uri != preview.uri);
+                board.image_previews.push(preview);
+            }
+        })
+    }
+    /// Copy generated thumbnail JPEGs beside the board's structured record.
+    /// These small files survive shared thumbnail-cache eviction; originals stay
+    /// linked to their source and are never copied into the canvas library.
+    pub fn persist_image_previews(
+        &self,
+        id: i64,
+        candidates: &[ImagePreviewCandidate],
+    ) -> Result<Vec<ImagePreview>> {
+        let directory = self.root.join("previews").join(id.to_string());
+        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+        let mut previews = Vec::with_capacity(candidates.len());
+        for candidate in candidates {
+            if !candidate.cached_path.is_file() {
+                continue;
+            }
+            let mut hasher = DefaultHasher::new();
+            candidate.uri.hash(&mut hasher);
+            candidate
+                .cached_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .hash(&mut hasher);
+            let file_name = format!("{:016x}.jpg", hasher.finish());
+            let destination = directory.join(&file_name);
+            if !destination.is_file() {
+                let temporary = directory.join(format!("{file_name}.tmp"));
+                std::fs::copy(&candidate.cached_path, &temporary).map_err(|e| e.to_string())?;
+                if let Err(error) = std::fs::rename(&temporary, &destination) {
+                    if destination.is_file() {
+                        let _ = std::fs::remove_file(&temporary);
+                    } else {
+                        return Err(error.to_string());
+                    }
+                }
+            }
+            previews.push(ImagePreview {
+                uri: candidate.uri.clone(),
+                file_name,
+                width: candidate.width,
+                height: candidate.height,
+            });
+        }
+        Ok(previews)
+    }
+    pub fn persist_image_preview(
+        &self,
+        id: i64,
+        candidate: ImagePreviewCandidate,
+    ) -> Result<Option<ImagePreview>> {
+        let mut previews = self.persist_image_previews(id, &[candidate])?;
+        let Some(preview) = previews.pop() else {
+            return Ok(None);
+        };
+        self.save_image_previews(id, vec![preview.clone()])?;
+        Ok(Some(preview))
+    }
+    pub fn save_image_previews(&self, id: i64, previews: Vec<ImagePreview>) -> Result<()> {
+        self.update_board(id, |board| {
+            for preview in previews {
+                board.image_previews.retain(|old| old.uri != preview.uri);
+                board.image_previews.push(preview);
+            }
+        })
+    }
+    pub fn image_preview_path(&self, id: i64, preview: &ImagePreview) -> Option<PathBuf> {
+        let valid_name = preview.file_name.len() == 20
+            && preview.file_name.ends_with(".jpg")
+            && preview.file_name[..16]
+                .chars()
+                .all(|character| character.is_ascii_hexdigit());
+        valid_name.then(|| {
+            self.root
+                .join("previews")
+                .join(id.to_string())
+                .join(&preview.file_name)
+        })
+    }
     pub fn import(&self, path: &Path) -> Result<i64> {
         let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
         let value: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
@@ -272,6 +524,8 @@ impl WhiteboardService {
                 toolbar_pos: None,
                 toolbar_vertical: false,
                 files: vec![],
+                eagle_sources: vec![],
+                image_previews: vec![],
             });
             s.active_id = Some(id);
             Ok(id)

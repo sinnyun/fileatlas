@@ -255,7 +255,7 @@ pub(crate) fn build_thumbnail_layers(
                             div()
                                 .text_size(px(11.0 * cam.zoom.max(MIN_ZOOM)))
                                 .text_color(text)
-                                .child("Page"),
+                                .child(super::ui_text("Page")),
                         )
                         .into_any_element(),
                 ));
@@ -291,7 +291,7 @@ pub(crate) fn build_thumbnail_layers(
                             div()
                                 .text_size(px(11.0 * zoom))
                                 .text_color(text)
-                                .child("Image"),
+                                .child(super::ui_text("Image")),
                         )
                         .into_any_element(),
                 ));

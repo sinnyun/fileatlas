@@ -39,6 +39,7 @@ impl SettingsView {
                                 Tab::Ai => "AI analysis",
                                 Tab::Updates => "Software updates",
                                 Tab::Software => "External software",
+                                Tab::Storage => "Storage",
                                 Tab::Plugins => "Plugin management",
                                 _ => name,
                             }),
@@ -54,6 +55,7 @@ impl SettingsView {
                                 Tab::Ai => "ai",
                                 Tab::Updates => "updates",
                                 Tab::Software => "software",
+                                Tab::Storage => "storage",
                                 Tab::Plugins => "plugins",
                                 Tab::PluginSettings => "plugin",
                             };
@@ -70,6 +72,7 @@ impl SettingsView {
             (Tab::Ai, "AI", IconName::Sparkles),
             (Tab::Updates, "Updates", IconName::RefreshCw),
             (Tab::Software, "Software", IconName::Wrench),
+            (Tab::Storage, "Storage", IconName::HardDrive),
             (Tab::Plugins, "Plugins", IconName::Puzzle),
         ] {
             rail = add_tab(rail, tab, name, icon);
@@ -158,6 +161,7 @@ impl Render for SettingsView {
                 "ai" => Tab::Ai,
                 "updates" => Tab::Updates,
                 "software" => Tab::Software,
+                "storage" => Tab::Storage,
                 "plugins" => Tab::Plugins,
                 "plugin" => Tab::PluginSettings,
                 _ => Tab::Appearance,

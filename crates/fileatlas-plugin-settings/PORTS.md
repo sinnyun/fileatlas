@@ -283,4 +283,12 @@ Shared Settings JSON gains serde-default `workcrate: WorkCrateSettings { sort_by
 
 ## Plugin data locations — 2026-10-23
 
-Plugin settings pages now include a read-only “数据存储位置” section. Known data paths are rooted beside `SettingsService.path()` so isolated profiles resolve to their profile directory. Screenshot output uses its saved output directory, falling back to `<data-root>/Screenshots`. Shared media features point to `fileatlas.db`; WorkCrate and other entries point to their registered feature files/directories. Entries without a registered path say so rather than fabricate one. This is display-only and performs no filesystem reads or writes during rendering. Live same-process MCP/UI verification is pending; static crate compilation and governance checks pass.
+Plugin settings pages include a read-only “数据存储位置” section. Known data paths are rooted beside `SettingsService.path()` so isolated profiles resolve to their profile directory. Screenshot output uses its saved output directory, falling back to `<data-root>/Screenshots`. Shared media features point to `fileatlas.db`; their displayed usage includes SQLite WAL/SHM sidecars. WorkCrate and other entries point to their registered feature files/directories. Entries without a registered path say so rather than fabricate one. File and recursive directory sizes are read asynchronously through `ReadModel`, cached by plugin/revision, and explicitly refreshable. Rendering performs no filesystem reads or writes. Symlinks are not followed; inaccessible entries produce an incomplete/partial indicator, and absent paths count as zero bytes. Directory rows may overlap, so their displayed values are per-path and must not be summed blindly.
+
+Program settings → Storage reuses the same path catalog and asynchronously summarizes all runtime plugins and registered settings-page contributions in one scrollable page, grouped by plugin. The MCP `settings_tab` action accepts `storage` for same-process validation.
+
+The `fileatlas.whiteboard` page lists its versioned JSON library at
+`<data-root>/whiteboards/library.json`, its board-owned image previews under
+`whiteboards/previews/`, and pasted image files under `whiteboards/pasted-images/`.
+The library JSON stores boards/scenes, resource and Eagle links, templates, colors,
+and preview references; the canvas does not use the shared SQLite media database.

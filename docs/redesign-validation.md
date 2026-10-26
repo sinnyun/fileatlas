@@ -1589,3 +1589,57 @@ MCP `region_separation` 读写一并移除（旧 JSON 键被忽略）。实施�
 ### 2026-10-26 程序启动台批量管理
 
 增加程序列表批量编辑：分类、名称前后缀及显示/隐藏状态；服务和 namespaced MCP 操作使用现有版本化 JSON。同进程 MCP 实际点击进入批量模式、勾选两条程序、打开分类菜单、输入名称前后缀、选择隐藏并应用；检查了列表、选中态、草稿态和应用后截图，快照验证修改后恢复原记录。窄窗口和超长名称仍未覆盖。详见[验证记录](validation-ui/2026-10-26-launcher-batch/README.md)。
+
+### 2026-10-26 画布插件界面中文翻译
+
+已把画布引擎固定 chrome 接入现有 i18n 插件，Fluent 目录新增工具提示、格式/字体菜单、右键菜单和画布卡片标记词条。隔离同进程 MCP 实际打开选中对象右键菜单并检查中文截图；中英文目录测试 4/4、受影响 crate check 和主题/刷新/feature-ledger 守卫通过。验证范围及未测状态见[画布中文翻译记录](validation-ui/2026-10-26-canvas-i18n.md)。
+
+### 2026-10-26 Eagle 原图拖入画布并保留来源
+
+白板的图片放置流程现在识别 Eagle `.info` 项目目录下的原图，通过运行中的 Eagle Web API 读取项目名称与所属文件夹，并把原图本地 URI、原图路径、缩略图路径和 Eagle API 地址作为画板附加数据持久化；选中图片时这些值显示在右侧属性中。格式化、Eagle/Whiteboard/Shell 锁定离线 check/build 通过；同进程 FileAtlas MCP 用 Eagle 当前库中的 `WILDWOOD - LAIKA.jpg` 经过 `whiteboard.add_images` 的公共放置回调完成插入、保存并截取详情面板，结果见[Eagle 画布验证记录](validation-ui/2026-10-26-eagle-canvas-drop/README.md)。MCP 覆盖了与原生文件拖放相同的 `Host::place_images` 行为，但这次没有用 Windows 鼠标直接从 Eagle 拖入，因此系统级跨应用拖放仍待实际操作验证。
+
+### 2026-10-26 画布左右侧栏信息紧凑化
+
+按用户给出的实际界面优化左右面板：左侧画板/资源行加入类型图标、解码名称和简短类型参数；右侧图层改为单行图标+名称+上下箭头操作；属性用语义图标、参数短值和复制按钮呈现，长 Eagle URI/文件地址不再铺满面板。中心画布及工具栏保持当前参考结构。Rust 1.97.1 fmt、Whiteboard 锁定离线 check、Shell 锁定 build、主题/刷新/架构/feature-ledger 守卫通过。同进程 MCP 使用运行中的 Eagle 库读取 `WILDWOOD - LAIKA.jpg`，并验证并截图右侧 Eagle 来源详情；截图和具体覆盖范围见[画布左右侧栏验证](validation-ui/2026-10-26-canvas-sidepanels.md)。资源列表已静态实现，但此次 Eagle 图片作为画布对象插入，未产生文件卡片资源行；多图层密度、窄窗口和原生跨应用鼠标拖放未覆盖。
+
+2026-10-26 复制 Eagle 图片路径到资源管理器：用户反馈复制出的 `file://...` 无法直接在 Windows 资源管理器使用。该值是画布资源 URI，中文按 URL 规则编码；属性区现明确区分“画布资源 URI”和“本地文件路径”，本地路径复制时去掉 Windows 内部 `\\?\UNC\` 前缀，输出资源管理器可用的 UNC 路径。重建后同进程 Eagle 插入场景通过；PowerShell `Test-Path -LiteralPath` 确认转换后的真实 UNC 路径可访问。MCP 不暴露系统剪贴板，因此没有伪称完成资源管理器粘贴操作；截图与范围见[画布侧栏验证记录](validation-ui/2026-10-26-canvas-sidepanels.md#copying-an-original-image-path-into-windows-explorer--2026-10-26)。
+
+### 2026-10-26 从画布定位 Eagle 图片
+
+### 2026-10-26 画布图片缩略图与原图分级切换
+
+**同日优化更新：**成熟方案调研后调整图片层级策略。完整图片矩形按显示器缩放换算物理屏幕面积；视口裁切只决定是否绘制，不会因图片移出视口而降低图像质量。原图阈值为 500,000 屏幕像素；缩略图阈值为 350,000 像素，并要求持续低于阈值 350 ms 才开始切回。两种来源继续使用 180 ms 平滑淡化。原图解码结果仅驻留内存，最后使用后最多保留 30 秒；闲置原图缓存最多 128 MiB，内存压力时优先释放最久未使用的图像。缩略图 JPEG 继续保存到画板预览目录，板库版本不变。
+
+同进程 Eagle/MCP 在显示缩放 1.5 下测得 zoom 2.8 的完整图片面积为 777,924 物理像素，zoom 1.498 时为 222,661；原图层级时将图片平移出视口 500 ms 再移回，截图确认原图仍清晰显示；之后缩小并切换画板，缩略图预览仍可显示。Rust 1.97.1 fmt、锁定 Shell check/build、主题/刷新/架构/feature-ledger 检查通过。缓存计数接口及 TTL 实测见 2026-10-27 记录。策略参考 [tldraw 性能说明](https://github.com/tldraw/tldraw/blob/main/apps/docs/content/sdk-features/performance.mdx)、[tldraw 资源契约](https://tldraw.dev/sdk-features/assets) 与 [Excalidraw 渲染实现](https://github.com/excalidraw/excalidraw/blob/master/packages/element/src/renderElement.ts)：按屏幕尺度选择分辨率、将视口剔除与资源寿命分开，并对分辨率更新防抖。详细命令、截图和限制见[画布图片分级验证](validation-ui/2026-10-26-canvas-image-quality.md)。
+
+画布图片现在先显示缩略图；根据图片实际可见矩形与画布视口的交集，乘以显示器缩放系数换算屏幕物理像素面积。面积达到 500,000 像素时请求原图，缩回 350,000 像素以下时返回缩略图，二者用 180 ms 平滑淡化。阈值是固定的屏幕像素面积，对不同原图尺寸一致，不以画布缩放倍数或每张图的长边比例作判断。原图只保留在内存中，缩小淡回完成后释放；缩略图 JPEG 则复制到对应画板的 `whiteboards/previews/<board-id>/`，通过版本 2 JSON 的附加 `image_previews` 引用，因此共享缩略图缓存被清理后仍能在切换画板时显示。同进程 MCP 确认真实 Eagle 图片缩略图落盘，并切换画板回来后仍正常显示；白板 MCP 滚轮控制已验证鼠标锚点缩放和 Ctrl 平移。同进程 Eagle 图片场景在 1.5 倍显示缩放下由 MCP 控制相机，完整可见图像面积在 2.8 倍画布缩放时为 777,924 物理像素，超过原图阈值；缩回 1.498 倍后为 222,661 像素，低于缩略图阈值。两张截图显示对应清晰度变化，切换画板后缓存缩略图仍可显示。图像缓存层级没有单独输出 MCP 字段，因此覆盖依据是相机、显示器缩放和可见图像尺寸计算，以及运行截图。命令、截图和限制见[画布图片分级验证](validation-ui/2026-10-26-canvas-image-quality.md)。
+
+### 2026-10-26 画布滚轮操作调换
+
+普通滚轮现在以指针位置为中心缩放；Ctrl+滚轮平移画布。拖拽、选择、工具和触控板捏合逻辑未修改。为支持同进程检查，白板 MCP 增加 `whiteboard.scroll`，将指定滚轮增量和画布局部锚点发给与原生输入共用的 `WhiteboardView::scroll_canvas`，随后保存并可从 `whiteboard.state` 读回相机。Rust 1.97.1 fmt、Shell check/build 和主题/刷新/架构/feature-ledger 守卫通过；同进程 MCP 验证普通滚轮将缩放从 1.0 提至 1.4，鼠标锚点世界坐标保持不变，Ctrl+滚轮保持缩放并垂直平移。验证命令和限制见[画布滚轮 MCP 验证](validation-ui/2026-10-26-canvas-wheel-mcp.md)。
+Eagle 图片属性中新增外链图标按钮，通过 `eagle://item/{id}` 系统 URL 协议打开并定位条目；协议调用由 Eagle Links 服务负责，无 Eagle 来源数据时不显示按钮。Whiteboard/Shell 锁定检查与构建、主题/刷新/架构/feature-ledger 守卫通过；隔离同进程 MCP 实际点击了画布中的按钮并完成 URL handler handoff。Eagle 官方支持该项目 deep link（[Eagle 4.0 Build 7 发布说明](https://www.eagle.cool/blog/post/eagle4-build7)）；其插件 API 也有 `eagle.item.open(itemId)` 方法（[Eagle item API](https://developer.eagle.cool/plugin-api/zh-cn/api/item)）。Web API 未公开可读取的 Eagle 当前选中/打开 UI 状态，因此验证未声称读取到了 Eagle 窗口选中态。截图和命令见[Eagle 一键定位验证](validation-ui/2026-10-26-eagle-open-item.md)。
+
+### 2026-10-27 画布图片缓存统计 MCP
+
+增加只读 `whiteboard.cache_stats`，显示当前画板的缩略图/原图条目数、解码图像数及 RGBA 内存估算、质量层级、可见图像数、闲置原图字节数与年龄、切换/防抖状态、原图请求/内存命中/解码请求、TTL/内存预算回收计数和策略参数。隔离同进程 Eagle MCP 验证确认缩略图先加载，放大后原图解码，平移离屏再返回时复用内存原图，缩小时原图继续驻留；离屏超过 30 秒后统计显示 `original_ttl_evictions=1`、`original_decoded_images=0`。当前 fixture 小于 128 MiB，因此尚未触发预算回收计数。Shell fmt/check/build 和主题、刷新、架构、feature-ledger 检查通过；完整运行记录见[缓存统计验证](validation-ui/2026-10-26-canvas-image-quality.md#cache-statistics-mcp--2026-10-27)。
+
+### 2026-10-27 画布四个可折叠面板
+
+画板、资源、图层、对象改为左右按钮轨道控制的独立抽屉，默认收起且左右可同时展开。画板名称、新建/重命名、导入/导出、移除、缓存刷新全部迁入画板抽屉。每个抽屉保留原内容与操作，画布绘图工具和历史不变。Rust 1.97.1 fmt、Whiteboard check、锁定 Shell build、主题/刷新/架构/feature-ledger 守卫通过。同进程隔离 FileAtlas MCP 已截图核对默认、四种单抽屉和双侧展开；完整状态、未覆盖范围及截图目录见[画布四面板验证记录](validation-ui/2026-10-27-canvas-panels.md)。
+
+
+### 2026-10-27 画布底部工具组弹层定位
+
+修复嵌入式画布隐藏引擎顶部工具栏后，形状、连接线、资源/图像组弹层仍锚定到旧顶部默认位置的问题。扩展选项统一固定显示在底部工具栏上方的独立面板，不再按每个按钮计算坐标，避免弹层与工具栏重叠。撤销/重做与功能工具栏位于同一行的左右独立背景胶囊。同进程隔离 MCP 分别打开形状组与资源/图像组，截图确认两个组共用固定面板且不与工具栏重叠；默认状态也已截图。完整命令与验证边界见[工具组弹层定位记录](validation-ui/2026-10-27-canvas-toolbar-popovers.md)。
+
+### 2026-10-27 画布标题、状态与工具栏位置
+
+按用户标注移除画布插件内整宽标题带和底部状态带；标题及当前画板名放到左侧按钮轨道顶部。底部工具栏改为三块独立面板：撤销/重做、绘图工具、颜色/字体/模板；保存反馈以无框文字显示在其下方。颜色、字体及工具组弹层也固定在工具行上方。同进程 MCP 截图检查默认界面、颜色/字体面板和模板模态；布局没有标题/状态整宽框，三组工具面板分离。fmt、Whiteboard/Canvas Engine check、锁定 Shell build 和 UI theme/refresh/architecture/feature-ledger 守卫通过。截图尺寸 3286×1831，系统 DPI 未由截图接口报告；组件几何审查边界在截图中可见。详情见[画布工具栏布局验证](validation-ui/2026-10-27-canvas-toolbar-layout.md)。
+
+### 2026-10-27 画布插件设置中的存储位置
+
+在设置 → 插件设置 → FileAtlas Canvas 增加只读存储信息：`whiteboards/library.json` 的画板/场景、资源与 Eagle 链接、模板、颜色和预览引用，以及 `whiteboards/previews/`、`whiteboards/pasted-images/` 两个资源目录。特别标明画布采用 JSON，不使用共享 SQLite 媒体数据库。后续为所有插件页登记的每个路径增加后台异步大小统计及刷新按钮；目录递归统计、不跟随符号链接，SQLite 行合并计入 WAL/SHM 文件，缺失路径显示 0 B，不可完整读取时标注部分大小。截图确认画布插件路径、说明及大小。目录路径可能重叠，因此行大小不是可直接求和的总量。完整证据见[画布存储位置设置验证](validation-ui/2026-10-27-whiteboard-storage-settings.md)。
+
+### 2026-10-27 程序设置存储汇总页
+
+程序设置导航新增独立“存储”页，自动汇总运行时插件和注册设置页声明的存储路径，按插件分组展示内容说明、压缩后的完整路径及异步占用大小，支持手动刷新并在插件目录变化时更新。MCP `settings_tab` 增加 `storage`，以便同进程进入该页。视觉和交互证据见[存储汇总页验证记录](validation-ui/2026-10-27-plugin-storage-summary.md)。

@@ -31,7 +31,9 @@ translation revisions and refreshes GPUI windows. Feature inputs update their
 placeholders without resetting typed values, filters, or selection.
 
 There is no Cordis event for language changes; consumers observe the public
-revision. Library filenames, paths, tag names, keys and stored source enums
+revision. Canvas engine chrome calls this same translator through the host-installed
+UI callback, so its Fluent labels update on the normal UI refresh. Library filenames,
+paths, tag names, keys and stored source enums
 remain data, not translation keys. System errors, release notes supplied by
 GitHub, native OS dialogs, and development diagnostics may remain in their
 original language. Some generated status/error text still needs catalog coverage.

@@ -1,5 +1,9 @@
 use crate::extensions::CanvasExtensionService;
-use crate::{PANEL, WhiteboardService, hooks, images::ImageCache, store};
+use crate::{
+    PANEL, WhiteboardService, hooks,
+    images::{ImageCache, ImageCacheStats},
+    store,
+};
 use fileatlas_canvas_engine::{
     Element as CanvasElement, ElementKind, Tool, ToolGroup, WhiteboardStyle, WhiteboardView,
 };
@@ -17,7 +21,13 @@ use gpui_kit::{
     prelude::FluentBuilder as _,
     *,
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
+
+mod sidebars;
 
 pub(super) struct Rail {
     pub panels: Arc<PanelCatalog>,
@@ -42,7 +52,9 @@ pub(super) fn panel(
     thumbnails: Arc<fileatlas_plugin_thumbnails::ThumbnailService>,
     resources: Arc<fileatlas_plugin_media_resources::MediaResourceService>,
     quicklook: Arc<fileatlas_plugin_quicklook::QuickLookService>,
+    eagle_links: Option<Arc<fileatlas_plugin_eagle_links::EagleLinkService>>,
     extensions: Arc<CanvasExtensionService>,
+    image_cache_stats: Arc<Mutex<ImageCacheStats>>,
     window: &mut Window,
     app: &mut App,
 ) -> AnyView {
@@ -50,6 +62,8 @@ pub(super) fn panel(
         let images = Rc::new(RefCell::new(ImageCache::new(
             Arc::clone(&thumbnails),
             Arc::clone(&resources),
+            Arc::clone(&service),
+            Arc::clone(&image_cache_stats),
         )));
         let image_wake = images.borrow().wake.clone();
         let tool_wake = extensions.wake();
@@ -65,6 +79,43 @@ pub(super) fn panel(
                     board.update(cx, |_, cx| cx.notify());
                 }
             }
+            let transitioning = view.images.borrow().has_active_transitions();
+            let downgrade_pending = view.images.borrow().has_pending_downgrades();
+            if (transitioning || downgrade_pending) && !view.image_poll_active {
+                view.image_poll_active = true;
+                refresh::poll(cx, std::time::Duration::from_millis(16), |view, cx| {
+                    let changed = view.images.borrow_mut().poll();
+                    if changed {
+                        if let Some(board) = &view.board {
+                            board.update(cx, |_, cx| cx.notify());
+                        }
+                    }
+                    let cache = view.images.borrow();
+                    let active = cache.has_active_transitions() || cache.has_pending_downgrades();
+                    drop(cache);
+                    if !active {
+                        view.image_poll_active = false;
+                    }
+                    refresh::PollResult::until(changed, active)
+                });
+            }
+            let has_cached_originals = view.images.borrow().has_cached_originals();
+            if has_cached_originals && !view.image_cache_poll_active {
+                view.image_cache_poll_active = true;
+                refresh::poll(cx, std::time::Duration::from_secs(1), |view, cx| {
+                    let changed = view.images.borrow_mut().poll();
+                    if changed {
+                        if let Some(board) = &view.board {
+                            board.update(cx, |_, cx| cx.notify());
+                        }
+                    }
+                    let active = view.images.borrow().has_cached_originals();
+                    if !active {
+                        view.image_cache_poll_active = false;
+                    }
+                    refresh::PollResult::until(changed, active)
+                });
+            }
             changed
         });
         let tool_task = refresh::listen(cx, tool_wake, |_: &mut Host, _| true);
@@ -73,11 +124,16 @@ pub(super) fn panel(
             thumbnails,
             resources,
             quicklook,
+            eagle_links,
             extensions,
             name,
             board: None,
             active_id: None,
+            left_panel: None,
+            right_panel: None,
             images,
+            image_poll_active: false,
+            image_cache_poll_active: false,
             message: None,
             _wake: wake,
             _images: image_task,
@@ -93,46 +149,65 @@ pub(super) struct Host {
     pub thumbnails: Arc<fileatlas_plugin_thumbnails::ThumbnailService>,
     pub resources: Arc<fileatlas_plugin_media_resources::MediaResourceService>,
     pub quicklook: Arc<fileatlas_plugin_quicklook::QuickLookService>,
+    pub eagle_links: Option<Arc<fileatlas_plugin_eagle_links::EagleLinkService>>,
     pub extensions: Arc<CanvasExtensionService>,
     pub name: Entity<InputState>,
     pub board: Option<Entity<WhiteboardView>>,
     pub active_id: Option<i64>,
+    left_panel: Option<sidebars::LeftPanel>,
+    right_panel: Option<sidebars::RightPanel>,
     pub images: Rc<RefCell<ImageCache>>,
+    image_poll_active: bool,
+    image_cache_poll_active: bool,
     pub message: Option<String>,
     _wake: gpui::Task<()>,
     _images: gpui::Task<()>,
     _tools: gpui::Task<()>,
 }
 impl Host {
+    fn toggle_left_panel(&mut self, panel: sidebars::LeftPanel, cx: &mut Context<Self>) {
+        self.left_panel = (self.left_panel != Some(panel)).then_some(panel);
+        cx.notify();
+    }
+    fn toggle_right_panel(&mut self, panel: sidebars::RightPanel, cx: &mut Context<Self>) {
+        self.right_panel = (self.right_panel != Some(panel)).then_some(panel);
+        cx.notify();
+    }
     pub fn sync(&mut self, cx: &mut Context<Self>) {
         let library = self.service.snapshot();
         if self.active_id != library.active_id
             || (self.board.is_none() && library.active_id.is_some())
         {
             self.active_id = library.active_id;
-            self.images.borrow_mut().clear();
-            self.board = library
+            let record = library
                 .active_id
                 .and_then(|id| library.boards.iter().find(|b| b.id == id))
-                .map(|record| {
-                    let scene =
-                        serde_json::from_str::<fileatlas_canvas_engine::Scene>(&record.scene)
-                            .unwrap_or_default();
-                    let mut view =
-                        cx.new(|cx| WhiteboardView::new_embedded(scene, Rc::new(native_style), cx));
-                    hooks::install(
-                        &mut view,
-                        record.id,
-                        cx.entity().downgrade(),
-                        Arc::clone(&self.service),
-                        Rc::clone(&self.images),
-                        cx,
-                    );
-                    if let Some(font_path) = &record.font_path {
-                        self.load_font(view.clone(), record.id, font_path.clone(), cx);
-                    }
-                    view
-                });
+                .cloned();
+            if let Some(record) = &record {
+                self.images
+                    .borrow_mut()
+                    .set_board(record.id, &record.image_previews);
+            } else {
+                self.images.borrow_mut().clear();
+            }
+            self.board = record.map(|record| {
+                let scene = serde_json::from_str::<fileatlas_canvas_engine::Scene>(&record.scene)
+                    .unwrap_or_default();
+                let mut view =
+                    cx.new(|cx| WhiteboardView::new_embedded(scene, Rc::new(native_style), cx));
+                hooks::install(
+                    &mut view,
+                    record.id,
+                    cx.entity().downgrade(),
+                    Arc::clone(&self.service),
+                    Rc::clone(&self.images),
+                    cx,
+                );
+                if let Some(font_path) = &record.font_path {
+                    self.load_font(view.clone(), record.id, font_path.clone(), cx);
+                }
+                view
+            });
         }
         if let Some(board) = &self.board {
             let templates = self.service.templates();
@@ -156,6 +231,53 @@ impl Host {
                 }
             } else {
                 self.message = Some("图片添加取消：目标画板已经切换".into());
+            }
+        }
+        for input in self.service.take_canvas_scrolls() {
+            if self.active_id != Some(input.board_id) {
+                continue;
+            }
+            if let Some(board) = self.board.clone() {
+                let scene = board.update(cx, |view, cx| {
+                    view.scroll_canvas(input.dx, input.dy, input.control, input.at, cx);
+                    view.scene().to_json()
+                });
+                if let Err(error) = self.service.save_scene(input.board_id, scene) {
+                    tracing::error!(%error, board_id = input.board_id, "MCP canvas wheel save failed");
+                }
+            }
+        }
+        for action in self.service.take_panel_actions() {
+            match action {
+                store::CanvasPanelAction::LeftBoards => {
+                    self.left_panel = Some(sidebars::LeftPanel::Boards)
+                }
+                store::CanvasPanelAction::LeftResources => {
+                    self.left_panel = Some(sidebars::LeftPanel::Resources)
+                }
+                store::CanvasPanelAction::LeftClose => self.left_panel = None,
+                store::CanvasPanelAction::RightLayers => {
+                    self.right_panel = Some(sidebars::RightPanel::Layers)
+                }
+                store::CanvasPanelAction::RightObject => {
+                    self.right_panel = Some(sidebars::RightPanel::Object)
+                }
+                store::CanvasPanelAction::RightClose => self.right_panel = None,
+            }
+            cx.notify();
+        }
+        for action in self.service.take_tool_group_actions() {
+            if let Some(board) = self.board.clone() {
+                board.update(cx, |canvas, cx| canvas.toggle_tool_group(action.group, cx));
+            }
+        }
+        for action in self.service.take_toolbar_menu_actions() {
+            if let Some(board) = self.board.clone() {
+                board.update(cx, |canvas, cx| match action {
+                    store::CanvasToolbarMenuAction::Color => canvas.toggle_color_picker(cx),
+                    store::CanvasToolbarMenuAction::Font => canvas.toggle_font_picker(cx),
+                    store::CanvasToolbarMenuAction::Templates => canvas.toggle_template_gallery(cx),
+                });
             }
         }
     }
@@ -234,7 +356,20 @@ impl Render for Host {
         } else {
             "已保存".into()
         };
+        let board_title = self
+            .active_id
+            .and_then(|id| library.boards.iter().find(|item| item.id == id))
+            .map(|item| item.title.as_str())
+            .unwrap_or("未选择画板");
         let active_tool = self.board.as_ref().map(|board| board.read(cx).tool());
+        let left_rail = sidebars::left_rail(self, board_title, cx);
+        let right_rail = sidebars::right_rail(self, cx);
+        let left_drawer = self
+            .left_panel
+            .map(|panel| sidebars::left_drawer(self, &library, panel, cx));
+        let right_drawer = self
+            .right_panel
+            .map(|panel| sidebars::right_drawer(self, &library, panel, cx));
         let toolbar = div()
             .flex()
             .items_center()
@@ -402,92 +537,15 @@ impl Render for Host {
                     .into_any_element()
             }
         });
-        let layers = if let Some(board) = self.board.clone() {
-            let selected = board.read(cx).selected_ids().to_vec();
-            let properties = selected.first().and_then(|id| {
-                let canvas = board.read(cx);
-                let element = canvas.elements().iter().find(|element| element.id == *id)?;
-                let [x0, y0, x1, y1] = canvas.element_bounds(*id)?;
-                Some(format!(
-                    "{}\n位置  X {:.0}  Y {:.0}\n大小  {:.0} × {:.0}",
-                    layer_label(element),
-                    x0,
-                    y0,
-                    x1 - x0,
-                    y1 - y0
-                ))
-            });
-            let rows = board
-                .read(cx)
-                .elements()
-                .iter()
-                .enumerate()
-                .rev()
-                .map(|(index, element)| {
-                    let id = element.id;
-                    let label = layer_label(element);
-                    let is_selected = selected.contains(&id);
-                    let select_board = board.clone();
-                    let up_board = board.clone();
-                    let down_board = board.clone();
-                    let select_button =
-                        components::action(format!("canvas-layer-select-{id}"), label, false);
-                    let select_button = if is_selected {
-                        select_button
-                            .workbench_surface(SurfaceRole::Selection)
-                            .workbench_foreground(ForegroundRole::Selection)
-                    } else {
-                        select_button
-                    };
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                        .child(select_button.on_click(cx.listener(move |_, _, _, cx| {
-                            select_board.update(cx, |canvas, cx| canvas.select_element(id, cx));
-                            cx.notify();
-                        })))
-                        .child(
-                            components::action(format!("canvas-layer-up-{id}"), "上移", false)
-                                .on_click(cx.listener(move |_, _, window, cx| {
-                                    up_board.update(cx, |canvas, cx| {
-                                        canvas.move_element_to(id, index + 1, window, cx)
-                                    });
-                                })),
-                        )
-                        .child(
-                            components::action(format!("canvas-layer-down-{id}"), "下移", false)
-                                .on_click(cx.listener(move |_, _, window, cx| {
-                                    down_board.update(cx, |canvas, cx| {
-                                        canvas.move_element_to(
-                                            id,
-                                            index.saturating_sub(1),
-                                            window,
-                                            cx,
-                                        )
-                                    });
-                                })),
-                        )
-                })
-                .collect::<Vec<_>>();
-            div()
-                .id("canvas-layers")
-                .w(px(240.))
-                .h_full()
-                .overflow_y_scrollbar()
-                .flex()
-                .flex_col()
-                .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                .workbench_region(true)
-                .p(px(fileatlas_ui_bridge::theme::space_standard()))
-                .child(components::heading_block("图层", "置顶的图层显示在最前"))
-                .children(rows)
-                .child(components::heading_block("属性", "选中对象"))
-                .child(properties.unwrap_or_else(|| "未选择图层".into()))
-                .into_any_element()
-        } else {
-            div().w(px(220.)).h_full().into_any_element()
-        };
+        let canvas_toolbar = div()
+            .flex()
+            .flex_wrap()
+            .items_center()
+            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+            .workbench_region(false)
+            .p(px(fileatlas_ui_bridge::theme::space_compact()))
+            .child(toolbar)
+            .children(extension_buttons);
         div()
             .size_full()
             .flex()
@@ -498,122 +556,11 @@ impl Render for Host {
             .child(
                 div()
                     .flex()
-                    .items_center()
-                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                    .child(div().w(px(200.)).child(components::text_input(&self.name)))
-                    .child(
-                        components::icon_button(
-                            "whiteboard-new",
-                            gpui_kit::assets::IconName::FilePlus,
-                        )
-                        .tooltip("新建画板")
-                        .on_click(cx.listener(|v, _, _, cx| v.create(cx))),
-                    )
-                    .child(
-                        components::icon_button(
-                            "whiteboard-rename",
-                            gpui_kit::assets::IconName::Pencil,
-                        )
-                        .tooltip("重命名")
-                        .on_click(cx.listener(|v, _, _, cx| v.rename(cx))),
-                    )
-                    .child(
-                        components::icon_button(
-                            "whiteboard-import",
-                            gpui_kit::assets::IconName::FileInput,
-                        )
-                        .tooltip("导入画板")
-                        .on_click(cx.listener(|v, _, _, cx| v.import(cx))),
-                    )
-                    .child(
-                        components::icon_button(
-                            "whiteboard-export",
-                            gpui_kit::assets::IconName::FileOutput,
-                        )
-                        .tooltip("导出画板")
-                        .on_click(cx.listener(|v, _, _, cx| v.export(cx))),
-                    )
-                    .child(
-                        components::icon_button(
-                            "whiteboard-remove",
-                            gpui_kit::assets::IconName::Trash,
-                        )
-                        .tooltip("移除画板")
-                        .on_click(cx.listener(|v, _, _, cx| v.remove(cx))),
-                    )
-                    .child(
-                        components::icon_button(
-                            "whiteboard-refresh",
-                            gpui_kit::assets::IconName::RefreshCw,
-                        )
-                        .tooltip("刷新图片")
-                        .on_click(cx.listener(|v, _, _, cx| {
-                            v.images.borrow_mut().clear();
-                            if let Some(board) = &v.board {
-                                board.update(cx, |_, cx| cx.notify());
-                            }
-                            cx.notify();
-                        })),
-                    ),
-            )
-            .child(
-                div()
-                    .flex()
                     .flex_1()
                     .min_h_0()
                     .gap(px(fileatlas_ui_bridge::theme::space_standard()))
-                    .child(
-                        div()
-                            .id("whiteboard-library")
-                            .w(px(180.))
-                            .h_full()
-                            .overflow_y_scrollbar()
-                            .flex()
-                            .flex_col()
-                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                            .workbench_region(true)
-                            .p(px(fileatlas_ui_bridge::theme::space_standard()))
-                            .child(components::heading_block("画板", "工作区"))
-                            .children(library.boards.iter().map(|record| {
-                                let id = record.id;
-                                div()
-                                    .id(("whiteboard-item", id as usize))
-                                    .w_full()
-                                    .workbench_nav(self.active_id == Some(id))
-                                    .child(div().truncate().child(record.title.clone()))
-                                    .on_click(cx.listener(move |v, _, _, cx| {
-                                        let result = v.service.activate(id);
-                                        v.result(result, cx);
-                                    }))
-                            }))
-                            .child(components::heading_block("资源", "文件与视频卡片"))
-                            .children(library.links.iter().map(|file| {
-                                let id = file.id;
-                                let uri = &file.uri;
-                                let name = uri.rsplit('/').next().unwrap_or(uri);
-                                let label = if ["mp4", "m4v", "mov", "mkv", "webm", "avi"]
-                                    .iter()
-                                    .any(|ext| {
-                                        name.to_ascii_lowercase().ends_with(&format!(".{ext}"))
-                                    }) {
-                                    format!("视频 · {name}")
-                                } else {
-                                    name.to_owned()
-                                };
-                                div().child(
-                                    components::action(
-                                        format!("canvas-resource-{id}"),
-                                        label,
-                                        false,
-                                    )
-                                    .on_click(cx.listener(
-                                        move |view, _, _, cx| {
-                                            view.open_file(id, cx);
-                                        },
-                                    )),
-                                )
-                            })),
-                    )
+                    .child(left_rail)
+                    .when_some(left_drawer, |el, drawer| el.child(drawer))
                     .child(
                         div()
                             .id("whiteboard-native")
@@ -664,64 +611,77 @@ impl Render for Host {
                                     .absolute()
                                     .left(px(0.))
                                     .right(px(0.))
-                                    .top(px(fileatlas_ui_bridge::theme::space_standard()))
+                                    .bottom(px(
+                                        fileatlas_canvas_engine::EMBEDDED_TOOLBAR_BOTTOM_OFFSET,
+                                    ))
                                     .flex()
-                                    .justify_end()
-                                    .pr(px(fileatlas_ui_bridge::theme::space_standard()))
-                                    .child(style_controls),
-                            )
-                            .child(
-                                div()
-                                    .absolute()
-                                    .left(px(0.))
-                                    .right(px(0.))
-                                    .bottom(px(fileatlas_ui_bridge::theme::space_expanded()))
-                                    .flex()
-                                    .flex_col()
-                                    .items_center()
-                                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                                    .child(history_controls)
+                                    .justify_center()
                                     .child(
                                         div()
                                             .flex()
                                             .flex_wrap()
                                             .items_center()
                                             .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                                            .workbench_region(false)
-                                            .p(px(fileatlas_ui_bridge::theme::space_compact()))
-                                            .children([toolbar.into_any_element()])
-                                            .children(extension_buttons),
+                                            .child(history_controls)
+                                            .child(canvas_toolbar)
+                                            .child(style_controls),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .absolute()
+                                    .left(px(0.))
+                                    .right(px(0.))
+                                    .bottom(px(fileatlas_ui_bridge::theme::space_standard()))
+                                    .flex()
+                                    .justify_center()
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                                            .workbench_assistant()
+                                            .child(state)
+                                            .when(status.error.is_some(), |el| {
+                                                el.child(
+                                                    components::action(
+                                                        "whiteboard-retry-save",
+                                                        "重试保存",
+                                                        false,
+                                                    )
+                                                    .on_click(cx.listener(|v, _, _, cx| {
+                                                        let service = Arc::clone(&v.service);
+                                                        cx.spawn(async move |this, cx| {
+                                                            let result =
+                                                                crate::background(cx, move || {
+                                                                    service.flush()
+                                                                })
+                                                                .await;
+                                                            let _ = this.update(cx, |v, cx| {
+                                                                v.result(result, cx)
+                                                            });
+                                                        })
+                                                        .detach();
+                                                    })),
+                                                )
+                                            })
+                                            .child(
+                                                self.message
+                                                    .clone()
+                                                    .or_else(|| {
+                                                        self.images
+                                                            .borrow()
+                                                            .errors()
+                                                            .first()
+                                                            .cloned()
+                                                    })
+                                                    .unwrap_or_default(),
+                                            ),
                                     ),
                             ),
                     )
-                    .child(layers),
-            )
-            .child(
-                div()
-                    .flex()
-                    .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
-                    .workbench_assistant()
-                    .child(state)
-                    .when(status.error.is_some(), |el| {
-                        el.child(
-                            components::action("whiteboard-retry-save", "重试保存", false)
-                                .on_click(cx.listener(|v, _, _, cx| {
-                                    let service = Arc::clone(&v.service);
-                                    cx.spawn(async move |this, cx| {
-                                        let result =
-                                            crate::background(cx, move || service.flush()).await;
-                                        let _ = this.update(cx, |v, cx| v.result(result, cx));
-                                    })
-                                    .detach();
-                                })),
-                        )
-                    })
-                    .child(
-                        self.message
-                            .clone()
-                            .or_else(|| self.images.borrow().errors().first().cloned())
-                            .unwrap_or_default(),
-                    ),
+                    .when_some(right_drawer, |el, drawer| el.child(drawer))
+                    .child(right_rail),
             )
     }
 }
@@ -755,10 +715,9 @@ fn layer_label(element: &CanvasElement) -> String {
             text.content.chars().take(16).collect::<String>()
         ),
         ElementKind::Embed(embed) => format!("文件 · {}", embed.title),
-        ElementKind::Image(image) => format!(
-            "图片 · {}",
-            image.src.rsplit('/').next().unwrap_or(&image.src)
-        ),
+        ElementKind::Image(image) => {
+            format!("图片 · {}", sidebars::resource_name(&image.src))
+        }
     }
 }
 /// Only maps upstream-required host colors. All tools/chrome remain upstream.

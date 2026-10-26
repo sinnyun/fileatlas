@@ -326,7 +326,7 @@ MCP 访问默认为 Off。Standard 允许 UI 控制与常规变更；Full 额外
 与 preview_chrome_alpha。这些是对 get_view_state 的补充；它们不描述
 操作系统指针位置或全部 GPUI 控件状态。`control_ui { action, value? }`
 需要 Standard 或 Full 访问，并支持 settings_open/settings_close、
-settings_tab、language (en/zh-CN)、statistics、bulk_actions、file_manager_dialogs_close、
+settings_tab（含 `storage` 聚合页）、settings_storage_refresh（仅在该页打开时刷新）、language (en/zh-CN)、statistics、bulk_actions、file_manager_dialogs_close、
 select_media（value 是已索引媒体 ID 字符串）与 deselect。Settings 使用公开
 UiSurfaceState；language 使用 I18nService；FileManager 使用 FileManagerUiRequest。
 Settings 与 FileManager 异步消费请求。在

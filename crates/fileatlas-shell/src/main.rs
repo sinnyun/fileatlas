@@ -1001,6 +1001,20 @@ fn main() {
     } else {
         None
     };
+    let _eagle_links_fiber = if enable_file_manager {
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            fileatlas_plugin_eagle_links::EagleLinksPlugin,
+            (),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start Eagle link conversion plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
     whiteboard::start(
         &runtime,
         &cordis,

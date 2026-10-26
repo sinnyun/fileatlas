@@ -42,13 +42,21 @@ Toolbar 选项卡的历史描述均以本节为准。
 
 ## 已迁移的设置控件
 
-面板包含外观、快捷键、标签、AI、更新、软件和插件分区。直接控件涵盖强调色选择、日期分隔线、侧栏排除修饰键、搜索范围、标签搜索匹配与持久化、标签合并子标签行为、AI 自动分析、必选组编辑、更新程序自动检查以及打开键/标签快捷键。程序设置 → 软件是面向 QuickLook 与 Everything 的只读探测器；截图工具插件页面单独报告 Shotoshot。
+面板包含外观、快捷键、标签、AI、更新、软件、存储和插件分区。存储页汇总运行时插件及已注册设置页的存储路径，按插件分组显示路径、内容用途和占用大小，并提供刷新。目录路径可能重叠，因此不显示简单相加的总量。具体统计语义见 PORTS.md 的存储章节。程序设置 → 软件是面向 QuickLook 与 Everything 的只读探测器；截图工具插件页面单独报告 Shotoshot。
 
 ## 插件设置与运行时控件 — 2026-10-18
 
 Settings 侧栏分为程序设置和插件设置两组。插件概览卡片对 `fileatlas.launcher`、`fileatlas.clipboard` 和 `fileatlas.screenshot` 具有生命周期感知；它们各自的独立页面暴露启动呈现设置。`Settings.plugin_enabled` 持久化启用状态，并将缺失条目默认为启用。`PluginRuntimeRegistry` 持有 Cordis `FiberHandle` 和 shell 提供的 spawn 方案（recipe）；停用时等待 `FiberHandle::dispose`，启用时通过宿主 `CordisContext` spawn 一个全新的预备插件。该注册表仅限于这三个独立工作台工具。它们依赖核心的 Database/Settings 服务，这些服务在此不由用户切换；不引入通用的依赖级联管理器。
 
 `Settings.plugin_launch_modes` 以 Cordis 所有者 ID 为键，默认为 `WorkspaceAndPanel`。Launcher/Clipboard 支持 `PanelOnly`；Screenshot 还支持 `Direct`，它直接调用 Shotoshot 截图而不打开 FileAtlas 面板。`PanelCatalog::open_presented(id, true)` 现在通过宿主创建一个独立的原生窗口，不再恢复主窗口或抑制工作区。旧的全局 `panel.presentation` 渲染路径已被移除。设置变更在下一次打开插件时生效。修正后原生呈现方式的运行时证据记录在 docs/validation-ui/2026-10-18-native-panels/。
+
+`fileatlas.whiteboard` 插件页的“数据存储位置”列出 `whiteboards/library.json`、
+`whiteboards/previews/` 和 `whiteboards/pasted-images/`。JSON 文件保存画板/场景、
+资源与 Eagle 链接、模板、颜色和预览引用；该画布不使用共享 SQLite 媒体数据库。
+插件设置页对每个已登记存储位置异步显示文件/目录占用大小，结果由 `ReadModel`
+缓存，刷新按钮显式重新统计。目录递归统计且不跟随符号链接；共享媒体数据库的
+大小包含 SQLite `-wal`/`-shm`。缺失路径计为 0 B，不可完整读取时显示部分大小提示；
+重叠目录的行不可直接相加。文件系统 IO 不在渲染阶段执行。
 
 快捷键页面还会从 `UiCatalog.commands()` 发现生命周期拥有的命令键绑定。
 每个插件注册一个稳定的键绑定贡献，指向其命令并声明 `Application`

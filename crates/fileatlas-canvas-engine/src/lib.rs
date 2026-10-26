@@ -35,6 +35,25 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::Range;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::OnceLock;
+
+/// Vertical offset used by the FileAtlas host's embedded bottom toolbar.
+pub const EMBEDDED_TOOLBAR_BOTTOM_OFFSET: f32 = 48.0;
+const EMBEDDED_TOOLBAR_POPOVER_BOTTOM_OFFSET: f32 = 108.0;
+
+/// Host-installed translator for fixed canvas interface text.
+static UI_TRANSLATOR: OnceLock<fn(&str) -> String> = OnceLock::new();
+
+/// Install the host's translation boundary. Scene content never passes through it.
+pub fn set_ui_translator(translate: fn(&str) -> String) {
+    let _ = UI_TRANSLATOR.set(translate);
+}
+
+pub(crate) fn ui_text(source: &str) -> String {
+    UI_TRANSLATOR
+        .get()
+        .map_or_else(|| source.to_owned(), |translate| translate(source))
+}
 
 pub use font::Font;
 use geometry::*;
@@ -433,6 +452,14 @@ pub struct WhiteboardStyle {
 /// tracks theme changes without the host pushing updates.
 pub type WhiteboardStyleFn = Rc<dyn Fn() -> WhiteboardStyle>;
 
+/// Current decoded image and an optional higher/lower-resolution bitmap being
+/// cross-faded over it. The host owns loading, caching and transition progress.
+#[derive(Clone)]
+pub struct ImageRenderSources {
+    pub base: gpui::ImageSource,
+    pub overlay: Option<(gpui::ImageSource, f32)>,
+}
+
 /// Called when the board changes (an element committed/moved/deleted, the camera
 /// moved), with the serialized scene JSON, so the host can persist it.
 pub type ChangeFn = Rc<dyn Fn(String, &mut Window, &mut App)>;
@@ -471,9 +498,11 @@ pub type SavedColorsFn = Rc<dyn Fn(Vec<u32>, &mut Window, &mut App)>;
 /// Called each render to fetch the decoded bitmap for an image element's `src`,
 /// rotated by `rotation` radians (0 = upright). The host serves it from its image
 /// cache, decoding/rotating on demand (returning `None` until ready, then
-/// re-rendering the board); a steady angle hits the cache, so it only re-rotates
-/// when the angle changes.
-pub type ImageFn = Rc<dyn Fn(&str, f32, &mut Window, &mut App) -> Option<gpui::ImageSource>>;
+/// re-rendering the board); the size argument is the image's full physical
+/// screen-pixel extent, with a separate viewport-intersection flag.
+pub type ImageFn = Rc<
+    dyn Fn(&str, f32, [f32; 2], bool, bool, &mut Window, &mut App) -> Option<ImageRenderSources>,
+>;
 
 /// Called when the image tool is clicked at world `(x, y)` — the host picks a
 /// file and calls [`WhiteboardView::add_image_at`].
@@ -1181,12 +1210,12 @@ impl WhiteboardView {
         text: impl Into<SharedString>,
     ) -> impl Fn(&mut Window, &mut App) -> AnyView + 'static {
         let style_fn = self.style.clone();
-        let text = text.into();
+        let text = ui_text(&text.into());
         move |_window, cx| {
             let s = style_fn();
             let text = text.clone();
             cx.new(move |_| Tip {
-                text,
+                text: text.into(),
                 fg: s.ink,
                 bg: s.panel,
                 border: s.grid,
@@ -2265,6 +2294,26 @@ impl WhiteboardView {
     /// The current board document (for the host to persist).
     pub fn scene(&self) -> &Scene {
         &self.scene
+    }
+
+    /// Apply the canvas wheel gesture so native input and MCP use identical
+    /// zoom/pan semantics. `at` is relative to the canvas viewport.
+    pub fn scroll_canvas(
+        &mut self,
+        dx: f32,
+        dy: f32,
+        control: bool,
+        at: [f32; 2],
+        cx: &mut Context<Self>,
+    ) {
+        if control {
+            self.scene.camera.pan_by(dx, dy);
+        } else {
+            let factor = (1.0 + dy * 0.0025).clamp(0.5, 2.0);
+            self.scene.camera.zoom_about(at[0], at[1], factor);
+        }
+        self.dirty = true;
+        cx.notify();
     }
 
     /// Build a local-thumbnail focus spec for the board. The board default has
@@ -4606,15 +4655,13 @@ impl WhiteboardView {
             ScrollDelta::Pixels(p) => (f32::from(p.x), f32::from(p.y)),
             ScrollDelta::Lines(p) => (p.x * LINE_PX, p.y * LINE_PX),
         };
-        if ev.modifiers.platform || ev.modifiers.control {
-            let (rx, ry) = self.relative(ev.position);
-            let factor = (1.0 + dy * 0.0025).clamp(0.5, 2.0);
-            self.scene.camera.zoom_about(rx, ry, factor);
+        let at = if ev.modifiers.control {
+            [0.0, 0.0]
         } else {
-            self.scene.camera.pan_by(dx, dy);
-        }
-        self.dirty = true;
-        cx.notify();
+            let (rx, ry) = self.relative(ev.position);
+            [rx, ry]
+        };
+        self.scroll_canvas(dx, dy, ev.modifiers.control, at, cx);
     }
 
     fn on_pinch(&mut self, ev: &PinchEvent, _window: &mut Window, cx: &mut Context<Self>) {
@@ -4891,7 +4938,7 @@ impl WhiteboardView {
                 .text_color(ink)
                 .hover(|s| s.bg(grid))
                 .child(div().w(px(12.0)).child(if on { "✓" } else { "" }))
-                .child(div().flex_1().child(label))
+                .child(div().flex_1().child(ui_text(label)))
                 .child(div().text_size(px(11.0)).text_color(text).child(sc))
         };
         div()
@@ -5334,7 +5381,7 @@ impl Render for BoardEmbedView {
                 .text_size(px(12.0))
                 .text_color(ink)
                 .child("↗")
-                .child("Edit")
+                .child(ui_text("Edit"))
                 .on_click(cx.listener(|this, _ev, window, cx| {
                     if let Some(f) = this.on_expand.clone() {
                         f(window, cx);
@@ -5662,6 +5709,7 @@ impl Render for WhiteboardView {
         let zoom = cam.zoom.max(MIN_ZOOM);
         let bounds_cell = self.bounds.clone();
         let board_bounds = self.bounds.get();
+        let screen_scale = window.scale_factor();
         let render_viewport = self.render_viewport(Some(window.viewport_size()));
         let visible_element_ids = self
             .scene
@@ -5685,23 +5733,40 @@ impl Render for WhiteboardView {
         // different angles don't collide. The rotation is snapped to a quarter
         // turn (images rotate in 90° steps), so a steady angle hits the host's
         // cache and only re-rotates as the drag crosses a 90° boundary.
-        let img_sources: HashMap<u64, gpui::ImageSource> = {
-            let items: Vec<(u64, String, f32)> = self
+        let img_sources: HashMap<u64, ImageRenderSources> = {
+            let items: Vec<(u64, String, f32, [f32; 2], bool)> = self
                 .scene
                 .elements
                 .iter()
-                .filter(|element| visible_element_ids.contains(&element.id))
                 .filter_map(|e| match &e.kind {
                     ElementKind::Image(im) => {
-                        Some((e.id, im.src.clone(), snap_quarter(im.rotation)))
+                        let rotation = snap_quarter(im.rotation);
+                        let corners = box_padded_corners(im.x, im.y, im.w, im.h, rotation, 0.0);
+                        let (world_x0, world_y0, world_x1, world_y1) = aabb(&corners);
+                        let x0 = (world_x0 - cam.x) * zoom;
+                        let y0 = (world_y0 - cam.y) * zoom;
+                        let x1 = (world_x1 - cam.x) * zoom;
+                        let y1 = (world_y1 - cam.y) * zoom;
+                        let screen_width = (x1 - x0).abs();
+                        let screen_height = (y1 - y0).abs();
+                        Some((
+                            e.id,
+                            im.src.clone(),
+                            rotation,
+                            [screen_width * screen_scale, screen_height * screen_scale],
+                            visible_element_ids.contains(&e.id),
+                        ))
                     }
                     _ => None,
                 })
                 .collect();
             let mut map = HashMap::new();
             if let Some(f) = self.on_image.clone() {
-                for (id, src, rot) in items {
-                    if let Some(s) = f(&src, rot, window, cx) {
+                if items.is_empty() {
+                    let _ = f("", 0.0, [0.0, 0.0], false, true, window, cx);
+                }
+                for (index, (id, src, rot, size, visible)) in items.into_iter().enumerate() {
+                    if let Some(s) = f(&src, rot, size, visible, index == 0, window, cx) {
                         map.insert(id, s);
                     }
                 }
@@ -5785,7 +5850,7 @@ impl Render for WhiteboardView {
                                 div()
                                     .text_size(px(11.0 * zoom))
                                     .text_color(text)
-                                    .child("Double-click to open"),
+                                    .child(ui_text("Double-click to open")),
                             )
                             .into_any_element(),
                     ));
@@ -5820,11 +5885,31 @@ impl Render for WhiteboardView {
                         // `size_full` makes it overflow the box and clip). The bitmap is
                         // pre-rotated to the box's quarter-turn aspect, so width alone
                         // reproduces the rotated AABB exactly. `Contain` guards rounding.
-                        Some(src) => frame.child(
-                            gpui::img(src.clone())
-                                .w(px(bw * zoom))
-                                .object_fit(ObjectFit::Contain),
-                        ),
+                        Some(sources) => {
+                            let image = |src: gpui::ImageSource| {
+                                gpui::img(src)
+                                    .w(px(bw * zoom))
+                                    .object_fit(ObjectFit::Contain)
+                            };
+                            let mut stack = frame.child(
+                                div()
+                                    .id(("wb-image-base", id))
+                                    .absolute()
+                                    .size_full()
+                                    .child(image(sources.base.clone())),
+                            );
+                            if let Some((overlay, opacity)) = &sources.overlay {
+                                stack = stack.child(
+                                    div()
+                                        .id(("wb-image-overlay", id))
+                                        .absolute()
+                                        .size_full()
+                                        .opacity(*opacity)
+                                        .child(image(overlay.clone())),
+                                );
+                            }
+                            stack
+                        }
                         None => frame
                             .bg(panel)
                             .border_1()
@@ -5836,7 +5921,7 @@ impl Render for WhiteboardView {
                                 div()
                                     .text_size(px(11.0 * zoom))
                                     .text_color(text)
-                                    .child("Loading…"),
+                                    .child(ui_text("Loading…")),
                             ),
                     };
                     layers.push(Layer::Overlay(el.into_any_element()));
@@ -6451,7 +6536,7 @@ impl Render for WhiteboardView {
                         .px(px(4.0))
                         .text_size(px(11.0))
                         .text_color(text)
-                        .child("Direction"),
+                        .child(ui_text("Direction")),
                 )
                 .child(
                     chip(
@@ -6489,7 +6574,7 @@ impl Render for WhiteboardView {
                         .px(px(4.0))
                         .text_size(px(11.0))
                         .text_color(text)
-                        .child("Connector"),
+                        .child(ui_text("Connector")),
                 )
                 .child(
                     chip(
@@ -6590,8 +6675,17 @@ impl Render for WhiteboardView {
         let pill_right =
             f32::from(pill_b.origin.x) - f32::from(board_o.x) + f32::from(pill_b.size.width);
         let has_bounds = f32::from(pill_b.size.width) > 1.0;
+        let embedded = self.embedded;
         let popover_anchor = move || -> Div {
-            if vertical && has_bounds {
+            if embedded {
+                div()
+                    .absolute()
+                    .left_0()
+                    .right_0()
+                    .bottom(px(EMBEDDED_TOOLBAR_POPOVER_BOTTOM_OFFSET))
+                    .flex()
+                    .justify_center()
+            } else if vertical && has_bounds {
                 div()
                     .absolute()
                     .left(px(pill_right + 6.0))
@@ -6610,10 +6704,8 @@ impl Render for WhiteboardView {
             }
         };
 
-        // Tool-category flyout (centered below the toolbar), built only while a
-        // group is open. Occluded like the main bar; picking a tool activates it
-        // and closes the flyout (via `set_tool`), and a press elsewhere on the
-        // canvas closes it (see `on_left_down`).
+        // Embedded hosts show tool options in a stable panel above the whole
+        // bottom toolbar, independent of which group button opened it.
         let flyout =
             open_group.map(|g| {
                 let mut row = div()
@@ -6749,7 +6841,7 @@ impl Render for WhiteboardView {
                     .text_size(px(12.0))
                     .text_color(ink)
                     .hover(|s| s.bg(grid))
-                    .child(label)
+                    .child(ui_text(label))
             };
             let panel = div()
                 .occlude()
@@ -6803,7 +6895,7 @@ impl Render for WhiteboardView {
                         .text_size(px(12.0))
                         .text_color(ink)
                         .hover(|s| s.bg(grid))
-                        .child(label)
+                        .child(ui_text(label))
                         .child(div().text_size(px(11.0)).text_color(text).child(shortcut))
                 };
                 let divider = || div().my(px(4.0)).mx(px(8.0)).h(px(1.0)).bg(grid);
@@ -6971,7 +7063,12 @@ impl Render for WhiteboardView {
                         .py(px(10.0))
                         .border_b_1()
                         .border_color(grid)
-                        .child(div().text_size(px(14.0)).text_color(ink).child("Templates"))
+                        .child(
+                            div()
+                                .text_size(px(14.0))
+                                .text_color(ink)
+                                .child(ui_text("Templates")),
+                        )
                         .child(
                             div()
                                 .id("wb-tmpl-close")
@@ -7000,7 +7097,7 @@ impl Render for WhiteboardView {
                         .border_color(grid)
                         .text_size(px(10.0))
                         .text_color(text)
-                        .child("Click to add · right-click to delete"),
+                        .child(ui_text("Click to add · right-click to delete")),
                 );
             div()
                 .absolute()
@@ -7054,7 +7151,7 @@ impl Render for WhiteboardView {
 
             // Stroke / fill target tabs. The active one is highlighted; clicking
             // re-seeds the controls from that property's color.
-            let tab = |active: bool, sw: Hsla, label: &'static str, id: &'static str| {
+            let tab = |active: bool, sw: Hsla, label: String, id: &'static str| {
                 let mut d = div()
                     .id(id)
                     .flex()
@@ -7085,7 +7182,7 @@ impl Render for WhiteboardView {
                     tab(
                         p.target == PickerTarget::Stroke,
                         stroke_disp.map_or(ink, u32_to_hsla),
-                        "Stroke",
+                        ui_text("Stroke"),
                         "wb-tab-stroke",
                     )
                     .on_click(cx.listener(|this, _ev, _w, cx| {
@@ -7096,7 +7193,7 @@ impl Render for WhiteboardView {
                     tab(
                         p.target == PickerTarget::Fill,
                         fill_disp.map_or(clear, u32_to_hsla),
-                        "Fill",
+                        ui_text("Fill"),
                         "wb-tab-fill",
                     )
                     .on_click(cx.listener(|this, _ev, _w, cx| {
@@ -7107,7 +7204,7 @@ impl Render for WhiteboardView {
                     tab(
                         p.target == PickerTarget::Text,
                         text_disp.map_or(ink, u32_to_hsla),
-                        "Text",
+                        ui_text("Text"),
                         "wb-tab-text",
                     )
                     .on_click(cx.listener(|this, _ev, _w, cx| {
@@ -7218,9 +7315,9 @@ impl Render for WhiteboardView {
 
             // Reset means "back to theme ink" for stroke, "no fill" for fill.
             let reset_label = if p.target == PickerTarget::Fill {
-                "None"
+                ui_text("None")
             } else {
-                "Auto"
+                ui_text("Auto")
             };
             let info_row = div()
                 .flex()
@@ -7302,7 +7399,7 @@ impl Render for WhiteboardView {
                         .w_full()
                         .text_size(px(11.0))
                         .text_color(text)
-                        .child("Tap + to save a color"),
+                        .child(ui_text("Tap + to save a color")),
                 );
             } else {
                 for (i, &c) in self.saved_colors.iter().enumerate() {
@@ -7341,7 +7438,12 @@ impl Render for WhiteboardView {
                         .flex()
                         .items_center()
                         .justify_between()
-                        .child(div().text_size(px(11.0)).text_color(text).child("Saved"))
+                        .child(
+                            div()
+                                .text_size(px(11.0))
+                                .text_color(text)
+                                .child(ui_text("Saved")),
+                        )
                         .child(
                             div()
                                 .id("wb-save-color")

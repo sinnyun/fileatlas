@@ -340,7 +340,7 @@ MCP access defaults to Off. Standard permits UI control and ordinary mutations; 
 and preview_chrome_alpha. These supplement get_view_state; they do not describe
 OS pointer position or all GPUI widget state. `control_ui { action, value? }`
 requires Standard or Full access and supports settings_open/settings_close,
-settings_tab, language (en/zh-CN), statistics, bulk_actions, file_manager_dialogs_close
+settings_tab (including the `storage` summary page), settings_storage_refresh (requires Storage open), language (en/zh-CN), statistics, bulk_actions, file_manager_dialogs_close
 select_media (value is an indexed media ID string), and deselect. Settings uses public
 UiSurfaceState; language uses I18nService; FileManager uses FileManagerUiRequest.
 Settings and FileManager consume requests asynchronously. Wait for rendering before

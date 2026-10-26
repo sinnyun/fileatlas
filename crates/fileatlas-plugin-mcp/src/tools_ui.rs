@@ -8,7 +8,7 @@ pub(super) struct UiRequest {
     /// settings_open/close/tab, language, statistics, bulk_actions,
     /// file_manager_dialogs_close, select_media, deselect, hover_media, hover_clear,
     /// inspector_open/close, sidebar_open/close, export_open/close,
-    /// settings_check_updates, writeback_retry/dismiss (value: exact failure path).
+    /// settings_check_updates, settings_storage_refresh, writeback_retry/dismiss (value: exact failure path).
     /// sidebar_width/inspector_width (logical pixels), navigation_tab, inspector_tab.
     /// columns_layout: value single|dual|quad; activate_column: zero-based index;
     /// workspace_select: existing workspace id; workspace_manager: open|close.
@@ -700,6 +700,23 @@ impl FileAtlasMcpServer {
                 )
             }
             "settings_check_updates" => self.surfaces.set_open("settings.check-updates", true),
+            "settings_storage_refresh" => {
+                if !self.surfaces.is_open("settings")
+                    || self.surfaces.value("settings.tab").as_deref() != Some("storage")
+                {
+                    return error_json(
+                        "settings_storage_refresh requires the Storage settings page to be open",
+                    );
+                }
+                let revision = self
+                    .surfaces
+                    .value("settings.storage.refresh")
+                    .and_then(|value| value.parse::<u64>().ok())
+                    .unwrap_or(0)
+                    .wrapping_add(1);
+                self.surfaces
+                    .set_value("settings.storage.refresh", &revision.to_string())
+            }
             "statistics"
             | "bulk_actions"
             | "file_manager_dialogs_close"
@@ -753,6 +770,7 @@ impl FileAtlasMcpServer {
                     "ai",
                     "updates",
                     "software",
+                    "storage",
                     "plugins",
                     "plugin",
                 ]

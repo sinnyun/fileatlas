@@ -41,6 +41,7 @@ members = [
     "crates/fileatlas-plugin-whiteboard",
     "crates/fileatlas-canvas-engine",
     "crates/fileatlas-plugin-media-resources",
+    "crates/fileatlas-plugin-eagle-links",
     "crates/fileatlas-workcrate-contracts",
     "crates/fileatlas-plugin-workcrate-projects",
     "crates/fileatlas-plugin-workcrate-boards",

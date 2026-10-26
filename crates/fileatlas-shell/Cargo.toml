@@ -48,6 +48,7 @@ fileatlas-plugin-project-tree = { path = "../fileatlas-plugin-project-tree" }
 fileatlas-plugin-file-staging = { path = "../fileatlas-plugin-file-staging" }
 fileatlas-plugin-whiteboard = { path = "../fileatlas-plugin-whiteboard" }
 fileatlas-plugin-media-resources = { path = "../fileatlas-plugin-media-resources" }
+fileatlas-plugin-eagle-links = { path = "../fileatlas-plugin-eagle-links" }
 fileatlas-plugin-workcrate-projects = { path = "../fileatlas-plugin-workcrate-projects" }
 fileatlas-plugin-workcrate-boards = { path = "../fileatlas-plugin-workcrate-boards" }
 fileatlas-plugin-workcrate-export = { path = "../fileatlas-plugin-workcrate-export" }

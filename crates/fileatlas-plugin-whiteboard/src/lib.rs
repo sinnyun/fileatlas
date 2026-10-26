@@ -11,7 +11,7 @@ pub use extensions::{CanvasExtensionService, CanvasToolRegistration, register_to
 pub use fileatlas_contracts::canvas::{CanvasToolContribution, CanvasToolGroup, CanvasToolIcon};
 use fileatlas_ui_bridge::{ContributionKind, UiContribution, UiViewContribution};
 use gpui::AppContext as _;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 pub use store::WhiteboardService;
 
 const OWNER: &str = "fileatlas.whiteboard";
@@ -47,6 +47,7 @@ impl Plugin for WhiteboardPlugin {
     }
 }
 fn setup(context: Context) -> Result<(), String> {
+    fileatlas_canvas_engine::set_ui_translator(fileatlas_ui_bridge::i18n::tr);
     let bridge = context
         .try_service::<fileatlas_ui_bridge::UiBridgeService>()
         .map_err(|e| e.to_string())?;
@@ -59,6 +60,7 @@ fn setup(context: Context) -> Result<(), String> {
         .ok_or("无法确定应用数据目录")?
         .join("whiteboards");
     let service = WhiteboardService::open(root)?;
+    let image_cache_stats = Arc::new(Mutex::new(images::ImageCacheStats::default()));
     let cleanup = Arc::clone(&service);
     context
         .effect_sync(move || {
@@ -76,6 +78,9 @@ fn setup(context: Context) -> Result<(), String> {
     let resources = context
         .try_service::<fileatlas_plugin_media_resources::MediaResourceService>()
         .map_err(|e| e.to_string())?;
+    let eagle_links = context
+        .try_service::<fileatlas_plugin_eagle_links::EagleLinkService>()
+        .ok();
     let quicklook = context
         .try_service::<fileatlas_plugin_quicklook::QuickLookService>()
         .map_err(|e| e.to_string())?;
@@ -151,6 +156,7 @@ fn setup(context: Context) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
     let panel_service = Arc::clone(&service);
+    let panel_cache_stats = Arc::clone(&image_cache_stats);
     let panel_extensions = Arc::clone(&extensions);
     fileatlas_ui_bridge::panel_catalog::register_panel_for_plugin(
         &context,
@@ -170,7 +176,9 @@ fn setup(context: Context) -> Result<(), String> {
                     Arc::clone(&thumbnails),
                     Arc::clone(&resources),
                     Arc::clone(&quicklook),
+                    eagle_links.clone(),
                     Arc::clone(&panel_extensions),
+                    Arc::clone(&panel_cache_stats),
                     window,
                     app,
                 )
@@ -195,6 +203,6 @@ fn setup(context: Context) -> Result<(), String> {
         )],
     )
     .map_err(|e| e.to_string())?;
-    mcp::register(&context, service, panels)?;
+    mcp::register(&context, service, panels, image_cache_stats)?;
     Ok(())
 }

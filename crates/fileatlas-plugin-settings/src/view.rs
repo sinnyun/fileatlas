@@ -33,6 +33,8 @@ mod rail_entry;
 mod shortcuts;
 #[path = "view/software.rs"]
 mod software;
+#[path = "view/storage.rs"]
+mod storage;
 #[path = "view/tabs.rs"]
 mod tabs;
 #[path = "view/tag_choices.rs"]
@@ -52,6 +54,7 @@ enum Tab {
     Ai,
     Updates,
     Software,
+    Storage,
     Plugins,
     PluginSettings,
 }
@@ -119,6 +122,15 @@ pub(super) fn settings(
                         software_check: Default::default(),
                         software_revision: 0,
                         software_tab_active: false,
+                        plugin_storage: Default::default(),
+                        plugin_storage_revision: 0,
+                        plugin_storage_plugin_id: None,
+                        plugin_storage_active: false,
+                        storage_summary: Default::default(),
+                        storage_summary_revision: 0,
+                        storage_summary_active: false,
+                        storage_summary_catalog_signature: Vec::new(),
+                        storage_summary_refresh_signal: None,
                     };
                     let surface_poll = Arc::clone(&view_surfaces);
                     let mut surface_gate = fileatlas_ui_bridge::refresh::ChangeGate::new((
@@ -164,6 +176,8 @@ pub(super) fn settings(
                                 .collect::<Vec<_>>();
                             let mut changed = view.poll_tag_choices()
                                 | view.poll_software_check()
+                                | view.poll_plugin_storage()
+                                | view.poll_storage_summary()
                                 | changed
                                 | provider_gate.changed(providers)
                                 | runtime_gate
@@ -250,6 +264,17 @@ pub(super) struct SettingsView {
     software_check: fileatlas_ui_bridge::read_model::ReadModel<u64, Vec<software::SoftwareStatus>>,
     software_revision: u64,
     software_tab_active: bool,
+    plugin_storage:
+        fileatlas_ui_bridge::read_model::ReadModel<(String, u64), Vec<plugins::StorageUsage>>,
+    plugin_storage_revision: u64,
+    plugin_storage_plugin_id: Option<String>,
+    plugin_storage_active: bool,
+    storage_summary:
+        fileatlas_ui_bridge::read_model::ReadModel<u64, Vec<plugins::StorageSummaryRow>>,
+    storage_summary_revision: u64,
+    storage_summary_active: bool,
+    storage_summary_catalog_signature: Vec<(String, String)>,
+    storage_summary_refresh_signal: Option<String>,
 }
 impl SettingsView {
     fn close_surface(&mut self, cx: &mut Context<Self>) {

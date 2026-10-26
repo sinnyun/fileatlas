@@ -21,10 +21,12 @@ fileatlas-ui-bridge = { path = "../fileatlas-ui-bridge" }
 fileatlas-plugin-settings = { path = "../fileatlas-plugin-settings" }
 fileatlas-plugin-thumbnails = { path = "../fileatlas-plugin-thumbnails" }
 fileatlas-plugin-media-resources = { path = "../fileatlas-plugin-media-resources" }
+fileatlas-plugin-eagle-links = { path = "../fileatlas-plugin-eagle-links" }
 fileatlas-plugin-quicklook = { path = "../fileatlas-plugin-quicklook" }
 rfd = { version = "0.15", default-features = false }
 image = "0.25"
 arboard = "3"
+url = "2"
 
 [lints]
 workspace = true

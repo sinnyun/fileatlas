@@ -1,0 +1,20 @@
+[package]
+name = "fileatlas-plugin-eagle-links"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis.workspace = true
+fileatlas-contracts = { path = "../fileatlas-contracts" }
+fileatlas-plugin-media-resources = { path = "../fileatlas-plugin-media-resources" }
+serde.workspace = true
+thiserror.workspace = true
+percent-encoding = "2"
+ureq = { version = "=2.12.1", features = ["json"] }
+url = "2"
+open = "5"
+
+[lints]
+workspace = true

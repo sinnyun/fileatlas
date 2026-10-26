@@ -1,0 +1,20 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+module.exports = async ({ call, payload, delay, step, profile }) => {
+  const invoke = async (name, args = {}) => payload(await call(name, args));
+  const board = await invoke('whiteboard.create', { title: 'Canvas menu translation check' });
+  await delay(700);
+  const fixture = path.join(profile, 'menu-fixture.png');
+  fs.copyFileSync(path.resolve('test-data/fileatlas-fixtures/01-small/small.png'), fixture);
+  await invoke('whiteboard.add_images', { id: board.id, paths: [fixture], at: [500, 327] });
+  await delay(700);
+  await invoke('control_ui', { action: 'pointer_right_down', value: '870,333' });
+  await delay(120);
+  await invoke('control_ui', { action: 'pointer_right_up', value: '870,333' });
+  await delay(500);
+  await step({ tool: 'screenshot_window', capture: 'canvas-i18n-context-menu' });
+  const scene = JSON.parse((await invoke('whiteboard.state')).library.boards.find(item => item.id === board.id).scene);
+  assert(scene.elements.some(element => element.kind?.image));
+  console.log(JSON.stringify({ passed: true, board_id: board.id, context_menu_requested: true }));
+};

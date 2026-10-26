@@ -24,9 +24,18 @@ pub fn install(
                 tracing::error!(%error, "whiteboard scene save failed");
             }
         }));
-        view.set_on_image(Rc::new(move |source, rotation, _, _| {
-            images.borrow_mut().get(source, rotation)
-        }));
+        view.set_on_image(Rc::new(
+            move |source, rotation, size, visible, first, _, _| {
+                let mut images = images.borrow_mut();
+                if first {
+                    images.begin_visibility_frame();
+                }
+                images.update_visibility(source, rotation, visible);
+                visible
+                    .then(|| images.get(source, rotation, size))
+                    .flatten()
+            },
+        ));
         view.set_on_copy(Rc::new(|text, _, app| {
             app.write_to_clipboard(ClipboardItem::new_string(text))
         }));
@@ -117,6 +126,8 @@ impl Host {
         let thumbnails = Arc::clone(&self.thumbnails);
         let service = Arc::clone(&self.service);
         let resources = Arc::clone(&self.resources);
+        let preview_store = Arc::clone(&service);
+        let eagle_links = self.eagle_links.clone();
         cx.spawn(async move |this, cx| {
             let paths = match paths {
                 Some(paths) => paths,
@@ -135,17 +146,28 @@ impl Host {
                 }
             };
             let result = crate::background(cx, move || {
-                images::linked_images(paths, &thumbnails, &resources)
+                let images =
+                    images::linked_images(paths, &thumbnails, &resources, eagle_links.as_deref())?;
+                let candidates = images
+                    .iter()
+                    .filter_map(|image| image.preview.clone())
+                    .collect::<Vec<_>>();
+                let previews = preview_store.persist_image_previews(id, &candidates)?;
+                Ok::<_, String>((images, previews))
             })
             .await;
             let _ = this.update(cx, |host, cx| {
-                let result = result.and_then(|images| {
+                let result = result.and_then(|(images, previews)| {
+                    let eagle_sources = images
+                        .iter()
+                        .filter_map(|image| image.eagle_source.clone())
+                        .collect::<Vec<_>>();
                     let scene = target.update(cx, |v, cx| {
-                        for (i, (path, w, h)) in images.into_iter().enumerate() {
+                        for (i, image) in images.into_iter().enumerate() {
                             v.add_image_at(
-                                path,
-                                w as f32,
-                                h as f32,
+                                image.uri.clone(),
+                                image.width as f32,
+                                image.height as f32,
                                 x + i as f32 * 24.,
                                 y + i as f32 * 24.,
                                 cx,
@@ -153,7 +175,9 @@ impl Host {
                         }
                         v.scene().to_json()
                     });
-                    service.save_scene(id, scene)
+                    service.save_scene_assets(id, scene, eagle_sources, previews.clone())?;
+                    host.images.borrow_mut().add_previews(id, &previews);
+                    Ok(())
                 });
                 host.result(result, cx);
             });

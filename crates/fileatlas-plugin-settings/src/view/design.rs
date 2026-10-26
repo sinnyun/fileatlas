@@ -30,6 +30,10 @@ impl SettingsView {
                 "External software",
                 "Check the external software used by FileAtlas.",
             ),
+            Tab::Storage => (
+                "Storage",
+                "Review the locations and disk space used by feature plugins.",
+            ),
             Tab::Plugins => (
                 "Plugin management",
                 "管理工作台功能插件，设置会在停用后保留。",

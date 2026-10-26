@@ -44,6 +44,7 @@ impl SettingsView {
                 .into_any_element(),
             Tab::Updates => self.render_updates_page(s, cx).into_any_element(),
             Tab::Software => self.render_software_page(cx, false).into_any_element(),
+            Tab::Storage => self.render_storage_page(cx).into_any_element(),
             Tab::Plugins => self.render_plugin_cards(s, cx).into_any_element(),
             Tab::PluginSettings => self.render_plugin_settings(s, cx).into_any_element(),
         }
