@@ -2,6 +2,7 @@ use super::*;
 use fileatlas_ui_bridge::components::WorkbenchForeground as _;
 use fileatlas_ui_bridge::components::WorkbenchPaint as _;
 use fileatlas_ui_bridge::components::WorkbenchStyle as _;
+use gpui_kit::prelude::FluentBuilder as _;
 
 impl Render for LauncherPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -54,6 +55,9 @@ impl Render for LauncherPanel {
             .collect::<Vec<_>>();
         let _=self.surfaces.set_value("launcher.ui",&serde_json::json!({
             "selected_entry":self.selected_entry,"draft_category":self.draft_category,"draft_hidden":self.draft_hidden,
+            "batch_mode":self.batch_mode,"batch_selected_ids":self.batch_selected.iter().copied().collect::<Vec<_>>(),
+            "batch_prefix":self.batch_prefix.read(cx).value().to_string(),"batch_suffix":self.batch_suffix.read(cx).value().to_string(),
+            "batch_category":self.batch_category,"batch_hidden":self.batch_hidden,
             "draft_name":self.entry_name.read(cx).value().to_string(),"sort":self.sort_by.key(),"descending":self.descending,
             "visible_ids":filtered.iter().map(|e|e.id).collect::<Vec<_>>(),"visible_count":count,
             "icons_loaded":icons.map(|i|i.images.values().filter(|v|v.is_some()).count()).unwrap_or(0),
@@ -75,8 +79,8 @@ impl Render for LauncherPanel {
             .flex_wrap()
             .items_start()
             .gap(px(fileatlas_ui_bridge::theme::space_expanded()));
-        for entry in filtered {
-            grid = grid.child(self.program_card(entry, cx));
+        for entry in &filtered {
+            grid = grid.child(self.program_card(entry.clone(), cx));
         }
         let sorting = cx.entity().downgrade();
         let mut body = div()
@@ -104,6 +108,19 @@ impl Render for LauncherPanel {
                             .child(fileatlas_ui_bridge::components::search_input(
                                 &self.search_input,
                             )),
+                    )
+                    .child(
+                        fileatlas_ui_bridge::components::button("launcher-batch-mode")
+                            .label(tr(if self.batch_mode {
+                                "Icon view"
+                            } else {
+                                "Batch manage"
+                            }))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.batch_mode = !this.batch_mode;
+                                this.selected_entry = None;
+                                cx.notify();
+                            })),
                     )
                     .child(
                         fileatlas_ui_bridge::components::button("launcher-add-program")
@@ -203,7 +220,9 @@ impl Render for LauncherPanel {
         if let Some(message) = &self.message {
             body = body.child(div().workbench_assistant().child(message.clone()));
         }
-        let contents = if count == 0 {
+        let contents = if self.batch_mode {
+            self.batch_list(&filtered, cx)
+        } else if count == 0 {
             div()
                 .v_flex()
                 .items_center()
@@ -240,6 +259,17 @@ impl Render for LauncherPanel {
         } else {
             theme::success_text()
         };
+        let footer_summary = if self.batch_mode {
+            format!("{} · {}", tr("Batch selected"), self.batch_selected.len())
+        } else {
+            fileatlas_ui_bridge::i18n::tr_args(
+                "{programs} programs · {categories} categories",
+                &[
+                    ("programs", self.snapshot.entries.len().to_string()),
+                    ("categories", self.snapshot.categories.len().to_string()),
+                ],
+            )
+        };
         div()
             .track_focus(&self.focus_handle)
             .v_flex()
@@ -255,7 +285,11 @@ impl Render for LauncherPanel {
                     .min_h_0()
                     .child(self.sidebar(cx))
                     .child(body)
-                    .child(self.inspector(cx)),
+                    .child(if self.batch_mode {
+                        self.batch_inspector(cx)
+                    } else {
+                        self.inspector(cx)
+                    }),
             )
             .child(
                 div()
@@ -267,16 +301,24 @@ impl Render for LauncherPanel {
                     .px(px(fileatlas_ui_bridge::theme::space_expanded()))
                     .workbench_separator(fileatlas_ui_bridge::components::DividerEdge::Top)
                     .workbench_assistant()
-                    .child(fileatlas_ui_bridge::i18n::tr_args(
-                        "{programs} programs · {categories} categories",
-                        &[
-                            ("programs", self.snapshot.entries.len().to_string()),
-                            ("categories", self.snapshot.categories.len().to_string()),
-                        ],
-                    ))
-                    .child(tr(
-                        "Click to select · Double-click to launch · Right-click to manage",
-                    ))
+                    .child(footer_summary)
+                    .when(self.batch_mode, |bar| {
+                        bar.child(
+                            fileatlas_ui_bridge::components::button(
+                                "launcher-batch-clear-selection",
+                            )
+                            .label(tr("Clear selection"))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.batch_selected.clear();
+                                cx.notify();
+                            })),
+                        )
+                    })
+                    .child(tr(if self.batch_mode {
+                        "Select rows and apply shared edits"
+                    } else {
+                        "Click to select · Double-click to launch · Right-click to manage"
+                    }))
                     .child(
                         div()
                             .h_flex()

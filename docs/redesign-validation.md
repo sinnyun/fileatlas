@@ -1,3 +1,11 @@
+## 2026-10-26：FileAtlas 画布对照 tldraw 调整
+
+本条取代下方同日早期 Zorite 原生 UI 验证的布局结论。实际打开 [tldraw.com](https://www.tldraw.com/) 并对照[官方 UI 布局说明](https://tldraw.dev/sdk-features/ui-components)：画布占主区域，页面菜单在左上，样式控件在右上，工具栏在底部中间，缩放在左下、撤销/重做靠近工具栏。FileAtlas 现用近全幅 GPUI 面板、单行文档操作、左侧画板/资源、中央点阵画布、右侧图层/属性、底部工具与历史、画布右上样式入口；引擎为本地 MIT 源码 crate，无 `gpui-whiteboard` 运行时依赖。锁定 Shell 构建及同进程 MCP 场景通过，创建隔离画板、读取真实面板边界、经宿主添加图片、看到引擎选择框/图层属性并保存。布局截图、viewport、命令与未验证项见[本轮记录](validation-ui/2026-10-26-fileatlas-canvas/README.md)。
+
+早期采用完整 Zorite 内置 UI 的实现与截图保留为历史记录：[Zorite 验证](validation-ui/2026-10-26-zorite-whiteboard/README.md)。同日随后抽出的公共媒体资源目录插件仍有效：各提供方可发布并解析自己的资源 URI，白板新图片和文件卡片使用它；旧绝对路径继续可读，白板清单由 v1 迁移为 v2。资源归属和视频播放缺口见 [Media Resources PORTS](../crates/fileatlas-plugin-media-resources/PORTS.md)。
+
+同日随后抽出公共媒体资源目录插件：各提供方可发布并解析自己的资源 URI，白板新图片和文件卡片已改为使用它；旧绝对路径继续可读，白板清单由 v1 迁移为 v2。现有插件资源的归属判断、可接入边界及当前视频播放缺口见 [Media Resources PORTS](../crates/fileatlas-plugin-media-resources/PORTS.md)。Shell 编译检查通过，未重跑画板运行场景。
+
 ## 2026-10-22：WorkCrate 后台画布打开修复
 
 页面编辑区不再把官方会话的“没有打开文档”当成失败：会先打开工程文档；实时 GUI
@@ -1578,3 +1586,6 @@ MCP `region_separation` 读写一并移除（旧 JSON 键被忽略）。实施�
 ### 2026-10-24 单色主题残留色排查
 
 按用户要求，在隔离 profile 中将亮/暗 ThemeSet 的 140 个原生颜色角色全部设为 `#FF00FF`，由 `scripts/validate-single-color-theme.cjs` 通过同进程 FileAtlas MCP 截取主窗、填充文件网格和主题设置页。GPUI ThemeRegistry 运行快照确认应用界面主题角色及派生语义色均为单色。截图残留颜色定位为 Windows 系统标题栏、夹具文件的真实图像像素、颜色选择器的色谱/色样控件；未发现其他绕过主题的 FileAtlas 面板/正文/边框/状态界面色。其后使用既有 `scripts/capture-panel-atlas.cjs` 分四阶段覆盖 55 个唯一画面，同样未发现非主题应用色；完整命令、未覆盖原因和全量截图索引见[批量面板截图验证](validation-ui/2026-10-23-panel-atlas/README.md#2026-10-24-单色全界面复核与后续复用)。单色主题主窗证据见[单色主题排查](validation-ui/2026-10-24-material-theme-custom/README.md#2026-10-24-单色主题残留色排查)，本地 profile 为 `.local/validation/profiles/single-color-panel-atlas/`。
+### 2026-10-26 程序启动台批量管理
+
+增加程序列表批量编辑：分类、名称前后缀及显示/隐藏状态；服务和 namespaced MCP 操作使用现有版本化 JSON。同进程 MCP 实际点击进入批量模式、勾选两条程序、打开分类菜单、输入名称前后缀、选择隐藏并应用；检查了列表、选中态、草稿态和应用后截图，快照验证修改后恢复原记录。窄窗口和超长名称仍未覆盖。详见[验证记录](validation-ui/2026-10-26-launcher-batch/README.md)。

@@ -53,7 +53,7 @@
 | A6 crate 分层 | 检查 Cargo workspace 本地 path 依赖不得向较低层反向依赖；检查 UI 栈依赖只允许在 L3+；检查 SQLite 连接只由 database crate 打开；跨 crate 深模块路径须列入显式例外 | scripts/check-layering.cjs + rust-checks.yml | 非法依赖或越界模块导入失败；本地路径依赖解析限当前 Cargo.toml 常见写法，深模块检查是源码词法规则 |
 | L1 清单一致性 | 检查功能计划中的阶段行数量至少为 4、状态前缀在允许词表内、文档相对链接目标存在；有进展的行只要求包含 Markdown 链接 | scripts/check-feature-ledger.cjs | 检查失败时退出 1；不验证证据与声明是否相符，也不验证链接锚点 |
 | U1 字体与间距令牌 | 锁定标题/正文/辅助字号与行高、4/8/16 三档密度缩放间距；禁止产品 UI 使用本地字号覆盖、Kit 数值间距快捷方法或非令牌动态间距 | scripts/check-ui-design-tokens.cjs | token 变化、快捷间距、局部字体样式或新动态间距失败；精确冻结当前几何遗留表达式及数量；不替代视觉验收，也不约束业务画布尺寸 |
-| U2 交互状态所有权 | 插件标准按钮/输入/选择/日期/Popover 通过 UI Bridge；插件不能自行设 GPUI Style、绘制共享表面或覆写交互/文字样式 | scripts/check-ui-theme.cjs | 直接 Kit 构造（含常见类型别名）、`.style`/Style、背景/前景/圆角/边框/阴影/hover、局部字体和颜色失败；不能替代运行时状态覆盖 |
+| U2 交互状态所有权 | 插件标准按钮/输入/选择/日期/Popover 通过 UI Bridge；插件不能自行设 GPUI Style、绘制共享表面或覆写交互/文字样式 | scripts/check-ui-theme.cjs | 直接 Kit 构造（含常见类型别名）、`.style`/Style、背景/前景/圆角/边框/阴影/hover、局部字体和颜色失败；FileAtlas canvas engine 绘制核心只从宿主 Theme 样式回调取色；不能替代运行时状态覆盖 |
 | U3 基础组件审查覆盖 | 共享 section/row/card、侧栏分组、设置行、媒体/目录卡片、rail footer、modal frame/overlay、divider 与色块选择统一由 UI Bridge 拥有；插件不得新增直接 GPUI Canvas 绘制入口 | scripts/check-ui-geometry-coverage.cjs + scripts/check-ui-theme.cjs | 几何脚本守护已知基础组件入口并禁止直接 modal scrim；主题脚本冻结七个历史 plugin Canvas 路径及每个调用数，新增直接绘制失败 |
 
 生成/更新基线：`node scripts/check-architecture.cjs --update-baseline`（人工审查 diff 后提交）。

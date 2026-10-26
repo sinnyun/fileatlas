@@ -11,6 +11,7 @@ const layers = [
   [
     'fileatlas-plugin-thumbnails',
     'fileatlas-plugin-quicklook',
+    'fileatlas-plugin-media-resources',
     'fileatlas-plugin-drag-drop',
     'fileatlas-plugin-updater',
     'fileatlas-plugin-file-operations',
@@ -20,6 +21,7 @@ const layers = [
   ],
   ['fileatlas-plugin-indexing', 'fileatlas-plugin-watcher'],
   [
+    'fileatlas-canvas-engine',
     'fileatlas-ui-bridge',
     'fileatlas-plugin-columns',
     'fileatlas-plugin-workspaces',
@@ -45,7 +47,7 @@ const layers = [
   ['fileatlas-plugin-workcrate-boards'],
   ['fileatlas-plugin-workcrate-export'],
   ['fileatlas-plugin-versions', 'fileatlas-plugin-material-theme'],
-  ['fileatlas-plugin-file-staging'],
+  ['fileatlas-plugin-file-staging', 'fileatlas-plugin-whiteboard'],
   ['fileatlas-plugin-ai'],
   ['fileatlas-plugin-file-manager'],
   ['fileatlas-plugin-workcrate-ui'],

@@ -610,6 +610,72 @@ impl LauncherService {
         })
     }
 
+    /// Apply optional shared edits to a stable set of entry IDs in one JSON transaction.
+    pub fn batch_update_entries(
+        &self,
+        ids: &[i64],
+        category_id: Option<i64>,
+        name_prefix: &str,
+        name_suffix: &str,
+        hidden: Option<bool>,
+    ) -> Result<(), LauncherError> {
+        if ids.is_empty() {
+            return Err(LauncherError::EntryMissing);
+        }
+        let prefix = name_prefix.trim();
+        let suffix = name_suffix.trim();
+        self.edit(|state| {
+            if category_id.is_some_and(|id| !state.categories.iter().any(|c| c.id == id)) {
+                return Err(LauncherError::EntryMissing);
+            }
+            let category_name = category_id
+                .and_then(|id| state.categories.iter().find(|c| c.id == id))
+                .map(|c| c.name.clone());
+            if ids
+                .iter()
+                .any(|id| !state.entries.iter().any(|entry| entry.id == *id))
+            {
+                return Err(LauncherError::EntryMissing);
+            }
+            let category_names = state
+                .categories
+                .iter()
+                .map(|category| (category.id, category.name.clone()))
+                .collect::<std::collections::HashMap<_, _>>();
+            for id in ids {
+                let entry = state
+                    .entries
+                    .iter_mut()
+                    .find(|entry| entry.id == *id)
+                    .ok_or(LauncherError::EntryMissing)?;
+                if let Some(category_id) = category_id {
+                    entry.category_id = category_id;
+                    entry.custom_category = true;
+                }
+                if !prefix.is_empty() || !suffix.is_empty() {
+                    entry.display_name = format!("{prefix}{}{suffix}", entry.display_name);
+                    entry.custom_name = true;
+                }
+                if let Some(hidden) = hidden {
+                    entry.hidden = hidden;
+                }
+                if !prefix.is_empty() || !suffix.is_empty() || category_id.is_some() {
+                    let name = category_name
+                        .as_deref()
+                        .or_else(|| category_names.get(&entry.category_id).map(String::as_str));
+                    if let Some(name) = name {
+                        entry.description = discovery::program_description(
+                            &entry.display_name,
+                            &entry.launch_path,
+                            name,
+                        );
+                    }
+                }
+            }
+            Ok(())
+        })
+    }
+
     pub fn set_pin_scope(&self, id: i64, pin_scope: PinScope) -> Result<(), LauncherError> {
         self.edit(|state| {
             state
@@ -822,6 +888,10 @@ impl Plugin for LauncherPlugin {
             .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
         let service = LauncherService::open(database)
             .map_err(|error| LauncherPluginError::Start(error.to_string()))?;
+        let bridge = context
+            .try_service::<UiBridgeService>()
+            .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
+        let surfaces = Arc::clone(&bridge.surfaces);
         let _publication = context
             .provide(Arc::clone(&service))
             .map_err(|error| LauncherPluginError::Publish(error.to_string()))?;
@@ -837,8 +907,15 @@ impl Plugin for LauncherPlugin {
                 confirmation_required: false,
                 handler: Arc::new(move |_| {
                     let service = Arc::clone(&snapshot_service);
+                    let surfaces = surfaces.clone();
                     Box::pin(async move {
-                        serde_json::to_value(service.snapshot()).map_err(|error| error.to_string())
+                        let mut snapshot = serde_json::to_value(service.snapshot())
+                            .map_err(|error| error.to_string())?;
+                        snapshot["ui"] = surfaces
+                            .value("launcher.ui")
+                            .and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok())
+                            .unwrap_or(serde_json::Value::Null);
+                        Ok(snapshot)
                     })
                 }),
             };
@@ -872,9 +949,6 @@ impl Plugin for LauncherPlugin {
                 }))
                 .map_err(|error| LauncherPluginError::Publish(error.to_string()))?;
         }
-        let bridge = context
-            .try_service::<UiBridgeService>()
-            .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;
         let settings = context
             .try_service::<SettingsService>()
             .map_err(|error| LauncherPluginError::Dependency(error.to_string()))?;

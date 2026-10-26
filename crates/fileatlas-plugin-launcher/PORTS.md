@@ -1,6 +1,6 @@
 # Program launcher plugin / 程序启动台插件
 
-Status: native icon-grid launchpad integrated. Same-process discovery, single selection, right-click menu, harmless-fixture double-click launch, inspector edits, search, sorting and opening the asynchronous native file picker have runtime evidence. Selecting/canceling a real file and installed-app/elevated uninstall flows remain unverified.
+Status: native icon-grid launchpad integrated; batch-list UI and shared category/name/visibility editing are implemented. Same-process discovery, single selection, right-click menu, harmless-fixture double-click launch, inspector edits, search, sorting, opening the asynchronous native file picker, and the batch-mode selection/category/name/visibility/apply flow have runtime evidence. Selecting/canceling a real file and installed-app/elevated uninstall flows remain unverified.
 
 ## Cordis identity and startup
 
@@ -33,7 +33,7 @@ persisted edits and discovery merges are saved before the in-memory snapshot is 
 - UI command `program-launcher/open` opens/focuses the existing generic floating panel.
 - `PanelOnly` hides the main workspace under the shared panel; the default keeps the FileAtlas workspace visible.
 - Sidebar view slot: `navigation.launcher-shortcuts`.
-- Panel: searchable desktop-style icon tiles in the middle, categories/counts on the left and an information editor on the right, including a read-only Program description row. Right-click menus retain launch, rename, move, hide/show, uninstall and remove; uninstall is offered only when Windows registered an uninstall command and is confirmed before execution.
+- Panel: searchable desktop-style icon tiles in the middle, categories/counts on the left and an information editor on the right, including a read-only Program description row. Batch manage switches the center to a searchable selectable list and the inspector to shared category, name prefix/suffix and visibility edits. Selected stable IDs survive filter changes; apply validates all IDs and persists one JSON snapshot. Right-click menus retain launch, rename, move, hide/show, uninstall and remove; uninstall is offered only when Windows registered an uninstall command and is confirmed before execution.
 - Visible UI strings use the shared i18n catalog. Category icons are glyphs from the existing text/icon rendering path.
 - No new Cordis events are emitted. Panel and contribution lifetimes use shared UI Bridge contracts.
 
@@ -83,7 +83,7 @@ PanelOnly presentation uses `PanelCatalog::open_presented(PANEL_ID,true)` for an
 The launcher contributes namespaced tools through the host-published
 `fileatlas_contracts::mcp::McpToolRegistry`: `launcher.snapshot`, `launcher.add_program`,
 `launcher.set_pin`, `launcher.create_category`, `launcher.rename_category`,
-`launcher.delete_category`, `launcher.update_program`, `launcher.refresh`,
+`launcher.delete_category`, `launcher.update_program`, `launcher.batch_update_programs`, `launcher.refresh`,
 `launcher.launch`, `launcher.remove_program`, and `launcher.uninstall_program`.
 The plugin owns their schemas and handlers and routes them through
 `LauncherService`. Program launch, category deletion, list removal, and software

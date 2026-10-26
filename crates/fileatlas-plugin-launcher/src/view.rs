@@ -8,6 +8,7 @@ use gpui_kit::component::button::ButtonVariants as _;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::component::menu::{DropdownMenu, PopupMenuItem};
 
+mod batch;
 mod cards;
 mod inspector;
 mod layout;
@@ -88,6 +89,8 @@ pub(super) fn panel(
     let name_input = app.new(|cx| InputState::new(window, cx).placeholder(tr("Name")));
     let entry_name = app.new(|cx| InputState::new(window, cx).placeholder(tr("Name")));
     let search_input = app.new(|cx| InputState::new(window, cx).placeholder(tr("Search programs")));
+    let batch_prefix = app.new(|cx| InputState::new(window, cx).placeholder(tr("Name prefix")));
+    let batch_suffix = app.new(|cx| InputState::new(window, cx).placeholder(tr("Name suffix")));
     app.new(|cx| {
         let service_task = fileatlas_ui_bridge::refresh::listen(
             cx,
@@ -98,6 +101,8 @@ pub(super) fn panel(
                     return false;
                 }
                 view.snapshot = latest;
+                view.batch_selected
+                    .retain(|id| view.snapshot.entries.iter().any(|entry| entry.id == *id));
                 if view
                     .selected_entry
                     .is_some_and(|id| !view.snapshot.entries.iter().any(|e| e.id == id))
@@ -124,9 +129,20 @@ pub(super) fn panel(
                 cx.notify();
             }
         });
+        let prefix_subscription = cx.subscribe(&batch_prefix, |_, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                cx.notify();
+            }
+        });
+        let suffix_subscription = cx.subscribe(&batch_suffix, |_, _, event, cx| {
+            if matches!(event, InputEvent::Change) {
+                cx.notify();
+            }
+        });
         LauncherPanel {
             _search_subscription: search_subscription,
             _entry_subscription: entry_subscription,
+            _batch_subscriptions: [prefix_subscription, suffix_subscription],
             _icon_task: icon_task,
             _service_task: service_task,
             add_program_task: None,
@@ -144,6 +160,12 @@ pub(super) fn panel(
             service,
             name_input,
             search_input,
+            batch_prefix,
+            batch_suffix,
+            batch_mode: false,
+            batch_selected: std::collections::BTreeSet::new(),
+            batch_category: None,
+            batch_hidden: None,
             selected_category: None,
             show_hidden: false,
             editing_category: None,
@@ -158,6 +180,7 @@ struct LauncherPanel {
     _entry_subscription: Subscription,
     _icon_task: Task<()>,
     _service_task: Task<()>,
+    _batch_subscriptions: [Subscription; 2],
     add_program_task: Option<Task<()>>,
     icons: ReadModel<Vec<std::path::PathBuf>, crate::icons::IconSet>,
     surfaces: Arc<UiSurfaceState>,
@@ -173,6 +196,12 @@ struct LauncherPanel {
     snapshot: LauncherSnapshot,
     name_input: Entity<InputState>,
     search_input: Entity<InputState>,
+    batch_prefix: Entity<InputState>,
+    batch_suffix: Entity<InputState>,
+    batch_mode: bool,
+    batch_selected: std::collections::BTreeSet<i64>,
+    batch_category: Option<i64>,
+    batch_hidden: Option<bool>,
     selected_category: Option<i64>,
     show_hidden: bool,
     editing_category: Option<i64>,
@@ -182,6 +211,8 @@ struct LauncherPanel {
 impl LauncherPanel {
     fn refresh(&mut self, cx: &mut Context<Self>) {
         self.snapshot = self.service.snapshot();
+        self.batch_selected
+            .retain(|id| self.snapshot.entries.iter().any(|entry| entry.id == *id));
         if self
             .selected_entry
             .is_some_and(|id| !self.snapshot.entries.iter().any(|e| e.id == id))

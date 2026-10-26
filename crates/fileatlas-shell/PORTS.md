@@ -18,6 +18,14 @@ through its existing AI/Settings/Tagging/History dependencies. Generic floating
 panels remain available for Settings and other feature contributions. Shell
 has no file-viewing or installation implementation.
 
+## Shared media resource links — 2026-10-26
+
+Shell starts `fileatlas.media-resources` after QuickLook and before consumers.
+It publishes the URI/provider catalog; it does not own source media. Whiteboard
+uses its `file:///` links while retaining the native canvas. The standalone
+provider contract and plugin migration map are in
+`crates/fileatlas-plugin-media-resources/PORTS.md`.
+
 `fileatlas-shell` is the host composition root. It publishes `UiBridgeService`, starts Cordis plugins in dependency order, mounts GPUI view factories into host regions (including floating `workspace.modal` views), and dispatches command IDs as Cordis events. The Settings command is contributed by the Settings plugin; its modal open state is shared through `UiSurfaceState` and its floating layer is mounted above application content.
 
 The same UI Bridge command catalog is exposed by MCP `command_list` and

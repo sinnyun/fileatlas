@@ -199,6 +199,14 @@ written.
 
 ## Native theme ownership (2026-10-19; supersedes manual palette rules)
 
+- 2026-10-26 user decision supersedes the initial Zorite adoption: one FileAtlas
+  canvas workspace owns its toolbar, resource browser, layers and properties UI.
+  Copy/reuse the pinned MIT `gpui-whiteboard` source inside the FileAtlas-owned
+  `fileatlas-canvas-engine`; do not retain the external crate dependency or GPL
+  application layer. Keep its scene/edit/history behavior as engine code and put
+  product chrome and extensions in the FileAtlas canvas plugin. See the active
+  concept and `crates/fileatlas-canvas-engine/PORTS.md`.
+
 - GPUI Kit ThemeRegistry/ThemeConfig/Theme owns every plugin's colors, including
   custom-painted controls. Never introduce a Rust RGB palette, mode_color, private
   Theme state, or per-plugin Theme updates. UI Bridge theme/runtime is the sole

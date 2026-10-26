@@ -1,5 +1,14 @@
 # 工作台统一主题与后续开发规范
 
+2026-10-26 用户随后确认画布须采用统一 FileAtlas 工作区，覆盖同日早些时候的
+Zorite 原生界面托管方案。`gpui-whiteboard 0.5.1` 的 MIT 源码已复制到
+`fileatlas-canvas-engine` 并以 FileAtlas 嵌入模式复用场景与编辑实现。产品工具栏、资源区和图层区
+由 FileAtlas 画布插件组合，标准控件走 UI Bridge；引擎颜色适配仍只映射现有 GPUI Kit Theme 角色。
+活动参考为 [FileAtlas 画布工作区](reference-ui/concepts/fileatlas-canvas-workspace-2026-10-26.md)。
+主题守卫不把 `fileatlas-canvas-engine/src` 的文档画布核心当作产品 chrome 扫描；该引擎从宿主
+`WhiteboardStyle` 回调接收 Theme 角色并绘制场景/编辑反馈。`fileatlas-plugin-whiteboard` 的工具栏、
+资源和图层控件仍完整经过主题守卫并必须使用 UI Bridge 组件。
+
 2026-10-19，依据用户明确要求，GPUI Kit 原生主题成为唯一颜色系统，Material 插件生成主题 JSON。
 此前剪贴板 v2 的手写深蓝配色已退役。
 本规范覆盖历史 v5 的颜色、通用控件样式；每页的功能结构、控件顺序、滚动边界仍按

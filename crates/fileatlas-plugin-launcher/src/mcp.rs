@@ -90,6 +90,17 @@ pub(super) fn tools(service: &Arc<LauncherService>) -> Vec<McpToolDefinition> {
     }));
 
     let launcher = Arc::clone(service);
+    tools.push(tool("launcher.batch_update_programs", "Batch update launcher programs", "Apply a shared category, name prefix/suffix, and visibility change to selected launcher entries in one persisted update.", json!({"type":"object","properties":{"ids":{"type":"array","items":{"type":"integer","minimum":1},"minItems":1,"uniqueItems":true},"category_id":{"type":"integer","minimum":1},"name_prefix":{"type":"string"},"name_suffix":{"type":"string"},"hidden":{"type":"boolean"}},"required":["ids"],"additionalProperties":false}), true, false, move |args| {
+        let launcher=Arc::clone(&launcher);
+        Box::pin(async move {
+            let request:BatchUpdateRequest=parse(args)?;
+            if request.category_id.is_none() && request.name_prefix.as_deref().unwrap_or_default().trim().is_empty() && request.name_suffix.as_deref().unwrap_or_default().trim().is_empty() && request.hidden.is_none() { return Err("provide at least one batch change".into()); }
+            launcher.batch_update_entries(&request.ids,request.category_id,request.name_prefix.as_deref().unwrap_or_default(),request.name_suffix.as_deref().unwrap_or_default(),request.hidden).map_err(|error|error.to_string())?;
+            Ok(json!({"updated":request.ids.len(),"ids":request.ids}))
+        })
+    }));
+
+    let launcher = Arc::clone(service);
     tools.push(tool(
         "launcher.refresh",
         "Refresh launcher discovery",
@@ -156,5 +167,14 @@ struct UpdateRequest {
     id: i64,
     name: Option<String>,
     category_id: Option<i64>,
+    hidden: Option<bool>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BatchUpdateRequest {
+    ids: Vec<i64>,
+    category_id: Option<i64>,
+    name_prefix: Option<String>,
+    name_suffix: Option<String>,
     hidden: Option<bool>,
 }

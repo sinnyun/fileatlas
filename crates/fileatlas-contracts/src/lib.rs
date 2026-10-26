@@ -7,7 +7,9 @@
 
 use cordis::Event;
 
+pub mod canvas;
 pub mod mcp;
+pub mod resources;
 
 /// Change the active library folder in the file_manager; `None` selects all media.
 pub struct FolderSelectionChanged;

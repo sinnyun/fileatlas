@@ -2412,6 +2412,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-canvas-engine"
+version = "0.1.0"
+dependencies = [
+ "gpui-pre",
+ "log",
+ "serde",
+ "serde_json",
+ "ttf-parser",
+]
+
+[[package]]
 name = "fileatlas-contracts"
 version = "0.1.0"
 dependencies = [
@@ -2753,6 +2764,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-plugin-media-resources"
+version = "0.1.0"
+dependencies = [
+ "cordis-rs",
+ "fileatlas-contracts",
+ "thiserror 2.0.21",
+ "url",
+]
+
+[[package]]
 name = "fileatlas-plugin-metadata-export"
 version = "0.1.0"
 dependencies = [
@@ -2996,6 +3017,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-plugin-whiteboard"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-canvas-engine",
+ "fileatlas-contracts",
+ "fileatlas-plugin-media-resources",
+ "fileatlas-plugin-quicklook",
+ "fileatlas-plugin-settings",
+ "fileatlas-plugin-thumbnails",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "gpui-pre",
+ "image",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fileatlas-plugin-workcrate-boards"
 version = "0.1.0"
 dependencies = [
@@ -3103,6 +3149,7 @@ dependencies = [
  "fileatlas-plugin-launcher",
  "fileatlas-plugin-material-theme",
  "fileatlas-plugin-mcp",
+ "fileatlas-plugin-media-resources",
  "fileatlas-plugin-metadata-export",
  "fileatlas-plugin-navigation",
  "fileatlas-plugin-project-tree",
@@ -3118,6 +3165,7 @@ dependencies = [
  "fileatlas-plugin-version-info",
  "fileatlas-plugin-versions",
  "fileatlas-plugin-watcher",
+ "fileatlas-plugin-whiteboard",
  "fileatlas-plugin-workcrate-boards",
  "fileatlas-plugin-workcrate-export",
  "fileatlas-plugin-workcrate-projects",

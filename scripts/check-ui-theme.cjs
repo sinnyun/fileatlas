@@ -25,9 +25,14 @@ function violations(relative, source) {
     /\.(?:bg|text_color|border(?:_[a-z]+)?|rounded(?:_[a-z]+)?|shadow(?:_[a-z]+)?|opacity|group_hover)\s*\(|\b(?:Button|Input|Textarea|Checkbox|Radio|DatePicker|Popover)::new\s*\(|theme::(?:scrim|modal_rgba)\s*\(/.test(source);
   const pluginStyleSource = pluginSource &&
     /\bimpl\s+(?:gpui_kit::)?Render\b|\b(?:gpui::)?Style\s*\{|\bdiv\s*\(|\.style\s*\(/.test(sourceSyntax);
-  const uiFile = pluginUiPrimitive ||
+  // The canvas engine is a graphics/document core copied from the MIT upstream
+  // package. Its custom canvas painter consumes the host WhiteboardStyle callback;
+  // it is not product chrome or a feature plugin. The owning canvas plugin remains
+  // fully checked below and must route its controls through UI Bridge.
+  const canvasEngineCore = relative.startsWith('crates/fileatlas-canvas-engine/src/');
+  const uiFile = !canvasEngineCore && (pluginUiPrimitive ||
     /\/src\/(?:view(?:\/|\.rs$)|shell(?:\/|\.rs$)|ui\.rs$|main\.rs$|components\.rs$|panels\.rs$|tag_capsule\.rs$|theme(?:\/|\.rs$)|settings_page(?:\/|\.rs$))/.test(relative) ||
-    pluginStyleSource || /\bimpl\s+(?:gpui_kit::)?Render\b|\.(?:bg|text_color|border_color)\s*\(/.test(source);
+    pluginStyleSource || /\bimpl\s+(?:gpui_kit::)?Render\b|\.(?:bg|text_color|border_color)\s*\(/.test(source));
   const themeMutation = /\bTheme::(?:change|update|global_mut)|\.colors\.[a-z_]+\s*=/;
   const errors = [];
   if (pluginSource) {

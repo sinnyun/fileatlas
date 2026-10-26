@@ -25,6 +25,15 @@ ThemeSet JSON；主题系统加载、解析与分发。原手写 RGB/模式色�
 
 # 下一阶段：功能操作优化与功能扩展
 
+2026-10-26 用户确认画布采用类 tldraw 的统一工作区，并要求直接复用
+`gpui-whiteboard 0.5.1` MIT 包源码，不保留外部库。源码已复制到 FileAtlas 自有
+`fileatlas-canvas-engine` workspace crate；引擎保留 Scene/输入/绘制/命中/选择/变换/历史实现，
+FileAtlas 画布插件拥有唯一工具栏、资源列和图层列。已有图片、字体、模板、剪贴板、场景导入导出
+及持久化接线继续复用；共享 ResourceProvider 提供文件、图片、视频链接。画布布局按实际
+tldraw 页面调整为顶部文档动作、右上样式入口、底部居中工具栏和左下缩放，并保留资源/图层侧栏。
+当前纵切实现图层选择/上下移和视频卡片标记；视频内嵌播放、图层隐藏/锁定、任意卡片视图/新工具贡献、完整属性区
+尚未完成，见[插件 PORTS](../crates/fileatlas-plugin-whiteboard/PORTS.md)、[画布布局参考](reference-ui/concepts/fileatlas-canvas-tldraw-layout-2026-10-26.md)和[运行验证](validation-ui/2026-10-26-fileatlas-canvas/README.md)。
+
 2026-10-20 WorkCrate 后续纠正：用户要求先制作三张概念，再按图实现项目管理 → 页面管理 → 页面编辑三个层级。项目卡片只显示标题和主图；项目管理提供新建、搜索/排序、重命名、主图、复制、归档/恢复与删除。新页面和默认导出采用 A3 横向（420 × 297 mm），首图仅填写名称与真实像素信息，物理尺寸可修改。页面项目名继承全局或局部覆盖。PNG/JPEG 与多页 PDF 已接入；旧首个纵切记录中这些“未实现”项现已被本次实现覆盖。概念、剩余功能与验收差异见[三层布局](reference-ui/concepts/workcrate-three-level-2026-10-20.md)和新的运行验证记录。
 
 2026-10-20 用户指定 WorkCrate：在 FileAtlas 增加项目与客户交付工作流，选择方案 A（项目总览 + 独立 PhotoCraft 文件编辑），支持任意格式文件引用、每引用可选自定义预览、可编辑画布/展示母版、单画布图片导出及按顺序合并 PDF。首个服务与 UI 纵切已实现：版本化项目/引用记录、DesignCraft 画板及图片放置/渲染、PdfCraft 单页 PDF、项目画板目录和图片放置/导出入口；9 项服务/契约/UI 测试通过。同进程 MCP 验证了项目/画板 UI、整页适配、PNG/JPEG 原图放置，以及带确认的源分辨率 PDF 输出；修正后的截图和 PDF 页面均已检查，现有目标 PDF 的原子替换也经 MCP 重跑验证。原生图片/保存对话框、相机级高清验证尚未覆盖；母版、图片/预览编辑、PNG/JPEG 输出、多画板合并 PDF 仍未实现。实施状态、源码行为映射、分插件职责和逐阶段验收见[WorkCrate 开发计划](workcrate-development-plan.md)；源码快照与总体架构见[WorkCrate 架构提案](workcrate-architecture-proposal.md)，画布目录视觉参考见[参考入口](reference-ui/README.md)。不引入上游 egui UI；继续复用现有 FileManager/File Operations/Thumbnails/QuickLook/UI Bridge，并将新能力拆为编译期 Cordis 插件。

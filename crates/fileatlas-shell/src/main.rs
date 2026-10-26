@@ -4,6 +4,7 @@ use fileatlas_ui_bridge::components::WorkbenchTypography as _;
 use gpui_kit::prelude::FluentBuilder;
 
 use std::sync::Arc;
+mod whiteboard;
 
 fn dev_plugin_enabled(config: &str, name: &str) -> bool {
     config == "all" || config.split(',').any(|plugin| plugin.trim() == name)
@@ -36,6 +37,7 @@ fn dev_plugin_config() -> String {
         "screenshot",
         "project-tree",
         "file-staging",
+        "whiteboard",
         "workcrate-projects",
         "workcrate-boards",
         "workcrate-export",
@@ -985,6 +987,27 @@ fn main() {
     } else {
         None
     };
+    let _media_resources_fiber = if enable_file_manager {
+        match runtime.block_on(cordis.spawn(PreparedPlugin::from_input(
+            fileatlas_plugin_media_resources::MediaResourcePlugin,
+            (),
+        ))) {
+            Ok(fiber) => Some(fiber),
+            Err(error) => {
+                tracing::error!(%error, "could not start media resource catalog plugin");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    whiteboard::start(
+        &runtime,
+        &cordis,
+        &plugin_runtime,
+        &plugin_preferences,
+        plugin_config == "core" || enable_all || dev_plugin_enabled(&plugin_config, "whiteboard"),
+    );
     let grouping_fiber = if enable_file_manager {
         let plugin = fileatlas_plugin_grouping::GroupingPlugin;
         Some(

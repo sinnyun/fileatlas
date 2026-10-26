@@ -102,8 +102,10 @@ press while another application is foregrounded.
 
 ## Program launcher diagnostics — 2026-10-17
 
-When `fileatlas.launcher` is enabled, `get_launcher_state` reads its in-memory
-snapshot from `LauncherService` in the same FileAtlas process. It returns scan
+When `fileatlas.launcher` is enabled, `launcher.snapshot` reads its in-memory
+snapshot from `LauncherService` in the same FileAtlas process. Its `ui` projection
+reports batch mode, selected entry IDs and category/name/visibility drafts from
+the mounted panel. It returns scan
 status, categories and app entries (display name, launch path, category,
 hidden/available flags, discovery source, pin scope, install date/size, and
 whether an uninstall command is registered). Mutation-guarded tools cover
@@ -352,6 +354,11 @@ it. Values come from Settings' capture transitions; reading does not mutate the
 UI. The `capturing_key` flag also covers the existing open-media key capture.
 Use real `control_ui` pointer clicks/keypresses in
 `scripts/validate-shortcuts-layout.cjs` to enter these states.
+
+`control_ui {action:"key_press", value:"r"}` accepts a single ASCII letter or digit
+in addition to documented navigation keys and modifier chords. Canvas plugins use
+this same-process route to exercise engine shortcuts such as rectangle creation;
+the event goes to the focused GPUI window and does not inject a system-wide key.
 
 `control_ui {action:"pointer_scroll", value:"x,y,delta_y"}` queues one GPUI
 `ScrollWheelEvent` through the existing bounded same-process input queue.

@@ -21,6 +21,10 @@ impl SidebarView {
         expanded_paths.sort_unstable();
         let mut groups = self.collapsed_groups.iter().cloned().collect::<Vec<_>>();
         groups.sort_unstable();
+        // Plugin lifecycle can change the rail while folder/address state is idle.
+        // Keep the passive MCP projection aligned with the already-reconciled UI.
+        let mut plugin_views = self.registered_sidebar_view_ids.iter().collect::<Vec<_>>();
+        plugin_views.sort_unstable();
         let editor = self
             .sidebar_editor
             .as_ref()
@@ -61,6 +65,7 @@ impl SidebarView {
             self.favorite_action_error,
             self.favorite_header_bounds.read().ok().as_deref()
         ) + &self.address_snapshot(cx).to_string()
+            + &format!("{plugin_views:?}")
     }
 
     /// Publish the rendered sidebar sections as data so MCP checks do not have

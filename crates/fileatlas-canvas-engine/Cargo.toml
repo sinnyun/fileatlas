@@ -1,0 +1,17 @@
+[package]
+name = "fileatlas-canvas-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "FileAtlas canvas engine, based on the MIT gpui-whiteboard crate"
+
+[dependencies]
+gpui = { package = "gpui-pre", version = "=0.3.8" }
+log = "0.4"
+serde.workspace = true
+serde_json.workspace = true
+ttf-parser = "0.25"
+
+[lints]
+workspace = true

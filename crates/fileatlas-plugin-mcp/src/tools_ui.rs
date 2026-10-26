@@ -179,7 +179,18 @@ impl FileAtlasMcpServer {
             "file_manager": file_manager,
             "panels": (["settings"].iter().map(|id| json!({"id":id,"open":self.surfaces.is_open(&format!("panel.{id}")),"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>()),
             "open_panel_ids": self.surfaces.open_panel_ids(),
-            "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| json!({"id":id,"bounds":self.surfaces.value(&format!("panel.{id}.bounds")),"client_bounds":self.surfaces.value(&format!("panel.{id}.client_bounds"))})).collect::<Vec<_>>(),
+            "panel_instances": self.surfaces.open_panel_ids().iter().map(|id| {
+                let static_id = id.split_once('@').map_or(id.as_str(), |(base, _)| base);
+                let bounds = self.surfaces.value(&format!("panel.{id}.bounds"))
+                    .or_else(|| self.surfaces.value(&format!("panel.{static_id}.bounds")));
+                let client_bounds = self.surfaces.value(&format!("panel.{id}.client_bounds"))
+                    .or_else(|| self.surfaces.value(&format!("panel.{static_id}.client_bounds")));
+                json!({
+                    "id":id,
+                    "bounds":bounds,
+                    "client_bounds":client_bounds
+                })
+            }).collect::<Vec<_>>(),
             "active_panel": self.surfaces.value("panel.active"),
             "settings_open": self.surfaces.is_open("settings"),
 
@@ -386,20 +397,21 @@ impl FileAtlasMcpServer {
                         | "alt-up"
                         | "ctrl-a"
                         | "backspace"
-                ) || {
-                    let components = key.split('-').collect::<Vec<_>>();
-                    components.len() >= 2
-                        && components.len() <= 6
-                        && components[..components.len() - 1].iter().all(|component| {
-                            ["ctrl", "alt", "shift", "win", "super", "cmd", "fn"]
-                                .contains(component)
-                        })
-                        && components.last().is_some_and(|key| {
-                            !key.is_empty()
-                                && key.len() <= 16
-                                && key.bytes().all(|byte| byte.is_ascii_alphanumeric())
-                        })
-                };
+                ) || (key.len() == 1 && key.as_bytes()[0].is_ascii_alphanumeric())
+                    || {
+                        let components = key.split('-').collect::<Vec<_>>();
+                        components.len() >= 2
+                            && components.len() <= 6
+                            && components[..components.len() - 1].iter().all(|component| {
+                                ["ctrl", "alt", "shift", "win", "super", "cmd", "fn"]
+                                    .contains(component)
+                            })
+                            && components.last().is_some_and(|key| {
+                                !key.is_empty()
+                                    && key.len() <= 16
+                                    && key.bytes().all(|byte| byte.is_ascii_alphanumeric())
+                            })
+                    };
                 if !supported {
                     return error_json("unsupported navigation key");
                 }

@@ -1,3 +1,18 @@
+## 2026-10-26 FileAtlas 本地画布引擎与 tldraw 风格布局
+
+新增能力，无 PhoTag 对应行为或既有数据库迁移。引擎源文件取自固定版 MIT
+`gpui-whiteboard 0.5.1` 并复制为 FileAtlas 内部 `fileatlas-canvas-engine` crate；插件清单不再引用
+`gpui-whiteboard`。保留引擎 Scene、指针编辑、文本/形状、选择、变换、统一历史、图片与模板语义，
+宿主添加嵌入模式、图层读/选/重排接缝及插件生命周期工具扩展。FileAtlas 画板目录仍为版本化 JSON，
+资源继续通过共享 Media Resources URI。画布布局参考 tldraw 实际界面与 FileAtlas 自有概念稿，
+使用近全幅面板、左资源栏、中央无限点阵、右图层检查器、底部工具/历史和右上样式控件。
+本地引擎 47 项测试、白板插件 5 项测试、锁定 Shell 构建、同进程 MCP 画板创建/图片插入/选择/保存与
+治理守卫通过。当前运行验证未覆盖原生文件对话框、OS 拖放/剪贴板、QuickLook、视频播放、
+小窗口退化及画布直接指针绘形；准确命令、截图位置和限制见[本轮验证](validation-ui/2026-10-26-fileatlas-canvas/README.md)。
+
+早期 Zorite UI 托管阶段的截图和流程记录保留为历史证据，不能作为当前产品布局结论：
+[Zorite 阶段记录](validation-ui/2026-10-26-zorite-whiteboard/README.md)。
+
 ## 2026-10-18 本地收藏取代置顶
 
 已实现持久收藏、普通删除/清理/淘汰保护、编辑去重保留收藏、旧 pinned 数据兼容，以及独立确认删除收藏。12 项数据库测试、shell check、独立 exe 编译、三次独立进程 MCP 收藏/重启/取消/删除验证及原面板 91 步回归通过。标准 exe 正在运行被锁定，未替换用户窗口；使用 `target/debug/fileatlas-clipboard-favorites.exe` 完成验证。截图、准确命令、进程证据和限制见 [收藏验证](validation-ui/2026-10-18-clipboard-favorites/README.md)。

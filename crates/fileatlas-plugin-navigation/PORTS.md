@@ -1,5 +1,10 @@
 # Navigation plugin ports / 导航插件数据对接
 
+2026-10-26: the passive sidebar MCP signature now includes the stable, sorted
+set of registered sidebar contribution IDs. Plugin stop/start updates
+`sidebar_folders.plugin_buttons` even when folder, address and selection state
+are idle; this mirrors the existing view-catalog reconciliation and adds no IO.
+
 ## MCP contribution (2026-10-19)
 
 Navigation contributes `navigation.list_library` through the host-published
