@@ -20,7 +20,7 @@
 
 ## Remaining limits
 
-- Editing uses GPUI Kit's rope-backed Textarea and its UTF-8 selection/editing API. Toolbar formatting uses the live selection and retains undo history. The adapted pinned Aster code supplies syntax span scanning only; its application editor targets incompatible GPUI versions. Live preview alongside editing remains unimplemented.
+- As of the 2026-10-27 initial run, split preview was not implemented. The 2026-10-28 follow-up below supersedes that status and verifies live preview alongside editing. Editing uses GPUI Kit's rope-backed Textarea and its UTF-8 selection/editing API. Toolbar formatting uses the live selection and retains undo history. The adapted pinned Aster code supplies syntax span scanning only; its application editor targets incompatible GPUI versions.
 - The Markdown model is not a full CommonMark AST. Wiki links resolve by exact title and duplicate titles are ambiguous. Rename rewrites exact `[[old title]]` tokens.
 - The 960×720 capture checked the trash view; narrow-window editor controls remain unverified. Large-vault performance, external concurrent edits, and interoperability with external Markdown editors remain unverified. The image preview scenario covered a PNG fixture; other image formats remain unverified.
 - The Aster README declares MIT but its pinned tree has no LICENSE file. Provenance and this limitation are documented in `crates/fileatlas-plugin-notes/UPSTREAM.md`.
