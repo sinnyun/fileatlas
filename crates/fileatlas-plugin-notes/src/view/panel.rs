@@ -6,13 +6,13 @@ use fileatlas_ui_bridge::{
 };
 use gpui_kit::{
     base::{Selectable as _, StyledExt as _},
-    component::button::ButtonVariants as _,
     component::scroll::ScrollableElement as _,
+    component::{button::ButtonVariants as _, input::InputEvent},
     *,
 };
 
 use crate::{
-    NoteSummary, NoteTrashEntry, NotesService,
+    NoteSummary, NoteTrashEntry, NotesService, NotesUiSnapshot,
     editor::commands::{prefix_lines, replace_all, toggle_task_lines, wrap_selection},
 };
 pub fn panel(service: Arc<NotesService>, window: &mut Window, app: &mut App) -> AnyView {
@@ -73,30 +73,59 @@ pub fn panel(service: Arc<NotesService>, window: &mut Window, app: &mut App) -> 
         .and_then(|id| service.rendered_markdown(id).ok())
         .unwrap_or_default();
     let trash_entries = service.list_trash().unwrap_or_default();
-    app.new(|cx| NotesPanel {
-        service,
-        notes,
-        selected,
-        editor,
-        title_input,
-        category_input,
-        status_input,
-        tags_input,
-        move_input,
-        find_input,
-        replace_input,
-        trash_mode,
-        trash_entries,
-        confirm_delete: None,
-        preview: false,
-        preview_markdown,
-        backlinks: document
-            .map(|document| document.backlinks)
-            .unwrap_or_default(),
-        message: None,
-        _focus: cx.focus_handle(),
-    })
-    .into()
+    let panel = app.new(|cx| {
+        let editor_subscription =
+            cx.subscribe(&editor, |this: &mut NotesPanel, _, event, cx| match event {
+                InputEvent::Change if !this.suppress_editor_change => {
+                    this.dirty = true;
+                    this.message = Some("未保存的更改".into());
+                    this.schedule_preview(cx);
+                    this.publish_ui_snapshot(cx);
+                    cx.notify();
+                }
+                InputEvent::Focus => {
+                    this.editor_focused = true;
+                    this.publish_ui_snapshot(cx);
+                }
+                InputEvent::Blur => {
+                    this.editor_focused = false;
+                    this.publish_ui_snapshot(cx);
+                }
+                _ => {}
+            });
+        NotesPanel {
+            service,
+            notes,
+            selected,
+            editor,
+            title_input,
+            category_input,
+            status_input,
+            tags_input,
+            move_input,
+            find_input,
+            replace_input,
+            trash_mode,
+            trash_entries,
+            confirm_delete: None,
+            preview: false,
+            split_preview: false,
+            preview_markdown,
+            backlinks: document
+                .map(|document| document.backlinks)
+                .unwrap_or_default(),
+            message: None,
+            dirty: false,
+            editor_focused: false,
+            suppress_editor_change: false,
+            preview_generation: 0,
+            _preview_task: None,
+            _subscriptions: vec![editor_subscription],
+            _focus: cx.focus_handle(),
+        }
+    });
+    panel.update(app, |panel, cx| panel.publish_ui_snapshot(cx));
+    panel.into()
 }
 
 struct NotesPanel {
@@ -115,23 +144,91 @@ struct NotesPanel {
     trash_entries: Vec<NoteTrashEntry>,
     confirm_delete: Option<String>,
     preview: bool,
+    split_preview: bool,
     preview_markdown: String,
     backlinks: Vec<NoteSummary>,
     message: Option<String>,
+    dirty: bool,
+    editor_focused: bool,
+    suppress_editor_change: bool,
+    preview_generation: u64,
+    _preview_task: Option<Task<()>>,
+    _subscriptions: Vec<Subscription>,
     _focus: FocusHandle,
 }
 impl NotesPanel {
+    fn publish_ui_snapshot(&self, cx: &Context<Self>) {
+        let editor = self.editor.read(cx).value().to_string();
+        let preview = self.preview_markdown.clone();
+        let mode = if self.preview {
+            "preview"
+        } else if self.split_preview {
+            "split"
+        } else {
+            "edit"
+        };
+        self.service.set_ui_snapshot(Some(NotesUiSnapshot {
+            panel_open: true,
+            selected_path: self.selected.clone(),
+            mode: mode.into(),
+            dirty: self.dirty,
+            editor_focused: self.editor_focused,
+            editor_length: editor.chars().count(),
+            preview_length: preview.chars().count(),
+            editor_sample: editor.chars().take(512).collect(),
+            preview_sample: preview.chars().take(512).collect(),
+        }));
+    }
+
+    fn schedule_preview(&mut self, cx: &mut Context<Self>) {
+        let (Some(path), Some(document)) = (
+            self.selected.clone(),
+            self.notes
+                .iter()
+                .find(|note| Some(note.path.as_str()) == self.selected.as_deref())
+                .cloned(),
+        ) else {
+            return;
+        };
+        let body = self.editor.read(cx).value().to_string();
+        self.preview_generation = self.preview_generation.wrapping_add(1);
+        let generation = self.preview_generation;
+        self._preview_task.take();
+        let service = Arc::clone(&self.service);
+        self._preview_task = Some(cx.spawn(async move |this, cx| {
+            let worker = cx
+                .background_executor()
+                .spawn(async move { service.rendered_markdown_body(&document.id, &path, &body) });
+            let result = worker.await;
+            let _ = this.update(cx, |view, cx| {
+                if view.preview_generation != generation {
+                    return;
+                }
+                if let Ok(markdown) = result {
+                    view.preview_markdown = markdown;
+                }
+                view.publish_ui_snapshot(cx);
+                cx.notify();
+            });
+        }));
+    }
+
     fn select(&mut self, path: String, window: &mut Window, cx: &mut Context<Self>) {
         self.trash_mode = false;
         self.selected = Some(path.clone());
         self.service.select(&path);
+        self.preview_generation = self.preview_generation.wrapping_add(1);
+        self._preview_task.take();
         let document = self.service.read(&path).ok();
         let body = document
             .as_ref()
             .map(|doc| doc.body.clone())
             .unwrap_or_default();
+        self.suppress_editor_change = true;
         self.editor
             .update(cx, |state, cx| state.set_value(body, window, cx));
+        self.suppress_editor_change = false;
+        self.dirty = false;
         if let Some(document) = document {
             self.title_input.update(cx, |state, cx| {
                 state.set_value(document.summary.title, window, cx)
@@ -148,6 +245,9 @@ impl NotesPanel {
             self.backlinks = document.backlinks;
         }
         self.preview_markdown = self.service.rendered_markdown(&path).unwrap_or_default();
+        self.preview = false;
+        self.split_preview = false;
+        self.publish_ui_snapshot(cx);
         cx.notify();
     }
     fn save(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -190,9 +290,11 @@ impl NotesPanel {
                     .update(cx, |state, cx| state.set_value(note.title, window, cx));
                 self.preview_markdown =
                     self.service.rendered_markdown(&note.id).unwrap_or_default();
+                self.dirty = false;
                 self.notes = self.service.list().unwrap_or_default();
                 self.backlinks = self.service.backlinks(&note.id).unwrap_or_default();
                 self.message = Some("已保存".into());
+                self.publish_ui_snapshot(cx);
             }
             Err(error) => self.message = Some(format!("保存失败：{error}")),
         }
@@ -421,6 +523,12 @@ impl NotesPanel {
         .detach();
     }
 }
+impl Drop for NotesPanel {
+    fn drop(&mut self) {
+        self.service.set_ui_snapshot(None);
+    }
+}
+
 impl Render for NotesPanel {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.trash_mode {
@@ -524,6 +632,32 @@ impl Render for NotesPanel {
         }
         let editor: AnyElement = if self.preview {
             gpui_kit::component::text::markdown(self.preview_markdown.clone()).into_any_element()
+        } else if self.split_preview {
+            div()
+                .h_flex()
+                .flex_1()
+                .min_w_0()
+                .min_h_0()
+                .gap(px(theme::space_standard()))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .h_full()
+                        .child(components::textarea(&self.editor).h_full()),
+                )
+                .child(fileatlas_ui_bridge::components::vertical_divider())
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .h_full()
+                        .overflow_y_scrollbar()
+                        .child(gpui_kit::component::text::markdown(
+                            self.preview_markdown.clone(),
+                        )),
+                )
+                .into_any_element()
         } else {
             components::textarea(&self.editor)
                 .h_full()
@@ -551,12 +685,52 @@ impl Render for NotesPanel {
                             .h_flex()
                             .items_center()
                             .gap(px(theme::space_compact()))
-                            .child(components::text_input(&self.title_input).w(px(280.)))
+                            .child(components::text_input(&self.title_input).w(px(170.)))
                             .child(div().flex_1())
-                            .child(
+                            .child(if self.dirty {
+                                "未保存".into()
+                            } else {
                                 self.message
                                     .clone()
-                                    .unwrap_or_else(|| "Markdown · 本地文件".into()),
+                                    .unwrap_or_else(|| "Markdown · 本地文件".into())
+                            })
+                            .child(
+                                components::button("notes-editor-mode")
+                                    .ghost()
+                                    .label("编辑")
+                                    .selected(!self.preview && !self.split_preview)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.preview = false;
+                                        this.split_preview = false;
+                                        this.publish_ui_snapshot(cx);
+                                        cx.notify();
+                                    })),
+                            )
+                            .child(
+                                components::button("notes-preview-mode")
+                                    .ghost()
+                                    .label("预览")
+                                    .selected(self.preview)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.preview = true;
+                                        this.split_preview = false;
+                                        this.schedule_preview(cx);
+                                        this.publish_ui_snapshot(cx);
+                                        cx.notify();
+                                    })),
+                            )
+                            .child(
+                                components::button("notes-split-preview-mode")
+                                    .ghost()
+                                    .label("并排")
+                                    .selected(self.split_preview)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.preview = false;
+                                        this.split_preview = true;
+                                        this.schedule_preview(cx);
+                                        this.publish_ui_snapshot(cx);
+                                        cx.notify();
+                                    })),
                             )
                             .child(components::button("notes-save").label("保存").on_click(
                                 cx.listener(|this, _, window, cx| this.save(window, cx)),
@@ -684,18 +858,6 @@ impl Render for NotesPanel {
                                             .on_click(
                                                 cx.listener(|this, _, _, cx| this.insert_image(cx)),
                                             ),
-                                    )
-                                    .child(
-                                        components::button("notes-preview")
-                                            .ghost()
-                                            .label(if self.preview { "编辑" } else { "预览" })
-                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                if !this.preview {
-                                                    this.save(window, cx);
-                                                }
-                                                this.preview = !this.preview;
-                                                cx.notify();
-                                            })),
                                     ),
                             )
                             .child(

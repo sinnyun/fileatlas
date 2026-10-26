@@ -31,19 +31,24 @@ Status: Markdown-first note management and trash UI are implemented; same-proces
   image reference. Preview embeds root-contained local image files as data URIs
   for GPUI Kit Markdown rendering. External images and absolute paths are not
   embedded.
-- The panel provides create, edit, save, preview, metadata, backlinks, image
-  insertion, cursor/selection-aware heading, bold, italic, code, link, list and
-  task-list formatting with task completion toggling, plus find/replace-all, note move/trash and trash
-  restore/delete. The sidebar provides
-  nested folder create/rename/move/trash and note search. Split live preview
-  remains unimplemented.
+- The panel provides create, edit, save, single preview and a live split
+  editor/preview, metadata, backlinks, image insertion, cursor/selection-aware
+  heading, bold, italic, code, link, list and task-list formatting with task
+  completion toggling, plus find/replace-all, note move/trash and trash
+  restore/delete. Split preview rendering runs as a coalesced background task;
+  stale results are discarded when the note or draft changes. The sidebar
+  provides nested folder create/rename/move/trash and note search.
 - MCP names: `notes.list`, `notes.search`, `notes.read`, `notes.create`,
+`notes.ui_state`,
   `notes.update`, `notes.rename`, `notes.move`, `notes.create_folder`, `notes.rename_folder`,
   `notes.move_folder`, `notes.trash_folder`, `notes.trash`, `notes.restore`,
   `notes.trash_list`, `notes.restore_folder`, `notes.delete_trash`,
   `notes.insert_image`, and `notes.outline`. Trash tools require Full AI
   control plus per-call `confirm=true`. Trash paths returned by MCP are
   root-relative and accepted by `notes.restore`.
+- `notes.ui_state` is a read-only same-process diagnostic for the mounted panel.
+  It reports selected path, edit/preview/split mode, unsaved state, text lengths
+  and bounded 512-character editor/preview samples. Closing the panel clears it.
 - Known limits: wiki links resolve by exact title and duplicate titles are
   ambiguous; Markdown references are not a full CommonMark AST and rename only
   rewrites exact `[[old title]]` tokens. The adapted Aster scanner only colors

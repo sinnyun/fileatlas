@@ -15,6 +15,7 @@ pub struct NotesService {
     lock: Mutex<()>,
     selected: Mutex<Option<String>>,
     selected_folder: Mutex<Option<String>>,
+    ui_snapshot: Mutex<Option<NotesUiSnapshot>>,
     _watcher: Mutex<notify::RecommendedWatcher>,
 }
 
@@ -42,6 +43,7 @@ impl NotesService {
             lock: Mutex::new(()),
             selected: Mutex::new(None),
             selected_folder: Mutex::new(None),
+            ui_snapshot: Mutex::new(None),
             _watcher: Mutex::new(watcher),
         }))
     }
@@ -72,6 +74,16 @@ impl NotesService {
 
     pub fn selected_folder(&self) -> Option<String> {
         self.selected_folder.lock().ok()?.clone()
+    }
+
+    pub fn set_ui_snapshot(&self, snapshot: Option<NotesUiSnapshot>) {
+        if let Ok(mut state) = self.ui_snapshot.lock() {
+            *state = snapshot;
+        }
+    }
+
+    pub fn ui_snapshot(&self) -> Option<NotesUiSnapshot> {
+        self.ui_snapshot.lock().ok()?.clone()
     }
 
     pub fn list(&self) -> Result<Vec<NoteSummary>, NotesError> {
@@ -517,7 +529,33 @@ impl NotesService {
     pub fn rendered_markdown(&self, id: &str) -> Result<String, NotesError> {
         let document = self.read(id)?;
         let note_path = self.resolve_relative(&document.summary.path)?;
-        let mut rendered = document.body.clone();
+        self.render_markdown_body(&document.summary.id, &note_path, &document.body)
+    }
+
+    pub fn rendered_markdown_body(
+        &self,
+        id: &str,
+        note_path: &str,
+        body: &str,
+    ) -> Result<String, NotesError> {
+        let note_path = self.resolve_relative(note_path)?;
+        if !note_path.starts_with(&self.root)
+            || !note_path
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("md"))
+        {
+            return Err(NotesError::InvalidName);
+        }
+        self.render_markdown_body(id, &note_path, body)
+    }
+
+    fn render_markdown_body(
+        &self,
+        id: &str,
+        note_path: &Path,
+        body: &str,
+    ) -> Result<String, NotesError> {
+        let mut rendered = body.to_owned();
         let mut cursor = 0;
         while let Some(start) = rendered[cursor..].find("![") {
             let start = cursor + start;
@@ -544,12 +582,9 @@ impl NotesService {
                 cursor = end + 1;
                 continue;
             }
-            let asset_fallback = relative.file_name().map(|name| {
-                self.root
-                    .join("assets")
-                    .join(&document.summary.id)
-                    .join(name)
-            });
+            let asset_fallback = relative
+                .file_name()
+                .map(|name| self.root.join("assets").join(id).join(name));
             let bytes = match fs::read(&asset_path).or_else(|_| {
                 asset_fallback
                     .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound))

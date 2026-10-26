@@ -17,8 +17,10 @@ not override the user's current theme.
   retain a distinct selected note surface. Long trees and note bodies scroll
   inside their own regions.
 - The editor supports Markdown source plus formatted preview, links and local
-  images. The reference's toolbar is directional: all actions must be real,
-  and unavailable behaviors must not be represented as working controls.
+  images. Edit and preview can appear separately or side by side; split preview
+  follows unsaved editor changes. The reference's toolbar is directional: all
+  actions must be real, and unavailable behaviors must not be represented as
+  working controls.
 - Empty notes, no selected note, save error, long title, unsaved edits and a
   narrow floating panel must remain legible and usable. Theme roles come only
   from UI Bridge/GPUI Kit.

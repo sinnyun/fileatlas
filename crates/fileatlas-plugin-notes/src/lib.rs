@@ -100,6 +100,19 @@ pub struct NoteTrashEntry {
     pub note_count: usize,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotesUiSnapshot {
+    pub panel_open: bool,
+    pub selected_path: Option<String>,
+    pub mode: String,
+    pub dirty: bool,
+    pub editor_focused: bool,
+    pub editor_length: usize,
+    pub preview_length: usize,
+    pub editor_sample: String,
+    pub preview_sample: String,
+}
+
 mod service;
 pub use service::NotesService;
 pub struct NotesConfig {

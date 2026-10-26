@@ -32,9 +32,50 @@ module.exports = async ({ call, payload, step, delay, profile }) => {
   await delay(1500);
   await call('control_ui', { action: 'panel_open', value: 'notes/workbench' });
   await step({ tool: 'get_ui_state', capture: 'notes-panel', wait_ms: 750 });
-  await call('control_ui', { action: 'pointer_down', value: '1310,872' });
+  const uiState = payload(await call('get_ui_state', {}));
+  const windowState = uiState.window_status;
+  const geometry = windowState.geometry;
+  const screenshot = await call('screenshot_window');
+  const screenshotBlock = screenshot.content.find(item => item.type === 'image');
+  assert(screenshotBlock, 'MCP screenshot returned no image for coordinate calibration');
+  const screenshotPng = Buffer.from(screenshotBlock.data, 'base64');
+  const screenshotWidth = screenshotPng.readUInt32BE(16);
+  const screenshotHeight = screenshotPng.readUInt32BE(20);
+  const toPointer = (xFraction, yFraction) => [
+    Math.round((xFraction * screenshotWidth - geometry.screenshot_to_pointer.offset_x) / geometry.screenshot_to_pointer.divide_by),
+    Math.round((yFraction * screenshotHeight - geometry.screenshot_to_pointer.offset_y) / geometry.screenshot_to_pointer.divide_by)
+  ];
+  const click = async (x, y) => {
+    const value = `${x},${y}`;
+    await call('control_ui', { action: 'pointer_down', value });
+    await delay(300);
+    await call('control_ui', { action: 'pointer_up', value });
+    await delay(350);
+  };
+  const editorPoint = toPointer(900 / 2048, 432 / 1141);
+  const splitButtonPoint = toPointer(1175 / 2048, 319 / 1141);
+  await click(...editorPoint);
+  await delay(300);
+  const focusedUi = payload(await call('notes.ui_state', {}));
+  assert.equal(focusedUi.editor_focused, true, 'pointer input did not focus the note editor');
+  await call('control_ui', { action: 'key_press', value: 'ctrl-end' });
   await delay(250);
-  await call('control_ui', { action: 'pointer_up', value: '1310,872' });
+  const liveMarker = ' LIVE_PREVIEW_MCP_MARKER';
+  await call('control_ui', { action: 'input_text', value: liveMarker });
+  await delay(600);
+  await click(...splitButtonPoint);
+  let liveUi = payload(await call('notes.ui_state', {}));
+  for (let attempt = 0; attempt < 20; attempt++) {
+    if (liveUi.mode === 'split' && liveUi.dirty &&
+        liveUi.editor_sample.includes(liveMarker.trim()) &&
+        liveUi.preview_sample.includes(liveMarker.trim())) break;
+    await delay(250);
+    liveUi = payload(await call('notes.ui_state', {}));
+  }
+  assert.equal(liveUi.mode, 'split');
+  assert.equal(liveUi.dirty, true);
+  assert(liveUi.editor_sample.includes(liveMarker.trim()), 'same-process typing did not reach the note editor');
+  assert(liveUi.preview_sample.includes(liveMarker.trim()), 'unsaved editor text did not reach the live preview');
   await step({ tool: 'get_ui_state', capture: 'notes-preview', wait_ms: 500 });
   await call('control_ui', { action: 'pointer_down', value: '28,276' });
   await delay(250);

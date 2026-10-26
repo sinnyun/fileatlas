@@ -29,6 +29,18 @@ pub(super) fn register(context: &Context, service: &Arc<NotesService>) -> Result
         },
     ));
     let notes = Arc::clone(&service);
+    tools.push(tool(
+        "notes.ui_state",
+        "Read the Notes panel editor, preview and unsaved-state diagnostics",
+        false,
+        false,
+        json!({"type":"object","properties":{},"additionalProperties":false}),
+        move |_| {
+            let notes = Arc::clone(&notes);
+            Box::pin(async move { Ok(json!(notes.ui_snapshot().unwrap_or_default())) })
+        },
+    ));
+    let notes = Arc::clone(&service);
     tools.push(tool("notes.search", "Search note titles, contents and tags", false, false, json!({"type":"object","properties":{"query":{"type":"string"}},"required":["query"],"additionalProperties":false}), move |args| {
         let notes = Arc::clone(&notes); Box::pin(async move { let request: Query = parse(args)?; Ok(json!({"items": notes.search(&request.query).map_err(|e|e.to_string())?})) })
     }));
