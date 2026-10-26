@@ -36,6 +36,7 @@ fn dev_plugin_config() -> String {
         "dev-test",
         "screenshot",
         "project-tree",
+        "notes",
         "file-staging",
         "whiteboard",
         "workcrate-projects",
@@ -156,6 +157,10 @@ fn main() {
         || enable_all
         || enable_mcp
         || dev_plugin_enabled(&plugin_config, "project-tree");
+    let enable_notes = plugin_config == "core"
+        || enable_all
+        || enable_mcp
+        || dev_plugin_enabled(&plugin_config, "notes");
     let enable_file_staging = plugin_config == "core"
         || enable_all
         || enable_mcp
@@ -200,7 +205,8 @@ fn main() {
         || dev_plugin_enabled(&plugin_config, "navigation")
         || enable_clipboard
         || enable_screenshot
-        || enable_project_tree;
+        || enable_project_tree
+        || enable_notes;
     let enable_metadata_export =
         enable_all || enable_mcp || dev_plugin_enabled(&plugin_config, "metadata-export");
     let enable_file_operations = enable_all
@@ -480,6 +486,23 @@ fn main() {
             runtime
                 .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
                 .expect("start navigation plugin"),
+        )
+    } else {
+        None
+    };
+    let notes_fiber = if enable_notes {
+        let plugin = fileatlas_plugin_notes::NotesPlugin;
+        let input = plugin
+            .prepare(fileatlas_plugin_notes::NotesConfig {
+                root: dev_test_dir
+                    .as_ref()
+                    .map(|path| path.join("local").join("FileAtlas").join("notes")),
+            })
+            .expect("prepare notes plugin");
+        Some(
+            runtime
+                .block_on(cordis.spawn(PreparedPlugin::from_input(plugin, input)))
+                .expect("start notes plugin"),
         )
     } else {
         None
@@ -1404,6 +1427,11 @@ fn main() {
         runtime
             .block_on(fiber.dispose())
             .expect("stop tagging plugin");
+    }
+    if let Some(fiber) = notes_fiber {
+        runtime
+            .block_on(fiber.dispose())
+            .expect("stop notes plugin");
     }
     if let Some(fiber) = navigation_fiber {
         runtime

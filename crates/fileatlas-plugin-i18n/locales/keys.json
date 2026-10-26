@@ -1019,5 +1019,6 @@
   "Used {size}": "msg-plugin-settings-storage-used",
   "At least {size} (some contents could not be read)": "msg-plugin-settings-storage-partial",
   "Sizes are per path; overlapping directories should not be added together.": "msg-plugin-settings-storage-overlap",
-  "Copy full path": "msg-plugin-settings-storage-copy-path"
+  "Copy full path": "msg-plugin-settings-storage-copy-path",
+  "Notes": "msg-notes"
 }

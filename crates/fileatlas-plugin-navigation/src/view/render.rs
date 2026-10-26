@@ -213,6 +213,18 @@ impl Render for SidebarView {
                 .child(div().v_flex().flex_1().min_w_0().h_full().children(content));
             return page;
         }
+        if self.active_page == NavigationPage::Notes {
+            let content = self
+                .notes_views
+                .iter()
+                .map(|(_, _, view)| view.clone())
+                .collect::<Vec<_>>();
+            return div()
+                .h_flex()
+                .size_full()
+                .child(rail)
+                .child(div().v_flex().flex_1().min_w_0().h_full().children(content));
+        }
         let mut panel = div()
             .v_flex()
             .min_h_0()
@@ -488,7 +500,9 @@ impl SidebarView {
             .filter(|entry| {
                 matches!(
                     entry.contribution.slot.as_str(),
-                    "navigation.extensions" | "navigation.launcher-shortcuts"
+                    "navigation.extensions"
+                        | "navigation.launcher-shortcuts"
+                        | "navigation.sidebar-notes"
                 )
             })
             .map(|entry| entry.contribution.id.clone())
@@ -503,6 +517,13 @@ impl SidebarView {
         self.project_tree_views.retain(|(id, generation, _)| {
             entries.iter().any(|entry| {
                 entry.contribution.slot == "navigation.sidebar-project-tree"
+                    && entry.contribution.id == *id
+                    && entry.generation == *generation
+            })
+        });
+        self.notes_views.retain(|(id, generation, _)| {
+            entries.iter().any(|entry| {
+                entry.contribution.slot == "navigation.sidebar-notes"
                     && entry.contribution.id == *id
                     && entry.generation == *generation
             })
@@ -557,11 +578,28 @@ impl SidebarView {
                         (entry.contribution.factory)(window, cx),
                     ));
                 }
+                "navigation.sidebar-notes"
+                    if !self
+                        .notes_views
+                        .iter()
+                        .any(|(current_id, current_generation, _)| {
+                            current_id == &id && *current_generation == generation
+                        }) =>
+                {
+                    self.notes_views.push((
+                        id,
+                        generation,
+                        (entry.contribution.factory)(window, cx),
+                    ));
+                }
                 _ => {}
             }
         }
         self.registered_sidebar_view_ids = live_ids;
         if self.active_page == NavigationPage::ProjectTree && self.project_tree_views.is_empty() {
+            self.set_navigation_page(NavigationPage::Folders);
+        }
+        if self.active_page == NavigationPage::Notes && self.notes_views.is_empty() {
             self.set_navigation_page(NavigationPage::Folders);
         }
     }

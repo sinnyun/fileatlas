@@ -8,6 +8,7 @@ impl SidebarView {
         session: Arc<SessionService>,
         extension_views: Vec<(String, u64, AnyView)>,
         project_tree_views: Vec<(String, u64, AnyView)>,
+        notes_views: Vec<(String, u64, AnyView)>,
         launcher_shortcuts: Vec<(String, u64, AnyView)>,
         restored_folder_id: Option<i64>,
         restored_path: Option<String>,
@@ -68,6 +69,7 @@ impl SidebarView {
         let registered_sidebar_view_ids = extension_views
             .iter()
             .chain(launcher_shortcuts.iter())
+            .chain(notes_views.iter())
             .map(|(id, _, _)| id.clone())
             .collect();
         let initial_location =
@@ -88,6 +90,7 @@ impl SidebarView {
             session,
             extension_views,
             project_tree_views,
+            notes_views,
             launcher_shortcuts,
             registered_sidebar_view_ids,
             plugin_views_revision,

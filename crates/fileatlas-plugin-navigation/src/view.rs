@@ -116,6 +116,20 @@ pub(super) fn sidebar(
                 )
             })
             .collect::<Vec<_>>();
+        let notes_views = bridge
+            .as_ref()
+            .and_then(|bridge| bridge.views.snapshot().ok())
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|entry| entry.contribution.slot == "navigation.sidebar-notes")
+            .map(|entry| {
+                (
+                    entry.contribution.id.clone(),
+                    entry.generation,
+                    (entry.contribution.factory)(window, app),
+                )
+            })
+            .collect::<Vec<_>>();
         let launcher_shortcuts = bridge
             .as_ref()
             .and_then(|bridge| bridge.views.snapshot().ok())
@@ -305,6 +319,7 @@ pub(super) fn sidebar(
                 view_session,
                 extension_views,
                 project_tree_views,
+                notes_views,
                 launcher_shortcuts,
                 view_selected_folder_id,
                 view_selected_path,
@@ -388,6 +403,7 @@ struct SidebarView {
     session: Arc<SessionService>,
     extension_views: Vec<(String, u64, AnyView)>,
     project_tree_views: Vec<(String, u64, AnyView)>,
+    notes_views: Vec<(String, u64, AnyView)>,
     launcher_shortcuts: Vec<(String, u64, AnyView)>,
     registered_sidebar_view_ids: HashSet<String>,
     plugin_views_revision: u64,

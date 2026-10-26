@@ -262,6 +262,8 @@ Cordis 拆为 `fileatlas-plugin-versions` 与 `fileatlas-plugin-version-info`；
 | F2 功能扩展 | 按个人全能工作台方向，定义功能行为、操作入口及面板内布局，并接入现有数据与平台服务和 Cordis 生命周期，再逐项实现 | 进行中：启动台图标网格、选择/右键菜单、隔离双击启动、信息编辑与三字段排序已验；系统快捷键插件已接线；Shotoshot 独立程序及标注界面已集成，真实 Windows 捕获/保存路径待验（[启动台](../crates/fileatlas-plugin-launcher/PORTS.md)、[快捷键](../crates/fileatlas-plugin-shortcuts/PORTS.md)、[截图插件](../crates/fileatlas-plugin-screenshot/PORTS.md)）；Ctrl+F Windows 实际运行、真实卸载与原生选取程序仍待验 | 每项有明确用途、完整行为与失败处理、集成验证；无空handler/假进度/伪数据 |
 | F3 持续集成验收 | 每项F1/F2随修改检查静态/自动化/真实Windows行为，维护PORTS、映射、验证文档 | 随开发执行；日志见[重设计验证记录](redesign-validation.md) | 当前源码和运行版本一致，结果可复查；未覆盖系统路径明确保留 |
 
+2026-10-27：新增 Markdown 优先的独立 Notes 编译期 Cordis 插件，使用本地 `.md` 文件和 JSON frontmatter，提供嵌套目录、笔记创建/编辑/预览、分类/状态/标签、标题双链与反向链接、搜索、图片资源复制、目录服务/MCP 管理及回收恢复。左侧 Notes 分页和通用悬浮面板通过同进程 MCP 验证，见[Notes 运行记录](validation-ui/2026-10-27-notes/README.md)。这是首个可用纵切；侧栏过滤/目录动作、笔记移动/删除 UI、垃圾箱界面、完整 Markdown 编辑辅助及窄窗覆盖仍未完成，不能称为完整通用笔记应用。
+
 F0先使用隔离profile和既有样例；原生操作尚未暴露给MCP时扩展项目MCP/公开功能契约，仍通过同进程GPUI验证，不用通用computer-use/OS输入替代。修改和破坏性测试只针对明确的隔离样本。
 
 F2 是个人工作台新增独立功能的阶段。功能范围可以跨越不同用途，不必都围绕照片管理；每项按用户具体需求定义。插件仍是编译期 Cordis feature crate，复用公共 UI Bridge 和通用悬浮面板，不替代 Cordis 生命周期管理，也不自动引入动态 DLL、外部插件商店或云同步。旧扩展页预留入口的历史状态不作为新功能入口或产品范围限制。

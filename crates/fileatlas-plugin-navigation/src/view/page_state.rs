@@ -4,6 +4,7 @@ pub(super) enum NavigationPage {
     Folders,
     Tags,
     ProjectTree,
+    Notes,
     Extensions,
 }
 
@@ -13,6 +14,7 @@ impl NavigationPage {
             "folders" => Some(Self::Folders),
             "tags" => Some(Self::Tags),
             "project-tree" | "projects" => Some(Self::ProjectTree),
+            "notes" => Some(Self::Notes),
             "extensions" => Some(Self::Extensions),
             _ => None,
         }
@@ -23,6 +25,7 @@ impl NavigationPage {
             Self::Folders => "folders",
             Self::Tags => "tags",
             Self::ProjectTree => "project-tree",
+            Self::Notes => "notes",
             Self::Extensions => "extensions",
         }
     }

@@ -2830,6 +2830,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fileatlas-plugin-notes"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "cordis-rs",
+ "dirs 5.0.1",
+ "fileatlas-contracts",
+ "fileatlas-ui-bridge",
+ "gpui-kit",
+ "notify",
+ "rfd",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "fileatlas-plugin-project-tree"
 version = "0.1.0"
 dependencies = [
@@ -3170,6 +3189,7 @@ dependencies = [
  "fileatlas-plugin-media-resources",
  "fileatlas-plugin-metadata-export",
  "fileatlas-plugin-navigation",
+ "fileatlas-plugin-notes",
  "fileatlas-plugin-project-tree",
  "fileatlas-plugin-quicklook",
  "fileatlas-plugin-screenshot",

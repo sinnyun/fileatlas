@@ -1,0 +1,53 @@
+# FileAtlas Notes plugin
+
+Status: Markdown-first initial feature slice implemented; live MCP verification is recorded in `docs/validation-ui/2026-10-27-notes/README.md`.
+
+- Cordis identity: `fileatlas.notes`; service: `fileatlas/notes`.
+- Storage: canonical Markdown files under `%LOCALAPPDATA%\\FileAtlas\\notes`;
+  each note is a `.md` file inside a recursively nested folder tree. Inline
+  JSON frontmatter (valid YAML subset) carries stable ID, category, status and
+  tags. Images are copied to `assets/<note-id>/` and referenced relatively.
+- UI Bridge owns the Notes navigation contribution and the single Notes panel.
+  Cordis removes both contributions and service when the plugin stops.
+- MCP tools are registered through the host `McpToolRegistry` and removed with
+  the plugin. All file writes remain scoped to the configured notes root.
+- Reads/writes are synchronous service calls; the sidebar uses the shared
+  `ReadModel` and filesystem watcher revision to keep directory enumeration off
+  render. Watch events are coarse invalidation signals, not durable change logs.
+- Wiki links use `[[note title]]`; backlinks are derived from note contents.
+- Note metadata uses `id`, `category`, `status` (`draft`, `in_progress`,
+  `completed`, `archived`) and case-insensitively deduplicated tags. Search
+  matches titles, tags and Markdown body text. Heading outline is available.
+- `notes.move` moves notes between nested folders while retaining stable IDs.
+  `notes.create_folder`, `notes.rename_folder`, `notes.move_folder` and
+  `notes.trash_folder` manage arbitrarily nested folders. `notes.trash` and
+  `notes.restore` move Markdown files through `.trash/`; image assets are stored
+  below `assets/<note-id>/`. Trash is recoverable; permanent deletion and a
+  trash browser are not currently exposed.
+- `notes.insert_image` copies a local image and returns a relative Markdown
+  image reference. Preview embeds root-contained local image files as data URIs
+  for GPUI Kit Markdown rendering. External images and absolute paths are not
+  embedded.
+- The panel provides create, edit, save, preview, metadata, backlinks and image
+  insertion. Note move, folder create/rename/move/trash, note trash/restore,
+  filtering, editor find/replace, keyboard formatting, task-state UI and
+  permanent delete are service/MCP-only or not implemented; do not imply they
+  are available from the panel.
+- MCP names: `notes.list`, `notes.search`, `notes.read`, `notes.create`,
+  `notes.update`, `notes.rename`, `notes.move`, `notes.create_folder`, `notes.rename_folder`,
+  `notes.move_folder`, `notes.trash_folder`, `notes.trash`, `notes.restore`,
+  `notes.insert_image`, and `notes.outline`. Trash tools require Full AI
+  control plus per-call `confirm=true`. Trash paths returned by MCP are
+  root-relative and accepted by `notes.restore`.
+- Known limits: wiki links resolve by exact title and duplicate titles are
+  ambiguous; Markdown references are not a full CommonMark AST and rename only
+  rewrites exact `[[old title]]` tokens. The adapted Aster scanner only colors
+  syntax spans; editing is a GPUI Kit Textarea, not Aster's rope editor.
+- Failure inspection: `NotesError`, plugin startup logs, MCP tool results and
+  the profile's `stderr.log`. The watcher invalidates on file changes but does
+  not provide conflict resolution for simultaneous external edits.
+- Aster (kumarUjjawal/aster) is the editor behavior reference. The project
+  README declares MIT. Any copied source must retain upstream notices and the
+  exact pinned revision; compatibility work is documented in `UPSTREAM.md`.
+- External file changes, parser recovery, and live UI behavior are tracked in
+  `docs/validation-ui/` after same-process MCP verification.

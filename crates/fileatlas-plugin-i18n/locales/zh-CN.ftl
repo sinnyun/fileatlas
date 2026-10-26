@@ -1263,3 +1263,4 @@ msg-plugin-settings-storage-used = 占用 { $size }
 msg-plugin-settings-storage-partial = 至少 { $size }（部分内容无法读取）
 msg-plugin-settings-storage-overlap = 每行按路径分别统计；目录可能重叠，大小不应直接相加。
 msg-plugin-settings-storage-copy-path = 复制完整路径
+msg-notes = 笔记

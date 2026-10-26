@@ -1271,3 +1271,4 @@ msg-plugin-settings-storage-used = Used { $size }
 msg-plugin-settings-storage-partial = At least { $size } (some contents could not be read)
 msg-plugin-settings-storage-overlap = Sizes are per path; overlapping directories should not be added together.
 msg-plugin-settings-storage-copy-path = Copy full path
+msg-notes = Notes
