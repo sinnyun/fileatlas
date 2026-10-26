@@ -1,6 +1,6 @@
 # FileAtlas Notes plugin
 
-Status: Markdown-first initial feature slice implemented; live MCP verification is recorded in `docs/validation-ui/2026-10-27-notes/README.md`.
+Status: Markdown-first note management and trash UI are implemented; same-process MCP evidence and remaining editor gaps are recorded in `docs/validation-ui/2026-10-27-notes/README.md`.
 
 - Cordis identity: `fileatlas.notes`; service: `fileatlas/notes`.
 - Storage: canonical Markdown files under `%LOCALAPPDATA%\\FileAtlas\\notes`;
@@ -16,26 +16,31 @@ Status: Markdown-first initial feature slice implemented; live MCP verification 
   render. Watch events are coarse invalidation signals, not durable change logs.
 - Wiki links use `[[note title]]`; backlinks are derived from note contents.
 - Note metadata uses `id`, `category`, `status` (`draft`, `in_progress`,
-  `completed`, `archived`) and case-insensitively deduplicated tags. Search
+  `completed`, `archived`) and case-insensitively deduplicated tags. Missing
+  or legacy-empty status values are read as `draft`. Search
   matches titles, tags and Markdown body text. Heading outline is available.
 - `notes.move` moves notes between nested folders while retaining stable IDs.
   `notes.create_folder`, `notes.rename_folder`, `notes.move_folder` and
   `notes.trash_folder` manage arbitrarily nested folders. `notes.trash` and
   `notes.restore` move Markdown files through `.trash/`; image assets are stored
-  below `assets/<note-id>/`. Trash is recoverable; permanent deletion and a
-  trash browser are not currently exposed.
+  below `assets/<note-id>/`. The panel includes a trash browser, note/folder
+  restore and confirmed permanent deletion; permanent deletion also removes
+  image assets owned by deleted notes. Folder operations are available in the
+  sidebar. New notes inherit the currently selected folder.
 - `notes.insert_image` copies a local image and returns a relative Markdown
   image reference. Preview embeds root-contained local image files as data URIs
   for GPUI Kit Markdown rendering. External images and absolute paths are not
   embedded.
-- The panel provides create, edit, save, preview, metadata, backlinks and image
-  insertion. Note move, folder create/rename/move/trash, note trash/restore,
-  filtering, editor find/replace, keyboard formatting, task-state UI and
-  permanent delete are service/MCP-only or not implemented; do not imply they
-  are available from the panel.
+- The panel provides create, edit, save, preview, metadata, backlinks, image
+  insertion, cursor/selection-aware heading, bold, italic, code, link, list and
+  task-list formatting with task completion toggling, plus find/replace-all, note move/trash and trash
+  restore/delete. The sidebar provides
+  nested folder create/rename/move/trash and note search. Split live preview
+  remains unimplemented.
 - MCP names: `notes.list`, `notes.search`, `notes.read`, `notes.create`,
   `notes.update`, `notes.rename`, `notes.move`, `notes.create_folder`, `notes.rename_folder`,
   `notes.move_folder`, `notes.trash_folder`, `notes.trash`, `notes.restore`,
+  `notes.trash_list`, `notes.restore_folder`, `notes.delete_trash`,
   `notes.insert_image`, and `notes.outline`. Trash tools require Full AI
   control plus per-call `confirm=true`. Trash paths returned by MCP are
   root-relative and accepted by `notes.restore`.

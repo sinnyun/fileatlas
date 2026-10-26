@@ -3,45 +3,24 @@
 ## Environment and commands
 
 - Windows host; Rust `1.97.1-x86_64-pc-windows-msvc`.
-- Isolated profile: `.local/validation/profiles/notes-2026-10-27-final5`.
-- Executable: workspace `target/debug/fileatlas-shell.exe`, built with
-  `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`.
-- Runtime: `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --plugins notes --profile .local/validation/profiles/notes-2026-10-27-final5 --access-level full --scenario scripts/validate-notes-mcp.cjs`.
-- MCP spawned `fileatlas-shell --mcp` as an isolated child and exercised its
-  own GPUI window. High-impact trash used `confirm=true` in this Full-only
-  profile. Sample image came from `test-data/fileatlas-fixtures`.
-- Screenshot and JSON report remain local-only under the ignored profile:
-  `screenshots/notes-panel.png`, `screenshots/notes-preview.png`,
-  `screenshots/notes-navigation.png`, and `report.json`. The profile disabled
-  UI geometry/typography audit overlays for visual inspection.
+- Isolated profile: `.local/validation/profiles/notes-2026-10-28-completion2`.
+- Build: `cargo +1.97.1 build --locked -p fileatlas-shell -j 2`.
+- Tests: `cargo +1.97.1 test --locked -p fileatlas-plugin-notes -j 2`.
+- Runtime: `node scripts/fileatlas-mcp-debug.cjs --exe target/debug/fileatlas-shell.exe --plugins notes --profile .local/validation/profiles/notes-2026-10-28-completion2 --access-level full --scenario scripts/validate-notes-mcp.cjs`.
+- MCP launched `fileatlas-shell --mcp` as an isolated child and controlled its own GPUI window. High-impact trash operations used Full access and `confirm=true`; image input came from `test-data/fileatlas-fixtures`.
+- Screenshots and report stay local under the ignored profile: `screenshots/notes-panel.png`, `screenshots/notes-preview.png`, `screenshots/notes-navigation.png`, `screenshots/notes-trash-panel.png`, `screenshots/notes-narrow-window.png`, and `report.json`.
 
 ## Results
 
-- Passed: nested folder creation; note creation/list/read/search and movement;
-  category,
-  status and tag update; title-based `[[wiki links]]` and backlinks; rename
-  propagation; local image copy and Markdown preview; outline extraction;
-  recoverable trash and restore.
-- Passed: `navigation_tab` Notes entry via same-process pointer input; the
-  sidebar listed the nested folder and its notes. The floating Notes panel
-  displayed list, editor/preview, properties and backlink sections. The local
-  PNG appeared in Markdown preview and stayed resolvable after its note moved
-  into the nested folder.
-- A UI layout defect found during the first capture was corrected: the panel
-  used horizontal dividers inside a horizontal row, consuming its width. Both
-  separators now use the UI Bridge vertical divider.
-- A tool contract defect found during the first restore was corrected: `notes.trash`
-  now returns the root-relative path accepted by `notes.restore`.
+- Passed: nested folder creation; note create/list/read/search/move/rename; category, status and tags; `[[wiki links]]`, backlinks and rename propagation; local image insertion and Markdown preview; heading outline; note/folder trash, listing, restore and permanent deletion.
+- Passed: trash deletion removed the deleted note's image asset directory. Unit coverage also verifies restore of a whole nested folder and its note contents.
+- Passed: Notes navigation, sidebar search and folder controls, panel preview (including save), and the populated trash page with restore and permanent-delete actions were exercised or captured in the same-process MCP window. The preview capture showed the new note status as `draft` and reported it saved. Formatting/find-replace controls were visible in the editor screenshot. Unit tests cover inline selection wrapping, line-prefix toggles, task completion toggles, replacement counts, nested directory restore, and resource cleanup.
+- The panel is rebuilt when navigation selects another note or opens trash, preventing a stale single-instance view. The panel also has in-place trash and return-to-notes controls.
+- The concept reference is [the Notes concept and checklist](../../reference-ui/concepts/fileatlas-notes-2026-10-27.md), with its image in the same directory. The panel retains the three-column note list/editor/properties structure. A 960×720 same-process capture showed the populated trash row and its restore/delete actions within the resized panel. The formatting toolbar was checked at the normal window size. Screenshots include temporary geometry and typography audit overlays, so they verify structure and controls but do not establish final color or typography acceptance.
 
-## Visual comparison and remaining scope
+## Remaining limits
 
-The active reference is [the Notes concept and checklist](../../reference-ui/concepts/fileatlas-notes-concept-2026-10-27.md),
-with the concept image in the same directory. The verified panel follows its
-three-column structure. The sidebar currently shows nested directory labels
-and note rows but has no search/filter field, folder action menu, expansion
-controls or trash view. The panel has no note move/trash controls, and it uses
-a plain Markdown textarea rather than a formatting toolbar or split preview.
-These are known product gaps; this is not a claim of complete parity or of a
-complete general-purpose note application. Narrow-window behavior, external
-concurrent edits, very large vault performance and non-PNG/JPEG image preview
-remain unverified.
+- Editing uses GPUI Kit's rope-backed Textarea and its UTF-8 selection/editing API. Toolbar formatting uses the live selection and retains undo history. The adapted pinned Aster code supplies syntax span scanning only; its application editor targets incompatible GPUI versions. Live preview alongside editing remains unimplemented.
+- The Markdown model is not a full CommonMark AST. Wiki links resolve by exact title and duplicate titles are ambiguous. Rename rewrites exact `[[old title]]` tokens.
+- The 960×720 capture checked the trash view; narrow-window editor controls remain unverified. Large-vault performance, external concurrent edits, and interoperability with external Markdown editors remain unverified. The image preview scenario covered a PNG fixture; other image formats remain unverified.
+- The Aster README declares MIT but its pinned tree has no LICENSE file. Provenance and this limitation are documented in `crates/fileatlas-plugin-notes/UPSTREAM.md`.

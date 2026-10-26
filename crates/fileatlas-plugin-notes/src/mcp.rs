@@ -84,6 +84,28 @@ pub(super) fn register(context: &Context, service: &Arc<NotesService>) -> Result
     tools.push(tool("notes.trash_folder", "Move a nested notes folder to the recoverable trash", true, true, json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}), move |args| {
         let notes = Arc::clone(&notes); Box::pin(async move { let request: PathRequest = parse(args)?; let path = notes.trash_folder(&request.path).map_err(|e|e.to_string())?; Ok(json!({"path":path})) })
     }));
+    let notes = Arc::clone(&service);
+    tools.push(tool(
+        "notes.trash_list",
+        "List recoverable notes and folders",
+        false,
+        false,
+        json!({"type":"object","properties":{},"additionalProperties":false}),
+        move |_| {
+            let notes = Arc::clone(&notes);
+            Box::pin(
+                async move { Ok(json!({"items":notes.list_trash().map_err(|e|e.to_string())?})) },
+            )
+        },
+    ));
+    let notes = Arc::clone(&service);
+    tools.push(tool("notes.restore_folder", "Restore a trashed notes folder", true, false, json!({"type":"object","properties":{"path":{"type":"string","minLength":1},"parent":{"type":"string"}},"required":["path"],"additionalProperties":false}), move |args| {
+        let notes = Arc::clone(&notes); Box::pin(async move { let request: RestoreFolder = parse(args)?; Ok(json!(notes.restore_folder(&request.path, request.parent.as_deref()).map_err(|e|e.to_string())?)) })
+    }));
+    let notes = Arc::clone(&service);
+    tools.push(tool("notes.delete_trash", "Permanently delete a note or folder from trash", true, true, json!({"type":"object","properties":{"path":{"type":"string","minLength":1}},"required":["path"],"additionalProperties":false}), move |args| {
+        let notes = Arc::clone(&notes); Box::pin(async move { let request: PathRequest = parse(args)?; notes.delete_trash(&request.path).map_err(|e|e.to_string())?; Ok(json!({"deleted":request.path})) })
+    }));
     let registration = registry
         .register("fileatlas.notes", tools)
         .map_err(|e| NotesError::Plugin(e.to_string()))?;
@@ -168,6 +190,12 @@ struct Folder {
 struct Restore {
     path: String,
     folder: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RestoreFolder {
+    path: String,
+    parent: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]

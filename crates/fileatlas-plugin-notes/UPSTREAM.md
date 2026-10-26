@@ -11,5 +11,8 @@ file; retain this provenance and the README claim with the adapted Markdown span
 scanner. The source targets `gpui = 0.2.2` and `gpui-component = 0.4.0`, while
 FileAtlas uses GPUI Kit 0.7.1 and GPUI pre 0.3.8. Only the self-contained
 `src/services/syntax.rs` scanner is adapted; Aster's application, UI and theme
-are not copied. Confirm the upstream license file before redistributing a
-combined application.
+are not copied. Editing uses GPUI Kit's pinned `TextareaState`, whose GPUI Base
+editor is rope-backed and exposes selection-aware edits, cursor positioning and
+undo history. That API supports the Notes formatting commands while matching
+the workspace's GPUI runtime. Confirm the upstream license file before
+redistributing a combined application.

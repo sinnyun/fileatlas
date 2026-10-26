@@ -14,6 +14,7 @@ pub struct NotesService {
     revision: Arc<AtomicU64>,
     lock: Mutex<()>,
     selected: Mutex<Option<String>>,
+    selected_folder: Mutex<Option<String>>,
     _watcher: Mutex<notify::RecommendedWatcher>,
 }
 
@@ -40,6 +41,7 @@ impl NotesService {
             revision,
             lock: Mutex::new(()),
             selected: Mutex::new(None),
+            selected_folder: Mutex::new(None),
             _watcher: Mutex::new(watcher),
         }))
     }
@@ -60,6 +62,16 @@ impl NotesService {
 
     pub fn selected(&self) -> Option<String> {
         self.selected.lock().ok()?.clone()
+    }
+
+    pub fn select_folder(&self, folder: Option<&str>) {
+        if let Ok(mut selected) = self.selected_folder.lock() {
+            *selected = folder.map(str::to_owned);
+        }
+    }
+
+    pub fn selected_folder(&self) -> Option<String> {
+        self.selected_folder.lock().ok()?.clone()
     }
 
     pub fn list(&self) -> Result<Vec<NoteSummary>, NotesError> {
@@ -245,6 +257,45 @@ impl NotesService {
         Ok(target)
     }
 
+    pub fn list_trash(&self) -> Result<Vec<NoteTrashEntry>, NotesError> {
+        let trash = self.root.join(".trash");
+        if !trash.exists() {
+            return Ok(Vec::new());
+        }
+        let mut entries = Vec::new();
+        for entry in fs::read_dir(trash)? {
+            let entry = entry?;
+            let path = entry.path();
+            let is_folder = entry.file_type()?.is_dir();
+            if !is_folder
+                && !path
+                    .extension()
+                    .is_some_and(|extension| extension.eq_ignore_ascii_case("md"))
+            {
+                continue;
+            }
+            let note_count = if is_folder {
+                let mut notes = Vec::new();
+                self.walk_notes(&path, &mut notes)?;
+                notes.len()
+            } else {
+                1
+            };
+            entries.push(NoteTrashEntry {
+                path: self.relative(&path),
+                name: path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+                is_folder,
+                note_count,
+            });
+        }
+        entries.sort_by_key(|entry| entry.name.to_lowercase());
+        Ok(entries)
+    }
+
     pub fn restore(
         &self,
         trashed_path: &str,
@@ -269,6 +320,66 @@ impl NotesService {
         fs::rename(source, &target)?;
         self.changed();
         self.summary(&target)
+    }
+
+    pub fn restore_folder(
+        &self,
+        trashed_path: &str,
+        parent: Option<&str>,
+    ) -> Result<NoteFolder, NotesError> {
+        let source = self.resolve_relative(trashed_path)?;
+        if source.parent() != Some(self.root.join(".trash").as_path()) || !source.is_dir() {
+            return Err(NotesError::InvalidName);
+        }
+        let destination = match parent.filter(|value| !value.trim().is_empty()) {
+            Some(value) => self.resolve_relative(value)?,
+            None => self.root.clone(),
+        };
+        if !destination.starts_with(&self.root) {
+            return Err(NotesError::InvalidName);
+        }
+        fs::create_dir_all(&destination)?;
+        let target = destination.join(source.file_name().ok_or(NotesError::InvalidName)?);
+        if target.exists() {
+            return Err(NotesError::AlreadyExists);
+        }
+        fs::rename(source, &target)?;
+        self.changed();
+        Ok(NoteFolder {
+            name: target
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+            path: self.relative(&target),
+            depth: target
+                .strip_prefix(&self.root)
+                .map_or(0, |path| path.components().count().saturating_sub(1)),
+        })
+    }
+
+    pub fn delete_trash(&self, trashed_path: &str) -> Result<(), NotesError> {
+        let source = self.resolve_relative(trashed_path)?;
+        if source.parent() != Some(self.root.join(".trash").as_path()) || !source.exists() {
+            return Err(NotesError::InvalidName);
+        }
+        let mut notes = Vec::new();
+        if source.is_dir() {
+            self.walk_notes(&source, &mut notes)?;
+            fs::remove_dir_all(&source)?;
+        } else {
+            let summary = self.summary(&source)?;
+            notes.push(summary);
+            fs::remove_file(&source)?;
+        }
+        for note in notes {
+            let assets = self.root.join("assets").join(note.id);
+            if assets.exists() {
+                fs::remove_dir_all(assets)?;
+            }
+        }
+        self.changed();
+        Ok(())
     }
 
     pub fn rename_folder(&self, folder: &str, name: &str) -> Result<NoteFolder, NotesError> {
@@ -620,7 +731,10 @@ impl NotesService {
 fn split_frontmatter(text: &str) -> Result<(NoteMetadata, String), NotesError> {
     if let Some(rest) = text.strip_prefix("---\n") {
         if let Some(end) = rest.find("\n---\n") {
-            let metadata: NoteMetadata = serde_json::from_str(&rest[..end])?;
+            let mut metadata: NoteMetadata = serde_json::from_str(&rest[..end])?;
+            if metadata.status.trim().is_empty() {
+                metadata.status = default_status();
+            }
             return Ok((metadata, rest[end + 5..].to_owned()));
         }
     }

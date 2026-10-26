@@ -9,6 +9,7 @@ use thiserror::Error;
 
 mod mcp;
 mod editor {
+    pub mod commands;
     pub mod markdown_syntax;
 }
 mod view;
@@ -33,7 +34,7 @@ pub enum NotesError {
     Plugin(String),
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NoteMetadata {
     pub id: String,
     #[serde(default)]
@@ -46,6 +47,17 @@ pub struct NoteMetadata {
 
 fn default_status() -> String {
     "draft".into()
+}
+
+impl Default for NoteMetadata {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            category: String::new(),
+            status: default_status(),
+            tags: Vec::new(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,6 +90,14 @@ pub struct NoteHeading {
     pub level: usize,
     pub title: String,
     pub line: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoteTrashEntry {
+    pub path: String,
+    pub name: String,
+    pub is_folder: bool,
+    pub note_count: usize,
 }
 
 mod service;
@@ -161,9 +181,40 @@ mod tests {
         let temp = std::env::temp_dir().join(format!("fileatlas-notes-test-{}", new_id()));
         let service = NotesService::open(temp.clone()).unwrap();
         let folder = service.create_folder(None, "Research").unwrap();
+        fs::write(
+            temp.join("Legacy.md"),
+            "---\n{\"id\":\"legacy\",\"category\":\"\",\"status\":\"\",\"tags\":[]}\n---\nLegacy body\n",
+        )
+        .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(
+            service
+                .read("Legacy.md")
+                .unwrap_or_else(|error| panic!("{error}"))
+                .summary
+                .status,
+            "draft"
+        );
+        let mut deep_folder = folder.path.clone();
+        for level in 0..24 {
+            deep_folder = service
+                .create_folder(Some(&deep_folder), &format!("Level-{level}"))
+                .unwrap_or_else(|error| panic!("{error}"))
+                .path;
+        }
+        let deep_note = service
+            .create("Deep note", Some(&deep_folder), Some("Nested deeply"))
+            .unwrap_or_else(|error| panic!("{error}"));
+        let deep_summary = service
+            .list_folders()
+            .unwrap_or_else(|error| panic!("{error}"))
+            .into_iter()
+            .find(|candidate| candidate.path == deep_folder)
+            .unwrap_or_else(|| panic!("deep folder is missing"));
+        assert_eq!(deep_summary.depth, 24);
         let target = service
             .create("Target", Some(&folder.path), Some("# Target"))
             .unwrap();
+        assert_eq!(target.status, "draft");
         let source = service
             .create("Source", None, Some("See [[Target]]"))
             .unwrap();
@@ -201,6 +252,53 @@ mod tests {
         );
         let trashed = service.trash(&source.id).unwrap();
         assert!(trashed.exists());
+        let trash_path = service
+            .list_trash()
+            .unwrap_or_else(|error| panic!("{error}"))[0]
+            .path
+            .clone();
+        let restored = service
+            .restore(&trash_path, None)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(restored.title, "Source");
+        let folder_trash = service
+            .trash_folder(&folder.path)
+            .unwrap_or_else(|error| panic!("{error}"));
+        let entries = service
+            .list_trash()
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert!(
+            entries
+                .iter()
+                .any(|entry| entry.path == folder_trash && entry.is_folder)
+        );
+        let restored_folder = service
+            .restore_folder(&folder_trash, None)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert_eq!(restored_folder.name, "Research");
+        assert!(service.read(&deep_note.id).is_ok());
+        let source_asset_dir = temp.join("assets").join(&restored.id);
+        assert!(source_asset_dir.exists());
+        let trash_again = service
+            .trash(&restored.id)
+            .unwrap_or_else(|error| panic!("{error}"));
+        let trash_again = format!(
+            ".trash/{}",
+            trash_again
+                .file_name()
+                .unwrap_or_else(|| panic!("missing trash filename"))
+                .to_string_lossy()
+        );
+        service
+            .delete_trash(&trash_again)
+            .unwrap_or_else(|error| panic!("{error}"));
+        assert!(!source_asset_dir.exists());
+        assert!(
+            service
+                .list_trash()
+                .unwrap_or_else(|error| panic!("{error}"))
+                .is_empty()
+        );
         let _ = fs::remove_dir_all(temp);
     }
 }
