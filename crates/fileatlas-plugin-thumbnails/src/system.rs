@@ -38,7 +38,11 @@ impl Drop for Bitmap {
     }
 }
 
-pub(super) fn cached_thumbnail(source: &Path, directory: &Path) -> Option<(String, u32, u32)> {
+pub(super) fn cached_thumbnail(
+    source: &Path,
+    directory: &Path,
+    revision: u64,
+) -> Option<(String, u32, u32)> {
     let metadata = fs::metadata(source).ok()?;
     let modified = metadata
         .modified()
@@ -51,6 +55,7 @@ pub(super) fn cached_thumbnail(source: &Path, directory: &Path) -> Option<(Strin
         source.to_string_lossy().to_lowercase(),
         metadata.len(),
         modified,
+        revision,
     )
         .hash(&mut hash);
     let path = directory

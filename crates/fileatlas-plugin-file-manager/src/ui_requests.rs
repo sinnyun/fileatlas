@@ -8,6 +8,8 @@ pub enum FileManagerUiRequest {
     LocateFile(i64),
     DirectoryUp,
     Refresh,
+    RefreshCurrentThumbnails,
+    RefreshAllThumbnails,
     ShowDescendants(bool),
     Thumbnails(bool),
     CancelDirectory,

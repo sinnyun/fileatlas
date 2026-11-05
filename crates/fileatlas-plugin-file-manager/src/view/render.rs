@@ -53,6 +53,12 @@ impl Render for FileManagerView {
                     self.service.invalidate_directory();
                     self.refresh_index();
                 }
+                crate::FileManagerUiRequest::RefreshCurrentThumbnails => {
+                    self.refresh_system_thumbnails(false, cx)
+                }
+                crate::FileManagerUiRequest::RefreshAllThumbnails => {
+                    self.refresh_system_thumbnails(true, cx)
+                }
                 crate::FileManagerUiRequest::CancelDirectory => self.service.cancel_directory(),
                 crate::FileManagerUiRequest::Thumbnails(value) => {
                     self.service.set_thumbnails_enabled(value);

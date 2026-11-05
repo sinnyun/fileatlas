@@ -15,6 +15,9 @@ mod launcher_api;
 #[cfg(test)]
 mod launcher_tests;
 mod search_cache;
+#[cfg(test)]
+mod system_thumbnail_cache_tests;
+mod thumbnail_cache_api;
 mod version_metadata;
 pub use clipboard_api::{ClipboardCategoryRecord, ClipboardHistoryRecord};
 pub(crate) use db::get_open_count;

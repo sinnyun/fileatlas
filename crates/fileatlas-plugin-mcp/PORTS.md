@@ -483,6 +483,13 @@ get_ui_state.folder_picker returns pending and native_open(the Navigation provid
 
 control_file_manager adds open_directory(value=an entry in the current directory-card list), directory_up and refresh. It rejects invisible paths and no-parent views; these queue FileManager's real actions and require Standard or Full access. get_ui_state.file_manager publishes browsing, directories[{name,path}], current_directory, parent_directory, directory_error and selected_directory; matched_count remains the displayed indexed-file count. Directory cards have no synthetic media IDs. control_ui adds pointer_double_down/pointer_double_up (same x,y logical client coordinates), dispatched by Shell as same-process GPUI MouseDown/MouseUp with click_count2. Single/drag/right-click behavior is unchanged. See docs/validation-ui/2026-10-14-folder-browser for84-step evidence including mouse hit tests and read-only restarts.
 
+The same control accepts `refresh_current_thumbnails` and
+`refresh_all_thumbnails`. The first targets the current pane's matched media
+IDs; the second clears only `thumbs/system-shell` and corresponding `media.thumb_path`
+references, then broadcasts `MediaIndexChanged`. Both read Shell's existing
+thumbnail cache only. Board/project and other feature-owned persistent caches
+remain intact. Both operations require the usual Standard or Full access.
+
 ## Runtime diagnostics (2026-10-14)
 
 Runtime diagnostics tools: get_debug_info(category?,level?,search?,page?,page_size?) returns actual drawer ui and logs Page from optional fileatlas/debug service. Read-only and deliberately does not log its own query. control_debug(action,value?) shares DebugService::control with native controls and requires Standard or Full access. Unknown service/action/invalid values return normal error JSON. MCP rejected requests are logged as ERROR; stdout remains reserved for protocol traffic.

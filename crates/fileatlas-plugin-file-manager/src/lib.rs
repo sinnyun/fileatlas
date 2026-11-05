@@ -271,6 +271,12 @@ impl FileManagerService {
         self.indexing.as_ref()?.current_progress()
     }
 
+    pub(crate) fn indexing_service(
+        &self,
+    ) -> Option<Arc<fileatlas_plugin_indexing::IndexingService>> {
+        self.indexing.clone()
+    }
+
     /// Bounded record of changed values produced by actual GPUI frames.
     pub fn card_animation_frames(&self) -> Vec<FileManagerCardState> {
         self.card_frames

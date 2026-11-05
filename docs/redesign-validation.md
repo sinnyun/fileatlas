@@ -1660,3 +1660,7 @@ Eagle 图片属性中新增外链图标按钮，通过 `eagle://item/{id}` 系�
 ### 2026-10-27 程序设置存储汇总页
 
 程序设置导航新增独立“存储”页，自动汇总运行时插件和注册设置页声明的存储路径，按插件分组展示内容说明、压缩后的完整路径及异步占用大小，支持手动刷新并在插件目录变化时更新。MCP `settings_tab` 增加 `storage`，以便同进程进入该页。视觉和交互证据见[存储汇总页验证记录](validation-ui/2026-10-27-plugin-storage-summary.md)。
+
+### 2026-11-05 FileManager 缩略图缓存刷新
+
+FileManager 工具面板增加“刷新当前视图缩略图”和“刷新全部系统缩略图缓存”。前者只清理当前查询媒体记录引用的 Shell transport 副本；后者清理 `thumbs/system-shell` 及对应 `media.thumb_path`。缓存路径代次同步前进，避免 GPUI 继续使用旧路径图像。两者都只读取 Windows Shell 已有缓存，不生成缩略图；白板/项目及其他持久缓存目录保留。同进程 MCP 操作与截图、数据库范围单测和持久目录单测通过。夹具没有可命中的 Shell 缓存，因此系统提供者返回真实像素的重新加载仍未验证。详情见[缩略图缓存刷新验证](validation-ui/2026-11-05-thumbnail-cache-refresh/README.md)。

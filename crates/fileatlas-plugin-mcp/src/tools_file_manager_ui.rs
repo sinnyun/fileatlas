@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub(super) struct FileManagerControl {
-    /// popover/search/search_scope/search_scopes_open/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/move_files_to_subfolder/scroll/preview.
+    /// popover/search/search_scope/search_scopes_open/media_type/sort/rating/extension/tag/tag_mode/extension_mode/date_from/date_to/clear_filters/inspector_section/tag_picker/month_grouping/grouping/toggle_group/open_directory/directory_up/refresh/refresh_current_thumbnails/refresh_all_thumbnails/tools_open/tools_close/bulk_open/bulk_close/bulk_configure/open_media_menu/close_media_menu/select_many/move_files_to_subfolder/scroll/preview.
     action: String,
     /// Popover: type/tags/extensions/date/rating/sort/close. Search scopes: filenames/paths/tags/time. Media type: all/photos/videos/audio. Sort uses search_media names. Dates: YYYY-MM-DD or empty. Bulk action: delete/copy/move. open_media_menu requires media_id. Scroll value is a zero-based result index.
     value: Option<String>,
@@ -144,7 +144,7 @@ impl FileAtlasMcpServer {
     }
 
     #[tool(
-        description = "Control file-management filters, popovers, bulk configuration, preview opening and file actions through feature requests. move_files_to_subfolder exercises the same validated move used by dropping selected media onto a subfolder group header; pass unique indexed media_ids and an existing destination. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Requires Settings → MCP → AI control to be enabled; wait for the GPUI poller and read get_ui_state/screenshot_window."
+        description = "Control file-management filters, popovers, bulk configuration, preview opening and file actions through feature requests. refresh_current_thumbnails rereads Shell's existing cache for the current query only; refresh_all_thumbnails clears FileAtlas system-shell transport copies and matching media references, preserving board/project caches. Neither action generates thumbnails. move_files_to_subfolder exercises the same validated move used by dropping selected media onto a subfolder group header; pass unique indexed media_ids and an existing destination. Directory browser: open_directory with a displayed folder path, directory_up, refresh. Grouping: action grouping with value none/month/file_type/modified/created/folder/subfolder; toggle_group with exact group label; popover value grouping. Requires Settings → MCP → AI control to be enabled; wait for the GPUI poller and read get_ui_state/screenshot_window."
     )]
     fn control_file_manager(&self, Parameters(request): Parameters<FileManagerControl>) -> String {
         tracing::info!(?request, "MCP control request");
@@ -427,6 +427,8 @@ impl FileAtlasMcpServer {
             "delete_missing_records" => R::DeleteMissingRecords,
             "missing_records" => R::MissingRecords,
             "refresh" => R::Refresh,
+            "refresh_current_thumbnails" => R::RefreshCurrentThumbnails,
+            "refresh_all_thumbnails" => R::RefreshAllThumbnails,
             "cancel_directory" => R::CancelDirectory,
             "thumbnails" => R::Thumbnails(request.enabled.unwrap_or(true)),
             "show_descendants" => R::ShowDescendants(request.enabled.unwrap_or(false)),

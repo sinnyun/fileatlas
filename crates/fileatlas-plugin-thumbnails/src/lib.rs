@@ -12,6 +12,7 @@ mod thumbs;
 pub struct ThumbnailService {
     directory: PathBuf,
     accesses: std::sync::atomic::AtomicUsize,
+    system_cache_revision: std::sync::atomic::AtomicU64,
 }
 
 impl Service for ThumbnailService {
@@ -26,6 +27,7 @@ impl ThumbnailService {
         Ok(Self {
             directory,
             accesses: Default::default(),
+            system_cache_revision: Default::default(),
         })
     }
 
@@ -34,12 +36,68 @@ impl ThumbnailService {
         &self.directory
     }
 
+    /// Remove selected Shell transport copies and advance their path revision,
+    /// so GPUI cannot reuse a decoded image keyed by the previous path.
+    pub fn refresh_system_cache_paths(&self, paths: &[String]) -> std::io::Result<usize> {
+        self.system_cache_revision
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        let cache_root = self.directory.join("system-shell");
+        let normalized_root = format!(
+            "{}\\",
+            cache_root
+                .to_string_lossy()
+                .replace('/', "\\")
+                .trim_end_matches('\\')
+                .to_lowercase()
+        );
+        let mut removed = 0;
+        for value in paths {
+            let path = Path::new(value);
+            let normalized_path = path.to_string_lossy().replace('/', "\\").to_lowercase();
+            if !normalized_path.starts_with(&normalized_root) {
+                continue;
+            }
+            match std::fs::remove_file(path) {
+                Ok(()) => removed += 1,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(removed)
+    }
+
+    /// Clear the FileAtlas-owned Shell transport directory only. Other
+    /// thumbnail subdirectories contain durable feature previews.
+    pub fn clear_system_cache(&self) -> std::io::Result<usize> {
+        self.system_cache_revision
+            .fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+        let path = self.directory.join("system-shell");
+        if !path.exists() {
+            std::fs::create_dir_all(&path)?;
+            return Ok(0);
+        }
+        let removed = std::fs::read_dir(&path)?.count();
+        std::fs::remove_dir_all(&path)?;
+        std::fs::create_dir_all(path)?;
+        Ok(removed)
+    }
+
+    /// Current cache key revision, used by the Windows Shell copy writer.
+    pub(crate) fn system_cache_revision(&self) -> u64 {
+        self.system_cache_revision
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
     /// Reads a thumbnail already present in the Windows Shell thumbnail cache.
     /// The bitmap is copied losslessly into FileAtlas's transport cache for GPUI;
     /// this method never decodes the source file or asks Shell to create a thumbnail.
     #[cfg(windows)]
     pub fn system_thumbnail(&self, source: impl AsRef<Path>) -> Option<(String, u32, u32)> {
-        let result = system::cached_thumbnail(source.as_ref(), &self.directory);
+        let result = system::cached_thumbnail(
+            source.as_ref(),
+            &self.directory,
+            self.system_cache_revision(),
+        );
         if self
             .accesses
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
@@ -185,6 +243,43 @@ mod tests {
         assert_ne!(replaced.0, cached.0);
         assert_eq!((replaced.1, replaced.2), (64, 32));
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn system_cache_clear_keeps_other_feature_owned_cache_directories()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = std::env::temp_dir().join(format!(
+            "fileatlas-system-cache-scope-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_nanos()
+        ));
+        let service = ThumbnailService::open_at(&root)?;
+        let shell = root.join("system-shell");
+        let boards = root.join("boards");
+        std::fs::create_dir_all(&shell)?;
+        std::fs::create_dir_all(&boards)?;
+        std::fs::write(shell.join("a.png"), b"shell")?;
+        std::fs::write(shell.join("b.png"), b"shell")?;
+        std::fs::write(boards.join("project.png"), b"persistent")?;
+
+        assert_eq!(
+            service.refresh_system_cache_paths(&[
+                shell.join("a.png").to_string_lossy().into_owned(),
+                boards.join("project.png").to_string_lossy().into_owned(),
+            ])?,
+            1
+        );
+        assert_eq!(service.system_cache_revision(), 1);
+        assert!(!shell.join("a.png").exists());
+        assert!(shell.join("b.png").is_file());
+        assert!(boards.join("project.png").is_file());
+        assert_eq!(service.clear_system_cache()?, 1);
+        assert!(boards.join("project.png").is_file());
+        assert!(shell.is_dir());
+        let _ = std::fs::remove_dir_all(root);
+        Ok(())
     }
 
     #[test]

@@ -55,3 +55,8 @@ thumbnails. The missing-thumbnail
 entry point remains for watcher contract compatibility but no longer generates
 artwork. Existing custom image/video cache routines are reserved for other
 feature-owned previews and are not the ordinary card fallback.
+
+`refresh_system_thumbnail_cache(Some(ids))` invalidates Shell transport copies
+and media references only for those indexed IDs; `None` clears all such media
+references and the complete `system-shell` directory. The thumbnail service
+validates the filesystem scope. Durable board/project previews remain untouched.

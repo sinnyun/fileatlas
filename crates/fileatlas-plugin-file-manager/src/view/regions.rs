@@ -124,6 +124,77 @@ pub(super) fn column_contributions(
 }
 
 impl FileManagerView {
+    pub(super) fn refresh_system_thumbnails(&mut self, all: bool, cx: &mut Context<Self>) {
+        let Some(indexing) = self.service.indexing_service() else {
+            self.operation_status = Some("System thumbnail cache is unavailable.".into());
+            cx.notify();
+            return;
+        };
+        let ids = (!all).then(|| {
+            self.snapshot
+                .as_ref()
+                .map(|snapshot| {
+                    snapshot
+                        .skeletons
+                        .iter()
+                        .map(|item| item.id)
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        });
+        let operation = self
+            .runtime
+            .spawn_blocking(move || indexing.refresh_system_thumbnail_cache(ids.as_deref()));
+        let cordis = self.cordis.clone();
+        cx.spawn(async move |this, cx| {
+            let result = match operation.await {
+                Ok(Ok(count)) => Ok(count),
+                Ok(Err(error)) => Err(error),
+                Err(error) => Err(format!("Thumbnail cache refresh failed: {error}")),
+            };
+            let broadcast = if all {
+                match cordis
+                    .emit::<fileatlas_contracts::MediaIndexChanged>(
+                        cordis::Routing::Unscoped,
+                        (),
+                    )
+                    .await
+                {
+                    Ok(()) => true,
+                    Err(error) => {
+                        tracing::warn!(%error, "failed to broadcast thumbnail cache refresh");
+                        false
+                    }
+                }
+            } else {
+                false
+            };
+            let _ = this.update(cx, |view, cx| {
+                match result {
+                    Ok(count) => {
+                        view.operation_status = Some(if all {
+                            format!("Refreshed {count} system thumbnail cache entries.")
+                        } else {
+                            format!("Refreshed system thumbnails for the current view ({count} entries).")
+                        });
+                    }
+                    Err(error) => view.operation_status = Some(error),
+                }
+                if !broadcast {
+                    view.refresh_index();
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+        self.operation_status = Some(if all {
+            "Refreshing all system thumbnail cache entries…".into()
+        } else {
+            "Refreshing system thumbnails in the current view…".into()
+        });
+        cx.notify();
+    }
+
     pub(super) fn refresh_locale(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let revision = fileatlas_ui_bridge::i18n::revision();
         if self.locale_revision == revision {
@@ -304,6 +375,22 @@ impl FileManagerView {
                     view.persist_filter_session();
                     cx.notify();
                 })),
+            )
+            .child(
+                tool_button(
+                    "file_manager-refresh-current-thumbnails",
+                    "Refresh current view thumbnails",
+                    gpui_kit::assets::IconName::RefreshCw,
+                )
+                .on_click(cx.listener(|view, _, _, cx| view.refresh_system_thumbnails(false, cx))),
+            )
+            .child(
+                tool_button(
+                    "file_manager-refresh-all-thumbnails",
+                    "Refresh all system thumbnail cache",
+                    gpui_kit::assets::IconName::RefreshCw,
+                )
+                .on_click(cx.listener(|view, _, _, cx| view.refresh_system_thumbnails(true, cx))),
             )
             .child(
                 tool_button(

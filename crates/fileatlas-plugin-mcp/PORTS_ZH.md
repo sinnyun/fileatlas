@@ -220,6 +220,8 @@ FileManager 行并发出 `MediaIndexChanged`；resolve 接受 `ours` 或 `theirs
 `docs/validation-ui/2026-10-17-lore-version-history/README.md` 与
 `docs/validation-ui/2026-10-16-inspector-complete/README.md`。
 
+缩略图刷新也通过 `control_file_manager` 提供：`refresh_current_thumbnails` 只清理当前视图媒体 ID 的系统缩略图引用；`refresh_all_thumbnails` 只清理 `thumbs/system-shell` 与对应 `media.thumb_path`，然后广播 `MediaIndexChanged`。它们只读取 Shell 已有缓存，不生成缩略图，画板/项目等持久缓存保留。需要 MCP 标准或完整权限。
+
 当前浏览器运行时取代下面旧的已索引库描述；参见末尾的 2026-10-15 更新与 `docs/validation-ui/2026-10-15-browser/README.md`。
 
 状态（更新于 2026-10-19）：正常的 FileAtlas 启动在 GUI 进程中以 `http://127.0.0.1:38473/mcp` 承载 Streamable HTTP MCP（`FILEATLAS_MCP_HTTP_PORT` 覆盖端口）。旧版 `--mcp` stdio 模式仍保留用于隔离调试。绑定仅限回环；rmcp 根据其回环允许列表验证 Host。修改访问由"设置 → 插件设置 → MCP → AI 控制"实时控制，并作为 `Settings.mcp_access_level` 持久化到现有的 Settings JSON。Off 只允许读取；Standard 允许 UI 控制与常规变更；Full 额外允许插件元数据将其标记为高影响的工具。缺失的值默认为 Off。每个宿主与贡献的变更调用都在调用时读取当前设置；没有重启也没有环境变量覆盖。高影响操作仍需要其每工具的 `confirm:true` 检查。旧版 JSON 键 `mcp_allow_mutations` 将 false 映射到 Off、true 映射到 Full。

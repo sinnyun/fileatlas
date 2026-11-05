@@ -121,6 +121,14 @@ thumbnail frame so the full image remains visible with gray space around it.
 Library and browser panes both use this path. Windows Shell-provider coverage
 has not yet been exercised through the live FileAtlas MCP session.
 
+The Tools surface also offers “Refresh current view thumbnails” and “Refresh
+all system thumbnail cache.” Current-view refresh uses the pane's current query
+IDs; all-cache refresh clears only media references under the Thumbnails
+service's `system-shell` directory and broadcasts `MediaIndexChanged` to open
+panes. Board/project and other durable preview directories are preserved. Both
+actions reread only Windows Shell's existing cache and never generate artwork.
+MCP actions are `refresh_current_thumbnails` and `refresh_all_thumbnails`.
+
 FileManager publishes `file_manager.column.0..3.content` and matching
 `file_manager.column.0..3.address` UI view slots. Each column lazily owns its own
 `FileManagerView`, `FileManagerService` browsing worker, filter/search input, selection,

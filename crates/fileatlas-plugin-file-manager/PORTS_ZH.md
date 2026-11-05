@@ -213,6 +213,13 @@ MCP 暴露 `list_file_versions`、`create_file_version` 和
 过滤器、选区、预览路由、文件操作和批量操作。C0–C4 编码延续变更已写入但未验证；
 Windows 行为和完整视觉一致性仍未验证。
 
+FileManager 工具面板提供“刷新当前视图缩略图”和“刷新全部系统缩略图缓存”。
+当前视图只清理当前查询媒体 ID 对应的 Shell 缓存副本及媒体引用；全部刷新只清理
+缩略图服务 `system-shell` 目录和对应的 `media.thumb_path`，并广播
+`MediaIndexChanged`。画板、项目及其他持久预览缓存保留。两个操作只读取 Windows
+Shell 已有缓存，不生成缩略图；MCP 动作名为 `refresh_current_thumbnails` 与
+`refresh_all_thumbnails`。
+
 ## 生命周期与依赖
 
 - Cordis 插件名：`fileatlas.file_manager`；服务：`fileatlas/file_manager`（`FileManagerService`）。

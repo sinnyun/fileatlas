@@ -27,6 +27,29 @@ impl Service for IndexingService {
 }
 
 impl IndexingService {
+    /// Re-read Windows Shell's existing thumbnail cache for selected indexed
+    /// files, or all indexed files when `media_ids` is `None`. No thumbnail is
+    /// generated; only FileAtlas's `system-shell` transport copies are removed.
+    pub fn refresh_system_thumbnail_cache(
+        &self,
+        media_ids: Option<&[i64]>,
+    ) -> Result<usize, String> {
+        let paths = self
+            .database
+            .invalidate_system_shell_thumbnails(self.thumbnails.directory(), media_ids)
+            .map_err(|error| error.to_string())?;
+        let refreshed = if media_ids.is_some() {
+            self.thumbnails
+                .refresh_system_cache_paths(&paths)
+                .map_err(|error| error.to_string())?
+        } else {
+            self.thumbnails
+                .clear_system_cache()
+                .map_err(|error| error.to_string())?
+        };
+        Ok(refreshed)
+    }
+
     /// Rebuild cached file metadata after an explicit version restore.
     pub fn refresh_restored_file(&self, media_id: i64) -> Result<(), String> {
         let media = self

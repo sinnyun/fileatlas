@@ -43,3 +43,9 @@ the copy preserves the bitmap's dimensions. Existing custom thumbnail APIs
 remain for feature-owned previews such as tag/board assets and are not used for
 ordinary FileManager cards. `generate_missing_thumbnails` no longer backfills
 ordinary cards; it completes with a status explaining lazy Shell-cache lookup.
+
+`refresh_system_cache_paths` removes only supplied files inside
+`<directory>/system-shell` and advances the path revision so GPUI reloads the
+image instead of reusing a path-keyed texture. `clear_system_cache` removes and
+recreates only that directory. Board/project and other feature-owned caches are
+preserved; neither operation asks Windows Shell to generate thumbnails.
