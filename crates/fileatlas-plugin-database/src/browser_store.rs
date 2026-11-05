@@ -103,7 +103,7 @@ impl DatabaseService {
                 let occupied:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM media WHERE id=?1)",[id],|r|r.get(0))?;
                 if !occupied {conn.execute("INSERT INTO media(id,folder_id,filename,full_path,media_type,file_size,modified_at) VALUES(?1,0,?2,?3,?4,?5,?6)",rusqlite::params![id,filename,path,kind,metadata.len() as i64,modified])?;return Ok(id)}
             }
-            queries::scan_upsert_media(conn,0,&filename,path,kind,metadata.len() as i64,modified,None)?;
+            queries::scan_upsert_media(conn,0,&filename,path,kind,metadata.len() as i64,modified,None,None,None)?;
             conn.query_row("SELECT id FROM media WHERE full_path=?1",[path],|r|r.get(0))
         })
     }

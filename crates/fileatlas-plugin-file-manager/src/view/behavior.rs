@@ -1,10 +1,14 @@
 use super::*;
 
 impl FileManagerView {
-    #[tracing::instrument(skip_all, fields(list=?list))]
-    pub(super) fn set_layout(&mut self, list: bool, cx: &mut Context<Self>) {
-        if self.list_layout != list {
-            self.list_layout = list;
+    #[tracing::instrument(skip_all, fields(layout=?layout))]
+    pub(super) fn set_layout(
+        &mut self,
+        layout: fileatlas_plugin_workspaces::GalleryLayout,
+        cx: &mut Context<Self>,
+    ) {
+        if self.gallery_layout != layout {
+            self.gallery_layout = layout;
             self.row_layout_key = None;
             self.rubberband = None;
             self.pending_scroll_restore = None;
@@ -100,16 +104,20 @@ impl FileManagerView {
             && visible_band.size.height > px(0.)
             && let Ok(snapshot) = &self.snapshot
         {
-            let card_width = px(if self.list_layout {
-                f32::from(viewport.size.width) - 32.
-            } else {
-                self.thumb_size
-            });
-            let card_height = px(if self.list_layout {
-                56.
-            } else {
-                self.thumb_size
-            });
+            let card_width = px(
+                if self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List {
+                    f32::from(viewport.size.width) - 32.
+                } else {
+                    self.thumb_size
+                },
+            );
+            let card_height = px(
+                if self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List {
+                    56.
+                } else {
+                    self.thumb_size
+                },
+            );
             let card_step = card_width + px(16.);
             let start = self.scroll.logical_scroll_top().item_ix;
             let visible_count = (f32::from(viewport.size.height) / 40.).ceil() as usize + 2;
@@ -127,25 +135,64 @@ impl FileManagerView {
                     continue;
                 };
                 let row_y = bounds.origin.y;
+                let has_header = row.month_label.is_some();
+                let month_top_gap = if row_index > 0 && has_header {
+                    theme::space_expanded()
+                } else {
+                    0.
+                };
                 let card_y = row_y
+                    + px(month_top_gap)
                     + px(if row.month_label.is_some() {
                         theme::GROUP_HEADER_HEIGHT + theme::space_standard()
                     } else {
                         0.
                     });
-                if card_y + card_height < visible_band.top() || card_y > visible_band.bottom() {
+                if row.gallery_geometry.is_none()
+                    && (card_y + card_height < visible_band.top() || card_y > visible_band.bottom())
+                {
                     continue;
                 }
                 for (column, media_index) in row.media_range.clone().enumerate() {
-                    let card_bounds = Bounds::new(
-                        point(
-                            viewport.origin.x
-                                + px(16.)
-                                + card_step * (column + row.directory_range.len()) as f32,
-                            card_y,
-                        ),
-                        size(card_width, card_height),
-                    );
+                    let (origin, extent) = if let Some(geometry) = &row.gallery_geometry {
+                        if let Some(placement) = geometry.placements.get(column) {
+                            (
+                                point(
+                                    viewport.origin.x
+                                        + px(16.
+                                            + if row.group_label.is_some() {
+                                                theme::space_standard()
+                                            } else {
+                                                0.
+                                            }
+                                            + placement.x),
+                                    card_y + px(placement.y),
+                                ),
+                                size(
+                                    px(placement.width),
+                                    px(placement.height + super::card::CARD_CAPTION_HEIGHT),
+                                ),
+                            )
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        (
+                            point(
+                                viewport.origin.x
+                                    + px(16.
+                                        + if row.group_label.is_some() {
+                                            theme::space_standard()
+                                        } else {
+                                            0.
+                                        })
+                                    + card_step * (column + row.directory_range.len()) as f32,
+                                card_y,
+                            ),
+                            size(card_width, card_height),
+                        )
+                    };
+                    let card_bounds = Bounds::new(origin, extent);
                     if card_bounds.intersects(&visible_band)
                         && let Some(media) = snapshot.skeletons.get(media_index)
                         && !selected.contains(&media.id)

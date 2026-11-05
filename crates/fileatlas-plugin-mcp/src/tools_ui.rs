@@ -50,7 +50,7 @@ impl FileAtlasMcpServer {
                 "excluded_tags": state.filter.excluded_tag_ids, "rating_min": state.filter.rating_min,
                 "rating_max": state.filter.rating_max, "date_from": state.filter.date_from.map(|d| d.to_string()),
                 "date_to": state.filter.date_to.map(|d| d.to_string()), "selected_media_ids": state.selected_media_ids,
-                "layout": if state.list_layout { "list" } else { "grid" },
+                "layout": state.gallery_layout.key(),
                 "grouping_mode": state.grouping_mode.key(), "groups": state.groups, "collapsed_groups": state.collapsed_groups,
                 "matched_count": state.matched_count, "group_by_month": state.group_by_month,
                 "window_offset": state.window_offset, "loaded_count": state.loaded_count,
@@ -64,6 +64,7 @@ impl FileAtlasMcpServer {
             snapshot["file_copy_buffer_count"] = json!(state.file_copy_buffer_count);
             snapshot["search_scopes_open"] = json!(state.search_scopes_open);
             snapshot["debug_internal_file_drag"] = json!(self.surfaces.is_open("file_manager.column.0.internal-file-drag"));
+            snapshot["gallery_options"] = json!(state.gallery_options);
             snapshot["group_frames"] = self.surfaces.value("file_manager.column.0.group-frames")
                 .and_then(|value| serde_json::from_str::<serde_json::Value>(&value).ok())
                 .unwrap_or_else(|| json!({}));

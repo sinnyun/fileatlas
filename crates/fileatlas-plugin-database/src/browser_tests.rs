@@ -28,6 +28,8 @@ fn browsing_is_ephemeral_but_bookmarks_and_annotations_survive_restart() {
                 3,
                 10,
                 None,
+                None,
+                None,
             )?;
             queries::scan_upsert_media(
                 conn,
@@ -37,6 +39,8 @@ fn browsing_is_ephemeral_but_bookmarks_and_annotations_survive_restart() {
                 "file",
                 4,
                 10,
+                None,
+                None,
                 None,
             )?;
             Ok(())
@@ -155,8 +159,30 @@ fn recent_cache_eviction_preserves_history_and_literal_path_identity() {
     let database = DatabaseService::open_browser_at(root.join("tags.db")).unwrap();
     database
         .with_cache_writer(|c| {
-            queries::scan_upsert_media(c, 0, "keep.txt", "F:/a_%/keep.txt", "file", 1, 1, None)?;
-            queries::scan_upsert_media(c, 0, "wrong.txt", "F:/abc/wrong.txt", "file", 1, 1, None)?;
+            queries::scan_upsert_media(
+                c,
+                0,
+                "keep.txt",
+                "F:/a_%/keep.txt",
+                "file",
+                1,
+                1,
+                None,
+                None,
+                None,
+            )?;
+            queries::scan_upsert_media(
+                c,
+                0,
+                "wrong.txt",
+                "F:/abc/wrong.txt",
+                "file",
+                1,
+                1,
+                None,
+                None,
+                None,
+            )?;
             Ok(())
         })
         .unwrap();

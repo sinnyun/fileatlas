@@ -7,15 +7,21 @@ Reference: [gallery layout concept](../../reference-ui/concepts/gallery-layouts-
 - Ordinary FileManager cards ask the Windows Shell for a cached thumbnail only (`THUMBNAILONLY | INCACHEONLY`). A cache miss uses the shared file-type placeholder.
 - Shell bitmap pixels are copied without resizing to a versioned PNG transport file under `FileAtlas/thumbs/system-shell`; the card uses `Contain` on the shared neutral frame. Legacy custom card thumbnails and micro-thumbnails are ignored.
 - Index scans no longer decode ordinary image sources or invoke FFmpeg. The legacy missing-thumbnail hook completes without generating ordinary card artwork.
-- Waterfall and justified layouts, layout-specific options, and their interaction review remain unimplemented. The active concept is the target reference, not a claim of visual parity.
+- Grid, Waterfall, Justified and List are selectable and persisted independently per workspace column. Waterfall uses shortest-column placement; Justified packs equal-height rows while preserving source ratios. Both use lightweight database aspect ratios and bounded virtual rows. Width and thumbnail size are part of the geometry key, and reflow preserves the first visible file anchor. Rubber-band selection uses each card's placement rectangle.
+- Recursive indexing now reads supported image dimensions from headers only; this gives new files a usable aspect ratio without decoding pixels or creating card thumbnails. Files without readable dimensions fall back to 1:1 geometry until Shell/runtime dimensions are available.
+- The Display options menu toggles name/details/extension and List type/dimensions/modified/size/rating. Cards fit Shell thumbnails with contain; blank frame area uses the shared neutral surface.
+- Layout interactions and actual thumbnail rendering still need a visible, non-minimized same-process MCP window with fixture media. The current MCP child starts but reports `window_status.valid=false`, `visible=false`, and no mounted FileManager, so no visual acceptance is claimed.
 
 ## Verification
 
-- `cargo +1.97.1 check --locked -j 2 -p fileatlas-plugin-thumbnails -p fileatlas-plugin-indexing -p fileatlas-plugin-file-manager` — passed.
+- `cargo +1.97.1 check --locked -j 2 -p fileatlas-plugin-workspaces -p fileatlas-plugin-database -p fileatlas-plugin-file-manager` — passed.
 - `cargo +1.97.1 build --locked -j 2 -p fileatlas-shell` — passed; linker emitted existing `LNK4098` default-library conflict warning.
-- `cargo +1.97.1 fmt --all -- --check` — pending final rerun.
-- `node scripts/check-ui-theme.cjs`, `node scripts/check-ui-refresh.cjs`, `node scripts/check-architecture.cjs`, and `node scripts/check-feature-ledger.cjs` — passed before final small card/cache edits; rerun before closeout.
-- Same-process MCP (`dev-test` isolated profile, access Off) returned workspace/UI state and captured `filemanager-gallery-current.png` at `.local/validation/profiles/gallery-layouts-system-thumbnails-retry/screenshots/`. The visible folder was empty, so this screenshot verifies window startup only; card aspect fit, Shell cache hit/miss, and alternate layout interactions were not observable in this run.
+- `cargo +1.97.1 fmt --all` — completed.
+- `cargo +1.97.1 build --locked -j 2 -p fileatlas-shell` — passed; linker emitted `LNK4098` default-library conflict warning.
+- `node scripts/check-ui-theme.cjs`, `node scripts/check-ui-refresh.cjs`, `node scripts/check-architecture.cjs`, and `node scripts/check-feature-ledger.cjs` — passed.
+- Same-process MCP (`dev-test` isolated profile, access Off) returned workspace/UI state. Screenshot attempt reported the FileAtlas window minimized; a follow-up state read reported no valid/visible window and no mounted FileManager. UI interactions therefore remain unverified.
+- `cargo +1.97.1 test --locked -j 2 -p fileatlas-plugin-file-manager -p fileatlas-plugin-thumbnails -p fileatlas-plugin-indexing -p fileatlas-plugin-workspaces -p fileatlas-plugin-mcp -p fileatlas-plugin-grouping -p fileatlas-plugin-database -p fileatlas-plugin-tagging` — passed (27 FileManager tests, 3 Indexing, 12 Database, 3 Thumbnails, 6 Grouping, 6 Tagging; MCP/Workspaces have no unit tests).
 - Windows Shell-provider behavior depends on an existing Shell thumbnail-cache entry. Compilation does not establish format/provider coverage. No automated tests were run.
+- Layout-specific display controls and serialization pass static/unit checks, but were not exercised live. The MCP layout command accepts all four modes.
 
 Runtime profiles, screenshots and reports stay under `.local/validation/profiles/` and are intentionally not checked in.

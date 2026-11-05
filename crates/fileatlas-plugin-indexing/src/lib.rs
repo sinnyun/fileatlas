@@ -164,11 +164,11 @@ pub enum IndexingPluginError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fileatlas_plugin_database::queries;
+    use fileatlas_plugin_database::db::queries;
     use image::{ImageBuffer, Rgb};
 
     #[test]
-    fn scan_indexes_all_files_and_preserves_video_posters() {
+    fn scan_indexes_all_files_without_generating_card_thumbnails() {
         let root = std::env::temp_dir().join(format!(
             "fileatlas-indexing-{}-{}",
             std::process::id(),
@@ -312,18 +312,10 @@ mod tests {
         );
         let video = rows.iter().find(|row| row.0 == "clip.mp4").unwrap();
         assert_eq!(video.1, "video");
-        assert_eq!(
-            video.2.as_deref(),
-            Some(poster_path.to_string_lossy().as_ref())
-        );
+        assert!(video.2.is_none(), "scan does not generate video posters");
         let photo = rows.iter().find(|row| row.0 == "photo.png").unwrap();
         assert_eq!(photo.1, "image");
-        assert!(
-            photo
-                .2
-                .as_ref()
-                .is_some_and(|path| std::path::Path::new(path).is_file())
-        );
+        assert!(photo.2.is_none(), "scan does not generate image thumbnails");
         // Reconciliation refreshes filesystem metadata without resetting user data.
         std::fs::write(library.join("new.unique"), b"new file").unwrap();
         for item in indexing.scan_folder(folder.id, folder_path, Arc::new(AtomicBool::new(false))) {

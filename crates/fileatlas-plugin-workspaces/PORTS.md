@@ -10,8 +10,10 @@
 
 - A versioned JSON document stores named launch layouts, default workspace ID,
   one/two/four column mode and each column's address/history, search scopes,
-  media/tag/extension/date/rating filters, sort, grouping, grid/list mode,
-  subfolder/thumbnail preferences, selected file paths, and scroll offset.
+  media/tag/extension/date/rating filters, sort, grouping, gallery mode (grid,
+  waterfall, justified, list), card/list display options, subfolder/thumbnail
+  preferences, selected file paths, and scroll offset. Legacy boolean `list_layout`
+  remains readable; a present `gallery_layout` takes precedence.
 - It stores no media rows. FileManager queries continue through `fileatlas-plugin-database`.
 - Writes serialize to a same-directory temporary file, sync it, then atomically persist it over the target. Unknown future format versions are rejected without rewriting the file. Missing files load an in-memory single-column default and are created on the first change.
 - `ProgramWorkspace::validate` checks IDs/names, exact column count, and rating bounds. `WorkspaceService::upsert`, `set_default`, `remove`, `snapshot`, and `active` are the public operations.

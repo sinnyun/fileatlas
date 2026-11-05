@@ -12,6 +12,7 @@ pub(super) struct FileManagerVisualRow {
     /// Group identity is retained on continuation rows, unlike the title.
     pub group_label: Option<String>,
     pub group_end: bool,
+    pub gallery_geometry: Option<super::gallery_layout::Geometry>,
 }
 
 #[derive(Clone)]
@@ -43,6 +44,7 @@ pub(super) fn build_file_manager_rows(
                 month_count: row.month_count,
                 group_label,
                 group_end,
+                gallery_geometry: None,
             }
         })
         .collect()
@@ -65,6 +67,43 @@ pub(super) fn build_browser_rows(
                 month_count: 0,
                 group_label: None,
                 group_end: false,
+                gallery_geometry: None,
+            }
+        })
+        .collect()
+}
+
+pub(super) fn build_gallery_rows(
+    labels: &[Option<String>],
+    ratios: &[f32],
+    layout: fileatlas_plugin_workspaces::GalleryLayout,
+    width: f32,
+    preferred: f32,
+    collapsed: &HashSet<String>,
+) -> Vec<FileManagerVisualRow> {
+    fileatlas_plugin_grouping::GroupingService::rows(labels, 200, collapsed)
+        .into_iter()
+        .map(|row| {
+            let group_label = labels.get(row.media_range.start).cloned().flatten();
+            let group_end = labels.get(row.media_range.end) != Some(&group_label);
+            let slice = &ratios[row.media_range.clone()];
+            let gallery_geometry = if row.collapsed {
+                super::gallery_layout::Geometry {
+                    placements: Vec::new(),
+                    content_height: 0.,
+                }
+            } else {
+                super::gallery_layout::arrange(layout, slice, width, preferred, 16.)
+            };
+            FileManagerVisualRow {
+                gallery_geometry: Some(gallery_geometry),
+                media_range: row.media_range,
+                directory_range: 0..0,
+                month_label: row.month_label,
+                collapsed: row.collapsed,
+                month_count: row.month_count,
+                group_label,
+                group_end,
             }
         })
         .collect()

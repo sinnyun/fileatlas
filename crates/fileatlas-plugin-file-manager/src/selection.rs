@@ -219,6 +219,7 @@ mod tests {
                 effective_date: 0,
                 is_video: false,
                 is_audio: false,
+                aspect_ratio: 1.0,
             })
             .collect()
     }

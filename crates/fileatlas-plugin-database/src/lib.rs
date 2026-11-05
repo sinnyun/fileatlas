@@ -7,6 +7,9 @@ mod browser_store;
 mod browser_tests;
 mod clipboard_api;
 mod database_api;
+#[cfg(feature = "test-api")]
+pub mod db;
+#[cfg(not(feature = "test-api"))]
 mod db;
 mod launcher_api;
 #[cfg(test)]
@@ -292,6 +295,8 @@ pub struct ScanFileRecord {
     pub media_type: String,
     pub file_size: i64,
     pub modified_at: i64,
+    pub width: Option<i64>,
+    pub height: Option<i64>,
     pub poster_path: Option<String>,
 }
 

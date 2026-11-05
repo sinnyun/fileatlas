@@ -440,7 +440,14 @@ impl FileManagerView {
             restored_file_paths,
             restore_in_directory: workspace_column.address.is_some(),
             selection_restore: Default::default(),
-            list_layout: workspace_column.list_layout,
+            gallery_layout: workspace_column.gallery_layout.unwrap_or(
+                if workspace_column.list_layout {
+                    fileatlas_plugin_workspaces::GalleryLayout::List
+                } else {
+                    fileatlas_plugin_workspaces::GalleryLayout::Grid
+                },
+            ),
+            gallery_options: workspace_column.gallery_options.clone(),
             show_selection_details: false,
             show_tag_picker: false,
             search_scopes_open: false,
@@ -532,7 +539,12 @@ impl FileManagerView {
             .take(top.item_ix)
             .enumerate()
             .map(|(i, row)| {
-                super::render::file_manager_row_height(row, i, self.thumb_size, self.list_layout)
+                super::render::file_manager_row_height(
+                    row,
+                    i,
+                    self.thumb_size,
+                    self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List,
+                )
             })
             .sum::<f32>()
             + f32::from(top.offset_in_item)
@@ -632,7 +644,12 @@ impl FileManagerView {
         self.service.set_show_descendants(column.show_subfolders);
         self.service
             .set_thumbnails_enabled(column.thumbnails_enabled);
-        self.list_layout = column.list_layout;
+        self.gallery_layout = column.gallery_layout.unwrap_or(if column.list_layout {
+            fileatlas_plugin_workspaces::GalleryLayout::List
+        } else {
+            fileatlas_plugin_workspaces::GalleryLayout::Grid
+        });
+        self.gallery_options = column.gallery_options.clone();
         self.thumb_size = if column.thumbnail_size.is_finite() {
             column
                 .thumbnail_size
@@ -783,7 +800,8 @@ impl FileManagerView {
         saved.group_by_month =
             Some(self.grouping_mode == fileatlas_plugin_grouping::GroupingMode::Month);
         saved.grouping_mode = Some(self.grouping_mode.key().into());
-        saved.file_manager_list_layout = self.list_layout;
+        saved.file_manager_list_layout =
+            self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List;
         saved.collapsed_months = self.collapsed_months.clone();
         let _ = self.session.replace(saved);
     }
@@ -855,7 +873,10 @@ impl FileManagerView {
         column.rating_max = self.filter.rating_max.clamp(0, 5) as u8;
         column.sort_order = format!("{:?}", self.filter.sort).to_ascii_lowercase();
         column.grouping = self.grouping_mode.key().into();
-        column.list_layout = self.list_layout;
+        column.gallery_layout = Some(self.gallery_layout);
+        column.gallery_options = self.gallery_options.clone();
+        column.list_layout =
+            self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List;
         column.show_subfolders = self.service.show_descendants();
         column.thumbnails_enabled = self.service.thumbnails_enabled();
         column.thumbnail_size = self.thumb_size;

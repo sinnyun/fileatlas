@@ -34,7 +34,10 @@ pub(super) fn render_media_card(
     native_drag: bool,
     drag_allowed: Arc<AtomicBool>,
     thumb_size: f32,
+    card_width: f32,
+    image_height: f32,
     list_width: Option<f32>,
+    display_options: fileatlas_plugin_workspaces::GalleryOptions,
     version_state: Option<&fileatlas_plugin_versions::FileVersionState>,
     rating_target_ids: Vec<i64>,
     media_tags: &[fileatlas_plugin_database::Tag],
@@ -170,12 +173,12 @@ pub(super) fn render_media_card(
     frame = frame.child(super::file_format::badge(&media.filename, thumb_size));
     let mut image_area = div()
         .relative()
-        .w(px(thumb_size))
-        .h(px(thumb_size))
+        .w(px(card_width))
+        .h(px(image_height))
         .child(frame);
     if selection > 0.01 || (keyboard_focus && selection > 0.5) {
         image_area = image_area.child(fileatlas_ui_bridge::components::media_selection_overlay(
-            thumb_size,
+            card_width,
             selection,
             keyboard_focus,
         ));
@@ -191,22 +194,34 @@ pub(super) fn render_media_card(
                 .top(px(5.)),
         );
     }
+    let display_name = if display_options.show_extension {
+        media.filename.clone()
+    } else {
+        std::path::Path::new(&media.filename)
+            .file_stem()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| media.filename.clone())
+    };
     let mut caption = div()
         .w_full()
         .pt(px(fileatlas_ui_bridge::theme::space_compact()))
         .v_flex()
         .items_center()
         .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-        .child(
-            div()
-                .w_full()
-                .workbench_body()
-                .overflow_hidden()
-                .text_ellipsis()
-                .text_center()
-                .child(media.filename.clone()),
-        );
-    if let Some(meta) = caption_metadata(media) {
+        .when(display_options.show_name, |caption| {
+            caption.child(
+                div()
+                    .w_full()
+                    .workbench_body()
+                    .overflow_hidden()
+                    .text_ellipsis()
+                    .text_center()
+                    .child(display_name.clone()),
+            )
+        });
+    if display_options.show_details
+        && let Some(meta) = caption_metadata(media)
+    {
         caption = caption.child(
             div()
                 .w_full()
@@ -224,12 +239,28 @@ pub(super) fn render_media_card(
             "image" => "Photos",
             _ => "File",
         };
-        let mut metadata = vec![fileatlas_ui_bridge::i18n::tr(kind).to_string()];
-        if let Some(dimensions) = caption_metadata(media) {
+        let mut metadata = Vec::new();
+        if display_options.list_type {
+            metadata.push(fileatlas_ui_bridge::i18n::tr(kind).to_string());
+        }
+        if display_options.list_dimensions
+            && let Some(dimensions) = caption_metadata(media)
+        {
             metadata.push(dimensions);
         }
-        metadata.push(format_bytes(media.file_size));
-        metadata.push(format!("Rating {}", media.rating));
+        if display_options.list_modified {
+            metadata.push(
+                chrono::DateTime::from_timestamp(media.modified_at, 0)
+                    .map(|date| date.format("%Y-%m-%d %H:%M").to_string())
+                    .unwrap_or_default(),
+            );
+        }
+        if display_options.list_size {
+            metadata.push(format_bytes(media.file_size));
+        }
+        if display_options.list_rating {
+            metadata.push(format!("Rating {}", media.rating));
+        }
         caption = div()
             .flex_1()
             .min_w_0()
@@ -237,31 +268,36 @@ pub(super) fn render_media_card(
             .justify_center()
             .gap(px(fileatlas_ui_bridge::theme::space_compact()))
             .px(px(fileatlas_ui_bridge::theme::space_expanded()))
-            .child(
-                div()
-                    .h_flex()
-                    .items_center()
-                    .gap(px(fileatlas_ui_bridge::theme::space_compact()))
-                    .when_some(version_state, |row, state| {
-                        row.when(
-                            state.status == fileatlas_plugin_versions::FileVersionStatus::Modified,
-                            |row| row.child(super::version_badges::badge(media_id, state, cx)),
-                        )
-                    })
-                    .child(
-                        div()
-                            .workbench_assistant()
-                            .text_ellipsis()
-                            .overflow_hidden()
-                            .child(media.filename.clone()),
-                    ),
-            )
+            .when(display_options.show_name, |row| {
+                row.child(
+                    div()
+                        .h_flex()
+                        .items_center()
+                        .gap(px(fileatlas_ui_bridge::theme::space_compact()))
+                        .when_some(version_state, |row, state| {
+                            row.when(
+                                state.status
+                                    == fileatlas_plugin_versions::FileVersionStatus::Modified,
+                                |row| row.child(super::version_badges::badge(media_id, state, cx)),
+                            )
+                        })
+                        .child(
+                            div()
+                                .workbench_assistant()
+                                .text_ellipsis()
+                                .overflow_hidden()
+                                .child(display_name),
+                        ),
+                )
+            })
             .child(
                 div()
                     .workbench_assistant()
                     .text_ellipsis()
                     .overflow_hidden()
-                    .child(metadata.join(" · ")),
+                    .when(!metadata.is_empty(), |details| {
+                        details.child(metadata.join(" · "))
+                    }),
             );
     }
     let context_view = cx.entity().downgrade();
@@ -270,11 +306,11 @@ pub(super) fn render_media_card(
     let context_tags = tag_tree.clone();
     let card = div()
         .relative()
-        .w(px(list_width.unwrap_or(thumb_size)))
+        .w(px(list_width.unwrap_or(card_width)))
         .h(px(if list_width.is_some() {
             56.
         } else {
-            thumb_size + CARD_CAPTION_HEIGHT
+            image_height + CARD_CAPTION_HEIGHT
         }))
         .when(list_width.is_some(), |row| {
             row.h_flex()

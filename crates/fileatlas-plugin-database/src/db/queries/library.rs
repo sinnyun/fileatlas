@@ -124,6 +124,8 @@ pub fn scan_upsert_media(
     media_type: &str,
     file_size: i64,
     modified_at: i64,
+    width: Option<i64>,
+    height: Option<i64>,
     poster_path: Option<&str>,
 ) -> rusqlite::Result<Option<String>> {
     let previous: Option<(i64, i64, String, Option<String>)> = conn
@@ -142,19 +144,19 @@ pub fn scan_upsert_media(
         .then(|| previous.as_ref().and_then(|(_, _, _, path)| path.clone()))
         .flatten();
     conn.execute(
-        "INSERT INTO media (folder_id, filename, full_path, media_type, file_size, modified_at, thumb_path)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+        "INSERT INTO media (folder_id, filename, full_path, media_type, file_size, modified_at, width, height, thumb_path)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
          ON CONFLICT(full_path) DO UPDATE SET
              folder_id = excluded.folder_id,
              filename = excluded.filename,
              media_type = excluded.media_type,
              file_size = excluded.file_size,
              modified_at = excluded.modified_at,
-             thumb_path = CASE WHEN ?8 THEN excluded.thumb_path ELSE COALESCE(excluded.thumb_path, media.thumb_path) END,
-             width = CASE WHEN ?8 THEN NULL ELSE media.width END,
-             height = CASE WHEN ?8 THEN NULL ELSE media.height END,
-             micro_thumb = CASE WHEN ?8 THEN NULL ELSE media.micro_thumb END",
-        params![folder_id, filename, full_path, media_type, file_size, modified_at, poster_path, changed],
+             thumb_path = CASE WHEN ?10 THEN excluded.thumb_path ELSE COALESCE(excluded.thumb_path, media.thumb_path) END,
+             width = CASE WHEN ?10 THEN excluded.width ELSE COALESCE(excluded.width, media.width) END,
+             height = CASE WHEN ?10 THEN excluded.height ELSE COALESCE(excluded.height, media.height) END,
+             micro_thumb = CASE WHEN ?10 THEN NULL ELSE media.micro_thumb END",
+        params![folder_id, filename, full_path, media_type, file_size, modified_at, width, height, poster_path, changed],
     )?;
     Ok(old_thumb_path)
 }
@@ -227,6 +229,9 @@ pub struct MediaSkeleton {
     pub is_video: bool,
     /// `true` if the row is an audio file, used to draw the "AUDIO" badge.
     pub is_audio: bool,
+    /// Source aspect ratio when dimensions are already available; square is a
+    /// safe geometry fallback while the visible Shell thumbnail is loading.
+    pub aspect_ratio: f32,
 }
 
 /// Fetch only `(id, effective_date, is_video)` for every media row matching
@@ -239,7 +244,7 @@ pub fn get_media_skeletons(
 ) -> rusqlite::Result<Vec<MediaSkeleton>> {
     let (joins, conditions, param_values) = build_filters(query);
     let mut sql = String::from(
-        "SELECT DISTINCT m.id, COALESCE(m.date_taken, m.modified_at), m.media_type FROM media m",
+        "SELECT DISTINCT m.id, COALESCE(m.date_taken, m.modified_at), m.media_type, m.width, m.height FROM media m",
     );
     sql.push_str(&joins);
     if !conditions.is_empty() {
@@ -254,11 +259,20 @@ pub fn get_media_skeletons(
     let mut stmt = conn.prepare(&sql)?;
     let rows = stmt.query_map(params_refs.as_slice(), |row| {
         let media_type: String = row.get(2)?;
+        let width: Option<i64> = row.get(3)?;
+        let height: Option<i64> = row.get(4)?;
+        let aspect_ratio = width
+            .zip(height)
+            .filter(|(width, height)| *width > 0 && *height > 0)
+            .map(|(width, height)| width as f32 / height as f32)
+            .filter(|ratio| ratio.is_finite() && *ratio > 0.)
+            .unwrap_or(1.);
         Ok(MediaSkeleton {
             id: row.get(0)?,
             effective_date: row.get(1)?,
             is_video: media_type == "video",
             is_audio: media_type == "audio",
+            aspect_ratio,
         })
     })?;
     rows.collect()

@@ -274,6 +274,8 @@ impl DatabaseService {
                             &file.media_type,
                             file.file_size,
                             file.modified_at,
+                            file.width,
+                            file.height,
                             file.poster_path.as_deref(),
                         )
                     })
@@ -726,7 +728,7 @@ impl DatabaseService {
     write_method!(remove_folder(folder_id: i64) -> ());
     write_method!(update_folder_scan_time(folder_id: i64) -> ());
     write_method!(insert_media(folder_id: i64, filename: &str, full_path: &str, media_type: &str, file_size: i64, modified_at: i64, width: Option<i64>, height: Option<i64>, thumb_path: Option<&str>) -> i64);
-    write_method!(scan_upsert_media(folder_id: i64, filename: &str, full_path: &str, media_type: &str, file_size: i64, modified_at: i64, poster_path: Option<&str>) -> Option<String>);
+    write_method!(scan_upsert_media(folder_id: i64, filename: &str, full_path: &str, media_type: &str, file_size: i64, modified_at: i64, width: Option<i64>, height: Option<i64>, poster_path: Option<&str>) -> Option<String>);
     read_method!(get_media(query: &MediaQuery) -> Vec<MediaItem>);
     read_method!(get_media_skeletons(query: &MediaQuery) -> Vec<MediaSkeleton>);
     read_method!(get_media_grouping_fields(query: &MediaQuery) -> Vec<MediaGroupingFields>);

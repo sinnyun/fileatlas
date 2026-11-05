@@ -3,7 +3,7 @@ use super::*;
 /// Requests consumed by the live FileManager view, using its existing actions.
 #[derive(Debug, Clone)]
 pub enum FileManagerUiRequest {
-    Layout(bool),
+    Layout(fileatlas_plugin_workspaces::GalleryLayout),
     OpenDirectory(String),
     LocateFile(i64),
     DirectoryUp,
@@ -87,6 +87,8 @@ pub struct FileManagerUiSnapshot {
     pub groups: Vec<(String, usize)>,
     pub collapsed_groups: Vec<String>,
     pub list_layout: bool,
+    pub gallery_layout: fileatlas_plugin_workspaces::GalleryLayout,
+    pub gallery_options: fileatlas_plugin_workspaces::GalleryOptions,
     pub inspector_sections: Vec<&'static str>,
     pub inspector_context: &'static str,
     pub bulk_action: Option<&'static str>,

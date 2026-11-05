@@ -62,7 +62,7 @@ impl Render for FileManagerView {
                 crate::FileManagerUiRequest::ShowDescendants(enabled) => {
                     self.set_descendants(enabled, cx)
                 }
-                crate::FileManagerUiRequest::Layout(list) => self.set_layout(list, cx),
+                crate::FileManagerUiRequest::Layout(layout) => self.set_layout(layout, cx),
                 crate::FileManagerUiRequest::RecordCandidate(id, path) => {
                     self.record_candidates.insert(id, path);
                 }
@@ -326,7 +326,10 @@ impl Render for FileManagerView {
                     .map(|s| s.groups.clone())
                     .unwrap_or_default(),
                 collapsed_groups: self.collapsed_months.iter().cloned().collect(),
-                list_layout: self.list_layout,
+                list_layout: self.gallery_layout
+                    == fileatlas_plugin_workspaces::GalleryLayout::List,
+                gallery_layout: self.gallery_layout,
+                gallery_options: self.gallery_options.clone(),
                 window_offset: self
                     .snapshot
                     .as_ref()
@@ -372,7 +375,7 @@ impl Render for FileManagerView {
             fileatlas_ui_bridge::theme::space_standard() * 2.0
         };
         let cards_width = (available_width - GRID_PADDING * 2.0 - group_padding).max(0.0);
-        let columns = if self.list_layout {
+        let columns = if self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List {
             1
         } else {
             ((cards_width + GRID_GAP) / (self.thumb_size + GRID_GAP))
@@ -380,14 +383,24 @@ impl Render for FileManagerView {
                 .max(1.0) as usize
         };
         self.columns = columns;
-        let group_by_month = self.grouping_mode != fileatlas_plugin_grouping::GroupingMode::None;
         let row_layout_key = (
             columns,
-            group_by_month,
+            self.grouping_mode,
             self.filter.sort,
             self.collapsed_months.clone(),
+            self.gallery_layout,
+            cards_width.to_bits(),
+            self.thumb_size.to_bits(),
         );
         if self.row_layout_key.as_ref() != Some(&row_layout_key) {
+            let preserved_anchor = if self.row_layout.is_empty() {
+                None
+            } else {
+                let top = self.scroll.logical_scroll_top();
+                self.row_layout
+                    .get(top.item_ix)
+                    .map(|row| (row.media_range.start, top.offset_in_item))
+            };
             self.row_layout = Arc::new(
                 self.snapshot
                     .as_ref()
@@ -405,17 +418,23 @@ impl Render for FileManagerView {
                                     0,
                                     columns,
                                 );
-                                rows.extend(build_file_manager_rows(
-                                    &snapshot.group_labels,
+                                rows.extend(build_gallery_or_grid_rows(
+                                    snapshot,
+                                    self.gallery_layout,
                                     columns,
+                                    cards_width,
+                                    self.thumb_size,
                                     &self.collapsed_months,
                                 ));
                                 rows
                             }
                         } else {
-                            build_file_manager_rows(
-                                &snapshot.group_labels,
+                            build_gallery_or_grid_rows(
+                                snapshot,
+                                self.gallery_layout,
                                 columns,
+                                cards_width,
+                                self.thumb_size,
                                 &self.collapsed_months,
                             )
                         }
@@ -431,7 +450,7 @@ impl Render for FileManagerView {
                         &self.row_layout[item_ix],
                         item_ix,
                         self.thumb_size,
-                        self.list_layout,
+                        self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List,
                     );
                     if offset < height {
                         break;
@@ -443,6 +462,15 @@ impl Render for FileManagerView {
                     item_ix,
                     offset_in_item: px(offset),
                 });
+            } else if let Some((media_index, offset_in_item)) = preserved_anchor {
+                if let Some(item_ix) = self.row_layout.iter().position(|row| {
+                    row.media_range.start <= media_index && media_index < row.media_range.end
+                }) {
+                    self.scroll.scroll_to(ListOffset {
+                        item_ix,
+                        offset_in_item,
+                    });
+                }
             }
         }
         let row_layout = Arc::clone(&self.row_layout);
@@ -487,7 +515,8 @@ impl Render for FileManagerView {
                     return empty_state::render(self.filters_active() || self.scope_active(), cx);
                 }
                 let list_scroll = self.scroll.clone();
-                let list_layout = self.list_layout;
+                let list_layout =
+                    self.gallery_layout == fileatlas_plugin_workspaces::GalleryLayout::List;
                 let card_size = if list_layout { 56. } else { self.thumb_size };
                 let list_width = list_layout.then_some(cards_width.max(100.));
                 let selected_ids = self.selection.selected_media_ids.clone();
@@ -670,7 +699,10 @@ impl Render for FileManagerView {
                                                 ));
                                             }
                                             if !layout_row.collapsed {
-                                                for skeleton in &snapshot.skeletons[first..end] {
+                                                for (relative_index, skeleton) in snapshot.skeletons[first..end].iter().enumerate() {
+                                                    let placement = layout_row.gallery_geometry.as_ref().and_then(|geometry| geometry.placements.get(relative_index)).copied();
+                                                    let card_width = placement.map_or(card_size, |placement| placement.width);
+                                                    let image_height = placement.map_or(card_size, |placement| placement.height);
                                                     if let Some(media) = snapshot
                                                         .media
                                                         .iter()
@@ -736,8 +768,7 @@ impl Render for FileManagerView {
                                                                     .as_millis()
                                                                     as u64,
                                                         });
-                                                        cards.push(
-                                                            render_media_card(
+                                                        let card = render_media_card(
                                                                 media,
                                                                 hover,
                                                                 selection,
@@ -749,7 +780,10 @@ impl Render for FileManagerView {
                                     && !this.surfaces.is_open(&format!("file_manager.column.{}.internal-file-drag", this.column_index)),
                                                                 Arc::clone(&this.drag_allowed),
                                                                 card_size,
+                                                                card_width,
+                                                                image_height,
                                                                 list_width,
+                                                                this.gallery_options.clone(),
                                                                 this.version_state(
                                                                     media.id,
                                                                     &media.full_path,
@@ -765,19 +799,19 @@ impl Render for FileManagerView {
                                                                     .unwrap_or_default(),
                                                                 Arc::clone(&card_tag_tree),
                                                                 cx,
-                                                            )
-                                                            .into_any_element(),
-                                                        );
+                                                            ).into_any_element();
+                                                        cards.push(if let Some(placement) = placement {
+                                                            div().absolute().left(px(placement.x)).top(px(placement.y)).w(px(card_width)).child(card).into_any_element()
+                                                        } else { card });
                                                     } else {
-                                                        cards.push(
-                                                            div()
-                                                                .w(px(card_size))
-                                                                .h(px(card_size
+                                                        let placeholder = div()
+                                                                .w(px(card_width))
+                                                                .h(px(image_height
                                                                     + card::CARD_CAPTION_HEIGHT))
                                                                 .workbench_corner(fileatlas_ui_bridge::components::CornerRole::Thumbnail)
                                                                 .workbench_surface(fileatlas_ui_bridge::components::SurfaceRole::Faint)
-                                                                .into_any_element(),
-                                                        );
+                                                                .into_any_element();
+                                                        cards.push(if let Some(placement) = placement { div().absolute().left(px(placement.x)).top(px(placement.y)).w(px(card_width)).child(placeholder).into_any_element() } else { placeholder });
                                                     }
                                                 }
                                             }
@@ -847,6 +881,7 @@ impl Render for FileManagerView {
                                                             .w_full()
                                                             .min_w_0()
                                                             .h_flex()
+                                                            .relative()
                                                             .mt(px(header_gap))
                                                             .gap(px(fileatlas_ui_bridge::theme::space_expanded()))
                                                             .when(layout_row.group_label.is_some(), |files| {
@@ -935,6 +970,8 @@ pub(super) fn file_manager_row_height(
     };
     let cards = if row.collapsed {
         0.
+    } else if let Some(geometry) = &row.gallery_geometry {
+        geometry.content_height
     } else {
         if list {
             56.
@@ -943,4 +980,35 @@ pub(super) fn file_manager_row_height(
         }
     };
     header + month_gap + cards + 16.
+}
+
+fn build_gallery_or_grid_rows(
+    snapshot: &FileManagerSnapshot,
+    layout: fileatlas_plugin_workspaces::GalleryLayout,
+    columns: usize,
+    width: f32,
+    preferred: f32,
+    collapsed: &HashSet<String>,
+) -> Vec<FileManagerVisualRow> {
+    if matches!(
+        layout,
+        fileatlas_plugin_workspaces::GalleryLayout::Waterfall
+            | fileatlas_plugin_workspaces::GalleryLayout::Justified
+    ) {
+        let ratios = snapshot
+            .skeletons
+            .iter()
+            .map(|item| item.aspect_ratio)
+            .collect::<Vec<_>>();
+        super::rows::build_gallery_rows(
+            &snapshot.group_labels,
+            &ratios,
+            layout,
+            width,
+            preferred,
+            collapsed,
+        )
+    } else {
+        build_file_manager_rows(&snapshot.group_labels, columns, collapsed)
+    }
 }

@@ -90,6 +90,8 @@ pub(crate) fn cache_file(connection: &Connection, file: &BrowserFile) -> rusqlit
         file.file_size,
         file.modified_at,
         None,
+        None,
+        None,
     )?;
     connection.execute(
         "INSERT OR REPLACE INTO file_versions VALUES(?1,?2)",

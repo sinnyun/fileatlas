@@ -322,7 +322,7 @@ mod tests {
     use super::{
         TEST_LOCK, clear_failure, failures, schedule, schedule_with_writer, state, wait_until_idle,
     };
-    use fileatlas_plugin_database::{DatabaseService, queries};
+    use fileatlas_plugin_database::{DatabaseService, db::queries};
     use std::path::Path;
     use std::sync::{Arc, Mutex, mpsc};
     use std::time::{Duration, SystemTime};

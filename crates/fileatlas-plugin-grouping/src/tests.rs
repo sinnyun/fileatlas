@@ -5,6 +5,7 @@ fn skeleton(id: i64, date: i64) -> MediaSkeleton {
         effective_date: date,
         is_video: false,
         is_audio: false,
+        aspect_ratio: 1.0,
     }
 }
 fn field(id: i64, path: &str) -> MediaGroupingFields {

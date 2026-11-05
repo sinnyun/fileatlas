@@ -1,5 +1,17 @@
 # FileManager plugin ports / 文件管理窗口数据对接
 
+## Gallery layout geometry — 2026-11-05
+
+The toolbar exposes Grid, Waterfall, Justified and List. Waterfall and Justified
+use ratio-based placement geometry, keyed by width and thumbnail size and
+rendered as bounded 200-file virtual rows. Cards remain interactive elements;
+rubber-band selection reads the same placements. Gallery thumbnails preserve
+source aspect ratio with contain fitting. The Display options menu persists
+card name/details/extension and List type/dimensions/modified/size/rating choices
+through the active workspace column. Legacy `list_layout` maps to Grid or List
+when no new layout value exists. Live visual verification is recorded in
+`docs/validation-ui/2026-11-05-gallery-layouts/README.md`.
+
 ## File-mutation refresh preserves the viewport (2026-10-20)
 
 The shared `start_file_operation` completion path uses `refresh_index()` when

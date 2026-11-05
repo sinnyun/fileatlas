@@ -14,6 +14,7 @@ mod file_actions;
 mod file_format;
 mod filter_actions;
 mod filter_row;
+mod gallery_layout;
 mod group_frame;
 mod inspector;
 mod keyboard;
@@ -162,9 +163,18 @@ struct FileManagerView {
     pending_scroll_restore: Option<f32>,
     columns: usize,
     row_layout: Arc<Vec<FileManagerVisualRow>>,
-    row_layout_key: Option<(usize, bool, SortOrder, HashSet<String>)>,
+    row_layout_key: Option<(
+        usize,
+        fileatlas_plugin_grouping::GroupingMode,
+        SortOrder,
+        HashSet<String>,
+        fileatlas_plugin_workspaces::GalleryLayout,
+        u32,
+        u32,
+    )>,
     thumb_size: f32,
-    list_layout: bool,
+    gallery_layout: fileatlas_plugin_workspaces::GalleryLayout,
+    gallery_options: fileatlas_plugin_workspaces::GalleryOptions,
     grouping_mode: fileatlas_plugin_grouping::GroupingMode,
     before_descendants_grouping: Option<fileatlas_plugin_grouping::GroupingMode>,
     restored_file_paths: Vec<String>,

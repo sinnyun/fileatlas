@@ -141,12 +141,15 @@ fn scan_folder_impl(
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs() as i64)
                 .unwrap_or(0);
+            let (width, height) = source_dimensions(path, entry.media_type);
             files.push(ScanFileRecord {
                 filename,
                 full_path,
                 media_type,
                 file_size,
                 modified_at,
+                width,
+                height,
                 poster_path: None,
             });
         }
@@ -184,4 +187,19 @@ fn scan_folder_impl(
 
     // Ordinary file-card thumbnails are requested lazily from the Windows Shell cache.
     crate::reconcile::finish_scan(db, folder_id, folder_path, cancel)
+}
+
+/// Read image dimensions from the source header only. This does not decode
+/// pixels or produce a thumbnail; visible cards still use Windows Shell cache.
+fn source_dimensions(path: &std::path::Path, media_type: &str) -> (Option<i64>, Option<i64>) {
+    if media_type != "image" {
+        return (None, None);
+    }
+    let Some((width, height)) = image::ImageReader::open(path)
+        .ok()
+        .and_then(|reader| reader.into_dimensions().ok())
+    else {
+        return (None, None);
+    };
+    (Some(i64::from(width)), Some(i64::from(height)))
 }

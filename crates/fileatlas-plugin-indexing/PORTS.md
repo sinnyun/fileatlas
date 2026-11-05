@@ -49,7 +49,9 @@ Normal startup, folder browsing and favorite clicks do not invoke recursive inde
 
 `visible_thumbnail` delegates every media/file type to
 `ThumbnailService::system_thumbnail`; it does not generate image previews or
-video posters. Recursive scans index file metadata only. The missing-thumbnail
+video posters. Recursive scans read supported image dimensions from headers for
+ratio-aware gallery placement; they do not decode source pixels or generate
+thumbnails. The missing-thumbnail
 entry point remains for watcher contract compatibility but no longer generates
 artwork. Existing custom image/video cache routines are reserved for other
 feature-owned previews and are not the ordinary card fallback.

@@ -178,9 +178,11 @@ impl FileAtlasMcpServer {
                 R::InspectorTagName(value.to_string())
             }
             "layout" => match value {
-                "grid" => R::Layout(false),
-                "list" => R::Layout(true),
-                _ => return error_json("layout requires grid/list"),
+                "grid" => R::Layout(fileatlas_plugin_workspaces::GalleryLayout::Grid),
+                "waterfall" => R::Layout(fileatlas_plugin_workspaces::GalleryLayout::Waterfall),
+                "justified" => R::Layout(fileatlas_plugin_workspaces::GalleryLayout::Justified),
+                "list" => R::Layout(fileatlas_plugin_workspaces::GalleryLayout::List),
+                _ => return error_json("layout requires grid/waterfall/justified/list"),
             },
             "scroll" => {
                 let Ok(index) = value.parse::<usize>() else {

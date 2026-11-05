@@ -32,6 +32,55 @@ impl ColumnLayout {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GalleryLayout {
+    #[default]
+    Grid,
+    Waterfall,
+    Justified,
+    List,
+}
+
+impl GalleryLayout {
+    pub const fn key(self) -> &'static str {
+        match self {
+            Self::Grid => "grid",
+            Self::Waterfall => "waterfall",
+            Self::Justified => "justified",
+            Self::List => "list",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GalleryOptions {
+    pub show_name: bool,
+    pub show_details: bool,
+    pub show_extension: bool,
+    pub list_type: bool,
+    pub list_dimensions: bool,
+    pub list_modified: bool,
+    pub list_size: bool,
+    pub list_rating: bool,
+}
+
+impl Default for GalleryOptions {
+    fn default() -> Self {
+        Self {
+            show_name: true,
+            show_details: true,
+            show_extension: true,
+            list_type: true,
+            list_dimensions: true,
+            list_modified: false,
+            list_size: true,
+            list_rating: true,
+        }
+    }
+}
+
 /// State needed to reopen one FileManager column. The values are configuration only;
 /// media rows remain owned by FileManager and the shared database service.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -57,6 +106,10 @@ pub struct ColumnDefinition {
     pub rating_max: u8,
     pub sort_order: String,
     pub grouping: String,
+    /// Optional to migrate older workspace JSON using the legacy boolean.
+    pub gallery_layout: Option<GalleryLayout>,
+    pub gallery_options: GalleryOptions,
+    /// Retained for compatibility with existing workspaces and SessionState.
     pub list_layout: bool,
     pub show_subfolders: bool,
     pub thumbnails_enabled: bool,
@@ -88,6 +141,8 @@ impl Default for ColumnDefinition {
             rating_max: 5,
             sort_order: "newest".into(),
             grouping: "month".into(),
+            gallery_layout: None,
+            gallery_options: GalleryOptions::default(),
             list_layout: false,
             show_subfolders: false,
             thumbnails_enabled: true,

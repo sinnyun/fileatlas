@@ -459,7 +459,7 @@ control_ui `navigation_tab` accepts the current Navigation page keys `folders`, 
 
 ## Floating panels and list validation (2026-10-14)
 
-`control_file_manager layout` accepts value grid/list through FileManagerUiRequest::Layout. `get_ui_state.file_manager.layout` is the live rendered choice. `get_ui_state` adds panels(builtin visibility/frame/client bounds), panel_instances(all currently open frame/client bounds), open_panel_ids and active_panel. Bounds are comma-separated logical pixel strings; client_bounds are GPUI-measured, independent of screenshot DPI/nonclient offsets.
+`control_file_manager layout` accepts grid/waterfall/justified/list through FileManagerUiRequest::Layout. `get_ui_state.file_manager.layout` is the live rendered choice and `gallery_options` exposes its card/list display switches. `get_ui_state` adds panels(builtin visibility/frame/client bounds), panel_instances(all currently open frame/client bounds), open_panel_ids and active_panel. Bounds are comma-separated logical pixel strings; client_bounds are GPUI-measured, independent of screenshot DPI/nonclient offsets.
 
 Mutation-guarded `control_ui panel_open` accepts a registered definition ID in value and returns instance_id; panel_close accepts that returned instance ID. Both call UI Bridge PanelCatalog; they cannot manufacture unregistered content. dev-test supplies actual task-status definitions for isolated single/multiple checks. pointer_move/pointer_right_down/pointer_right_up additionally queue same-process GPUI events using x,y; existing pointer_down/drag/up remain. No OS injection or separate process attachment. Wait for the host/feature poller before reading screenshots/snapshots.
 

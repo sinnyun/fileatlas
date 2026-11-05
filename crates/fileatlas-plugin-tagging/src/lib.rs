@@ -434,7 +434,7 @@ pub enum TaggingPluginError {
 mod tests {
     use super::*;
     use crate::writeback::{TEST_LOCK, wait_until_idle};
-    use fileatlas_plugin_database::queries;
+    use fileatlas_plugin_database::db::queries;
     use std::time::Duration;
 
     fn temp_root() -> std::path::PathBuf {

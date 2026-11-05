@@ -1,4 +1,5 @@
 use super::*;
+use fileatlas_plugin_database::db::queries;
 #[test]
 fn relinking_requires_missing_source_and_preserves_target_annotations() {
     let root = std::env::temp_dir().join(format!(
@@ -31,6 +32,8 @@ fn relinking_requires_missing_source_and_preserves_target_annotations() {
                     "file",
                     3,
                     0,
+                    None,
+                    None,
                     None,
                 )?;
             }
