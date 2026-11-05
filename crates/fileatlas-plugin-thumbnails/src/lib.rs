@@ -34,6 +34,31 @@ impl ThumbnailService {
         &self.directory
     }
 
+    /// Reads a thumbnail already present in the Windows Shell thumbnail cache.
+    /// The bitmap is copied losslessly into FileAtlas's transport cache for GPUI;
+    /// this method never decodes the source file or asks Shell to create a thumbnail.
+    #[cfg(windows)]
+    pub fn system_thumbnail(&self, source: impl AsRef<Path>) -> Option<(String, u32, u32)> {
+        let result = system::cached_thumbnail(source.as_ref(), &self.directory);
+        if self
+            .accesses
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            % 256
+            == 255
+        {
+            budget::prune_system(
+                &self.directory,
+                result.as_ref().map(|value| value.0.as_str()),
+            );
+        }
+        result
+    }
+
+    #[cfg(not(windows))]
+    pub fn system_thumbnail(&self, _source: impl AsRef<Path>) -> Option<(String, u32, u32)> {
+        None
+    }
+
     /// Run the unchanged FileAtlas thumbnail pipeline and return cache path,
     /// source dimensions, and the 8-pixel micro-thumbnail bytes.
     #[tracing::instrument(skip_all)]
@@ -68,6 +93,9 @@ impl ThumbnailService {
         }
     }
 }
+
+#[cfg(windows)]
+mod system;
 
 /// Optional cache location. `None` uses `%LOCALAPPDATA%/FileAtlas/thumbs`.
 #[derive(Debug, Clone, Default)]

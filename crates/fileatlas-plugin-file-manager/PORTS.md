@@ -97,6 +97,18 @@ OLE drag-out.
 
 ## Independent FileManager columns (2026-10-19)
 
+## File card thumbnails (2026-11-05)
+
+Ordinary cards ignore historical FileAtlas-generated thumbnail paths and request
+visible images through Indexing's `visible_thumbnail`, which reads only the
+existing Windows Shell thumbnail cache. Missing Shell thumbnails render the
+shared file-type placeholder. Shell results are saved as dimension-preserving
+transport copies for GPUI and never replace the media record's original width
+and height. Card images use `ObjectFit::Contain` inside the shared neutral
+thumbnail frame so the full image remains visible with gray space around it.
+Library and browser panes both use this path. Windows Shell-provider coverage
+has not yet been exercised through the live FileAtlas MCP session.
+
 FileManager publishes `file_manager.column.0..3.content` and matching
 `file_manager.column.0..3.address` UI view slots. Each column lazily owns its own
 `FileManagerView`, `FileManagerService` browsing worker, filter/search input, selection,

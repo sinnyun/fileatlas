@@ -44,3 +44,12 @@ Runtime diagnostics observe tracked production progress streams: phase transitio
 Indexing obtains video cache paths and micro-thumbnail generation through `ThumbnailService`; it does not import thumbnail implementation modules.
 
 Normal startup, folder browsing and favorite clicks do not invoke recursive indexing. `visible_thumbnail(&str,&str)->Option<(String,Option<u32>,Option<u32>,Option<Vec<u8>>)>` reuses the image thumbnail and ffmpeg video poster pipelines for current visible demand. Paths inside the derived thumbnail directory are excluded to prevent cache self-generation. The recursive scan API remains for isolated dev fixtures and legacy regression coverage, not the browser product entry point.
+
+## Ordinary FileManager cards use Shell cache only (2026-11-05)
+
+`visible_thumbnail` delegates every media/file type to
+`ThumbnailService::system_thumbnail`; it does not generate image previews or
+video posters. Recursive scans index file metadata only. The missing-thumbnail
+entry point remains for watcher contract compatibility but no longer generates
+artwork. Existing custom image/video cache routines are reserved for other
+feature-owned previews and are not the ordinary card fallback.

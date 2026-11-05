@@ -20,13 +20,14 @@ impl FileManagerService {
             .get_media_window(&ids)
             .map_err(|e| e.to_string())?;
         for item in &mut media {
-            if self.database.is_browser() {
+            let browser = self.database.is_browser();
+            let before = source_version(&item.full_path);
+            if browser {
                 if self.live.status().0 != generation
                     || self.viewport_request.load(Ordering::Acquire) != request
                 {
                     return Err("Obsolete directory window".into());
                 }
-                let before = source_version(&item.full_path);
                 if let Some(version) = &before {
                     if self
                         .database
@@ -39,59 +40,51 @@ impl FileManagerService {
                         item.micro_thumb = None;
                     }
                 }
-                if item
-                    .thumb_path
-                    .as_ref()
-                    .is_some_and(|p| !std::path::Path::new(p).is_file())
-                    || before.is_none()
-                {
-                    item.thumb_path = None;
-                    item.micro_thumb = None;
-                }
+                // FileAtlas-generated historical cache entries are not valid
+                // previews for ordinary cards. Resolve cards through Shell only.
+                item.thumb_path = None;
+                item.micro_thumb = None;
                 hydrate_local(item);
                 if item.missing {
                     self.database
                         .restore_record_preview(item)
                         .map_err(|e| e.to_string())?;
                 }
-                if before.is_some()
-                    && self.thumbnails_enabled()
-                    && visible.contains(&item.id)
-                    && !item.missing
-                    && item.thumb_path.is_none()
-                {
-                    if let Some(indexing) = &self.indexing {
-                        if let Some((thumb, w, h, micro)) =
-                            indexing.visible_thumbnail(&item.full_path, &item.media_type)
+            }
+            if before.is_some()
+                && self.thumbnails_enabled()
+                && visible.contains(&item.id)
+                && !item.missing
+            {
+                if let Some(indexing) = &self.indexing {
+                    if let Some((thumb, _w, _h, _micro)) =
+                        indexing.visible_thumbnail(&item.full_path, &item.media_type)
+                    {
+                        if source_version(&item.full_path) != before
+                            || (browser
+                                && (self.viewport_request.load(Ordering::Acquire) != request
+                                    || self.live.status().0 != generation))
                         {
-                            if source_version(&item.full_path) != before
-                                || self.viewport_request.load(Ordering::Acquire) != request
-                                || self.live.status().0 != generation
-                            {
-                                continue;
-                            }
-                            item.thumb_path = Some(thumb.clone());
-                            item.width = w.map(i64::from);
-                            item.height = h.map(i64::from);
-                            item.micro_thumb = micro.clone();
-                            self.database
-                                .store_visible_thumbnail(
-                                    item.id,
-                                    &item.full_path,
-                                    &thumb,
-                                    item.width,
-                                    item.height,
-                                    micro.as_deref(),
-                                    before.as_deref(),
-                                )
-                                .map_err(|e| e.to_string())?;
+                            continue;
                         }
+                        item.thumb_path = Some(thumb.clone());
+                        self.database
+                            .store_visible_thumbnail(
+                                item.id,
+                                &item.full_path,
+                                &thumb,
+                                item.width,
+                                item.height,
+                                None,
+                                before.as_deref(),
+                            )
+                            .map_err(|e| e.to_string())?;
                     }
                 }
-                if !self.thumbnails_enabled() {
-                    item.thumb_path = None;
-                    item.micro_thumb = None;
-                }
+            }
+            if !self.thumbnails_enabled() {
+                item.thumb_path = None;
+                item.micro_thumb = None;
             }
         }
         let media_tags = self.tags_for_media(&ids).map_err(|e| e.to_string())?;

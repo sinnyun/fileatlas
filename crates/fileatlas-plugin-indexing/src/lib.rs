@@ -1,4 +1,4 @@
-//! FileAtlas folder indexing, thumbnail generation, and reconciliation helpers.
+//! FileAtlas folder indexing, Shell-cache lookup, and reconciliation helpers.
 
 use std::sync::Arc;
 
@@ -8,7 +8,6 @@ use fileatlas_plugin_thumbnails::ThumbnailService;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc;
 
-mod ffmpeg;
 mod maintenance;
 mod progress;
 mod reconcile;
@@ -48,33 +47,11 @@ impl IndexingService {
                 .and_then(|ext| ext.to_str())
                 .unwrap_or(""),
         );
-        let thumbnail = if media_type == "image" {
-            self.thumbnails
-                .generate_image(&media.full_path)
-                .map(|(path, width, height, micro)| {
-                    let micro = micro.unwrap_or_else(|| vec![0; 8 * 8 * 3]);
-                    (path, width as i64, height as i64, micro)
-                })
-        } else {
-            None
-        };
         let size = metadata.len().min(i64::MAX as u64) as i64;
-        match thumbnail {
-            Some((path, width, height, micro)) => self
-                .database
-                .refresh_restored_file(
-                    media_id,
-                    media_type,
-                    size,
-                    modified,
-                    Some((&path, width, height, &micro)),
-                )
-                .map_err(|e| e.to_string()),
-            None => self
-                .database
-                .refresh_restored_file(media_id, media_type, size, modified, None)
-                .map_err(|e| e.to_string()),
-        }
+        // Restored files are re-indexed without creating FileAtlas artwork.
+        self.database
+            .refresh_restored_file(media_id, media_type, size, modified, None)
+            .map_err(|e| e.to_string())
     }
 
     /// Construct the indexing API from the shared database and cache services.
@@ -102,7 +79,8 @@ impl IndexingService {
         ))
     }
 
-    /// Generate caches for indexed image/video rows that do not have thumbnails.
+    /// Legacy watcher hook retained for compatibility; ordinary card artwork is
+    /// read lazily from the Windows Shell cache and is never generated here.
     #[tracing::instrument(skip_all)]
     pub fn generate_missing_thumbnails(
         self: &Arc<Self>,

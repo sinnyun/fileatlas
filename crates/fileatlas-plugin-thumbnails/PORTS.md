@@ -29,3 +29,17 @@ Runtime diagnostics: plugin startup and existing error/diagnostic output now emi
 ## Browser runtime update — 2026-10-15
 
 The derived cache key now includes source path, size and nanosecond modification time. Cached-image hits return original header dimensions instead of zero dimensions. Legacy webp reuse requires a non-older cache file. `generate_image` checks the derived JPEG/webp budget every 256 accesses: retain up to 5000 files and 512 MiB by oldest modification order (not a true access LRU), protect the current result. This maintenance runs on the requesting worker, not GPUI render. Durable tag-previews live separately and are excluded. Video poster demand uses the same versioned naming and cache maintenance budget.
+
+## System thumbnail lookup (2026-11-05)
+
+Ordinary FileManager cards call `system_thumbnail(path)` on their background
+viewport worker. Windows uses `IShellItemImageFactory::GetImage` with
+`SIIGBF_THUMBNAILONLY | SIIGBF_INCACHEONLY | SIIGBF_BIGGERSIZEOK`; a cache miss
+returns `None` and the card paints its file type placeholder. This path does not
+decode the source, invoke an installed provider to create artwork, or call
+FFmpeg. The bitmap returned by Shell is copied to a versioned PNG in
+`%LOCALAPPDATA%\FileAtlas\thumbs\system-shell` for GPUI path-based image loading;
+the copy preserves the bitmap's dimensions. Existing custom thumbnail APIs
+remain for feature-owned previews such as tag/board assets and are not used for
+ordinary FileManager cards. `generate_missing_thumbnails` no longer backfills
+ordinary cards; it completes with a status explaining lazy Shell-cache lookup.

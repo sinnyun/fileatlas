@@ -35,7 +35,6 @@ pub(super) fn render_media_card(
     drag_allowed: Arc<AtomicBool>,
     thumb_size: f32,
     list_width: Option<f32>,
-    micro_thumb: Option<&[u8]>,
     version_state: Option<&fileatlas_plugin_versions::FileVersionState>,
     rating_target_ids: Vec<i64>,
     media_tags: &[fileatlas_plugin_database::Tag],
@@ -54,24 +53,28 @@ pub(super) fn render_media_card(
     };
     let source_allowed = Arc::clone(&payload.allowed);
     let media_type = media.media_type.as_str();
-    let micro_image = micro_thumb.and_then(micro_render_image);
     let mut frame = fileatlas_ui_bridge::components::thumbnail_frame();
-    if let Some(image) = micro_image.clone() {
-        frame = frame.child(img(image).absolute().inset_0().object_fit(ObjectFit::Cover));
-    }
-    if let Some(path) = media.thumb_path.as_ref() {
+    let system_thumbnail_path = media.thumb_path.as_ref().filter(|path| {
+        std::path::Path::new(path).components().any(|component| {
+            component
+                .as_os_str()
+                .to_string_lossy()
+                .eq_ignore_ascii_case("system-shell")
+        })
+    });
+    if let Some(path) = system_thumbnail_path {
         let filename = media.filename.clone();
         let kind = media.media_type.clone();
         frame = frame.child(
             img(std::path::PathBuf::from(path))
                 .absolute()
                 .inset_0()
-                .object_fit(ObjectFit::Cover)
+                .object_fit(ObjectFit::Contain)
                 .with_fallback(move || {
                     super::file_format::placeholder(&filename, &kind, 32.).into_any_element()
                 }),
         );
-    } else if micro_image.is_none() {
+    } else {
         frame = frame.child(super::file_format::placeholder(
             &media.filename,
             media_type,
@@ -390,20 +393,6 @@ pub(super) fn flatten_tags(tags: &[fileatlas_plugin_database::Tag]) -> Vec<TagMe
 pub(super) struct TagMenuEntry {
     pub(super) id: i64,
     pub(super) label: String,
-}
-
-fn micro_render_image(data: &[u8]) -> Option<Arc<::gpui::RenderImage>> {
-    if data.len() != 8 * 8 * 3 {
-        return None;
-    }
-    let rgba = data
-        .chunks_exact(3)
-        .flat_map(|rgb| [rgb[0], rgb[1], rgb[2], 255])
-        .collect::<Vec<_>>();
-    let buffer = image::ImageBuffer::<image::Rgba<u8>, _>::from_raw(8, 8, rgba)?;
-    Some(Arc::new(::gpui::RenderImage::new(vec![image::Frame::new(
-        buffer,
-    )])))
 }
 
 struct FileDragGhost;

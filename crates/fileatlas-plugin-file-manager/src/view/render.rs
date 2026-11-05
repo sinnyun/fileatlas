@@ -750,7 +750,6 @@ impl Render for FileManagerView {
                                                                 Arc::clone(&this.drag_allowed),
                                                                 card_size,
                                                                 list_width,
-                                                                media.micro_thumb.as_deref(),
                                                                 this.version_state(
                                                                     media.id,
                                                                     &media.full_path,
