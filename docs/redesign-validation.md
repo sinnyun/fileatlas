@@ -1,3 +1,20 @@
+## 2026-11-05：FileManager 四种画廊布局合并后实测
+
+合并后的 `main` 已由 Windows MSVC Rust 1.97.1 构建，并通过同进程 FileAtlas MCP 在隔离
+dev-test profile 中实际启动。等待 GPUI 主窗口创建后，扫描自带夹具 12 项，切换 Grid、
+Waterfall、Justified、List 四种模式并各自读取状态、截图；另外打开显示选项菜单并实点
+切换“显示详情”，状态从 `true` 变为 `false`。截图对照活动四布局概念，主工作台、工具栏、
+左导航和右侧检查器结构均保留。首次 MCP 检查早于窗口创建而报告窗口不可用，等待后已
+正常；该初始结果由成功运行更正。
+
+当前 fixture 不包含预先存在的 Windows Shell 缩略图缓存项，所以所有图片显示格式占位图。
+该轮截图验证了空缩略图区域使用中性灰、卡片不裁切占位图，但不能证明 Shell 缓存命中或
+真实图片的 contain 比例。嵌套夹具确有 3:2 JPEG 和 4:3 BMP，但 filesystem-browser 视图
+没有向这次布局提供可见尺寸，二者仍显示方形占位卡片；因此该轮未能验证瀑布流/等高行对
+真实长宽比的视觉效果，需用已有 Shell 缩略图缓存且尺寸已索引的图片再次实测。缩放、变宽、
+选择、拖放、滚动恢复和小窗口也未在本轮实际操作。详细命令、窗口尺寸、完整检查表与
+本地截图见[画廊布局实测记录](validation-ui/2026-11-05-gallery-layouts/README.md)。
+
 ## 2026-10-26：FileAtlas 画布对照 tldraw 调整
 
 本条取代下方同日早期 Zorite 原生 UI 验证的布局结论。实际打开 [tldraw.com](https://www.tldraw.com/) 并对照[官方 UI 布局说明](https://tldraw.dev/sdk-features/ui-components)：画布占主区域，页面菜单在左上，样式控件在右上，工具栏在底部中间，缩放在左下、撤销/重做靠近工具栏。FileAtlas 现用近全幅 GPUI 面板、单行文档操作、左侧画板/资源、中央点阵画布、右侧图层/属性、底部工具与历史、画布右上样式入口；引擎为本地 MIT 源码 crate，无 `gpui-whiteboard` 运行时依赖。锁定 Shell 构建及同进程 MCP 场景通过，创建隔离画板、读取真实面板边界、经宿主添加图片、看到引擎选择框/图层属性并保存。布局截图、viewport、命令与未验证项见[本轮记录](validation-ui/2026-10-26-fileatlas-canvas/README.md)。
