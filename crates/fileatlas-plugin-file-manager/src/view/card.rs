@@ -72,6 +72,7 @@ pub(super) fn render_media_card(
             img(std::path::PathBuf::from(path))
                 .absolute()
                 .inset_0()
+                .size_full()
                 .object_fit(ObjectFit::Contain)
                 .with_fallback(move || {
                     super::file_format::placeholder(&filename, &kind, 32.).into_any_element()

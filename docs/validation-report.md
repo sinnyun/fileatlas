@@ -1243,3 +1243,12 @@ records the earlier request, not the current complete PDF options.
 ## 2026-10-23 WorkCrate portable project metadata
 
 Project metadata now lives beside each new native document; legacy datasets migrate explicitly. Version-1 compatibility, retained recovery data, original IDs/bindings, project presets/cover, independent projects sharing a folder and atomic rejection of invalid import are covered by Projects tests. Same-process MCP verifies actual creation, legacy migration menu clicks, moving/renaming folders, fresh-profile recovery and continued official image update. Native documents/images are not rewritten by cold metadata migration/recovery. Commands and evidence: validation-ui/2026-10-23-workcrate-portable/README.md. No PhoTag counterpart or new native-link implementation.
+## 2026-11-06 visible card dimensions
+
+Original source scan batches (`vendor/photag-source/src/scan.rs`) write dimensions
+returned by the thumbnail pipeline; dimension fallback reads source image headers.
+The current Shell card path preserves original-dimension semantics by reading
+missing dimensions on the bounded viewport worker rather than substituting Shell
+bitmap sizes. Live HTTP MCP confirms Shot 007 original dimensions 2143×1518 versus
+768×544 for its Shell transport bitmap. Grid and gallery screenshot evidence:
+`docs/validation-ui/2026-11-06-gallery-fitting/README.md`. Existing DB schema is unchanged.

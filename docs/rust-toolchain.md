@@ -47,7 +47,18 @@ cargo +1.97.1 build --locked -p fileatlas-shell -j 2
 不得为了绕开文件占用另取 EXE 名称、设置新的 target 目录、执行 `cargo clean`
 或进行全量重编译。此前独立命名 EXE 的处理不作为后续工作范例。
 
-## MCP 子进程
+## MCP 连接方式
+
+日常调试已经运行的 FileAtlas 时，优先让 Codex/客户端连接 GUI 同进程的
+Streamable HTTP MCP（默认 `http://127.0.0.1:38473/mcp`，端口可由
+`FILEATLAS_MCP_HTTP_PORT` 修改）。此连接直接观察/控制用户当前实例，不启动第二个
+FileAtlas。先用 `tools/list` 确认端点，用只读 `get_ui_state` 核对窗口和当前目录，再按需
+调用媒体读取或 `screenshot_window`；最小化窗口无法截图时，不要擅自恢复窗口。
+
+下面的 stdio 调试子进程只用于需要隔离 profile 的专项回归，不是现有实例的连接方式。
+它会启动新的 FileAtlas，不能 attach 到正常 GUI。
+
+## MCP stdio 隔离子进程
 
 MCP 客户端通过 Cargo 启动 Shell 时，也必须在 args 中传入工具链选择：
 

@@ -98,6 +98,27 @@ fn tick(view: &mut FileManagerView, cx: &mut Context<FileManagerView>) -> bool {
         }) {
             if let Some(Ok(window)) = view.viewport_read.value() {
                 if let Ok(snapshot) = &mut view.snapshot {
+                    let mut ratios_changed = false;
+                    for media in &window.media {
+                        let original_ratio = media
+                            .width
+                            .zip(media.height)
+                            .filter(|(w, h)| *w > 0 && *h > 0)
+                            .map(|(w, h)| w as f32 / h as f32);
+                        if let Some(ratio) = original_ratio
+                            .or_else(|| window.thumbnail_ratios.get(&media.id).copied())
+                            && let Some(skeleton) =
+                                snapshot.skeletons.iter_mut().find(|s| s.id == media.id)
+                        {
+                            if skeleton.aspect_ratio != ratio {
+                                skeleton.aspect_ratio = ratio;
+                                ratios_changed = true;
+                            }
+                        }
+                    }
+                    if ratios_changed {
+                        view.row_layout_key = None;
+                    }
                     snapshot.window_offset = window.offset;
                     snapshot.media = window.media.clone();
                     snapshot.media_tags = window.media_tags.clone();

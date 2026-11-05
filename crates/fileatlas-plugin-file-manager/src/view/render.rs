@@ -412,7 +412,13 @@ impl Render for FileManagerView {
                     .as_ref()
                     .map(|snapshot| {
                         if snapshot.browser.active {
-                            if self.grouping_mode == fileatlas_plugin_grouping::GroupingMode::None {
+                            if self.grouping_mode == fileatlas_plugin_grouping::GroupingMode::None
+                                && !matches!(
+                                    self.gallery_layout,
+                                    fileatlas_plugin_workspaces::GalleryLayout::Waterfall
+                                        | fileatlas_plugin_workspaces::GalleryLayout::Justified
+                                )
+                            {
                                 super::rows::build_browser_rows(
                                     snapshot.browser.directories.len(),
                                     snapshot.skeletons.len(),

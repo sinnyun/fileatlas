@@ -1,4 +1,4 @@
-//! Windows Shell cache-only thumbnail lookup for ordinary file cards.
+//! Windows Shell thumbnail lookup and provider generation for ordinary file cards.
 use std::{
     fs,
     hash::{Hash, Hasher},
@@ -17,7 +17,7 @@ use windows::{
         System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx, CoUninitialize, IBindCtx},
         UI::Shell::{
             IShellItemImageFactory, SHCreateItemFromParsingName, SIIGBF_BIGGERSIZEOK,
-            SIIGBF_INCACHEONLY, SIIGBF_THUMBNAILONLY,
+            SIIGBF_THUMBNAILONLY,
         },
     },
     core::PCWSTR,
@@ -90,12 +90,12 @@ fn extract(source: &Path) -> Option<image::RgbaImage> {
         .collect::<Vec<_>>();
     let factory: IShellItemImageFactory =
         unsafe { SHCreateItemFromParsingName(PCWSTR(wide.as_ptr()), None::<&IBindCtx>).ok()? };
-    // INCACHEONLY prevents Shell from invoking a provider or generating a new thumbnail.
+    // Without INCACHEONLY, Shell may invoke the registered provider and populate its cache.
     let bitmap = Bitmap(unsafe {
         factory
             .GetImage(
                 SIZE { cx: 512, cy: 512 },
-                SIIGBF_THUMBNAILONLY | SIIGBF_INCACHEONLY | SIIGBF_BIGGERSIZEOK,
+                SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK,
             )
             .ok()?
     });

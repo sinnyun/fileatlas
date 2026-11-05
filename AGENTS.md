@@ -40,6 +40,7 @@ passed merely because the layout was accepted. See
 `docs/redesign-validation.md` for current evidence. Static checks use the
 installed Rust1.97.1; live debugging, input and screenshots use same-process
 FileAtlas MCP with isolated test profiles. The client is
+`scripts/fileatlas-mcp-http.cjs` for the running GUI; isolated stdio regressions use
 `scripts/fileatlas-mcp-debug.cjs`.
 
 Automatic startup update offers remain suppressed; explicit manual checks and
@@ -341,11 +342,14 @@ OS mouse/keyboard injection, or a separately launched application for plugin
 MCP debugging. Cargo fmt/check/build/test remain required static/build and
 automated regression checks; they do not replace live MCP verification.
 
-For live validation configure the MCP client to launch
-`fileatlas-shell --mcp` as an isolated stdio child, then use its tools to read the running window, library,
-media, preview/playback, and (with `dev-test` enabled) fixture/scale-test state.
-The MCP server and GPUI window share that child process; it cannot attach to a
-separately launched FileAtlas process. Use an isolated `dev-test` profile for
+For live inspection of the user's running application, connect to its same-process
+Streamable HTTP MCP at `http://127.0.0.1:38473/mcp` (overridden by
+`FILEATLAS_MCP_HTTP_PORT`). Use `scripts/fileatlas-mcp-http.cjs` or a configured MCP
+client; do not start another instance merely to inspect the current window.
+Read `tools/list` and `get_ui_state` first to verify the connected instance.
+Only isolated regressions should launch `fileatlas-shell --mcp` as a stdio child
+through `scripts/fileatlas-mcp-debug.cjs`; that legacy transport cannot attach to
+another GUI. Both transports run inside the GUI they observe. Use an isolated `dev-test` profile for
 fixture scans and virtual rows. Consult `crates/fileatlas-plugin-mcp/PORTS.md` for
 the tool list and startup diagnostics. MCP access is controlled by Settings →
 Plugin settings → MCP → AI control: Off is read-only, Standard permits UI

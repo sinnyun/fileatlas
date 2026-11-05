@@ -168,6 +168,26 @@ impl FileManagerView {
         if self.snapshot_read.is_pending() {
             return;
         }
+        // List may reuse cached gallery elements without invoking their builder
+        // on scroll. Demand must also follow the current logical viewport.
+        if matches!(
+            self.gallery_layout,
+            fileatlas_plugin_workspaces::GalleryLayout::Waterfall
+                | fileatlas_plugin_workspaces::GalleryLayout::Justified
+        ) {
+            let top = self.scroll.logical_scroll_top().item_ix;
+            let ranges = self
+                .row_layout
+                .iter()
+                .skip(top)
+                .take(2)
+                .filter(|row| !row.collapsed && !row.media_range.is_empty())
+                .map(|row| row.media_range.clone())
+                .collect::<Vec<_>>();
+            for range in ranges {
+                self.request_visible_window(range);
+            }
+        }
         let Some(requested) = self.visible_demand.take() else {
             return;
         };

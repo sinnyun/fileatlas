@@ -44,7 +44,9 @@
 
 ## 4. 同进程 MCP 对照，修正后再验收
 
-通过 `scripts/fileatlas-mcp-debug.cjs` 启动 `fileatlas-shell --mcp`，使用隔离的 dev-test profile。
+检查用户正在使用的实例时，连接其 HTTP MCP（默认 `http://127.0.0.1:38473/mcp`），
+可使用 `scripts/fileatlas-mcp-http.cjs`。仅隔离回归才使用
+`scripts/fileatlas-mcp-debug.cjs` 启动 `fileatlas-shell --mcp`。
 实际点击可见控件进入状态，拍摄正常页、录入页、真实冲突/错误和小窗口，检查内容末尾。
 状态 API 和断言用于证明行为；图片必须另外打开并与参考图逐项对照。
 编译成功、截图文件存在、JSON 状态正确都不等于视觉通过。

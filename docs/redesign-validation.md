@@ -1664,3 +1664,10 @@ Eagle 图片属性中新增外链图标按钮，通过 `eagle://item/{id}` 系�
 ### 2026-11-05 FileManager 缩略图缓存刷新
 
 FileManager 工具面板增加“刷新当前视图缩略图”和“刷新全部系统缩略图缓存”。前者只清理当前查询媒体记录引用的 Shell transport 副本；后者清理 `thumbs/system-shell` 及对应 `media.thumb_path`。缓存路径代次同步前进，避免 GPUI 继续使用旧路径图像。两者都只读取 Windows Shell 已有缓存，不生成缩略图；白板/项目及其他持久缓存目录保留。同进程 MCP 操作与截图、数据库范围单测和持久目录单测通过。夹具没有可命中的 Shell 缓存，因此系统提供者返回真实像素的重新加载仍未验证。详情见[缩略图缓存刷新验证](validation-ui/2026-11-05-thumbnail-cache-refresh/README.md)。
+# 2026-11-06 Gallery thumbnail fitting correction
+
+Connected to the existing GUI through HTTP MCP, reproduced intrinsic-size clipping,
+then rebuilt the normal executable after closing its verified owning process.
+Grid, Waterfall, Justified and List were visually inspected through the restarted
+GUI's HTTP MCP, including ungrouped and subfolder-grouped gallery layouts.
+See [focused evidence](validation-ui/2026-11-06-gallery-fitting/README.md).

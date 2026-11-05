@@ -111,9 +111,25 @@ OLE drag-out.
 
 ## File card thumbnails (2026-11-05)
 
+2026-11-06 correction: the image element explicitly fills its frame before
+`Contain` fitting; absolute insets alone leave GPUI image intrinsic sizing active.
+The bounded viewport worker reads missing original dimensions from image headers
+without decoding pixels. Completed window reads update matching skeleton ratios
+and invalidate row geometry only when a ratio changes. Shell transport dimensions
+never overwrite original dimensions. Ungrouped filesystem browsing now routes
+Waterfall/Justified through gallery geometry, with folders in preceding rows.
+
+Follow-up: header dimension lookup sniffs the encoding before reading dimensions,
+including PNG content named `.jpg` in external caches. `FileManagerWindow` also
+returns `thumbnail_ratios: HashMap<i64, f32>` for display-only Shell fallbacks when
+original dimensions are unknown; these never populate original width/height.
+Gallery viewport demand follows the logical top row and following row even when
+GPUI reuses cached row elements. Existing ReadModel keys coalesce settled demand.
+
 Ordinary cards ignore historical FileAtlas-generated thumbnail paths and request
-visible images through Indexing's `visible_thumbnail`, which reads only the
-existing Windows Shell thumbnail cache. Missing Shell thumbnails render the
+visible images through Indexing's `visible_thumbnail`, which asks Windows Shell
+for a thumbnail and lets Shell invoke its registered provider on a cache miss.
+If Shell cannot produce an image, missing thumbnails render the
 shared file-type placeholder. Shell results are saved as dimension-preserving
 transport copies for GPUI and never replace the media record's original width
 and height. Card images use `ObjectFit::Contain` inside the shared neutral
@@ -126,7 +142,8 @@ all system thumbnail cache.” Current-view refresh uses the pane's current quer
 IDs; all-cache refresh clears only media references under the Thumbnails
 service's `system-shell` directory and broadcasts `MediaIndexChanged` to open
 panes. Board/project and other durable preview directories are preserved. Both
-actions reread only Windows Shell's existing cache and never generate artwork.
+actions cause panes to request thumbnails again; Shell can generate missing
+system thumbnails during those requests.
 MCP actions are `refresh_current_thumbnails` and `refresh_all_thumbnails`.
 
 FileManager publishes `file_manager.column.0..3.content` and matching

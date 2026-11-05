@@ -31,6 +31,24 @@ Codex 客户端可在 `config.toml` 中配置：
 url = "http://127.0.0.1:38473/mcp"
 ```
 
+### 连接正在运行的 FileAtlas
+
+常规开发与检查应连接用户已经启动的 GUI 实例：客户端直接连接上述
+`http://127.0.0.1:38473/mcp`（或该实例设置的 `FILEATLAS_MCP_HTTP_PORT`）。
+该 HTTP 服务与 GUI 位于同一进程，`get_ui_state`、媒体读取和
+`screenshot_window` 观察的都是用户当前实例；不要为此另启 `fileatlas-shell`
+或调用 `scripts/fileatlas-mcp-debug.cjs`。后者会启动新的 `--mcp` stdio 子进程，
+仅用于明确要求隔离 profile 的回归验证，不能附加到现有 GUI。
+
+命令行也可用 `node scripts/fileatlas-mcp-http.cjs get_ui_state` 连接现有 GUI，
+或传入工具名、JSON 参数和可选的 `.local/validation/profiles/<run-name>/` 输出路径。
+`FILEATLAS_MCP_URL` 可覆盖该客户端的完整端点地址。它不会启动或停止应用。
+
+连接后先调用 `tools/list` 和只读 `get_ui_state`，核对应用窗口与当前目录；读取实际
+画面使用 `screenshot_window`。若窗口最小化、无效或启动时 HTTP MCP 未成功监听，
+截图可能不可用；不要为了取图自动恢复或操作用户窗口。需要控制窗口时先遵循 MCP
+工具自身的访问级别和动作约定。设置/关闭 FileAtlas 的 MCP AI 控制权限也会影响工具调用。
+
 产品功能工具按插件贡献，不在本文维护全局参数清单。宿主提前发布 `fileatlas_contracts::mcp::McpToolRegistry`；每个功能插件在自身源码中声明 namespace、工具名、输入 JSON Schema、handler 和修改/确认属性，并把注册 guard 交给 Cordis 管理。MCP 插件读取存活贡献并构造 rmcp 工具路由。停止插件会撤销其贡献。新增功能的参数与行为说明维护在对应插件的 `PORTS.md`。
 
 ## 截图工具

@@ -589,3 +589,14 @@ text.setText → 官方保存和现有缓存重建。排序不移动画板或独
 
 
 2026-10-23 WorkCrate 项目数据随原生文件保存（无 PhoTag 对应行为）：Boards::create_project_document / Projects::duplicate_project_document → Projects::relocate_project_data → .workcrate/<UUID>/project.json + 原有预览/缓存；UI 项目菜单迁移旧数据、打开文件夹 → Boards::relocate_project / open_project_folder → Projects locators 与原始身份恢复。引用注册表内部路径相对保存、API 解析绝对路径，原生图片链接继续由 VectorCraft 负责；不复制或改写原图/原生文件。
+# 2026-11-06 card dimension mapping correction
+
+The original `src/scan.rs`/`src/thumbs.rs` mapping remains historical. The retained
+scan batch writes `width`/`height` from thumbnail pipeline results; its fallback
+dimension lookup reads source headers. The new visible worker retains that
+original-dimension meaning while using Shell for pixels.
+Current ordinary cards use Windows Shell output (2026-11-05 user direction).
+FileManager viewport workers read original image header dimensions and retain
+their original-width/height meaning; Shell transport sizes are never written as
+original sizes. Completed viewport data refreshes live skeleton layout ratios.
+See `docs/validation-ui/2026-11-06-gallery-fitting/README.md` for real HTTP MCP evidence.

@@ -34,10 +34,10 @@ The derived cache key now includes source path, size and nanosecond modification
 
 Ordinary FileManager cards call `system_thumbnail(path)` on their background
 viewport worker. Windows uses `IShellItemImageFactory::GetImage` with
-`SIIGBF_THUMBNAILONLY | SIIGBF_INCACHEONLY | SIIGBF_BIGGERSIZEOK`; a cache miss
-returns `None` and the card paints its file type placeholder. This path does not
-decode the source, invoke an installed provider to create artwork, or call
-FFmpeg. The bitmap returned by Shell is copied to a versioned PNG in
+`SIIGBF_THUMBNAILONLY | SIIGBF_BIGGERSIZEOK`. On a cache miss, Shell may invoke
+the registered Windows thumbnail provider and populate its system cache; if
+Shell cannot produce a thumbnail, the card paints its file type placeholder.
+FileAtlas does not decode the source or call FFmpeg. The bitmap returned by Shell is copied to a versioned PNG in
 `%LOCALAPPDATA%\FileAtlas\thumbs\system-shell` for GPUI path-based image loading;
 the copy preserves the bitmap's dimensions. Existing custom thumbnail APIs
 remain for feature-owned previews such as tag/board assets and are not used for
@@ -48,4 +48,5 @@ ordinary cards; it completes with a status explaining lazy Shell-cache lookup.
 `<directory>/system-shell` and advances the path revision so GPUI reloads the
 image instead of reusing a path-keyed texture. `clear_system_cache` removes and
 recreates only that directory. Board/project and other feature-owned caches are
-preserved; neither operation asks Windows Shell to generate thumbnails.
+preserved; reloading cards after either operation lets Shell generate missing
+system thumbnails.

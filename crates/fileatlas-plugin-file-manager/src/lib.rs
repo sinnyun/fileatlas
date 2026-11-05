@@ -71,6 +71,8 @@ pub struct FileManagerWindow {
     pub offset: usize,
     pub media: Vec<MediaItem>,
     pub media_tags: HashMap<i64, Vec<Tag>>,
+    /// Display-only fallback; never replaces original media dimensions.
+    pub thumbnail_ratios: HashMap<i64, f32>,
 }
 
 pub struct FileManagerService {
@@ -628,6 +630,7 @@ impl FileManagerService {
             .collect::<Vec<_>>();
         let (media, media_tags) = self.database.get_media_window(&ids)?;
         Ok(Some(FileManagerWindow {
+            thumbnail_ratios: HashMap::new(),
             offset,
             media,
             media_tags,
@@ -647,6 +650,7 @@ impl FileManagerService {
         query.limit = Some(MEDIA_WINDOW_SIZE as i64);
         let (media, media_tags) = self.database.get_media_page_with_tags(&query)?;
         Ok(FileManagerWindow {
+            thumbnail_ratios: HashMap::new(),
             offset,
             media,
             media_tags,
